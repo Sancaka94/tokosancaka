@@ -456,6 +456,12 @@
 
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DOKU_JOKUL" data-label="REKOMENDASI SANCAKA"><img src="https://tokosancaka.com/public/assets/doku.png" class="w-8 h-8 mr-4">Rekomendasi Sancaka Express Via VA, QRIS Dan E-Wallet</li>
 
+
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="MIDTRANS" data-label="Midtrans">
+                    <img src="https://tokosancaka.com/public/assets/midtrans.png" onerror="this.src='https://midtrans.com/assets/img/midtrans-dark.svg'" class="w-8 h-8 mr-4 object-contain">
+                    Midtrans (Virtual Account, QRIS, E-Wallet)
+                </li>
+
                 {{-- 3. PEMISAH --}}
                 <li class="bg-red-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Bayar Di Tempat (Otomatis)</li>
 

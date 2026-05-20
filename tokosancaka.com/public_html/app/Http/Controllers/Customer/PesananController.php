@@ -416,22 +416,39 @@ class PesananController extends Controller
                 // Diproses di Langkah 6
             }
             else {
-                // --- BLOK PEMBAYARAN ONLINE (TRIPAY atau DOKU JOKUL) ---
+                // --- BLOK PEMBAYARAN ONLINE (MIDTRANS, TRIPAY, atau DOKU JOKUL) ---
 
-                $paymentGateway = 'tripay';
+                $paymentGateway = 'tripay'; // Default
+                $paymentMethod  = strtoupper($validatedData['payment_method']);
 
-                if (strtoupper($validatedData['payment_method']) === 'DOKU') {
+                if ($paymentMethod === 'DOKU') {
                     $paymentGateway = 'doku';
+                } elseif ($paymentMethod === 'MIDTRANS') {
+                    $paymentGateway = 'midtrans';
+                }
+                
+                // ==========================================================
+                // 1. PROSES VIA MIDTRANS SNAP (TAMPILAN ASLI)
+                // ==========================================================
+                if ($paymentGateway === 'midtrans') {
+                    
+                    // Pastikan nominal harga final sudah tersimpan di objek model sebelum dilempar
+                    $order->price = $total_paid_ongkir;
+                    
+                    // Langsung panggil eksekutor snap yang terpisah
+                    return $this->createPaymentMidtransSnap($order);
                 }
 
-                if ($paymentGateway === 'doku') {
-                    // --- PROSES VIA DOKU JOKUL ---
+                // ==========================================================
+                // 2. PROSES VIA DOKU JOKUL
+                // ==========================================================
+                elseif ($paymentGateway === 'doku') {
                     Log::info('Memulai proses DOKU (Jokul) untuk ' . $order->nomor_invoice);
                     $dokuService = new DokuJokulService();
 
                     $orderData = (object) [
                         'invoice_number' => $order->nomor_invoice,
-                        'amount' => $total_paid_ongkir
+                        'amount'         => $total_paid_ongkir
                     ];
 
                     $paymentUrl = $dokuService->createPayment($orderData->invoice_number, $orderData->amount);
@@ -441,12 +458,15 @@ class PesananController extends Controller
                     }
 
                     $order->payment_url = $paymentUrl;
+                } 
 
-                } else {
-                    // --- PROSES VIA TRIPAY ---
+                // ==========================================================
+                // 3. PROSES VIA TRIPAY
+                // ==========================================================
+                else {
                     Log::info('Memulai proses TRIPAY untuk ' . $order->nomor_invoice);
                     $orderItemsPayload = $this->_prepareOrderItemsPayload($shipping_cost, $insurance_cost, $validatedData['ansuransi']);
-                    // PERBAIKAN: Melewatkan variabel $order
+                    
                     $tripayResponse = $this->_createTripayTransactionInternal($validatedData, $order, $total_paid_ongkir, $orderItemsPayload);
 
                     if (empty($tripayResponse['success'])) {
@@ -1837,6 +1857,72 @@ public function cetakThermal($resi)
                 'trace' => $e->getTraceAsString()
             ]);
             return redirect()->back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * =========================================================================
+     * EKSEKUTOR PEMBAYARAN MIDTRANS SNAP (TAMPILAN BAWAAN MIDTRANS)
+     * =========================================================================
+     */
+    public function createPaymentMidtransSnap(Pesanan $order)
+    {
+        Log::info('LOG LOG: Generate Snap Token Midtrans untuk ' . $order->nomor_invoice);
+        $user = Auth::user();
+
+        try {
+            // Ambil konfigurasi Midtrans dari database (sesuai gaya kode Anda)
+            $mode = \App\Models\Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
+            $serverKey = \App\Models\Api::getValue('MIDTRANS_SERVER_KEY', $mode);
+            $isProduction = ($mode === 'production');
+
+            // Tentukan URL berdasarkan mode
+            $baseUrl = $isProduction 
+                ? 'https://app.midtrans.com/snap/v1/transactions' 
+                : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+
+            $customerEmail = $user->email ?? 'customer@tokosancaka.com';
+
+            // Payload standar Snap Midtrans khusus untuk order paket manual
+            $payload = [
+                'transaction_details' => [
+                    'order_id'     => $order->nomor_invoice,
+                    'gross_amount' => (int) $order->price, // Menggunakan harga final dari model Pesanan
+                ],
+                'customer_details' => [
+                    'first_name' => $order->sender_name ?? $user->nama_lengkap ?? 'Customer',
+                    'email'      => $customerEmail,
+                    'phone'      => $order->sender_phone ?? $user->no_wa ?? '',
+                ],
+                'callbacks' => [
+                    'finish' => route('customer.pesanan.index') // Cerdas diarahkan ke halaman riwayat pengiriman paket
+                ]
+            ];
+
+            // Tembak API menggunakan fitur bawaan Laravel HTTP Client
+            $response = Http::withBasicAuth($serverKey, '')
+                            ->post($baseUrl, $payload);
+
+            $result = $response->json();
+
+            // Jika Midtrans mengembalikan URL pembayaran
+            if (isset($result['redirect_url'])) {
+                
+                // 1. Simpan URL tersebut ke database (agar user bisa klik "Lanjut Bayar" nanti jika keluar)
+                $order->payment_url = $result['redirect_url'];
+                $order->save();
+                
+                // 2. Alihkan layar pelanggan ke halaman pembayaran resmi Midtrans
+                return redirect()->away($result['redirect_url']);
+            }
+
+            // Jika gagal mendapatkan token/url
+            Log::error('LOG LOG: Midtrans Snap Error (Pesanan)', $result);
+            return back()->with('error', 'Gagal memproses pembayaran dengan Midtrans. Pesan: ' . ($result['error_messages'][0] ?? 'Kesalahan tidak diketahui.'));
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: Exception Midtrans Snap (Pesanan): ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem saat menghubungi Midtrans.');
         }
     }
 
