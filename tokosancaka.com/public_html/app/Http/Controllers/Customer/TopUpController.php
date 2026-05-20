@@ -2613,7 +2613,7 @@ class TopUpController extends Controller
         }
     }
 
-    /**
+   /**
      * =========================================================================
      * EKSEKUTOR PEMBAYARAN MIDTRANS VIRTUAL ACCOUNT (BI-SNAP)
      * =========================================================================
@@ -2624,10 +2624,14 @@ class TopUpController extends Controller
         Log::info('LOG LOG: MIDTRANS VA START for Transaction Table: ' . $trxId . ' Bank: ' . strtoupper($bankCode));
 
         try {
+            // Paksa bersihkan cache token lama biar gak nyangkut token kosong/error 404
+            \Illuminate\Support\Facades\Cache::forget('midtrans_b2b_token_sandbox');
+            \Illuminate\Support\Facades\Cache::forget('midtrans_b2b_token_production');
+
             $midtransService = app(\App\Services\MidtransSnapService::class);
             $user = Auth::user();
 
-            // Panggil Service Midtrans VA yang sudah kita siapkan
+            // Panggil Service Midtrans VA
             $response = $midtransService->createVirtualAccount(
                 $trxId, 
                 $transaction->amount, 
@@ -2637,11 +2641,10 @@ class TopUpController extends Controller
                 $user->email ?? null
             );
 
-            // Sesuai dokumen BI-SNAP, kode sukses create VA adalah 2002700
-            if (isset($response['responseCode']) && $response['responseCode'] === '2002700') {
+            // Jika Midtrans mengembalikan response data VA
+            if (isset($response['virtualAccountData']['virtualAccountNo'])) {
                 $vaNumber = $response['virtualAccountData']['virtualAccountNo'];
                 
-                // Simpan Nomor VA ke dalam kolom payment_url agar mudah ditampilkan di halaman invoice
                 $transaction->payment_url = $vaNumber;
                 $transaction->save();
                 
@@ -2651,12 +2654,15 @@ class TopUpController extends Controller
                                  ->with('success', 'Virtual Account berhasil dibuat! Silakan bayar menggunakan nomor VA berikut.');
             }
 
-            Log::error('LOG LOG: Gagal mendapatkan VA dari Midtrans', $response);
-            return back()->with('error', 'Gagal memproses VA Midtrans: ' . ($response['responseMessage'] ?? 'Unknown Error'));
+            // Jika gagal tapi response dari server Midtrans ada isinya
+            $errorMsg = $response['responseMessage'] ?? json_encode($response);
+            Log::error('LOG LOG: Gagal mendapatkan VA dari Midtrans', ['response' => $response]);
+            
+            return back()->with('error', 'Gagal memproses VA Midtrans: ' . $errorMsg);
 
         } catch (\Exception $e) {
             Log::error('LOG LOG: MIDTRANS VA System Error: ' . $e->getMessage());
-            return back()->with('error', 'Koneksi ke Midtrans terputus: ' . $e->getMessage());
+            return back()->with('error', 'Koneksi/Sistem Midtrans Error: ' . $e->getMessage());
         }
     }
 
