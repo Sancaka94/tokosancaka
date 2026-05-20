@@ -70,6 +70,23 @@ return [
                                     : 'https://api.sandbox.dana.id',
     ],
 
+    'midtrans' => [
+        'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
+        
+        // General Core API
+        'merchant_id'   => env('MIDTRANS_MERCHANT_ID'),
+        'client_key'    => env('MIDTRANS_CLIENT_KEY'),
+        'server_key'    => env('MIDTRANS_SERVER_KEY'),
+
+        // BI-SNAP Credentials
+        'snap_client_id'     => env('MIDTRANS_SNAP_CLIENT_ID'),
+        'snap_client_secret' => env('MIDTRANS_SNAP_CLIENT_SECRET'),
+        
+        // Path to Key Files
+        'merchant_private_key_path' => env('MIDTRANS_MERCHANT_PRIVATE_KEY_PATH'),
+        'midtrans_public_key_path'  => env('MIDTRANS_PUBLIC_KEY_PATH'),
+    ],
+
     'openai' => [
     'key' => env('OPENAI_API_KEY'),
     'model' => env('OPENAI_MODEL', 'gpt-4o-mini'),
