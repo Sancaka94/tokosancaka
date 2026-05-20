@@ -50,7 +50,7 @@ use App\Http\Controllers\TelegramPpobController;
 use App\Http\Controllers\Api\ScraperController;
 use App\Http\Controllers\PpobIakController;
 use App\Http\Controllers\Admin\ApiSettingsController;
-use App\Http\Controllers\API\MidtransNotificationController;
+use App\Http\Controllers\Api\MidtransNotificationController;
 use App\Http\Controllers\PaymentRedirectController;
 
 
