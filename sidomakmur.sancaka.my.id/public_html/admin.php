@@ -16,10 +16,16 @@ require 'koneksi.php';
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['transaksi_id'])) {
     $trx_id = $conn->real_escape_string($_POST['transaksi_id']);
     $tanggal = $conn->real_escape_string($_POST['tanggal']);
-    $warga_id = (int)$_POST['warga_id'];
+    
+    // Warga dibuat tidak wajib (null) jika berupa pengeluaran
+    $warga_id_sql = !empty($_POST['warga_id']) ? (int)$_POST['warga_id'] : 'NULL'; 
     $nominal = (float)$_POST['nominal'];
     
-    $insert = $conn->query("INSERT INTO transaksi (transaksi_id, tanggal_setor, warga_id, jenis, nominal) VALUES ('$trx_id', '$tanggal', $warga_id, 'masuk', $nominal)");
+    // Tangkap data jenis dan keterangan baru
+    $jenis = $conn->real_escape_string($_POST['jenis']);
+    $keterangan = isset($_POST['keterangan']) ? $conn->real_escape_string($_POST['keterangan']) : '';
+    
+    $insert = $conn->query("INSERT INTO transaksi (transaksi_id, tanggal_setor, warga_id, jenis, nominal, keterangan) VALUES ('$trx_id', '$tanggal', $warga_id_sql, '$jenis', $nominal, '$keterangan')");
     if ($insert) {
         header("Location: admin.php?success=1");
         exit;
@@ -131,12 +137,19 @@ $list_warga = $conn->query("SELECT * FROM warga ORDER BY nama ASC");
                         <input type="text" name="transaksi_id" value="TRX-<?= time() ?>" readonly class="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none cursor-not-allowed">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal Setor</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tanggal</label>
                         <input type="date" name="tanggal" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gray-900 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Warga</label>
-                        <select name="warga_id" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gray-900 outline-none bg-white">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Jenis Transaksi</label>
+                        <select name="jenis" required class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gray-900 outline-none bg-white">
+                            <option value="masuk">Pemasukan (Uang Masuk)</option>
+                            <option value="keluar">Pengeluaran (Uang Keluar)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Warga <span class="text-gray-400 font-normal">(Kosongkan jika pengeluaran umum)</span></label>
+                        <select name="warga_id" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gray-900 outline-none bg-white">
                             <option value="">-- Pilih Warga --</option>
                             <?php while($row = $list_warga->fetch_assoc()): ?>
                                 <option value="<?= $row['id'] ?>"><?= $row['nama'] ?></option>
@@ -147,8 +160,12 @@ $list_warga = $conn->query("SELECT * FROM warga ORDER BY nama ASC");
 
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nilai Disetorkan (Rp)</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nominal (Rp)</label>
                         <input type="number" name="nominal" required placeholder="Contoh: 50000" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gray-900 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Keterangan</label>
+                        <input type="text" name="keterangan" placeholder="Contoh: Iuran Bulanan / Beli sapu lidi" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-gray-900 outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-500 mb-1">Total Keseluruhan Warga (Otomatis)</label>
@@ -175,16 +192,18 @@ $list_warga = $conn->query("SELECT * FROM warga ORDER BY nama ASC");
                         <tr class="bg-white text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
                             <th class="px-6 py-3 font-medium">ID Transaksi</th>
                             <th class="px-6 py-3 font-medium">Tanggal</th>
-                            <th class="px-6 py-3 font-medium">Nama Warga</th>
+                            <th class="px-6 py-3 font-medium">Nama Warga / Keterangan</th>
+                            <th class="px-6 py-3 font-medium">Jenis</th>
                             <th class="px-6 py-3 font-medium text-right">Nominal</th>
                             <th class="px-6 py-3 font-medium text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="text-sm divide-y divide-gray-100">
                         <?php
+                        // Menggunakan LEFT JOIN agar data tanpa warga_id (pengeluaran) tetap tampil
                         $query_history = $conn->query("
                             SELECT t.*, w.nama 
-                            FROM transaksi t JOIN warga w ON t.warga_id = w.id 
+                            FROM transaksi t LEFT JOIN warga w ON t.warga_id = w.id 
                             ORDER BY t.id DESC LIMIT 20
                         ");
                         if($query_history->num_rows > 0):
@@ -193,7 +212,20 @@ $list_warga = $conn->query("SELECT * FROM warga ORDER BY nama ASC");
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 font-medium text-gray-900"><?= $history['transaksi_id'] ?></td>
                             <td class="px-6 py-4 text-gray-600"><?= date('d/m/Y', strtotime($history['tanggal_setor'])) ?></td>
-                            <td class="px-6 py-4 font-medium"><?= $history['nama'] ?></td>
+                            
+                            <td class="px-6 py-4">
+                                <span class="font-medium"><?= !empty($history['nama']) ? $history['nama'] : '<em>Umum/Tanpa Nama</em>' ?></span><br>
+                                <span class="text-xs text-gray-500"><?= !empty($history['keterangan']) ? $history['keterangan'] : '-' ?></span>
+                            </td>
+
+                            <td class="px-6 py-4">
+                                <?php if($history['jenis'] == 'masuk'): ?>
+                                    <span class="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-medium">Pemasukan</span>
+                                <?php else: ?>
+                                    <span class="inline-block bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-medium">Pengeluaran</span>
+                                <?php endif; ?>
+                            </td>
+
                             <td class="px-6 py-4 font-bold text-right">Rp <?= number_format($history['nominal'], 0, ',', '.') ?></td>
                             <td class="px-6 py-4 flex justify-center gap-2">
                                 <button title="Detail" onclick="alert('Ini adalah tombol Detail untuk ID: <?= $history['transaksi_id'] ?>')" class="bg-blue-500 hover:bg-blue-600 text-white w-8 h-8 flex items-center justify-center rounded-md transition-colors shadow-sm">
@@ -202,13 +234,13 @@ $list_warga = $conn->query("SELECT * FROM warga ORDER BY nama ASC");
                                 <button title="Edit" onclick="alert('Fitur Edit (Update) belum dikonfigurasi. \nID: <?= $history['transaksi_id'] ?>')" class="bg-amber-500 hover:bg-amber-600 text-white w-8 h-8 flex items-center justify-center rounded-md transition-colors shadow-sm">
                                     <i class="ph ph-pencil-simple text-base"></i>
                                 </button>
-                                <a href="?hapus=<?= $history['id'] ?>" onclick="return confirm('Apakah Anda yakin ingin MENGHAPUS riwayat transaksi Rp <?= number_format($history['nominal'], 0, ',', '.') ?> dari <?= $history['nama'] ?>?');" title="Hapus" class="bg-red-500 hover:bg-red-600 text-white w-8 h-8 flex items-center justify-center rounded-md transition-colors shadow-sm">
+                                <a href="?hapus=<?= $history['id'] ?>" onclick="return confirm('Apakah Anda yakin ingin MENGHAPUS riwayat transaksi Rp <?= number_format($history['nominal'], 0, ',', '.') ?>?');" title="Hapus" class="bg-red-500 hover:bg-red-600 text-white w-8 h-8 flex items-center justify-center rounded-md transition-colors shadow-sm">
                                     <i class="ph ph-trash text-base"></i>
                                 </a>
                             </td>
                         </tr>
                         <?php endwhile; else: ?>
-                        <tr><td colspan="5" class="px-6 py-8 text-center text-gray-500">Belum ada data transaksi tersimpan.</td></tr>
+                        <tr><td colspan="6" class="px-6 py-8 text-center text-gray-500">Belum ada data transaksi tersimpan.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

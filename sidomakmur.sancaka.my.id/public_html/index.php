@@ -15,6 +15,9 @@ $total_keluar = $query_keluar->fetch_assoc()['total'] ?? 0;
 $sisa_kekurangan = $TARGET_DANA - $total_masuk;
 if ($sisa_kekurangan < 0) $sisa_kekurangan = 0;
 
+// LOGIK TAMBAHAN: Menghitung Sisa Saldo (Pemasukan - Pengeluaran)
+$sisa_saldo = $total_masuk - $total_keluar;
+
 // MENARIK DATA SELURUH TRANSAKSI UNTUK DITAMPILKAN DI MODAL (DIKELOMPOKKAN PER WARGA)
 $all_trx = $conn->query("SELECT warga_id, tanggal_setor, nominal FROM transaksi WHERE jenis='masuk' ORDER BY tanggal_setor DESC");
 $trx_data = [];
@@ -58,7 +61,7 @@ while($row_trx = $all_trx->fetch_assoc()) {
             </div>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <div class="text-gray-500 text-sm font-medium mb-1">Total Warga</div>
                 <div class="text-2xl font-bold"><?= number_format($total_warga, 0, ',', '.') ?> <span class="text-sm font-normal text-gray-400">KK</span></div>
@@ -74,6 +77,10 @@ while($row_trx = $all_trx->fetch_assoc()) {
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <div class="text-gray-500 text-sm font-medium mb-1">Kekurangan (Target 5 Jt)</div>
                 <div class="text-2xl font-bold text-gray-900">Rp <?= number_format($sisa_kekurangan, 0, ',', '.') ?></div>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <div class="text-gray-500 text-sm font-medium mb-1">Sisa Saldo Kas</div>
+                <div class="text-2xl font-bold text-blue-600">Rp <?= number_format($sisa_saldo, 0, ',', '.') ?></div>
             </div>
         </div>
 
@@ -116,9 +123,11 @@ while($row_trx = $all_trx->fetch_assoc()) {
             </div>
         </div>
 
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
             <div class="p-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-                <h2 class="text-lg font-semibold">Laporan Uang Terkumpul Per Warga</h2>
+                <h2 class="text-lg font-semibold flex items-center gap-2">
+                    <i class="ph ph-users"></i> Laporan Uang Terkumpul Per Warga
+                </h2>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
@@ -161,6 +170,66 @@ while($row_trx = $all_trx->fetch_assoc()) {
                 </table>
             </div>
         </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
+            <div class="p-5 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
+                <h2 class="text-lg font-semibold flex items-center gap-2">
+                    <i class="ph ph-bank"></i> Mutasi Kas (Laporan Debit & Kredit)
+                </h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-white text-gray-500 text-xs uppercase tracking-wider border-b border-gray-200">
+                            <th class="px-6 py-3 font-medium">Tanggal</th>
+                            <th class="px-6 py-3 font-medium">Keterangan Transaksi</th>
+                            <th class="px-6 py-3 font-medium text-right">Debit (Masuk)</th>
+                            <th class="px-6 py-3 font-medium text-right">Kredit (Keluar)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm divide-y divide-gray-100">
+                        <?php
+                        $query_mutasi = $conn->query("
+                            SELECT t.*, w.nama 
+                            FROM transaksi t 
+                            LEFT JOIN warga w ON t.warga_id = w.id 
+                            ORDER BY t.tanggal_setor DESC, t.id DESC
+                        ");
+                        if($query_mutasi->num_rows > 0):
+                            while($mutasi = $query_mutasi->fetch_assoc()):
+                                $is_masuk = $mutasi['jenis'] == 'masuk';
+                                
+                                // Format text Keterangan
+                                $teks_keterangan = "";
+                                if($is_masuk) {
+                                    $teks_keterangan = "Setoran: " . (!empty($mutasi['nama']) ? $mutasi['nama'] : "Umum");
+                                    if(!empty($mutasi['keterangan'])) {
+                                        $teks_keterangan .= " - " . $mutasi['keterangan'];
+                                    }
+                                } else {
+                                    $teks_keterangan = "Pengeluaran: " . (!empty($mutasi['keterangan']) ? $mutasi['keterangan'] : "Tanpa Keterangan");
+                                }
+                        ?>
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-6 py-4 text-gray-500"><?= date('d/m/Y', strtotime($mutasi['tanggal_setor'])) ?></td>
+                            <td class="px-6 py-4 font-medium text-gray-900"><?= $teks_keterangan ?></td>
+                            
+                            <td class="px-6 py-4 font-bold text-right text-green-600 bg-green-50/30">
+                                <?= $is_masuk ? '+ Rp ' . number_format($mutasi['nominal'], 0, ',', '.') : '-' ?>
+                            </td>
+                            
+                            <td class="px-6 py-4 font-bold text-right text-red-600 bg-red-50/30">
+                                <?= !$is_masuk ? '- Rp ' . number_format($mutasi['nominal'], 0, ',', '.') : '-' ?>
+                            </td>
+                        </tr>
+                        <?php endwhile; else: ?>
+                        <tr><td colspan="4" class="px-6 py-8 text-center text-gray-500">Belum ada riwayat transaksi mutasi kas.</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
     <div id="detailModal" class="fixed inset-0 z-50 hidden bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
@@ -234,7 +303,7 @@ while($row_trx = $all_trx->fetch_assoc()) {
                     
                     tr.innerHTML = `
                         <td class="px-5 py-3">${formattedDate}</td>
-                        <td class="px-5 py-3 text-right font-medium">Rp ${formatRupiah(trx.nominal)}</td>
+                        <td class="px-5 py-3 text-right font-medium text-green-600">+ Rp ${formatRupiah(trx.nominal)}</td>
                     `;
                     tbody.appendChild(tr);
                 });
