@@ -80,7 +80,7 @@ while($row_trx = $all_trx->fetch_assoc()) {
             </div>
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <div class="text-gray-500 text-sm font-medium mb-1">Sisa Saldo Kas</div>
-                <div class="text-2xl font-bold text-blue-600">Rp <?= number_format($sisa_saldo, 0, ',', '.') ?></div>
+                <div class="text-2xl font-bold text-red-700">Rp <?= number_format($sisa_saldo, 0, ',', '.') ?></div>
             </div>
         </div>
 
