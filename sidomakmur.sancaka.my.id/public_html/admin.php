@@ -9,26 +9,36 @@ if (!isset($_SESSION['admin_logged_in'])) {
 
 require 'koneksi.php';
 
-// ==========================================
-// LOGIK TAMBAHAN: Proses Input & Hapus Data
-// ==========================================
 // 1. Proses Input Transaksi Baru
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['transaksi_id'])) {
-    $trx_id = $conn->real_escape_string($_POST['transaksi_id']);
-    $tanggal = $conn->real_escape_string($_POST['tanggal']);
-    
-    // Warga dibuat tidak wajib (null) jika berupa pengeluaran
-    $warga_id_sql = !empty($_POST['warga_id']) ? (int)$_POST['warga_id'] : 'NULL'; 
-    $nominal = (float)$_POST['nominal'];
-    
-    // Tangkap data jenis dan keterangan baru
-    $jenis = $conn->real_escape_string($_POST['jenis']);
-    $keterangan = isset($_POST['keterangan']) ? $conn->real_escape_string($_POST['keterangan']) : '';
-    
-    $insert = $conn->query("INSERT INTO transaksi (transaksi_id, tanggal_setor, warga_id, jenis, nominal, keterangan) VALUES ('$trx_id', '$tanggal', $warga_id_sql, '$jenis', $nominal, '$keterangan')");
-    if ($insert) {
-        header("Location: admin.php?success=1");
-        exit;
+    try {
+        $trx_id = $conn->real_escape_string($_POST['transaksi_id']);
+        $tanggal = $conn->real_escape_string($_POST['tanggal']);
+        
+        // Warga dibuat tidak wajib (null) jika berupa pengeluaran
+        $warga_id_sql = !empty($_POST['warga_id']) ? (int)$_POST['warga_id'] : 'NULL'; 
+        $nominal = (float)$_POST['nominal'];
+        
+        // Tangkap data jenis dan keterangan baru
+        $jenis = $conn->real_escape_string($_POST['jenis']);
+        $keterangan = isset($_POST['keterangan']) ? $conn->real_escape_string($_POST['keterangan']) : '';
+        
+        $sql = "INSERT INTO transaksi (transaksi_id, tanggal_setor, warga_id, jenis, nominal, keterangan) VALUES ('$trx_id', '$tanggal', $warga_id_sql, '$jenis', $nominal, '$keterangan')";
+        
+        $insert = $conn->query($sql);
+        if ($insert) {
+            header("Location: admin.php?success=1");
+            exit;
+        } else {
+            // Tampilkan error query MySQL biasa
+            die("<div style='padding:20px; font-family:sans-serif; color:red;'><b>Query Gagal:</b> " . $conn->error . "</div>");
+        }
+    } catch (Exception $e) {
+        // Tangkap Fatal Error (Exception) dari MySQLi Strict Mode
+        die("<div style='padding:20px; font-family:sans-serif; color:red;'>
+                <b>Error Database:</b> " . $e->getMessage() . "<br><br>
+                <b>Penyebab Umum:</b> Pastikan Anda sudah menjalankan ALTER TABLE di phpMyAdmin untuk kolom 'keterangan' dan 'warga_id'.
+            </div>");
     }
 }
 
