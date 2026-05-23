@@ -458,20 +458,20 @@
 
                 <h3 class="text-2xl font-bold text-gray-800 mb-6">Formulir Pendaftaran</h3>
 
-                <form action="{{ route('daftar.pos.store') }}" method="POST"
-      x-data="{
-          password: '',
-          confirmPassword: '',
-          get reqLength() { return this.password.length >= 8; },
-          get reqNumber() { return /[0-9]/.test(this.password); },
-          get reqLower() { return /[a-z]/.test(this.password); },
-          get reqUpper() { return /[A-Z]/.test(this.password); },
-          get reqSymbol() { return /[^A-Za-z0-9]/.test(this.password); },
-          get isFormValid() {
-              return this.reqLength && this.reqNumber && this.reqLower && this.reqUpper && this.reqSymbol && (this.password === this.confirmPassword) && this.password.length > 0;
-          }
-      }">
-                    @csrf
+                <form action="https://apps.tokosancaka.com/daftar-pos" method="POST"
+                    x-data="{
+                        password: '',
+                        confirmPassword: '',
+                        get reqLength() { return this.password.length >= 8; },
+                        get reqNumber() { return /[0-9]/.test(this.password); },
+                        get reqLower() { return /[a-z]/.test(this.password); },
+                        get reqUpper() { return /[A-Z]/.test(this.password); },
+                        get reqSymbol() { return /[^A-Za-z0-9]/.test(this.password); },
+                        get isFormValid() {
+                            return this.reqLength && this.reqNumber && this.reqLower && this.reqUpper && this.reqSymbol && (this.password === this.confirmPassword) && this.password.length > 0;
+                        }
+                    }">
+                    
                     <input type="hidden" name="package" :value="selectedPlan">
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">

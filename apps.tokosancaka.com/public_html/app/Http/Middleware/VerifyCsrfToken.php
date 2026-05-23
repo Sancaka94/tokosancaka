@@ -13,6 +13,10 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         '/payment/generate', // Tambahkan ini
+        
+        // --- TAMBAHKAN BARIS INI UNTUK FORM DARI HTML LUAR (bisnis.pro) ---
+        'daftar-pos', 
+        
         // Matikan CSRF untuk Login & Logout
         'login',
         'logout',

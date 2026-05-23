@@ -28,7 +28,6 @@ class RegisterTenantController extends Controller
     {
         Log::info("================ START REGISTER SYSTEM ================");
 
-        // Validasi tetap sama...
         try {
             $validatedData = $request->validate([
                 'owner_name'    => 'required|string|max:255',
@@ -40,8 +39,16 @@ class RegisterTenantController extends Controller
                 'password'      => 'required|min:8',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
+            // Jika request dari API / HTML Luar, kembalikan JSON
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json(['success' => false, 'errors' => $e->errors()], 422);
+            }
             return back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
+            // Jika request dari API / HTML Luar, kembalikan JSON
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            }
             return back()->with('error', $e->getMessage());
         }
 
@@ -145,11 +152,14 @@ class RegisterTenantController extends Controller
                 $msgUser .= "Link Pembayaran: \n" . $paymentUrl . "\n";
                 $this->_sendFonnte($userWa, $msgUser);
 
-                // [PERBAIKAN] Gunakan away() untuk memastikan user keluar dari aplikasi kita menuju DOKU
+                // [PERBAIKAN] Cek jika request API, kirim JSON. Jika bukan, redirect langsung
+                if ($request->wantsJson() || $request->is('api/*')) {
+                    return response()->json(['success' => true, 'redirect_url' => $paymentUrl]);
+                }
                 return redirect()->away($paymentUrl);
             }
 
-          // 8. FINISH (TRIAL)
+            // 8. FINISH (TRIAL)
             if ($request->package == 'trial') {
                 $targetUrl = 'https://' . $tenant->subdomain . '.tokosancaka.com/login';
 
@@ -165,13 +175,20 @@ class RegisterTenantController extends Controller
 
                 Log::info("LOG LOG: Trial sukses mengirim kode {$licenseCode} ke {$userWa}");
 
-                return redirect()->away($targetUrl);
+                // [PERBAIKAN] Cek jika request API, kirim JSON. Jika bukan, redirect langsung
+                if ($request->wantsJson() || $request->is('api/*')) {
+                    return response()->json(['success' => true, 'redirect_url' => $targetUrl]);
                 }
+                return redirect()->away($targetUrl);
+            }
 
-            } catch (\Exception $e) {
-            
+        } catch (\Exception $e) {
             DB::rollBack();
             Log::error("LOG LOG: FAILED REGISTER: " . $e->getMessage());
+            
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json(['success' => false, 'message' => 'Gagal mendaftar: ' . $e->getMessage()], 500);
+            }
             return back()->with('error', 'Gagal mendaftar: ' . $e->getMessage());
         }
     }

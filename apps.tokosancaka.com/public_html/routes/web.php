@@ -506,8 +506,16 @@ Route::post('/scan-process', [ScannerController::class, 'handleScan'])->name('sc
 // --------------------------------------- Multi Tenant------------------------------------------- //
 
 // URL Hasilnya: tokosancaka.com/percetakan/daftar-percetakan
+// Route::get('/daftar-pos', [RegisterTenantController::class, 'showForm'])->name('daftar.pos');
+// Route::post('/daftar-pos', [RegisterTenantController::class, 'register'])->name('daftar.pos.store');
+
+// URL Hasilnya: tokosancaka.com/percetakan/daftar-percetakan (BISA JUGA DARI bisnis.pro)
 Route::get('/daftar-pos', [RegisterTenantController::class, 'showForm'])->name('daftar.pos');
-Route::post('/daftar-pos', [RegisterTenantController::class, 'register'])->name('daftar.pos.store');
+
+// Tambahkan withoutMiddleware CSRF agar form HTML murni dari bisnis.pro tidak diblokir (Error 419)
+Route::post('/daftar-pos', [RegisterTenantController::class, 'register'])
+    ->name('daftar.pos.store')
+    ->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::get('/admin/list-customer', [RegisterTenantController::class, 'listTenants'])
     ->middleware(['auth']) // <--- Tambahkan ini agar wajib login
