@@ -235,8 +235,12 @@ function fetchLiveBalance() {
     const balanceEl = document.getElementById('live-balance-amount');
     const btnIcon = document.querySelector('#btn-refresh-balance svg');
 
+    // Hindari memunculkan teks "Memuat saldo..." berkedip-kedip setiap 15 detik 
+    // jika sudah ada angkanya. Kita hanya putar icon loadingnya saja.
     btnIcon.classList.add('animate-spin');
-    balanceEl.innerHTML = '<span class="animate-pulse text-lg font-normal text-blue-200">Memuat saldo...</span>';
+    if (balanceEl.innerHTML.includes('Menghubungkan') || balanceEl.innerHTML.trim() === '') {
+        balanceEl.innerHTML = '<span class="animate-pulse text-lg font-normal text-blue-200">Memuat saldo...</span>';
+    }
 
     fetch('{{ route("admin.iak.live_balance") }}', {
         headers: {
@@ -252,7 +256,6 @@ function fetchLiveBalance() {
             let rp = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(data.balance);
             balanceEl.innerHTML = rp;
         } else {
-            // Menampilkan error spesifik dari IAK (misal: "API Error: PAGE NOT FOUND" atau "Invalid Signature")
             balanceEl.innerHTML = `<span class="text-red-300 text-lg font-medium">${data.message}</span>`;
         }
     })
@@ -262,7 +265,13 @@ function fetchLiveBalance() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', fetchLiveBalance);
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Tarik data saat halaman pertama kali dibuka
+    fetchLiveBalance();
+
+    // 2. JALANKAN AUTO REFRESH (Setiap 15 detik = 15000 milidetik)
+    setInterval(fetchLiveBalance, 15000); 
+});
 </script>
 
 @endsection
