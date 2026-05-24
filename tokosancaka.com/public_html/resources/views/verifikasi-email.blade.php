@@ -11,13 +11,14 @@
             <h2 class="text-2xl font-bold mb-2">Verifikasi Sukses!</h2>
             <p class="mb-6 text-gray-600">Aplikasi akan terbuka otomatis dalam 2 detik...</p>
 
-            <a href="sancakaexpress://dashboard" class="block bg-red-600 text-white py-3 rounded-xl font-bold">
-                Buka Aplikasi Sekarang
+           <a href="sancakaexpress://setup-pin"
+               class="block bg-red-600 text-white py-3 rounded-xl font-bold">
+               Buka Aplikasi untuk Atur PIN
             </a>
 
             <script>
                 setTimeout(function() {
-                    window.location.href = "sancakaexpress://dashboard";
+                    window.location.href = "sancakaexpress://setup-pin";
                 }, 2000);
             </script>
         @else
