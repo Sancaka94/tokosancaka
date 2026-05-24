@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use App\Models\Pengguna;
 use Illuminate\Support\Str;
 use App\Services\FonnteService;
 use Illuminate\Support\Facades\Notification;
@@ -276,5 +277,27 @@ class AuthController extends Controller
             'message' => 'Token tidak valid atau salah.'
         ], 400);
     }
+
+    public function verifyEmailFromLink(Request $request)
+{
+    $token = $request->query('token');
+    $email = $request->query('email');
+
+    $user = User::where('email', $email)->first();
+    $savedOtp = \Illuminate\Support\Facades\Cache::get('otp_reset_pin_' . $user->id_pengguna ?? 0);
+
+    if ($user && $savedOtp && strtoupper($token) === strtoupper($savedOtp)) {
+        $user->status = 'Aktif';
+        $user->is_verified = 1;
+        $user->save();
+        \Illuminate\Support\Facades\Cache::forget('otp_reset_pin_' . $user->id_pengguna);
+
+        // Arahkan ke view dengan pesan sukses
+        return view('verifikasi-email')->with('success', 'Akun Anda berhasil diaktifkan. Sekarang Anda bisa login.');
+    }
+
+    // Arahkan ke view dengan status gagal
+    return view('verifikasi-email');
+}
 
 }

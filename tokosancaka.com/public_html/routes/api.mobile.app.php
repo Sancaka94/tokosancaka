@@ -55,6 +55,8 @@ Route::post('/forgot-password', [CustomerForgotPasswordController::class, 'sendR
 Route::post('/verify-token', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'verifyToken']);
 Route::post('/resend-token', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'resendToken']);
 
+Route::get('/verifikasi-email', [AuthController::class, 'verifyEmailFromLink']);
+
 Route::get('/system-status', [\App\Http\Controllers\Admin\DashboardController::class, 'getSystemMode']);
 
 
