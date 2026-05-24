@@ -296,26 +296,49 @@ class AuthController extends Controller
         ], 400);
     }
 
-    public function verifyEmailFromLink(Request $request)
+   public function verifyEmailFromLink(Request $request)
 {
     $token = $request->query('token');
     $email = $request->query('email');
 
-    $user = User::where('email', $email)->first();
-    $savedOtp = \Illuminate\Support\Facades\Cache::get('otp_reset_pin_' . $user->id_pengguna ?? 0);
+    Log::info('LOG LOG: Percobaan verifikasi email dimulai.', ['email' => $email, 'token_input' => $token]);
 
-    if ($user && $savedOtp && strtoupper($token) === strtoupper($savedOtp)) {
+    $user = User::where('email', $email)->first();
+
+    if (!$user) {
+        Log::warning('LOG LOG: User tidak ditemukan saat verifikasi email.', ['email' => $email]);
+        return view('verifikasi-email')->with('error', 'Akun tidak ditemukan.');
+    }
+
+    // Mengambil token dari cache berdasarkan email (Sesuai saran agar lebih konsisten)
+    $cacheKey = 'otp_reset_pin_' . $user->id_pengguna; // Pastikan key ini SAMA dengan saat registrasi
+    $savedOtp = \Illuminate\Support\Facades\Cache::get($cacheKey);
+
+    Log::info('LOG LOG: Data verifikasi ditemukan.', [
+        'id_pengguna' => $user->id_pengguna,
+        'cache_key' => $cacheKey,
+        'token_di_cache' => $savedOtp ?? 'NULL'
+    ]);
+
+    if ($savedOtp && strtoupper($token) === strtoupper($savedOtp)) {
+        Log::info('LOG LOG: Token cocok! Mengaktifkan akun.', ['user_id' => $user->id_pengguna]);
+
         $user->status = 'Aktif';
         $user->is_verified = 1;
         $user->save();
-        \Illuminate\Support\Facades\Cache::forget('otp_reset_pin_' . $user->id_pengguna);
 
-        // Arahkan ke view dengan pesan sukses
+        \Illuminate\Support\Facades\Cache::forget($cacheKey);
+
         return view('verifikasi-email')->with('success', 'Akun Anda berhasil diaktifkan. Sekarang Anda bisa login.');
     }
 
-    // Arahkan ke view dengan status gagal
-    return view('verifikasi-email');
+    Log::error('LOG LOG: Token verifikasi gagal.', [
+        'user_id' => $user->id_pengguna,
+        'token_input' => $token,
+        'token_di_cache' => $savedOtp ?? 'NULL'
+    ]);
+
+    return view('verifikasi-email')->with('error', 'Kode verifikasi salah atau sudah kedaluwarsa.');
 }
 
 }
