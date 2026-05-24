@@ -189,23 +189,41 @@ class AuthController extends Controller
             Log::error('Gagal kirim WA saat registrasi: ' . $e->getMessage());
         }
 
-        // B. Kirim ke Email (Template Keren)
+        // B. Kirim ke Email (Template Keren dengan Link Verifikasi)
         try {
-            Mail::send([], [], function ($message) use ($user, $token) {
-                $html = "
-                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;'>
-                    <div style='background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #dc2626;'>
-                        <img src='https://tokosancaka.com/storage/uploads/sancaka.png' width='180'>
-                    </div>
-                    <div style='padding: 30px; color: #334155;'>
-                        <h3>Halo {$user->nama_lengkap},</h3>
-                        <p>Selamat bergabung di Sancaka Express! Masukkan kode ini untuk memverifikasi akun Anda:</p>
-                        <div style='background-color: #f1f5f9; padding: 20px; text-align: center; border-radius: 8px; border: 2px dashed #dc2626; margin: 25px 0;'>
-                            <span style='font-size: 32px; font-weight: 800; color: #dc2626; letter-spacing: 5px;'>{$token}</span>
+            // URL verifikasi yang mengarah ke route web kita
+            $verifyUrl = url('/verifikasi-email?token=' . $token . '&email=' . urlencode($user->email));
+
+            $html = "
+            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff;'>
+                <div style='background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #dc2626;'>
+                    <img src='https://tokosancaka.com/storage/uploads/sancaka.png' width='180'>
+                </div>
+                <div style='padding: 30px; color: #334155;'>
+                    <h3>Halo {$user->nama_lengkap},</h3>
+                    <p>Selamat bergabung di Sancaka Express! Masukkan kode ini untuk memverifikasi akun Anda:</p>
+
+                    <div style='background-color: #f8fafc; padding: 25px; text-align: center; border-radius: 12px; border: 1px solid #e2e8f0; margin: 25px 0;'>
+                        <div style='font-size: 32px; font-weight: 800; color: #dc2626; letter-spacing: 5px; margin-bottom: 20px;'>
+                            {$token}
                         </div>
-                        <p>Tekan lama pada kode di atas untuk menyalin.</p>
+
+                        <a href='{$verifyUrl}'
+                           style='display: inline-block; background-color: #dc2626; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: bold; text-decoration: none;'>
+                           KLIK UNTUK VERIFIKASI
+                        </a>
                     </div>
-                </div>";
+
+                    <p style='font-size: 13px; color: #64748b;'>
+                        *Jika tombol tidak berfungsi, Anda bisa menggunakan kode di atas secara manual di aplikasi.
+                    </p>
+                </div>
+                <div style='padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9;'>
+                    Toko Sancaka - Solusi Pengiriman Terpercaya
+                </div>
+            </div>";
+
+            Mail::send([], [], function ($message) use ($user, $html) {
                 $message->to($user->email)
                         ->subject('Verifikasi Akun Sancaka Express')
                         ->html($html);
