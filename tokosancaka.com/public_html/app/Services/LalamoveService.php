@@ -84,4 +84,26 @@ class LalamoveService
             'data' => $payload
         ]);
     }
+
+    /**
+     * 1. Get Quotation
+     * Dokumentasi: POST /v3/quotations
+     */
+    public function createQuotation(array $payload)
+    {
+        return $this->request('POST', '/v3/quotations', [
+            'data' => $payload
+        ]);
+    }
+
+    /**
+     * 2. Place Order
+     * Dokumentasi: POST /v3/orders
+     */
+    public function placeOrder(array $payload)
+    {
+        return $this->request('POST', '/v3/orders', [
+            'data' => $payload
+        ]);
+    }
 }
