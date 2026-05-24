@@ -83,6 +83,11 @@
                     <i class="fas fa-credit-card mr-2"></i> Midtrans
                 </button>
 
+                {{-- TAMBAHAN TAB LALAMOVE --}}
+                <button @click="activeTab = 'lalamove'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'lalamove', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'lalamove' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    <i class="fas fa-truck mr-2"></i> Lalamove
+                </button>
+
             </div>
         </div>
 
@@ -757,6 +762,80 @@
                 </form>
             </div>
 
+
+            {{-- 9. TAB LALAMOVE (BARU) --}}
+            <div x-show="activeTab === 'lalamove'" style="display: none;">
+                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Lalamove API</h3>
+                        <p class="text-xs text-gray-500 mt-1">Status Aktif:
+                            <span class="px-2 py-0.5 rounded text-xs font-bold transition-colors duration-300"
+                                  :class="lalamoveData.mode === 'production' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'"
+                                  x-text="lalamoveData.mode === 'production' ? 'PRODUCTION (LIVE)' : 'SANDBOX (TEST)'">
+                            </span>
+                        </p>
+                    </div>
+
+                    {{-- Toggle Switch Lalamove --}}
+                    <div class="flex items-center">
+                        <span class="mr-3 text-sm font-medium" :class="lalamoveData.mode === 'sandbox' ? 'text-indigo-600 font-bold' : 'text-gray-500'">SANDBOX</span>
+
+                        <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" id="lalamove_toggle"
+                                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
+                                   :class="{'translate-x-full border-red-500': lalamoveData.mode === 'production', 'border-indigo-500': lalamoveData.mode === 'sandbox'}"
+                                   @click="lalamoveData.mode = (lalamoveData.mode === 'production' ? 'sandbox' : 'production')"
+                                   :checked="lalamoveData.mode === 'production'"/>
+                            <label for="lalamove_toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
+                                   :class="{'bg-red-500': lalamoveData.mode === 'production', 'bg-indigo-500': lalamoveData.mode === 'sandbox'}"></label>
+                        </div>
+
+                        <span class="ml-1 text-sm font-medium" :class="lalamoveData.mode === 'production' ? 'text-red-600 font-bold' : 'text-gray-500'">PRODUCTION</span>
+                    </div>
+                </div>
+
+                <form action="{{ route('admin.settings.api.update') }}" method="POST">
+                    @csrf @method('PUT')
+                    <input type="hidden" name="type" value="lalamove">
+                    <input type="hidden" name="lalamove_mode" x-model="lalamoveData.mode">
+
+                    <div class="space-y-6">
+                        {{-- Visual Warning --}}
+                        <div class="p-4 rounded-lg border flex items-start"
+                             :class="lalamoveData.mode === 'production' ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'">
+                            <div class="flex-shrink-0 mt-0.5">
+                                <i class="fas" :class="lalamoveData.mode === 'production' ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle text-indigo-500'"></i>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium" :class="lalamoveData.mode === 'production' ? 'text-red-800' : 'text-indigo-800'" x-text="lalamoveData.mode === 'production' ? 'Mode Produksi Aktif' : 'Mode Sandbox Aktif'"></h3>
+                                <div class="mt-1 text-sm" :class="lalamoveData.mode === 'production' ? 'text-red-700' : 'text-indigo-700'">
+                                    <p x-text="lalamoveData.mode === 'production' ? 'Order memanggil kurir sungguhan dan memotong wallet.' : 'Aman untuk testing. Order hanya simulasi.'"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div x-show="lalamoveData.mode" x-transition.opacity>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">API Key</label>
+                                    <input type="text" name="lalamove_api_key" x-model="lalamoveData[lalamoveData.mode].api_key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">API Secret</label>
+                                    <input type="text" name="lalamove_api_secret" x-model="lalamoveData[lalamoveData.mode].api_secret" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 flex justify-end">
+                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors">
+                            Simpan Lalamove
+                        </button>
+                    </div>
+                </form>
+            </div>
+
         </div>
     </div>
 </div>
@@ -777,9 +856,9 @@
             iakData: @json($iak),
             dwData: @json($dharmawisata),
             danaData: @json($dana),
-            
-            // --- TAMBAHAN DATA MIDTRANS ---
             midtransData: @json($midtrans),
+            lalamoveData: @json($lalamove),
+            
         }))
     })
 </script>

@@ -24,6 +24,10 @@ class ApiSettingsController extends Controller
         // --- TAMBAHAN MIDTRANS ---
         $midtransMode     = Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
 
+        // --- TAMBAHAN LALAMOVE ---
+        // LOG LOG
+        $lalamoveMode     = Api::getValue('LALAMOVE_MODE', 'global', 'sandbox');
+
         // 2. Siapkan Struktur Data Lengkap (Active Mode + Data per Environment)
 
         $kiriminaja = [
@@ -146,8 +150,22 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        // Tambahkan variabel $dana dan $midtrans ke compact
-        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans'));
+        // --- TAMBAHAN ARRAY LALAMOVE ---
+        // LOG LOG
+        $lalamove = [
+            'mode' => $lalamoveMode,
+            'sandbox' => [
+                'api_key'    => Api::getValue('LALAMOVE_API_KEY', 'sandbox'),
+                'api_secret' => Api::getValue('LALAMOVE_API_SECRET', 'sandbox'),
+            ],
+            'production' => [
+                'api_key'    => Api::getValue('LALAMOVE_API_KEY', 'production'),
+                'api_secret' => Api::getValue('LALAMOVE_API_SECRET', 'production'),
+            ]
+        ];
+
+        // Tambahkan variabel $dana, $midtrans, dan $lalamove ke compact
+        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove'));
     }
 
     public function update(Request $request)
@@ -267,6 +285,16 @@ class ApiSettingsController extends Controller
                 Api::setValue('MIDTRANS_SERVER_KEY', $request->midtrans_server_key, 'midtrans', $env);
                 Api::setValue('MIDTRANS_SNAP_CLIENT_ID', $request->midtrans_snap_client_id, 'midtrans', $env);
                 Api::setValue('MIDTRANS_SNAP_CLIENT_SECRET', $request->midtrans_snap_client_secret, 'midtrans', $env);
+            
+            // --- TAMBAHAN UPDATE LALAMOVE ---
+            // LOG LOG
+            } elseif ($type === 'lalamove') {
+                $env = $request->lalamove_mode; // 'sandbox' atau 'production'
+
+                Api::setValue('LALAMOVE_MODE', $env, 'lalamove', 'global');
+
+                Api::setValue('LALAMOVE_API_KEY', $request->lalamove_api_key, 'lalamove', $env);
+                Api::setValue('LALAMOVE_API_SECRET', $request->lalamove_api_secret, 'lalamove', $env);
             }
 
             return back()->with('success', 'Konfigurasi ' . strtoupper($type) . ' berhasil diperbarui untuk mode ' . strtoupper($request->input("{$type}_mode") ?? 'GLOBAL') . '.');
@@ -289,6 +317,7 @@ class ApiSettingsController extends Controller
                 $targetDharmawisata = 'development';
                 $targetDana         = '0'; // 0 = Sandbox DANA
                 $targetMidtrans     = 'sandbox'; // --- TAMBAHAN MIDTRANS ---
+                $targetLalamove     = 'sandbox'; // --- TAMBAHAN LALAMOVE ---
                 $label              = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
                 $targetKA           = 'production';
@@ -298,6 +327,7 @@ class ApiSettingsController extends Controller
                 $targetDharmawisata = 'production';
                 $targetDana         = '1'; // 1 = Production DANA
                 $targetMidtrans     = 'production'; // --- TAMBAHAN MIDTRANS ---
+                $targetLalamove     = 'production'; // --- TAMBAHAN LALAMOVE ---
                 $label              = 'PRODUCTION (LIVE)';
             }
 
@@ -312,6 +342,10 @@ class ApiSettingsController extends Controller
 
             // --- TAMBAHAN TOGGLE MIDTRANS ---
             Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
+
+            // --- TAMBAHAN TOGGLE LALAMOVE ---
+            // LOG LOG
+            Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
 
             event(new SystemModeUpdated($targetKA));
 
@@ -335,6 +369,7 @@ class ApiSettingsController extends Controller
                 $targetDharmawisata = 'production';
                 $targetDana         = '1'; // Production DANA
                 $targetMidtrans     = 'production'; // --- TAMBAHAN MIDTRANS ---
+                $targetLalamove     = 'production'; // --- TAMBAHAN LALAMOVE ---
                 $label              = 'PRODUCTION (LIVE)';
             } else {
                 $targetKA           = 'staging';
@@ -344,6 +379,7 @@ class ApiSettingsController extends Controller
                 $targetDharmawisata = 'development';
                 $targetDana         = '0'; // Sandbox DANA
                 $targetMidtrans     = 'sandbox'; // --- TAMBAHAN MIDTRANS ---
+                $targetLalamove     = 'sandbox'; // --- TAMBAHAN LALAMOVE ---
                 $label              = 'SANDBOX / MAINTENANCE';
             }
 
@@ -358,6 +394,10 @@ class ApiSettingsController extends Controller
 
             // --- TAMBAHAN TOGGLE API MIDTRANS ---
             Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
+
+            // --- TAMBAHAN TOGGLE API LALAMOVE ---
+            // LOG LOG
+            Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
 
             event(new SystemModeUpdated($targetKA));
 
