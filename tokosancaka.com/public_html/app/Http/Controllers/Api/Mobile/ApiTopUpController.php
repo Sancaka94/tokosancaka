@@ -573,7 +573,7 @@ class ApiTopUpController extends Controller
                 $nomorTujuan = $this->formatNomorWa($user->no_wa);
 
                 $response = Http::asForm()->withHeaders([
-                    'Authorization' => env('FONNTE_API_KEY') ?? 'BpbgYZnZRNGkaZxcCr6B'
+                    'Authorization' => env('FONNTE_API_KEY') ?? 'cC3LrEd8VwDDRuE6urcj'
                 ])->post('https://api.fonnte.com/send', [
                     'target' => $nomorTujuan,
                     'message' => $message,
