@@ -1338,6 +1338,7 @@ class TopUpController extends Controller
         $timestamp = now('Asia/Jakarta')->toIso8601String();
         $path = '/v1.0/emoney/topup-status.htm';
 
+
         $body = [
             "originalPartnerReferenceNo" => $trx->reference_no,
             "originalReferenceNo"        => "",
