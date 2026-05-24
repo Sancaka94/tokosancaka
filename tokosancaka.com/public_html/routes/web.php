@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use App\Http\Middleware\RoleMiddleware;
 use App\Services\KiriminAjaService;
 use App\Models\Post;
+use App\Http\Controllers\Api\Mobile\AuthController;
 
 // =========================================================================
 // 1. IMPORT CONTROLLER (LENGKAP)
@@ -1312,3 +1313,6 @@ Route::prefix('customer')->middleware(['auth'])->group(function () {
     Route::post('/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferToBank'])->name('customer.dana.transfer_bank');
 
 });
+
+
+Route::get('/verifikasi-email', [AuthController::class, 'verifyEmailFromLink']);
