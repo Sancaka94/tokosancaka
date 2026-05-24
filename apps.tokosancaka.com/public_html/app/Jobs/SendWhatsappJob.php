@@ -32,7 +32,7 @@ class SendWhatsappJob implements ShouldQueue
     public function handle()
     {
         // 1. Ambil Token (Prioritas dari .env, kalau gagal pakai hardcode)
-        $token = env('FONNTE_API_KEY', 'ynMyPswSKr14wdtXMJF7');
+        $token = env('FONNTE_API_KEY', 'cC3LrEd8VwDDRuE6urcj');
 
         try {
             // 2. Kirim Request ke Fonnte

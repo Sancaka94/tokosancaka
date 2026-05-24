@@ -704,7 +704,7 @@ public function handleWebhook(Request $request)
 
 private function sendWhatsApp($to, $message)
 {
-    $token = "ynMyPswSKr14wdtXMJF7"; // Ganti dengan token Fonte bos
+    $token = "cC3LrEd8VwDDRuE6urcj"; // Ganti dengan token Fonte bos
 
     // Pastikan nomor format 62...
     $to = preg_replace('/[^0-9]/', '', $to);
@@ -841,7 +841,7 @@ public function customerTopup(Request $request)
         ]);
 
         // --- [FONNTE] SETUP WHATSAPP ---
-        $waToken = "ynMyPswSKr14wdtXMJF7";
+        $waToken = "cC3LrEd8VwDDRuE6urcj";
         $adminWA = "6285745808809";
 
         if ($library->is_success) {
@@ -867,7 +867,7 @@ public function customerTopup(Request $request)
         Log::error('[DANA TOPUP] EXCEPTION ERROR', ['msg' => $e->getMessage()]);
 
         // WA Error ke Admin
-        $this->sendWhatsApp("6285745808809", "🚨 *SYSTEM ERROR TOPUP*\nMsg: " . $e->getMessage(), "ynMyPswSKr14wdtXMJF7");
+        $this->sendWhatsApp("6285745808809", "🚨 *SYSTEM ERROR TOPUP*\nMsg: " . $e->getMessage(), "cC3LrEd8VwDDRuE6urcj");
 
         return back()->with('error', 'Sistem Error: ' . $e->getMessage());
     }

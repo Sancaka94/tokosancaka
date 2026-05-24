@@ -227,10 +227,10 @@ class TopUpController extends Controller
             // --- TAMBAHAN UNTUK MIDTRANS BI-SNAP (VIRTUAL ACCOUNT) ---
             // ==========================================================
             /* elseif (\Illuminate\Support\Str::startsWith($validated['payment_method'], 'MIDTRANS_VA_')) {
-                
+
                 // Ekstrak kode bank dari string (Contoh: "MIDTRANS_VA_BCA" menjadi "bca")
                 $bankCode = strtolower(str_replace('MIDTRANS_VA_', '', $validated['payment_method']));
-                
+
                 Log::info('LOG LOG: Memulai Top Up Midtrans VA ' . strtoupper($bankCode) . ' untuk ' . $invoiceNumber);
 
                 $transaction = Transaction::create([
@@ -254,7 +254,7 @@ class TopUpController extends Controller
             // --- LOGIKA MIDTRANS SNAP (TAMPILAN ASLI MIDTRANS) ---
             // ==========================================================
             elseif (\Illuminate\Support\Str::startsWith($validated['payment_method'], 'MIDTRANS')) {
-                
+
                 Log::info('LOG LOG: Memulai Top Up Midtrans Snap untuk ' . $invoiceNumber);
 
                 $transaction = Transaction::create([
@@ -523,7 +523,7 @@ class TopUpController extends Controller
         return self::processTopUp($merchantRef, $status, $amount);
     }
 
-    
+
     /**
      * =========================================================================
      * PROSESOR INTI TOP UP (Versi Lengkap & Aman untuk Webhook Midtrans/DOKU/Tripay)
@@ -563,17 +563,17 @@ class TopUpController extends Controller
             }
 
             // 3. LOGIKA PROSES STATUS
-            if ($status === 'PAID') { 
-                
+            if ($status === 'PAID') {
+
                 $transaction->status = 'success';
                 $transaction->save();
 
                 $user = \App\Models\User::find($transaction->user_id);
                 if ($user) {
-                    $user->increment('saldo', $transaction->amount); 
+                    $user->increment('saldo', $transaction->amount);
 
                     Log::info('LOG LOG: Saldo user berhasil ditambah.', [
-                        'user_id' => $user->id_pengguna, 
+                        'user_id' => $user->id_pengguna,
                         'amount' => $transaction->amount
                     ]);
 
@@ -614,7 +614,7 @@ class TopUpController extends Controller
             } elseif ($status === 'PENDING') {
                 // Biarkan status tetap pending agar user bisa bayar
                 Log::info('LOG LOG: TopUp Callback: Transaksi masih PENDING.', ['ref' => $merchantRef]);
-            } else { 
+            } else {
                 // FAILED, EXPIRED, DENY
                 $transaction->status = 'failed';
                 $transaction->save();
@@ -1158,7 +1158,7 @@ class TopUpController extends Controller
 
     private function sendWhatsApp($to, $message)
     {
-        $token = "ynMyPswSKr14wdtXMJF7";
+        $token = "cC3LrEd8VwDDRuE6urcj";
 
         $to = preg_replace('/[^0-9]/', '', $to);
         if (substr($to, 0, 1) === '0') $to = '62' . substr($to, 1);
@@ -1297,7 +1297,7 @@ class TopUpController extends Controller
                 'created_at' => now()
             ]);
 
-            $waToken = "ynMyPswSKr14wdtXMJF7";
+            $waToken = "cC3LrEd8VwDDRuE6urcj";
             $adminWA = "6285745808809";
 
             if ($library->is_success) {
@@ -1318,7 +1318,7 @@ class TopUpController extends Controller
 
         } catch (\Exception $e) {
             Log::error('[DANA TOPUP] EXCEPTION ERROR', ['msg' => $e->getMessage()]);
-            $this->sendWhatsApp("6285745808809", "🚨 *SYSTEM ERROR TOPUP*\nMsg: " . $e->getMessage(), "ynMyPswSKr14wdtXMJF7");
+            $this->sendWhatsApp("6285745808809", "🚨 *SYSTEM ERROR TOPUP*\nMsg: " . $e->getMessage(), "cC3LrEd8VwDDRuE6urcj");
             return back()->with('error', 'Sistem Error: ' . $e->getMessage());
         }
     }
@@ -2584,7 +2584,7 @@ class TopUpController extends Controller
             if (isset($response['webRedirectUrl'])) {
                 $transaction->payment_url = $response['webRedirectUrl'];
                 $transaction->save();
-                
+
                 return redirect()->away($response['webRedirectUrl']);
             }
 
@@ -2608,7 +2608,7 @@ class TopUpController extends Controller
 
         try {
             $notification = $request->all();
-            
+
             // Midtrans mengirimkan order_id dan transaction_status di root payload
             $merchantRef = $notification['order_id'] ?? null;
             $transactionStatus = $notification['transaction_status'] ?? null;
@@ -2652,22 +2652,22 @@ class TopUpController extends Controller
 
             // Eksekusi nggolek Token SNAP & Redirect URL soko Midtrans
             $response = $midtransService->createSnapTransaction(
-                $trxId, 
-                $transaction->amount, 
-                $bankCode, 
-                $user->nama_lengkap ?? 'Customer Sancaka', 
-                $user->no_wa ?? null, 
+                $trxId,
+                $transaction->amount,
+                $bankCode,
+                $user->nama_lengkap ?? 'Customer Sancaka',
+                $user->no_wa ?? null,
                 $user->email ?? null
             );
 
             // Respon sukses soko SNAP API ngetokno 'token' lan 'redirect_url'
             if (isset($response['redirect_url'])) {
                 $redirectUrl = $response['redirect_url'];
-                
+
                 // Simpan URL transaksinya ke DB biar bisa diakses pelanggan sewaktu-waktu
                 $transaction->payment_url = $redirectUrl;
                 $transaction->save();
-                
+
                 Log::info('LOG LOG: [SNAP] Berhasil Ambil Redirect URL Midtrans', ['url' => $redirectUrl]);
 
                 // Alihkan murni browser user nang halaman pembayaran SNAP Midtrans sing aman!
@@ -2700,8 +2700,8 @@ class TopUpController extends Controller
             $isProduction = ($mode === 'production');
 
             // Tentukan URL berdasarkan mode
-            $baseUrl = $isProduction 
-                ? 'https://app.midtrans.com/snap/v1/transactions' 
+            $baseUrl = $isProduction
+                ? 'https://app.midtrans.com/snap/v1/transactions'
                 : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
 
             // Payload standar Snap Midtrans
@@ -2717,7 +2717,7 @@ class TopUpController extends Controller
                 ],
 
                 'callbacks' => [
-                    'finish' => url('/customer/topup') 
+                    'finish' => url('/customer/topup')
                 ]
 
             ];
@@ -2730,11 +2730,11 @@ class TopUpController extends Controller
 
             // Jika Midtrans mengembalikan URL pembayaran
             if (isset($result['redirect_url'])) {
-                
+
                 // 1. Simpan URL tersebut ke database (agar user bisa klik "Lanjut Bayar" nanti jika keluar)
                 $transaction->payment_url = $result['redirect_url'];
                 $transaction->save();
-                
+
                 // 2. Alihkan layar pelanggan ke halaman pembayaran resmi Midtrans
                 return redirect()->away($result['redirect_url']);
             }

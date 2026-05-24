@@ -591,7 +591,7 @@ public function handleWebhook(Request $request)
 
 private function sendWhatsApp($to, $message)
 {
-    $token = "ynMyPswSKr14wdtXMJF7"; // Ganti dengan token Fonte bos
+    $token = "cC3LrEd8VwDDRuE6urcj"; // Ganti dengan token Fonte bos
 
     // Pastikan nomor format 62...
     $to = preg_replace('/[^0-9]/', '', $to);

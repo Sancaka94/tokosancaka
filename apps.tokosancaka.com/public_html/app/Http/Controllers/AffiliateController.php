@@ -440,7 +440,7 @@ public function syncBalance()
                 'message' => $message,
               ),
               CURLOPT_HTTPHEADER => array(
-                'Authorization: ' . env('FONNTE_TOKEN', 'ynMyPswSKr14wdtXMJF7') // Ganti dengan token fonnte Anda
+                'Authorization: ' . env('FONNTE_TOKEN', 'cC3LrEd8VwDDRuE6urcj') // Ganti dengan token fonnte Anda
               ),
             ));
             $response = curl_exec($curl);
