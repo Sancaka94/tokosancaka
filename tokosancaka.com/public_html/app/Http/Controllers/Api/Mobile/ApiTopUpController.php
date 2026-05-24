@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use App\Services\DokuJokulService;
+use Illuminate\Support\Facades\Mail;
 
 class ApiTopUpController extends Controller
 {
@@ -511,71 +512,105 @@ class ApiTopUpController extends Controller
         }
     }
 
-    /**
-     * ==========================================================
-     * 8. API: REQUEST OTP VIA WHATSAPP (FONNTE)
-     * ==========================================================
-     */
     public function requestOtpResetPin(Request $request)
     {
         try {
             $user = Auth::user();
+            $via = $request->input('via', 'wa');
 
-            if (empty($user->no_wa)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Nomor WhatsApp belum terdaftar di akun Anda.'
-                ], 400);
+            if ($via === 'email') {
+                if (empty($user->email)) {
+                    return response()->json(['success' => false, 'message' => 'Email belum terdaftar di akun Anda.'], 400);
+                }
+            } else {
+                if (empty($user->no_wa)) {
+                    return response()->json(['success' => false, 'message' => 'Nomor WhatsApp belum terdaftar di akun Anda.'], 400);
+                }
             }
 
             $otpCode = strtoupper(Str::random(6));
             Cache::put('otp_reset_pin_' . $user->id_pengguna, $otpCode, now()->addMinutes(5));
 
-            $message = "Halo *{$user->nama_lengkap}*,\n\n";
-            $message .= "Berikut adalah kode OTP untuk mereset PIN Keamanan Anda:\n\n";
-            $message .= "*{$otpCode}*\n\n";
-            $message .= "Kode ini hanya berlaku selama 5 menit. JANGAN BERIKAN KODE INI KEPADA SIAPAPUN, termasuk pihak Sancaka.";
+            // --- JIKA VIA EMAIL ---
+            if ($via === 'email') {
+                // Template HTML Keren dengan Logo & Layout Copyable
+                $htmlContent = "
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff;'>
+                    <div style='background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #dc2626;'>
+                        <img src='https://tokosancaka.com/storage/uploads/sancaka.png' alt='Sancaka Express' style='max-width: 180px; height: auto;'>
+                    </div>
+                    <div style='padding: 30px; color: #334155;'>
+                        <h2 style='color: #1e293b; margin-top: 0;'>Kode Verifikasi PIN</h2>
+                        <p>Halo <strong>{$user->nama_lengkap}</strong>,</p>
+                        <p>Anda menerima email ini karena ada permintaan untuk mengatur ulang PIN Keamanan akun Sancaka Express Anda. Gunakan kode di bawah ini:</p>
 
-            // 1. STANDARISASI NOMOR WA MENJADI 62... (Aman & Pasti Berhasil)
-            $nomorTujuan = $user->no_wa;
-            if (str_starts_with($nomorTujuan, '0')) {
-                $nomorTujuan = '62' . substr($nomorTujuan, 1);
-            } elseif (str_starts_with($nomorTujuan, '+62')) {
-                $nomorTujuan = substr($nomorTujuan, 1); // Hanya buang tanda '+'
+                        <div style='background-color: #f1f5f9; padding: 20px; text-align: center; border-radius: 8px; border: 2px dashed #dc2626; margin: 25px 0;'>
+                            <span style='font-size: 32px; font-weight: 800; color: #dc2626; letter-spacing: 5px;'>{$otpCode}</span>
+                        </div>
+
+                        <p style='font-size: 13px; color: #64748b;'>
+                            *Tekan lama pada kode di atas untuk menyalin. Jika Anda tidak merasa melakukan permintaan ini, silakan abaikan email ini. Kode ini berlaku selama <strong>5 menit</strong>.
+                        </p>
+
+                        <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8; text-align: center;'>
+                            Toko Sancaka - Solusi Pengiriman Terpercaya
+                        </div>
+                    </div>
+                </div>";
+
+                Mail::send([], [], function ($message) use ($user, $htmlContent) {
+                    $message->to($user->email)
+                            ->subject('Kode OTP Reset PIN Keamanan - Sancaka Express')
+                            ->html($htmlContent);
+                });
+
+                return response()->json(['success' => true, 'message' => 'OTP berhasil dikirim ke Email Anda.']);
             }
-            // Jika sudah berawalan 62, biarkan saja.
 
-            // 2. TAMBAHKAN asForm() AGAR FONNTE BISA MEMBACA DATANYA
-            $response = Http::asForm()->withHeaders([
-                'Authorization' => env('FONNTE_API_KEY') ?? env('FONNTE_KEY') ?? 'BpbgYZnZRNGkaZxcCr6B'
-            ])->post('https://api.fonnte.com/send', [
-                'target'  => $nomorTujuan,
-                'message' => $message,
-                // Parameter countryCode dihapus karena nomor sudah pasti berawalan 62
-            ]);
+            // --- JIKA VIA WHATSAPP (FONNTE) ---
+            else {
+                $message = "Halo *{$user->nama_lengkap}*,\n\nBerikut kode OTP reset PIN Anda: *{$otpCode}*.\n\nKode ini berlaku 5 menit dan bersifat rahasia.";
+                $nomorTujuan = $this->formatNomorWa($user->no_wa);
 
-            $fonnteResult = $response->json();
-
-            if ($response->successful() && isset($fonnteResult['status']) && $fonnteResult['status'] == true) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Kode OTP berhasil dikirim ke WhatsApp Anda.'
+                $response = Http::asForm()->withHeaders([
+                    'Authorization' => env('FONNTE_API_KEY') ?? 'BpbgYZnZRNGkaZxcCr6B'
+                ])->post('https://api.fonnte.com/send', [
+                    'target' => $nomorTujuan,
+                    'message' => $message,
                 ]);
-            } else {
-                Log::error('Fonnte Send Error: ' . json_encode($fonnteResult));
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Gagal mengirim OTP ke WhatsApp. Pastikan nomor aktif.'
-                ], 500);
+
+                if ($response->successful()) {
+                    return response()->json(['success' => true, 'message' => 'OTP berhasil dikirim ke WhatsApp.']);
+                }
+                return response()->json(['success' => false, 'message' => 'Gagal kirim WA.'], 500);
             }
 
         } catch (\Exception $e) {
             Log::error('Request OTP Error: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan internal saat mengirim OTP.'
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Gagal mengirim OTP.'], 500);
         }
+    }
+
+    /**
+     * Helper untuk memformat nomor WhatsApp ke format internasional (62...)
+     */
+    private function formatNomorWa($nomor)
+    {
+        // 1. Hapus semua karakter non-angka
+        $nomor = preg_replace('/[^0-9]/', '', $nomor);
+
+        // 2. Jika diawali dengan '0', ganti menjadi '62'
+        if (str_starts_with($nomor, '0')) {
+            return '62' . substr($nomor, 1);
+        }
+
+        // 3. Jika sudah diawali '62', biarkan saja
+        if (str_starts_with($nomor, '62')) {
+            return $nomor;
+        }
+
+        // 4. Jika hanya nomor HP biasa (tanpa 0 di depan), tambahkan 62
+        return '62' . $nomor;
     }
 
     /**
