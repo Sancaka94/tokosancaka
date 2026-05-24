@@ -1,47 +1,33 @@
 <!DOCTYPE html>
-<html lang="id">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verifikasi Akun - Sancaka Express</title>
+    <title>Verifikasi Sancaka</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #dc2626; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-    </style>
 </head>
-<body class="bg-gray-50 h-screen flex items-center justify-center p-4">
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+    <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-sm">
+        @if($status == 'success')
+            <div class="text-green-500 text-6xl mb-4">✓</div>
+            <h2 class="text-2xl font-bold mb-2">Verifikasi Sukses!</h2>
+            <p class="mb-6 text-gray-600">Aplikasi akan terbuka otomatis dalam 2 detik...</p>
 
-    <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-100 max-w-sm w-full text-center">
-        <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Logo" class="w-32 mx-auto mb-6">
+            <a href="sancakaexpress://dashboard" class="block bg-red-600 text-white py-3 rounded-xl font-bold">
+                Buka Aplikasi Sekarang
+            </a>
 
-        <div id="status-box">
-            @if(session('success'))
-                <div class="mb-6">
-                    <div class="text-green-500 mb-2 text-5xl">✓</div>
-                    <h2 class="text-xl font-bold text-gray-800 mb-2">Verifikasi Berhasil!</h2>
-                    <p class="text-gray-600 mb-6">{{ session('success') }}</p>
-
-                    <a href="sancaka-express://dashboard"
-                    class="block w-full bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition mb-3">
-                    Buka Aplikasi Sancaka
-                    </a>
-
-                    <script>
-                        setTimeout(() => {
-                            window.location.href = "sancaka-express://dashboard";
-                        }, 2000);
-                    </script>
-                </div>
-            @else
-                <div class="mb-6">
-                    <div class="text-red-500 mb-2 text-5xl">✗</div>
-                    <h2 class="text-xl font-bold text-gray-800 mb-2">Verifikasi Gagal!</h2>
-                    <p class="text-gray-600 mb-6">Terjadi kesalahan saat memverifikasi akun Anda.</p>
-                </div>
-            @endif
-        </div>
+            <script>
+                setTimeout(function() {
+                    window.location.href = "sancakaexpress://dashboard";
+                }, 2000);
+            </script>
+        @else
+            <div class="text-red-500 text-6xl mb-4">✕</div>
+            <h2 class="text-2xl font-bold mb-2">Verifikasi Gagal</h2>
+            <p class="mb-6 text-gray-600">{{ $message }}</p>
+            <a href="sancakaexpress://dashboard" class="block bg-gray-600 text-white py-3 rounded-xl font-bold">
+                Kembali ke Aplikasi
+            </a>
+        @endif
     </div>
-
 </body>
 </html>

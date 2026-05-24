@@ -302,31 +302,26 @@ class AuthController extends Controller
     $email = $request->query('email');
 
     $user = User::where('email', $email)->first();
-    if (!$user) return view('verifikasi-email', ['error' => 'Akun tidak ditemukan.']);
+    if (!$user) return view('verifikasi-email', ['status' => 'error', 'message' => 'Akun tidak ditemukan.']);
+
+    // Jika sudah terverifikasi, langsung lempar ke halaman sukses
+    if ($user->is_verified == 1) {
+        return view('verifikasi-email', ['status' => 'success', 'message' => 'Akun sudah aktif.']);
+    }
 
     $cacheKey = 'otp_reset_pin_' . $user->id_pengguna;
     $savedOtp = \Illuminate\Support\Facades\Cache::get($cacheKey);
 
-    // 1. CEK: Apakah ini percobaan verifikasi ulang dengan token yang sama?
-    // Jika status sudah aktif, jangan proses lagi, langsung arahkan ke login.
-    if ($user->is_verified == 1) {
-        return redirect('https://tokosancaka.com/login')->with('success', 'Akun Anda sudah terverifikasi sebelumnya.');
-    }
-
-    // 2. CEK: Token cocok
     if ($savedOtp && strtoupper($token) === strtoupper($savedOtp)) {
         $user->status = 'Aktif';
         $user->is_verified = 1;
         $user->save();
-
         \Illuminate\Support\Facades\Cache::forget($cacheKey);
 
-        // Langsung redirect ke login, jangan panggil view verifikasi lagi agar tidak looping
-        return redirect('https://tokosancaka.com/login')->with('success', 'Verifikasi berhasil! Silakan login.');
+        return view('verifikasi-email', ['status' => 'success', 'message' => 'Verifikasi berhasil!']);
     }
 
-    // 3. Jika token salah/expired
-    return view('verifikasi-email', ['error' => 'Kode verifikasi salah atau sudah kedaluwarsa.']);
+    return view('verifikasi-email', ['status' => 'error', 'message' => 'Kode salah atau kedaluwarsa.']);
 }
 
 }
