@@ -149,7 +149,7 @@ Route::delete('/settings-markerplace/{banner}', [SettingController::class, 'dest
         |--------------------------------------------------------------------------
         | Ini adalah rute untuk fungsi-fungsi baru yang Anda tambahkan
         */
-        
+
         // Rute untuk update Logo, Banner 2, Banner 3
         Route::put('/main', [AppSettingsController::class, 'updateSettings'])
              ->name('main.update');
@@ -161,10 +161,10 @@ Route::delete('/settings-markerplace/{banner}', [SettingController::class, 'dest
         // Rute untuk Banner Etalase (Slider Baru)
         Route::post('/banners', [AppSettingsController::class, 'storeBanner'])
              ->name('banners.store');
-        
+
         Route::put('/banners/{banner}', [AppSettingsController::class, 'updateBanner'])
-             ->name('banners.update'); 
-        
+             ->name('banners.update');
+
         Route::delete('/banners/{banner}', [AppSettingsController::class, 'destroyBanner'])
                ->name('banners.destroy');
     });
@@ -175,7 +175,7 @@ Route::delete('/settings-markerplace/{banner}', [SettingController::class, 'dest
     | 3. RUTE MANAJEMEN PENGGUNA (UserController)
     |--------------------------------------------------------------------------
     */
-    
+
 
 
     /*
@@ -190,7 +190,7 @@ Route::delete('/settings-markerplace/{banner}', [SettingController::class, 'dest
         Route::get('/geocode-address', [AppSettingsController::class, 'geocodeAddress'])
              ->name('geocode.address'); // <-- Ini akan membuat nama rute: admin.api.geocode.address
     });
-    
+
     /*
     |--------------------------------------------------------------------------
     | 2. RUTE UNTUK AKSI TABEL PENGGUNA
@@ -198,14 +198,14 @@ Route::delete('/settings-markerplace/{banner}', [SettingController::class, 'dest
     | Ini menggunakan UserController baru (Anda perlu membuatnya).
     | Rute-rute ini SANGAT PENTING untuk tombol Lihat, Edit, Hapus.
     */
-    
+
     // Rute 'resource' ini secara otomatis membuat semua rute di bawah:
     // • Tombol LIHAT   -> GET    /admin/users/{user}      -> UserController@show
     // • Tombol EDIT    -> GET    /admin/users/{user}/edit -> UserController@edit
     // • Tombol HAPUS   -> DELETE /admin/users/{user}      -> UserController@destroy
     // (Juga membuat 'create', 'store', dan 'update' untuk manajemen user penuh)
-    
-   
+
+
 
 
 
@@ -263,7 +263,7 @@ Route::post('registrations/{id}/reject', [AdminRegistrationController::class, 'r
 
 Route::delete('registrations/{id}', [AdminRegistrationController::class, 'destroy'])->name('registrations.destroy');
 
-    
+
 
 // Rute Kustom untuk Customer (ditempatkan sebelum resource)
 
@@ -375,7 +375,7 @@ Route::prefix('spx-scans')->name('spx_scans.')->group(function() {
 
     Route::post('/create-surat-jalan', [AdminSpxScanController::class, 'createSuratJalan'])->name('createSuratJalan');
 
-    
+
 
     // Rute monitor dipindahkan ke sini agar lebih terorganisir
 
@@ -385,7 +385,7 @@ Route::prefix('spx-scans')->name('spx_scans.')->group(function() {
 
     Route::get('/monitor/export-pdf', [AdminSpxScanController::class, 'exportMonitorPdf'])->name('monitor.export_pdf');
 
-    
+
 
     Route::get('/todays-data', [AdminSpxScanController::class, 'getTodaysSuratJalanData'])->name('todays_data');
 
@@ -416,10 +416,10 @@ Route::prefix('saldo-requests')->name('saldo.requests.')->group(function () {
     Route::post('/{transaction}/approve', [SaldoRequestController::class, 'approve'])->name('approve');
 
     Route::post('/{transaction}/reject', [SaldoRequestController::class, 'reject'])->name('reject');
-    
+
     // ✅ ROUTE BARU: [GET] /admin/saldo-requests/history
     Route::get('/history', [SaldoRequestController::class, 'showHistory'])->name('history'); // Halaman riwayat semua top-up
-    
+
 
 });
 
@@ -492,7 +492,7 @@ Route::get('/uploads/posts/{filename}', function ($filename) {
 
 Route::prefix('api')->name('api.')->group(function () {
 
-    Route::get('/email', [EmailController::class, 'fetchEmails'])->name('email.fetch');
+    Route::get('/email', [EmailController::class, 'fetch'])->name('email.fetch');
 
     Route::post('/email/send', [EmailController::class, 'send'])->name('email.send');
 
@@ -522,25 +522,25 @@ Route::prefix('email')->name('email.')->group(function () {
 
     Route::get('/', [EmailController::class, 'index'])->name('index');
 
-    
+
 
     // URL: /admin/email/create (GET) -> Menampilkan form tulis email
 
     Route::get('/create', [EmailController::class, 'create'])->name('create');
 
-    
+
 
     // URL: /admin/email/send (POST) -> Mengirim email dari form
 
     Route::post('/send', [EmailController::class, 'send'])->name('send');
 
-    
+
 
     // URL: /admin/email/{messageId} (GET) -> Menampilkan detail email
 
     Route::get('/{messageId}', [EmailController::class, 'show'])->name('show');
 
-    
+
 
     // URL: /admin/email/{messageId} (DELETE) -> Menghapus email
 
@@ -558,9 +558,9 @@ Route::prefix('email')->name('email.')->group(function () {
 
         Route::post('/chat/messages/{user}', [ChatController::class, 'sendMessage'])->name('chat.sendMessage');
 
-        
 
-        
+
+
 
 // ✅ DIPERBAIKI: Menggunakan resource controller untuk manajemen toko
 
@@ -588,7 +588,7 @@ Route::prefix('customer-to-seller')->name('customer-to-seller.')->group(function
     Route::post('/{user}', [CustomerController::class, 'storeStore'])->name('store');
 
 });
-    
+
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 

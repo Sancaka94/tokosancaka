@@ -240,17 +240,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Kontak
 
-    // --- RUTE KHUSUS ADMIN ---
+   // --- RUTE KHUSUS ADMIN ---
     Route::prefix('admin')->name('api.admin.')->middleware('role:admin')->group(function () {
 
         Route::get('/database-check', [DatabaseCheckController::class, 'check']);
 
         // Rute Email Admin
-        Route::get('/email', [EmailController::class, 'fetchEmails'])->name('email.fetch');
+        Route::get('/email', [EmailController::class, 'fetch'])->name('email.fetch'); // 1. DIPERBAIKI (fetchEmails -> fetch)
         Route::post('/email/send', [EmailController::class, 'send'])->name('email.send');
         Route::get('/email/{id}', [EmailController::class, 'show'])->name('email.show');
         Route::patch('/email/{id}', [EmailController::class, 'update'])->name('email.update');
-        Route::delete('/email/{id}', [EmailController::class, 'destroy'])->name('email.destroy');
+
+        // 2. DIPERBAIKI: Method jadi POST dan hapus parameter {id} agar mendukung hapus banyak sekaligus dari JS
+        Route::post('/email/destroy', [EmailController::class, 'destroy'])->name('email.destroy');
     });
 
 });
