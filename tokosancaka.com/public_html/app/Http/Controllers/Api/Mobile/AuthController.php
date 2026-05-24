@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
 use App\Notifications\NotifikasiUmum;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
@@ -134,10 +135,9 @@ class AuthController extends Controller
         ]);
     }
 
-    // LOG LOG: Fungsi Register API Mobile
     public function register(Request $request)
     {
-        // 1. Validasi Input
+        // 1. Validasi Input (Tetap sama)
         $validator = Validator::make($request->all(), [
             'nama_lengkap' => ['required', 'string', 'max:255'],
             'email'        => ['required', 'string', 'email', 'max:255', 'unique:Pengguna,email'],
@@ -147,86 +147,88 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validasi gagal',
-                'errors'  => $validator->errors()
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
         }
 
-        // 2. Buat User Baru (Status Tidak Aktif)
+        // 2. Buat User Baru
         $user = User::create([
             'store_name'   => $request->store_name,
             'nama_lengkap' => $request->nama_lengkap,
             'email'        => $request->email,
             'no_wa'        => $request->no_wa,
-            'password'     => $request->password, // hash di mutator User
+            'password'     => $request->password,
             'role'         => 'Pelanggan',
             'is_verified'  => 1,
             'status'       => 'Tidak Aktif',
         ]);
 
-        // 3. Generate token setup (6 Karakter Huruf Besar dan Angka)
-        $token = strtoupper(Str::random(6)); // PERUBAHAN DI SINI
+        $token = strtoupper(Str::random(6));
         $user->setup_token = $token;
         $user->save();
 
-        // 4. Notifikasi ke Admin
-        try {
-            $admins = User::where('role', 'Admin')->get();
+        // 3. Kirim OTP Dobel (WhatsApp + Email)
+        $this->sendDualOtp($user, $token);
 
-            if ($admins->isNotEmpty()) {
-                $dataNotifAdmin = [
-                    'tipe'        => 'Registrasi',
-                    'judul'       => 'Pendaftaran Pelanggan Baru (Mobile)',
-                    'pesan_utama' => $user->nama_lengkap . ' telah mendaftar (Status: Tidak Aktif).',
-                    'url'         => route('admin.customers.index'),
-                    'icon'        => 'fas fa-user-plus',
-                ];
-                Notification::send($admins, new NotifikasiUmum($dataNotifAdmin));
-            }
-        } catch (\Exception $e) {
-            Log::error('Gagal mengirim notifikasi pendaftaran via API: ' . $e->getMessage());
-        }
-
-        // 5. Kirim Pesan WhatsApp via Fonnte
-        // Pastikan nama route 'customer.profile.setup' terdaftar di web.php
-        $setup_url = route('customer.profile.setup', ['token' => $token]);
-
-        $message = <<<TEXT
-*Selamat Datang di Aplikasi Sancaka Express, Kak {$user->nama_lengkap}*
-
-Apabila Anda mengalami kendala atau memiliki pertanyaan, silakan hubungi Admin Sancaka melalui nomor +628819435180.
-
-Berikut adalah *KODE VERIFIKASI* dan Link Pendaftaran Kakak {$user->nama_lengkap}:
-
-KODE VERIFIKASI APLIKASI: *{$token}*
-
-Atau Lanjutkan Pendaftaran Web Dengan Klik Link Dibawah ini:
-
-Link Setup Profile: {$setup_url}
-
-Hormat kami,
-*Manajemen Sancaka* CV Sancaka Karya Hutama
-*Jl.Dr.Wahidin No.18A RT.22 RW.05 Ketanggi Ngawi Jawa Timur 63211* Website: tokosancaka.com
-TEXT;
-
-        $noWa = preg_replace('/^0/', '62', $user->no_wa);
-
-        try {
-            FonnteService::sendMessage($noWa, $message);
-            FonnteService::sendMessage('085745808809', $message);
-        } catch (\Exception $e) {
-            Log::error('Gagal mengirim WA pendaftaran via API: ' . $e->getMessage());
-        }
-
-        // 6. Return Response JSON
-        // Karena statusnya masih 'Tidak Aktif', kita tidak mencetak token Sanctum di sini
         return response()->json([
             'success' => true,
-            'message' => 'Registrasi berhasil. Silakan cek WhatsApp Anda untuk menyelesaikan pendaftaran.',
+            'message' => 'Registrasi berhasil. Kode verifikasi telah dikirim ke WhatsApp dan Email Anda.',
             'data'    => $user
         ], 201);
+    }
+
+    // Fungsi Pembantu untuk mengirim WA & Email
+    private function sendDualOtp($user, $token)
+    {
+        // A. Kirim ke WhatsApp (Fonnte)
+        try {
+            $message = "*Sancaka Express*\n\nHalo Kak {$user->nama_lengkap},\n\nKode Verifikasi Anda: *{$token}*\n\nJangan berikan kode ini kepada siapapun.";
+            $noWa = preg_replace('/^0/', '62', $user->no_wa);
+            FonnteService::sendMessage($noWa, $message);
+        } catch (\Exception $e) {
+            Log::error('Gagal kirim WA saat registrasi: ' . $e->getMessage());
+        }
+
+        // B. Kirim ke Email (Template Keren)
+        try {
+            Mail::send([], [], function ($message) use ($user, $token) {
+                $html = "
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;'>
+                    <div style='background-color: #ffffff; padding: 20px; text-align: center; border-bottom: 2px solid #dc2626;'>
+                        <img src='https://tokosancaka.com/storage/uploads/sancaka.png' width='180'>
+                    </div>
+                    <div style='padding: 30px; color: #334155;'>
+                        <h3>Halo {$user->nama_lengkap},</h3>
+                        <p>Selamat bergabung di Sancaka Express! Masukkan kode ini untuk memverifikasi akun Anda:</p>
+                        <div style='background-color: #f1f5f9; padding: 20px; text-align: center; border-radius: 8px; border: 2px dashed #dc2626; margin: 25px 0;'>
+                            <span style='font-size: 32px; font-weight: 800; color: #dc2626; letter-spacing: 5px;'>{$token}</span>
+                        </div>
+                        <p>Tekan lama pada kode di atas untuk menyalin.</p>
+                    </div>
+                </div>";
+                $message->to($user->email)
+                        ->subject('Verifikasi Akun Sancaka Express')
+                        ->html($html);
+            });
+        } catch (\Exception $e) {
+            Log::error('Gagal kirim Email saat registrasi: ' . $e->getMessage());
+        }
+    }
+
+    public function resendToken(Request $request)
+    {
+        $request->validate(['identifier' => 'required']);
+        $user = User::where('no_wa', $request->identifier)->orWhere('email', $request->identifier)->first();
+
+        if (!$user) return response()->json(['success' => false, 'message' => 'Pengguna tidak ditemukan.'], 404);
+
+        $newToken = strtoupper(Str::random(6));
+        $user->setup_token = $newToken;
+        $user->save();
+
+        // Panggil fungsi kirim dobel
+        $this->sendDualOtp($user, $newToken);
+
+        return response()->json(['success' => true, 'message' => 'Kode verifikasi baru telah dikirim ke WA dan Email Anda.'], 200);
     }
 
     // LOG LOG: Fungsi Verifikasi Token (Mobile)
@@ -275,41 +277,4 @@ TEXT;
         ], 400);
     }
 
-    // LOG LOG: Fungsi Kirim Ulang Token (Mobile)
-    public function resendToken(Request $request)
-    {
-        $request->validate([
-            'identifier' => 'required'
-        ]);
-
-        $user = User::where('no_wa', $request->identifier)->first();
-
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Pengguna tidak ditemukan.'
-            ], 404);
-        }
-
-        // Generate ulang token 6 karakter
-        $newToken = strtoupper(Str::random(6));
-        $user->setup_token = $newToken;
-        $user->save();
-
-        // Pesan WA yang baru
-        $message = "*Sancaka Express*\n\nHalo Kak {$user->nama_lengkap},\nIni adalah KODE VERIFIKASI baru Anda:\n\n*{$newToken}*\n\nKode ini bersifat rahasia.";
-
-        $noWa = preg_replace('/^0/', '62', $user->no_wa);
-
-        try {
-            FonnteService::sendMessage($noWa, $message);
-        } catch (\Exception $e) {
-            Log::error('Gagal mengirim ulang WA via API: ' . $e->getMessage());
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Kode verifikasi baru telah dikirim ulang ke WhatsApp Anda.'
-        ], 200);
-    }
 }
