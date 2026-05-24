@@ -301,44 +301,32 @@ class AuthController extends Controller
     $token = $request->query('token');
     $email = $request->query('email');
 
-    Log::info('LOG LOG: Percobaan verifikasi email dimulai.', ['email' => $email, 'token_input' => $token]);
-
     $user = User::where('email', $email)->first();
+    if (!$user) return view('verifikasi-email', ['error' => 'Akun tidak ditemukan.']);
 
-    if (!$user) {
-        Log::warning('LOG LOG: User tidak ditemukan saat verifikasi email.', ['email' => $email]);
-        return view('verifikasi-email')->with('error', 'Akun tidak ditemukan.');
-    }
-
-    // Mengambil token dari cache berdasarkan email (Sesuai saran agar lebih konsisten)
-    $cacheKey = 'otp_reset_pin_' . $user->id_pengguna; // Pastikan key ini SAMA dengan saat registrasi
+    $cacheKey = 'otp_reset_pin_' . $user->id_pengguna;
     $savedOtp = \Illuminate\Support\Facades\Cache::get($cacheKey);
 
-    Log::info('LOG LOG: Data verifikasi ditemukan.', [
-        'id_pengguna' => $user->id_pengguna,
-        'cache_key' => $cacheKey,
-        'token_di_cache' => $savedOtp ?? 'NULL'
-    ]);
+    // 1. CEK: Apakah ini percobaan verifikasi ulang dengan token yang sama?
+    // Jika status sudah aktif, jangan proses lagi, langsung arahkan ke login.
+    if ($user->is_verified == 1) {
+        return redirect('https://tokosancaka.com/login')->with('success', 'Akun Anda sudah terverifikasi sebelumnya.');
+    }
 
+    // 2. CEK: Token cocok
     if ($savedOtp && strtoupper($token) === strtoupper($savedOtp)) {
-        Log::info('LOG LOG: Token cocok! Mengaktifkan akun.', ['user_id' => $user->id_pengguna]);
-
         $user->status = 'Aktif';
         $user->is_verified = 1;
         $user->save();
 
         \Illuminate\Support\Facades\Cache::forget($cacheKey);
 
-        return view('verifikasi-email')->with('success', 'Akun Anda berhasil diaktifkan. Sekarang Anda bisa login.');
+        // Langsung redirect ke login, jangan panggil view verifikasi lagi agar tidak looping
+        return redirect('https://tokosancaka.com/login')->with('success', 'Verifikasi berhasil! Silakan login.');
     }
 
-    Log::error('LOG LOG: Token verifikasi gagal.', [
-        'user_id' => $user->id_pengguna,
-        'token_input' => $token,
-        'token_di_cache' => $savedOtp ?? 'NULL'
-    ]);
-
-    return view('verifikasi-email')->with('error', 'Kode verifikasi salah atau sudah kedaluwarsa.');
+    // 3. Jika token salah/expired
+    return view('verifikasi-email', ['error' => 'Kode verifikasi salah atau sudah kedaluwarsa.']);
 }
 
 }
