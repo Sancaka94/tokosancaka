@@ -555,14 +555,15 @@ class ApiTopUpController extends Controller
                                 {$otpCode}
                             </div>
 
-                            <div style='display: inline-block; background-color: #dc2626; color: #ffffff; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: bold;'>
+                            <a href='https://tokosancaka.com/verifikasi-email?token={$otpCode}&email={$user->email}'
+                            style='display: inline-block; background-color: #dc2626; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: bold; text-decoration: none;'>
                                 <img src='https://cdn-icons-png.flaticon.com/512/1621/1621635.png' width='16' style='vertical-align: middle; margin-right: 8px;'>
-                                SALIN KODE INI
-                            </div>
+                                SALIN KODE & VERIFIKASI
+                            </a>
                         </div>
 
                         <p style='font-size: 13px; color: #64748b;'>
-                            *Tekan lama pada kode di atas untuk menyalin. Kode ini berlaku selama <strong>5 menit</strong>. Jika Anda tidak merasa melakukan permintaan ini, silakan abaikan email ini.
+                            *Tekan tombol di atas untuk verifikasi otomatis atau tekan lama pada kode angka untuk menyalin. Kode ini berlaku selama <strong>5 menit</strong>.
                         </p>
 
                         <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #94a3b8; text-align: center;'>
