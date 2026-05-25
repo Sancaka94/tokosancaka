@@ -91,6 +91,7 @@ class DashboardController extends Controller
             'incomeGagalPg'           => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->whereNotIn('payment_method', $nonPgMethods)->sum('shipping_cost'),
             'incomeGagalCodOngkir'    => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->where('payment_method', 'COD')->sum('shipping_cost'),
             'incomeGagalCodBarang'    => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->where('payment_method', 'CODBARANG')->sum('shipping_cost'),
+            
             ];
     });
 
