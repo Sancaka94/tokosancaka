@@ -25,6 +25,7 @@
         background: #cbd5e1;
     }
 </style>
+
 @endpush
 
 @section('title', 'Dashboard Admin')
@@ -50,14 +51,13 @@
 ">
 
     {{-- Slider --}}
-    <div x-data="{ activeSlide: 0, slides: {{ json_encode($slides ?? []) }} }" x-init="if (slides.length > 1) { setInterval(() => { activeSlide = (activeSlide + 1) % slides.length }, 5000) }" id="customer-slider" class="relative w-full max-w-7xl mx-auto rounded-lg shadow-lg overflow-hidden">
+    {{--}} <div x-data="{ activeSlide: 0, slides: {{ json_encode($slides ?? []) }} }" x-init="if (slides.length > 1) { setInterval(() => { activeSlide = (activeSlide + 1) % slides.length }, 5000) }" id="customer-slider" class="relative w-full max-w-7xl mx-auto rounded-lg shadow-lg overflow-hidden">
         <div class="relative w-full overflow-hidden">
             <div class="flex transition-transform duration-700 ease-in-out" :style="`transform: translateX(-${activeSlide * 100}%);`">
                 <template x-for="(slide, index) in slides" :key="index">
                     <div class="w-full flex-shrink-0 flex justify-center relative">
                         <div class="absolute inset-0 blur-lg scale-110 opacity-30" :style="`background-image:url('${slide.img}'); background-size:cover; background-position:center;`" aria-hidden="true"></div>
-                        {{-- Optimasi: Tambahkan loading="lazy" dan decoding="async" --}}
-                        <img :src="slide.img" :alt="slide.alt ?? 'Informasi'" class="relative max-w-full h-auto z-10" loading="lazy" decoding="async">
+                        <img :src="slide.img" :alt="slide.alt ?? 'Informasi'" class="relative max-w-full h-auto z-10">
                     </div>
                 </template>
             </div>
@@ -186,198 +186,199 @@
             </button>
         </div>
 
-        {{-- 8 KARTU WARNA-WARNI (DISEMBUNYIKAN DEFAULT - OPTIMASI DENGAN X-IF) --}}
-        <template x-if="showRincian">
-            <div x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="opacity-0 -translate-y-4"
-                 x-transition:enter-end="opacity-100 translate-y-0"
-                 x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="opacity-100 translate-y-0"
-                 x-transition:leave-end="opacity-0 -translate-y-4"
-                 class="mt-4 mb-8">
+        {{-- 8 KARTU WARNA-WARNI (DISEMBUNYIKAN DEFAULT) --}}
+        <div x-show="showRincian" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 -translate-y-4"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 -translate-y-4"
+             style="display: none;" 
+             class="mt-4 mb-8">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {{-- ROW 1: MONITOR PENDAPATAN (RP) DENGAN EFEK HOVER LENGKAP --}}
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {{-- ROW 1: MONITOR PENDAPATAN (RP) DENGAN EFEK HOVER LENGKAP --}}
+                {{-- CARD 1: SELESAI --}}
+                <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-6 shadow-lg shadow-emerald-200 group cursor-help transition-all hover:scale-[1.02] duration-300">
+                    <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0 flex flex-col justify-between h-full">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Pendapatan Selesai</p>
+                            <h3 class="text-2xl font-black truncate">Rp{{ number_format($incomeSelesai ?? 0, 0, ',', '.') }}</h3>
+                        </div>
+                        <div class="flex justify-between items-end mt-3">
+                            <p class="text-[10px] bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                                <i class="fas fa-check-double mr-1"></i> Sukses
+                            </p>
+                            <i class="fas fa-store text-3xl opacity-50"></i>
+                        </div>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-box-check"></i></div>
                     
-                    {{-- CARD 1: SELESAI --}}
-                    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 p-6 shadow-lg shadow-emerald-200 group cursor-help transition-all hover:scale-[1.02] duration-300">
-                        <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0 flex flex-col justify-between h-full">
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Pendapatan Selesai</p>
-                                <h3 class="text-2xl font-black truncate">Rp{{ number_format($incomeSelesai ?? 0, 0, ',', '.') }}</h3>
-                            </div>
-                            <div class="flex justify-between items-end mt-3">
-                                <p class="text-[10px] bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
-                                    <i class="fas fa-check-double mr-1"></i> Sukses
-                                </p>
-                                <i class="fas fa-store text-3xl opacity-50"></i>
-                            </div>
+                    <div class="absolute inset-0 bg-emerald-700/95 backdrop-blur-sm p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+                        <p class="text-[10px] font-bold uppercase border-b border-emerald-400 pb-1 mb-1">Rincian Pembayaran</p>
+                        <div class="space-y-0.5 text-[11px] font-medium">
+                            <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeSelesaiCash ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeSelesaiSaldo ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeSelesaiPg ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeSelesaiCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeSelesaiCodBarang ?? 0, 0, ',', '.') }}</span></div>
                         </div>
-                        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-box-check"></i></div>
-                        
-                        <div class="absolute inset-0 bg-emerald-700/95 backdrop-blur-sm p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
-                            <p class="text-[10px] font-bold uppercase border-b border-emerald-400 pb-1 mb-1">Rincian Pembayaran</p>
-                            <div class="space-y-0.5 text-[11px] font-medium">
-                                <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeSelesaiCash ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeSelesaiSaldo ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeSelesaiPg ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeSelesaiCodOngkir ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeSelesaiCodBarang ?? 0, 0, ',', '.') }}</span></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- CARD 2: MENUNGGU PICKUP --}}
-                    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-400 to-orange-500 p-6 shadow-lg shadow-orange-200 group cursor-help transition-all hover:scale-[1.02] duration-300">
-                        <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0 flex flex-col justify-between h-full">
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Menunggu Pickup</p>
-                                <h3 class="text-2xl font-black truncate">Rp{{ number_format($incomePickup ?? 0, 0, ',', '.') }}</h3>
-                            </div>
-                            <div class="flex justify-between items-end mt-3">
-                                <p class="text-[10px] bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
-                                    <i class="fas fa-clock mr-1"></i> Belum Kirim
-                                </p>
-                                <i class="fas fa-box-open text-3xl opacity-50"></i>
-                            </div>
-                        </div>
-                        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-hand-holding-box"></i></div>
-                        
-                        <div class="absolute inset-0 bg-orange-600/95 backdrop-blur-sm p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
-                            <p class="text-[10px] font-bold uppercase border-b border-orange-400 pb-1 mb-1">Rincian Pembayaran</p>
-                            <div class="space-y-0.5 text-[11px] font-medium">
-                                <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomePickupCash ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomePickupSaldo ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomePickupPg ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomePickupCodOngkir ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomePickupCodBarang ?? 0, 0, ',', '.') }}</span></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- CARD 3: SEDANG DIKIRIM --}}
-                    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 p-6 shadow-lg shadow-blue-200 group cursor-help transition-all hover:scale-[1.02] duration-300">
-                        <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0 flex flex-col justify-between h-full">
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Sedang Dikirim</p>
-                                <h3 class="text-2xl font-black truncate">Rp{{ number_format($incomeDikirim ?? 0, 0, ',', '.') }}</h3>
-                            </div>
-                            <div class="flex justify-between items-end mt-3">
-                                <p class="text-[10px] bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
-                                    <i class="fas fa-road mr-1"></i> Perjalanan
-                                </p>
-                                <i class="fas fa-shipping-fast text-3xl opacity-50"></i>
-                            </div>
-                        </div>
-                        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-route"></i></div>
-                        
-                        <div class="absolute inset-0 bg-blue-800/95 backdrop-blur-sm p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
-                            <p class="text-[10px] font-bold uppercase border-b border-blue-500 pb-1 mb-1">Rincian Pembayaran</p>
-                            <div class="space-y-0.5 text-[11px] font-medium">
-                                <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeDikirimCash ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeDikirimSaldo ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeDikirimPg ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeDikirimCodOngkir ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeDikirimCodBarang ?? 0, 0, ',', '.') }}</span></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- CARD 4: GAGAL / BATAL --}}
-                    <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-500 to-red-800 p-6 shadow-lg shadow-red-200 group cursor-help transition-all hover:scale-[1.02] duration-300">
-                        <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0 flex flex-col justify-between h-full">
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Gagal / Cancel</p>
-                                <h3 class="text-2xl font-black truncate">Rp{{ number_format($incomeGagal ?? 0, 0, ',', '.') }}</h3>
-                            </div>
-                            <div class="flex justify-between items-end mt-3">
-                                <p class="text-[10px] bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
-                                    <i class="fas fa-exclamation-triangle mr-1"></i> Rugi
-                                </p>
-                                <i class="fas fa-arrow-up text-3xl opacity-50"></i>
-                            </div>
-                        </div>
-                        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-times-circle"></i></div>
-                        
-                        <div class="absolute inset-0 bg-red-900/95 backdrop-blur-sm p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
-                            <p class="text-[10px] font-bold uppercase border-b border-red-500 pb-1 mb-1">Rincian Pembayaran</p>
-                            <div class="space-y-0.5 text-[11px] font-medium">
-                                <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeGagalCash ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeGagalSaldo ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeGagalPg ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeGagalCodOngkir ?? 0, 0, ',', '.') }}</span></div>
-                                <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeGagalCodBarang ?? 0, 0, ',', '.') }}</span></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- ROW 2: JUMLAH (QTY) --}}
-                    <div class="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-700 p-6 rounded-2xl shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02] duration-300 group">
-                        <div class="relative z-10 flex justify-between items-start text-white">
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Total Terkirim</p>
-                                <h3 class="text-3xl font-black">{{ number_format($totalTerkirim ?? 0) }}</h3>
-                                <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
-                                    <i class="fas fa-check-double mr-1"></i> Selesai
-                                </p>
-                            </div>
-                            <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
-                                <i class="fas fa-shipping-fast text-2xl text-white"></i>
-                            </div>
-                        </div>
-                        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-box-check"></i></div>
-                    </div>
-
-                    <div class="relative overflow-hidden bg-gradient-to-br from-orange-400 to-orange-500 p-6 rounded-2xl shadow-lg shadow-orange-200 transition-all hover:scale-[1.02] duration-300 group">
-                        <div class="relative z-10 flex justify-between items-start text-white">
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Menunggu Pickup</p>
-                                <h3 class="text-3xl font-black">{{ number_format($totalMenungguPickup ?? 0) }}</h3>
-                                <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
-                                    <i class="fas fa-user-clock mr-1"></i> Siap Dijemput
-                                </p>
-                            </div>
-                            <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
-                                <i class="fas fa-user-ninja text-2xl text-white"></i>
-                            </div>
-                        </div>
-                        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-hand-holding-box"></i></div>
-                    </div>
-
-                    <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 p-6 rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] duration-300 group">
-                        <div class="relative z-10 flex justify-between items-start text-white">
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Sedang Dikirim</p>
-                                <h3 class="text-3xl font-black">{{ number_format($totalSedangDikirim ?? 0) }}</h3>
-                                <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
-                                    <i class="fas fa-road mr-1"></i> On Process
-                                </p>
-                            </div>
-                            <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
-                                <i class="fas fa-truck-moving text-2xl text-white"></i>
-                            </div>
-                        </div>
-                        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-route"></i></div>
-                    </div>
-
-                    <div class="relative overflow-hidden bg-gradient-to-br from-rose-500 to-red-800 p-6 rounded-2xl shadow-lg shadow-red-200 transition-all hover:scale-[1.02] duration-300 group">
-                        <div class="relative z-10 flex justify-between items-start text-white">
-                            <div>
-                                <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Gagal / Cancel</p>
-                                <h3 class="text-3xl font-black">{{ number_format($totalGagal ?? 0) }}</h3>
-                                <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
-                                    <i class="fas fa-exclamation-triangle mr-1"></i> Bermasalah
-                                </p>
-                            </div>
-                            <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
-                                <i class="fas fa-ban text-2xl text-white"></i>
-                            </div>
-                        </div>
-                        <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-times-circle"></i></div>
                     </div>
                 </div>
+
+                {{-- CARD 2: MENUNGGU PICKUP --}}
+                <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-orange-400 to-orange-500 p-6 shadow-lg shadow-orange-200 group cursor-help transition-all hover:scale-[1.02] duration-300">
+                    <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0 flex flex-col justify-between h-full">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Menunggu Pickup</p>
+                            <h3 class="text-2xl font-black truncate">Rp{{ number_format($incomePickup ?? 0, 0, ',', '.') }}</h3>
+                        </div>
+                        <div class="flex justify-between items-end mt-3">
+                            <p class="text-[10px] bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                                <i class="fas fa-clock mr-1"></i> Belum Kirim
+                            </p>
+                            <i class="fas fa-box-open text-3xl opacity-50"></i>
+                        </div>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-hand-holding-box"></i></div>
+                    
+                    <div class="absolute inset-0 bg-orange-600/95 backdrop-blur-sm p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+                        <p class="text-[10px] font-bold uppercase border-b border-orange-400 pb-1 mb-1">Rincian Pembayaran</p>
+                        <div class="space-y-0.5 text-[11px] font-medium">
+                            <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomePickupCash ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomePickupSaldo ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomePickupPg ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomePickupCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomePickupCodBarang ?? 0, 0, ',', '.') }}</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- CARD 3: SEDANG DIKIRIM --}}
+                <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 p-6 shadow-lg shadow-blue-200 group cursor-help transition-all hover:scale-[1.02] duration-300">
+                    <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0 flex flex-col justify-between h-full">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Sedang Dikirim</p>
+                            <h3 class="text-2xl font-black truncate">Rp{{ number_format($incomeDikirim ?? 0, 0, ',', '.') }}</h3>
+                        </div>
+                        <div class="flex justify-between items-end mt-3">
+                            <p class="text-[10px] bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                                <i class="fas fa-road mr-1"></i> Perjalanan
+                            </p>
+                            <i class="fas fa-shipping-fast text-3xl opacity-50"></i>
+                        </div>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-route"></i></div>
+                    
+                    <div class="absolute inset-0 bg-blue-800/95 backdrop-blur-sm p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+                        <p class="text-[10px] font-bold uppercase border-b border-blue-500 pb-1 mb-1">Rincian Pembayaran</p>
+                        <div class="space-y-0.5 text-[11px] font-medium">
+                            <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeDikirimCash ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeDikirimSaldo ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeDikirimPg ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeDikirimCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeDikirimCodBarang ?? 0, 0, ',', '.') }}</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- CARD 4: GAGAL / BATAL --}}
+                <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-500 to-red-800 p-6 shadow-lg shadow-red-200 group cursor-help transition-all hover:scale-[1.02] duration-300">
+                    <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0 flex flex-col justify-between h-full">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Gagal / Cancel</p>
+                            <h3 class="text-2xl font-black truncate">Rp{{ number_format($incomeGagal ?? 0, 0, ',', '.') }}</h3>
+                        </div>
+                        <div class="flex justify-between items-end mt-3">
+                            <p class="text-[10px] bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                                <i class="fas fa-exclamation-triangle mr-1"></i> Rugi
+                            </p>
+                            <i class="fas fa-arrow-up text-3xl opacity-50"></i>
+                        </div>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-times-circle"></i></div>
+                    
+                    <div class="absolute inset-0 bg-red-900/95 backdrop-blur-sm p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+                        <p class="text-[10px] font-bold uppercase border-b border-red-500 pb-1 mb-1">Rincian Pembayaran</p>
+                        <div class="space-y-0.5 text-[11px] font-medium">
+                            <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeGagalCash ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeGagalSaldo ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>Pay Gateway</span><span>Rp{{ number_format($incomeGagalPg ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>COD Ongkir</span><span>Rp{{ number_format($incomeGagalCodOngkir ?? 0, 0, ',', '.') }}</span></div>
+                            <div class="flex justify-between items-center"><span>COD Barang</span><span>Rp{{ number_format($incomeGagalCodBarang ?? 0, 0, ',', '.') }}</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- ROW 2: JUMLAH (QTY) --}}
+                <div class="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-teal-700 p-6 rounded-2xl shadow-lg shadow-emerald-200 transition-all hover:scale-[1.02] duration-300 group">
+                    <div class="relative z-10 flex justify-between items-start text-white">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Total Terkirim</p>
+                            <h3 class="text-3xl font-black">{{ number_format($totalTerkirim ?? 0) }}</h3>
+                            <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                                <i class="fas fa-check-double mr-1"></i> Selesai
+                            </p>
+                        </div>
+                        <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
+                            <i class="fas fa-shipping-fast text-2xl text-white"></i>
+                        </div>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-box-check"></i></div>
+                </div>
+
+                <div class="relative overflow-hidden bg-gradient-to-br from-orange-400 to-orange-500 p-6 rounded-2xl shadow-lg shadow-orange-200 transition-all hover:scale-[1.02] duration-300 group">
+                    <div class="relative z-10 flex justify-between items-start text-white">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Menunggu Pickup</p>
+                            <h3 class="text-3xl font-black">{{ number_format($totalMenungguPickup ?? 0) }}</h3>
+                            <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                                <i class="fas fa-user-clock mr-1"></i> Siap Dijemput
+                            </p>
+                        </div>
+                        <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
+                            <i class="fas fa-user-ninja text-2xl text-white"></i>
+                        </div>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-hand-holding-box"></i></div>
+                </div>
+
+                <div class="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-700 p-6 rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-[1.02] duration-300 group">
+                    <div class="relative z-10 flex justify-between items-start text-white">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Sedang Dikirim</p>
+                            <h3 class="text-3xl font-black">{{ number_format($totalSedangDikirim ?? 0) }}</h3>
+                            <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                                <i class="fas fa-road mr-1"></i> On Process
+                            </p>
+                        </div>
+                        <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
+                            <i class="fas fa-truck-moving text-2xl text-white"></i>
+                        </div>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-route"></i></div>
+                </div>
+
+                <div class="relative overflow-hidden bg-gradient-to-br from-rose-500 to-red-800 p-6 rounded-2xl shadow-lg shadow-red-200 transition-all hover:scale-[1.02] duration-300 group">
+                    <div class="relative z-10 flex justify-between items-start text-white">
+                        <div>
+                            <p class="text-xs font-bold uppercase tracking-wider opacity-80 mb-1">Gagal / Cancel</p>
+                            <h3 class="text-3xl font-black">{{ number_format($totalGagal ?? 0) }}</h3>
+                            <p class="text-[10px] mt-3 bg-white/20 backdrop-blur-md px-2 py-1 rounded-lg inline-block font-bold">
+                                <i class="fas fa-exclamation-triangle mr-1"></i> Bermasalah
+                            </p>
+                        </div>
+                        <div class="p-3 bg-white/20 backdrop-blur-md rounded-xl group-hover:rotate-12 transition-transform">
+                            <i class="fas fa-ban text-2xl text-white"></i>
+                        </div>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 text-white/10 text-8xl rotate-12 group-hover:scale-110 transition-transform"><i class="fas fa-times-circle"></i></div>
+                </div>
             </div>
-        </template>
+        </div>
+
     </div>
 
     {{-- Grafik --}}
@@ -422,11 +423,9 @@
                     $fullPath = asset($logoPath);
                 @endphp
                 <div class="w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
-                    {{-- Optimasi: Tambahkan loading="lazy" --}}
                     <img src="{{ $fullPath }}" 
                          alt="{{ $kodeEks }}" 
                          class="w-10 h-10 object-contain"
-                         loading="lazy"
                          onerror="this.onerror=null; this.src='{{ asset('public/storage/uploads/sancaka.png') }}';">
                 </div>
             </div>
@@ -446,6 +445,7 @@
         class="text-gray-400 hover:text-blue-600 transition"
         title="Salin Resi"
     >
+        <!-- icon copy -->
         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none"
              viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round"
@@ -594,8 +594,7 @@
                 <div class="p-5 pb-3">
                     {{-- Logo & Tombol Detail --}}
                     <div class="flex items-center justify-between mb-5">
-                        {{-- Optimasi: Tambahkan loading="lazy" --}}
-                        <img src="{{ $item->logo }}" alt="{{ $item->nama }}" loading="lazy" class="h-8 w-auto max-w-[120px] object-contain grayscale group-hover:grayscale-0 transition-all duration-300">
+                        <img src="{{ $item->logo }}" alt="{{ $item->nama }}" class="h-8 w-auto max-w-[120px] object-contain grayscale group-hover:grayscale-0 transition-all duration-300">
                         <a href="{{ $item->url_detail }}" class="text-[10px] font-bold uppercase tracking-wider text-red-500 bg-red-50 hover:bg-red-100 px-3 py-1 rounded-full transition flex items-center gap-1">
                             Detail <i class="fas fa-arrow-right text-[8px]"></i>
                         </a>
@@ -786,8 +785,7 @@
 @endsection
 
 @push('scripts')
-{{-- Optimasi: Tambahkan defer agar tidak memblokir render HTML --}}
-<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     // =================================================================
     // 1. VARIABEL GLOBAL (Agar chart bisa di-reset saat pindah halaman)
@@ -803,9 +801,16 @@
     window.isDashboardEchoInitialized = window.isDashboardEchoInitialized || false;
 
     // =================================================================
-    // 2. FUNGSI UTAMA: INISIALISASI CHART & UI DENGAN INTERSECTION OBSERVER
+    // 2. FUNGSI UTAMA: INISIALISASI CHART & UI
     // =================================================================
     function initDashboardCharts() {
+        // --- A. Hancurkan Chart Lama (Wajib untuk Livewire SPA) ---
+        if (chartInstances.adminTransaction) { chartInstances.adminTransaction.destroy(); chartInstances.adminTransaction = null; }
+        if (chartInstances.spxScan) { chartInstances.spxScan.destroy(); chartInstances.spxScan = null; }
+        if (chartInstances.expeditionRank) { chartInstances.expeditionRank.destroy(); chartInstances.expeditionRank = null; }
+        if (chartInstances.expeditionOmzet) { chartInstances.expeditionOmzet.destroy(); chartInstances.expeditionOmzet = null; }
+
+        // --- B. Konfigurasi Warna & Tema ---
         const isDarkMode = localStorage.getItem('darkMode') === 'true';
         const textColor = isDarkMode ? '#9ca3af' : '#4b5563';
         const gridColor = isDarkMode ? '#374151' : '#e5e7eb';
@@ -826,11 +831,12 @@
             plugins: { legend: { display: false } }
         };
 
+        // --- C. Plugin Logo (Gambar di Sumbu Y) ---
         const logoPlugin = {
             id: 'yAxisLogos',
             afterDraw: (chart) => {
                 const { ctx, scales: { y } } = chart;
-                const logos = chart.config.data.logoUrls || [];
+                const logos = chart.config.data.logoUrls || []; // Ambil custom property logoUrls
                 if (!y || logos.length === 0) return;
 
                 y.ticks.forEach((tick, index) => {
@@ -840,15 +846,17 @@
                     
                     if (img.complete && img.naturalHeight !== 0) {
                         const yPos = y.getPixelForTick(index);
-                        const targetW = 30, targetH = 20;
+                        const targetW = 30, targetH = 20; // Ukuran logo
                         ctx.drawImage(img, y.left - 50, yPos - (targetH / 2), targetW, targetH);
                     } else {
+                        // Trik agar gambar muncul setelah loading selesai tanpa loop infinite
                         img.onload = () => { if(chart.ctx) chart.draw(); };
                     }
                 });
             }
         };
 
+        // --- D. Helper URL Logo ---
         const getLogos = (labels) => {
             if (!labels || !Array.isArray(labels)) return [];
             return labels.map(l => {
@@ -857,26 +865,9 @@
             });
         };
 
-        // OPTIMASI: Fungsi helper agar chart di-render HANYA KETIKA TERLIHAT DI LAYAR
-        function observeAndRenderChart(chartId, renderCallback) {
-            const canvas = document.getElementById(chartId);
-            if (!canvas) return;
-
-            const observer = new IntersectionObserver((entries, obs) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        renderCallback(canvas);
-                        obs.unobserve(entry.target);
-                    }
-                });
-            }, { rootMargin: '50px' });
-
-            observer.observe(canvas);
-        }
-
-        // --- Render Chart 1: Pendapatan ---
-        observeAndRenderChart('adminTransactionChart', (ctx1) => {
-            if (chartInstances.adminTransaction) { chartInstances.adminTransaction.destroy(); }
+        // --- E. Render Chart 1: Pendapatan ---
+        const ctx1 = document.getElementById('adminTransactionChart');
+        if (ctx1) {
             const data1 = @json($chartData ?? ['labels' => [], 'data' => []]);
             chartInstances.adminTransaction = new Chart(ctx1, {
                 type: 'line',
@@ -892,11 +883,11 @@
                 },
                 options: commonOptions
             });
-        });
+        }
 
-        // --- Render Chart 2: SPX Scan ---
-        observeAndRenderChart('spxScanChart', (ctx2) => {
-            if (chartInstances.spxScan) { chartInstances.spxScan.destroy(); }
+        // --- F. Render Chart 2: SPX Scan ---
+        const ctx2 = document.getElementById('spxScanChart');
+        if (ctx2) {
             const data2 = @json($spxChartData ?? ['labels' => [], 'data' => []]);
             chartInstances.spxScan = new Chart(ctx2, {
                 type: 'bar',
@@ -912,11 +903,11 @@
                 },
                 options: commonOptions
             });
-        });
+        }
 
-        // --- Render Chart 3: Rank Ekspedisi (Total Kiriman) ---
-        observeAndRenderChart('expeditionRankChart', (ctx3) => {
-            if (chartInstances.expeditionRank) { chartInstances.expeditionRank.destroy(); }
+        // --- G. Render Chart 3: Rank Ekspedisi (Total Kiriman) ---
+        const ctx3 = document.getElementById('expeditionRankChart');
+        if (ctx3) {
             const data3 = @json($expeditionData ?? ['labels' => [], 'data' => []]);
             const labels3 = data3.labels || [];
             
@@ -924,7 +915,7 @@
                 type: 'bar',
                 data: {
                     labels: labels3,
-                    logoUrls: getLogos(labels3),
+                    logoUrls: getLogos(labels3), // Simpan URL untuk plugin
                     datasets: [{
                         data: data3.data || [],
                         backgroundColor: labels3.map(l => brandColors[l.toUpperCase().replace(/\s+/g, '')] || '#4f46e5'),
@@ -944,11 +935,11 @@
                 },
                 plugins: [logoPlugin]
             });
-        });
+        }
 
-        // --- Render Chart 4: Omzet Ekspedisi ---
-        observeAndRenderChart('expeditionOmzetChart', (ctx4) => {
-            if (chartInstances.expeditionOmzet) { chartInstances.expeditionOmzet.destroy(); }
+        // --- H. Render Chart 4: Omzet Ekspedisi ---
+        const ctx4 = document.getElementById('expeditionOmzetChart');
+        if (ctx4) {
             const data4 = @json($expeditionOmzetData ?? ['labels' => [], 'data' => []]);
             const labels4 = data4.labels || [];
 
@@ -974,18 +965,19 @@
                     },
                     scales: {
                         x: { 
-                            ticks: { callback: (v) => 'Rp ' + (v/1000000).toFixed(1) + 'Jt' }
+                            ticks: { callback: (v) => 'Rp ' + (v/1000000).toFixed(1) + 'Jt' } // Format Jutaan
                         },
                         y: { grid: { display: false }, ticks: { padding: 10, font: { weight: 'bold' } } }
                     }
                 },
                 plugins: [logoPlugin]
             });
-        });
+        }
 
-        // --- Re-attach Search Listener ---
+        // --- I. Re-attach Search Listener (Penting saat Navigasi) ---
         const searchInput = document.getElementById('searchPesanan');
         if(searchInput){
+            // Hapus listener lama (trick cloning) agar tidak numpuk
             const newSearchInput = searchInput.cloneNode(true);
             searchInput.parentNode.replaceChild(newSearchInput, searchInput);
             
@@ -1003,6 +995,7 @@
     // 3. FUNGSI UPDATE DATA REALTIME (Dipanggil oleh Echo)
     // =================================================================
     
+    // Update Angka Statistik (Kotak Atas)
     function updateStats(stats) {
         if (!stats) return;
         const fmt = (val) => new Intl.NumberFormat('id-ID').format(val);
@@ -1012,6 +1005,7 @@
         if(document.getElementById('pengguna-baru')) document.getElementById('pengguna-baru').textContent = fmt(stats.penggunaBaru);
     }
 
+    // Update Data Chart Tanpa Reload
     function updateChart(chart, newData) {
         if (!chart || !newData) return;
         if (newData.labels) chart.data.labels = newData.labels;
@@ -1021,6 +1015,7 @@
         chart.update();
     }
 
+    // Update List Aktivitas Terbaru
     function updateRecentActivity(activities) {
         const container = document.getElementById('recent-activity-container');
         if (!container) return;
@@ -1036,7 +1031,7 @@
                          data-search="${(resi + ' ' + (pesanan.pembeli?.store_name||'') + ' ' + (pesanan.pembeli?.nama_lengkap||'')).toLowerCase()}">
                         <div class="mt-1 flex-shrink-0">
                             <div class="w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center overflow-hidden shadow-sm">
-                                <img src="${logoUrl}" class="w-10 h-10 object-contain" loading="lazy" onerror="this.src='{{ asset('public/storage/uploads/sancaka.png') }}'">
+                                <img src="${logoUrl}" class="w-10 h-10 object-contain" onerror="this.src='{{ asset('public/storage/uploads/sancaka.png') }}'">
                             </div>
                         </div>
                         <div class="ml-4 flex-1">
@@ -1081,9 +1076,11 @@
     // 4. EVENT LISTENERS (Eksekusi Kode)
     // =================================================================
 
+    // A. Saat Halaman Pertama Kali Dimuat
     document.addEventListener('DOMContentLoaded', function() {
         initDashboardCharts();
         
+        // Init Echo Realtime (Hanya sekali per sesi halaman)
         if (typeof window.Echo !== 'undefined' && !window.isDashboardEchoInitialized && {{ Auth::check() && strtolower(Auth::user()->role) === 'admin' ? 'true' : 'false' }}) {
             
             window.Echo.private('admin-notifications')
@@ -1105,13 +1102,15 @@
         }
     });
 
+    // B. Saat Navigasi Livewire Selesai (Pindah Halaman Tanpa Reload)
     document.addEventListener('livewire:navigated', function() {
-        initDashboardCharts(); 
+        initDashboardCharts(); // Gambar ulang chart karena canvas baru saja dirender
     });
 
+    // C. Fix Resize Tab Alpine (Agar Chart Tidak Gepeng)
     document.addEventListener('alpine:init', () => {
         Alpine.watch(
-            () => Alpine.store('activeTab'),
+            () => Alpine.store('activeTab'), // Pantau variabel (jika ada di store)
             () => { 
                 setTimeout(() => {
                     if(chartInstances.expeditionRank) chartInstances.expeditionRank.resize();
@@ -1121,6 +1120,7 @@
         );
     });
 
+    // Fallback: Pantau klik tombol Tab manual
     document.addEventListener('click', function(e) {
         if(e.target.closest('[x-data] button')) {
             setTimeout(() => {
