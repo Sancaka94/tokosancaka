@@ -52,11 +52,17 @@ class DashboardController extends Controller
             'jumlahToko'      => User::where('role', 'Seller')->count(),
             'penggunaBaru'    => User::where('role', 'Pelanggan')->where('created_at', '>=', now()->subDays(30))->count(),
 
-            // Card Status Tambahan
+            // --- INI UNTUK QTY PAKET (Sudah jalan, JANGAN DIUBAH) ---
             'totalTerkirim'       => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->count(),
             'totalSedangDikirim'  => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->count(),
             'totalMenungguPickup' => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->count(),
             'totalGagal'          => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->count(),
+
+            // --- TAMBAHKAN INI UNTUK TOTAL UANG (Rp) ---
+            'incomeSelesai'       => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->sum('shipping_cost'),
+            'incomeDikirim'       => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->sum('shipping_cost'),
+            'incomePickup'        => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->sum('shipping_cost'),
+            'incomeGagal'         => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->sum('shipping_cost'),
         ];
     });
 
