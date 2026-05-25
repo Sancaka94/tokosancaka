@@ -63,7 +63,36 @@ class DashboardController extends Controller
             'incomeDikirim'       => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->sum('shipping_cost'),
             'incomePickup'        => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->sum('shipping_cost'),
             'incomeGagal'         => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->sum('shipping_cost'),
-        ];
+        
+            // --- RINCIAN PENDAPATAN: SELESAI ---
+            'incomeSelesaiCash'       => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->whereIn('payment', ['Cash', 'cash'])->sum('shipping_cost'),
+            'incomeSelesaiSaldo'      => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->where('payment', 'Potong Saldo')->sum('shipping_cost'),
+            'incomeSelesaiPg'         => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->whereNotIn('payment', $nonPgMethods)->sum('shipping_cost'),
+            'incomeSelesaiCodOngkir'  => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->where('payment', 'COD')->sum('shipping_cost'),
+            'incomeSelesaiCodBarang'  => (clone $pesananQuery)->where('status_pesanan', 'Selesai')->where('payment', 'CODBARANG')->sum('shipping_cost'),
+
+            // --- RINCIAN PENDAPATAN: MENUNGGU PICKUP ---
+            'incomePickupCash'        => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->whereIn('payment', ['Cash', 'cash'])->sum('shipping_cost'),
+            'incomePickupSaldo'       => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->where('payment', 'Potong Saldo')->sum('shipping_cost'),
+            'incomePickupPg'          => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->whereNotIn('payment', $nonPgMethods)->sum('shipping_cost'),
+            'incomePickupCodOngkir'   => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->where('payment', 'COD')->sum('shipping_cost'),
+            'incomePickupCodBarang'   => (clone $pesananQuery)->where('status_pesanan', 'Menunggu Pickup')->where('payment', 'CODBARANG')->sum('shipping_cost'),
+
+            // --- RINCIAN PENDAPATAN: SEDANG DIKIRIM ---
+            'incomeDikirimCash'       => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->whereIn('payment', ['Cash', 'cash'])->sum('shipping_cost'),
+            'incomeDikirimSaldo'      => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->where('payment', 'Potong Saldo')->sum('shipping_cost'),
+            'incomeDikirimPg'         => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->whereNotIn('payment', $nonPgMethods)->sum('shipping_cost'),
+            'incomeDikirimCodOngkir'  => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->where('payment', 'COD')->sum('shipping_cost'),
+            'incomeDikirimCodBarang'  => (clone $pesananQuery)->whereIn('status_pesanan', ['Sedang Dikirim', 'Dikirim', 'Diproses'])->where('payment', 'CODBARANG')->sum('shipping_cost'),
+
+            // --- RINCIAN PENDAPATAN: GAGAL / CANCEL ---
+            'incomeGagalCash'         => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->whereIn('payment', ['Cash', 'cash'])->sum('shipping_cost'),
+            'incomeGagalSaldo'        => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->where('payment', 'Potong Saldo')->sum('shipping_cost'),
+            'incomeGagalPg'           => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->whereNotIn('payment', $nonPgMethods)->sum('shipping_cost'),
+            'incomeGagalCodOngkir'    => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->where('payment', 'COD')->sum('shipping_cost'),
+            'incomeGagalCodBarang'    => (clone $pesananQuery)->whereIn('status_pesanan', ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan'])->where('payment', 'CODBARANG')->sum('shipping_cost'),
+
+            ];
     });
 
         // --- Mengambil Notifikasi untuk Flasher (dengan Caching) ---
