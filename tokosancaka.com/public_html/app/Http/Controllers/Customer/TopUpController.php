@@ -318,12 +318,29 @@ class TopUpController extends Controller
                     ];
                     $successRedirectUrl = route('customer.topup.show', ['topup' => $invoiceNumber]);
 
+                    // ==========================================================
+                    // --- TAMBAHAN KODE: Mengambil SAC ID dari database ---
+                    // ==========================================================
+                    $additionalInfo = [];
+                    // Cari data store berdasarkan user_id (id_pengguna)
+                    $store = \App\Models\Store::where('user_id', $user->id_pengguna)->first();
+                    
+                    // Jika toko ditemukan dan memiliki doku_sac_id, masukkan ke parameter
+                    if ($store && !empty($store->doku_sac_id)) {
+                        $additionalInfo = [
+                            'account' => [
+                                'id' => $store->doku_sac_id
+                            ]
+                        ];
+                    }
+                    // ==========================================================
+
                     $paymentUrl = $DokuJokulService->createPayment(
                         $invoiceNumber,
                         $amount,
                         $customerData,
                         $lineItems,
-                        [], // additionalInfo
+                        $additionalInfo, // <-- PARAMETER DIKIRIM KE SERVICE
                         $successRedirectUrl // redirectUrl
                     );
 
