@@ -335,7 +335,7 @@ class PpobMobileController extends Controller
            // ========================================================
             // SISA KODE DI BAWAH HANYA JALAN JIKA PAKAI SALDO / CASH
             // ========================================================
-            
+
             $admin = User::find(4);
             if (!$admin) {
                 return response()->json(['success' => false, 'message' => 'Sistem Error: Admin utama tidak ditemukan.']);
@@ -402,11 +402,10 @@ class PpobMobileController extends Controller
                     return response()->json(['success' => false, 'message' => 'Gagal: ' . $transaction->message]);
                 }
 
-               if (in_array($status, ['PROCESS', 'SUCCESS'])) {
-    
+               if (in_array($finalStatus, ['PROCESS', 'SUCCESS'])) {
                 $harga = (float) $transaction->price;
 
-               // POTONG SALDO LOKAL
+                // POTONG SALDO LOKAL
                 if (!$isCash) {
                     DB::table('Pengguna')
                         ->where('id_pengguna', $user->id_pengguna)
@@ -417,7 +416,7 @@ class PpobMobileController extends Controller
                 DB::table('Pengguna')
                     ->where('id_pengguna', 4)
                     ->decrement('balance_iak', $harga);
-                
+
                 Log::info("LOG LOG - RAW DB Saldo Terpotong (Pascabayar). User ID: {$user->id_pengguna}, Harga: {$harga}");
             }
 
@@ -648,24 +647,24 @@ class PpobMobileController extends Controller
                 foreach ($transactions->items() as $trx) {
                     $item = $trx->toArray();
                     $item['icon_url'] = ($item['type'] == 'prabayar') ? ($icons[$item['product_code']] ?? null) : null;
-                    
+
                     if ($isAdmin) {
                         if (!empty($item['user_id'])) {
                             $userData = $usersData[$item['user_id']] ?? null;
-                            
+
                             $item['sumber_order'] = 'Aplikasi / User';
                             $item['pemesan_id']   = $item['user_id'];
                             $item['pemesan_nama'] = $userData->nama_lengkap ?? 'User Tidak Diketahui';
                             $item['pemesan_toko'] = $userData->store_name ?? '-';
-                            
+
                             // Tetap dipertahankan untuk backward compatibility (jika frontend lama masih membaca field ini)
-                            $item['nama_pembeli'] = $item['pemesan_nama']; 
+                            $item['nama_pembeli'] = $item['pemesan_nama'];
                         } else {
                             $item['sumber_order'] = 'Website';
                             $item['pemesan_id']   = null;
                             $item['pemesan_nama'] = 'Website';
                             $item['pemesan_toko'] = '-';
-                            
+
                             // Tetap dipertahankan untuk backward compatibility
                             $item['nama_pembeli'] = 'Website';
                         }
@@ -871,7 +870,7 @@ class PpobMobileController extends Controller
        // ========================================================
         // SISA KODE DI BAWAH HANYA JALAN JIKA PAKAI SALDO / CASH
         // ========================================================
-        
+
         $admin = User::find(4);
         if (!$admin) {
             return response()->json(['success' => false, 'message' => 'Sistem Error: Admin utama tidak ditemukan.']);
@@ -919,7 +918,7 @@ class PpobMobileController extends Controller
                 $status = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
 
                 if (in_array($finalStatus, ['PROCESS', 'SUCCESS'])) {
-    
+
                     // Pastikan harga dikonversi ke angka yang valid
                     $harga = (float) $product->price;
 
@@ -934,7 +933,7 @@ class PpobMobileController extends Controller
                     DB::table('Pengguna')
                         ->where('id_pengguna', 4)
                         ->decrement('balance_iak', $harga);
-                    
+
                     Log::info("LOG LOG - RAW DB Saldo Terpotong (Prabayar). User ID: {$user->id_pengguna}, Harga: {$harga}");
                 }
 
@@ -986,7 +985,7 @@ class PpobMobileController extends Controller
             // Gunakan Dinamisasi agar aman saat ganti Prod/Sandbox
             $merchantIdConf = Api::getValue('dana_sandbox_merchant_id', 'sandbox', config('services.dana.merchant_id'));
             $partnerIdConf  = Api::getValue('dana_sandbox_client_id', 'sandbox', config('services.dana.x_partner_id'));
-            
+
             if (Api::getValue('dana_production_mode', 'global', '0') == '1') {
                 $merchantIdConf = Api::getValue('dana_prod_merchant_id', 'production', config('services.dana.merchant_id'));
                 $partnerIdConf  = Api::getValue('dana_prod_client_id', 'production', config('services.dana.x_partner_id'));
