@@ -756,6 +756,13 @@ class TopUpController extends Controller
             'X-PARTNER-ID'  => $clientId, // Biasanya sama dengan Client ID
         ])->post($fullUrl, $body);
 
+        Log::info('[DEBUG SIGNATURE]', [
+            'timestamp' => $timestamp,
+            'clientId' => $clientId,
+            'signature' => $signature,
+            'body' => $body
+        ]);
+
         $result = $response->json();
 
         // SNAP Success Code untuk Apply Token adalah 2007400 (Sesuai Dokumen Anda)
