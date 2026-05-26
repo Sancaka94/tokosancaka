@@ -113,6 +113,23 @@
                 Terakhir disinkronkan: {{ now('Asia/Jakarta')->format('d M Y, H:i:s') }} WIB
             </p>
         </div>
+
+        <div class="p-6 bg-white shadow-md rounded-xl border border-gray-100 mt-6">
+            <h2 class="text-lg font-bold text-gray-800 mb-4">Transfer Saldo ke Toko</h2>
+            <form action="{{ route('admin.doku.transfer.to.store') }}" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                @csrf
+                <select name="store_id" class="border-gray-300 rounded-md shadow-sm" required>
+                    <option value="">-- Pilih Toko --</option>
+                    @foreach(\App\Models\Store::whereNotNull('doku_sac_id')->get() as $s)
+                        <option value="{{ $s->id }}">{{ $s->name }}</option>
+                    @endforeach
+                </select>
+                <input type="number" name="amount" placeholder="Jumlah (Rp)" class="border-gray-300 rounded-md shadow-sm" required>
+                <button type="submit" class="bg-blue-600 text-white font-bold px-4 py-2 rounded-md hover:bg-blue-700">
+                    Transfer Sekarang
+                </button>
+            </form>
+        </div>
     @elseif (!$error)
         <div class="p-8 bg-white shadow-md rounded-xl text-center border border-gray-100">
             <i class="fas fa-spinner fa-spin text-3xl text-blue-500 mb-3"></i>

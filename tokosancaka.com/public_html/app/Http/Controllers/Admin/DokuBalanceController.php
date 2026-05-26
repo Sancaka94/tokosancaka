@@ -208,4 +208,46 @@ class DokuBalanceController extends Controller
             return redirect()->back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
         }
     }
+
+    /**
+     * FUNGSI: Admin Transfer ke Sub Account Toko
+     */
+    public function transferToStore(Request $request)
+    {
+        $request->validate([
+            'store_id' => 'required|exists:stores,id',
+            'amount'   => 'required|numeric|min:1000',
+        ]);
+
+        $store = \App\Models\Store::findOrFail($request->store_id);
+        $amount = (int) $request->amount;
+        $refId = 'ADM-TRF-' . time() . '-' . Str::random(4);
+
+        try {
+            // Instansiasi Service
+            $dokuService = new \App\Services\DokuJokulService();
+            
+            // Panggil fungsi transfer antar Sub-Account (Admin -> Toko)
+            $response = $dokuService->transferToSubAccount(
+                $refId,
+                $store->doku_sac_id,
+                $amount,
+                "Transfer Saldo Admin"
+            );
+
+            if ($response['status'] === 'SUCCESS') {
+                // Update lokal saldo toko
+                $store->increment('doku_balance_available', $amount);
+                $store->update(['doku_balance_last_updated' => now()]);
+
+                return back()->with('success', 'Transfer Rp ' . number_format($amount) . ' ke ' . $store->name . ' berhasil!');
+            }
+
+            return back()->with('error', 'Gagal Transfer: ' . ($response['message'] ?? 'Error API DOKU'));
+
+        } catch (\Exception $e) {
+            Log::error('ADMIN TRANSFER ERROR: ' . $e->getMessage());
+            return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+        }
+    }
 }
