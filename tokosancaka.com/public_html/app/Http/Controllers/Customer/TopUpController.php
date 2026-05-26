@@ -668,15 +668,11 @@ class TopUpController extends Controller
 
   public function startBinding(Request $request)
 {
-    Log::info('[BINDING] Memulai proses redirect ke DANA (Debug)...');
+    Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA (Debug)...');
     $user = \Illuminate\Support\Facades\Auth::user();
 
-    // Generate random state
-    $state = \Illuminate\Support\Str::random(16);
-    
-    // SIMPAN KE SESSION AGAR BISA DICEK SAAT CALLBACK
-    session(['dana_binding_state' => $state]);
-    session()->save(); // Pastikan session tertulis
+    // Simpan id_pengguna ke session sebagai cadangan pengenal user
+    session(['dana_user_id' => $user->id_pengguna]);
 
     $queryParams = [
         'partnerId'   => config('services.dana.x_partner_id'),
@@ -685,7 +681,7 @@ class TopUpController extends Controller
         'externalId'  => 'BIND-' . $user->id_pengguna . '-' . time(),
         'channelId'   => 'DANAID',
         'redirectUrl' => 'https://tokosancaka.com/dana/callback',
-        'state'       => $state, 
+        'state'       => \Illuminate\Support\Str::random(16), 
         'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         'allowRegistration' => 'true',
     ];
@@ -697,46 +693,32 @@ class TopUpController extends Controller
     return redirect($baseUrl . "?" . http_build_query($queryParams));
 }
 
-   public function handleCallback(Request $request)
+public function handleCallback(Request $request)
 {
-    Log::info('[DANA CALLBACK] SNAP Apply Token Start...', $request->all());
-
-    $authCode = $request->input('auth_code');
-    $stateFromDana = $request->input('state');
-    $stateFromSession = session('dana_binding_state');
-
-    // VALIDASI: Apakah state ada dan cocok?
-    if (!$stateFromDana || $stateFromDana !== $stateFromSession) {
-        Log::error('[DANA CALLBACK] State mismatch atau Session hilang!', [
-            'dana' => $stateFromDana, 
-            'session' => $stateFromSession
-        ]);
-        return redirect()->route('customer.topup.index')->with('error', 'Auth Code/State Invalid. Sesi mungkin kadaluarsa.');
-    }
-
-    // Bersihkan session setelah digunakan agar tidak bisa dipakai ulang (Security Best Practice)
-    session()->forget('dana_binding_state');
+    Log::info('LOG LOG: [DANA CALLBACK] SNAP Apply Token Start...', $request->all());
 
     $authCode = $request->input('auth_code') ?? $request->input('authCode');
-    $stateRaw = $request->input('state');
+    
+    // Langsung cek Auth user yang sedang login, atau ambil dari session jika redirect memutus Auth
+    $userId = null;
+    if (\Illuminate\Support\Facades\Auth::check()) {
+        $userId = \Illuminate\Support\Facades\Auth::user()->id_pengguna;
+    } elseif (session()->has('dana_user_id')) {
+        $userId = session('dana_user_id');
+    }
 
-    $parts = explode('-', $stateRaw);
-    $affiliateId = $parts[1] ?? null;
-
-    if (!$authCode || !$affiliateId) {
-        return redirect()->route('customer.topup.index')->with('error', 'Auth Code/State Invalid.');
+    if (!$authCode || !$userId) {
+        Log::error('LOG LOG: [DANA CALLBACK] Gagal Ekstraksi ID atau Auth Code Kosong. User ID: ' . ($userId ?? 'NULL'));
+        return redirect()->route('customer.topup.index')->with('error', 'Sesi kadaluarsa. Pastikan Anda masih login.');
     }
 
     try {
         $timestamp = now('Asia/Jakarta')->toIso8601String();
         $clientId = config('services.dana.client_id');
 
-        // --- 1. GENERATE SNAP SIGNATURE ---
-        // Sesuai Dokumen: stringToSign = client_ID + “|” + X-TIMESTAMP
         $stringToSign = $clientId . "|" . $timestamp;
         $signature = $this->generateSignature($stringToSign);
 
-        // --- 2. PREPARE SNAP BODY ---
         $body = [
             "grantType"    => "AUTHORIZATION_CODE",
             "authCode"     => $authCode,
@@ -747,55 +729,44 @@ class TopUpController extends Controller
         $path = '/v1.0/access-token/b2b2c.htm';
         $fullUrl = config('services.dana.base_url') . $path;
 
-        // --- 3. SEND REQUEST SESUAI SNAP HEADERS ---
-        $response = Http::withHeaders([
+        $response = \Illuminate\Support\Facades\Http::withHeaders([
             'Content-Type'  => 'application/json',
             'X-TIMESTAMP'   => $timestamp,
-            'X-CLIENT-KEY'  => $clientId, // Wajib di SNAP
+            'X-CLIENT-KEY'  => $clientId,
             'X-SIGNATURE'   => $signature,
-            'X-PARTNER-ID'  => $clientId, // Biasanya sama dengan Client ID
+            'X-PARTNER-ID'  => $clientId, 
         ])->post($fullUrl, $body);
 
-        Log::info('[DEBUG SIGNATURE]', [
-            'timestamp' => $timestamp,
-            'clientId' => $clientId,
-            'signature' => $signature,
-            'body' => $body
-        ]);
-
         $result = $response->json();
+        Log::info('LOG LOG: [DANA CALLBACK] Respon Apply Token:', $result);
 
-        // SNAP Success Code untuk Apply Token adalah 2007400 (Sesuai Dokumen Anda)
-        if (isset($result['responseCode']) && $result['responseCode'] == '2007400') {
+        // Standar SNAP BI
+        $successCodes = ['2000000', '2007400'];
 
-            // Simpan ke DB Tenant
-            DB::table('Pengguna')->where('id_pengguna', $affiliateId)->update([
-                'dana_access_token' => $result['accessToken'],
-                'dana_auth_code'    => $authCode,
-                'updated_at'        => now()
-            ]);
+        if (isset($result['responseCode']) && in_array($result['responseCode'], $successCodes)) {
+            $accessToken = $result['accessToken'] ?? $result['access_token'] ?? null;
 
-            // Sync ke DB Pusat (mysql_second)
-            try {
-                DB::connection('mysql_second')->table('Pengguna')->where('id_pengguna', $affiliateId)->update([
-                    'dana_access_token' => $result['accessToken'],
+            if ($accessToken) {
+                // Update tabel Pengguna
+                \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', $userId)->update([
+                    'dana_access_token' => $accessToken,
                     'dana_auth_code'    => $authCode,
                     'updated_at'        => now()
                 ]);
-            } catch (\Exception $e) {
-                Log::error('[DANA SYNC] Gagal ke DB Pusat: ' . $e->getMessage());
-            }
 
-            Log::info("[DANA CALLBACK] SNAP Berhasil untuk User: $affiliateId");
-            return redirect()->route('customer.topup.index')->with('success', '✅ Akun DANA Berhasil Terhubung!');
+                // Bersihkan session
+                session()->forget('dana_user_id');
+
+                Log::info("LOG LOG: [DANA CALLBACK] UPDATE DATABASE BERHASIL untuk User ID: $userId");
+                return redirect()->route('customer.topup.index')->with('success', '✅ Akun DANA Berhasil Terhubung!');
+            }
         }
 
-        // JIKA GAGAL
-        Log::error('[DANA SNAP ERROR]', $result);
+        Log::error('LOG LOG: [DANA SNAP ERROR]', $result);
         return redirect()->route('customer.topup.index')->with('error', 'DANA Reject: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 
     } catch (\Exception $e) {
-        Log::error('[DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
+        Log::error('LOG LOG: [DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
         return redirect()->route('customer.topup.index')->with('error', 'Terjadi kesalahan sistem.');
     }
 }
