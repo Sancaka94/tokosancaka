@@ -2350,7 +2350,7 @@ public function handleCallback(Request $request)
     $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
     
     // validUpTo (Wajib di Sandbox minimal 30 menit ke depan, di Prod disesuaikan)
-    $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+    $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
 
     // 2. ENDPOINT DIRECT DEBIT SNAP BI
     $path = '/rest/redirection/v1.0/debit/payment-host-to-host'; 
