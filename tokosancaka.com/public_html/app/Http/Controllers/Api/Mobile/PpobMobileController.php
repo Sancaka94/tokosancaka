@@ -1048,12 +1048,12 @@ class PpobMobileController extends Controller
 
                 "urlParams" => [
                     [
-                        "url" => 'https://tokosancaka.com/payment/dana/return?partnerReferenceNo=' . $trxId,
+                        "url" => env('FRONTEND_URL', url('/')) . '/riwayatppob',
                         "type" => "PAY_RETURN",
                         "isDeeplink" => $isDeeplink
                     ],
                     [
-                        "url" => 'https://tokosancaka.com/api/dana/notify',
+                        "url" => url('/api/dana/notify'),
                         "type" => "NOTIFICATION",
                         "isDeeplink" => "N"
                     ]
