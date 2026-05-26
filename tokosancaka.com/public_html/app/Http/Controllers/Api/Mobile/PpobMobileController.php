@@ -1048,13 +1048,18 @@ class PpobMobileController extends Controller
 
                 "urlParams" => [
                     [
-                        "url" => env('FRONTEND_URL', url('/')) . '/riwayatppob',
+                        "url" => env('FRONTEND_URL', url('/')) .
+                            '/payment/dana/return?partnerReferenceNo=' . $trxId,
+
                         "type" => "PAY_RETURN",
+
                         "isDeeplink" => $isDeeplink
                     ],
                     [
                         "url" => url('/api/dana/notify'),
+
                         "type" => "NOTIFICATION",
+
                         "isDeeplink" => "N"
                     ]
                 ],
