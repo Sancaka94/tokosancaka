@@ -7,7 +7,7 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
             <h1 class="text-3xl font-bold text-gray-800">Dompet Utama Sancaka</h1>
-            <p class="text-gray-600 mt-1">Kelola saldo akun penampung utama DOKU dan distribusi dana ke toko pelanggan.</p>
+            <p class="text-gray-600 mt-1">Kelola saldo akun penampung utama DOKU dan distribusi dana escrow ke seller/agent.</p>
         </div>
         
         {{-- Indikator Mode --}}
@@ -19,13 +19,35 @@
         @endif
     </div>
 
+    {{-- ALERT PESAN SUKSES & ERROR DARI CONTROLLER (SESSION) --}}
+    @if (session('success'))
+        <div class="bg-green-50 border-l-4 border-green-500 text-green-800 p-4 rounded-r-lg shadow-sm relative flex items-start" role="alert">
+            <i class="fas fa-check-circle mt-1 mr-3 text-green-600"></i>
+            <div>
+                <strong class="font-bold">Berhasil!</strong>
+                <p class="block sm:inline mt-1">{{ session('success') }}</p>
+            </div>
+        </div>
+    @endif
+
+    @if (session('error'))
+        <div class="bg-red-50 border-l-4 border-red-500 text-red-800 p-4 rounded-r-lg shadow-sm relative flex items-start" role="alert">
+            <i class="fas fa-times-circle mt-1 mr-3 text-red-600"></i>
+            <div>
+                <strong class="font-bold">Gagal Diproses!</strong>
+                <p class="block sm:inline mt-1">{{ session('error') }}</p>
+            </div>
+        </div>
+    @endif
+
+    {{-- ALERT ERROR API DOKU (DARI VARIABEL VIEW) --}}
     @if ($error)
         <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-4 rounded-lg shadow-sm relative" role="alert">
             <strong class="font-bold">Error Sinkronisasi API!</strong>
             <p class="block sm:inline mt-1">{{ $error }}</p>
             @if(empty($mainSacId))
                 <p class="mt-3 text-sm bg-red-50 p-2 rounded">
-                    <i class="fas fa-info-circle mr-1"></i> Harap pastikan variabel <strong>DOKU_MAIN_SAC_ID</strong> sudah diatur di database konfigurasi (Tabel `apis`) Anda.
+                    <i class="fas fa-info-circle mr-1"></i> Harap pastikan variabel <strong>DOKU_MAIN_SAC_ID</strong> sudah diatur di database konfigurasi (Tabel `apis`).
                 </p>
             @endif
         </div>
@@ -50,8 +72,8 @@
                 <i class="fas fa-exchange-alt text-xl"></i>
             </div>
             <div>
-                <span class="block font-bold">Transfer / Cairkan Dana</span>
-                <span class="text-xs text-blue-200">Kirim saldo ke Sub Account Toko</span>
+                <span class="block font-bold">Riwayat Transfer</span>
+                <span class="text-xs text-blue-200">Lihat log pencairan ke Sub Account</span>
             </div>
             <i class="fas fa-chevron-right ml-auto text-blue-300 group-hover:translate-x-1 transition-transform"></i>
         </a>
@@ -114,20 +136,52 @@
             </p>
         </div>
 
+        {{-- FORM PENCAIRAN ESCROW KE SELLER / AGENT --}}
         <div class="p-6 bg-white shadow-md rounded-xl border border-gray-100 mt-6">
-            <h2 class="text-lg font-bold text-gray-800 mb-4">Transfer Saldo ke Toko</h2>
-            <form action="{{ route('admin.doku.transfer.to.store') }}" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <h2 class="text-lg font-bold text-gray-800 mb-1">Transfer Dana Escrow (Pencairan)</h2>
+            <p class="text-sm text-gray-500 mb-6">Pindahkan dana dari Dompet Utama Admin ke Sub Account milik Seller atau Agent.</p>
+            
+            {{-- Pastikan action diarahkan ke controller processTransfer --}}
+            <form action="{{ route('admin.doku.transfer.process') }}" method="POST" class="space-y-4">
                 @csrf
-                <select name="store_id" class="border-gray-300 rounded-md shadow-sm" required>
-                    <option value="">-- Pilih Toko --</option>
-                    @foreach(\App\Models\Store::whereNotNull('doku_sac_id')->get() as $s)
-                        <option value="{{ $s->id }}">{{ $s->name }}</option>
-                    @endforeach
-                </select>
-                <input type="number" name="amount" placeholder="Jumlah (Rp)" class="border-gray-300 rounded-md shadow-sm" required>
-                <button type="submit" class="bg-blue-600 text-white font-bold px-4 py-2 rounded-md hover:bg-blue-700">
-                    Transfer Sekarang
-                </button>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    {{-- Pilihan Penerima --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Pilih Penerima (Seller / Agent) <span class="text-red-500">*</span></label>
+                        <select name="store_id" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                            <option value="">-- Cari & Pilih Penerima --</option>
+                            {{-- Optimalnya passing variabel $stores dari Controller. Jika terpaksa query di view, urutkan agar mudah dicari --}}
+                            @foreach(\App\Models\Store::whereNotNull('doku_sac_id')->orderBy('name')->get() as $s)
+                                <option value="{{ $s->id }}">{{ $s->name }} (SAC: {{ $s->doku_sac_id }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- Nominal --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nominal Pencairan (Rp) <span class="text-red-500">*</span></label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <span class="text-gray-500 sm:text-sm">Rp</span>
+                            </div>
+                            <input type="number" name="amount" min="1000" placeholder="Contoh: 150000" class="pl-10 w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                    </div>
+
+                    {{-- Deskripsi/Catatan (Sesuai validasi di Controller Anda) --}}
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Catatan Pencairan Escrow (Opsional)</label>
+                        <input type="text" name="description" placeholder="Contoh: Pencairan dana escrow untuk Order INV-20231015-001" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" maxlength="255">
+                        <p class="text-xs text-gray-400 mt-1">Catatan ini akan muncul di laporan mutasi DOKU dan riwayat transaksi Seller.</p>
+                    </div>
+                </div>
+
+                <div class="flex justify-end mt-4 pt-4 border-t border-gray-100">
+                    <button type="submit" onclick="return confirm('Apakah Anda yakin ingin mencairkan dana ini? Pastikan nominal dan penerima sudah benar.')" class="bg-blue-600 text-white font-bold px-6 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center">
+                        <i class="fas fa-paper-plane mr-2"></i> Eksekusi Transfer
+                    </button>
+                </div>
             </form>
         </div>
     @elseif (!$error)
