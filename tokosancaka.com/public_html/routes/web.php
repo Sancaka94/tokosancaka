@@ -1328,4 +1328,4 @@ Route::prefix('admin/doku')->name('admin.doku.')->group(function () {
 
     });
 
-Route::get('/dana/callback', [DanaGatewayController::class, 'handleCallback'])->name('callback');
+Route::get('/dana/callback', [TopUpController::class, 'handleCallback'])->name('callback');
