@@ -355,13 +355,11 @@ class PpobMobileController extends Controller
                 if (in_array($finalStatus, ['PROCESS', 'SUCCESS'])) {
                     // POTONG SALDO LOKAL: Jika bukan CASH
                     if (!$isCash) {
-                        $user->saldo -= $product->price;
-                        $user->save();
+                        $user->decrement('saldo', (int) $product->price);
                     }
 
                     // POTONG SALDO PUSAT: Selalu potong balance_iak karena dipakai tembak API
-                    $admin->balance_iak -= $product->price;
-                    $admin->save();
+                    $admin->decrement('balance_iak', (int) $product->price);
                     
                     Log::info('LOG LOG - Saldo Berhasil Dipotong (Prabayar). Saldo Lokal User: ' . (!$isCash ? 'Ya' : 'Tidak (CASH)') . ' | Saldo Pusat IAK: Ya');
                 }
@@ -819,18 +817,16 @@ class PpobMobileController extends Controller
                 $rc = $result['data']['response_code'] ?? '';
                 $status = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
 
-                if (in_array($status, ['PROCESS', 'SUCCESS'])) {
+                if (in_array($finalStatus, ['PROCESS', 'SUCCESS'])) {
                     // POTONG SALDO LOKAL: Jika bukan CASH
                     if (!$isCash) {
-                        $user->saldo -= $transaction->price;
-                        $user->save();
+                        $user->decrement('saldo', (int) $product->price);
                     }
 
                     // POTONG SALDO PUSAT: Selalu potong balance_iak karena dipakai tembak API
-                    $admin->balance_iak -= $transaction->price;
-                    $admin->save();
+                    $admin->decrement('balance_iak', (int) $product->price);
                     
-                    Log::info('LOG LOG - Saldo Berhasil Dipotong (Pascabayar). Saldo Lokal User: ' . (!$isCash ? 'Ya' : 'Tidak (CASH)') . ' | Saldo Pusat IAK: Ya');
+                    Log::info('LOG LOG - Saldo Berhasil Dipotong (Prabayar). Saldo Lokal User: ' . (!$isCash ? 'Ya' : 'Tidak (CASH)') . ' | Saldo Pusat IAK: Ya');
                 }
 
                 $transaction->update([
