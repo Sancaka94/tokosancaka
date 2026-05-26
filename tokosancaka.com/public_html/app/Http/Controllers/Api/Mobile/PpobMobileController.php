@@ -998,7 +998,7 @@ class PpobMobileController extends Controller
                 "amount"             => ["value" => $amountValue, "currency" => "IDR"],
                 "urlParams"          => [
                     ["url" => env('FRONTEND_URL', url('/')) . '/riwayatppob', "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-                    ["url" => url('/api/dana/notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+                    ["url" => url('/api/dana/notify'), "type" => "NOTIFICATION", "isDeeplink" => "N"]
                 ],
                 "payOptionDetails"   => [
                     [
