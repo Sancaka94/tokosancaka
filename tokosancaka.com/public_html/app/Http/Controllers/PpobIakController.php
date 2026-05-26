@@ -160,11 +160,17 @@ class PpobIakController extends Controller
                     $transaction->update(['payment_url' => $paymentUrl]);
                     return redirect()->away($paymentUrl);
                 } elseif ($paymentMethod === 'DANA') {
-                    $akunParams = $userPayment->no_wa ?? $userPayment->no_hp ?? $userIdToSave;
-                    $paymentUrl = url('/pembayaran?akun=' . urlencode($akunParams));
-                    $transaction->update(['payment_url' => $paymentUrl]);
-                    return redirect()->away($paymentUrl);
+                // PANGGIL FUNGSI/SERVICE DANA GATEWAY YANG SEBENARNYA
+                // Pastikan kamu sudah memindahkan logika processDanaPaymentGateway dari PpobMobileController ke sini
+                $danaResult = $this->processDanaPaymentGateway($transaction, $userPayment, 'DANA_REDIRECT', 'prabayar');
+
+                if ($danaResult['success']) {
+                    $transaction->update(['payment_url' => $danaResult['payment_url']]);
+                    return redirect()->away($danaResult['payment_url']);
                 } else {
+                    return back()->with('error', 'Gagal memproses DANA Gateway: ' . $danaResult['message']);
+                }
+            } else {
                     // TRIPAY LOGIC
                     $tripayMode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
                     $apiKey = Api::getValue('TRIPAY_API_KEY', $tripayMode);
