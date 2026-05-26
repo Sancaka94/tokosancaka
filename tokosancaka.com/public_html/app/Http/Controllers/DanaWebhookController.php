@@ -300,9 +300,8 @@ class DanaWebhookController extends Controller
             // =====================================================
             // TOPUP
             // =====================================================
-            $topup = TopUp::where('ref_id', $refNo)
-                ->orWhere('reference_id', $refNo)
-                ->first();
+            $topup = TopUp::where('transaction_id', $refNo)
+            ->first();
 
             if ($topup) {
 
