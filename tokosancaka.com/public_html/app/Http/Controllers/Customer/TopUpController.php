@@ -669,10 +669,15 @@ class TopUpController extends Controller
   public function startBinding(Request $request)
 {
     Log::info('[BINDING] Memulai proses redirect ke DANA (Debug)...');
-
     $user = \Illuminate\Support\Facades\Auth::user();
 
-    // 1. Parameter minimal yang disarankan untuk testing
+    // Generate random state
+    $state = \Illuminate\Support\Str::random(16);
+    
+    // SIMPAN KE SESSION AGAR BISA DICEK SAAT CALLBACK
+    session(['dana_binding_state' => $state]);
+    session()->save(); // Pastikan session tertulis
+
     $queryParams = [
         'partnerId'   => config('services.dana.x_partner_id'),
         'merchantId'  => config('services.dana.merchant_id'),
@@ -680,27 +685,37 @@ class TopUpController extends Controller
         'externalId'  => 'BIND-' . $user->id_pengguna . '-' . time(),
         'channelId'   => 'DANAID',
         'redirectUrl' => 'https://tokosancaka.com/dana/callback',
-        'state'       => \Illuminate\Support\Str::random(16), // Generate random state yang valid
+        'state'       => $state, 
         'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         'allowRegistration' => 'true',
     ];
 
-    // 2. Gunakan URL portal oauth jika binding deeplink tetap gagal
-    // Seringkali portal oauth lebih stabil untuk testing awal
     $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' 
         ? 'https://m.dana.id/d/portal/oauth' 
         : 'https://m.sandbox.dana.id/d/portal/oauth';
         
-    $finalUrl = $baseUrl . "?" . http_build_query($queryParams);
-    
-    Log::info('[BINDING] Redirect URL: ' . $finalUrl);
-    
-    return redirect($finalUrl);
+    return redirect($baseUrl . "?" . http_build_query($queryParams));
 }
 
    public function handleCallback(Request $request)
 {
     Log::info('[DANA CALLBACK] SNAP Apply Token Start...', $request->all());
+
+    $authCode = $request->input('auth_code');
+    $stateFromDana = $request->input('state');
+    $stateFromSession = session('dana_binding_state');
+
+    // VALIDASI: Apakah state ada dan cocok?
+    if (!$stateFromDana || $stateFromDana !== $stateFromSession) {
+        Log::error('[DANA CALLBACK] State mismatch atau Session hilang!', [
+            'dana' => $stateFromDana, 
+            'session' => $stateFromSession
+        ]);
+        return redirect()->route('customer.topup.index')->with('error', 'Auth Code/State Invalid. Sesi mungkin kadaluarsa.');
+    }
+
+    // Bersihkan session setelah digunakan agar tidak bisa dipakai ulang (Security Best Practice)
+    session()->forget('dana_binding_state');
 
     $authCode = $request->input('auth_code') ?? $request->input('authCode');
     $stateRaw = $request->input('state');
