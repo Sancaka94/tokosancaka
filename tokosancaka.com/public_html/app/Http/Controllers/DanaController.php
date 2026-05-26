@@ -59,7 +59,7 @@ class DanaController extends Controller
 
             // 1. Waktu dan Path SNAP BI
             $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-            $validUpTo = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+            $validUpTo = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
             $path = '/rest/redirection/v1.0/debit/payment-host-to-host'; // ENDPOINT BARU
             $orderAmount = number_format($order->total_amount, 2, '.', '');
 
