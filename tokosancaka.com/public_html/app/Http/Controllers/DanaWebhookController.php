@@ -130,11 +130,11 @@ class DanaWebhookController extends Controller
                 ]);
 
                 $trx = Transaction::where('ref_id', $refNo)
-                    ->orWhere(
-                        'tr_id',
-                        str_replace('PASCA', '', $refNo)
-                    )
-                    ->first();
+                ->orWhere(
+                    'reference_id', // Changed from 'tr_id'
+                    str_replace('PASCA', '', $refNo)
+                )
+                ->first();
 
                 if ($trx) {
 
@@ -267,11 +267,11 @@ class DanaWebhookController extends Controller
             // PPOB
             // =====================================================
             $trx = Transaction::where('ref_id', $refNo)
-                ->orWhere(
-                    'tr_id',
-                    str_replace('PASCA', '', $refNo)
-                )
-                ->first();
+            ->orWhere(
+                'reference_id', // Changed from 'tr_id'
+                str_replace('PASCA', '', $refNo)
+            )
+            ->first();
 
             if ($trx) {
 
