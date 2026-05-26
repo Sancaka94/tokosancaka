@@ -469,64 +469,41 @@ class DokuRegistrationController extends Controller
         }
 
         try {
-            // === KREDENSIAL (Tetap Sama) ===
+            // ==========================================================
+            // === DINAMISASI KONFIGURASI (Sesuai Pattern TopUp / Balance) ===
+            // ==========================================================
             $mode = \App\Models\Api::getValue('DOKU_MODE', 'global', 'sandbox');
-            if ($mode === 'production') {
-                $clientId = \App\Models\Api::getValue('DOKU_CLIENT_ID', 'production');
-                $secretKey = \App\Models\Api::getValue('DOKU_SECRET_KEY', 'production');
-                $baseUrl = 'https://jokul.doku.com';
-            } else {
-                $clientId = \App\Models\Api::getValue('DOKU_CLIENT_ID', 'sandbox');
-                $secretKey = \App\Models\Api::getValue('DOKU_SECRET_KEY', 'sandbox');
-                $baseUrl = 'https://api-sandbox.doku.com';
-            }
+            $scope = (strtolower($mode) === 'production') ? 'production' : 'sandbox';
 
-            if (!$clientId || !$secretKey) return back()->with('error', 'Konfigurasi API belum lengkap.');
+            // Paksa override config runtime agar Service membaca data environment terbaru dari DB Api
+            config([
+                'doku.mode' => $scope,
+                'doku.production_url' => 'https://api.doku.com',
+                'doku.sandbox_url' => 'https://api-sandbox.doku.com',
+                'doku.client_id' => \App\Models\Api::getValue('DOKU_CLIENT_ID', $scope),
+                'doku.secret_key' => \App\Models\Api::getValue('DOKU_SECRET_KEY', $scope),
+                'doku.sac_client_id' => \App\Models\Api::getValue('DOKU_SAC_CLIENT_ID', $scope) ?? \App\Models\Api::getValue('DOKU_CLIENT_ID', $scope),
+                'doku.sac_secret_key' => \App\Models\Api::getValue('DOKU_SAC_SECRET_KEY', $scope) ?? \App\Models\Api::getValue('DOKU_SECRET_KEY', $scope),
+            ]);
 
-            // === REQUEST (Tetap Sama) ===
-            $requestId = 'REQ-' . time() . rand(100,999);
-            $timestamp = gmdate("Y-m-d\TH:i:s\Z");
-            $targetPath = '/sac-merchant/v1/accounts/' . $store->doku_sac_id;
+            // Instansiasi ulang Service secara manual agar constructor membaca config() baru di atas
+            $dokuService = new \App\Services\DokuJokulService();
 
-            $rawSignature = "Client-Id:" . $clientId . "\n" .
-                            "Request-Id:" . $requestId . "\n" .
-                            "Request-Timestamp:" . $timestamp . "\n" .
-                            "Request-Target:" . $targetPath;
+            // Eksekusi cek saldo sebagai parameter validasi keaktifan ID di server DOKU
+            $balanceResponse = $dokuService->getBalance($store->doku_sac_id);
 
-            $signature = "HMACSHA256=" . base64_encode(hash_hmac('sha256', $rawSignature, $secretKey, true));
-
-            $response = Http::withHeaders([
-                'Client-Id'         => $clientId,
-                'Request-Id'        => $requestId,
-                'Request-Timestamp' => $timestamp,
-                'Signature'         => $signature,
-            ])->get($baseUrl . $targetPath);
-
-            $data = $response->json();
-
-            if ($response->successful()) {
-
-                // === [PERBAIKAN LOGIKA PENCARIAN STATUS] ===
-                // Berdasarkan log Anda: {"account": {"status": "ACTIVE"}}
-                $statusApi = $data['account']['status'] // <--- Prioritas Utama Sesuai Log
-                             ?? ($data['status']
-                             ?? ($data['data']['status'] ?? null));
-
-                if ($statusApi) {
-                    $store->doku_status = strtoupper($statusApi);
+            if ($balanceResponse['success'] ?? false) {
+                
+                if ($store->doku_status !== 'ACTIVE') {
+                    $store->doku_status = 'ACTIVE';
                     $store->save();
-
-                    if (strtoupper($statusApi) === 'ACTIVE') {
-                        return back()->with('success', 'Berhasil! Status Akun DOKU sekarang ACTIVE.');
-                    } else {
-                        return back()->with('warning', 'Status berhasil diambil: ' . $statusApi);
-                    }
-                } else {
-                    return back()->with('error', 'API Valid tapi kolom status tidak ditemukan.');
+                    return back()->with('success', 'Berhasil! Status Akun DOKU sekarang tervalidasi sebagai ACTIVE.');
                 }
+                
+                return back()->with('success', 'Akun DOKU Anda valid dan terhubung dengan baik.');
+                
             } else {
-                Log::error('Gagal Cek Status DOKU', ['resp' => $data]);
-                return back()->with('error', 'Gagal: ' . ($data['error']['message'] ?? 'Unknown Error'));
+                return back()->with('error', 'Gagal memvalidasi akun: ' . ($balanceResponse['message'] ?? 'ID tidak ditemukan di server.'));
             }
 
         } catch (\Exception $e) {
