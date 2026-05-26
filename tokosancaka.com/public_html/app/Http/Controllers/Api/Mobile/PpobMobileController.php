@@ -1003,7 +1003,7 @@ class PpobMobileController extends Controller
                 "payOptionDetails"   => [
                     [
                         "payMethod"   => "BALANCE",
-                        "payOption"   => "BALANCE",
+                        "payOption"   => "",
                         "transAmount" => ["value" => $amountValue, "currency" => "IDR"],
                         "feeAmount"   => ["value" => "0.00", "currency" => "IDR"]
                     ]
