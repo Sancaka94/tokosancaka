@@ -469,31 +469,13 @@ class DokuRegistrationController extends Controller
         }
 
         try {
-            // ==========================================================
-            // === DINAMISASI KONFIGURASI (Sesuai Pattern TopUp / Balance) ===
-            // ==========================================================
-            $mode = \App\Models\Api::getValue('DOKU_MODE', 'global', 'sandbox');
-            $scope = (strtolower($mode) === 'production') ? 'production' : 'sandbox';
-
-            // Paksa override config runtime agar Service membaca data environment terbaru dari DB Api
-            config([
-                'doku.mode' => $scope,
-                'doku.production_url' => 'https://api.doku.com',
-                'doku.sandbox_url' => 'https://api-sandbox.doku.com',
-                'doku.client_id' => \App\Models\Api::getValue('DOKU_CLIENT_ID', $scope),
-                'doku.secret_key' => \App\Models\Api::getValue('DOKU_SECRET_KEY', $scope),
-                'doku.sac_client_id' => \App\Models\Api::getValue('DOKU_SAC_CLIENT_ID', $scope) ?? \App\Models\Api::getValue('DOKU_CLIENT_ID', $scope),
-                'doku.sac_secret_key' => \App\Models\Api::getValue('DOKU_SAC_SECRET_KEY', $scope) ?? \App\Models\Api::getValue('DOKU_SECRET_KEY', $scope),
-            ]);
-
-            // Instansiasi ulang Service secara manual agar constructor membaca config() baru di atas
-            $dokuService = new \App\Services\DokuJokulService();
-
-            // Eksekusi cek saldo sebagai parameter validasi keaktifan ID di server DOKU
-            $balanceResponse = $dokuService->getBalance($store->doku_sac_id);
+            // Gunakan $this->dokuService bawaan persis seperti di fungsi refreshBalance()
+            // Tidak perlu setting config manual lagi karena sudah terbukti jalan ke Production
+            $balanceResponse = $this->dokuService->getBalance($store->doku_sac_id);
 
             if ($balanceResponse['success'] ?? false) {
                 
+                // Jika sukses ambil saldo, berarti akun valid dan ada di server DOKU
                 if ($store->doku_status !== 'ACTIVE') {
                     $store->doku_status = 'ACTIVE';
                     $store->save();
