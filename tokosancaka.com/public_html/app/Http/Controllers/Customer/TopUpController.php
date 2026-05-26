@@ -666,38 +666,36 @@ class TopUpController extends Controller
         return response()->json(['status' => $transaction->status]);
     }
 
-   public function startBinding(Request $request)
+  public function startBinding(Request $request)
 {
-    Log::info('[BINDING] Memulai proses redirect ke DANA App (Deeplink)...');
+    Log::info('[BINDING] Memulai proses redirect ke DANA (Debug)...');
 
     $user = \Illuminate\Support\Facades\Auth::user();
-    
-    // Sesuai dokumentasi: subMerchantId bisa diisi dengan nama toko
-    // Kita gunakan slug agar format URL bersih
-    // $subMerchantId = \Illuminate\Support\Str::slug($user->store_name);
-    
-    // State maksimal 32 karakter
-    $state = \Illuminate\Support\Str::random(16);
 
+    // 1. Parameter minimal yang disarankan untuk testing
     $queryParams = [
-        'partnerId'         => config('services.dana.x_partner_id'),
-        'merchantId'        => config('services.dana.merchant_id'),
-        // 'subMerchantId'     => $subMerchantId,
-        'timestamp'         => now('Asia/Jakarta')->format('Y-m-d\TH:i:s+07:00'),
-        'externalId'        => 'BIND-' . $user->id_pengguna . '-' . time(),
-        'channelId'         => 'DANAID',
-        'redirectUrl'       => 'https://tokosancaka.com/dana/callback',
-        'state'             => $state,
-        'scopes'            => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE,AGREEMENT_PAY,CASHIER,PUBLIC_ID',
+        'partnerId'   => config('services.dana.x_partner_id'),
+        'merchantId'  => config('services.dana.merchant_id'),
+        'timestamp'   => now('Asia/Jakarta')->format('Y-m-d\TH:i:s+07:00'),
+        'externalId'  => 'BIND-' . $user->id_pengguna . '-' . time(),
+        'channelId'   => 'DANAID',
+        'redirectUrl' => 'https://tokosancaka.com/dana/callback',
+        'state'       => \Illuminate\Support\Str::random(16), // Generate random state yang valid
+        'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         'allowRegistration' => 'true',
     ];
 
-    // URL Path sesuai dokumentasi: /n/link/binding
+    // 2. Gunakan URL portal oauth jika binding deeplink tetap gagal
+    // Seringkali portal oauth lebih stabil untuk testing awal
     $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' 
-        ? 'https://m.dana.id/n/link/binding' 
-        : 'https://m.sandbox.dana.id/n/link/binding';
+        ? 'https://m.dana.id/d/portal/oauth' 
+        : 'https://m.sandbox.dana.id/d/portal/oauth';
         
-    return redirect($baseUrl . "?" . http_build_query($queryParams));
+    $finalUrl = $baseUrl . "?" . http_build_query($queryParams);
+    
+    Log::info('[BINDING] Redirect URL: ' . $finalUrl);
+    
+    return redirect($finalUrl);
 }
 
    public function handleCallback(Request $request)
