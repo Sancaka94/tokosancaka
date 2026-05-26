@@ -1327,3 +1327,5 @@ Route::prefix('admin/doku')->name('admin.doku.')->group(function () {
     
 
     });
+
+Route::get('/dana/callback', [DanaGatewayController::class, 'handleCallback'])->name('callback');
