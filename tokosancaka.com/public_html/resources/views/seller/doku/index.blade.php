@@ -302,7 +302,7 @@
                                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                             <span class="text-gray-500 sm:text-sm">Rp</span>
                                         </div>
-                                        <input type="number" name="amount_transfer" id="amount_transfer" class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-12 sm:text-sm border-gray-300 rounded-md" placeholder="10000" min="1000" required value="{{ old('amount_transfer') }}">
+                                            <input type="number" name="amount" id="amount_transfer" class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 pr-12 sm:text-sm border-gray-300 rounded-md" placeholder="10000" min="1000" required value="{{ old('amount') }}">
                                     </div>
                                     <p class="mt-2 text-xs text-gray-500">Minimal transfer adalah Rp 1.000. Saldo Tersedia Anda: Rp {{ number_format($store->doku_balance_available, 0, ',', '.') }}</p>
                                 </div>
