@@ -674,7 +674,7 @@ class TopUpController extends Controller
     
     // Sesuai dokumentasi: subMerchantId bisa diisi dengan nama toko
     // Kita gunakan slug agar format URL bersih
-    $subMerchantId = \Illuminate\Support\Str::slug($user->store_name);
+    // $subMerchantId = \Illuminate\Support\Str::slug($user->store_name);
     
     // State maksimal 32 karakter
     $state = \Illuminate\Support\Str::random(16);
@@ -682,7 +682,7 @@ class TopUpController extends Controller
     $queryParams = [
         'partnerId'         => config('services.dana.x_partner_id'),
         'merchantId'        => config('services.dana.merchant_id'),
-        'subMerchantId'     => $subMerchantId,
+        // 'subMerchantId'     => $subMerchantId,
         'timestamp'         => now('Asia/Jakarta')->format('Y-m-d\TH:i:s+07:00'),
         'externalId'        => 'BIND-' . $user->id_pengguna . '-' . time(),
         'channelId'         => 'DANAID',
