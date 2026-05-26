@@ -16,6 +16,9 @@ use App\Models\Api;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use App\Services\DokuJokulService;
+use Carbon\Carbon;
+use Illuminate\Support\Str;
+use App\Services\DanaSignatureService;
 
 class PpobMobileController extends Controller
 {
@@ -186,7 +189,7 @@ class PpobMobileController extends Controller
                 $cleanPaymentMethod = strtoupper(trim(str_replace('#', '', $paymentMethod)));
 
                 // -------------------------------------------------
-                // A. JALUR DOKU JOKUL
+                // A1. JALUR DOKU JOKUL
                 // -------------------------------------------------
                 if (in_array($cleanPaymentMethod, ['DOKU', 'DOKU_JOKUL'])) {
                     Log::info("[API MOBILE PPOB] Memproses pembayaran via DOKU Jokul untuk: " . $refId);
@@ -213,23 +216,69 @@ class PpobMobileController extends Controller
                         return response()->json(['success' => false, 'message' => 'Gagal membuat transaksi DOKU: ' . $e->getMessage()]);
                     }
                 }
+               // -------------------------------------------------
+                // A2. JALUR DANA (DIRECT, DIRECT DEBIT, BINDING)
                 // -------------------------------------------------
-                // B. JALUR DANA (Diarahkan ke Web Portal Sancaka)
-                // -------------------------------------------------
-                elseif ($cleanPaymentMethod === 'DANA') {
-                    Log::info("[API MOBILE PPOB] Mengalihkan DANA ke Web Sancaka");
+                if (in_array($cleanPaymentMethod, ['DANA', 'DANA_BINDING', 'DANA_DIRECT_DEBIT'])) {
+                    Log::info("[API MOBILE PPOB] Memproses DANA untuk: " . $refId);
 
-                    $akunParams = $user->no_wa ?? $user->no_hp ?? $user->id_pengguna;
-                    $paymentUrl = url('/pembayaran?akun=' . urlencode($akunParams));
+                    $danaResult = $this->processDanaPaymentGateway($transaction, $user, $cleanPaymentMethod, 'prabayar');
 
-                    $transaction->update(['payment_url' => $paymentUrl]);
+                    if (!$danaResult['success']) {
+                        $transaction->update(['status' => 'FAILED', 'message' => $danaResult['message']]);
+                        return response()->json(['success' => false, 'message' => $danaResult['message']]);
+                    }
 
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Pesanan berhasil dibuat. Mengalihkan ke pembayaran DANA...',
-                        'payment_url' => $paymentUrl,
-                        'redirect_url' => '/riwayatppob'
+                    if (!$danaResult['is_instant']) {
+                        $transaction->update(['payment_url' => $danaResult['payment_url']]);
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Pesanan dibuat. Mengalihkan ke DANA...',
+                            'payment_url' => $danaResult['payment_url'],
+                            'redirect_url' => '/riwayatppob'
+                        ]);
+                    }
+
+                    // AUTO DEBIT INSTAN BERHASIL -> TEMBAK IAK
+                    $transaction->update(['status' => 'PROCESS', 'message' => 'Sedang mengirim pesanan ke pusat...']);
+
+                    $sign = md5($this->username . $this->apiKey . $refId);
+                    $responseIak = Http::post($this->prepaidBaseUrl . '/api/top-up', [
+                        'username'     => $this->username,
+                        'customer_id'  => $request->customer_id,
+                        'product_code' => $request->product_code,
+                        'ref_id'       => $refId,
+                        'sign'         => $sign
                     ]);
+
+                    $resultIak = $responseIak->json();
+
+                    if ($responseIak->successful() && isset($resultIak['data'])) {
+                        $apiCode = $resultIak['data']['rc'] ?? ($resultIak['data']['message'] == 'PROCESS' ? '39' : null);
+                        $codeInfo = IakPrepaidResponseCode::where('code', $apiCode)->first();
+                        $statusMap = [0 => 'PROCESS', 1 => 'SUCCESS', 2 => 'FAILED'];
+                        $apiStatus = $resultIak['data']['status'] ?? 0;
+
+                        $finalStatus = $codeInfo ? strtoupper($codeInfo->status) : ($statusMap[$apiStatus] ?? 'PROCESS');
+                        $finalMessage = $codeInfo ? $codeInfo->description : ($resultIak['data']['message'] ?? 'Proses');
+
+                        $transaction->update([
+                            'status'  => $finalStatus,
+                            'tr_id'   => $resultIak['data']['tr_id'] ?? null,
+                            'sn'      => $resultIak['data']['sn'] ?? null,
+                            'message' => $finalMessage
+                        ]);
+
+                        if ($finalStatus == 'FAILED') {
+                            return response()->json(['success' => false, 'message' => 'Gagal di Provider (Saldo DANA akan direfund): ' . $transaction->message]);
+                        }
+
+                        DB::table('Pengguna')->where('id_pengguna', 4)->decrement('balance_iak', $amount);
+                        return response()->json(['success' => true, 'message' => 'Transaksi berhasil diproses otomatis via DANA.', 'data' => $transaction]);
+                    }
+
+                    $transaction->update(['status' => 'FAILED', 'message' => $resultIak['data']['message'] ?? 'API Error']);
+                    return response()->json(['success' => false, 'message' => 'Error Provider. Saldo DANA akan diproses refund.']);
                 }
                 // -------------------------------------------------
                 // C. JALUR TRIPAY (QRIS, VA, Minimarket, dll)
@@ -711,19 +760,63 @@ class PpobMobileController extends Controller
                 }
             }
             // -------------------------------------------------
-            // B. JALUR DANA (Diarahkan ke Web Portal Sancaka)
+            // B. JALUR DANA (DIRECT, DIRECT DEBIT, BINDING)
             // -------------------------------------------------
-            elseif ($cleanPaymentMethod === 'DANA') {
-                $akunParams = $user->no_wa ?? $user->no_hp ?? $user->id_pengguna;
-                $paymentUrl = url('/pembayaran?akun=' . urlencode($akunParams));
-                $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway', 'payment_url' => $paymentUrl]);
+            if (in_array($cleanPaymentMethod, ['DANA', 'DANA_BINDING', 'DANA_DIRECT_DEBIT'])) {
+                Log::info("[API MOBILE PPOB] Memproses DANA Pascabayar untuk: " . $merchantRef);
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Silakan selesaikan pembayaran DANA.',
-                    'payment_url' => $paymentUrl,
-                    'redirect_url' => '/riwayatppob'
+                $danaResult = $this->processDanaPaymentGateway($transaction, $user, $cleanPaymentMethod, 'pascabayar');
+
+                if (!$danaResult['success']) {
+                    return response()->json(['success' => false, 'message' => $danaResult['message']]);
+                }
+
+                if (!$danaResult['is_instant']) {
+                    $transaction->update(['status' => 'PENDING', 'message' => 'Menunggu Pembayaran Gateway', 'payment_url' => $danaResult['payment_url']]);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Silakan selesaikan pembayaran DANA.',
+                        'payment_url' => $danaResult['payment_url'],
+                        'redirect_url' => '/riwayatppob'
+                    ]);
+                }
+
+                // AUTO DEBIT INSTAN BERHASIL -> TEMBAK IAK PASCABAYAR
+                $transaction->update(['status' => 'PROCESS', 'message' => 'Sedang mengirim pembayaran ke pusat...']);
+
+                $sign = md5($this->username . $this->apiKey . $transaction->tr_id);
+                $responseIak = Http::timeout(45)->post($this->postpaidBaseUrl . '/api/v1/bill/check', [
+                    'commands' => 'pay-pasca',
+                    'username' => $this->username,
+                    'tr_id'    => $transaction->tr_id,
+                    'sign'     => $sign
                 ]);
+
+                $resultIak = $responseIak->json();
+
+                if ($responseIak->successful() && isset($resultIak['data'])) {
+                    $rc = $resultIak['data']['response_code'] ?? '';
+                    $status = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
+
+                    if (in_array($status, ['PROCESS', 'SUCCESS'])) {
+                        DB::table('Pengguna')->where('id_pengguna', 4)->decrement('balance_iak', (float) $transaction->price);
+                    }
+
+                    $transaction->update([
+                        'status'  => $status,
+                        'sn'      => $resultIak['data']['noref'] ?? null,
+                        'message' => $resultIak['data']['message'] ?? 'Payment response received'
+                    ]);
+
+                    if ($status == 'FAILED') {
+                        return response()->json(['success' => false, 'message' => 'Pembayaran gagal dari pusat (Hubungi Admin untuk Refund DANA): ' . $transaction->message]);
+                    }
+
+                    return response()->json(['success' => true, 'message' => 'Pembayaran Tagihan via DANA Berhasil Diproses!']);
+                }
+
+                $transaction->update(['status' => 'FAILED', 'message' => 'Invalid API Response dari Pusat']);
+                return response()->json(['success' => false, 'message' => 'Gagal memproses pembayaran ke server pusat. Saldo DANA akan diproses refund.']);
             }
             // -------------------------------------------------
             // C. JALUR TRIPAY
@@ -866,6 +959,120 @@ class PpobMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Koneksi lambat. Pembayaran sedang diproses di latar belakang. Cek riwayat berkala.']);
         } finally {
             optional($lock)->release();
+        }
+    }
+
+    // ========================================================
+    // HELPER: PROCESS DANA PAYMENT GATEWAY (HOST-TO-HOST)
+    // ========================================================
+    private function processDanaPaymentGateway($transaction, $user, $paymentMethod, $transactionType)
+    {
+        try {
+            $danaSignature = app(\App\Services\DanaSignatureService::class);
+
+            $trxId = ($transactionType === 'pascabayar') ? 'PASCA' . $transaction->tr_id : $transaction->ref_id;
+            $amountValue = number_format((float)$transaction->price, 2, '.', '');
+
+            $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $validUpTo = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+            $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
+
+            $isBinding = ($paymentMethod === 'DANA_BINDING');
+
+            if ($isBinding && empty($user->dana_access_token)) {
+                return ['success' => false, 'message' => 'Akun DANA Anda belum terhubung. Silakan hubungkan (bind) terlebih dahulu di Profil.'];
+            }
+
+            // Gunakan Dinamisasi agar aman saat ganti Prod/Sandbox
+            $merchantIdConf = Api::getValue('dana_sandbox_merchant_id', 'sandbox', config('services.dana.merchant_id'));
+            $partnerIdConf  = Api::getValue('dana_sandbox_client_id', 'sandbox', config('services.dana.x_partner_id'));
+            
+            if (Api::getValue('dana_production_mode', 'global', '0') == '1') {
+                $merchantIdConf = Api::getValue('dana_prod_merchant_id', 'production', config('services.dana.merchant_id'));
+                $partnerIdConf  = Api::getValue('dana_prod_client_id', 'production', config('services.dana.x_partner_id'));
+            }
+
+            $body = [
+                "partnerReferenceNo" => $trxId,
+                "merchantId"         => $merchantIdConf,
+                "validUpTo"          => $validUpTo,
+                "amount"             => ["value" => $amountValue, "currency" => "IDR"],
+                "urlParams"          => [
+                    ["url" => env('FRONTEND_URL', url('/')) . '/riwayatppob', "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+                    ["url" => url('/api/dana/notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+                ],
+                "payOptionDetails"   => [
+                    [
+                        "payMethod"   => "BALANCE",
+                        "payOption"   => "BALANCE",
+                        "transAmount" => ["value" => $amountValue, "currency" => "IDR"],
+                        "feeAmount"   => ["value" => "0.00", "currency" => "IDR"]
+                    ]
+                ],
+                "additionalInfo"     => [
+                    "supportDeepLinkCheckoutUrl" => "true",
+                    "productCode"                => "51051000100000000001",
+                    "mcc"                        => "5732",
+                    "order" => [
+                        "orderTitle"        => substr("PPOB " . $trxId, 0, 64),
+                        "merchantTransType" => "01",
+                        "scenario"          => $isBinding ? "DIRECT_DEBIT" : "REDIRECT",
+                        "buyer" => [
+                            "externalUserId"   => (string) $user->id_pengguna,
+                            "externalUserType" => "MERCHANT_USER",
+                            "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap ?? 'Customer'), 0, 64)
+                        ]
+                    ],
+                    "envInfo" => [
+                        "sourcePlatform"    => "IPG",
+                        "terminalType"      => "SYSTEM",
+                        "orderTerminalType" => "WEB"
+                    ]
+                ]
+            ];
+
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+            $accessTokenB2B = $danaSignature->getAccessToken();
+            $signature = $danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => $partnerIdConf,
+                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'X-DEVICE-ID'   => 'SANCAKA-APP',
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            if ($isBinding && !empty($user->dana_access_token)) {
+                $headers['Authorization-Customer'] = 'Bearer ' . $user->dana_access_token;
+            }
+
+            $response = Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+
+            if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
+                if (!empty($result['webRedirectUrl'])) {
+                    return ['success' => true, 'payment_url'=> $result['webRedirectUrl'], 'is_instant' => false];
+                }
+                if ($isBinding) {
+                    return ['success' => true, 'payment_url'=> null, 'is_instant' => true];
+                }
+            }
+
+            $errorMsg = $result['responseMessage'] ?? 'Unknown Error';
+            return ['success' => false, 'message' => "DANA Error [{$result['responseCode']}]: {$errorMsg}"];
+
+        } catch (\Exception $e) {
+            Log::error("DANA PPOB Exception: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Koneksi ke sistem DANA terputus.'];
         }
     }
 }
