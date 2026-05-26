@@ -8,6 +8,9 @@ use App\Services\DokuJokulService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Config;
 use App\Models\Api;
+use App\Models\Store;
+use App\Models\Transaction;
+use Illuminate\Support\Str;
 
 class DokuBalanceController extends Controller
 {
@@ -110,5 +113,99 @@ class DokuBalanceController extends Controller
 
         Config::set('doku.sac_client_id', $sacClient ?: Config::get('doku.client_id'));
         Config::set('doku.sac_secret_key', $sacSecret ?: Config::get('doku.secret_key'));
+    }
+
+    /**
+     * =========================================================================
+     * FITUR BARU: Menampilkan Halaman Transfer Dana (Admin ke Sub Account)
+     * =========================================================================
+     */
+    public function showTransferPage()
+    {
+        // Ambil data toko yang sudah memiliki SAC ID
+        $stores = Store::whereNotNull('doku_sac_id')->orderBy('name', 'asc')->get();
+
+        return view('admin.doku.transfer', compact('stores'));
+    }
+
+    /**
+     * =========================================================================
+     * FITUR BARU: Memproses Transfer Dana / Pencairan Payout (Admin ke Sub Account)
+     * =========================================================================
+     */
+    public function processTransfer(Request $request)
+    {
+        $request->validate([
+            'store_id' => 'required|exists:stores,id',
+            'amount' => 'required|numeric|min:1000',
+            'description' => 'nullable|string|max:255'
+        ]);
+
+        $store = Store::findOrFail($request->store_id);
+        $amount = (int) $request->amount;
+        $description = $request->description ?? 'Transfer/Pencairan dana dari Admin';
+        
+        $targetSacId = $store->doku_sac_id;
+        $payoutRefId = 'ADM-TRF-' . time() . '-' . Str::random(4);
+
+        Log::info('LOG LOG: [ADMIN DOKU] Memulai Transfer Intra ke ' . $store->name, [
+            'target_sac' => $targetSacId,
+            'amount' => $amount,
+            'ref_id' => $payoutRefId
+        ]);
+
+        // 1. Terapkan Config DOKU
+        $dbEnv = Api::where('key', 'DOKU_ENV')->value('value');
+        $mode = (strtolower($dbEnv) === 'production') ? 'production' : 'sandbox';
+        $this->applyDokuConfig($mode);
+
+        $dokuService = new DokuJokulService();
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            // 2. Eksekusi Transfer ke Service DOKU
+            // Pastikan DokuJokulService Anda memiliki method transferToSubAccount()
+            $response = $dokuService->transferToSubAccount(
+                $payoutRefId,
+                $targetSacId,
+                $amount,
+                $description
+            );
+
+            // 3. Cek Respon
+            if (isset($response['status']) && $response['status'] === 'SUCCESS') {
+                
+                // Catat transaksi
+                Transaction::create([
+                    'user_id' => $store->user_id,
+                    'reference_id' => $response['transaction_id'] ?? $payoutRefId,
+                    'amount' => $amount,
+                    'type' => 'admin_transfer_to_sac',
+                    'status' => 'success',
+                    'payment_method' => 'internal_doku',
+                    'description' => $description,
+                ]);
+
+                // Update cache saldo tersedia milik toko (UI instan)
+                $store->doku_balance_available += $amount;
+                $store->doku_balance_last_updated = now();
+                $store->save();
+
+                \Illuminate\Support\Facades\DB::commit();
+                Log::info('LOG LOG: [ADMIN DOKU] Transfer Sukses ke ' . $targetSacId);
+
+                return redirect()->back()->with('success', 'Berhasil! Dana sebesar Rp ' . number_format($amount, 0, ',', '.') . ' telah ditransfer ke Dompet Toko: ' . $store->name);
+            }
+
+            // Jika Gagal dari DOKU
+            \Illuminate\Support\Facades\DB::rollBack();
+            Log::error('LOG LOG: [ADMIN DOKU] Transfer Gagal via API.', ['response' => $response]);
+            return redirect()->back()->with('error', 'Gagal mentransfer dana: ' . ($response['message'] ?? 'Kesalahan dari server DOKU.'));
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            Log::critical('LOG LOG: [ADMIN DOKU] Exception Error!', ['msg' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+        }
     }
 }

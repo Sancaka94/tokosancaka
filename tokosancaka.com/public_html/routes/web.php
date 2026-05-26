@@ -1316,3 +1316,12 @@ Route::prefix('customer')->middleware(['auth'])->group(function () {
 
 
 Route::get('/verifikasi-email', [AuthController::class, 'verifyEmailFromLink']);
+
+Route::prefix('admin/doku')->name('admin.doku.')->group(function () {
+    // Route yang sudah ada (untuk melihat saldo utama)
+    Route::get('/balance', [\App\Http\Controllers\Admin\DokuBalanceController::class, 'index'])->name('balance');
+    
+    // TAMBAHKAN DUA ROUTE INI:
+    Route::get('/transfer', [\App\Http\Controllers\Admin\DokuBalanceController::class, 'showTransferPage'])->name('transfer');
+    Route::post('/transfer', [\App\Http\Controllers\Admin\DokuBalanceController::class, 'processTransfer'])->name('transfer.process');
+});
