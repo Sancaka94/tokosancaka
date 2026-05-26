@@ -44,6 +44,9 @@ class User extends Authenticatable
      */
     protected $primaryKey = 'id_pengguna';
 
+    public $incrementing = false; 
+    protected $keyType = 'string';
+
     /**
      * Memberi tahu Laravel bahwa Anda HANYA menggunakan 'created_at'.
      */

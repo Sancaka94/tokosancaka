@@ -352,17 +352,24 @@ class PpobMobileController extends Controller
                     return response()->json(['success' => false, 'message' => 'Gagal: ' . $transaction->message]);
                 }
 
-                if (in_array($finalStatus, ['PROCESS', 'SUCCESS'])) {
-                    // POTONG SALDO LOKAL: Jika bukan CASH
-                    if (!$isCash) {
-                        $user->decrement('saldo', (int) $product->price);
-                    }
+               if (in_array($status, ['PROCESS', 'SUCCESS'])) {
+    
+                $harga = (float) $transaction->price;
 
-                    // POTONG SALDO PUSAT: Selalu potong balance_iak karena dipakai tembak API
-                    $admin->decrement('balance_iak', (int) $product->price);
-                    
-                    Log::info('LOG LOG - Saldo Berhasil Dipotong (Prabayar). Saldo Lokal User: ' . (!$isCash ? 'Ya' : 'Tidak (CASH)') . ' | Saldo Pusat IAK: Ya');
+                // POTONG SALDO LOKAL: Jika bukan CASH
+                if (!$isCash) {
+                    \Illuminate\Support\Facades\DB::table('Pengguna')
+                        ->where('id_pengguna', $user->id_pengguna)
+                        ->decrement('saldo', $harga);
                 }
+
+                // POTONG SALDO PUSAT: Selalu potong balance_iak admin (ID 4)
+                \Illuminate\Support\Facades\DB::table('Pengguna')
+                    ->where('id_pengguna', 4)
+                    ->decrement('balance_iak', $harga);
+                
+                Log::info("LOG LOG - RAW DB Saldo Terpotong (Pascabayar). User ID: {$user->id_pengguna}, Harga: {$harga}");
+            }
 
                 return response()->json(['success' => true, 'message' => 'Transaksi berhasil diproses.', 'data' => $transaction]);
             }
@@ -818,15 +825,23 @@ class PpobMobileController extends Controller
                 $status = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
 
                 if (in_array($finalStatus, ['PROCESS', 'SUCCESS'])) {
+    
+                    // Pastikan harga dikonversi ke angka yang valid
+                    $harga = (float) $product->price;
+
                     // POTONG SALDO LOKAL: Jika bukan CASH
                     if (!$isCash) {
-                        $user->decrement('saldo', (int) $product->price);
+                        \Illuminate\Support\Facades\DB::table('Pengguna')
+                            ->where('id_pengguna', $user->id_pengguna)
+                            ->decrement('saldo', $harga);
                     }
 
-                    // POTONG SALDO PUSAT: Selalu potong balance_iak karena dipakai tembak API
-                    $admin->decrement('balance_iak', (int) $product->price);
+                    // POTONG SALDO PUSAT: Selalu potong balance_iak admin (ID 4)
+                    \Illuminate\Support\Facades\DB::table('Pengguna')
+                        ->where('id_pengguna', 4)
+                        ->decrement('balance_iak', $harga);
                     
-                    Log::info('LOG LOG - Saldo Berhasil Dipotong (Prabayar). Saldo Lokal User: ' . (!$isCash ? 'Ya' : 'Tidak (CASH)') . ' | Saldo Pusat IAK: Ya');
+                    Log::info("LOG LOG - RAW DB Saldo Terpotong (Prabayar). User ID: {$user->id_pengguna}, Harga: {$harga}");
                 }
 
                 $transaction->update([
