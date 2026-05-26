@@ -1030,7 +1030,8 @@ class PpobMobileController extends Controller
                 ]
             ];
 
-            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            // Menjadi ini (tambahkan JSON_PRESERVE_ZERO_FRACTION):
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
 
             $accessTokenB2B = $danaSignature->getAccessToken();
             $signature = $danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
