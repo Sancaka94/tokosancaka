@@ -751,7 +751,7 @@ public function handleCallback(Request $request)
                 \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', $userId)->update([
                     'dana_access_token' => $accessToken,
                     'dana_auth_code'    => $authCode,
-                    'updated_at'        => now()
+                    //'updated_at'        => now()
                 ]);
 
                 // Bersihkan session
