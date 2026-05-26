@@ -921,8 +921,8 @@ Route::post('/topup/consult-methods', [TopUpController::class, 'consultPaymentMe
 Route::get('/dana/status/{orderId}', [TopUpController::class, 'checkDanaGatewayStatus'])->name('dana.status');
 
 // Route Webhook (PENTING: Jangan lupa exclude dari CSRF di VerifyCsrfToken/app.php)
-Route::post('/dana/notify', [App\Http\Controllers\DanaWebhookController::class, 'handleNotify'])->name('dana.notify');
-Route::get('/dana/return', [App\Http\Controllers\DanaWebhookController::class, 'returnPage'])->name('dana.return');
+// Route::post('/dana/notify', [App\Http\Controllers\DanaWebhookController::class, 'handleNotify'])->name('dana.notify');
+// Route::get('/dana/return', [App\Http\Controllers\DanaWebhookController::class, 'returnPage'])->name('dana.return');
 
 // Route untuk cek manual (misal oleh Admin)
 Route::get('/dana/check-gateway/{orderId}', [TopUpController::class, 'checkDanaGatewayStatus'])
@@ -1324,8 +1324,18 @@ Route::prefix('admin/doku')->name('admin.doku.')->group(function () {
     // TAMBAHKAN DUA ROUTE INI:
     Route::get('/transfer', [\App\Http\Controllers\Admin\DokuBalanceController::class, 'showTransferPage'])->name('transfer');
     Route::post('/transfer', [\App\Http\Controllers\Admin\DokuBalanceController::class, 'processTransfer'])->name('transfer.process');
-    
+
 
     });
 
 Route::get('/dana/callback', [TopUpController::class, 'handleCallback'])->name('callback');
+
+Route::get(
+    '/payment/dana/return',
+    [DanaWebhookController::class, 'returnPage']
+)->name('dana.return');
+
+Route::post(
+    '/api/dana/notify',
+    [DanaWebhookController::class, 'handleNotify']
+)->name('dana.webhook');
