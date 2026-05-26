@@ -974,7 +974,7 @@ class PpobMobileController extends Controller
         $amountValue = number_format((float)$transaction->price, 2, '.', '');
 
         $timestamp  = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        $validUpTo = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+        $validUpTo = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
 
         $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
 
