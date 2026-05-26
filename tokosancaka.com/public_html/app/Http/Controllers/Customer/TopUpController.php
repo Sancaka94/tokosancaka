@@ -752,7 +752,8 @@ public function handleCallback(Request $request)
                     'dana_access_token' => $accessToken,
                     'dana_auth_code'    => $authCode,
                     //'updated_at'        => now()
-                ]);
+                
+                    ]);
 
                 // Bersihkan session
                 session()->forget('dana_user_id');
