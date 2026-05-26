@@ -20,13 +20,13 @@ class DanaWebhookController extends Controller
 {
     /**
      * =========================================================
-     * WEBHOOK NOTIFICATION DANA
+     * DANA WEBHOOK NOTIFICATION
      * =========================================================
      */
     public function handleNotify(Request $request)
     {
         Log::info('[DANA WEBHOOK] HIT', [
-            'ip' => $request->ip(),
+            'ip'      => $request->ip(),
             'payload' => $request->all(),
         ]);
 
@@ -35,42 +35,38 @@ class DanaWebhookController extends Controller
             $data = $request->all();
 
             // =====================================================
-            // AMBIL REFERENCE NUMBER
+            // AMBIL REFERENCE
             // =====================================================
-            $refNo =
-                $data['originalPartnerReferenceNo']
+            $refNo = $data['originalPartnerReferenceNo']
                 ?? $data['partnerReferenceNo']
                 ?? null;
 
-            $latestStatus =
-                $data['latestTransactionStatus']
-                ?? null;
+            $latestStatus = $data['latestTransactionStatus'] ?? null;
 
-            $amountVal =
-                $data['amount']['value']
-                ?? '0.00';
+            $amountValue = $data['amount']['value'] ?? '0.00';
 
             if (!$refNo) {
 
-                Log::warning('[DANA WEBHOOK] REF NO EMPTY');
+                Log::warning('[DANA WEBHOOK] REF EMPTY');
 
                 return response()->json([
-                    'responseCode' => '4005601',
+                    'responseCode'    => '4005601',
                     'responseMessage' => 'Reference Not Found'
                 ], 400);
             }
 
             // =====================================================
-            // NORMALISASI FORMAT
+            // NORMALIZE REF
             // =====================================================
             $refNo = $this->normalizeReference($refNo);
 
-            Log::info('[DANA WEBHOOK] NORMALIZED REF', [
-                'ref' => $refNo
+            Log::info('[DANA WEBHOOK] NORMALIZED', [
+                'ref'    => $refNo,
+                'status' => $latestStatus
             ]);
 
             // =====================================================
-            // STATUS MAPPING
+            // MAP STATUS
             // =====================================================
             $isSuccess = ($latestStatus === '00');
 
@@ -86,7 +82,7 @@ class DanaWebhookController extends Controller
                 Str::startsWith($refNo, 'ORD-')
             ) {
 
-                Log::info('[DANA WEBHOOK] ROUTE MARKETPLACE', [
+                Log::info('[DANA WEBHOOK] MARKETPLACE ORDER', [
                     'ref' => $refNo
                 ]);
 
@@ -108,14 +104,14 @@ class DanaWebhookController extends Controller
                 Str::startsWith($refNo, 'DEP-')
             ) {
 
-                Log::info('[DANA WEBHOOK] ROUTE TOPUP', [
+                Log::info('[DANA WEBHOOK] TOPUP', [
                     'ref' => $refNo
                 ]);
 
                 TopUpController::processTopUpCallback(
                     $refNo,
                     $internalStatus,
-                    $amountVal
+                    $amountValue
                 );
 
                 return $this->respondSuccessDANA();
@@ -129,22 +125,35 @@ class DanaWebhookController extends Controller
                 Str::startsWith($refNo, 'PASCA')
             ) {
 
-                Log::info('[DANA WEBHOOK] ROUTE PPOB', [
+                Log::info('[DANA WEBHOOK] PPOB', [
                     'ref' => $refNo
                 ]);
 
                 $trx = Transaction::where('ref_id', $refNo)
-                    ->orWhere('tr_id', str_replace('PASCA', '', $refNo))
+                    ->orWhere(
+                        'tr_id',
+                        str_replace('PASCA', '', $refNo)
+                    )
                     ->first();
 
                 if ($trx) {
 
                     $trx->payment_status = $internalStatus;
-                    $trx->paid_at = now();
+
+                    if ($isSuccess) {
+                        $trx->paid_at = now();
+                    }
+
                     $trx->save();
 
                     Log::info('[DANA WEBHOOK] PPOB UPDATED', [
-                        'trx' => $trx->id
+                        'id'     => $trx->id ?? null,
+                        'ref_id' => $trx->ref_id ?? null
+                    ]);
+                } else {
+
+                    Log::warning('[DANA WEBHOOK] PPOB NOT FOUND', [
+                        'ref' => $refNo
                     ]);
                 }
 
@@ -156,7 +165,7 @@ class DanaWebhookController extends Controller
             // =====================================================
             if (Str::startsWith($refNo, 'SCK-')) {
 
-                Log::info('[DANA WEBHOOK] ROUTE LEGACY', [
+                Log::info('[DANA WEBHOOK] LEGACY PESANAN', [
                     'ref' => $refNo
                 ]);
 
@@ -170,7 +179,7 @@ class DanaWebhookController extends Controller
             }
 
             // =====================================================
-            // FALLBACK
+            // UNKNOWN
             // =====================================================
             Log::warning('[DANA WEBHOOK] UNKNOWN REF', [
                 'ref' => $refNo
@@ -182,11 +191,11 @@ class DanaWebhookController extends Controller
 
             Log::error('[DANA WEBHOOK] ERROR', [
                 'message' => $e->getMessage(),
-                'line' => $e->getLine()
+                'line'    => $e->getLine(),
             ]);
 
             return response()->json([
-                'responseCode' => '5005601',
+                'responseCode'    => '5005601',
                 'responseMessage' => 'Internal Server Error'
             ], 500);
         }
@@ -194,24 +203,23 @@ class DanaWebhookController extends Controller
 
     /**
      * =========================================================
-     * UNIVERSAL PAYMENT RESULT PAGE
+     * UNIVERSAL RETURN PAGE
      * =========================================================
      */
     public function returnPage(Request $request)
     {
         Log::info('[DANA RETURN PAGE]', [
-            'query' => $request->all(),
-            'full_url' => $request->fullUrl(),
+            'query'      => $request->all(),
+            'full_url'   => $request->fullUrl(),
             'user_agent' => $request->userAgent(),
         ]);
 
         try {
 
             // =====================================================
-            // AMBIL REF
+            // GET REF
             // =====================================================
-            $refNo =
-                $request->partnerReferenceNo
+            $refNo = $request->partnerReferenceNo
                 ?? $request->originalPartnerReferenceNo
                 ?? $request->bizNo
                 ?? $request->id
@@ -222,24 +230,27 @@ class DanaWebhookController extends Controller
                 Log::warning('[DANA RETURN] REF EMPTY');
 
                 return redirect('/')
-                    ->with('error', 'Transaksi tidak ditemukan.');
+                    ->with(
+                        'error',
+                        'Transaksi tidak ditemukan.'
+                    );
             }
 
             // =====================================================
-            // NORMALISASI
+            // NORMALIZE REF
             // =====================================================
             $refNo = $this->normalizeReference($refNo);
 
-            Log::info('[DANA RETURN] REF NORMALIZED', [
+            Log::info('[DANA RETURN] NORMALIZED', [
                 'ref' => $refNo
             ]);
 
             // =====================================================
-            // DETECT MOBILE / EXPO
+            // DETECT MOBILE
             // =====================================================
-            $isMobile = $request->header('X-Platform') === 'mobile';
+            $isMobile =
+                $request->header('X-Platform') === 'mobile';
 
-            // fallback user-agent
             if (!$isMobile) {
 
                 $isMobile = preg_match(
@@ -249,81 +260,28 @@ class DanaWebhookController extends Controller
             }
 
             Log::info('[DANA RETURN] PLATFORM', [
-                'is_mobile' => $isMobile
+                'is_mobile' => (bool) $isMobile
             ]);
-
-            // =====================================================
-            // TOPUP
-            // =====================================================
-            $topup = TopUp::where('reference_id', $refNo)->first();
-
-            if ($topup) {
-
-                Log::info('[DANA RETURN] TOPUP FOUND');
-
-                // MOBILE
-                if (
-                    $isMobile ||
-                    $topup->platform === 'mobile'
-                ) {
-
-                    return redirect()->away(
-                        'sancakaexpress://topup-success/' . $refNo
-                    );
-                }
-
-                // WEB
-                return redirect()->route(
-                    'customer.topup.show',
-                    ['topup' => $topup->id]
-                );
-            }
-
-            // =====================================================
-            // MARKETPLACE ORDER
-            // =====================================================
-            $order = Order::where('invoice_number', $refNo)
-                ->first();
-
-            if ($order) {
-
-                Log::info('[DANA RETURN] ORDER FOUND');
-
-                // MOBILE
-                if (
-                    $isMobile ||
-                    $order->platform === 'mobile'
-                ) {
-
-                    return redirect()->away(
-                        'sancakaexpress://order-success/' . $refNo
-                    );
-                }
-
-                // WEB
-                return redirect()->to(
-                    'https://tokosancaka.com/customer/pesanan/riwayat-belanja'
-                )->with(
-                    'success',
-                    'Pembayaran berhasil diproses.'
-                );
-            }
 
             // =====================================================
             // PPOB
             // =====================================================
             $trx = Transaction::where('ref_id', $refNo)
-                ->orWhere('tr_id', str_replace('PASCA', '', $refNo))
+                ->orWhere(
+                    'tr_id',
+                    str_replace('PASCA', '', $refNo)
+                )
                 ->first();
 
             if ($trx) {
 
-                Log::info('[DANA RETURN] PPOB FOUND');
+                Log::info('[DANA RETURN] PPOB FOUND', [
+                    'id' => $trx->id ?? null
+                ]);
 
-                // MOBILE
                 if (
                     $isMobile ||
-                    $trx->platform === 'mobile'
+                    ($trx->platform ?? null) === 'mobile'
                 ) {
 
                     return redirect()->away(
@@ -331,12 +289,82 @@ class DanaWebhookController extends Controller
                     );
                 }
 
-                // WEB
                 return redirect()->to(
                     'https://tokosancaka.com/riwayatppob'
                 )->with(
                     'success',
                     'Pembayaran PPOB berhasil.'
+                );
+            }
+
+            // =====================================================
+            // TOPUP
+            // =====================================================
+            $topup = TopUp::where('ref_id', $refNo)
+                ->orWhere('reference_id', $refNo)
+                ->first();
+
+            if ($topup) {
+
+                Log::info('[DANA RETURN] TOPUP FOUND', [
+                    'id' => $topup->id ?? null
+                ]);
+
+                if (
+                    $isMobile ||
+                    ($topup->platform ?? null) === 'mobile'
+                ) {
+
+                    return redirect()->away(
+                        'sancakaexpress://topup-success/' . $refNo
+                    );
+                }
+
+                if (
+                    \Route::has('customer.topup.show')
+                ) {
+
+                    return redirect()->route(
+                        'customer.topup.show',
+                        ['topup' => $topup->id]
+                    );
+                }
+
+                return redirect('/')->with(
+                    'success',
+                    'Topup berhasil diproses.'
+                );
+            }
+
+            // =====================================================
+            // MARKETPLACE ORDER
+            // =====================================================
+            $order = Order::where(
+                'invoice_number',
+                $refNo
+            )->first();
+
+            if ($order) {
+
+                Log::info('[DANA RETURN] ORDER FOUND', [
+                    'id' => $order->id ?? null
+                ]);
+
+                if (
+                    $isMobile ||
+                    ($order->platform ?? null) === 'mobile'
+                ) {
+
+                    return redirect()->away(
+                        'sancakaexpress://order-success/' . $refNo
+                    );
+                }
+
+                return redirect()->to(
+                    'https://tokosancaka.com/customer/pesanan/riwayat-belanja'
+                )->with(
+                    'success',
+                    'Pembayaran marketplace berhasil.'
                 );
             }
 
@@ -357,13 +385,13 @@ class DanaWebhookController extends Controller
 
             Log::error('[DANA RETURN PAGE ERROR]', [
                 'message' => $e->getMessage(),
-                'line' => $e->getLine()
+                'line'    => $e->getLine(),
             ]);
 
             return redirect('/')
                 ->with(
                     'error',
-                    'Terjadi kesalahan saat redirect pembayaran.'
+                    'Terjadi kesalahan redirect pembayaran.'
                 );
         }
     }
@@ -391,22 +419,22 @@ class DanaWebhookController extends Controller
             return 'TOPUP-' . substr($refNo, 5);
         }
 
-        return $refNo;
+        return trim($refNo);
     }
 
     /**
      * =========================================================
-     * STANDARD SUCCESS RESPONSE SNAP DANA
+     * STANDARD SUCCESS RESPONSE DANA SNAP
      * =========================================================
      */
     private function respondSuccessDANA()
     {
         return response()->json([
-            'responseCode' => '2005600',
+            'responseCode'    => '2005600',
             'responseMessage' => 'Successful'
         ])->withHeaders([
             'Content-Type' => 'application/json',
-            'X-TIMESTAMP' => Carbon::now('Asia/Jakarta')
+            'X-TIMESTAMP'  => Carbon::now('Asia/Jakarta')
                 ->format('Y-m-d\TH:i:sP')
         ]);
     }
