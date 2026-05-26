@@ -357,15 +357,15 @@ class PpobMobileController extends Controller
     
                 $harga = (float) $transaction->price;
 
-                // POTONG SALDO LOKAL: Jika bukan CASH
+               // POTONG SALDO LOKAL
                 if (!$isCash) {
-                    \Illuminate\Support\Facades\DB::table('Pengguna')
+                    DB::table('Pengguna')
                         ->where('id_pengguna', $user->id_pengguna)
                         ->decrement('saldo', $harga);
                 }
 
-                // POTONG SALDO PUSAT: Selalu potong balance_iak admin (ID 4)
-                \Illuminate\Support\Facades\DB::table('Pengguna')
+                // POTONG SALDO PUSAT (ADMIN ID 4)
+                DB::table('Pengguna')
                     ->where('id_pengguna', 4)
                     ->decrement('balance_iak', $harga);
                 
@@ -830,15 +830,15 @@ class PpobMobileController extends Controller
                     // Pastikan harga dikonversi ke angka yang valid
                     $harga = (float) $product->price;
 
-                    // POTONG SALDO LOKAL: Jika bukan CASH
+                    // POTONG SALDO LOKAL
                     if (!$isCash) {
-                        \Illuminate\Support\Facades\DB::table('Pengguna')
+                        DB::table('Pengguna')
                             ->where('id_pengguna', $user->id_pengguna)
                             ->decrement('saldo', $harga);
                     }
 
-                    // POTONG SALDO PUSAT: Selalu potong balance_iak admin (ID 4)
-                    \Illuminate\Support\Facades\DB::table('Pengguna')
+                    // POTONG SALDO PUSAT (ADMIN ID 4)
+                    DB::table('Pengguna')
                         ->where('id_pengguna', 4)
                         ->decrement('balance_iak', $harga);
                     
