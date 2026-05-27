@@ -278,7 +278,7 @@ class DanaWebhookController extends Controller
             if ($trx) {
                 Session::forget('last_dana_ref'); // Bersihkan session
                 if ($isMobile) {
-                    return redirect()->away('sancakaexpress://riwayatppob/' . $refNo);
+                    return redirect()->away('sancakaexpress://riwayatpesanan/' . $refNo);
                 }
                 return redirect()->to('https://tokosancaka.com/riwayatppob')->with('success', 'Pembayaran PPOB berhasil.');
             }
