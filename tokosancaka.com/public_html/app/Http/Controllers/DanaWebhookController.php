@@ -1,353 +1,295 @@
 <?php
 
 namespace App\Http\Controllers;
-use Exception;
 
-use App\Http\Controllers\Admin\PesananController as AdminPesananController;
-use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\Customer\TopUpController;
-
-use App\Models\Order;
-use App\Models\TopUp;
-use App\Models\Transaction;
-
-use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
-
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use App\Models\PosTopUp;
+use App\Models\Order;     // <--- WAJIB: Tambahkan Import Model Order
+use App\Models\Affiliate; // <--- WAJIB: Tambahkan Import Affiliate (untuk komisi)
+use Exception;
 
 class DanaWebhookController extends Controller
 {
     /**
-     * =========================================================
-     * DANA WEBHOOK NOTIFICATION
-     * =========================================================
+     * MAIN HANDLER
      */
     public function handleNotify(Request $request)
     {
-        Log::info('[DANA WEBHOOK] HIT', [
-            'ip'      => $request->ip(),
-            'payload' => $request->all(),
+        // 1. Log Payload Masuk
+        Log::info("[DANA-WEBHOOK] Hit Masuk:", [
+            'ip' => $request->ip(),
+            'payload' => $request->all()
         ]);
 
         try {
-
             $data = $request->all();
+            $refNo = $data['originalPartnerReferenceNo'] ?? $data['partnerReferenceNo'] ?? null;
+            $statusRaw = $data['transactionStatusDesc'] ?? $data['orderStatus'] ?? 'UNKNOWN';
 
-            // =====================================================
-            // AMBIL REFERENCE
-            // =====================================================
-            $refNo = $data['originalPartnerReferenceNo']
-                ?? $data['partnerReferenceNo']
-                ?? null;
+            // Nominal
+            $amountVal = $data['amount']['value'] ?? 0;
+            $paidAmount = (float) $amountVal;
 
-            $latestStatus = $data['latestTransactionStatus'] ?? null;
-
-            $amountValue = $data['amount']['value'] ?? '0.00';
-
-            if (!$refNo) {
-
-                Log::warning('[DANA WEBHOOK] REF EMPTY');
-
-                return response()->json([
-                    'responseCode'    => '4005601',
-                    'responseMessage' => 'Reference Not Found'
-                ], 400);
+            if (empty($refNo)) {
+                return response()->json(['res' => 'NO_REF'], 400);
             }
 
-            // =====================================================
-            // NORMALIZE REF
-            // =====================================================
-            $refNo = $this->normalizeReference($refNo);
+            // =============================================================
+            // ROUTING LOGIC: Tentukan Tipe Transaksi Berdasarkan Prefix RefNo
+            // =============================================================
 
-            Log::info('[DANA WEBHOOK] NORMALIZED', [
-                'ref'    => $refNo,
-                'status' => $latestStatus
-            ]);
-
-            // =====================================================
-            // MAP STATUS
-            // =====================================================
-            $isSuccess = ($latestStatus === '00');
-
-            $internalStatus = $isSuccess
-                ? 'PAID'
-                : 'FAILED';
-
-            // =====================================================
-            // MARKETPLACE ORDER
-            // =====================================================
-            if (
-                Str::startsWith($refNo, 'SCK-ORD-') ||
-                Str::startsWith($refNo, 'ORD-')
-            ) {
-
-                Log::info('[DANA WEBHOOK] MARKETPLACE ORDER', [
-                    'ref' => $refNo
-                ]);
-
-                app(CheckoutController::class)
-                    ->processOrderCallback(
-                        $refNo,
-                        $internalStatus,
-                        $data
-                    );
-
-                return $this->respondSuccessDANA();
+            // 1. CEK TRANSAKSI ORDER BARANG (Prefix: SCK-)
+            if (str_contains($refNo, 'SCK-')) {
+                return $this->processOrderTransaction($refNo, $statusRaw, $data, $paidAmount);
             }
 
-            // =====================================================
-            // TOPUP
-            // =====================================================
-            if (
-                Str::startsWith($refNo, 'TOPUP-') ||
-                Str::startsWith($refNo, 'DEP-')
-            ) {
-
-                Log::info('[DANA WEBHOOK] TOPUP', [
-                    'ref' => $refNo
-                ]);
-
-                TopUpController::processTopUpCallback(
-                    $refNo,
-                    $internalStatus,
-                    $amountValue
-                );
-
-                return $this->respondSuccessDANA();
-            }
-
-            // =====================================================
-            // PPOB
-            // =====================================================
-            if (
-                Str::startsWith($refNo, 'P') ||
-                Str::startsWith($refNo, 'PASCA')
-            ) {
-
-                Log::info('[DANA WEBHOOK] PPOB', [
-                    'ref' => $refNo
-                ]);
-
-                $trx = Transaction::where('ref_id', $refNo)
-                ->orWhere(
-                    'reference_id', // Changed from 'tr_id'
-                    str_replace('PASCA', '', $refNo)
-                )
-                ->first();
+            // 2. CEK TOPUP TENANT (Prefix: DEP-T-)
+            elseif (str_contains($refNo, 'DEP-T-')) {
+                $trx = DB::table('dana_transactions')->where('reference_no', $refNo)->first();
+                if (!$trx) $trx = PosTopUp::where('reference_no', $refNo)->first(); // Fallback
 
                 if ($trx) {
-
-                    $trx->payment_status = $internalStatus;
-
-                    if ($isSuccess) {
-                        $trx->paid_at = now();
-                    }
-
-                    $trx->save();
-
-                    Log::info('[DANA WEBHOOK] PPOB UPDATED', [
-                        'id'     => $trx->id ?? null,
-                        'ref_id' => $trx->ref_id ?? null
-                    ]);
-                } else {
-
-                    Log::warning('[DANA WEBHOOK] PPOB NOT FOUND', [
-                        'ref' => $refNo
-                    ]);
+                    return $this->processTenantTransaction($trx, $statusRaw, $data, $paidAmount);
                 }
-
-                return $this->respondSuccessDANA();
             }
 
-            // =====================================================
-            // LEGACY PESANAN (FIXED)
-            // =====================================================
-            if (Str::startsWith($refNo, 'SCK-')) {
-                Log::info('[DANA WEBHOOK] Proses Pesanan: ' . $refNo . ' Status: ' . $internalStatus);
-
-                // 1. Cari pesanan di tabel Pesanan berdasarkan nomor_invoice
-                $pesanan = \App\Models\Pesanan::where('nomor_invoice', $refNo)->first();
-
-                if ($pesanan) {
-                    // 2. Jika status DANA adalah PAID (00), maka update pesanan
-                    if ($isSuccess) {
-                        $pesanan->update([
-                            'status' => 'Selesai',          // Update sesuai kolom database Anda
-                            'status_pesanan' => 'Selesai',
-                            'updated_at' => now()
-                        ]);
-
-                        Log::info('[DANA WEBHOOK] Pesanan ' . $refNo . ' berhasil diupdate ke Selesai.');
-
-                        // 3. (OPSIONAL) Panggil KiriminAja di sini jika belum otomatis
-                        // app(\App\Http\Controllers\Admin\PesananController::class)->triggerResi($pesanan);
-                    } else {
-                        // Jika pembayaran gagal
-                        $pesanan->update([
-                            'status' => 'Dibatalkan',
-                            'status_pesanan' => 'Dibatalkan'
-                        ]);
-                    }
-                } else {
-                    Log::error('[DANA WEBHOOK] Pesanan tidak ditemukan di tabel Pesanan: ' . $refNo);
+            // 3. CEK TOPUP MEMBER (Default / DEP-)
+            else {
+                $trx = DB::table('dana_transactions')->where('reference_no', $refNo)->first();
+                if ($trx) {
+                    return $this->processMemberTransaction($trx, $statusRaw, $data, $paidAmount);
                 }
-
-                return $this->respondSuccessDANA();
             }
 
-            // =====================================================
-            // UNKNOWN
-            // =====================================================
-            Log::warning('[DANA WEBHOOK] UNKNOWN REF', [
-                'ref' => $refNo
-            ]);
-
-            return $this->respondSuccessDANA();
+            Log::warning("[DANA-WEBHOOK] Transaksi Tidak Dikenali: $refNo");
+            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success (Ignored)']);
 
         } catch (Exception $e) {
-
-            Log::error('[DANA WEBHOOK] ERROR', [
-                'message' => $e->getMessage(),
-                'line'    => $e->getLine(),
-            ]);
-
-            return response()->json([
-                'responseCode'    => '5005601',
-                'responseMessage' => 'Internal Server Error'
-            ], 500);
+            Log::error("[DANA-WEBHOOK] Fatal Error: " . $e->getMessage());
+            return response()->json(['responseCode' => '500', 'message' => 'Internal Error'], 500);
         }
     }
 
-   /**
-     * =========================================================
-     * UNIVERSAL RETURN PAGE (DANA CALLBACK/RETURN)
-     * =========================================================
+    /**
+     * [BARU] PROSES ORDER BARANG (SCK-...)
      */
-    public function returnPage(Request $request)
+    private function processOrderTransaction($orderNumber, $statusRaw, $data, $paidAmount)
     {
-        Log::info('[DANA RETURN PAGE] Hit', [
-            'query'      => $request->all(),
-            'full_url'   => $request->fullUrl(),
-            'user_agent' => $request->userAgent(),
-        ]);
+        Log::info("[DANA-WEBHOOK] Tipe: ORDER BARANG | Ref: " . $orderNumber);
 
+        // Cari Order
+        $order = Order::where('order_number', $orderNumber)->first();
+
+        if (!$order) {
+            Log::error("[DANA-WEBHOOK] Order #$orderNumber tidak ditemukan di database.");
+            return response()->json(['responseCode' => '404', 'message' => 'Order Not Found'], 404);
+        }
+
+        // Cek Idempotency (Jika sudah lunas, jangan diproses lagi)
+        if ($order->payment_status === 'paid') {
+            Log::info("[DANA-WEBHOOK] Order #$orderNumber sudah lunas sebelumnya. Skip.");
+            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
+        }
+
+        $isSuccess = in_array($statusRaw, ['SUCCESS', 'FINISHED', '00', 'PAID']);
+
+        if ($isSuccess) {
+            DB::beginTransaction();
+            try {
+                // 1. Update Status Order
+                $order->update([
+                    'status'         => 'processing',
+                    'payment_status' => 'paid',
+                    'note'           => $order->note . "\n[DANA PAID] Otomatis via Webhook " . now(),
+                    // Simpan JSON respons jika perlu debug nanti
+                    'payment_data' => json_encode($data)
+                ]);
+
+                // 2. Kirim Notifikasi WA (Langsung Dispatch Job)
+                $this->dispatchWaNotification($order, $paidAmount);
+
+                // 3. Proses Komisi Afiliasi (Jika pakai kupon)
+                if ($order->coupon_id && class_exists('App\Models\Coupon')) {
+                    $coupon = \App\Models\Coupon::find($order->coupon_id);
+                    if ($coupon) {
+                        $this->processAffiliateCommission($coupon->code, $paidAmount);
+                    }
+                }
+
+                DB::commit();
+                Log::info("[DANA-WEBHOOK] ✅ Order #$orderNumber BERHASIL LUNAS.");
+
+                return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
+
+            } catch (Exception $e) {
+                DB::rollBack();
+                Log::error("[DANA-WEBHOOK] Gagal Update Order: " . $e->getMessage());
+                return response()->json(['responseCode' => '500', 'message' => 'DB Error'], 500);
+            }
+        } else {
+            Log::warning("[DANA-WEBHOOK] Status Order Gagal/Pending: $statusRaw");
+            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success (Not Paid Yet)']);
+        }
+    }
+
+    /**
+     * PROSES TENANT (SALDO KE TABEL USERS)
+     */
+    private function processTenantTransaction($trx, $statusRaw, $data, $paidAmount)
+    {
+        Log::info("[DANA-WEBHOOK] Tipe: TENANT/ADMIN | Ref: " . $trx->reference_no);
+
+        if ($trx->status === 'SUCCESS') {
+            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
+        }
+
+        $isSuccess = in_array($statusRaw, ['SUCCESS', 'FINISHED', '00']);
+
+        DB::beginTransaction();
         try {
-            // 1. AMBIL REF DENGAN PRIORITAS: URL -> SESSION -> TERAKHIR
-            $refNo = $request->query('trx_id')
-                  ?? $request->partnerReferenceNo
-                  ?? $request->bizNo
-                  ?? $request->id
-                  ?? session('last_dana_ref')
-                  ?? '';
+            if ($isSuccess) {
+                // 1. Update Log dana_transactions
+                DB::table('dana_transactions')->where('reference_no', $trx->reference_no)->update([
+                    'status' => 'SUCCESS',
+                    'response_payload' => json_encode($data),
+                    'updated_at' => now()
+                ]);
 
-            if (!$refNo) {
-                Log::warning('[DANA RETURN] REF EMPTY - Tidak ditemukan referensi di URL maupun Session');
-                return redirect('/')->with('error', 'Transaksi tidak ditemukan.');
+                // 2. Update PosTopUp
+                PosTopUp::where('reference_no', $trx->reference_no)->update(['status' => 'SUCCESS', 'response_payload' => json_encode($data)]);
+
+                // 3. Tambah Saldo ADMIN
+                $userId = $trx->affiliate_id;
+                DB::table('users')->where('id', $userId)->increment('saldo', $paidAmount);
+
+                // 4. Catat Mutasi
+                try {
+                    DB::table('user_mutations')->insert([
+                        'user_id'      => $userId,
+                        'type'         => 'CREDIT',
+                        'amount'       => $paidAmount,
+                        'description'  => 'Topup DANA (' . $trx->reference_no . ')',
+                        'reference_no' => $trx->reference_no,
+                        'created_at'   => now(),
+                        'updated_at'   => now()
+                    ]);
+                } catch (\Exception $e) { Log::warning("Skip mutasi: " . $e->getMessage()); }
+
+                Log::info("[DANA-WEBHOOK] ✅ Saldo ADMIN USER ID {$userId} bertambah: +$paidAmount");
+
+            } else {
+                DB::table('dana_transactions')->where('reference_no', $trx->reference_no)->update(['status' => 'FAILED']);
+                PosTopUp::where('reference_no', $trx->reference_no)->update(['status' => 'FAILED']);
             }
-
-            // 2. NORMALIZE REF
-            $refNo = $this->normalizeReference($refNo);
-            Log::info('[DANA RETURN] NORMALIZED REF: ' . $refNo);
-
-            // 3. DETECT PLATFORM (Mobile vs Web)
-            $isMobile = ($request->header('X-Platform') === 'mobile' ||
-                         preg_match('/Android|iPhone|iPad|Mobile/i', $request->userAgent()));
-
-            // 4. CEK PPOB
-            $trx = Transaction::where('ref_id', $refNo)
-                ->orWhere('reference_id', str_replace('PASCA', '', $refNo))
-                ->first();
-
-
-            if ($trx) {
-                Session::forget('last_dana_ref'); // Bersihkan session
-                if ($isMobile) {
-                    return redirect()->away('sancakaexpress://ppob-success/' . $refNo);
-                }
-                return redirect()->to('https://tokosancaka.com/riwayatppob')->with('success', 'Pembayaran PPOB berhasil.');
-            }
-
-            // 5. CEK TOPUP
-            $topup = TopUp::where('transaction_id', $refNo)->first();
-            if ($topup) {
-                Session::forget('last_dana_ref');
-                if ($isMobile) {
-                    return redirect()->away('sancakaexpress://topup-success/' . $refNo);
-                }
-                return redirect('/')->with('success', 'Topup berhasil diproses.');
-            }
-
-            // 6. CEK MARKETPLACE ORDER
-            $order = Order::where('invoice_number', $refNo)->first();
-            if ($order) {
-                Session::forget('last_dana_ref');
-                if ($isMobile) {
-                    // Redirect ke riwayat pesanan sesuai permintaanmu
-                    return redirect()->away('sancakaexpress://riwayatpesanan');
-                }
-                return redirect()->to('https://tokosancaka.com/customer/pesanan/riwayat-belanja')
-                    ->with('success', 'Pembayaran berhasil.');
-            }
-
-            // 7. FALLBACK
-            Log::warning('[DANA RETURN] DATA NOT FOUND untuk Ref: ' . $refNo);
-            return redirect('/')->with('success', 'Transaksi berhasil diproses.');
+            DB::commit();
+            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
 
         } catch (Exception $e) {
-            Log::error('[DANA RETURN PAGE ERROR]', [
-                'message' => $e->getMessage(),
-                'line'    => $e->getLine(),
-            ]);
-
-            return redirect('/')->with('error', 'Terjadi kesalahan redirect pembayaran.');
+            DB::rollBack();
+            throw $e;
         }
     }
 
     /**
-     * =========================================================
-     * NORMALIZE REFERENCE
-     * =========================================================
+     * PROSES MEMBER (SALDO KE TABEL AFFILIATES)
      */
-    private function normalizeReference($refNo)
+    private function processMemberTransaction($trx, $statusRaw, $data, $paidAmount)
     {
-        if (
-            Str::startsWith($refNo, 'SCKORD') &&
-            !str_contains($refNo, '-')
-        ) {
+        Log::info("[DANA-WEBHOOK] Tipe: MEMBER | Ref: " . $trx->reference_no);
 
-            return 'SCK-ORD-' . substr($refNo, 6);
+        if ($trx->status === 'SUCCESS') {
+            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
         }
 
-        if (
-            Str::startsWith($refNo, 'TOPUP') &&
-            !str_contains($refNo, '-')
-        ) {
+        $isSuccess = in_array($statusRaw, ['SUCCESS', 'FINISHED', '00']);
 
-            return 'TOPUP-' . substr($refNo, 5);
+        DB::beginTransaction();
+        try {
+            if ($isSuccess) {
+                // 1. Update Log
+                DB::table('dana_transactions')->where('id', $trx->id)->update([
+                    'status' => 'SUCCESS',
+                    'response_payload' => json_encode($data),
+                    'updated_at' => now()
+                ]);
+
+                // 2. Tambah Saldo Member
+                if (in_array($trx->type, ['TOPUP', 'DEPOSIT'])) {
+                    DB::table('affiliates')->where('id', $trx->affiliate_id)->increment('balance', $paidAmount);
+
+                    try {
+                        DB::table('balance_mutations')->insert([
+                            'affiliate_id' => $trx->affiliate_id,
+                            'type'         => 'CREDIT',
+                            'amount'       => $paidAmount,
+                            'description'  => 'Topup DANA (' . $trx->reference_no . ')',
+                            'reference_no' => $trx->reference_no,
+                            'created_at'   => now(),
+                            'updated_at'   => now()
+                        ]);
+                    } catch (\Exception $e) { Log::warning("Skip mutasi member: " . $e->getMessage()); }
+
+                    Log::info("[DANA-WEBHOOK] ✅ Saldo Member ID {$trx->affiliate_id} bertambah: +$paidAmount");
+                }
+            } else {
+                DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'FAILED']);
+            }
+            DB::commit();
+            return response()->json(['responseCode' => '2000000', 'responseMessage' => 'Success']);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            throw $e;
         }
-
-        return trim($refNo);
     }
 
-    /**
-     * =========================================================
-     * STANDARD SUCCESS RESPONSE DANA SNAP
-     * =========================================================
-     */
-    private function respondSuccessDANA()
+    // --- HELPER KHUSUS ORDER ---
+
+    private function dispatchWaNotification($order, $paidAmount)
     {
-        return response()->json([
-            'responseCode'    => '2005600',
-            'responseMessage' => 'Successful'
-        ])->withHeaders([
-            'Content-Type' => 'application/json',
-            'X-TIMESTAMP'  => Carbon::now('Asia/Jakarta')
-                ->format('Y-m-d\TH:i:sP')
-        ]);
+        try {
+            $msgCustomer = "Halo Kak *{$order->customer_name}* 👋\n\n" .
+                           "Terima kasih! Pembayaran sebesar *Rp " . number_format($paidAmount, 0, ',', '.') . "* via DANA berhasil kami terima.\n\n" .
+                           "🧾 *Invoice:* {$order->order_number}\n" .
+                           "📦 *Status:* Diproses\n\n" .
+                           "Lihat Struk: " . url('/invoice/' . $order->order_number);
+
+            if ($order->customer_phone) {
+                \App\Jobs\SendWhatsappJob::dispatch($order->customer_phone, $msgCustomer);
+            }
+
+            // WA Admin
+            $msgAdmin = "💰 *ORDER DANA MASUK*\n\n" .
+                        "Invoice: {$order->order_number}\n" .
+                        "Nama: {$order->customer_name}\n" .
+                        "Total: Rp " . number_format($paidAmount, 0, ',', '.') . "\n" .
+                        "Status: LUNAS (DANA)";
+
+            \App\Jobs\SendWhatsappJob::dispatch('085745808809', $msgAdmin);
+
+        } catch (\Exception $e) {
+            Log::error("WA Job Error: " . $e->getMessage());
+        }
+    }
+
+    private function processAffiliateCommission($couponCode, $finalPrice)
+    {
+        try {
+            $affiliateOwner = Affiliate::where('coupon_code', $couponCode)->first();
+            if ($affiliateOwner) {
+                $komisiRate = 0.10;
+                $komisiDiterima = $finalPrice * $komisiRate;
+                $affiliateOwner->increment('balance', $komisiDiterima);
+
+                \App\Jobs\SendWhatsappJob::dispatch(
+                    $affiliateOwner->whatsapp,
+                    "💰 *KOMISI MASUK*\n\nSelamat! Kupon *{$couponCode}* digunakan.\nKomisi: Rp " . number_format($komisiDiterima, 0, ',', '.')
+                );
+            }
+        } catch (\Exception $e) {
+            Log::error("Affiliate Commission Error: " . $e->getMessage());
+        }
     }
 }
