@@ -34,6 +34,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'doku/*',
             'ppob/webhook',
             'api/midtrans/*', // Mengecualikan semua route di dalam prefix midtrans
+            '/api/mobile/dana/notify',
+            '/api/mobile/dana/callback',
+            '/api/mobile/dana/*',
         ]);
 
         // --- TAMBAHKAN BAGIAN INI ---
