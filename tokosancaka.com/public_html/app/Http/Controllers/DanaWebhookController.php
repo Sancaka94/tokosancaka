@@ -299,7 +299,7 @@ class DanaWebhookController extends Controller
                 Session::forget('last_dana_ref');
                 if ($isMobile) {
                     // Redirect ke riwayat pesanan sesuai permintaanmu
-                    return redirect()->away('sancakaexpress://riwayatpesanan');
+                    return redirect()->away('sancakaexpress://RiwayatBelanja/' . $refNo);
                 }
                 return redirect()->to('https://tokosancaka.com/customer/pesanan/riwayat-belanja')
                     ->with('success', 'Pembayaran berhasil.');
