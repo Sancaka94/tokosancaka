@@ -1,22 +1,23 @@
 <?php
 
 namespace App\Http\Controllers;
+use Exception;
 
 use App\Http\Controllers\Admin\PesananController as AdminPesananController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Customer\TopUpController;
-use Illuminate\Support\Facades\Session;
-
 
 use App\Models\Order;
 use App\Models\TopUp;
 use App\Models\Transaction;
 
 use Carbon\Carbon;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\DB;
+
 use Illuminate\Support\Str;
 
 class DanaWebhookController extends Controller
@@ -223,7 +224,7 @@ class DanaWebhookController extends Controller
                   ?? $request->partnerReferenceNo
                   ?? $request->bizNo
                   ?? $request->id
-                  ?? Session::get('last_dana_ref')
+                  ?? session('last_dana_ref')
                   ?? '';
 
             if (!$refNo) {
