@@ -165,19 +165,37 @@ class DanaWebhookController extends Controller
             }
 
             // =====================================================
-            // LEGACY PESANAN
+            // LEGACY PESANAN (FIXED)
             // =====================================================
             if (Str::startsWith($refNo, 'SCK-')) {
+                Log::info('[DANA WEBHOOK] Proses Pesanan: ' . $refNo . ' Status: ' . $internalStatus);
 
-                Log::info('[DANA WEBHOOK] LEGACY PESANAN', [
-                    'ref' => $refNo
-                ]);
+                // 1. Cari pesanan di tabel Pesanan berdasarkan nomor_invoice
+                $pesanan = \App\Models\Pesanan::where('nomor_invoice', $refNo)->first();
 
-                AdminPesananController::processPesananCallback(
-                    $refNo,
-                    $internalStatus,
-                    $data
-                );
+                if ($pesanan) {
+                    // 2. Jika status DANA adalah PAID (00), maka update pesanan
+                    if ($isSuccess) {
+                        $pesanan->update([
+                            'status' => 'Selesai',          // Update sesuai kolom database Anda
+                            'status_pesanan' => 'Selesai',
+                            'updated_at' => now()
+                        ]);
+
+                        Log::info('[DANA WEBHOOK] Pesanan ' . $refNo . ' berhasil diupdate ke Selesai.');
+
+                        // 3. (OPSIONAL) Panggil KiriminAja di sini jika belum otomatis
+                        // app(\App\Http\Controllers\Admin\PesananController::class)->triggerResi($pesanan);
+                    } else {
+                        // Jika pembayaran gagal
+                        $pesanan->update([
+                            'status' => 'Dibatalkan',
+                            'status_pesanan' => 'Dibatalkan'
+                        ]);
+                    }
+                } else {
+                    Log::error('[DANA WEBHOOK] Pesanan tidak ditemukan di tabel Pesanan: ' . $refNo);
+                }
 
                 return $this->respondSuccessDANA();
             }
