@@ -1343,3 +1343,9 @@ Route::post(
 )->name('dana.webhook');
 
 
+// Tambahkan di web.php
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dana/start-binding', [\App\Http\Controllers\Customer\TopUpController::class, 'startBinding']);
+    Route::get('/dana/callback', [\App\Http\Controllers\Customer\TopUpController::class, 'handleCallback']);
+});
+
