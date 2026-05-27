@@ -66,7 +66,7 @@ Route::get('/system-status', [\App\Http\Controllers\Admin\DashboardController::c
 // ROUTE WEBHOOK & CALLBACK DANA GATEWAY (TIDAK BUTUH LOGIN)
 // =========================================================================
 Route::post('/dana/notify', [\App\Http\Controllers\Api\Mobile\DanaGatewayMobileController::class, 'handleNotify'])->name('dana.notify');
-Route::get('/dana/return', [\App\Http\Controllers\Api\Mobile\DanaGatewayMobileController::class, 'returnPage'])->name('dana.return');
+Route::get('/dana/return', [\App\Http\Controllers\DanaWebhookController::class, 'returnPage'])->name('dana.return');
 Route::get('/dana/callback', [\App\Http\Controllers\Api\Mobile\DanaGatewayMobileController::class, 'handleCallback'])->name('dana.callback');
 
 
