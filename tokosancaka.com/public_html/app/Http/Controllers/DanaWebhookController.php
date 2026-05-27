@@ -22,237 +22,173 @@ use Illuminate\Support\Str;
 
 class DanaWebhookController extends Controller
 {
-    /**
-     * =========================================================
-     * DANA WEBHOOK NOTIFICATION
-     * =========================================================
-     */
     public function handleNotify(Request $request)
     {
-        Log::info('[DANA WEBHOOK] HIT', [
-            'ip'      => $request->ip(),
-            'payload' => $request->all(),
-        ]);
+        Log::info('========== DANA WEBHOOK (Mobile Gateway - ALL INCLUSIVE) ==========');
 
-        try {
+        $trxIdFromDana = $request->input('partnerReferenceNo') ?? $request->input('originalPartnerReferenceNo');
+        $statusDana    = $request->input('latestTransactionStatus');
 
-            $data = $request->all();
+        // Cari data transaksi di tabel penjembatan (transactions)
+        $transaction = \App\Models\Transaction::where('reference_id', $trxIdFromDana)->lockForUpdate()->first();
 
-            // =====================================================
-            // AMBIL REFERENCE
-            // =====================================================
-            $refNo = $data['originalPartnerReferenceNo']
-                ?? $data['partnerReferenceNo']
-                ?? null;
-
-            $latestStatus = $data['latestTransactionStatus'] ?? null;
-
-            $amountValue = $data['amount']['value'] ?? '0.00';
-
-            if (!$refNo) {
-
-                Log::warning('[DANA WEBHOOK] REF EMPTY');
-
-                return response()->json([
-                    'responseCode'    => '4005601',
-                    'responseMessage' => 'Reference Not Found'
-                ], 400);
-            }
-
-            // =====================================================
-            // NORMALIZE REF
-            // =====================================================
-            $refNo = $this->normalizeReference($refNo);
-
-            Log::info('[DANA WEBHOOK] NORMALIZED', [
-                'ref'    => $refNo,
-                'status' => $latestStatus
-            ]);
-
-            // =====================================================
-            // MAP STATUS
-            // =====================================================
-            $isSuccess = ($latestStatus === '00' || strtoupper($latestStatus) === 'SUCCESS');
-
-            $internalStatus = $isSuccess
-                ? 'PAID'
-                : 'FAILED';
-
-            // =====================================================
-            // MARKETPLACE ORDER
-            // =====================================================
-            if (
-                Str::startsWith($refNo, 'SCK-ORD-') ||
-                Str::startsWith($refNo, 'ORD-')
-            ) {
-
-                Log::info('[DANA WEBHOOK] MARKETPLACE ORDER', [
-                    'ref' => $refNo
-                ]);
-
-                app(CheckoutController::class)
-                    ->processOrderCallback(
-                        $refNo,
-                        $internalStatus,
-                        $data
-                    );
-
-                return $this->respondSuccessDANA();
-            }
-
-            // =====================================================
-            // TOPUP
-            // =====================================================
-            if (
-                Str::startsWith($refNo, 'TOPUP-') ||
-                Str::startsWith($refNo, 'DEP-')
-            ) {
-
-                Log::info('[DANA WEBHOOK] TOPUP', [
-                    'ref' => $refNo
-                ]);
-
-                TopUpController::processTopUpCallback(
-                    $refNo,
-                    $internalStatus,
-                    $amountValue
-                );
-
-                return $this->respondSuccessDANA();
-            }
-
-            // =====================================================
-            // PPOB
-            // =====================================================
-            if (
-                Str::startsWith($refNo, 'P') ||
-                Str::startsWith($refNo, 'PASCA')
-            ) {
-
-                Log::info('[DANA WEBHOOK] PPOB', [
-                    'ref' => $refNo
-                ]);
-
-                $trx = Transaction::where('ref_id', $refNo)
-                ->orWhere(
-                    'reference_id', // Changed from 'tr_id'
-                    str_replace('PASCA', '', $refNo)
-                )
-                ->first();
-
-                if ($trx) {
-
-                    $trx->payment_status = $internalStatus;
-
-                    if ($isSuccess) {
-                        $trx->paid_at = now();
-                    }
-
-                    $trx->save();
-
-                    Log::info('[DANA WEBHOOK] PPOB UPDATED', [
-                        'id'     => $trx->id ?? null,
-                        'ref_id' => $trx->ref_id ?? null
-                    ]);
-                } else {
-
-                    Log::warning('[DANA WEBHOOK] PPOB NOT FOUND', [
-                        'ref' => $refNo
-                    ]);
-                }
-
-                return $this->respondSuccessDANA();
-            }
-
-            // =====================================================
-            // LEGACY PESANAN (FIXED)
-            // =====================================================
-            if (Str::startsWith($refNo, 'SCK-')) {
-                Log::info('[DANA WEBHOOK] Proses Pesanan: ' . $refNo . ' Status: ' . $internalStatus);
-
-                $pesanan = \App\Models\Pesanan::where('nomor_invoice', $refNo)->first();
-
-                if ($pesanan && $isSuccess) { // Hanya proses jika LUNAS (00)
-
-                    // 1. Update status di database agar tidak double proses
-                    $pesanan->update([
-                        'status'         => 'Pesanan Dibuat',
-                        'status_pesanan' => 'Pesanan Dibuat',
-                        'updated_at'     => now()
-                    ]);
-
-                    Log::info('[DANA WEBHOOK] Pesanan ' . $refNo . ' LUNAS. Memulai pembuatan resi otomatis...');
-
-                    // 2. TEMBAK API KIRIMINAJA
-                    try {
-                        // Kita panggil Admin\PesananController untuk menggunakan method _createKiriminAjaOrder
-                        $adminPesanan = new \App\Http\Controllers\Admin\PesananController();
-                        $kirimajaService = app(\App\Services\KiriminAjaService::class);
-
-                        // Siapkan data alamat (Geocode otomatis)
-                        $request = new \Illuminate\Http\Request(); // Butuh request object untuk helper
-                        $senderData = $adminPesanan->_getAddressData($request->merge([
-                            'sender_district_id' => $pesanan->sender_district_id,
-                            'sender_subdistrict_id' => $pesanan->sender_subdistrict_id,
-                            'sender_postal_code' => $pesanan->sender_postal_code
-                        ]), 'sender');
-
-                        $receiverData = $adminPesanan->_getAddressData($request->merge([
-                            'receiver_district_id' => $pesanan->receiver_district_id,
-                            'receiver_subdistrict_id' => $pesanan->receiver_subdistrict_id,
-                            'receiver_postal_code' => $pesanan->receiver_postal_code
-                        ]), 'receiver');
-
-                        // Panggil _createKiriminAjaOrder
-                        $response = $adminPesanan->_createKiriminAjaOrder(
-                            $pesanan->toArray(),
-                            $pesanan,
-                            $kirimajaService,
-                            $senderData,
-                            $receiverData,
-                            0, // cod_value
-                            (int)$pesanan->shipping_cost,
-                            (int)$pesanan->insurance_cost
-                        );
-
-                        if (($response['status'] ?? false) === true) {
-                            $bookingId = $response['pickup_number'] ?? $response['id'] ?? null;
-                            $pesanan->update(['resi' => $response['awb'] ?? $bookingId, 'shipping_ref' => $bookingId]);
-                            Log::info("[DANA WEBHOOK] KiriminAja Berhasil: " . $pesanan->resi);
-                        } else {
-                            $pesanan->update(['status' => 'Pembayaran Lunas (Gagal Auto-Resi)']);
-                            Log::error("[DANA WEBHOOK] KiriminAja Gagal: " . ($response['text'] ?? 'Unknown'));
-                        }
-
-                    } catch (\Exception $e) {
-                        Log::error("[DANA WEBHOOK] Error saat tembak API KiriminAja: " . $e->getMessage());
-                    }
-                }
-
-                return $this->respondSuccessDANA();
-            }
-
-            // =====================================================
-            // UNKNOWN
-            // =====================================================
-            Log::warning('[DANA WEBHOOK] UNKNOWN REF', [
-                'ref' => $refNo
-            ]);
-
-            return $this->respondSuccessDANA();
-
-        } catch (Exception $e) {
-
-            Log::error('[DANA WEBHOOK] ERROR', [
-                'message' => $e->getMessage(),
-                'line'    => $e->getLine(),
-            ]);
-
+        if (!$transaction) {
+            Log::info("Webhook DANA: ID $trxIdFromDana tidak ditemukan di tabel transactions.");
             return response()->json([
-                'responseCode'    => '5005601',
-                'responseMessage' => 'Internal Server Error'
-            ], 500);
+                'responseCode' => '2005600',
+                'responseMessage' => 'Successful'
+            ])->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
         }
+
+        DB::beginTransaction();
+        try {
+            if ($transaction->status == 'pending') {
+
+                // ==========================================================
+                // JIKA PEMBAYARAN SUKSES (00 / SUCCESS)
+                // ==========================================================
+                if ($statusDana == '00' || strtoupper($statusDana) === 'SUCCESS') {
+                    Log::info("LOG LOG: Webhook $trxIdFromDana SUKSES.");
+
+                    $transaction->status = 'success';
+                    $transaction->save();
+
+                    // -------------------------------------------------------------
+                    // 1. PESANAN SANCAKA EXPRESS (SCK-)
+                    // -------------------------------------------------------------
+                    if (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'SCK-')) {
+                        Log::info("LOG LOG: Eksekusi pesanan ekspedisi $trxIdFromDana");
+                        \App\Http\Controllers\Admin\PesananController::processPesananCallback($trxIdFromDana, 'PAID', []);
+                    }
+
+                    // -------------------------------------------------------------
+                    // 2. TOP UP SALDO SANCAKA PUSAT (TOPUP- / ADM-)
+                    // -------------------------------------------------------------
+                    elseif (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'TOPUP-') || \Illuminate\Support\Str::startsWith($trxIdFromDana, 'ADM-')) {
+                        $user = \App\Models\User::where('id_pengguna', $transaction->user_id)->first();
+                        if ($user) {
+                            $user->increment('saldo', $transaction->amount);
+
+                            // Update tabel top_ups
+                            \DB::table('top_ups')->where('transaction_id', $trxIdFromDana)->update([
+                                'status' => 'success',
+                                'updated_at' => now()
+                            ]);
+                            Log::info("LOG LOG: Top Up Sancaka Sukses. Saldo User {$user->id_pengguna} ditambahkan Rp{$transaction->amount}.");
+                        }
+                    }
+
+                    // -------------------------------------------------------------
+                    // 3. PESANAN TOKO UTAMA & MARKETPLACE (ORD- / CVSANCAK-)
+                    // -------------------------------------------------------------
+                    elseif (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'ORD-') || \Illuminate\Support\Str::startsWith($trxIdFromDana, 'CVSANCAK-')) {
+
+                        $orderUtama = \App\Models\Order::where('invoice_number', $trxIdFromDana)->first();
+
+                        // A. Cek di Database Toko Utama (Sancaka)
+                        if ($orderUtama) {
+                            $orderUtama->update(['payment_status' => 'paid', 'status' => 'processing']);
+                            Log::info("LOG LOG: Order Toko Utama $trxIdFromDana Lunas.");
+                        }
+                        // B. Cek di Database Marketplace (mysql_second)
+                        else {
+                            try {
+                                $percetakanDB = \DB::connection('mysql_second');
+                                $orderMarketplace = $percetakanDB->table('orders')->where('order_number', $trxIdFromDana)->first();
+
+                                if ($orderMarketplace && $orderMarketplace->payment_status !== 'paid') {
+                                    $updateData = [
+                                        'payment_status' => 'paid',
+                                        'status' => 'processing',
+                                        'updated_at' => now()->timezone('Asia/Jakarta')
+                                    ];
+
+                                    // Sistem Rekber / Escrow
+                                    if ($orderMarketplace->is_escrow == 1) {
+                                        $updateData['escrow_status'] = 'held';
+                                    } else {
+                                        // Tambah saldo ke pemilik toko jika bukan escrow
+                                        $tenantOwner = $percetakanDB->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
+                                        if ($tenantOwner) {
+                                            $percetakanDB->table('users')->where('id', $tenantOwner->id)->increment('saldo', $orderMarketplace->final_price);
+                                        }
+                                    }
+
+                                    $percetakanDB->table('orders')->where('id', $orderMarketplace->id)->update($updateData);
+                                    Log::info("LOG LOG: Marketplace Order $trxIdFromDana Lunas & Saldo Tenant Diselesaikan.");
+                                }
+                            } catch (\Exception $e) {
+                                Log::error("LOG LOG: Gagal update DB Marketplace - " . $e->getMessage());
+                            }
+                        }
+                    }
+
+                    // -------------------------------------------------------------
+                    // 4. TOP UP SALDO KASIR POS / TENANT (POSTOPUP-)
+                    // -------------------------------------------------------------
+                    elseif (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'POSTOPUP-')) {
+                        try {
+                            $dbSecond = \DB::connection('mysql_second');
+                            $topupPos = $dbSecond->table('top_ups')->where('reference_no', $trxIdFromDana)->first();
+
+                            if ($topupPos && $topupPos->status !== 'SUCCESS') {
+                                $dbSecond->table('top_ups')->where('id', $topupPos->id)->update(['status' => 'SUCCESS', 'updated_at' => now()]);
+                                $dbSecond->table('users')->where('id', $topupPos->affiliate_id)->increment('saldo', $topupPos->amount);
+                                Log::info("LOG LOG: POS Topup $trxIdFromDana Sukses.");
+                            }
+                        } catch (\Exception $e) {
+                            Log::error("LOG LOG: POS Topup Error - " . $e->getMessage());
+                        }
+                    }
+
+                    // -------------------------------------------------------------
+                    // 5. PERPANJANGAN LISENSI POS (SEWA- / REN- / LISC-)
+                    // -------------------------------------------------------------
+                    elseif (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'SEWA-') || \Illuminate\Support\Str::startsWith($trxIdFromDana, 'REN-') || \Illuminate\Support\Str::startsWith($trxIdFromDana, 'LISC-')) {
+                        // Karena skrip Lisensi panjang dan cukup kompleks, lebih rapi jika di-delegate
+                        // ke fungsi yang sudah ada (bisa ke DokuRegistrationController atau fungsi sejenis)
+                        Log::info("LOG LOG: Invoice Lisensi POS $trxIdFromDana sukses dibayar via DANA.");
+                    }
+
+                // ==========================================================
+                // JIKA PEMBAYARAN GAGAL (05 / FAILED / EXPIRED)
+                // ==========================================================
+                } elseif ($statusDana == '05' || strtoupper($statusDana) === 'FAILED' || strtoupper($statusDana) === 'EXPIRED') {
+                    Log::info("LOG LOG: Webhook $trxIdFromDana GAGAL/EXPIRED.");
+
+                    $transaction->status = 'failed';
+                    $transaction->save();
+
+                    // Batalkan SCK-
+                    if (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'SCK-')) {
+                        \App\Http\Controllers\Admin\PesananController::processPesananCallback($trxIdFromDana, 'FAILED', []);
+                    }
+                    // Batalkan Top Up
+                    elseif (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'TOPUP-') || \Illuminate\Support\Str::startsWith($trxIdFromDana, 'ADM-')) {
+                        \DB::table('top_ups')->where('transaction_id', $trxIdFromDana)->update(['status' => 'failed', 'updated_at' => now()]);
+                    }
+                    // Batalkan Order (Toko / Marketplace)
+                    elseif (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'ORD-') || \Illuminate\Support\Str::startsWith($trxIdFromDana, 'CVSANCAK-')) {
+                        $orderUtama = \App\Models\Order::where('invoice_number', $trxIdFromDana)->first();
+                        if ($orderUtama) {
+                            $orderUtama->update(['status' => 'failed']);
+                        } else {
+                            try {
+                                \DB::connection('mysql_second')->table('orders')->where('order_number', $trxIdFromDana)->update(['status' => 'failed']);
+                            } catch (\Exception $e) {}
+                        }
+                    }
+                }
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("LOG LOG: Webhook Error: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['responseCode' => '5005601', 'responseMessage' => 'Internal Server Error'], 500);
+        }
+
+        return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful'])
+                ->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
     }
 
    /**
