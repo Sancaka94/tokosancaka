@@ -58,6 +58,10 @@ class VerifyCsrfToken extends Middleware
 
             '/api/midtrans/*',
 
+            '/api/mobile/dana/notify',
+            '/api/mobile/dana/callback',
+            '/api/mobile/dana/*',
+
         ];
 
 }
