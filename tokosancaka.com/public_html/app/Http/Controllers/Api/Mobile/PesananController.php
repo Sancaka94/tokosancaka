@@ -1185,8 +1185,19 @@ TEXT;
             $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
                 ->timeout(60)->post($baseUrl, $payload);
 
+            // Log the raw response for debugging purposes
+            Log::info('[API MOBILE] Raw Tripay Response:', ['status' => $response->status(), 'body' => $response->body()]);
+
             if (!$response->successful()) {
-                return ['success' => false, 'message' => 'Gagal menghubungi server pembayaran (HTTP ' . $response->status() . ').'];
+                // Attempt to extract a more specific error message from Tripay's JSON response
+                $errorMessage = 'Gagal menghubungi server pembayaran (HTTP ' . $response->status() . ').';
+                $responseJson = $response->json();
+
+                if (isset($responseJson['message'])) {
+                    $errorMessage = 'Tripay Error: ' . $responseJson['message'];
+                }
+
+                return ['success' => false, 'message' => $errorMessage];
             }
 
             $responseData = $response->json();
@@ -1197,7 +1208,7 @@ TEXT;
             return $responseData;
         } catch (\Exception $e) {
             Log::error('Error saat membuat transaksi Tripay Mobile: ' . $e->getMessage());
-            return ['success' => false, 'message' => 'Terjadi kesalahan internal saat memproses pembayaran.'];
+            return ['success' => false, 'message' => 'Terjadi kesalahan internal saat memproses pembayaran: ' . $e->getMessage()];
         }
     }
 
