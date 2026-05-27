@@ -1617,7 +1617,9 @@ class DanaGatewayMobileController extends Controller
 
     public function returnPage(Request $request)
     {
-        Log::info('DANA Return Page Hit. Redirecting to History.');
-        return response()->json(['success' => true, 'message' => 'Pembayaran Anda sedang diproses oleh sistem. Silakan cek riwayat transaksi.']);
+        Log::info('DANA Return Page Hit. Menampilkan halaman sukses (Blade) ke user.');
+
+        // Memanggil file resources/views/pembayaran_suksesdana.blade.php
+        return view('pembayaran_suksesdana');
     }
 }
