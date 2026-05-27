@@ -1437,19 +1437,20 @@ class DanaGatewayMobileController extends Controller
         DB::beginTransaction();
         try {
             if ($transaction->status == 'pending') {
-                // Dukung DANA SNAP ('00') dan status DANA lawas ('SUCCESS')
+
+                // Mendukung status '00' (SNAP) atau 'SUCCESS'
                 if ($statusDana == '00' || strtoupper($statusDana) === 'SUCCESS') {
                     Log::info("Webhook: $trxIdFromDana SUKSES.");
 
                     $transaction->status = 'success';
-                    $transaction->payment_status = 'PAID'; // Samakan dengan kolom
+                    $transaction->payment_status = 'PAID';
                     $transaction->save();
 
                     // ========================================================
-                    // CEK APAKAH INI PESANAN BARANG ATAU TOP UP SALDO
+                    // PISAHKAN LOGIKA: PESANAN vs TOP UP SALDO
                     // ========================================================
-                    if (Str::startsWith($trxIdFromDana, 'SCK-')) {
-                        // 1. INI ADALAH PESANAN (BELANJA)
+                    if (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'SCK-')) {
+                        // JIKA INI PEMBAYARAN KERANJANG/PESANAN
                         $pesanan = \App\Models\Pesanan::where('nomor_invoice', $trxIdFromDana)->first();
 
                         if ($pesanan) {
@@ -1458,14 +1459,14 @@ class DanaGatewayMobileController extends Controller
                                 'status_pesanan' => 'Pesanan Dibuat',
                                 'updated_at' => now()
                             ]);
-                            Log::info("[MOBILE WEBHOOK] Pesanan $trxIdFromDana Lunas (Pesanan Dibuat).");
+                            Log::info("[MOBILE WEBHOOK] Pesanan $trxIdFromDana Lunas, Status -> Pesanan Dibuat.");
                         }
                     } else {
-                        // 2. INI ADALAH MURNI TOP UP SALDO
-                        $user = User::where('id_pengguna', $transaction->user_id)->first();
+                        // JIKA INI MURNI TOP UP SALDO AKUN
+                        $user = \App\Models\User::where('id_pengguna', $transaction->user_id)->first();
                         if ($user) {
                             $user->increment('saldo', $transaction->amount);
-                            Log::info("[MOBILE WEBHOOK] Saldo User {$user->id_pengguna} ditambahkan sejumlah {$transaction->amount}.");
+                            Log::info("[MOBILE WEBHOOK] Saldo User {$user->id_pengguna} ditambahkan Rp{$transaction->amount}.");
                         }
                     }
 
@@ -1474,7 +1475,7 @@ class DanaGatewayMobileController extends Controller
                     $transaction->payment_status = 'FAILED';
                     $transaction->save();
 
-                    if (Str::startsWith($trxIdFromDana, 'SCK-')) {
+                    if (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'SCK-')) {
                         \App\Models\Pesanan::where('nomor_invoice', $trxIdFromDana)
                             ->update([
                                 'status' => 'Dibatalkan',
