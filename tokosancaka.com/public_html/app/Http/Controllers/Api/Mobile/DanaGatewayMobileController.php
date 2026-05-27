@@ -164,7 +164,7 @@ class DanaGatewayMobileController extends Controller
             "additionalInfo" => [
                 "mcc" => "5732",
                 "order" => [
-                    "orderTitle" => "Top Up " . $trxId,
+                    "orderTitle" => Str::startsWith($trxId, 'SCK-') ? "Pesanan " . $trxId : "Top Up " . $trxId,
                     "merchantTransType" => "01",
                     "scenario" => "REDIRECT",
                     "buyer" => [
@@ -1419,7 +1419,7 @@ class DanaGatewayMobileController extends Controller
 
     public function handleNotify(Request $request)
     {
-        Log::info('========== DANA WEBHOOK (Transactions Table) ==========');
+        Log::info('========== DANA WEBHOOK (Mobile Gateway) ==========');
 
         $trxIdFromDana = $request->input('partnerReferenceNo') ?? $request->input('originalPartnerReferenceNo');
         $statusDana    = $request->input('latestTransactionStatus');
@@ -1427,7 +1427,7 @@ class DanaGatewayMobileController extends Controller
         $transaction = Transaction::where('reference_id', $trxIdFromDana)->lockForUpdate()->first();
 
         if (!$transaction) {
-            Log::info("Webhook DANA: ID $trxIdFromDana tidak ditemukan di database. Merespon sukses untuk kebutuhan testing Sandbox.");
+            Log::info("Webhook DANA: ID $trxIdFromDana tidak ditemukan di DB.");
             return response()->json([
                 'responseCode' => '2005600',
                 'responseMessage' => 'Successful'
@@ -1437,20 +1437,50 @@ class DanaGatewayMobileController extends Controller
         DB::beginTransaction();
         try {
             if ($transaction->status == 'pending') {
-                if ($statusDana == '00') {
+                // Dukung DANA SNAP ('00') dan status DANA lawas ('SUCCESS')
+                if ($statusDana == '00' || strtoupper($statusDana) === 'SUCCESS') {
                     Log::info("Webhook: $trxIdFromDana SUKSES.");
 
                     $transaction->status = 'success';
+                    $transaction->payment_status = 'PAID'; // Samakan dengan kolom
                     $transaction->save();
 
-                    $user = User::where('id_pengguna', $transaction->user_id)->first();
-                    if ($user) {
-                        $user->increment('saldo', $transaction->amount);
+                    // ========================================================
+                    // CEK APAKAH INI PESANAN BARANG ATAU TOP UP SALDO
+                    // ========================================================
+                    if (Str::startsWith($trxIdFromDana, 'SCK-')) {
+                        // 1. INI ADALAH PESANAN (BELANJA)
+                        $pesanan = \App\Models\Pesanan::where('nomor_invoice', $trxIdFromDana)->first();
+
+                        if ($pesanan) {
+                            $pesanan->update([
+                                'status' => 'Pesanan Dibuat',
+                                'status_pesanan' => 'Pesanan Dibuat',
+                                'updated_at' => now()
+                            ]);
+                            Log::info("[MOBILE WEBHOOK] Pesanan $trxIdFromDana Lunas (Pesanan Dibuat).");
+                        }
+                    } else {
+                        // 2. INI ADALAH MURNI TOP UP SALDO
+                        $user = User::where('id_pengguna', $transaction->user_id)->first();
+                        if ($user) {
+                            $user->increment('saldo', $transaction->amount);
+                            Log::info("[MOBILE WEBHOOK] Saldo User {$user->id_pengguna} ditambahkan sejumlah {$transaction->amount}.");
+                        }
                     }
 
-                } elseif ($statusDana == '05') {
+                } elseif ($statusDana == '05' || strtoupper($statusDana) === 'FAILED') {
                     $transaction->status = 'failed';
+                    $transaction->payment_status = 'FAILED';
                     $transaction->save();
+
+                    if (Str::startsWith($trxIdFromDana, 'SCK-')) {
+                        \App\Models\Pesanan::where('nomor_invoice', $trxIdFromDana)
+                            ->update([
+                                'status' => 'Dibatalkan',
+                                'status_pesanan' => 'Dibatalkan'
+                            ]);
+                    }
                 }
             }
             DB::commit();
