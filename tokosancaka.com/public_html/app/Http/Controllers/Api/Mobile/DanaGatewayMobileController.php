@@ -1621,5 +1621,6 @@ class DanaGatewayMobileController extends Controller
 
         // Memanggil file resources/views/pembayaran_suksesdana.blade.php
         return view('pembayaran_suksesdana');
+
     }
 }
