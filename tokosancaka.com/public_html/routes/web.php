@@ -1341,3 +1341,6 @@ Route::post(
     '/api/dana/notify',
     [DanaWebhookController::class, 'handleNotify']
 )->name('dana.webhook');
+
+
+Route::get('/mobile/dashboard/dana-balance', [\App\Http\Controllers\Customer\TopUpController::class, 'checkMyDanaBalance']);
