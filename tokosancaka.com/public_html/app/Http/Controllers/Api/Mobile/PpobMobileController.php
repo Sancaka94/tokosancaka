@@ -421,7 +421,12 @@ class PpobMobileController extends Controller
                 Log::info("LOG LOG - RAW DB Saldo Terpotong (Pascabayar). User ID: {$user->id_pengguna}, Harga: {$harga}");
             }
 
-                return response()->json(['success' => true, 'message' => 'Transaksi berhasil diproses.', 'data' => $transaction]);
+                return response()->json([
+                    'success' => true, 
+                    'message' => 'Transaksi berhasil diproses.', 
+                    'data' => $transaction,
+                    'redirect_url' => '/riwayatppob' // Tambahkan baris ini
+                ]);
             }
 
             $transaction->update(['status' => 'FAILED', 'message' => $result['data']['message'] ?? 'API Error']);
