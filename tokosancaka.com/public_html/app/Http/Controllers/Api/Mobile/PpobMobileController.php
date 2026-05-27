@@ -915,27 +915,31 @@ class PpobMobileController extends Controller
             $result = $response->json();
 
             if ($response->successful() && isset($result['data'])) {
+
                 $rc = $result['data']['response_code'] ?? '';
-                $status = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
+
+                $status = ($rc === '00')
+                    ? 'SUCCESS'
+                    : (($rc === '39') ? 'PROCESS' : 'FAILED');
 
                 if (in_array($status, ['PROCESS', 'SUCCESS'])) {
 
-                $harga = (float) $transaction->price;
+                    $harga = (float) $transaction->price;
 
-                // POTONG SALDO USER
-                if (!$isCash) {
+                    // POTONG SALDO USER
+                    if (!$isCash) {
+                        DB::table('Pengguna')
+                            ->where('id_pengguna', $user->id_pengguna)
+                            ->decrement('saldo', $harga);
+                    }
+
+                    // POTONG SALDO IAK ADMIN
                     DB::table('Pengguna')
-                        ->where('id_pengguna', $user->id_pengguna)
-                        ->decrement('saldo', $harga);
+                        ->where('id_pengguna', 4)
+                        ->decrement('balance_iak', $harga);
+
+                    Log::info("LOG LOG - RAW DB Saldo Terpotong (Pascabayar). User ID: {$user->id_pengguna}, Harga: {$harga}");
                 }
-
-                // POTONG SALDO IAK ADMIN
-                DB::table('Pengguna')
-                    ->where('id_pengguna', 4)
-                    ->decrement('balance_iak', $harga);
-
-                Log::info("LOG LOG - RAW DB Saldo Terpotong (Pascabayar). User ID: {$user->id_pengguna}, Harga: {$harga}");
-            }
 
                 $transaction->update([
                     'status'  => $status,
@@ -944,10 +948,16 @@ class PpobMobileController extends Controller
                 ]);
 
                 if ($status == 'FAILED') {
-                    return response()->json(['success' => false, 'message' => 'Pembayaran gagal dari pusat: ' . $transaction->message]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Pembayaran gagal dari pusat: ' . $transaction->message
+                    ]);
                 }
 
-                return response()->json(['success' => true, 'message' => 'Pembayaran Tagihan Berhasil Diproses!']);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pembayaran Tagihan Berhasil Diproses!'
+                ]);
             }
 
             $transaction->update(['status' => 'FAILED', 'message' => 'Invalid API Response dari Pusat']);
