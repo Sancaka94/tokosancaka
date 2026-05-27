@@ -191,7 +191,7 @@ class DanaWebhookController extends Controller
                         Log::info('[DANA WEBHOOK] Pesanan ' . $refNo . ' lunas, diupdate ke Pesanan Dibuat.');
 
                         // 3. (PENTING) Buka komentar ini jika ingin resi otomatis keluar saat lunas
-                        // app(\App\Http\Controllers\Admin\PesananController::class)->triggerResi($pesanan);
+                        app(\App\Http\Controllers\Admin\PesananController::class)->triggerResi($pesanan);
                     } else {
                         // Jika pembayaran gagal
                         \App\Models\Transaction::where('reference_id', $refNo)
