@@ -18,7 +18,7 @@ use Exception;
 // --- MODEL ---
 use App\Models\Pesanan;
 use App\Models\User;
-
+use App\Models\Transaction;
 
 class PesananController extends Controller
 {
@@ -305,7 +305,68 @@ class PesananController extends Controller
 
                 $paymentUrl = null;
 
-                if ($validatedData['payment_method'] === '#DOKU' || $validatedData['payment_method'] === 'DOKU_JOKUL') {
+                // ==============================================================
+                // 🔥 INTEGRASI KE DANA GATEWAY MOBILE CONTROLLER
+                // ==============================================================
+                if ($validatedData['payment_method'] === 'DANA' || $validatedData['payment_method'] === 'DANA_BINDING') {
+                    Log::info("[API MOBILE] LOG LOG: Menggunakan DANA Gateway: " . $validatedData['payment_method']);
+
+                    // 1. Buat jembatan ke tabel Transaction
+                    $transaction = Transaction::create([
+                        'user_id' => $user->id_pengguna,
+                        'amount' => $finalPriceDB,
+                        'type' => 'pesanan',
+                        'status' => 'pending',
+                        'payment_method' => $validatedData['payment_method'],
+                        'reference_id' => $order->nomor_invoice,
+                        'description' => 'Pembayaran Pesanan ' . $order->nomor_invoice,
+                    ]);
+
+                    // 2. Panggil Controller DANA
+                    $danaController = app(\App\Http\Controllers\Api\Mobile\DanaGatewayMobileController::class);
+
+                    if ($validatedData['payment_method'] === 'DANA_BINDING') {
+                        $danaRes = $danaController->createPaymentDanaBinding($transaction, $user);
+                    } else {
+                        $danaRes = $danaController->createPaymentDANA($transaction);
+                    }
+
+                    // 3. Ekstrak Hasil dari Response Controller DANA
+                    $danaData = $danaRes->getData(true);
+
+                    if (!isset($danaData['success']) || !$danaData['success']) {
+                        throw new Exception($danaData['message'] ?? 'Gagal membuat tagihan DANA.');
+                    }
+
+                    // 4. Cek apakah DANA mengembalikan URL atau Lunas Instan
+                    if (!empty($danaData['redirect_url'])) {
+                        $paymentUrl = $danaData['redirect_url'];
+                    } else {
+                        // KONDISI INI TERCAPAI JIKA DANA BINDING (AUTO DEBIT) BERHASIL SEKETIKA
+                        Log::info("[API MOBILE] LOG LOG: DANA Auto Debit Sukses Instan! Mengeksekusi API KiriminAja...");
+
+                        $order->status = 'Pesanan Dibuat';
+                        $order->status_pesanan = 'Pesanan Dibuat';
+
+                        $kiriminResponse = $this->_createKiriminAjaOrder($validatedData, $order, $kirimaja, $cod_value, $shipping_cost, $insurance_cost);
+
+                        if (($kiriminResponse['status'] ?? false) !== true) {
+                            throw new Exception('Saldo DANA terpotong, tapi gagal membuat resi: ' . ($kiriminResponse['text'] ?? 'Unknown Error'));
+                        }
+
+                        $bookingId = $kiriminResponse['id'] ?? $kiriminResponse['payment_ref'] ?? null;
+                        $awbAsli = $kiriminResponse['awb'] ?? $kiriminResponse['result']['awb_no'] ?? null;
+
+                        $order->shipping_ref = $bookingId;
+                        $order->resi = !empty($awbAsli) ? $awbAsli : ($bookingId ?? 'REF-'.$order->nomor_invoice);
+
+                        $paymentUrl = null;
+                    }
+                }
+                // ==============================================================
+                // LANJUTAN UNTUK DOKU & TRIPAY
+                // ==============================================================
+                elseif ($validatedData['payment_method'] === '#DOKU' || $validatedData['payment_method'] === 'DOKU_JOKUL') {
                     // --- 1. VIA DOKU JOKUL ---
                     $dokuService = new DokuJokulService();
                     $paymentUrl = $dokuService->createPayment($order->nomor_invoice, $finalPriceDB);
@@ -324,13 +385,13 @@ class PesananController extends Controller
                     if (empty($tripayResponse['success'])) {
                         throw new Exception($tripayResponse['message'] ?? 'Gagal membuat tagihan Tripay.');
                     }
-                    $paymentUrl = $tripayResponse['data']['checkout_url']; // Ini link asli Tripay!
+                    $paymentUrl = $tripayResponse['data']['checkout_url'];
                 }
 
-                // Simpan url asli Tripay/DOKU ke tabel Pesanan
+                // Simpan url asli ke tabel Pesanan
                 $order->payment_url = $paymentUrl;
 
-                Log::info("[API MOBILE] URL Gateway disiapkan: {$paymentUrl}");
+                Log::info("[API MOBILE] LOG LOG: URL Gateway disiapkan: {$paymentUrl}");
             }
             // D. JIKA ADA METODE LAIN YANG TERLEWAT (Fallback)
             else {
