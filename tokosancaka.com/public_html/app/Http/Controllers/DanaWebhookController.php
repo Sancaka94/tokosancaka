@@ -202,197 +202,87 @@ class DanaWebhookController extends Controller
         }
     }
 
-    /**
+   /**
      * =========================================================
-     * UNIVERSAL RETURN PAGE
+     * UNIVERSAL RETURN PAGE (DANA CALLBACK/RETURN)
      * =========================================================
      */
     public function returnPage(Request $request)
     {
-        Log::info('[DANA RETURN PAGE]', [
+        Log::info('[DANA RETURN PAGE] Hit', [
             'query'      => $request->all(),
             'full_url'   => $request->fullUrl(),
             'user_agent' => $request->userAgent(),
         ]);
 
         try {
-
-            // =====================================================
-            // GET REF
-            // =====================================================
-            $refNo = $request->partnerReferenceNo
-                ?? $request->originalPartnerReferenceNo
-                ?? $request->bizNo
-                ?? $request->id
-                ?? '';
+            // 1. AMBIL REF DENGAN PRIORITAS: URL -> SESSION -> TERAKHIR
+            $refNo = $request->query('trx_id')
+                  ?? $request->partnerReferenceNo
+                  ?? $request->bizNo
+                  ?? $request->id
+                  ?? Session::get('last_dana_ref')
+                  ?? '';
 
             if (!$refNo) {
-
-                Log::warning('[DANA RETURN] REF EMPTY');
-
-                return redirect('/')
-                    ->with(
-                        'error',
-                        'Transaksi tidak ditemukan.'
-                    );
+                Log::warning('[DANA RETURN] REF EMPTY - Tidak ditemukan referensi di URL maupun Session');
+                return redirect('/')->with('error', 'Transaksi tidak ditemukan.');
             }
 
-            // =====================================================
-            // NORMALIZE REF
-            // =====================================================
+            // 2. NORMALIZE REF
             $refNo = $this->normalizeReference($refNo);
+            Log::info('[DANA RETURN] NORMALIZED REF: ' . $refNo);
 
-            Log::info('[DANA RETURN] NORMALIZED', [
-                'ref' => $refNo
-            ]);
+            // 3. DETECT PLATFORM (Mobile vs Web)
+            $isMobile = ($request->header('X-Platform') === 'mobile' ||
+                         preg_match('/Android|iPhone|iPad|Mobile/i', $request->userAgent()));
 
-            // =====================================================
-            // DETECT MOBILE
-            // =====================================================
-            $isMobile =
-                $request->header('X-Platform') === 'mobile';
-
-            if (!$isMobile) {
-
-                $isMobile = preg_match(
-                    '/Android|iPhone|iPad|Mobile/i',
-                    $request->userAgent()
-                );
-            }
-
-            Log::info('[DANA RETURN] PLATFORM', [
-                'is_mobile' => (bool) $isMobile
-            ]);
-
-            // =====================================================
-            // PPOB
-            // =====================================================
+            // 4. CEK PPOB
             $trx = Transaction::where('ref_id', $refNo)
-            ->orWhere(
-                'reference_id', // Changed from 'tr_id'
-                str_replace('PASCA', '', $refNo)
-            )
-            ->first();
+                ->orWhere('reference_id', str_replace('PASCA', '', $refNo))
+                ->first();
 
             if ($trx) {
-
-                Log::info('[DANA RETURN] PPOB FOUND', [
-                    'id' => $trx->id ?? null
-                ]);
-
-                if (
-                    $isMobile ||
-                    ($trx->platform ?? null) === 'mobile'
-                ) {
-
-                    return redirect()->away(
-                        'sancakaexpress://ppob-success/' . $refNo
-                    );
+                Session::forget('last_dana_ref'); // Bersihkan session
+                if ($isMobile) {
+                    return redirect()->away('sancakaexpress://ppob-success/' . $refNo);
                 }
-
-                return redirect()->to(
-                    'https://tokosancaka.com/riwayatppob'
-                )->with(
-                    'success',
-                    'Pembayaran PPOB berhasil.'
-                );
+                return redirect()->to('https://tokosancaka.com/riwayatppob')->with('success', 'Pembayaran PPOB berhasil.');
             }
 
-            // =====================================================
-            // TOPUP
-            // =====================================================
-            $topup = TopUp::where('transaction_id', $refNo)
-            ->first();
-
+            // 5. CEK TOPUP
+            $topup = TopUp::where('transaction_id', $refNo)->first();
             if ($topup) {
-
-                Log::info('[DANA RETURN] TOPUP FOUND', [
-                    'id' => $topup->id ?? null
-                ]);
-
-                if (
-                    $isMobile ||
-                    ($topup->platform ?? null) === 'mobile'
-                ) {
-
-                    return redirect()->away(
-                        'sancakaexpress://topup-success/' . $refNo
-                    );
+                Session::forget('last_dana_ref');
+                if ($isMobile) {
+                    return redirect()->away('sancakaexpress://topup-success/' . $refNo);
                 }
-
-                if (
-                    \Route::has('customer.topup.show')
-                ) {
-
-                    return redirect()->route(
-                        'customer.topup.show',
-                        ['topup' => $topup->id]
-                    );
-                }
-
-                return redirect('/')->with(
-                    'success',
-                    'Topup berhasil diproses.'
-                );
+                return redirect('/')->with('success', 'Topup berhasil diproses.');
             }
 
-            // =====================================================
-            // MARKETPLACE ORDER
-            // =====================================================
-            $order = Order::where(
-                'invoice_number',
-                $refNo
-            )->first();
-
+            // 6. CEK MARKETPLACE ORDER
+            $order = Order::where('invoice_number', $refNo)->first();
             if ($order) {
-
-                Log::info('[DANA RETURN] ORDER FOUND', [
-                    'id' => $order->id ?? null
-                ]);
-
-                if (
-                    $isMobile ||
-                    ($order->platform ?? null) === 'mobile'
-                ) {
-
-                    return redirect()->away(
-                        'sancakaexpress://order-success/' . $refNo
-                    );
+                Session::forget('last_dana_ref');
+                if ($isMobile) {
+                    // Redirect ke riwayat pesanan sesuai permintaanmu
+                    return redirect()->away('sancakaexpress://riwayatpesanan');
                 }
-
-                return redirect()->to(
-                    'https://tokosancaka.com/customer/pesanan/riwayat-belanja'
-                )->with(
-                    'success',
-                    'Pembayaran marketplace berhasil.'
-                );
+                return redirect()->to('https://tokosancaka.com/customer/pesanan/riwayat-belanja')
+                    ->with('success', 'Pembayaran berhasil.');
             }
 
-            // =====================================================
-            // FALLBACK
-            // =====================================================
-            Log::warning('[DANA RETURN] DATA NOT FOUND', [
-                'ref' => $refNo
-            ]);
-
-            return redirect('/')
-                ->with(
-                    'success',
-                    'Transaksi berhasil diproses.'
-                );
+            // 7. FALLBACK
+            Log::warning('[DANA RETURN] DATA NOT FOUND untuk Ref: ' . $refNo);
+            return redirect('/')->with('success', 'Transaksi berhasil diproses.');
 
         } catch (Exception $e) {
-
             Log::error('[DANA RETURN PAGE ERROR]', [
                 'message' => $e->getMessage(),
                 'line'    => $e->getLine(),
             ]);
 
-            return redirect('/')
-                ->with(
-                    'error',
-                    'Terjadi kesalahan redirect pembayaran.'
-                );
+            return redirect('/')->with('error', 'Terjadi kesalahan redirect pembayaran.');
         }
     }
 

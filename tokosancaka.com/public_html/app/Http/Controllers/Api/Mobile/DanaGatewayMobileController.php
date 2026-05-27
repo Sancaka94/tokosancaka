@@ -141,7 +141,7 @@ class DanaGatewayMobileController extends Controller
             "validUpTo" => $expiryTime,
             "urlParams" => [
                 [
-                    "url" => $returnUrl,
+                    "url" => url('/api/mobile/dana/return?trx_id=' . $trxId),
                     "type" => "PAY_RETURN",
                     "isDeeplink" => "N"
                 ],
@@ -208,6 +208,7 @@ class DanaGatewayMobileController extends Controller
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'] ?? null;
                 if ($redirectUrl) {
+                    Session::put('last_dana_ref', $trxId);
                     $transaction->payment_url = $redirectUrl;
                     $transaction->save();
                     return response()->json(['success' => true, 'redirect_url' => $redirectUrl]);
