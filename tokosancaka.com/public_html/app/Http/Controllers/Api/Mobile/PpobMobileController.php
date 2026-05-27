@@ -402,17 +402,18 @@ class PpobMobileController extends Controller
                     return response()->json(['success' => false, 'message' => 'Gagal: ' . $transaction->message]);
                 }
 
-               if (in_array($finalStatus, ['PROCESS', 'SUCCESS'])) {
+               if (in_array($status, ['PROCESS', 'SUCCESS'])) {
+
                 $harga = (float) $transaction->price;
 
-                // POTONG SALDO LOKAL
+                // POTONG SALDO USER
                 if (!$isCash) {
                     DB::table('Pengguna')
                         ->where('id_pengguna', $user->id_pengguna)
                         ->decrement('saldo', $harga);
                 }
 
-                // POTONG SALDO PUSAT (ADMIN ID 4)
+                // POTONG SALDO IAK ADMIN
                 DB::table('Pengguna')
                     ->where('id_pengguna', 4)
                     ->decrement('balance_iak', $harga);
@@ -917,25 +918,24 @@ class PpobMobileController extends Controller
                 $rc = $result['data']['response_code'] ?? '';
                 $status = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
 
-                if (in_array($finalStatus, ['PROCESS', 'SUCCESS'])) {
+                if (in_array($status, ['PROCESS', 'SUCCESS'])) {
 
-                    // Pastikan harga dikonversi ke angka yang valid
-                    $harga = (float) $product->price;
+                $harga = (float) $transaction->price;
 
-                    // POTONG SALDO LOKAL
-                    if (!$isCash) {
-                        DB::table('Pengguna')
-                            ->where('id_pengguna', $user->id_pengguna)
-                            ->decrement('saldo', $harga);
-                    }
-
-                    // POTONG SALDO PUSAT (ADMIN ID 4)
+                // POTONG SALDO USER
+                if (!$isCash) {
                     DB::table('Pengguna')
-                        ->where('id_pengguna', 4)
-                        ->decrement('balance_iak', $harga);
-
-                    Log::info("LOG LOG - RAW DB Saldo Terpotong (Prabayar). User ID: {$user->id_pengguna}, Harga: {$harga}");
+                        ->where('id_pengguna', $user->id_pengguna)
+                        ->decrement('saldo', $harga);
                 }
+
+                // POTONG SALDO IAK ADMIN
+                DB::table('Pengguna')
+                    ->where('id_pengguna', 4)
+                    ->decrement('balance_iak', $harga);
+
+                Log::info("LOG LOG - RAW DB Saldo Terpotong (Pascabayar). User ID: {$user->id_pengguna}, Harga: {$harga}");
+            }
 
                 $transaction->update([
                     'status'  => $status,
