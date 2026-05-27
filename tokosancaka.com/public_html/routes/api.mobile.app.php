@@ -417,7 +417,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::get('/customer/pesanan/detail/{resi}', [\App\Http\Controllers\Api\Mobile\PesananController::class, 'getDetailPesanan']);
 
-
+    Route::get('/dashboard/dana-balance', [\App\Http\Controllers\Customer\TopUpController::class, 'checkMyDanaBalance']);
     // ==========================================
     // MODULE: TICKETING / DARMAWISATA
     // ==========================================
@@ -502,3 +502,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 
     });
+
+

@@ -1343,4 +1343,3 @@ Route::post(
 )->name('dana.webhook');
 
 
-Route::get('/mobile/dashboard/dana-balance', [\App\Http\Controllers\Customer\TopUpController::class, 'checkMyDanaBalance']);
