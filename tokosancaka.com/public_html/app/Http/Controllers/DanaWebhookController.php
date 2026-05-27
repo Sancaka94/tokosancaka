@@ -170,43 +170,63 @@ class DanaWebhookController extends Controller
             if (Str::startsWith($refNo, 'SCK-')) {
                 Log::info('[DANA WEBHOOK] Proses Pesanan: ' . $refNo . ' Status: ' . $internalStatus);
 
-                // 1. Cari pesanan di tabel Pesanan berdasarkan nomor_invoice
                 $pesanan = \App\Models\Pesanan::where('nomor_invoice', $refNo)->first();
 
-                if ($pesanan) {
-                    // 2. Jika status DANA sukses
-                    if ($isSuccess) {
+                if ($pesanan && $isSuccess) { // Hanya proses jika LUNAS (00)
 
-                        // [FIX]: Update tabel Transaction agar status tidak nyangkut pending
-                        \App\Models\Transaction::where('reference_id', $refNo)
-                            ->update(['status' => 'success', 'payment_status' => 'PAID']);
+                    // 1. Update status di database agar tidak double proses
+                    $pesanan->update([
+                        'status'         => 'Pesanan Dibuat',
+                        'status_pesanan' => 'Pesanan Dibuat',
+                        'updated_at'     => now()
+                    ]);
 
-                        // [FIX]: Ubah ke 'Pesanan Dibuat', bukan 'Selesai'
-                        $pesanan->update([
-                            'status'         => 'Pesanan Dibuat',
-                            'status_pesanan' => 'Pesanan Dibuat',
-                            'updated_at'     => now()
-                        ]);
+                    Log::info('[DANA WEBHOOK] Pesanan ' . $refNo . ' LUNAS. Memulai pembuatan resi otomatis...');
 
-                        Log::info('[DANA WEBHOOK] Pesanan ' . $refNo . ' lunas, diupdate ke Pesanan Dibuat.');
+                    // 2. TEMBAK API KIRIMINAJA
+                    try {
+                        // Kita panggil Admin\PesananController untuk menggunakan method _createKiriminAjaOrder
+                        $adminPesanan = new \App\Http\Controllers\Admin\PesananController();
+                        $kirimajaService = app(\App\Services\KiriminAjaService::class);
 
-                        // 3. (PENTING) Buka komentar ini jika ingin resi otomatis keluar saat lunas
-                        app(\App\Http\Controllers\Admin\PesananController::class)->triggerResi($pesanan);
+                        // Siapkan data alamat (Geocode otomatis)
+                        $request = new \Illuminate\Http\Request(); // Butuh request object untuk helper
+                        $senderData = $adminPesanan->_getAddressData($request->merge([
+                            'sender_district_id' => $pesanan->sender_district_id,
+                            'sender_subdistrict_id' => $pesanan->sender_subdistrict_id,
+                            'sender_postal_code' => $pesanan->sender_postal_code
+                        ]), 'sender');
 
-                    } else {
-                        // Jika pembayaran gagal
-                        \App\Models\Transaction::where('reference_id', $refNo)
-                            ->update(['status' => 'failed', 'payment_status' => 'FAILED']);
+                        $receiverData = $adminPesanan->_getAddressData($request->merge([
+                            'receiver_district_id' => $pesanan->receiver_district_id,
+                            'receiver_subdistrict_id' => $pesanan->receiver_subdistrict_id,
+                            'receiver_postal_code' => $pesanan->receiver_postal_code
+                        ]), 'receiver');
 
-                        $pesanan->update([
-                            'status'         => 'Dibatalkan',
-                            'status_pesanan' => 'Dibatalkan'
-                        ]);
+                        // Panggil _createKiriminAjaOrder
+                        $response = $adminPesanan->_createKiriminAjaOrder(
+                            $pesanan->toArray(),
+                            $pesanan,
+                            $kirimajaService,
+                            $senderData,
+                            $receiverData,
+                            0, // cod_value
+                            (int)$pesanan->shipping_cost,
+                            (int)$pesanan->insurance_cost
+                        );
 
-                        Log::info('[DANA WEBHOOK] Pesanan ' . $refNo . ' Gagal/Dibatalkan.');
+                        if (($response['status'] ?? false) === true) {
+                            $bookingId = $response['pickup_number'] ?? $response['id'] ?? null;
+                            $pesanan->update(['resi' => $response['awb'] ?? $bookingId, 'shipping_ref' => $bookingId]);
+                            Log::info("[DANA WEBHOOK] KiriminAja Berhasil: " . $pesanan->resi);
+                        } else {
+                            $pesanan->update(['status' => 'Pembayaran Lunas (Gagal Auto-Resi)']);
+                            Log::error("[DANA WEBHOOK] KiriminAja Gagal: " . ($response['text'] ?? 'Unknown'));
+                        }
+
+                    } catch (\Exception $e) {
+                        Log::error("[DANA WEBHOOK] Error saat tembak API KiriminAja: " . $e->getMessage());
                     }
-                } else {
-                    Log::error('[DANA WEBHOOK] Pesanan tidak ditemukan di tabel Pesanan: ' . $refNo);
                 }
 
                 return $this->respondSuccessDANA();
