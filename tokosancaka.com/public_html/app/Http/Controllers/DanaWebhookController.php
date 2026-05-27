@@ -2,178 +2,439 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
-use App\Notifications\NotifikasiUmum;
-use App\Events\AdminNotificationEvent;
+use App\Http\Controllers\Admin\PesananController as AdminPesananController;
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\Customer\TopUpController;
+
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\TopUp;
-use App\Models\User;
-use App\Models\Pesanan;
-use App\Models\Product;
-use App\Models\ProductVariant;
-use App\Models\Store;
-use App\Models\Affiliate;
-use App\Services\KiriminAjaService;
-use App\Services\DokuJokulService;
-use App\Services\FonnteService;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
+use App\Models\Transaction;
+
 use Carbon\Carbon;
 use Exception;
-
-// IMPORT CONTROLLER TERKAIT UNTUK CALLBACK ROUTING
-use App\Http\Controllers\Admin\PesananController as AdminPesananController;
-use App\Http\Controllers\Customer\TopUpController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class DanaWebhookController extends Controller
 {
     /**
-     * MAIN HANDLER - GERBANG UTAMA WEBHOOK DANA (FINISH NOTIFY v1.0)
+     * =========================================================
+     * DANA WEBHOOK NOTIFICATION
+     * =========================================================
      */
     public function handleNotify(Request $request)
     {
-        // 1. Log Payload Masuk murni untuk monitoring debugging
-        Log::info("[DANA-WEBHOOK] Hit Masuk:", [
-            'ip' => $request->ip(),
-            'payload' => $request->all()
+        Log::info('[DANA WEBHOOK] HIT', [
+            'ip'      => $request->ip(),
+            'payload' => $request->all(),
         ]);
 
         try {
+
             $data = $request->all();
 
-            // Ambil RefNo berdasarkan Dokumentasi Finish Notify DANA SNAP
-            $refNo = $data['originalPartnerReferenceNo'] ?? $data['partnerReferenceNo'] ?? null;
+            // =====================================================
+            // AMBIL REFERENCE
+            // =====================================================
+            $refNo = $data['originalPartnerReferenceNo']
+                ?? $data['partnerReferenceNo']
+                ?? null;
+
             $latestStatus = $data['latestTransactionStatus'] ?? null;
-            $amountVal = $data['amount']['value'] ?? '0.00';
 
-            if (empty($refNo)) {
-                return response()->json(['res' => 'NO_REF'], 400);
+            $amountValue = $data['amount']['value'] ?? '0.00';
+
+            if (!$refNo) {
+
+                Log::warning('[DANA WEBHOOK] REF EMPTY');
+
+                return response()->json([
+                    'responseCode'    => '4005601',
+                    'responseMessage' => 'Reference Not Found'
+                ], 400);
             }
 
-            // Status sukses murni dua digit dari DANA ("00")
-            $isDanaSuccess = ($latestStatus === '00');
+            // =====================================================
+            // NORMALIZE REF
+            // =====================================================
+            $refNo = $this->normalizeReference($refNo);
 
-            // ====================================================================
-            // 🛠️ FIX STRIP MISMATCH: Normalisasi format SCKORD dan TOPUP
-            // ====================================================================
-            if (Str::startsWith($refNo, 'SCKORD') && !str_contains($refNo, '-')) {
-                $restOfInvoice = substr($refNo, 6);
-                $refNo = 'SCK-ORD-' . $restOfInvoice;
-                Log::info("[DANA-WEBHOOK] Format invoice dinormalisasi untuk database: " . $refNo);
-            }
-            // 🔥 TAMBAHAN UNTUK TOPUP 🔥
-            elseif (Str::startsWith($refNo, 'TOPUP') && !str_contains($refNo, '-')) {
-                $restOfInvoice = substr($refNo, 5); // Potong 5 huruf "TOPUP"
-                $refNo = 'TOPUP-' . $restOfInvoice;
-                Log::info("[DANA-WEBHOOK] Format invoice TOPUP dinormalisasi untuk database: " . $refNo);
-            }
-            // ====================================================================
+            Log::info('[DANA WEBHOOK] NORMALIZED', [
+                'ref'    => $refNo,
+                'status' => $latestStatus
+            ]);
 
-            // =============================================================
-            // ROUTING LOGIC: Tentukan Tipe Transaksi Berdasarkan Pola Invoice
-            // =============================================================
+            // =====================================================
+            // MAP STATUS
+            // =====================================================
+            $isSuccess = ($latestStatus === '00');
 
-            // Skenario 1: SKENARIO BELANJA BARANG MARKETPLACE (SCK-ORD- atau ORD-)
-            if (Str::startsWith($refNo, 'SCK-ORD-') || Str::startsWith($refNo, 'ORD-')) {
-                Log::info('Routing DANA callback to processOrderCallback (Marketplace)', ['ref' => $refNo]);
+            $internalStatus = $isSuccess
+                ? 'PAID'
+                : 'FAILED';
 
-                $internalStatus = $isDanaSuccess ? 'PAID' : 'FAILED';
+            // =====================================================
+            // MARKETPLACE ORDER
+            // =====================================================
+            if (
+                Str::startsWith($refNo, 'SCK-ORD-') ||
+                Str::startsWith($refNo, 'ORD-')
+            ) {
 
-                $checkoutCtrl = app(\App\Http\Controllers\CheckoutController::class);
-                $checkoutCtrl->processOrderCallback($refNo, $internalStatus, $data);
+                Log::info('[DANA WEBHOOK] MARKETPLACE ORDER', [
+                    'ref' => $refNo
+                ]);
+
+                app(CheckoutController::class)
+                    ->processOrderCallback(
+                        $refNo,
+                        $internalStatus,
+                        $data
+                    );
 
                 return $this->respondSuccessDANA();
             }
 
-            // Skenario 2: SKENARIO TOPUP SALDO CUSTOMER / MEMBER (TOPUP-)
-            elseif (Str::startsWith($refNo, 'TOPUP-') || Str::startsWith($refNo, 'DEP-') || str_contains($refNo, 'TOPUP')) {
-                Log::info('Routing DANA callback to TopUpController', ['ref' => $refNo, 'amount' => $amountVal]);
+            // =====================================================
+            // TOPUP
+            // =====================================================
+            if (
+                Str::startsWith($refNo, 'TOPUP-') ||
+                Str::startsWith($refNo, 'DEP-')
+            ) {
 
-                $internalStatus = $isDanaSuccess ? 'PAID' : 'FAILED';
+                Log::info('[DANA WEBHOOK] TOPUP', [
+                    'ref' => $refNo
+                ]);
 
-                // Menggunakan static call karena fungsi processTopUpCallback berbentuk static
-                TopUpController::processTopUpCallback($refNo, $internalStatus, $amountVal);
+                TopUpController::processTopUpCallback(
+                    $refNo,
+                    $internalStatus,
+                    $amountValue
+                );
 
                 return $this->respondSuccessDANA();
             }
 
-            // Skenario 3: DATA PESANAN BARANG LAMA / LEGACY (Prefix: SCK- murni)
-            elseif (Str::startsWith($refNo, 'SCK-')) {
-                Log::info('Routing DANA callback to AdminPesananController (Legacy)', ['ref' => $refNo]);
+            // =====================================================
+            // PPOB
+            // =====================================================
+            if (
+                Str::startsWith($refNo, 'P') ||
+                Str::startsWith($refNo, 'PASCA')
+            ) {
 
-                $internalStatus = $isDanaSuccess ? 'PAID' : 'FAILED';
-                AdminPesananController::processPesananCallback($refNo, $internalStatus, $data);
+                Log::info('[DANA WEBHOOK] PPOB', [
+                    'ref' => $refNo
+                ]);
+
+                $trx = Transaction::where('ref_id', $refNo)
+                ->orWhere(
+                    'reference_id', // Changed from 'tr_id'
+                    str_replace('PASCA', '', $refNo)
+                )
+                ->first();
+
+                if ($trx) {
+
+                    $trx->payment_status = $internalStatus;
+
+                    if ($isSuccess) {
+                        $trx->paid_at = now();
+                    }
+
+                    $trx->save();
+
+                    Log::info('[DANA WEBHOOK] PPOB UPDATED', [
+                        'id'     => $trx->id ?? null,
+                        'ref_id' => $trx->ref_id ?? null
+                    ]);
+                } else {
+
+                    Log::warning('[DANA WEBHOOK] PPOB NOT FOUND', [
+                        'ref' => $refNo
+                    ]);
+                }
 
                 return $this->respondSuccessDANA();
             }
 
-            // =============================================================
-            // FALLBACK SAFETY NET (UNTUK BYPASS TRANSAKSI MANDIRI TESTING)
-            // =============================================================
-            Log::info("[DANA-WEBHOOK] ID Uji Coba Mandiri DANA Sandbox tidak dikenali: $refNo. Auto bypass.");
+            // =====================================================
+            // LEGACY PESANAN
+            // =====================================================
+            if (Str::startsWith($refNo, 'SCK-')) {
+
+                Log::info('[DANA WEBHOOK] LEGACY PESANAN', [
+                    'ref' => $refNo
+                ]);
+
+                AdminPesananController::processPesananCallback(
+                    $refNo,
+                    $internalStatus,
+                    $data
+                );
+
+                return $this->respondSuccessDANA();
+            }
+
+            // =====================================================
+            // UNKNOWN
+            // =====================================================
+            Log::warning('[DANA WEBHOOK] UNKNOWN REF', [
+                'ref' => $refNo
+            ]);
+
             return $this->respondSuccessDANA();
 
         } catch (Exception $e) {
-            Log::error("[DANA-WEBHOOK] Fatal Error: " . $e->getMessage() . " | Line: " . $e->getLine());
-            return response()->json(['responseCode' => '5005601', 'message' => 'Internal Error'], 500);
+
+            Log::error('[DANA WEBHOOK] ERROR', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'responseCode'    => '5005601',
+                'responseMessage' => 'Internal Server Error'
+            ], 500);
         }
     }
 
     /**
-     * 👑 NEW FUNCTION: INTELLIGENT REDIRECT RETURN PAGE
+     * =========================================================
+     * UNIVERSAL RETURN PAGE
+     * =========================================================
      */
     public function returnPage(Request $request)
     {
-        // Ambil referensi order yang dikirim DANA saat redirect balik ke web
-        $refNo = $request->input('partnerReferenceNo') ?? $request->input('id') ?? '';
+        Log::info('[DANA RETURN PAGE]', [
+            'query'      => $request->all(),
+            'full_url'   => $request->fullUrl(),
+            'user_agent' => $request->userAgent(),
+        ]);
 
-        Log::info('[DANA RETURN PAGE] User kembali dari DANA Portal.', ['raw_ref' => $refNo]);
+        try {
 
-        // ====================================================================
-        // 🔥 NORMALISASI ID JUGA DITERAPKAN DI HALAMAN RETURN 🔥
-        // ====================================================================
-        if (Str::startsWith($refNo, 'SCKORD') && !str_contains($refNo, '-')) {
-            $refNo = 'SCK-ORD-' . substr($refNo, 6);
-        } elseif (Str::startsWith($refNo, 'TOPUP') && !str_contains($refNo, '-')) {
-            $refNo = 'TOPUP-' . substr($refNo, 5);
+            // =====================================================
+            // GET REF
+            // =====================================================
+            $refNo = $request->partnerReferenceNo
+                ?? $request->originalPartnerReferenceNo
+                ?? $request->bizNo
+                ?? $request->id
+                ?? '';
+
+            if (!$refNo) {
+
+                Log::warning('[DANA RETURN] REF EMPTY');
+
+                return redirect('/')
+                    ->with(
+                        'error',
+                        'Transaksi tidak ditemukan.'
+                    );
+            }
+
+            // =====================================================
+            // NORMALIZE REF
+            // =====================================================
+            $refNo = $this->normalizeReference($refNo);
+
+            Log::info('[DANA RETURN] NORMALIZED', [
+                'ref' => $refNo
+            ]);
+
+            // =====================================================
+            // DETECT MOBILE
+            // =====================================================
+            $isMobile =
+                $request->header('X-Platform') === 'mobile';
+
+            if (!$isMobile) {
+
+                $isMobile = preg_match(
+                    '/Android|iPhone|iPad|Mobile/i',
+                    $request->userAgent()
+                );
+            }
+
+            Log::info('[DANA RETURN] PLATFORM', [
+                'is_mobile' => (bool) $isMobile
+            ]);
+
+            // =====================================================
+            // PPOB
+            // =====================================================
+            $trx = Transaction::where('ref_id', $refNo)
+            ->orWhere(
+                'reference_id', // Changed from 'tr_id'
+                str_replace('PASCA', '', $refNo)
+            )
+            ->first();
+
+            if ($trx) {
+
+                Log::info('[DANA RETURN] PPOB FOUND', [
+                    'id' => $trx->id ?? null
+                ]);
+
+                if (
+                    $isMobile ||
+                    ($trx->platform ?? null) === 'mobile'
+                ) {
+
+                    return redirect()->away(
+                        'sancakaexpress://ppob-success/' . $refNo
+                    );
+                }
+
+                return redirect()->to(
+                    'https://tokosancaka.com/riwayatppob'
+                )->with(
+                    'success',
+                    'Pembayaran PPOB berhasil.'
+                );
+            }
+
+            // =====================================================
+            // TOPUP
+            // =====================================================
+            $topup = TopUp::where('transaction_id', $refNo)
+            ->first();
+
+            if ($topup) {
+
+                Log::info('[DANA RETURN] TOPUP FOUND', [
+                    'id' => $topup->id ?? null
+                ]);
+
+                if (
+                    $isMobile ||
+                    ($topup->platform ?? null) === 'mobile'
+                ) {
+
+                    return redirect()->away(
+                        'sancakaexpress://topup-success/' . $refNo
+                    );
+                }
+
+                if (
+                    \Route::has('customer.topup.show')
+                ) {
+
+                    return redirect()->route(
+                        'customer.topup.show',
+                        ['topup' => $topup->id]
+                    );
+                }
+
+                return redirect('/')->with(
+                    'success',
+                    'Topup berhasil diproses.'
+                );
+            }
+
+            // =====================================================
+            // MARKETPLACE ORDER
+            // =====================================================
+            $order = Order::where(
+                'invoice_number',
+                $refNo
+            )->first();
+
+            if ($order) {
+
+                Log::info('[DANA RETURN] ORDER FOUND', [
+                    'id' => $order->id ?? null
+                ]);
+
+                if (
+                    $isMobile ||
+                    ($order->platform ?? null) === 'mobile'
+                ) {
+
+                    return redirect()->away(
+                        'sancakaexpress://order-success/' . $refNo
+                    );
+                }
+
+                return redirect()->to(
+                    'https://tokosancaka.com/customer/pesanan/riwayat-belanja'
+                )->with(
+                    'success',
+                    'Pembayaran marketplace berhasil.'
+                );
+            }
+
+            // =====================================================
+            // FALLBACK
+            // =====================================================
+            Log::warning('[DANA RETURN] DATA NOT FOUND', [
+                'ref' => $refNo
+            ]);
+
+            return redirect('/')
+                ->with(
+                    'success',
+                    'Transaksi berhasil diproses.'
+                );
+
+        } catch (Exception $e) {
+
+            Log::error('[DANA RETURN PAGE ERROR]', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+            ]);
+
+            return redirect('/')
+                ->with(
+                    'error',
+                    'Terjadi kesalahan redirect pembayaran.'
+                );
         }
-
-        // 1. Jika ini Transaksi Belanja Toko Marketplace (SCK-ORD-)
-        if (Str::startsWith($refNo, 'SCK-ORD-') || str_contains($refNo, 'ORD')) {
-            Log::info("[DANA RETURN] Redirecting user ke halaman Riwayat Belanja: " . $refNo);
-
-            return redirect()->to('https://tokosancaka.com/customer/pesanan/riwayat-belanja')
-                ->with('success', 'Pembayaran DANA Anda berhasil diproses! Silakan cek status dan nomor resi pengiriman Anda di bawah ini.');
-        }
-
-        // 2. Jika ini Transaksi Top Up Saldo Akun (TOPUP-)
-        if (Str::startsWith($refNo, 'TOPUP-')) {
-            Log::info("[DANA RETURN] Redirecting user ke halaman Detail Top Up: " . $refNo);
-            return redirect()->route('customer.topup.show', ['topup' => $refNo])
-                ->with('success', 'Top Up DANA Anda berhasil dan saldo akan masuk secara otomatis.');
-        }
-
-        // 3. Default Fallback (Jika ID tidak jelas / transaksi anonim)
-        return redirect()->to('https://tokosancaka.com/customer/pesanan/riwayat-belanja')
-            ->with('success', 'Transaksi DANA berhasil diselesaikan.');
     }
 
     /**
-     * Helper Respon Standard SNAP DANA
+     * =========================================================
+     * NORMALIZE REFERENCE
+     * =========================================================
+     */
+    private function normalizeReference($refNo)
+    {
+        if (
+            Str::startsWith($refNo, 'SCKORD') &&
+            !str_contains($refNo, '-')
+        ) {
+
+            return 'SCK-ORD-' . substr($refNo, 6);
+        }
+
+        if (
+            Str::startsWith($refNo, 'TOPUP') &&
+            !str_contains($refNo, '-')
+        ) {
+
+            return 'TOPUP-' . substr($refNo, 5);
+        }
+
+        return trim($refNo);
+    }
+
+    /**
+     * =========================================================
+     * STANDARD SUCCESS RESPONSE DANA SNAP
+     * =========================================================
      */
     private function respondSuccessDANA()
     {
         return response()->json([
-            'responseCode' => '2005600',
+            'responseCode'    => '2005600',
             'responseMessage' => 'Successful'
         ])->withHeaders([
             'Content-Type' => 'application/json',
-            'X-TIMESTAMP'  => Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP')
+            'X-TIMESTAMP'  => Carbon::now('Asia/Jakarta')
+                ->format('Y-m-d\TH:i:sP')
         ]);
     }
 }

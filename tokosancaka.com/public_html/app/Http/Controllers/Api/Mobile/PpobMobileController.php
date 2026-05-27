@@ -335,7 +335,7 @@ class PpobMobileController extends Controller
            // ========================================================
             // SISA KODE DI BAWAH HANYA JALAN JIKA PAKAI SALDO / CASH
             // ========================================================
-            
+
             $admin = User::find(4);
             if (!$admin) {
                 return response()->json(['success' => false, 'message' => 'Sistem Error: Admin utama tidak ditemukan.']);
@@ -402,11 +402,10 @@ class PpobMobileController extends Controller
                     return response()->json(['success' => false, 'message' => 'Gagal: ' . $transaction->message]);
                 }
 
-               if (in_array($status, ['PROCESS', 'SUCCESS'])) {
-    
+               if (in_array($finalStatus, ['PROCESS', 'SUCCESS'])) {
                 $harga = (float) $transaction->price;
 
-               // POTONG SALDO LOKAL
+                // POTONG SALDO LOKAL
                 if (!$isCash) {
                     DB::table('Pengguna')
                         ->where('id_pengguna', $user->id_pengguna)
@@ -417,7 +416,7 @@ class PpobMobileController extends Controller
                 DB::table('Pengguna')
                     ->where('id_pengguna', 4)
                     ->decrement('balance_iak', $harga);
-                
+
                 Log::info("LOG LOG - RAW DB Saldo Terpotong (Pascabayar). User ID: {$user->id_pengguna}, Harga: {$harga}");
             }
 
@@ -648,24 +647,24 @@ class PpobMobileController extends Controller
                 foreach ($transactions->items() as $trx) {
                     $item = $trx->toArray();
                     $item['icon_url'] = ($item['type'] == 'prabayar') ? ($icons[$item['product_code']] ?? null) : null;
-                    
+
                     if ($isAdmin) {
                         if (!empty($item['user_id'])) {
                             $userData = $usersData[$item['user_id']] ?? null;
-                            
+
                             $item['sumber_order'] = 'Aplikasi / User';
                             $item['pemesan_id']   = $item['user_id'];
                             $item['pemesan_nama'] = $userData->nama_lengkap ?? 'User Tidak Diketahui';
                             $item['pemesan_toko'] = $userData->store_name ?? '-';
-                            
+
                             // Tetap dipertahankan untuk backward compatibility (jika frontend lama masih membaca field ini)
-                            $item['nama_pembeli'] = $item['pemesan_nama']; 
+                            $item['nama_pembeli'] = $item['pemesan_nama'];
                         } else {
                             $item['sumber_order'] = 'Website';
                             $item['pemesan_id']   = null;
                             $item['pemesan_nama'] = 'Website';
                             $item['pemesan_toko'] = '-';
-                            
+
                             // Tetap dipertahankan untuk backward compatibility
                             $item['nama_pembeli'] = 'Website';
                         }
@@ -871,7 +870,7 @@ class PpobMobileController extends Controller
        // ========================================================
         // SISA KODE DI BAWAH HANYA JALAN JIKA PAKAI SALDO / CASH
         // ========================================================
-        
+
         $admin = User::find(4);
         if (!$admin) {
             return response()->json(['success' => false, 'message' => 'Sistem Error: Admin utama tidak ditemukan.']);
@@ -919,7 +918,7 @@ class PpobMobileController extends Controller
                 $status = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
 
                 if (in_array($finalStatus, ['PROCESS', 'SUCCESS'])) {
-    
+
                     // Pastikan harga dikonversi ke angka yang valid
                     $harga = (float) $product->price;
 
@@ -934,7 +933,7 @@ class PpobMobileController extends Controller
                     DB::table('Pengguna')
                         ->where('id_pengguna', 4)
                         ->decrement('balance_iak', $harga);
-                    
+
                     Log::info("LOG LOG - RAW DB Saldo Terpotong (Prabayar). User ID: {$user->id_pengguna}, Harga: {$harga}");
                 }
 
@@ -962,117 +961,274 @@ class PpobMobileController extends Controller
         }
     }
 
-    // ========================================================
-    // HELPER: PROCESS DANA PAYMENT GATEWAY (HOST-TO-HOST)
-    // ========================================================
     private function processDanaPaymentGateway($transaction, $user, $paymentMethod, $transactionType)
     {
         try {
+
             $danaSignature = app(\App\Services\DanaSignatureService::class);
 
-            $trxId = ($transactionType === 'pascabayar') ? 'PASCA' . $transaction->tr_id : $transaction->ref_id;
+            $trxId = ($transactionType === 'pascabayar')
+                ? 'PASCA' . $transaction->tr_id
+                : $transaction->ref_id;
+
             $amountValue = number_format((float)$transaction->price, 2, '.', '');
 
-            $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $timestamp  = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $validUpTo = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
-            $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
+
+            $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
 
             $isBinding = ($paymentMethod === 'DANA_BINDING');
 
+            // =========================
+            // VALIDASI TOKEN BINDING
+            // =========================
             if ($isBinding && empty($user->dana_access_token)) {
-                return ['success' => false, 'message' => 'Akun DANA Anda belum terhubung. Silakan hubungkan (bind) terlebih dahulu di Profil.'];
+                return [
+                    'success' => false,
+                    'message' => 'Akun DANA belum terhubung.'
+                ];
             }
 
-            // Gunakan Dinamisasi agar aman saat ganti Prod/Sandbox
-            $merchantIdConf = Api::getValue('dana_sandbox_merchant_id', 'sandbox', config('services.dana.merchant_id'));
-            $partnerIdConf  = Api::getValue('dana_sandbox_client_id', 'sandbox', config('services.dana.x_partner_id'));
-            
+            // =========================
+            // CONFIG
+            // =========================
+            $merchantId = Api::getValue(
+                'dana_sandbox_merchant_id',
+                'sandbox',
+                config('services.dana.merchant_id')
+            );
+
+            $partnerId = Api::getValue(
+                'dana_sandbox_client_id',
+                'sandbox',
+                config('services.dana.x_partner_id')
+            );
+
             if (Api::getValue('dana_production_mode', 'global', '0') == '1') {
-                $merchantIdConf = Api::getValue('dana_prod_merchant_id', 'production', config('services.dana.merchant_id'));
-                $partnerIdConf  = Api::getValue('dana_prod_client_id', 'production', config('services.dana.x_partner_id'));
+
+                $merchantId = Api::getValue(
+                    'dana_prod_merchant_id',
+                    'production',
+                    config('services.dana.merchant_id')
+                );
+
+                $partnerId = Api::getValue(
+                    'dana_prod_client_id',
+                    'production',
+                    config('services.dana.x_partner_id')
+                );
             }
 
-            $body = [
+            // =========================
+            // MOBILE / WEB DETECTION
+            // =========================
+            $isMobile = request()->header('User-Agent') &&
+                preg_match('/Android|iPhone|iPad|Mobile/i', request()->header('User-Agent'));
+
+            // Mobile → deeplink
+            // Web → normal redirect
+            $isDeeplink = $isMobile ? 'Y' : 'N';
+
+            // =========================
+            // PAYLOAD
+            // =========================
+            $bodyArray = [
+
                 "partnerReferenceNo" => $trxId,
-                "merchantId"         => $merchantIdConf,
-                "validUpTo"          => $validUpTo,
-                "amount"             => ["value" => $amountValue, "currency" => "IDR"],
-                "urlParams"          => [
-                    ["url" => env('FRONTEND_URL', url('/')) . '/riwayatppob', "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-                    ["url" => url('/api/dana/notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+
+                "merchantId" => $merchantId,
+
+                "amount" => [
+                    "value" => $amountValue,
+                    "currency" => "IDR"
                 ],
-                "payOptionDetails"   => [
+
+                "validUpTo" => $validUpTo,
+
+                "urlParams" => [
                     [
-                        "payMethod"   => "BALANCE",
-                        "payOption"   => "BALANCE",
-                        "transAmount" => ["value" => $amountValue, "currency" => "IDR"],
-                        "feeAmount"   => ["value" => "0.00", "currency" => "IDR"]
+                        "url" => env('FRONTEND_URL', url('/')) .
+                            '/payment/dana/return?partnerReferenceNo=' . $trxId,
+
+                        "type" => "PAY_RETURN",
+
+                        "isDeeplink" => $isDeeplink
+                    ],
+                    [
+                        "url" => url('/api/dana/notify'),
+
+                        "type" => "NOTIFICATION",
+
+                        "isDeeplink" => "N"
                     ]
                 ],
-                "additionalInfo"     => [
-                    "supportDeepLinkCheckoutUrl" => "true",
-                    "productCode"                => "51051000100000000001",
-                    "mcc"                        => "5732",
+
+                // WAJIB ADA
+                "payOptionDetails" => [
+                    [
+                        "payMethod" => "BALANCE",
+
+                        // BIARKAN KOSONG
+                        // sesuai sample resmi DANA
+                        "payOption" => "",
+
+                        "transAmount" => [
+                            "value" => $amountValue,
+                            "currency" => "IDR"
+                        ]
+                    ]
+                ],
+
+                "additionalInfo" => [
+
+                    "mcc" => "5732",
+
                     "order" => [
-                        "orderTitle"        => substr("PPOB " . $trxId, 0, 64),
+
+                        "orderTitle" => substr(
+                            "PPOB " . $trxId,
+                            0,
+                            64
+                        ),
+
                         "merchantTransType" => "01",
-                        "scenario"          => $isBinding ? "DIRECT_DEBIT" : "REDIRECT",
+
+                        // redirect biasa
+                        "scenario" => $isBinding
+                            ? "DIRECT_DEBIT"
+                            : "REDIRECT",
+
                         "buyer" => [
-                            "externalUserId"   => (string) $user->id_pengguna,
+                            "externalUserId" => (string) $user->id_pengguna,
+
                             "externalUserType" => "MERCHANT_USER",
-                            "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap ?? 'Customer'), 0, 64)
+
+                            "nickname" => Str::limit(
+                                $user->nama_lengkap ?? 'Guest',
+                                40
+                            ),
                         ]
                     ],
+
                     "envInfo" => [
-                        "sourcePlatform"    => "IPG",
-                        "terminalType"      => "SYSTEM",
-                        "orderTerminalType" => "WEB"
+
+                        "sourcePlatform" => "IPG",
+
+                        // SAMA seperti kode yang berhasil
+                        "terminalType" => "SYSTEM",
+
+                        "orderTerminalType" => $isMobile
+                            ? "APP"
+                            : "WEB",
                     ]
                 ]
             ];
 
-            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            // =========================
+            // JSON
+            // =========================
+            $jsonBody = json_encode(
+                $bodyArray,
+                JSON_UNESCAPED_SLASHES |
+                JSON_UNESCAPED_UNICODE
+            );
 
-            $accessTokenB2B = $danaSignature->getAccessToken();
-            $signature = $danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+            // =========================
+            // ACCESS TOKEN
+            // =========================
+            $accessToken = $danaSignature->getAccessToken();
 
+            // =========================
+            // SIGNATURE
+            // =========================
+            $signature = $danaSignature->generateSignature(
+                'POST',
+                $path,
+                $jsonBody,
+                $timestamp
+            );
+
+            // =========================
+            // HEADERS
+            // =========================
             $headers = [
-                'Content-Type'  => 'application/json',
-                'Authorization' => 'Bearer ' . $accessTokenB2B,
-                'X-TIMESTAMP'   => $timestamp,
-                'X-SIGNATURE'   => $signature,
-                'ORIGIN'        => config('services.dana.origin'),
-                'X-PARTNER-ID'  => $partnerIdConf,
-                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
-                'X-DEVICE-ID'   => 'SANCAKA-APP',
-                'CHANNEL-ID'    => '95221'
+
+                'Authorization' => 'Bearer ' . $accessToken,
+
+                'X-PARTNER-ID' => $partnerId,
+
+                'X-EXTERNAL-ID' => Str::random(32),
+
+                'X-TIMESTAMP' => $timestamp,
+
+                'X-SIGNATURE' => $signature,
+
+                'Content-Type' => 'application/json',
+
+                'CHANNEL-ID' => '95221',
+
+                'ORIGIN' => config('services.dana.origin'),
             ];
 
-            if ($isBinding && !empty($user->dana_access_token)) {
-                $headers['Authorization-Customer'] = 'Bearer ' . $user->dana_access_token;
+            // DIRECT DEBIT
+            if ($isBinding) {
+                $headers['Authorization-Customer']
+                    = 'Bearer ' . $user->dana_access_token;
             }
 
+            // =========================
+            // REQUEST
+            // =========================
             $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
 
-            if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
-                if (!empty($result['webRedirectUrl'])) {
-                    return ['success' => true, 'payment_url'=> $result['webRedirectUrl'], 'is_instant' => false];
-                }
-                if ($isBinding) {
-                    return ['success' => true, 'payment_url'=> null, 'is_instant' => true];
-                }
+            Log::info('DANA PPOB RESPONSE', [
+                'status' => $response->status(),
+                'result' => $result
+            ]);
+
+            // =========================
+            // SUCCESS
+            // =========================
+            if (
+                isset($result['responseCode']) &&
+                $result['responseCode'] == '2005400'
+            ) {
+
+                $redirectUrl =
+                    $result['webRedirectUrl']
+                    ?? $result['appLinkUrl']
+                    ?? null;
+
+                return [
+                    'success' => true,
+                    'payment_url' => $redirectUrl,
+                    'is_instant' => $isBinding
+                ];
             }
 
-            $errorMsg = $result['responseMessage'] ?? 'Unknown Error';
-            return ['success' => false, 'message' => "DANA Error [{$result['responseCode']}]: {$errorMsg}"];
+            return [
+                'success' => false,
+                'message' => 'DANA Error [' .
+                    ($result['responseCode'] ?? 'N/A') .
+                    ']: ' .
+                    ($result['responseMessage'] ?? 'Unknown')
+            ];
 
         } catch (\Exception $e) {
-            Log::error("DANA PPOB Exception: " . $e->getMessage());
-            return ['success' => false, 'message' => 'Koneksi ke sistem DANA terputus.'];
+
+            Log::error('DANA PPOB ERROR', [
+                'message' => $e->getMessage()
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Koneksi ke DANA gagal.'
+            ];
         }
     } 
 }

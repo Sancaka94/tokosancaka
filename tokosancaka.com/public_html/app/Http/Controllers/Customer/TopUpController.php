@@ -324,7 +324,7 @@ class TopUpController extends Controller
                     $additionalInfo = [];
                     // Cari data store berdasarkan user_id (id_pengguna)
                     $store = \App\Models\Store::where('user_id', $user->id_pengguna)->first();
-                    
+
                     // Jika toko ditemukan dan memiliki doku_sac_id, masukkan ke parameter
                     if ($store && !empty($store->doku_sac_id)) {
                         $additionalInfo = [
@@ -681,15 +681,15 @@ class TopUpController extends Controller
         'externalId'  => 'BIND-' . $user->id_pengguna . '-' . time(),
         'channelId'   => 'DANAID',
         'redirectUrl' => 'https://tokosancaka.com/dana/callback',
-        'state'       => \Illuminate\Support\Str::random(16), 
+        'state'       => \Illuminate\Support\Str::random(16),
         'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         'allowRegistration' => 'true',
     ];
 
-    $baseUrl = config('services.dana.dana_env') === 'PRODUCTION' 
-        ? 'https://m.dana.id/d/portal/oauth' 
+    $baseUrl = config('services.dana.dana_env') === 'PRODUCTION'
+        ? 'https://m.dana.id/d/portal/oauth'
         : 'https://m.sandbox.dana.id/d/portal/oauth';
-        
+
     return redirect($baseUrl . "?" . http_build_query($queryParams));
 }
 
@@ -698,7 +698,7 @@ public function handleCallback(Request $request)
     Log::info('LOG LOG: [DANA CALLBACK] SNAP Apply Token Start...', $request->all());
 
     $authCode = $request->input('auth_code') ?? $request->input('authCode');
-    
+
     // Langsung cek Auth user yang sedang login, atau ambil dari session jika redirect memutus Auth
     $userId = null;
     if (\Illuminate\Support\Facades\Auth::check()) {
@@ -734,7 +734,7 @@ public function handleCallback(Request $request)
             'X-TIMESTAMP'   => $timestamp,
             'X-CLIENT-KEY'  => $clientId,
             'X-SIGNATURE'   => $signature,
-            'X-PARTNER-ID'  => $clientId, 
+            'X-PARTNER-ID'  => $clientId,
         ])->post($fullUrl, $body);
 
         $result = $response->json();
@@ -752,7 +752,7 @@ public function handleCallback(Request $request)
                     'dana_access_token' => $accessToken,
                     'dana_auth_code'    => $authCode,
                     //'updated_at'        => now()
-                
+
                     ]);
 
                 // Bersihkan session
@@ -2348,12 +2348,12 @@ public function handleCallback(Request $request)
 
     // 1. FORMAT WAKTU STANDAR ISO8601 GMT+7
     $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-    
+
     // validUpTo (Wajib di Sandbox minimal 30 menit ke depan, di Prod disesuaikan)
     $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
 
     // 2. ENDPOINT DIRECT DEBIT SNAP BI
-    $path = '/rest/redirection/v1.0/debit/payment-host-to-host'; 
+    $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
     $amountValue = number_format($transaction->amount, 2, '.', '');
 
@@ -2418,7 +2418,7 @@ public function handleCallback(Request $request)
 
     try {
         $accessTokenB2B = $this->danaSignature->getAccessToken();
-        
+
         // PENTING: Generate Signature sesuai standar DANA
         $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
         $baseUrl   = config('services.dana.base_url');
@@ -2478,17 +2478,17 @@ public function handleCallback(Request $request)
 
             return redirect()->route('customer.topup.index')
                 ->with('success', 'Pembayaran Berhasil! Saldo DANA Anda telah terpotong secara otomatis.');
-            
-        } 
-        
+
+        }
+
         // Penanganan Error (4045418 Inconsistent, 4035405 Do Not Honor, dsb)
         else {
             $transaction->update(['status' => 'failed']);
             $errorCode  = $result['responseCode'] ?? 'UNKNOWN';
             $pesanGagal = $result['responseMessage'] ?? 'Terjadi kesalahan pada sistem pembayaran.';
-            
+
             Log::error("LOG LOG: [DANA BINDING] Gagal memotong saldo. Code: $errorCode | Msg: $pesanGagal");
-            
+
             return back()->with('error', "Gagal dari DANA [$errorCode]: $pesanGagal");
         }
 
