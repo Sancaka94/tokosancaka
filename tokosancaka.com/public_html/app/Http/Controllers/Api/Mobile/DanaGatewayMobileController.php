@@ -1417,82 +1417,28 @@ class DanaGatewayMobileController extends Controller
         return response()->json(['response' => ['head' => ['resultCode' => 'SUCCESS']]]);
     }
 
-    public function handleNotify(Request $request)
+   public function handleNotify(Request $request)
     {
-        Log::info('========== DANA WEBHOOK (Mobile Gateway) ==========');
-
+        // HAPUS try-catch-nya sementara (cukup jalankan kodenya langsung)
         $trxIdFromDana = $request->input('partnerReferenceNo') ?? $request->input('originalPartnerReferenceNo');
         $statusDana    = $request->input('latestTransactionStatus');
 
-        $transaction = Transaction::where('reference_id', $trxIdFromDana)->lockForUpdate()->first();
+        $transaction = Transaction::where('reference_id', $trxIdFromDana)->firstOrFail(); // Pakai firstOrFail biar error kelihatan kalau ID salah
 
-        if (!$transaction) {
-            Log::info("Webhook DANA: ID $trxIdFromDana tidak ditemukan di DB.");
-            return response()->json([
-                'responseCode' => '2005600',
-                'responseMessage' => 'Successful'
-            ])->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
-        }
+        if ($statusDana == '00' || strtoupper($statusDana) === 'SUCCESS') {
+            $transaction->status = 'success';
+            $transaction->save();
 
-        DB::beginTransaction();
-        try {
-            if ($transaction->status == 'pending') {
-
-                // Mendukung status '00' (SNAP) atau 'SUCCESS'
-                if ($statusDana == '00' || strtoupper($statusDana) === 'SUCCESS') {
-                    Log::info("Webhook: $trxIdFromDana SUKSES.");
-
-                    $transaction->status = 'success';
-                    $transaction->payment_status = 'PAID';
-                    $transaction->save();
-
-                    // ========================================================
-                    // PISAHKAN LOGIKA: PESANAN vs TOP UP SALDO
-                    // ========================================================
-                    if (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'SCK-')) {
-                        // JIKA INI PEMBAYARAN KERANJANG/PESANAN
-                        $pesanan = \App\Models\Pesanan::where('nomor_invoice', $trxIdFromDana)->first();
-
-                        if ($pesanan) {
-                            $pesanan->update([
-                                'status' => 'Pesanan Dibuat',
-                                'status_pesanan' => 'Pesanan Dibuat',
-                                'updated_at' => now()
-                            ]);
-                            Log::info("[MOBILE WEBHOOK] Pesanan $trxIdFromDana Lunas, Status -> Pesanan Dibuat.");
-                        }
-                    } else {
-                        // JIKA INI MURNI TOP UP SALDO AKUN
-                        $user = \App\Models\User::where('id_pengguna', $transaction->user_id)->first();
-                        if ($user) {
-                            $user->increment('saldo', $transaction->amount);
-                            Log::info("[MOBILE WEBHOOK] Saldo User {$user->id_pengguna} ditambahkan Rp{$transaction->amount}.");
-                        }
-                    }
-
-                } elseif ($statusDana == '05' || strtoupper($statusDana) === 'FAILED') {
-                    $transaction->status = 'failed';
-                    $transaction->payment_status = 'FAILED';
-                    $transaction->save();
-
-                    if (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'SCK-')) {
-                        \App\Models\Pesanan::where('nomor_invoice', $trxIdFromDana)
-                            ->update([
-                                'status' => 'Dibatalkan',
-                                'status_pesanan' => 'Dibatalkan'
-                            ]);
-                    }
-                }
+            // Lanjut ke logika pesanan
+            if (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'SCK-')) {
+                \App\Models\Pesanan::where('nomor_invoice', $trxIdFromDana)->update([
+                    'status' => 'Pesanan Dibuat',
+                    'status_pesanan' => 'Pesanan Dibuat'
+                ]);
             }
-            DB::commit();
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error("Webhook Error: " . $e->getMessage());
-            return response()->json(['responseCode' => '5005601', 'responseMessage' => 'Internal Server Error'], 500);
         }
 
-        return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful'])
-                ->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
+        return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful']);
     }
 
     // =========================================================================
