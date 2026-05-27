@@ -319,7 +319,7 @@ class PesananController extends Controller
                     $transaction = Transaction::create([
                         'user_id' => $user->id_pengguna,
                         'amount' => $finalPriceDB,
-                        'type' => 'pesanan',
+                        'type' => 'order',
                         'status' => 'pending',
                         'payment_method' => str_replace('#', '', $validatedData['payment_method']), // Bersihkan tanda # saat masuk DB
                         'reference_id' => $order->nomor_invoice,
