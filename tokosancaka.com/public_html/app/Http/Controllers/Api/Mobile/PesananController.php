@@ -309,7 +309,10 @@ class PesananController extends Controller
                 // ==============================================================
                 // 🔥 INTEGRASI KE DANA GATEWAY MOBILE CONTROLLER
                 // ==============================================================
-                if ($validatedData['payment_method'] === 'DANA' || $validatedData['payment_method'] === 'DANA_BINDING') {
+                // Tambahkan '#DANA' dan '#DANA_BINDING' ke dalam pengecekan
+                $metodeDana = ['DANA', 'DANA_BINDING', '#DANA', '#DANA_BINDING'];
+
+                if (in_array(strtoupper(trim($validatedData['payment_method'])), $metodeDana)) {
                     Log::info("[API MOBILE] LOG LOG: Menggunakan DANA Gateway: " . $validatedData['payment_method']);
 
                     // 1. Buat jembatan ke tabel Transaction
@@ -318,7 +321,7 @@ class PesananController extends Controller
                         'amount' => $finalPriceDB,
                         'type' => 'pesanan',
                         'status' => 'pending',
-                        'payment_method' => $validatedData['payment_method'],
+                        'payment_method' => str_replace('#', '', $validatedData['payment_method']), // Bersihkan tanda # saat masuk DB
                         'reference_id' => $order->nomor_invoice,
                         'description' => 'Pembayaran Pesanan ' . $order->nomor_invoice,
                     ]);
@@ -326,7 +329,8 @@ class PesananController extends Controller
                     // 2. Panggil Controller DANA
                     $danaController = app(\App\Http\Controllers\Api\Mobile\DanaGatewayMobileController::class);
 
-                    if ($validatedData['payment_method'] === 'DANA_BINDING') {
+                    // Cek apakah pakai binding
+                    if (in_array(strtoupper(trim($validatedData['payment_method'])), ['DANA_BINDING', '#DANA_BINDING'])) {
                         $danaRes = $danaController->createPaymentDanaBinding($transaction, $user);
                     } else {
                         $danaRes = $danaController->createPaymentDANA($transaction);
