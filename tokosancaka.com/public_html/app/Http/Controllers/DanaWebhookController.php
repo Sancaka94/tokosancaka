@@ -72,7 +72,7 @@ class DanaWebhookController extends Controller
             // =====================================================
             // MAP STATUS
             // =====================================================
-            $isSuccess = ($latestStatus === '00');
+            $isSuccess = ($latestStatus === '00' || strtoupper($latestStatus) === 'SUCCESS');
 
             $internalStatus = $isSuccess
                 ? 'PAID'
@@ -174,24 +174,35 @@ class DanaWebhookController extends Controller
                 $pesanan = \App\Models\Pesanan::where('nomor_invoice', $refNo)->first();
 
                 if ($pesanan) {
-                    // 2. Jika status DANA adalah PAID (00), maka update pesanan
+                    // 2. Jika status DANA sukses
                     if ($isSuccess) {
+
+                        // [FIX]: Update tabel Transaction agar status tidak nyangkut pending
+                        \App\Models\Transaction::where('reference_id', $refNo)
+                            ->update(['status' => 'success', 'payment_status' => 'PAID']);
+
+                        // [FIX]: Ubah ke 'Pesanan Dibuat', bukan 'Selesai'
                         $pesanan->update([
-                            'status' => 'Selesai',          // Update sesuai kolom database Anda
-                            'status_pesanan' => 'Selesai',
-                            'updated_at' => now()
+                            'status'         => 'Pesanan Dibuat',
+                            'status_pesanan' => 'Pesanan Dibuat',
+                            'updated_at'     => now()
                         ]);
 
-                        Log::info('[DANA WEBHOOK] Pesanan ' . $refNo . ' berhasil diupdate ke Selesai.');
+                        Log::info('[DANA WEBHOOK] Pesanan ' . $refNo . ' lunas, diupdate ke Pesanan Dibuat.');
 
-                        // 3. (OPSIONAL) Panggil KiriminAja di sini jika belum otomatis
+                        // 3. (PENTING) Buka komentar ini jika ingin resi otomatis keluar saat lunas
                         // app(\App\Http\Controllers\Admin\PesananController::class)->triggerResi($pesanan);
                     } else {
                         // Jika pembayaran gagal
+                        \App\Models\Transaction::where('reference_id', $refNo)
+                            ->update(['status' => 'failed', 'payment_status' => 'FAILED']);
+
                         $pesanan->update([
-                            'status' => 'Dibatalkan',
+                            'status'         => 'Dibatalkan',
                             'status_pesanan' => 'Dibatalkan'
                         ]);
+
+                        Log::info('[DANA WEBHOOK] Pesanan ' . $refNo . ' Gagal/Dibatalkan.');
                     }
                 } else {
                     Log::error('[DANA WEBHOOK] Pesanan tidak ditemukan di tabel Pesanan: ' . $refNo);
@@ -308,27 +319,19 @@ class DanaWebhookController extends Controller
         }
     }
 
-    /**
-     * =========================================================
-     * NORMALIZE REFERENCE
-     * =========================================================
-     */
     private function normalizeReference($refNo)
     {
-        if (
-            Str::startsWith($refNo, 'SCKORD') &&
-            !str_contains($refNo, '-')
-        ) {
-
+        if (Str::startsWith($refNo, 'SCKORD') && !str_contains($refNo, '-')) {
             return 'SCK-ORD-' . substr($refNo, 6);
         }
 
-        if (
-            Str::startsWith($refNo, 'TOPUP') &&
-            !str_contains($refNo, '-')
-        ) {
-
+        if (Str::startsWith($refNo, 'TOPUP') && !str_contains($refNo, '-')) {
             return 'TOPUP-' . substr($refNo, 5);
+        }
+
+        // [TAMBAHAN FIX] Kembalikan format SCK20251118IP52X4 menjadi SCK-20251118-IP52X4
+        if (preg_match('/^SCK(\d{8})([A-Z0-9]+)$/', $refNo, $matches)) {
+            return 'SCK-' . $matches[1] . '-' . $matches[2];
         }
 
         return trim($refNo);
