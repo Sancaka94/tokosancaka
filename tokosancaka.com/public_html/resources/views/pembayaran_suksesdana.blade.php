@@ -60,7 +60,7 @@
 
         <p>Kembali ke aplikasi dalam <br><span id="timer" class="highlight">5</span> detik...</p>
 
-        <a href="sancakaexpress://" class="btn-back" id="btnManual">Kembali ke Aplikasi Sekarang</a>
+        <a href="sancakaexpress://riwayatpesanan" class="btn-back" id="btnManual">Kembali ke Aplikasi Sekarang</a>
 
         <div class="footer-text">Jika tidak otomatis berpindah, silakan klik tombol di atas atau tutup halaman ini secara manual.</div>
     </div>
@@ -68,7 +68,7 @@
     <script>
         // Set Skema URL Aplikasi Expo/React Native Anda (Deep Link)
         // Pastikan di app.json Expo Anda terdapat konfigurasi: "scheme": "sancakaexpress"
-        const appSchemeUrl = "sancakaexpress://";
+        const appSchemeUrl = "sancakaexpress://riwayatpesanan";
 
         let timeLeft = 5;
         const timerElement = document.getElementById('timer');
