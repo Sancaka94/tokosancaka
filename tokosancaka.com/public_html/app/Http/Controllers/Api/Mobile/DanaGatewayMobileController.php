@@ -124,7 +124,7 @@ class DanaGatewayMobileController extends Controller
         Log::info('DANA START for Transaction Table: ' . $trxId); // LOG LOG dipertahankan
 
         $user = Auth::user();
-        $returnUrl = route('dana.return');
+        $returnUrl = url('/api/mobile/dana/return');
         $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
@@ -146,7 +146,7 @@ class DanaGatewayMobileController extends Controller
                     "isDeeplink" => "N"
                 ],
                 [
-                    "url" => route('dana.notify'),
+                    "url" => url('/api/mobile/dana/notify'),
                     "type" => "NOTIFICATION",
                     "isDeeplink" => "N"
                 ]
@@ -247,9 +247,9 @@ class DanaGatewayMobileController extends Controller
                 "currency" => "IDR"
             ],
             "validUpTo"          => $expiryTime,
-            "urlParams"          => [
-                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+            "urlParams" => [
+                ["url" => url('/api/mobile/dana/return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+                ["url" => url('/api/mobile/dana/notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
             ],
             "payOptionDetails"   => [
                 [
@@ -370,12 +370,12 @@ class DanaGatewayMobileController extends Controller
             ],
             "urlParams" => [
                 [
-                    "url"        => route('dana.return', ['trx_id' => $trxId]),
+                    "url"        => url('/api/mobile/dana/return?trx_id=' . $trxId),
                     "type"       => "PAY_RETURN",
                     "isDeeplink" => "Y"
                 ],
                 [
-                    "url"        => route('dana.notify'),
+                    "url"        => url('/api/mobile/dana/notify'),
                     "type"       => "NOTIFICATION",
                     "isDeeplink" => "N"
                 ]
