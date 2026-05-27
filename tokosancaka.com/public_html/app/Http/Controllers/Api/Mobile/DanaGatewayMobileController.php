@@ -1419,26 +1419,71 @@ class DanaGatewayMobileController extends Controller
 
    public function handleNotify(Request $request)
     {
-        // HAPUS try-catch-nya sementara (cukup jalankan kodenya langsung)
+        Log::info('========== DANA WEBHOOK (Mobile Gateway) ==========');
+
         $trxIdFromDana = $request->input('partnerReferenceNo') ?? $request->input('originalPartnerReferenceNo');
         $statusDana    = $request->input('latestTransactionStatus');
 
-        $transaction = Transaction::where('reference_id', $trxIdFromDana)->firstOrFail(); // Pakai firstOrFail biar error kelihatan kalau ID salah
+        $transaction = \App\Models\Transaction::where('reference_id', $trxIdFromDana)->lockForUpdate()->first();
 
-        if ($statusDana == '00' || strtoupper($statusDana) === 'SUCCESS') {
-            $transaction->status = 'success';
-            $transaction->save();
-
-            // Lanjut ke logika pesanan
-            if (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'SCK-')) {
-                \App\Models\Pesanan::where('nomor_invoice', $trxIdFromDana)->update([
-                    'status' => 'Pesanan Dibuat',
-                    'status_pesanan' => 'Pesanan Dibuat'
-                ]);
-            }
+        if (!$transaction) {
+            Log::info("Webhook DANA: ID $trxIdFromDana tidak ditemukan di DB.");
+            return response()->json([
+                'responseCode' => '2005600',
+                'responseMessage' => 'Successful'
+            ])->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
         }
 
-        return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful']);
+        DB::beginTransaction();
+        try {
+            if ($transaction->status == 'pending') {
+
+                // JIKA PEMBAYARAN SUKSES (00 / SUCCESS)
+                if ($statusDana == '00' || strtoupper($statusDana) === 'SUCCESS') {
+                    Log::info("LOG LOG: Webhook $trxIdFromDana SUKSES.");
+
+                    $transaction->status = 'success';
+                    $transaction->save();
+
+                    // PISAHKAN LOGIKA: PESANAN vs TOP UP SALDO
+                    if (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'SCK-')) {
+                        Log::info("LOG LOG: Meneruskan eksekusi pesanan $trxIdFromDana ke Admin\\PesananController");
+
+                        // 🔥 DELEGASI KE CONTROLLER ADMIN SEPERTI CARA DOKU/TRIPAY 🔥
+                        // Ini otomatis merubah status, nembak API KiriminAja, update resi, dan catat keuangan!
+                        \App\Http\Controllers\Admin\PesananController::processPesananCallback($trxIdFromDana, 'PAID', []);
+
+                    } else {
+                        // JIKA INI MURNI TOP UP SALDO AKUN
+                        $user = \App\Models\User::where('id_pengguna', $transaction->user_id)->first();
+                        if ($user) {
+                            $user->increment('saldo', $transaction->amount);
+                            Log::info("LOG LOG: [MOBILE WEBHOOK] Saldo User {$user->id_pengguna} ditambahkan Rp{$transaction->amount}.");
+                        }
+                    }
+
+                // JIKA PEMBAYARAN GAGAL (05 / FAILED)
+                } elseif ($statusDana == '05' || strtoupper($statusDana) === 'FAILED') {
+                    Log::info("LOG LOG: Webhook $trxIdFromDana GAGAL.");
+
+                    $transaction->status = 'failed';
+                    $transaction->save();
+
+                    if (\Illuminate\Support\Str::startsWith($trxIdFromDana, 'SCK-')) {
+                        // Lempar status FAILED agar PesananController merubah status pesanan jadi Gagal/Dibatalkan
+                        \App\Http\Controllers\Admin\PesananController::processPesananCallback($trxIdFromDana, 'FAILED', []);
+                    }
+                }
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("LOG LOG: Webhook Error: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['responseCode' => '5005601', 'responseMessage' => 'Internal Server Error'], 500);
+        }
+
+        return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful'])
+                ->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
     }
 
     // =========================================================================
