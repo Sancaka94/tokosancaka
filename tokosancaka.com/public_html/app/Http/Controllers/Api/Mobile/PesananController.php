@@ -1183,7 +1183,7 @@ TEXT;
 
         try {
             $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
-                ->timeout(60)->post($baseUrl, $payload);
+                ->timeout(30)->post($baseUrl, $payload);
 
             // Log the raw response for debugging purposes
             Log::info('[API MOBILE] Raw Tripay Response:', ['status' => $response->status(), 'body' => $response->body()]);
