@@ -1343,9 +1343,12 @@ Route::post(
 )->name('dana.webhook');
 
 
-// Tambahkan di web.php
+// --- RUTE DANA BINDING & CALLBACK (TANPA PREFIX) ---
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dana/start-binding', [\App\Http\Controllers\Customer\TopUpController::class, 'startBinding']);
-    Route::get('/dana/callback', [\App\Http\Controllers\Customer\TopUpController::class, 'handleCallback']);
+    // URL: https://tokosancaka.com/dana/start-binding
+    Route::get('/dana/start-binding', [\App\Http\Controllers\Customer\TopUpController::class, 'startBinding'])->name('dana.start_binding');
+    
+    // URL: https://tokosancaka.com/dana/callback
+    Route::get('/dana/callback', [\App\Http\Controllers\Customer\TopUpController::class, 'handleCallback'])->name('dana.callback');
 });
 
