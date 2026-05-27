@@ -398,22 +398,22 @@ class PpobMobileController extends Controller
                     'message' => $finalMessage
                 ]);
 
-                if ($finalStatus == 'FAILED') {
+               if ($finalStatus == 'FAILED') {
                     return response()->json(['success' => false, 'message' => 'Gagal: ' . $transaction->message]);
                 }
 
-               if (in_array($status, ['PROCESS', 'SUCCESS'])) {
-
+                // FIX 1: Tambahkan 'PENDING' di sini
+               if (in_array($finalStatus, ['PROCESS', 'SUCCESS', 'PENDING'])) {
                 $harga = (float) $transaction->price;
 
-                // POTONG SALDO USER
+                // POTONG SALDO LOKAL
                 if (!$isCash) {
                     DB::table('Pengguna')
                         ->where('id_pengguna', $user->id_pengguna)
                         ->decrement('saldo', $harga);
                 }
 
-                // POTONG SALDO IAK ADMIN
+                // POTONG SALDO PUSAT (ADMIN ID 4)
                 DB::table('Pengguna')
                     ->where('id_pengguna', 4)
                     ->decrement('balance_iak', $harga);
@@ -914,31 +914,29 @@ class PpobMobileController extends Controller
 
             $result = $response->json();
 
-            if ($response->successful() && isset($result['data'])) {
-
+           if ($response->successful() && isset($result['data'])) {
                 $rc = $result['data']['response_code'] ?? '';
+                $status = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
 
-                $status = ($rc === '00')
-                    ? 'SUCCESS'
-                    : (($rc === '39') ? 'PROCESS' : 'FAILED');
+                // FIX 2: Ubah $finalStatus jadi $status, tambah 'PENDING'
+                if (in_array($status, ['PROCESS', 'SUCCESS', 'PENDING'])) {
 
-                if (in_array($status, ['PROCESS', 'SUCCESS'])) {
-
+                    // FIX 3: Ubah $product->price menjadi $transaction->price
                     $harga = (float) $transaction->price;
 
-                    // POTONG SALDO USER
+                    // POTONG SALDO LOKAL
                     if (!$isCash) {
                         DB::table('Pengguna')
                             ->where('id_pengguna', $user->id_pengguna)
                             ->decrement('saldo', $harga);
                     }
 
-                    // POTONG SALDO IAK ADMIN
+                    // POTONG SALDO PUSAT (ADMIN ID 4)
                     DB::table('Pengguna')
                         ->where('id_pengguna', 4)
                         ->decrement('balance_iak', $harga);
 
-                    Log::info("LOG LOG - RAW DB Saldo Terpotong (Pascabayar). User ID: {$user->id_pengguna}, Harga: {$harga}");
+                    Log::info("LOG LOG - RAW DB Saldo Terpotong (Prabayar). User ID: {$user->id_pengguna}, Harga: {$harga}");
                 }
 
                 $transaction->update([
@@ -948,16 +946,10 @@ class PpobMobileController extends Controller
                 ]);
 
                 if ($status == 'FAILED') {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Pembayaran gagal dari pusat: ' . $transaction->message
-                    ]);
+                    return response()->json(['success' => false, 'message' => 'Pembayaran gagal dari pusat: ' . $transaction->message]);
                 }
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Pembayaran Tagihan Berhasil Diproses!'
-                ]);
+                return response()->json(['success' => true, 'message' => 'Pembayaran Tagihan Berhasil Diproses!']);
             }
 
             $transaction->update(['status' => 'FAILED', 'message' => 'Invalid API Response dari Pusat']);
