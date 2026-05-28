@@ -2303,6 +2303,7 @@ public function handleCallback(Request $request)
                 "url"        => url('/dana/notify'),
                 "type"       => "NOTIFICATION",
                 "isDeeplink" => "N"
+
             ]
         ],
         // Wajib: payOptionDetails untuk menentukan sumber dana
