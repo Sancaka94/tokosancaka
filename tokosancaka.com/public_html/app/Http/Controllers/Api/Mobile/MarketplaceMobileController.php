@@ -845,11 +845,45 @@ class MarketplaceMobileController extends Controller
     // --- Helper Tripay untuk API ---
     private function _createTripayTransaction($order, $methodChannel, $amount, $user, $items)
     {
-        $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
-        $baseUrl      = $mode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
-        $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', $mode);
-        $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', $mode);
-        $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', $mode);
+        // 1. BYPASS CACHE: Kita ambil langsung menembak ke tabel database
+        // untuk memastikan mode Sandbox/Production terbaca secara real-time!
+        $modeRecord = \Illuminate\Support\Facades\DB::table('apis')
+                        ->where('key', 'TRIPAY_MODE')
+                        ->where('type', 'global')
+                        ->first();
+        $mode = $modeRecord ? $modeRecord->value : 'sandbox';
+
+        Log::info("LOG LOG: Memulai Tripay Transaction. Mode DB asli: " . $mode);
+
+        $baseUrl = $mode === 'production'
+            ? 'https://tripay.co.id/api/transaction/create'
+            : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+        // Bypass cache untuk Kunci API
+        $apiKey       = \Illuminate\Support\Facades\DB::table('apis')->where('key', 'TRIPAY_API_KEY')->where('type', $mode)->value('value');
+        $privateKey   = \Illuminate\Support\Facades\DB::table('apis')->where('key', 'TRIPAY_PRIVATE_KEY')->where('type', $mode)->value('value');
+        $merchantCode = \Illuminate\Support\Facades\DB::table('apis')->where('key', 'TRIPAY_MERCHANT_CODE')->where('type', $mode)->value('value');
+
+        if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+            return ['success' => false, 'message' => 'Konfigurasi Kunci Tripay belum lengkap untuk mode: ' . strtoupper($mode)];
+        }
+
+        // =====================================================================
+        // 🔥 JARING PENGAMAN TRIPAY (MENCEGAH ERROR ORDER_ITEMS != AMOUNT) 🔥
+        // =====================================================================
+        $amount = (int) $amount; // Pastikan formatnya angka bulat
+
+        // Alih-alih mengirimkan daftar produk yang bisa memicu error selisih harga
+        // (karena ongkir/admin fee tidak ikut terhitung), kita rangkum menjadi 1 item global.
+        $safeItems = [
+            [
+                'sku'      => 'INV-' . $order->invoice_number,
+                'name'     => 'Pembayaran Pesanan #' . $order->invoice_number,
+                'price'    => $amount,
+                'quantity' => 1
+            ]
+        ];
+        // =====================================================================
 
         $signature = hash_hmac('sha256', $merchantCode . $order->invoice_number . $amount, $privateKey);
 
@@ -857,24 +891,32 @@ class MarketplaceMobileController extends Controller
             'method'         => $methodChannel,
             'merchant_ref'   => $order->invoice_number,
             'amount'         => $amount,
-            'customer_name'  => $user->nama_lengkap,
-            'customer_email' => $user->email,
-            'customer_phone' => $user->no_wa,
-            'order_items'    => $items,
-            'return_url'     => url('/mobile-payment-success'),
-            'expired_time'   => (time() + (24 * 60 * 60)),
+            'customer_name'  => substr($user->nama_lengkap ?? 'Pelanggan', 0, 50),
+            'customer_email' => $user->email ?? 'no-reply@tokosancaka.com',
+            'customer_phone' => $user->no_wa ?? '080000000000',
+            'order_items'    => $safeItems, // <-- KITA GUNAKAN ARRAY YANG SUDAH AMAN
+            'return_url'     => route('tripay.return', ['reference' => $order->invoice_number, 'jenis' => 'pesanan_marketplace']),
+            'expired_time'   => (time() + (24 * 60 * 60)), // 24 jam
             'signature'      => $signature
         ];
 
         try {
-            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->post($baseUrl, $payload);
+            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+                ->timeout(30)
+                ->withoutVerifying()
+                ->post($baseUrl, $payload);
+
             $body = $response->json();
-            if ($response->successful() && ($body['success'] ?? false)) {
+            Log::info('Tripay API Response:', ['status' => $response->status(), 'body' => $body]);
+
+            if ($response->successful() && ($body['success'] ?? false) === true) {
                 return ['success' => true, 'data' => $body['data']];
             }
-            return ['success' => false, 'message' => $body['message'] ?? 'Tripay Failed'];
+
+            return ['success' => false, 'message' => $body['message'] ?? 'Tripay menolak transaksi.'];
+
         } catch (\Exception $e) {
-            return ['success' => false, 'message' => 'Koneksi Gateway bermasalah.'];
+            return ['success' => false, 'message' => 'Koneksi ke Gateway bermasalah: ' . $e->getMessage()];
         }
     }
 
