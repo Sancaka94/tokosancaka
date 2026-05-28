@@ -2186,57 +2186,6 @@ public function handleCallback(Request $request)
         }
     }
 
-    public function handleNotify(Request $request)
-    {
-        Log::info('========== DANA WEBHOOK (Transactions Table) ==========');
-
-        $trxIdFromDana = $request->input('partnerReferenceNo') ?? $request->input('originalPartnerReferenceNo');
-        $statusDana    = $request->input('latestTransactionStatus');
-
-        // PERBAIKAN 1: Tambahkan lockForUpdate() agar aman dari Race Condition
-        // saat DANA mengirimkan request ganda (retry)
-        $transaction = Transaction::where('reference_id', $trxIdFromDana)->lockForUpdate()->first();
-
-        // PERBAIKAN 2: Jika data tidak ditemukan di DB (kasus tembakan data testing/Postman),
-        // langsung kembalikan respon sukses 2005600 ke DANA agar dashboard DANA tidak mencatat error.
-        if (!$transaction) {
-            Log::info("Webhook DANA: ID $trxIdFromDana tidak ditemukan di database. Merespon sukses untuk kebutuhan testing Sandbox.");
-            return response()->json([
-                'responseCode' => '2005600',
-                'responseMessage' => 'Successful'
-            ])->withHeaders(['X-TIMESTAMP' => \Carbon\Carbon::now()->toIso8601String()]);
-        }
-
-        DB::beginTransaction();
-        try {
-            if ($transaction->status == 'pending') {
-                if ($statusDana == '00') { // SUKSES
-                    Log::info("Webhook: $trxIdFromDana SUKSES.");
-
-                    $transaction->status = 'success';
-                    $transaction->save();
-
-                    $user = User::where('id_pengguna', $transaction->user_id)->first();
-                    if ($user) {
-                        $user->increment('saldo', $transaction->amount);
-                    }
-
-                } elseif ($statusDana == '05') { // GAGAL
-                    $transaction->status = 'failed';
-                    $transaction->save();
-                }
-            }
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Webhook Error: " . $e->getMessage());
-            return response()->json(['responseCode' => '5005601', 'responseMessage' => 'Internal Server Error'], 500);
-        }
-
-        return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful'])
-                ->withHeaders(['X-TIMESTAMP' => \Carbon\Carbon::now()->toIso8601String()]);
-    }
-
     private function normalizePhone($phone) {
         $phone = preg_replace('/[^0-9]/', '', $phone);
         if (empty($phone)) return '6281234567890';
