@@ -245,15 +245,11 @@ Route::prefix('seller')->group(function () {
         Route::get('/wallet/balance', [\App\Http\Controllers\Api\Mobile\WalletController::class, 'balance']);
         Route::post('/wallet/topup', [\App\Http\Controllers\Api\Mobile\WalletController::class, 'topup']);
 
-        // --- API BARU: TOPUP (Dari ApiTopUpController) ---
         Route::get('/topup/methods', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'getMethods']);
-        Route::post('/topup/request', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'requestTopUp']);
-        Route::get('/topup/history', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'history']);
 
-        // --- API BARU: TOPUP (Dari ApiTopUpController) ---
-        Route::get('/topup/methods', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'getMethods']);
-        Route::post('/topup/request', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'requestTopUp']);
-        Route::get('/topup/history', [\App\Http\Controllers\Api\Mobile\ApiTopUpController::class, 'history']);
+        Route::post('/topup/request', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'store']);
+
+        Route::get('/topup/history', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'history']);
         // --------------------------------------------------
 
         // ==========================================
