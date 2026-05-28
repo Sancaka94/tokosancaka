@@ -308,7 +308,7 @@ class PpobMobileController extends Controller
                         'customer_email' => $user->email ?? 'no-reply@sancaka.com',
                         'customer_phone' => $user->no_hp ?? '081234567890',
                         'order_items'    => [['sku' => $product->code, 'name' => $product->description, 'price' => $amount, 'quantity' => 1]],
-                        'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayatppob',
+                        'return_url'     => route('tripay.return', ['reference' => $refId, 'jenis' => 'ppob']),
                         'signature'      => $signature
                     ]);
 

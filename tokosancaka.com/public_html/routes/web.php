@@ -1354,3 +1354,19 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dana/callback', [\App\Http\Controllers\Customer\TopUpController::class, 'handleCallback'])->name('dana.callback');
 });
 
+// RUTE KEMBALIAN (RETURN URL) DARI TRIPAY
+Route::get('/pembayaran/sukses-tripay', function (\Illuminate\Http\Request $request) {
+    // Tangkap referensi dari URL Tripay (jika ada), atau pakai fallback
+    $refNo = $request->query('reference') ?? $request->query('merchant_ref') ?? 'Pesanan Anda';
+    $jenisTransaksi = $request->query('jenis', 'ppob'); // Bisa ppob, topup, dll
+
+    // Deteksi apakah dibuka di HP atau Laptop
+    $userAgent = $request->header('User-Agent');
+    $isMobile = preg_match('/Android|iPhone|iPad|Mobile/i', $userAgent);
+
+    // Anggap sukses dibuat
+    $statusPembayaran = 'sukses';
+
+    return view('sukses_tripay', compact('refNo', 'isMobile', 'statusPembayaran', 'jenisTransaksi'));
+})->name('tripay.return');
+
