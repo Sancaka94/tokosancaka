@@ -1239,16 +1239,23 @@ class PpobMobileController extends Controller
         }
     }
 
-    /**
+   /**
      * =========================================================================
      * BRIDGE WEBHOOK: Menjembatani panggilan dari CheckoutController Tripay
      * =========================================================================
      */
-    public static function processPpobCallback($merchantRef, $status, $data = [])
+    public static function processPpobCallback($merchantRef, $status = null, $data = [])
     {
+        // Fleksibilitas: Jika CheckoutController hanya mengirim 1 array ($data)
+        if (is_array($merchantRef) || is_object($merchantRef)) {
+            $data = (array) $merchantRef;
+            $merchantRef = $data['merchant_ref'] ?? $data['reference'] ?? null;
+            $status = $data['status'] ?? 'PAID';
+        }
+
         Log::info("LOG LOG: Masuk ke PPOB Callback. Ref: {$merchantRef} | Status: {$status}");
 
-        // Cari transaksi di database PPOB lo
+        // Cari transaksi di database PPOB
         $transaction = \App\Models\TransactionPpobIak::where('ref_id', $merchantRef)->first();
 
         if (!$transaction) {
@@ -1259,12 +1266,16 @@ class PpobMobileController extends Controller
         if ($status === 'PAID' && $transaction->status !== 'SUCCESS') {
             Log::info("LOG LOG: PPOB Lunas, eksekusi nembak API IAK di sini...");
 
-            // Ubah status jadi lunas/process
+            // Ubah status jadi proses
             $transaction->status = 'PROCESS';
             $transaction->save();
 
-            // CATATAN: Di sini lo harus nambahin kode buat nembak API IAK (Prepaid/Postpaid)
-            // Karena user udah lunas bayar via Tripay.
+            // =========================================================
+            // CATATAN PENTING:
+            // Tambahkan script curl/HTTP request ke IAK lo di sini
+            // agar pulsa/token benar-benar terkirim ke pelanggan
+            // =========================================================
+
         } elseif (in_array($status, ['FAILED', 'EXPIRED'])) {
             $transaction->status = 'FAILED';
             $transaction->save();
