@@ -2065,8 +2065,11 @@ public function handleCallback(Request $request)
             ],
             "validUpTo"          => $expiryTime,
             "urlParams"          => [
+                // PAY_RETURN BOLEH pakai tanda tanya (?) untuk diproses Smart Hub
                 ["url" => route('dana.return', ['trx_id' => $cleanInvoice]), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-                ["url" => url('/dana/notify?trx_id=' . $cleanInvoice), "type" => "NOTIFICATION", "isDeeplink" => "N"]
+
+                // NOTIFICATION TIDAK BOLEH ada tanda tanya (?). Harus bersih!
+                ["url" => url('/dana/notify'), "type" => "NOTIFICATION", "isDeeplink" => "N"]
             ],
             // Opsi Pembayaran (Wajib BALANCE/Saldo agar aman tanpa Token)
             "payOptionDetails"   => [
@@ -2293,19 +2296,19 @@ public function handleCallback(Request $request)
             "currency" => "IDR"
         ],
         "urlParams" => [
-            [
-                "url"        => route('dana.return', ['trx_id' => $trxId]),
-                "type"       => "PAY_RETURN",
-                "isDeeplink" => "Y"
+                [
+                    // PAY_RETURN BOLEH pakai tanda tanya (?)
+                    "url" => route('dana.return', ['trx_id' => $trxId]),
+                    "type" => "PAY_RETURN",
+                    "isDeeplink" => "N"
+                ],
+                [
+                    // NOTIFICATION TIDAK BOLEH ada tanda tanya (?). Harus bersih!
+                    "url" => url('/dana/notify'),
+                    "type" => "NOTIFICATION",
+                    "isDeeplink" => "N"
+                ]
             ],
-            [
-                // TAMBAHKAN trx_id PADA URL NOTIFICATION
-                "url"        => url('/dana/notify?trx_id=' . $trxId),
-                "type"       => "NOTIFICATION",
-                "isDeeplink" => "N"
-
-            ]
-        ],
         // Wajib: payOptionDetails untuk menentukan sumber dana
         "payOptionDetails" => [
             [
