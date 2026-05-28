@@ -237,56 +237,29 @@ class DanaWebhookController extends Controller
             $isMobile = ($request->header('X-Platform') === 'mobile' ||
                          preg_match('/Android|iPhone|iPad|Mobile/i', $request->userAgent()));
 
-            // 4. CEK PPOB
-            $trx = Transaction::where('ref_id', $refNo)
-                ->orWhere('reference_id', str_replace('PASCA', '', $refNo))
-                ->first();
+            // ========================================================
+            // PERUBAHAN URUTAN PRIORITAS (PESANAN DI CEK DULUAN)
+            // ========================================================
 
-
-            if ($trx) {
-                Session::forget('last_dana_ref'); // Bersihkan session
-                if ($isMobile) {
-                    return redirect()->away('sancakaexpress://riwayatppob/' . $refNo);
-                }
-                return redirect()->to('https://tokosancaka.com/riwayatppob')->with('success', 'Pembayaran PPOB berhasil.');
-            }
-
-            // 5. CEK TOPUP
-            $topup = TopUp::where('transaction_id', $refNo)->first();
-            if ($topup) {
-                Session::forget('last_dana_ref');
-                if ($isMobile) {
-                    // Poin 2: User Android -> pembayaran_suksesdana.blade.php
-                    return view('pembayaran_suksesdana', compact('topup', 'refNo'));
-                }
-                // Poin 1: User Web -> redirect()->route('customer.topup.index')
-                return redirect()->route('customer.topup.index')->with('success', 'Topup berhasil diproses.');
-            }
-
-            // 6. CEK PESANAN SANCAKA EXPRESS (SCK-) -> Asumsi Pesanan
+            // 4. CEK PESANAN SANCAKA EXPRESS (SCK-) -> PRIORITAS UTAMA
             if (\Illuminate\Support\Str::startsWith($refNo, 'SCK-')) {
                 Session::forget('last_dana_ref');
                 if ($isMobile) {
-                    // Poin 5: User HP Pesanan -> RIWAYATPESANAN.TSX
                     return redirect()->away('sancakaexpress://riwayatpesanan/' . $refNo);
                 }
-                // Poin 3: User Web Pesanan -> https://tokosancaka.com/customer/pesanan
                 return redirect()->to('https://tokosancaka.com/customer/pesanan')->with('success', 'Pembayaran pesanan berhasil.');
             }
 
-            // 7. CEK TOKO UTAMA & MARKETPLACE (ORD- / CVSANCAK-)
+            // 5. CEK TOKO UTAMA & MARKETPLACE (ORD- / CVSANCAK-)
             if (\Illuminate\Support\Str::startsWith($refNo, 'ORD-') || \Illuminate\Support\Str::startsWith($refNo, 'CVSANCAK-')) {
                 Session::forget('last_dana_ref');
 
                 // Cek apakah ini pesanan Toko Utama
                 $orderUtama = Order::where('invoice_number', $refNo)->first();
-
                 if ($orderUtama) {
                     if ($isMobile) {
-                        // Poin 5: User HP Pesanan -> RIWAYATPESANAN.TSX
                         return redirect()->away('sancakaexpress://riwayatpesanan/' . $refNo);
                     }
-                    // Poin 3: User Web Pesanan -> https://tokosancaka.com/customer/pesanan
                     return redirect()->to('https://tokosancaka.com/customer/pesanan')->with('success', 'Pembayaran pesanan berhasil.');
                 }
 
@@ -295,15 +268,36 @@ class DanaWebhookController extends Controller
                     $orderMarketplace = \DB::connection('mysql_second')->table('orders')->where('order_number', $refNo)->first();
                     if ($orderMarketplace) {
                         if ($isMobile) {
-                            // Poin 6: User HP Marketplace -> RIWAYATBELANJA.TSX
                             return redirect()->away('sancakaexpress://riwayatbelanja/' . $refNo);
                         }
-                        // Poin 4: User Web Marketplace -> https://tokosancaka.com/customer/pesanan/riwayat-belanja
                         return redirect()->to('https://tokosancaka.com/customer/pesanan/riwayat-belanja')->with('success', 'Pembayaran marketplace berhasil.');
                     }
                 } catch (\Exception $e) {
                     Log::error('[DANA RETURN PAGE ERROR] Gagal cek DB Marketplace - ' . $e->getMessage());
                 }
+            }
+
+            // 6. CEK TOPUP
+            $topup = TopUp::where('transaction_id', $refNo)->first();
+            if ($topup) {
+                Session::forget('last_dana_ref');
+                if ($isMobile) {
+                    return view('pembayaran_suksesdana', compact('topup', 'refNo'));
+                }
+                return redirect()->route('customer.topup.index')->with('success', 'Topup berhasil diproses.');
+            }
+
+            // 7. CEK PPOB (DIPINDAH KE PALING BAWAH AGAR TIDAK MENABRAK PESANAN)
+            $trx = Transaction::where('ref_id', $refNo)
+                ->orWhere('reference_id', str_replace('PASCA', '', $refNo))
+                ->first();
+
+            if ($trx) {
+                Session::forget('last_dana_ref');
+                if ($isMobile) {
+                    return redirect()->away('sancakaexpress://riwayatppob/' . $refNo);
+                }
+                return redirect()->to('https://tokosancaka.com/riwayatppob')->with('success', 'Pembayaran PPOB berhasil.');
             }
 
             // 8. FALLBACK JIKA TIDAK DITEMUKAN
