@@ -641,12 +641,12 @@ class CheckoutController extends Controller
                 // ==========================================================
                 if ($paymentGateway === 'midtrans') {
                     Log::info('Memulai proses MIDTRANS Marketplace untuk ' . $order->invoice_number);
-                    
+
                     // Panggil fungsi eksekutor Midtrans yang baru saja dibuat
                     $paymentUrl = $this->createPaymentMidtransSnap($order);
                     $order->payment_url = $paymentUrl;
                 }
-                
+
                 // ==========================================================
                 // PROSES VIA DOKU
                 // ==========================================================
@@ -1043,6 +1043,12 @@ class CheckoutController extends Controller
             } elseif (Str::startsWith($merchantRef, 'TOPUP-')) {
                 Log::info('Routing callback to TopUpController', ['ref' => $merchantRef]);
                 TopUpController::processTopUpCallback($merchantRef, $status, $amount, $data);
+
+            // 4. PPOB (Format: PXXXXX) ---> INI LOGIKA YANG BARU DITAMBAHKAN
+            } elseif (Str::startsWith($merchantRef, 'P')) {
+                Log::info('Routing callback to PPOB Controller', ['ref' => $merchantRef]);
+                // Pastikan class/controller ini punya fungsi static processPpobCallback
+                \App\Http\Controllers\Api\Mobile\PpobMobileController::processPpobCallback($data);
 
             } elseif (Str::startsWith($merchantRef, 'ORD-')) {
                 Log::info('Routing callback to processOrderCallback (this controller)', ['ref' => $merchantRef]);
@@ -1791,15 +1797,15 @@ TEXT;
             $serverKey = \App\Models\Api::getValue('MIDTRANS_SERVER_KEY', $mode);
             $isProduction = ($mode === 'production');
 
-            $baseUrl = $isProduction 
-                ? 'https://app.midtrans.com/snap/v1/transactions' 
+            $baseUrl = $isProduction
+                ? 'https://app.midtrans.com/snap/v1/transactions'
                 : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
 
             $customerEmail = $user->email ?? 'customer@tokosancaka.com';
 
             $payload = [
                 'transaction_details' => [
-                    'order_id'     => $order->invoice_number, 
+                    'order_id'     => $order->invoice_number,
                     'gross_amount' => (int) $order->total_amount, // Nominal dari Marketplace
                 ],
                 'customer_details' => [
@@ -1809,7 +1815,7 @@ TEXT;
                 ],
                 // KEMBALI KE RIWAYAT BELANJA MARKETPLACE
                 'callbacks' => [
-                    'finish' => url('/customer/pesanan/riwayat-belanja') 
+                    'finish' => url('/customer/pesanan/riwayat-belanja')
                 ]
             ];
 

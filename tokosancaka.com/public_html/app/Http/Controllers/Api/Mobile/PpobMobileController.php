@@ -1238,4 +1238,36 @@ class PpobMobileController extends Controller
             ];
         }
     }
+
+    /**
+     * =========================================================================
+     * BRIDGE WEBHOOK: Menjembatani panggilan dari CheckoutController Tripay
+     * =========================================================================
+     */
+    public static function processPpobCallback($merchantRef, $status, $data = [])
+    {
+        Log::info("LOG LOG: Masuk ke PPOB Callback. Ref: {$merchantRef} | Status: {$status}");
+
+        // Cari transaksi di database PPOB lo
+        $transaction = \App\Models\TransactionPpobIak::where('ref_id', $merchantRef)->first();
+
+        if (!$transaction) {
+            Log::error("LOG LOG: Transaksi PPOB {$merchantRef} tidak ditemukan.");
+            return;
+        }
+
+        if ($status === 'PAID' && $transaction->status !== 'SUCCESS') {
+            Log::info("LOG LOG: PPOB Lunas, eksekusi nembak API IAK di sini...");
+
+            // Ubah status jadi lunas/process
+            $transaction->status = 'PROCESS';
+            $transaction->save();
+
+            // CATATAN: Di sini lo harus nambahin kode buat nembak API IAK (Prepaid/Postpaid)
+            // Karena user udah lunas bayar via Tripay.
+        } elseif (in_array($status, ['FAILED', 'EXPIRED'])) {
+            $transaction->status = 'FAILED';
+            $transaction->save();
+        }
+    }
 }
