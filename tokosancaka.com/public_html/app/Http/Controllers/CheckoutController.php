@@ -1834,4 +1834,53 @@ TEXT;
         }
     }
 
+    /**
+     * =========================================================================
+     * 1B. HANDLER WEBHOOK DANA
+     * =========================================================================
+     */
+    public function handleDanaCallback(array $data)
+    {
+        // Ambil data referensi & status dari payload DANA
+        $merchantRef = $data['originalPartnerReferenceNo'] ?? null;
+        $statusDesc = $data['transactionStatusDesc'] ?? null;
+        $latestStatus = $data['latestTransactionStatus'] ?? null;
+
+        Log::info('Processing DANA Callback...', ['ref' => $merchantRef, 'status' => $statusDesc, 'latestStatus' => $latestStatus]);
+
+        if (!$merchantRef) {
+            Log::error('DANA Callback: Missing originalPartnerReferenceNo', $data);
+            return response()->json(['message' => 'Invalid data'], 400);
+        }
+
+        // Mapping status: '00' atau 'SUCCESS' berarti berhasil/lunas
+        $internalStatus = ($latestStatus === '00' || strtoupper($statusDesc) === 'SUCCESS') ? 'PAID' : 'FAILED';
+
+        DB::beginTransaction();
+        try {
+            // Routing berdasarkan prefix transaksi
+            if (Str::startsWith($merchantRef, 'TOPUP-')) {
+                Log::info('Routing DANA callback to TopUpController', ['ref' => $merchantRef]);
+                $amount = isset($data['amount']['value']) ? (float) $data['amount']['value'] : 0;
+                TopUpController::processTopUpCallback($merchantRef, $internalStatus, $amount, $data);
+
+            } elseif (Str::startsWith($merchantRef, 'ORD-') || Str::startsWith($merchantRef, 'SCK-ORD-') || Str::startsWith($merchantRef, 'SCK-')) {
+                Log::info('Routing DANA callback to processOrderCallback', ['ref' => $merchantRef]);
+                // Panggil fungsi prosesor utama yang sudah ada di bawah
+                $this->processOrderCallback($merchantRef, $internalStatus, $data);
+
+            } else {
+                Log::warning('DANA Callback: Unrecognized merchant_ref prefix.', ['merchant_ref' => $merchantRef]);
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Webhook DANA processed successfully.'], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("DANA Callback Exception", ['ref' => $merchantRef, 'error' => $e->getMessage()]);
+            return response()->json(['message' => 'Internal server error.'], 500);
+        }
+    }
+
 } // Akhir Class
