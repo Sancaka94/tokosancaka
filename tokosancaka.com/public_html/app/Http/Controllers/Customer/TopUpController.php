@@ -2823,7 +2823,7 @@ public function handleCallback(Request $request)
      * BRIDGE WEBHOOK: Menjembatani panggilan dari CheckoutController Tripay
      * =========================================================================
      */
-    public function processTopUpCallback($merchantRef, $status = null, $amount = null)
+    public static function processTopUpCallback($merchantRef, $status = null, $amount = null)
     {
         // Jika CheckoutController mengirimkan data dalam bentuk array tunggal
         if (is_array($merchantRef) || is_object($merchantRef)) {
