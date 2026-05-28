@@ -19,17 +19,26 @@ use App\Models\LicenseApp2;
 class DanaWebhookController extends Controller
 {
     // =================================================================
-    // 1. HANDLER WEBHOOK DANA (MENGGUNAKAN LOGIKA DOKU YANG SUDAH TERUJI)
+    // 1. HANDLER WEBHOOK DANA
     // =================================================================
     public function handleNotify(Request $request)
     {
         Log::info('========== DANA WEBHOOK INCOMING ==========');
 
+        // --- [DD: LOG DETAIL REQUEST] ---
+        Log::info('========== [DEBUG WEBHOOK DANA] ==========');
+        Log::info('IP PENGIRIM: ' . $request->ip());
+        Log::info('FULL URL: ' . $request->fullUrl());
+        Log::info('HEADERS: ', $request->headers->all());
+        Log::info('PAYLOAD (BODY): ', $request->all());
+        Log::info('==========================================');
+        // --------------------------------
+
         $orderId = $request->input('partnerReferenceNo') ?? $request->input('originalPartnerReferenceNo');
         $statusDana = $request->input('latestTransactionStatus');
         $amountValue = $request->input('amount.value') ?? 0;
 
-        // --- TAMBAHKAN BARIS INI UNTUK MENGEMBALIKAN STRIP (-) PADA INVOICE ---
+        // --- MENGEMBALIKAN STRIP (-) PADA INVOICE ---
         if ($orderId) {
             $orderId = $this->normalizeReference($orderId);
         }
@@ -49,11 +58,11 @@ class DanaWebhookController extends Controller
         Log::info("Memproses Invoice: $orderId | Status DANA: $statusDana");
 
         // =================================================================
-        // MOCK DATA: Mengelabui Controller lain agar mengira ini dari DOKU
-        // Karena fungsi delegasi di controller lain pakai nama handleDokuCallback
+        // DATA PAYLOAD: Diseragamkan untuk diteruskan ke controller terkait
         // =================================================================
         $internalStatus = in_array(strtoupper($statusDana), ['00', 'SUCCESS']) ? 'SUCCESS' : 'FAILED';
-        $mockDokuData = [
+
+        $payloadData = [
             'order' => [
                 'invoice_number' => $orderId,
                 'amount' => $amountValue
@@ -217,11 +226,11 @@ class DanaWebhookController extends Controller
 
                     if ($pesananEkspedisi) {
                         Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Sancaka Express/Mobile.");
-                        App::make(\App\Http\Controllers\Admin\PesananController::class)->handleDokuCallback($mockDokuData);
+                        App::make(\App\Http\Controllers\Admin\PesananController::class)->handleDanaCallback($payloadData);
                     }
                     else if ($pesananTokoUtama) {
                         Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Toko Utama (Checkout Sancaka).");
-                        App::make(\App\Http\Controllers\CheckoutController::class)->handleDokuCallback($mockDokuData);
+                        App::make(\App\Http\Controllers\CheckoutController::class)->handleDanaCallback($payloadData);
                     }
                     else {
                         Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Marketplace (mysql_second).");
@@ -384,14 +393,13 @@ class DanaWebhookController extends Controller
                 else {
                     if (Str::startsWith($orderId, 'TOPUP-') || Str::startsWith($orderId, 'ADM-')) {
                         Log::info("➡️ Order $orderId didelegasikan ke TopUpController.");
-                        App::make(\App\Http\Controllers\Customer\TopUpController::class)->handleDokuCallback($mockDokuData);
+                        App::make(\App\Http\Controllers\Customer\TopUpController::class)->handleDanaCallback($payloadData);
                     } else if (Str::startsWith($orderId, 'INV-')) {
-                        App::make(\App\Http\Controllers\CustomerOrderController::class)->handleDokuCallback($mockDokuData);
+                        App::make(\App\Http\Controllers\CustomerOrderController::class)->handleDanaCallback($payloadData);
                     } else if (Str::startsWith($orderId, 'CVSANCAK-') || Str::startsWith($orderId, 'ORD-')) {
-                        App::make(\App\Http\Controllers\CheckoutController::class)->handleDokuCallback($mockDokuData);
+                        App::make(\App\Http\Controllers\CheckoutController::class)->handleDanaCallback($payloadData);
                     } else {
                         // PENANGANAN PPOB BERDASARKAN TABEL transactionppobiak
-                        // Cek apakah ada prefix I/P atau TRX- (Misal P2604... atau I2604... atau TRX-)
                         $trxPpob = DB::table('transactionppobiak')
                             ->where('ref_id', $orderId)
                             ->orWhere('ref_id', str_replace('PASCA', '', $orderId))
@@ -415,10 +423,10 @@ class DanaWebhookController extends Controller
                 if (Str::startsWith($orderId, 'SCK-')) {
                     $pesananEkspedisi = \App\Models\Pesanan::where('nomor_invoice', $orderId)->first();
                     if ($pesananEkspedisi) {
-                        App::make(\App\Http\Controllers\Admin\PesananController::class)->handleDokuCallback($mockDokuData);
+                        App::make(\App\Http\Controllers\Admin\PesananController::class)->handleDanaCallback($payloadData);
                     }
                 } elseif (Str::startsWith($orderId, 'TOPUP-') || Str::startsWith($orderId, 'ADM-')) {
-                    App::make(\App\Http\Controllers\Customer\TopUpController::class)->handleDokuCallback($mockDokuData);
+                    App::make(\App\Http\Controllers\Customer\TopUpController::class)->handleDanaCallback($payloadData);
                 } else {
                     $trxPpob = DB::table('transactionppobiak')
                         ->where('ref_id', $orderId)
