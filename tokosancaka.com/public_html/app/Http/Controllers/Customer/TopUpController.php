@@ -2066,7 +2066,7 @@ public function handleCallback(Request $request)
             "validUpTo"          => $expiryTime,
             "urlParams"          => [
                 ["url" => route('dana.return', ['trx_id' => $cleanInvoice]), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-                ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
+                ["url" => url('/dana/notify'), "type" => "NOTIFICATION", "isDeeplink" => "N"]
             ],
             // Opsi Pembayaran (Wajib BALANCE/Saldo agar aman tanpa Token)
             "payOptionDetails"   => [
@@ -2300,7 +2300,7 @@ public function handleCallback(Request $request)
                 "isDeeplink" => "Y"
             ],
             [
-                "url"        => route('dana.notify'), // Webhook/Callback
+                "url"        => url('/dana/notify'),
                 "type"       => "NOTIFICATION",
                 "isDeeplink" => "N"
             ]
