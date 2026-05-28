@@ -2264,6 +2264,26 @@ public function cetakThermal($resi)
         return redirect()->back()->with('error', 'Tidak ada data yang dipilih untuk dihapus.');
     }
 
+    /**
+     * Callback untuk menangani pesanan (SCK-) yang berasal dari DANA Webhook.
+     */
+    public function handleDanaCallback(array $data)
+    {
+        Log::info('Processing Dana Callback di Admin PesananController...', [
+            'invoice' => $data['order']['invoice_number'],
+            'status'  => $data['transaction']['status']
+        ]);
+
+        // Karena DanaWebhookController sudah menyiapkan $data['order']['invoice_number']
+        // dan $data['transaction']['status'], kita bisa langsung gunakan:
+
+        $merchantRef = $data['order']['invoice_number'];
+        $status = $data['transaction']['status'];
+
+        // Panggil fungsi prosesor yang sudah ada di PesananController
+        return self::processPesananCallback($merchantRef, $status, $data);
+    }
+
 } // Akhir Class PesananController
 
 
