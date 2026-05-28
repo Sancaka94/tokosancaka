@@ -333,6 +333,88 @@ class DanaWebhookController extends Controller
     }
 
     /**
+     * =========================================================================
+     * FITUR: CEK SALDO DANA USER PENGGUNA (REAL-TIME)
+     * =========================================================================
+     */
+    public function checkMyDanaBalance()
+    {
+        $user = Auth::user();
+
+        // Pastikan kolom akses token sesuai dengan tabel User/Pengguna Anda
+        $accessToken = $user->dana_access_token;
+
+        if (empty($accessToken)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akun DANA belum terhubung. Silakan hubungkan terlebih dahulu.'
+            ]);
+        }
+
+        $timestamp = now('Asia/Jakarta')->toIso8601String();
+        $path = '/v1.0/balance-inquiry.htm';
+        $body = [
+            'partnerReferenceNo' => 'BAL' . time() . Str::random(5),
+            'balanceTypes' => ['BALANCE'],
+            'additionalInfo' => [
+                'accessToken' => $accessToken
+            ]
+        ];
+
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
+        // Menggunakan fungsi generateSignature yang sudah ada di Controller ini
+        $signature = $this->generateSignature($stringToSign);
+
+        try {
+            Log::info('[DANA BALANCE CHECK] Meminta info saldo user ID: ' . $user->id_pengguna);
+
+            $response = Http::withHeaders([
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time(),
+                'X-DEVICE-ID'   => 'CUSTOMER-WEB-STATION',
+                'CHANNEL-ID'    => '95221',
+                'ORIGIN'        => config('services.dana.origin'),
+                'Authorization-Customer' => 'Bearer ' . $accessToken,
+                'Content-Type'  => 'application/json'
+            ])->withBody($jsonBody, 'application/json')->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+
+            // Jika Berhasil (Response Code DANA 2001100 = Success Inquiry)
+            if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
+                $amount = $result['accountInfos'][0]['availableBalance']['value'] ?? 0;
+
+                // (Opsional) Jika Anda punya kolom dana_user_balance di tabel users, Anda bisa menyimpannya
+                // $user->update(['dana_user_balance' => $amount]);
+
+                return response()->json([
+                    'success' => true,
+                    'balance' => $amount,
+                    'formatted_balance' => 'Rp ' . number_format($amount, 0, ',', '.'),
+                    'message' => 'Berhasil mengambil saldo DANA.'
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil saldo: ' . ($result['responseMessage'] ?? 'Token mungkin kadaluarsa.')
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('[DANA BALANCE CHECK] Error System: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Sistem Error saat mengecek saldo.'
+            ], 500);
+        }
+    }
+
+    /**
      * =========================================================
      * STANDARD SUCCESS RESPONSE DANA SNAP
      * =========================================================

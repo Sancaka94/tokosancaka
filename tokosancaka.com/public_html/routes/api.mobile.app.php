@@ -127,6 +127,8 @@ Route::get('/suratjalan/download/{kode_surat_jalan}', [ScanSpxController::class,
 // =========================================================================
 Route::middleware('auth:sanctum')->group(function () {
 
+Route::get('/customer/dana/balance', [\App\Http\Controllers\Api\Mobile\DanaGatewayMobileController::class, 'checkMyDanaBalance']);
+
 Route::get('/seller/dashboard', [\App\Http\Controllers\Api\Mobile\DashboardSellerController::class, 'index']);
 
 
