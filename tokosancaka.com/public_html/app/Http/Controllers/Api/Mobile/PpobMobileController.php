@@ -1352,6 +1352,11 @@ class PpobMobileController extends Controller
 
                     \Illuminate\Support\Facades\Log::info("LOG LOG: RAW RESPONSE IAK", $resultIak ?? []);
 
+                    // Tambahkan pengecekan ini
+                    if ($responseIak->failed()) {
+                        \Illuminate\Support\Facades\Log::error("LOG LOG: Gagal hit API IAK! HTTP Status: " . $responseIak->status());
+                    }
+
                     if ($responseIak->successful() && isset($resultIak['data'])) {
                         $rc = $resultIak['data']['response_code'] ?? '';
                         $finalStatus = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
