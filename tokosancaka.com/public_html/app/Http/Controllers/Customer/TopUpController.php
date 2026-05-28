@@ -2772,85 +2772,26 @@ public function handleCallback(Request $request)
         }
     }
 
-    public function handleDanaCallback(Request $request)
+    /**
+     * =========================================================================
+     * HANDLER WEBHOOK DANA (Delegasi dari DanaWebhookController)
+     * =========================================================================
+     */
+    public function handleDanaCallback(array $data)
     {
-        Log::info("========== DANA WEBHOOK INCOMING ==========");
+        // 1. Ekstrak data yang dikirim oleh DanaWebhookController
+        $merchantRef = $data['order']['invoice_number'];
+        $internalStatus = $data['transaction']['status']; // SUCCESS atau FAILED
+        $amount = $data['order']['amount'];
 
-        // 1. Ambil Data (Support berbagai format DANA Sandbox/Production)
-        $payload = $request->all();
-
-        // Coba ambil Order ID dari berbagai kemungkinan key
-        $orderNumber = $payload['originalPartnerReferenceNo'] ?? // Format Sandbox SNAP BI (Sesuai Log Anda)
-                       $payload['partnerReferenceNo'] ??         // Format Dokumentasi Lama
-                       $payload['merchantTransId'] ??            // Format V2
-                       null;
-
-        // Cek Status Transaksi
-        $statusRaw = $payload['transactionStatusDesc'] ??        // Format Sandbox SNAP BI (SUCCESS)
-                     $payload['transactionStatus'] ??            // Format Dokumentasi Lama
-                     $payload['acquirementStatus'] ??            // Format V2
-                     null;
-
-        // Ambil Reference No DANA
-        $refNoDana = $payload['originalReferenceNo'] ??
-                     $payload['referenceNo'] ??
-                     $payload['acquirementId'] ??
-                     null;
-
-        Log::info("Parsed Data Final:", [
-            'OrderNo' => $orderNumber,
-            'Status'  => $statusRaw,
-            'RefDana' => $refNoDana
+        Log::info('Processing DANA Callback (di TopUpController)...', [
+            'ref' => $merchantRef,
+            'status' => $internalStatus,
+            'amount' => $amount
         ]);
 
-        // 2. Validasi Data
-        if (!$orderNumber) {
-            Log::error("WEBHOOK ERROR: Order Number tidak ditemukan dalam payload.");
-            return response()->json(['responseCode' => '400', 'responseMessage' => 'Bad Request'], 400);
-        }
-
-        // 3. Cari Order di DB
-        $order = Order::where('order_number', $orderNumber)->first();
-        if (!$order) {
-            Log::error("WEBHOOK ERROR: Order #$orderNumber tidak ditemukan di DB.");
-            return response()->json(['responseCode' => '404', 'responseMessage' => 'Order Not Found'], 404);
-        }
-
-        // 4. Cek Idempotency
-        if ($order->payment_status === 'paid') {
-            Log::info("WEBHOOK INFO: Order #$orderNumber sudah lunas. Skip.");
-            return response()->json(['responseCode' => '200', 'responseMessage' => 'Success'], 200);
-        }
-
-        // 5. Update Status
-        // Status Sukses di Log Anda adalah "SUCCESS" atau "00"
-        $isSuccess = in_array($statusRaw, ['SUCCESS', 'PAID', 'FINISHED', '00']);
-
-        if ($isSuccess) {
-
-            $order->update([
-                'status'         => 'processing',
-                'payment_status' => 'paid',
-                'note'           => $order->note . "\n[DANA PAID] Ref: $refNoDana | Time: " . now(),
-            ]);
-
-            Log::info("WEBHOOK SUKSES: Order #$orderNumber LUNAS.");
-
-            if ($order->coupon_id) {
-                $this->_processAffiliateCommission($order->coupon->code ?? '', $order->final_price);
-            }
-
-            $this->_sendWaNotification($order, $order->final_price, null, 'paid');
-
-        } else {
-            Log::warning("WEBHOOK STATUS LAIN: $statusRaw");
-        }
-
-        // UBAH RETURN MENJADI INI (Sesuai permintaan Test Scenario):
-    return response()->json([
-        'responseCode' => '2005600',
-        'responseMessage' => 'Successful'
-    ], 200);
-}
+        // 2. Teruskan ke prosesor utama (yang bertugas nambah saldo & kirim notif)
+        return self::processTopUp($merchantRef, $internalStatus, $amount);
+    }
 
 }
