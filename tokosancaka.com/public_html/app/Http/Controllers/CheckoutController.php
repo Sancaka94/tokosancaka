@@ -1048,7 +1048,7 @@ class CheckoutController extends Controller
             } elseif (Str::startsWith($merchantRef, 'P')) {
                 Log::info('Routing callback to PPOB Controller', ['ref' => $merchantRef]);
                 // Pastikan class/controller ini punya fungsi static processPpobCallback
-                \App\Http\Controllers\Api\Mobile\PpobMobileController::processPpobCallback($data);
+                \App\Http\Controllers\Api\Mobile\PpobMobileController::processPpobCallback($merchantRef, $status, $data);
 
             } elseif (Str::startsWith($merchantRef, 'ORD-')) {
                 Log::info('Routing callback to processOrderCallback (this controller)', ['ref' => $merchantRef]);

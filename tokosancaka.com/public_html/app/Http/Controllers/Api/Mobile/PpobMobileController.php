@@ -1239,20 +1239,8 @@ class PpobMobileController extends Controller
         }
     }
 
-   /**
-     * =========================================================================
-     * BRIDGE WEBHOOK: Menjembatani panggilan dari CheckoutController Tripay
-     * =========================================================================
-     */
-    public static function processPpobCallback($merchantRef, $status = null, $data = [])
+   public static function processPpobCallback($merchantRef, $status, $data = [])
     {
-        // Fleksibilitas: Jika CheckoutController hanya mengirim 1 array ($data)
-        if (is_array($merchantRef) || is_object($merchantRef)) {
-            $data = (array) $merchantRef;
-            $merchantRef = $data['merchant_ref'] ?? $data['reference'] ?? null;
-            $status = $data['status'] ?? 'PAID';
-        }
-
         Log::info("LOG LOG: Masuk ke PPOB Callback. Ref: {$merchantRef} | Status: {$status}");
 
         // Cari transaksi di database PPOB
@@ -1270,11 +1258,7 @@ class PpobMobileController extends Controller
             $transaction->status = 'PROCESS';
             $transaction->save();
 
-            // =========================================================
-            // CATATAN PENTING:
-            // Tambahkan script curl/HTTP request ke IAK lo di sini
-            // agar pulsa/token benar-benar terkirim ke pelanggan
-            // =========================================================
+            // TODO: Nembak API IAK Prabayar/Pascabayar di sini
 
         } elseif (in_array($status, ['FAILED', 'EXPIRED'])) {
             $transaction->status = 'FAILED';
