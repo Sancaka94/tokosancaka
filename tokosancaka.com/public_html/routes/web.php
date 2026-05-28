@@ -1332,22 +1332,24 @@ Route::prefix('admin/doku')->name('admin.doku.')->group(function () {
 
 Route::get('/dana/callback', [TopUpController::class, 'handleCallback'])->name('callback');
 
-Route::get(
-    '/payment/dana/return',
-    [DanaWebhookController::class, 'returnPage']
-)->name('dana.return');
-
+// 1. WEBHOOK NOTIFY (Untuk menerima notifikasi sukses dari DANA)
 Route::post(
-    '/api/dana/notify',
+    '/dana/notify', // Dihilangkan /api-nya agar sama dengan dashboard DANA
     [DanaWebhookController::class, 'handleNotify']
 )->name('dana.webhook');
+
+// 2. RETURN PAGE (Untuk kembalian / redirect setelah bayar dari DANA)
+Route::get(
+    '/dana/return', // Sesuaikan URL ini juga di Dashboard DANA kolom "Finish Redirect URL"
+    [DanaWebhookController::class, 'returnPage']
+)->name('dana.return');
 
 
 // --- RUTE DANA BINDING & CALLBACK (TANPA PREFIX) ---
 Route::middleware(['auth'])->group(function () {
     // URL: https://tokosancaka.com/dana/start-binding
     Route::get('/dana/start-binding', [\App\Http\Controllers\Customer\TopUpController::class, 'startBinding'])->name('dana.start_binding');
-    
+
     // URL: https://tokosancaka.com/dana/callback
     Route::get('/dana/callback', [\App\Http\Controllers\Customer\TopUpController::class, 'handleCallback'])->name('dana.callback');
 });
