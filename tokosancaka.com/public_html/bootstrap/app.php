@@ -30,13 +30,16 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/callback/tripay',
             'api/callback/doku',
             'telegram-webhook',
-            'dana/notify', // URL Webhook DANA dibebaskan dari CSRF
             'doku/*',
             'ppob/webhook',
             'api/midtrans/*', // Mengecualikan semua route di dalam prefix midtrans
             'api/mobile/dana/notify',
             'api/mobile/dana/callback',
             'api/mobile/dana/*',
+            'dana/*',
+            'api/dana/*',
+            'dana/notify', // Sesuaikan dengan route webhook DANA Anda
+            'dana/callback',
         ]);
 
         // --- TAMBAHKAN BAGIAN INI ---
