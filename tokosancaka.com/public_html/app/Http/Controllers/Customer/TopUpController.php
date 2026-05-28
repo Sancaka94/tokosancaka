@@ -1871,7 +1871,7 @@ public function handleCallback(Request $request)
                     "isDeeplink" => "N"
                 ],
                 [
-                    "url" => route('dana.notify'),
+                    "url" => "https://tokosancaka.com/dana/notify",
                     "type" => "NOTIFICATION",
                     "isDeeplink" => "N"
                 ]
