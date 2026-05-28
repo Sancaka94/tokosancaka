@@ -733,30 +733,61 @@ class MarketplaceMobileController extends Controller
                     \Illuminate\Support\Facades\Log::error("API MOBILE: KiriminAja Timeout/Error: " . $kaException->getMessage());
                 }
 
+           // =========================================================================
+            // BLOK PAYMENT GATEWAY (DANA, DOKU, TRIPAY)
             // =========================================================================
-            // BLOK UNTUK METODE GATEWAY (Diarahkan ke Web)
-            // =========================================================================
-            } elseif (strtoupper($request->payment_method) === 'GATEWAY') {
+            } elseif (!in_array(strtoupper(trim($request->payment_method)), ['CASH', 'SALDO', 'POTONG SALDO', 'COD', 'CODBARANG'])) {
+
                 $order->status = 'pending';
-                // URL ini akan dibuka oleh aplikasi mobile
-                $paymentUrl = url('/pembayaran?akun=' . urlencode($user->no_wa));
+                $order->status_pesanan = 'Menunggu Pembayaran';
+                $paymentUrl = null;
+
+                $metodeDana = ['DANA', 'DANA_BINDING', '#DANA', '#DANA_BINDING'];
+
+                // 1. VIA DANA
+                if (in_array(strtoupper(trim($request->payment_method)), $metodeDana)) {
+                    $transaction = \App\Models\Transaction::create([
+                        'user_id' => $userId,
+                        'amount' => $grand_total,
+                        'type' => 'payment',
+                        'status' => 'pending',
+                        'payment_method' => str_replace('#', '', $request->payment_method),
+                        'reference_id' => $order->invoice_number,
+                        'description' => 'Pembayaran Pesanan Marketplace ' . $order->invoice_number,
+                    ]);
+
+                    $danaController = app(\App\Http\Controllers\Api\Mobile\DanaGatewayMobileController::class);
+                    $danaRes = $danaController->createPaymentDANA($transaction);
+                    $danaData = $danaRes->getData(true);
+
+                    if (!isset($danaData['success']) || !$danaData['success']) {
+                        throw new Exception($danaData['message'] ?? 'Gagal membuat tagihan DANA.');
+                    }
+                    $paymentUrl = $danaData['redirect_url'] ?? null;
+                }
+                // 2. VIA DOKU JOKUL
+                elseif (strtoupper(trim($request->payment_method)) === 'DOKU_JOKUL' || strtoupper(trim($request->payment_method)) === '#DOKU') {
+                    $dokuService = new DokuJokulService();
+                    $paymentUrl = $dokuService->createPayment($order->invoice_number, $grand_total);
+
+                    if (empty($paymentUrl)) {
+                        throw new Exception("Gagal membuat tagihan DOKU.");
+                    }
+                }
+                // 3. VIA TRIPAY (Fallback Retail & VA)
+                else {
+                    $tripayResult = $this->_createTripayTransaction($order, $request->payment_method, $grand_total, $user, $orderItemsPayload);
+                    if ($tripayResult['success']) {
+                        $paymentUrl = $tripayResult['data']['checkout_url'] ?? $tripayResult['data']['pay_url'];
+                        $order->pay_code = $tripayResult['data']['pay_code'] ?? null;
+                        $order->qr_url = $tripayResult['data']['qr_url'] ?? null;
+                    } else {
+                        throw new Exception($tripayResult['message'] ?? 'Gagal membuat tagihan Tripay.');
+                    }
+                }
+
                 $order->payment_url = $paymentUrl;
                 $order->save();
-
-            // =========================================================================
-            // BLOK LAMA JIKA ADA METODE TRIPAY SPESIFIK YANG TERLEWAT
-            // =========================================================================
-            } elseif (!in_array(strtolower($request->payment_method), ['dana', 'doku_jokul'])) {
-                $tripayResult = $this->_createTripayTransaction($order, $request->payment_method, $grand_total, $user, $orderItemsPayload);
-                if ($tripayResult['success']) {
-                    $paymentUrl = $tripayResult['data']['checkout_url'] ?? $tripayResult['data']['pay_url'];
-                    $order->payment_url = $paymentUrl;
-                    $order->pay_code = $tripayResult['data']['pay_code'] ?? null;
-                    $order->qr_url = $tripayResult['data']['qr_url'] ?? null;
-                    $order->save();
-                } else {
-                    throw new Exception($tripayResult['message']);
-                }
             }
 
             DB::commit();
