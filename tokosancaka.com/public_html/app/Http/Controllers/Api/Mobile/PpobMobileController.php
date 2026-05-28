@@ -1239,30 +1239,154 @@ class PpobMobileController extends Controller
         }
     }
 
-   public static function processPpobCallback($merchantRef, $status, $data = [])
+   /**
+     * =========================================================================
+     * BRIDGE WEBHOOK: Menjembatani panggilan dari CheckoutController Tripay
+     * LENGKAP DENGAN IDEMPOTENCY & CONCURRENCY LOCK
+     * =========================================================================
+     */
+    public static function processPpobCallback($merchantRef, $status = null, $data = [])
     {
-        Log::info("LOG LOG: Masuk ke PPOB Callback. Ref: {$merchantRef} | Status: {$status}");
+        // Fleksibilitas: Jika CheckoutController hanya mengirim 1 array ($data)
+        if (is_array($merchantRef) || is_object($merchantRef)) {
+            $data = (array) $merchantRef;
+            $merchantRef = $data['merchant_ref'] ?? $data['reference'] ?? null;
+            $status = $data['status'] ?? 'PAID';
+        }
 
-        // Cari transaksi di database PPOB
-        $transaction = \App\Models\TransactionPpobIak::where('ref_id', $merchantRef)->first();
+        \Illuminate\Support\Facades\Log::info("LOG LOG: Masuk ke PPOB Callback. Ref: {$merchantRef} | Status: {$status}");
+
+        // 1. CONCURRENCY LOCK: Pakai lockForUpdate() agar aman dari race condition
+        // saat webhook masuk bersamaan di milidetik yang sama.
+        $transaction = \App\Models\TransactionPpobIak::where('ref_id', $merchantRef)->lockForUpdate()->first();
 
         if (!$transaction) {
-            Log::error("LOG LOG: Transaksi PPOB {$merchantRef} tidak ditemukan.");
+            \Illuminate\Support\Facades\Log::error("LOG LOG: Transaksi PPOB {$merchantRef} tidak ditemukan.");
             return;
         }
 
-        if ($status === 'PAID' && $transaction->status !== 'SUCCESS') {
-            Log::info("LOG LOG: PPOB Lunas, eksekusi nembak API IAK di sini...");
+        // =====================================================================
+        // 2. IDEMPOTENCY CHECK (PENCEGAH DOUBLE EKSEKUSI)
+        // =====================================================================
+        if ($status === 'PAID') {
 
-            // Ubah status jadi proses
-            $transaction->status = 'PROCESS';
-            $transaction->save();
+            // Jika status di DB sudah PROCESS atau SUCCESS, hentikan eksekusi!
+            // Artinya webhook ini adalah duplikat/retry dari Tripay.
+            if (in_array($transaction->status, ['SUCCESS', 'PROCESS'])) {
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [IDEMPOTENCY] Transaksi {$merchantRef} sudah lunas/diproses (Status saat ini: {$transaction->status}). Skip nembak IAK untuk mencegah double saldo.");
+                return;
+            }
 
-            // TODO: Nembak API IAK Prabayar/Pascabayar di sini
+            \Illuminate\Support\Facades\Log::info("LOG LOG: PPOB Lunas via Gateway, eksekusi nembak API IAK dimulai...");
 
-        } elseif (in_array($status, ['FAILED', 'EXPIRED'])) {
+            // 3. AMBIL KREDENSIAL IAK DARI DATABASE
+            $env = \App\Models\Api::getValue('IAK_MODE', 'global', 'development');
+            $username = \App\Models\Api::getValue('IAK_USER_HP', $env);
+            $apiKey = \App\Models\Api::getValue('IAK_API_KEY', $env);
+
+            $prepaidBaseUrl = \App\Models\Api::getValue('IAK_PREPAID_BASE_URL', $env) ?: ($env === 'production' ? 'https://prepaid.iak.id' : 'https://prepaid.iak.dev');
+            $postpaidBaseUrl = \App\Models\Api::getValue('IAK_POSTPAID_BASE_URL', $env) ?: ($env === 'production' ? 'https://mobilepulsa.net' : 'https://testpostpaid.mobilepulsa.net');
+
+            // 4. UBAH STATUS JADI PROCESS (Tandai sedang dieksekusi)
+            $transaction->update(['status' => 'PROCESS']);
+
+            // =========================================================
+            // 5. EKSEKUSI NEMBAK API IAK
+            // =========================================================
+            try {
+                // A. JIKA PRABAYAR (Pulsa, Data, Token PLN, Game)
+                if ($transaction->type === 'prabayar') {
+                    $sign = md5($username . $apiKey . $merchantRef);
+
+                    $responseIak = \Illuminate\Support\Facades\Http::post($prepaidBaseUrl . '/api/top-up', [
+                        'username'     => $username,
+                        'customer_id'  => $transaction->customer_id,
+                        'product_code' => $transaction->product_code,
+                        'ref_id'       => $merchantRef,
+                        'sign'         => $sign
+                    ]);
+
+                    $resultIak = $responseIak->json();
+
+                    if ($responseIak->successful() && isset($resultIak['data'])) {
+                        $apiCode = $resultIak['data']['rc'] ?? ($resultIak['data']['message'] == 'PROCESS' ? '39' : null);
+                        $codeInfo = \App\Models\IakPrepaidResponseCode::where('code', $apiCode)->first();
+                        $statusMap = [0 => 'PROCESS', 1 => 'SUCCESS', 2 => 'FAILED'];
+                        $apiStatus = $resultIak['data']['status'] ?? 0;
+
+                        $finalStatus = $codeInfo ? strtoupper($codeInfo->status) : ($statusMap[$apiStatus] ?? 'PROCESS');
+                        $finalMessage = $codeInfo ? $codeInfo->description : ($resultIak['data']['message'] ?? 'Proses');
+
+                        $transaction->update([
+                            'status'  => $finalStatus,
+                            'tr_id'   => $resultIak['data']['tr_id'] ?? null,
+                            'sn'      => $resultIak['data']['sn'] ?? null,
+                            'message' => $finalMessage
+                        ]);
+
+                        if (in_array($finalStatus, ['PROCESS', 'SUCCESS', 'PENDING'])) {
+                            \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', 4)->decrement('balance_iak', (float) $transaction->price);
+                            \Illuminate\Support\Facades\Log::info("LOG LOG: IAK Prabayar Sukses Ditembak. Status: {$finalStatus}. Saldo IAK Pusat otomatis dipotong.");
+                        }
+                    } else {
+                        $transaction->update(['status' => 'FAILED', 'message' => $resultIak['data']['message'] ?? 'API Error']);
+                        \Illuminate\Support\Facades\Log::error("LOG LOG: Gagal nembak IAK Prabayar", $resultIak ?? []);
+                    }
+                }
+
+                // B. JIKA PASCABAYAR (Bayar Tagihan)
+                else {
+                    $sign = md5($username . $apiKey . $transaction->tr_id);
+
+                    $responseIak = \Illuminate\Support\Facades\Http::timeout(45)->post($postpaidBaseUrl . '/api/v1/bill/check', [
+                        'commands' => 'pay-pasca',
+                        'username' => $username,
+                        'tr_id'    => $transaction->tr_id,
+                        'sign'     => $sign
+                    ]);
+
+                    $resultIak = $responseIak->json();
+
+                    if ($responseIak->successful() && isset($resultIak['data'])) {
+                        $rc = $resultIak['data']['response_code'] ?? '';
+                        $finalStatus = ($rc === '00') ? 'SUCCESS' : (($rc === '39') ? 'PROCESS' : 'FAILED');
+
+                        $transaction->update([
+                            'status'  => $finalStatus,
+                            'sn'      => $resultIak['data']['noref'] ?? null,
+                            'message' => $resultIak['data']['message'] ?? 'Payment response received'
+                        ]);
+
+                        if (in_array($finalStatus, ['PROCESS', 'SUCCESS', 'PENDING'])) {
+                            \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', 4)->decrement('balance_iak', (float) $transaction->price);
+                            \Illuminate\Support\Facades\Log::info("LOG LOG: IAK Pascabayar Sukses Ditembak. Status: {$finalStatus}. Saldo IAK Pusat otomatis dipotong.");
+                        }
+                    } else {
+                        $transaction->update(['status' => 'FAILED', 'message' => 'Invalid API Response dari Pusat']);
+                        \Illuminate\Support\Facades\Log::error("LOG LOG: Gagal nembak IAK Pascabayar", $resultIak ?? []);
+                    }
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("LOG LOG: System Error saat nembak IAK via Webhook: " . $e->getMessage());
+                // Set as PROCESS agar aman dan bisa dicheck manual
+                $transaction->update(['status' => 'PROCESS', 'message' => 'Pending IAK Request due to Timeout/Error']);
+            }
+
+        }
+        // =====================================================================
+        // IDEMPOTENCY CHECK UNTUK STATUS GAGAL/EXPIRED
+        // =====================================================================
+        elseif (in_array($status, ['FAILED', 'EXPIRED'])) {
+
+            // Kalau status di DB udah FAILED, SUCCESS, atau PROCESS, abaikan!
+            if (in_array($transaction->status, ['SUCCESS', 'PROCESS', 'FAILED'])) {
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [IDEMPOTENCY] Mengabaikan status {$status} dari Webhook karena transaksi {$merchantRef} sudah berstatus {$transaction->status}.");
+                return;
+            }
+
             $transaction->status = 'FAILED';
             $transaction->save();
+            \Illuminate\Support\Facades\Log::info("LOG LOG: Transaksi PPOB digagalkan (Expired/Failed dari Gateway).");
         }
     }
 }
