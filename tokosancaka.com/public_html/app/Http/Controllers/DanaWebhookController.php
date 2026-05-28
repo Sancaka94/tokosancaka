@@ -22,7 +22,7 @@ use Illuminate\Support\Str;
 
 class DanaWebhookController extends Controller
 {
-    public function handleNotify(Request $request)
+   public function handleNotify(Request $request)
     {
         Log::info('========== DANA WEBHOOK (Mobile Gateway - ALL INCLUSIVE) ==========');
 
@@ -32,12 +32,15 @@ class DanaWebhookController extends Controller
         // Cari data transaksi di tabel penjembatan (transactions)
         $transaction = \App\Models\Transaction::where('reference_id', $trxIdFromDana)->lockForUpdate()->first();
 
+        // Siapkan standar timestamp GMT+7 sesuai dokumentasi DANA SNAP
+        $danaTimestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+
         if (!$transaction) {
             Log::info("Webhook DANA: ID $trxIdFromDana tidak ditemukan di tabel transactions.");
             return response()->json([
                 'responseCode' => '2005600',
                 'responseMessage' => 'Successful'
-            ])->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
+            ])->withHeaders(['X-TIMESTAMP' => $danaTimestamp]); // <-- FIX TIMESTAMP
         }
 
         DB::beginTransaction();
@@ -184,11 +187,19 @@ class DanaWebhookController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("LOG LOG: Webhook Error: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            return response()->json(['responseCode' => '5005601', 'responseMessage' => 'Internal Server Error'], 500);
+
+            // <-- FIX TIMESTAMP PADA ERROR 500
+            return response()->json([
+                'responseCode' => '5005601',
+                'responseMessage' => 'Internal Server Error'
+            ], 500)->withHeaders(['X-TIMESTAMP' => $danaTimestamp]);
         }
 
-        return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful'])
-                ->withHeaders(['X-TIMESTAMP' => Carbon::now()->toIso8601String()]);
+        // <-- FIX TIMESTAMP PADA RESPONSE SUKSES
+        return response()->json([
+            'responseCode' => '2005600',
+            'responseMessage' => 'Successful'
+        ])->withHeaders(['X-TIMESTAMP' => $danaTimestamp]);
     }
 
    /**
@@ -235,7 +246,7 @@ class DanaWebhookController extends Controller
             if ($trx) {
                 Session::forget('last_dana_ref'); // Bersihkan session
                 if ($isMobile) {
-                    return redirect()->away('sancakaexpress://riwayatpesanan/' . $refNo);
+                    return redirect()->away('sancakaexpress://riwayatppob/' . $refNo);
                 }
                 return redirect()->to('https://tokosancaka.com/riwayatppob')->with('success', 'Pembayaran PPOB berhasil.');
             }
@@ -245,24 +256,57 @@ class DanaWebhookController extends Controller
             if ($topup) {
                 Session::forget('last_dana_ref');
                 if ($isMobile) {
-                    return redirect()->away('sancakaexpress://topup-success/' . $refNo);
+                    // Poin 2: User Android -> pembayaran_suksesdana.blade.php
+                    return view('pembayaran_suksesdana', compact('topup', 'refNo'));
                 }
-                return redirect('/')->with('success', 'Topup berhasil diproses.');
+                // Poin 1: User Web -> redirect()->route('customer.topup.index')
+                return redirect()->route('customer.topup.index')->with('success', 'Topup berhasil diproses.');
             }
 
-            // 6. CEK MARKETPLACE ORDER
-            $order = Order::where('invoice_number', $refNo)->first();
-            if ($order) {
+            // 6. CEK PESANAN SANCAKA EXPRESS (SCK-) -> Asumsi Pesanan
+            if (\Illuminate\Support\Str::startsWith($refNo, 'SCK-')) {
                 Session::forget('last_dana_ref');
                 if ($isMobile) {
-                    // Redirect ke riwayat pesanan sesuai permintaanmu
-                    return redirect()->away('sancakaexpress://RiwayatBelanja/' . $refNo);
+                    // Poin 5: User HP Pesanan -> RIWAYATPESANAN.TSX
+                    return redirect()->away('sancakaexpress://riwayatpesanan/' . $refNo);
                 }
-                return redirect()->to('https://tokosancaka.com/customer/pesanan/riwayat-belanja')
-                    ->with('success', 'Pembayaran berhasil.');
+                // Poin 3: User Web Pesanan -> https://tokosancaka.com/customer/pesanan
+                return redirect()->to('https://tokosancaka.com/customer/pesanan')->with('success', 'Pembayaran pesanan berhasil.');
             }
 
-            // 7. FALLBACK
+            // 7. CEK TOKO UTAMA & MARKETPLACE (ORD- / CVSANCAK-)
+            if (\Illuminate\Support\Str::startsWith($refNo, 'ORD-') || \Illuminate\Support\Str::startsWith($refNo, 'CVSANCAK-')) {
+                Session::forget('last_dana_ref');
+
+                // Cek apakah ini pesanan Toko Utama
+                $orderUtama = Order::where('invoice_number', $refNo)->first();
+
+                if ($orderUtama) {
+                    if ($isMobile) {
+                        // Poin 5: User HP Pesanan -> RIWAYATPESANAN.TSX
+                        return redirect()->away('sancakaexpress://riwayatpesanan/' . $refNo);
+                    }
+                    // Poin 3: User Web Pesanan -> https://tokosancaka.com/customer/pesanan
+                    return redirect()->to('https://tokosancaka.com/customer/pesanan')->with('success', 'Pembayaran pesanan berhasil.');
+                }
+
+                // Cek apakah ini pesanan Marketplace (mysql_second)
+                try {
+                    $orderMarketplace = \DB::connection('mysql_second')->table('orders')->where('order_number', $refNo)->first();
+                    if ($orderMarketplace) {
+                        if ($isMobile) {
+                            // Poin 6: User HP Marketplace -> RIWAYATBELANJA.TSX
+                            return redirect()->away('sancakaexpress://riwayatbelanja/' . $refNo);
+                        }
+                        // Poin 4: User Web Marketplace -> https://tokosancaka.com/customer/pesanan/riwayat-belanja
+                        return redirect()->to('https://tokosancaka.com/customer/pesanan/riwayat-belanja')->with('success', 'Pembayaran marketplace berhasil.');
+                    }
+                } catch (\Exception $e) {
+                    Log::error('[DANA RETURN PAGE ERROR] Gagal cek DB Marketplace - ' . $e->getMessage());
+                }
+            }
+
+            // 8. FALLBACK JIKA TIDAK DITEMUKAN
             Log::warning('[DANA RETURN] DATA NOT FOUND untuk Ref: ' . $refNo);
             return redirect('/')->with('success', 'Transaksi berhasil diproses.');
 
