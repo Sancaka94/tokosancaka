@@ -846,23 +846,23 @@ class MarketplaceMobileController extends Controller
     private function _createTripayTransaction($order, $methodChannel, $amount, $user, $items)
     {
         // 1. BYPASS CACHE: Kita ambil langsung menembak ke tabel database
-        // untuk memastikan mode Sandbox/Production terbaca secara real-time!
+        // MENGGUNAKAN KOLOM 'environment' SESUAI STRUKTUR DATABASE KAMU!
         $modeRecord = \Illuminate\Support\Facades\DB::table('API')
                         ->where('key', 'TRIPAY_MODE')
-                        ->where('type', 'global')
+                        ->where('environment', 'global') // <-- PERBAIKAN
                         ->first();
         $mode = $modeRecord ? $modeRecord->value : 'sandbox';
 
-        Log::info("LOG LOG: Memulai Tripay Transaction. Mode DB asli: " . $mode);
+        \Illuminate\Support\Facades\Log::info("LOG LOG: Memulai Tripay Transaction. Mode DB asli: " . $mode);
 
         $baseUrl = $mode === 'production'
             ? 'https://tripay.co.id/api/transaction/create'
             : 'https://tripay.co.id/api-sandbox/transaction/create';
 
-        // Bypass cache untuk Kunci API
-        $apiKey       = \Illuminate\Support\Facades\DB::table('API')->where('key', 'TRIPAY_API_KEY')->where('type', $mode)->value('value');
-        $privateKey   = \Illuminate\Support\Facades\DB::table('API')->where('key', 'TRIPAY_PRIVATE_KEY')->where('type', $mode)->value('value');
-        $merchantCode = \Illuminate\Support\Facades\DB::table('API')->where('key', 'TRIPAY_MERCHANT_CODE')->where('type', $mode)->value('value');
+        // Bypass cache untuk Kunci API (Gunakan kolom 'environment' juga)
+        $apiKey       = \Illuminate\Support\Facades\DB::table('API')->where('key', 'TRIPAY_API_KEY')->where('environment', $mode)->value('value'); // <-- PERBAIKAN
+        $privateKey   = \Illuminate\Support\Facades\DB::table('API')->where('key', 'TRIPAY_PRIVATE_KEY')->where('environment', $mode)->value('value'); // <-- PERBAIKAN
+        $merchantCode = \Illuminate\Support\Facades\DB::table('API')->where('key', 'TRIPAY_MERCHANT_CODE')->where('environment', $mode)->value('value'); // <-- PERBAIKAN
 
         if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
             return ['success' => false, 'message' => 'Konfigurasi Kunci Tripay belum lengkap untuk mode: ' . strtoupper($mode)];
@@ -901,13 +901,13 @@ class MarketplaceMobileController extends Controller
         ];
 
         try {
-            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+            $response = \Illuminate\Support\Facades\Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
                 ->timeout(30)
                 ->withoutVerifying()
                 ->post($baseUrl, $payload);
 
             $body = $response->json();
-            Log::info('Tripay API Response:', ['status' => $response->status(), 'body' => $body]);
+            \Illuminate\Support\Facades\Log::info('Tripay API Response:', ['status' => $response->status(), 'body' => $body]);
 
             if ($response->successful() && ($body['success'] ?? false) === true) {
                 return ['success' => true, 'data' => $body['data']];
