@@ -1180,7 +1180,7 @@ TEXT;
             'customer_email' => $customerEmail,
             'customer_phone' => $data['receiver_phone'],
             'order_items'    => $orderItems,
-            'return_url'     => url('/riwayatpesanan'), // Arahkan kembali jika sudah bayar
+            'return_url'     => route('tripay.return', ['reference' => $pesanan->nomor_invoice, 'jenis' => 'pesanan_ekspedisi']),
             'expired_time'   => time() + (24 * 60 * 60), // 24 jam
             'signature'      => hash_hmac('sha256', $merchantCode . $pesanan->nomor_invoice . $total, $privateKey),
         ];
@@ -1214,6 +1214,98 @@ TEXT;
             Log::error('Error saat membuat transaksi Tripay Mobile: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Terjadi kesalahan internal saat memproses pembayaran: ' . $e->getMessage()];
         }
+    }
+
+    public function processOrderCallback($merchantRef, $status, $callbackData)
+    {
+        Log::info('Processing Order Callback (ORD-/SCK-)...', ['ref' => $merchantRef, 'status' => $status]);
+
+        // 1. Ambil Order
+        $order = Pesanan::where('nomor_invoice', $merchantRef)->lockForUpdate()->first();
+
+        if (!$order) {
+            Log::error('FATAL: Order tidak ditemukan.', ['ref' => $merchantRef]);
+            return;
+        }
+
+        // 2. IDEMPOTENCY: Cek apakah sudah diproses
+        if (in_array(strtolower($order->status_pesanan), ['paid', 'processing', 'diproses', 'selesai'])) {
+            Log::info("Order {$merchantRef} sudah diproses sebelumnya. Status saat ini: {$order->status_pesanan}");
+            return;
+        }
+
+        // 3. PROSES PEMBAYARAN SUKSES
+        if ($status === 'PAID') {
+            DB::beginTransaction();
+            try {
+                $order->status = 'paid';
+                $order->status_pesanan = 'Menunggu Pickup';
+                $order->save();
+                Log::info("Order {$merchantRef} status diupdate ke 'paid'.");
+
+                // 4. HIT API KIRIMINAJA
+                $kiriminAja = app(\App\Services\KiriminAjaService::class);
+
+                // Siapkan data payload (Pastikan helper _createKiriminAjaOrder diakses dengan benar)
+                // Kita gunakan data dari order untuk membangun payload
+                $payload = $this->_prepareKiriminAjaPayload($order);
+
+                Log::info("[API MOBILE] Mengirim data ke KiriminAja untuk Invoice: {$merchantRef}");
+                $kiriminResponse = $kiriminAja->createExpressOrder($payload);
+
+                if (isset($kiriminResponse['status']) && $kiriminResponse['status'] === true) {
+                    $resi = $kiriminResponse['awb'] ?? ($kiriminResponse['result']['awb_no'] ?? null);
+
+                    $order->update([
+                        'status_pesanan' => 'Menunggu Pickup',
+                        'resi' => $resi
+                    ]);
+
+                    Log::info("Booking KiriminAja SUKSES untuk {$merchantRef}. Resi: {$resi}");
+                } else {
+                    Log::error("Booking KiriminAja GAGAL untuk {$merchantRef}.", $kiriminResponse);
+                    // Tetap status 'paid', tapi beri catatan gagal booking agar admin bisa proses manual
+                    $order->update(['status_pesanan' => 'Gagal Auto-Resi']);
+                }
+
+                DB::commit();
+
+            } catch (Exception $e) {
+                DB::rollBack();
+                Log::error("Error Fatal saat HIT KiriminAja: " . $e->getMessage());
+            }
+        } elseif (in_array($status, ['FAILED', 'EXPIRED'])) {
+            $order->update(['status' => 'failed', 'status_pesanan' => 'Dibatalkan']);
+        }
+    }
+
+    /**
+     * Helper untuk menyiapkan data payload KiriminAja dari model Pesanan
+     */
+    private function _prepareKiriminAjaPayload($order)
+    {
+        // Sesuaikan mapping data dengan kebutuhan API KiriminAja Anda
+        return [
+            'address' => $order->sender_address,
+            'phone'   => $order->sender_phone,
+            'name'    => $order->sender_name,
+            'kecamatan_id' => $order->sender_district_id,
+            'kelurahan_id' => $order->sender_subdistrict_id,
+            'packages' => [[
+                'order_id' => $order->nomor_invoice,
+                'destination_name' => $order->receiver_name,
+                'destination_phone' => $order->receiver_phone,
+                'destination_address' => $order->receiver_address,
+                'destination_kecamatan_id' => $order->receiver_district_id,
+                'destination_kelurahan_id' => $order->receiver_subdistrict_id,
+                'weight' => (int)$order->weight,
+                'item_name' => $order->item_description,
+                'service' => explode('-', $order->expedition)[1] ?? 'jne',
+                'service_type' => explode('-', $order->expedition)[2] ?? 'REG',
+                'shipping_cost' => (int)$order->shipping_cost,
+            ]],
+            'platform_name' => 'TOKOSANCAKA.COM'
+        ];
     }
 
 }
