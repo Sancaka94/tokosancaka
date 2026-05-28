@@ -864,7 +864,7 @@ class PesananController extends Controller
         }
 
         // Jika Pembayaran Lunas
-        if ($status === 'PAID') {
+        if (in_array(strtoupper($status), ['PAID', 'SUCCESS', '00'])) {
             // --- TAMBAHAN LOG ---
             Log::info('Tripay Callback (Pesanan SCK-): Found Pesanan in correct state. Proceeding...', ['invoice' => $merchantRef]);
 
@@ -2264,24 +2264,37 @@ public function cetakThermal($resi)
         return redirect()->back()->with('error', 'Tidak ada data yang dipilih untuk dihapus.');
     }
 
-    /**
-     * Callback untuk menangani pesanan (SCK-) yang berasal dari DANA Webhook.
+   /**
+     * =========================================================================
+     * 1. HANDLER DARI WEBHOOK DANA
+     * =========================================================================
      */
     public function handleDanaCallback(array $data)
     {
+        $merchantRef = $data['order']['invoice_number'] ?? null;
+        $statusRaw   = $data['transaction']['status'] ?? null;
+
         Log::info('Processing Dana Callback di Admin PesananController...', [
-            'invoice' => $data['order']['invoice_number'],
-            'status'  => $data['transaction']['status']
+            'invoice' => $merchantRef,
+            'status'  => $statusRaw
         ]);
 
-        // Karena DanaWebhookController sudah menyiapkan $data['order']['invoice_number']
-        // dan $data['transaction']['status'], kita bisa langsung gunakan:
+        if (!$merchantRef || !$statusRaw) {
+            Log::error('Callback (Pesanan SCK-): Data invoice/status kosong.');
+            return response()->json(['message' => 'Invalid data'], 400);
+        }
 
-        $merchantRef = $data['order']['invoice_number'];
-        $status = $data['transaction']['status'];
+        // UBAH "SUCCESS" ATAU "00" DARI DANA MENJADI "PAID"
+        // Agar sesuai dengan ekspektasi fungsi processPesananCallback di bawahnya.
+        $normalizedStatus = in_array(strtoupper($statusRaw), ['SUCCESS', 'PAID', '00']) ? 'PAID' : 'FAILED';
 
-        // Panggil fungsi prosesor yang sudah ada di PesananController
-        return self::processPesananCallback($merchantRef, $status, $data);
+        try {
+            self::processPesananCallback($merchantRef, $normalizedStatus, $data);
+            return response()->json(['responseCode' => '2005600', 'responseMessage' => 'Successful'], 200);
+        } catch (\Exception $e) {
+            Log::error('CRITICAL ERROR di PesananController: ' . $e->getMessage());
+            return response()->json(['responseCode' => '5005601', 'responseMessage' => 'Internal Server Error'], 500);
+        }
     }
 
 
