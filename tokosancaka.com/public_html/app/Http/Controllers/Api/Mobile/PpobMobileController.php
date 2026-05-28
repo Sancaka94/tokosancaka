@@ -253,6 +253,7 @@ class PpobMobileController extends Controller
 
                     $resultIak = $responseIak->json();
 
+
                     if ($responseIak->successful() && isset($resultIak['data'])) {
                         $apiCode = $resultIak['data']['rc'] ?? ($resultIak['data']['message'] == 'PROCESS' ? '39' : null);
                         $codeInfo = IakPrepaidResponseCode::where('code', $apiCode)->first();
@@ -1308,6 +1309,8 @@ class PpobMobileController extends Controller
 
                     $resultIak = $responseIak->json();
 
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: RAW RESPONSE IAK", $resultIak ?? []);
+
                     if ($responseIak->successful() && isset($resultIak['data'])) {
                         $apiCode = $resultIak['data']['rc'] ?? ($resultIak['data']['message'] == 'PROCESS' ? '39' : null);
                         $codeInfo = \App\Models\IakPrepaidResponseCode::where('code', $apiCode)->first();
@@ -1346,6 +1349,8 @@ class PpobMobileController extends Controller
                     ]);
 
                     $resultIak = $responseIak->json();
+
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: RAW RESPONSE IAK", $resultIak ?? []);
 
                     if ($responseIak->successful() && isset($resultIak['data'])) {
                         $rc = $resultIak['data']['response_code'] ?? '';
