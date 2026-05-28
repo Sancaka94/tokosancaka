@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Transaction;
 use App\Models\Api;
 use App\Services\DanaSignatureService;
-use App\Services\DokuJokulService; // Pastikan Service Doku di-import
+use App\Services\DokuJokulService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -147,7 +147,7 @@ class TopUpController extends Controller
                 }
             }
 
-            // B. VIA DANA GATEWAY BIASA (Checkout)
+            // B. VIA DANA GATEWAY BIASA (Checkout Gapura IPG)
             elseif ($paymentMethodRaw === '#DANA' || $paymentMethodRaw === 'DANA') {
                 Log::info("[API MOBILE] Eksekusi DANA Payment Gateway.");
 
@@ -218,88 +218,108 @@ class TopUpController extends Controller
 
     /**
      * =========================================================================
-     * HELPER: EKSEKUTOR API DANA GATEWAY KHUSUS TOPUP
+     * HELPER: EKSEKUTOR API DANA GATEWAY KHUSUS TOPUP (REVISI GAPURA IPG)
      * =========================================================================
      */
     private function _createTopUpDanaGateway(Transaction $transaction, $user)
     {
-        $merchantIdConf = "216620080014040009735";
-        $partnerIdConf  = "2025081520100641466855";
+        $timestamp   = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $expiryTime  = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
+        $finalAmount = number_format((float)$transaction->amount, 2, '.', '');
 
+        // Memastikan clean invoice bebas karakter spesial agar tidak error di URL Params
         $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $transaction->reference_id);
-        $timestamp    = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        $expiryTime   = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
-        $amountValue  = number_format((float)$transaction->amount, 2, '.', '');
+
+        // Gunakan parameter dari config DANA yang diload dinamis
+        $merchantId = config('services.dana.merchant_id');
+
+        // URL Redirect jika sukses/selesai transaksi
+        $returnUrl = route('dana.return', ['trx_id' => $cleanInvoice]);
 
         $bodyArray = [
             "partnerReferenceNo" => $cleanInvoice,
-            "merchantId"         => $merchantIdConf,
-            "amount"             => ["value" => $amountValue, "currency" => "IDR"],
+            "merchantId"         => $merchantId,
+            "amount"             => [
+                "value"    => $finalAmount,
+                "currency" => "IDR"
+            ],
             "validUpTo"          => $expiryTime,
             "urlParams"          => [
-                ["url" => route('dana.return', ['trx_id' => $cleanInvoice]), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-                ["url" => url('/dana/notify'), "type" => "NOTIFICATION", "isDeeplink" => "N"]
+                [
+                    "url"        => $returnUrl,
+                    "type"       => "PAY_RETURN",
+                    "isDeeplink" => "N"
+                ],
+                [
+                    "url"        => url('/dana/notify'),
+                    "type"       => "NOTIFICATION",
+                    "isDeeplink" => "N"
+                ]
             ],
             "payOptionDetails"   => [
                 [
                     "payMethod"   => "BALANCE",
-                    "payOption"   => "BALANCE",
-                    "transAmount" => ["value" => $amountValue, "currency" => "IDR"],
-                    "feeAmount"   => ["value" => "0.00", "currency" => "IDR"]
+                    "payOption"   => "",
+                    "transAmount" => [
+                        "value"    => $finalAmount,
+                        "currency" => "IDR"
+                    ]
                 ]
             ],
             "additionalInfo"     => [
-                "productCode" => "51051000100000000001",
-                "mcc"         => "5732",
-                "order"       => [
-                    "orderTitle"        => substr("Top Up " . $cleanInvoice, 0, 40),
+                "mcc"   => "5732",
+                "order" => [
+                    "orderTitle"        => "Top Up " . $cleanInvoice,
                     "merchantTransType" => "01",
-                    "orderMemo"         => substr("Inv " . $cleanInvoice, 0, 40),
-                    "createdTime"       => $timestamp,
+                    "scenario"          => "REDIRECT",
                     "buyer"             => [
                         "externalUserId"   => (string) ($user->id_pengguna ?? 'GUEST'.rand(100,999)),
                         "externalUserType" => "MERCHANT_USER",
-                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap ?? 'Customer'), 0, 20),
-                    ],
-                    "goods" => [
-                        [
-                            "name" => "Saldo Top Up", "merchantGoodsId" => substr("TOPUP" . $cleanInvoice, 0, 40),
-                            "description" => "Top Up Saldo Akun", "category" => "DIGITAL_GOODS",
-                            "price" => ["value" => $amountValue, "currency" => "IDR"], "unit" => "pcs", "quantity" => "1"
-                        ]
+                        "nickname"         => Str::limit($user->nama_lengkap ?? 'Customer', 40),
                     ]
                 ],
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "APP", // Diubah ke APP untuk mendukung Deeplink Mobile
+                    "orderTerminalType" => "WEB",
                 ]
             ]
         ];
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        $relativePath = '/rest/redirection/v1.0/debit/payment-host-to-host';
+
+        // --- ENDPOINT GAPURA ---
+        $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
 
         try {
             $accessToken = $this->danaSignature->getAccessToken();
             $signature   = $this->danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
 
+            $baseUrl = config('services.dana.base_url');
+
             $headers = [
-                'Authorization'  => 'Bearer ' . $accessToken,
-                'X-PARTNER-ID'   => $partnerIdConf,
-                'X-EXTERNAL-ID'  => Str::random(32),
-                'X-TIMESTAMP'    => $timestamp,
-                'X-SIGNATURE'    => $signature,
-                'Content-Type'   => 'application/json',
-                'CHANNEL-ID'     => '95221',
-                'ORIGIN'         => config('services.dana.origin'),
+                'Authorization' => 'Bearer ' . $accessToken,
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => Str::random(32),
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'Content-Type'  => 'application/json',
+                'CHANNEL-ID'    => '95221',
+                'ORIGIN'        => config('services.dana.origin'),
             ];
 
-            $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post(config('services.dana.base_url') . $relativePath);
+            Log::info('DANA GAPURA Request Payload:', $bodyArray);
+
+            $response = Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post($baseUrl . $relativePath);
+
             $result = $response->json();
 
+            Log::info('DANA GAPURA Response:', $result);
+
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
-                $redirectUrl = $result['appLinkUrl'] ?? $result['webRedirectUrl'] ?? null;
+                $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'] ?? null;
                 if ($redirectUrl) {
                     return ['success' => true, 'redirect_url' => $redirectUrl];
                 }
@@ -307,6 +327,7 @@ class TopUpController extends Controller
             return ['success' => false, 'message' => $result['responseMessage'] ?? 'Unknown DANA Error'];
 
         } catch (\Exception $e) {
+            Log::error('Koneksi DANA Error: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Koneksi DANA Error: ' . $e->getMessage()];
         }
     }
