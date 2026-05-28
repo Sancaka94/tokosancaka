@@ -1841,32 +1841,31 @@ TEXT;
      */
     public function handleDanaCallback(array $data)
     {
-        // Ambil data referensi & status dari payload DANA
-        $merchantRef = $data['originalPartnerReferenceNo'] ?? null;
-        $statusDesc = $data['transactionStatusDesc'] ?? null;
-        $latestStatus = $data['latestTransactionStatus'] ?? null;
+        // 1. Ambil data yang sudah dirapikan oleh DanaWebhookController
+        $merchantRef = $data['order']['invoice_number'] ?? null;
+        $status = $data['transaction']['status'] ?? null;
 
-        Log::info('Processing DANA Callback...', ['ref' => $merchantRef, 'status' => $statusDesc, 'latestStatus' => $latestStatus]);
+        Log::info('Processing DANA Callback (dari WebhookController)...', ['ref' => $merchantRef, 'status' => $status]);
 
         if (!$merchantRef) {
-            Log::error('DANA Callback: Missing originalPartnerReferenceNo', $data);
+            Log::error('DANA Callback: Missing invoice_number', $data);
             return response()->json(['message' => 'Invalid data'], 400);
         }
 
-        // Mapping status: '00' atau 'SUCCESS' berarti berhasil/lunas
-        $internalStatus = ($latestStatus === '00' || strtoupper($statusDesc) === 'SUCCESS') ? 'PAID' : 'FAILED';
+        // 2. Mapping status: SUCCESS dari DanaWebhookController diubah jadi PAID
+        $internalStatus = ($status === 'SUCCESS') ? 'PAID' : 'FAILED';
 
         DB::beginTransaction();
         try {
-            // Routing berdasarkan prefix transaksi
+            // 3. Routing berdasarkan prefix transaksi
             if (Str::startsWith($merchantRef, 'TOPUP-')) {
                 Log::info('Routing DANA callback to TopUpController', ['ref' => $merchantRef]);
-                $amount = isset($data['amount']['value']) ? (float) $data['amount']['value'] : 0;
+                $amount = isset($data['order']['amount']) ? (float) $data['order']['amount'] : 0;
                 TopUpController::processTopUpCallback($merchantRef, $internalStatus, $amount, $data);
 
             } elseif (Str::startsWith($merchantRef, 'ORD-') || Str::startsWith($merchantRef, 'SCK-ORD-') || Str::startsWith($merchantRef, 'SCK-')) {
                 Log::info('Routing DANA callback to processOrderCallback', ['ref' => $merchantRef]);
-                // Panggil fungsi prosesor utama yang sudah ada di bawah
+                // Panggil fungsi prosesor utama (ini otomatis jalankan KiriminAja & Notif WA)
                 $this->processOrderCallback($merchantRef, $internalStatus, $data);
 
             } else {
