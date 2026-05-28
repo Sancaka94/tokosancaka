@@ -2764,7 +2764,7 @@ public function handleCallback(Request $request)
                     // A. Kirim event ke UI Customer
                     try {
                         $message = 'Top up Anda sebesar Rp ' . number_format($transaction->amount, 0, ',', '.') . ' telah berhasil.';
-                        event(new \App\Events\SaldoUpdated($user, $transaction->amount, $user->saldo, $message));
+                        event(new \App\Events\SaldoUpdated($user->id_pengguna, $transaction->amount, $user->saldo, $message));
                     } catch (\Exception $e) { Log::error('Gagal broadcast SaldoUpdated: ' . $e->getMessage()); }
 
                     // B. Kirim notifikasi DB ke Customer
