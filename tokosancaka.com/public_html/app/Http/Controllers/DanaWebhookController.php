@@ -202,14 +202,14 @@ class DanaWebhookController extends Controller
         ])->withHeaders(['X-TIMESTAMP' => $danaTimestamp]);
     }
 
-   /**
+  /**
      * =========================================================
-     * UNIVERSAL RETURN PAGE (DANA CALLBACK/RETURN)
+     * UNIVERSAL RETURN PAGE (DANA CALLBACK/RETURN) - SMART HUB
      * =========================================================
      */
     public function returnPage(Request $request)
     {
-        Log::info('[DANA RETURN PAGE] Hit', [
+        Log::info('[DANA RETURN PAGE] Hit Smart Hub', [
             'query'      => $request->all(),
             'full_url'   => $request->fullUrl(),
             'user_agent' => $request->userAgent(),
@@ -225,92 +225,97 @@ class DanaWebhookController extends Controller
                   ?? '';
 
             if (!$refNo) {
-                Log::warning('[DANA RETURN] REF EMPTY - Tidak ditemukan referensi di URL maupun Session');
+                Log::warning('[DANA RETURN] REF EMPTY');
                 return redirect('/')->with('error', 'Transaksi tidak ditemukan.');
             }
 
             // 2. NORMALIZE REF
             $refNo = $this->normalizeReference($refNo);
-            Log::info('[DANA RETURN] NORMALIZED REF: ' . $refNo);
-
-            // 3. DETECT PLATFORM (Mobile vs Web)
-            $isMobile = ($request->header('X-Platform') === 'mobile' ||
-                         preg_match('/Android|iPhone|iPad|Mobile/i', $request->userAgent()));
 
             // ========================================================
-            // PERUBAHAN URUTAN PRIORITAS (PESANAN DI CEK DULUAN)
+            // 3. DETEKSI PLATFORM CERDAS (WEB ATAU HP)
+            // ========================================================
+            $isMobile = false;
+
+            // Cek dari User-Agent (Paling Akurat untuk Redirect Browser)
+            if (preg_match('/Mobile|Android|BlackBerry|iPhone|iPad|iPod|Windows Phone/i', $request->userAgent())) {
+                $isMobile = true;
+            }
+            // Cek dari custom header/query jika aplikasi mengirimkan parameter khusus
+            elseif ($request->query('platform') === 'mobile' || $request->header('X-Platform') === 'mobile') {
+                $isMobile = true;
+            }
+
+            Log::info('[DANA RETURN] Normal_Ref: ' . $refNo . ' | Platform: ' . ($isMobile ? 'MOBILE/HP' : 'WEB/DESKTOP'));
+
+            // Bersihkan session agar tidak nyangkut untuk transaksi berikutnya
+            Session::forget('last_dana_ref');
+
+            $statusPembayaran = 'pending'; // Status Default
+            $jenisTransaksi = 'unknown';
+
+            // ========================================================
+            // 4. PENGECEKAN STATUS & JENIS TRANSAKSI
             // ========================================================
 
-            // 4. CEK PESANAN SANCAKA EXPRESS (SCK-) -> PRIORITAS UTAMA
+            // A. CEK PESANAN SANCAKA EXPRESS (SCK-)
             if (\Illuminate\Support\Str::startsWith($refNo, 'SCK-')) {
-                Session::forget('last_dana_ref');
-                if ($isMobile) {
-                    return redirect()->away('sancakaexpress://riwayatpesanan/' . $refNo);
+                $jenisTransaksi = 'pesanan_ekspedisi';
+                $order = \App\Models\Pesanan::where('nomor_invoice', $refNo)->first();
+
+                if($order && in_array($order->status_pesanan, ['Pesanan Dibuat', 'Lunas', 'Diproses', 'Menunggu Pickup'])) {
+                    $statusPembayaran = 'sukses';
                 }
-                return redirect()->to('https://tokosancaka.com/customer/pesanan')->with('success', 'Pembayaran pesanan berhasil.');
             }
+            // B. CEK TOKO UTAMA & MARKETPLACE (ORD- / CVSANCAK-)
+            elseif (\Illuminate\Support\Str::startsWith($refNo, 'ORD-') || \Illuminate\Support\Str::startsWith($refNo, 'CVSANCAK-')) {
+                $jenisTransaksi = 'pesanan_marketplace';
+                $orderUtama = \App\Models\Order::where('invoice_number', $refNo)->first();
 
-            // 5. CEK TOKO UTAMA & MARKETPLACE (ORD- / CVSANCAK-)
-            if (\Illuminate\Support\Str::startsWith($refNo, 'ORD-') || \Illuminate\Support\Str::startsWith($refNo, 'CVSANCAK-')) {
-                Session::forget('last_dana_ref');
-
-                // Cek apakah ini pesanan Toko Utama
-                $orderUtama = Order::where('invoice_number', $refNo)->first();
                 if ($orderUtama) {
-                    if ($isMobile) {
-                        return redirect()->away('sancakaexpress://riwayatpesanan/' . $refNo);
-                    }
-                    return redirect()->to('https://tokosancaka.com/customer/pesanan')->with('success', 'Pembayaran pesanan berhasil.');
-                }
-
-                // Cek apakah ini pesanan Marketplace (mysql_second)
-                try {
-                    $orderMarketplace = \DB::connection('mysql_second')->table('orders')->where('order_number', $refNo)->first();
-                    if ($orderMarketplace) {
-                        if ($isMobile) {
-                            return redirect()->away('sancakaexpress://riwayatbelanja/' . $refNo);
+                    if($orderUtama->payment_status == 'paid') $statusPembayaran = 'sukses';
+                } else {
+                    try {
+                        $orderMarketplace = \DB::connection('mysql_second')->table('orders')->where('order_number', $refNo)->first();
+                        if ($orderMarketplace && $orderMarketplace->payment_status == 'paid') {
+                            $statusPembayaran = 'sukses';
                         }
-                        return redirect()->to('https://tokosancaka.com/customer/pesanan/riwayat-belanja')->with('success', 'Pembayaran marketplace berhasil.');
-                    }
-                } catch (\Exception $e) {
-                    Log::error('[DANA RETURN PAGE ERROR] Gagal cek DB Marketplace - ' . $e->getMessage());
+                    } catch (\Exception $e) {}
+                }
+            }
+            // C. CEK TOPUP SALDO PUSAT (TOPUP-)
+            elseif (\Illuminate\Support\Str::startsWith($refNo, 'TOPUP-')) {
+                $jenisTransaksi = 'topup';
+                $topup = \App\Models\TopUp::where('transaction_id', $refNo)->first();
+                if ($topup && $topup->status == 'success') {
+                    $statusPembayaran = 'sukses';
+                }
+            }
+            // D. CEK PPOB & TRANSAKSI LAINNYA
+            else {
+                $trx = \App\Models\Transaction::where('ref_id', $refNo)
+                    ->orWhere('reference_id', str_replace('PASCA', '', $refNo))
+                    ->first();
+
+                if ($trx) {
+                    $jenisTransaksi = 'ppob';
+                    if ($trx->status == 'success' || $trx->status == 'sukses') $statusPembayaran = 'sukses';
                 }
             }
 
-            // 6. CEK TOPUP
-            $topup = TopUp::where('transaction_id', $refNo)->first();
-            if ($topup) {
-                Session::forget('last_dana_ref');
-                if ($isMobile) {
-                    return view('pembayaran_suksesdana', compact('topup', 'refNo'));
-                }
-                return redirect()->route('customer.topup.index')->with('success', 'Topup berhasil diproses.');
-            }
-
-            // 7. CEK PPOB (DIPINDAH KE PALING BAWAH AGAR TIDAK MENABRAK PESANAN)
-            $trx = Transaction::where('ref_id', $refNo)
-                ->orWhere('reference_id', str_replace('PASCA', '', $refNo))
-                ->first();
-
-            if ($trx) {
-                Session::forget('last_dana_ref');
-                if ($isMobile) {
-                    return redirect()->away('sancakaexpress://riwayatppob/' . $refNo);
-                }
-                return redirect()->to('https://tokosancaka.com/riwayatppob')->with('success', 'Pembayaran PPOB berhasil.');
-            }
-
-            // 8. FALLBACK JIKA TIDAK DITEMUKAN
-            Log::warning('[DANA RETURN] DATA NOT FOUND untuk Ref: ' . $refNo);
-            return redirect('/')->with('success', 'Transaksi berhasil diproses.');
-
-        } catch (Exception $e) {
-            Log::error('[DANA RETURN PAGE ERROR]', [
-                'message' => $e->getMessage(),
-                'line'    => $e->getLine(),
+            // ========================================================
+            // 5. KIRIM DATA KE SMART HUB VIEW
+            // ========================================================
+            return view('pembayaran_suksesdana', [
+                'refNo' => $refNo,
+                'isMobile' => $isMobile,
+                'statusPembayaran' => $statusPembayaran,
+                'jenisTransaksi' => $jenisTransaksi
             ]);
 
-            return redirect('/')->with('error', 'Terjadi kesalahan redirect pembayaran.');
+        } catch (Exception $e) {
+            Log::error('[DANA RETURN PAGE ERROR]', ['msg' => $e->getMessage()]);
+            return redirect('/')->with('error', 'Terjadi kesalahan sistem.');
         }
     }
 
