@@ -250,6 +250,7 @@ Route::prefix('seller')->group(function () {
         Route::post('/topup/request', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'store']);
 
         Route::get('/topup/history', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'history']);
+
         // --------------------------------------------------
 
         // ==========================================
