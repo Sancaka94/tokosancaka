@@ -2818,4 +2818,35 @@ public function handleCallback(Request $request)
         }
     }
 
+    /**
+     * =========================================================================
+     * BRIDGE WEBHOOK: Menjembatani panggilan dari CheckoutController Tripay
+     * =========================================================================
+     */
+    public function processTopUpCallback($merchantRef, $status = null, $amount = null)
+    {
+        // Jika CheckoutController mengirimkan data dalam bentuk array tunggal
+        if (is_array($merchantRef) || is_object($merchantRef)) {
+            $data = (array) $merchantRef;
+
+            // Ekstrak data dari payload Tripay
+            $ref = $data['merchant_ref'] ?? $data['reference'] ?? null;
+            $stat = $data['status'] ?? 'PAID';
+            $amt = $data['total_amount'] ?? $data['amount'] ?? 0;
+
+            \Illuminate\Support\Facades\Log::info('LOG LOG: Meneruskan array callback Tripay ke prosesor inti', [
+                'ref' => $ref, 'status' => $stat, 'amount' => $amt
+            ]);
+
+            return self::processTopUp($ref, $stat, $amt);
+        }
+
+        // Jika CheckoutController mengirimkan 3 parameter terpisah
+        \Illuminate\Support\Facades\Log::info('LOG LOG: Meneruskan parameter callback Tripay ke prosesor inti', [
+            'ref' => $merchantRef, 'status' => $status, 'amount' => $amount
+        ]);
+
+        return self::processTopUp($merchantRef, $status, $amount);
+    }
+
 }
