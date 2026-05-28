@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pembayaran Selesai</title>
+    <title>Status Transaksi - Sancaka Express</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -31,10 +31,18 @@
         }
         h2 { color: #111827; margin-top: 0; margin-bottom: 10px; font-size: 24px; }
         p { color: #4b5563; line-height: 1.6; font-size: 15px; margin-bottom: 25px; }
-        .highlight { color: #dc2626; font-weight: bold; font-size: 18px; }
+        .highlight { font-weight: bold; font-size: 18px; }
+
+        .status-sukses .highlight { color: #16a34a; }
+        .status-sukses .btn-back { background-color: #16a34a; }
+        .status-sukses .btn-back:hover { background-color: #15803d; }
+
+        .status-pending .highlight { color: #ea580c; }
+        .status-pending .btn-back { background-color: #ea580c; }
+        .status-pending .btn-back:hover { background-color: #c2410c; }
+
         .btn-back {
             display: inline-block;
-            background-color: #dc2626;
             color: white;
             text-decoration: none;
             padding: 12px 24px;
@@ -42,8 +50,9 @@
             font-weight: bold;
             width: 80%;
             transition: background 0.3s;
+            cursor: pointer;
+            border: none;
         }
-        .btn-back:hover { background-color: #b91c1c; }
         .footer-text { font-size: 12px; color: #9ca3af; margin-top: 20px; }
 
         @keyframes popIn {
@@ -52,24 +61,69 @@
         }
     </style>
 </head>
-<body>
+<body class="{{ $statusPembayaran == 'sukses' ? 'status-sukses' : 'status-pending' }}">
     <div class="card">
-        <div class="icon">✅</div>
-        <h2>Pembayaran Berhasil!</h2>
-        <p>Transaksi DANA Anda telah diterima dan sedang diproses oleh sistem Sancaka Express.</p>
+        @if($statusPembayaran == 'sukses')
+            <div class="icon">✅</div>
+            <h2>Pembayaran Berhasil!</h2>
+            <p>Terima kasih, pembayaran untuk transaksi <b>{{ $refNo }}</b> telah kami terima.</p>
+        @else
+            <div class="icon">⏳</div>
+            <h2>Sedang Memproses...</h2>
+            <p>Transaksi <b>{{ $refNo }}</b> Anda sedang menunggu konfirmasi dari DANA.</p>
+        @endif
 
-        <p>Kembali ke aplikasi dalam <br><span id="timer" class="highlight">5</span> detik...</p>
+        <p>Kembali ke halaman dalam <br><span id="timer" class="highlight">5</span> detik...</p>
 
-        <a href="sancakaexpress://riwayatpesanan" class="btn-back" id="btnManual">Kembali ke Aplikasi Sekarang</a>
+        <button class="btn-back" id="btnManual">Kembali Sekarang</button>
 
-        <div class="footer-text">Jika tidak otomatis berpindah, silakan klik tombol di atas atau tutup halaman ini secara manual.</div>
+        <div class="footer-text">Jika tidak otomatis berpindah, silakan klik tombol di atas.</div>
     </div>
 
     <script>
-        // Set Skema URL Aplikasi Expo/React Native Anda (Deep Link)
-        // Pastikan di app.json Expo Anda terdapat konfigurasi: "scheme": "sancakaexpress"
-        const appSchemeUrl = "sancakaexpress://riwayatpesanan";
+        // Variabel dari Controller
+        const refNo = "{{ $refNo }}";
+        const isMobile = {{ $isMobile ? 'true' : 'false' }};
+        const jenisTransaksi = "{{ $jenisTransaksi }}";
 
+        // Logika IF Cerdas untuk menentukan URL Tujuan
+        let targetUrl = "";
+
+        if (isMobile) {
+            // REDIRECT UNTUK APLIKASI (DEEP LINK) DENGAN PARAMETER ?id=
+            if (jenisTransaksi === 'pesanan_ekspedisi') {
+                targetUrl = "sancakaexpress://riwayatpesanan?id=" + refNo;
+            } else if (jenisTransaksi === 'pesanan_marketplace') {
+                targetUrl = "sancakaexpress://riwayatbelanja?id=" + refNo;
+            } else if (jenisTransaksi === 'ppob') {
+                targetUrl = "sancakaexpress://riwayatppob?id=" + refNo;
+            } else if (jenisTransaksi === 'topup') {
+                // Asumsi topup di HP mengarah ke riwayat deposit atau dashboard
+                targetUrl = "sancakaexpress://dashboard";
+            } else {
+                targetUrl = "sancakaexpress://"; // Fallback aman
+            }
+        } else {
+            // REDIRECT UNTUK WEBSITE
+            if (jenisTransaksi === 'pesanan_ekspedisi') {
+                targetUrl = "{{ url('/customer/pesanan') }}";
+            } else if (jenisTransaksi === 'pesanan_marketplace') {
+                targetUrl = "{{ url('/customer/pesanan/riwayat-belanja') }}";
+            } else if (jenisTransaksi === 'ppob') {
+                targetUrl = "{{ url('/riwayatppob') }}";
+            } else if (jenisTransaksi === 'topup') {
+                targetUrl = "{{ route('customer.topup.index') }}";
+            } else {
+                targetUrl = "{{ url('/') }}"; // Fallback aman
+            }
+        }
+
+        // Aksi Tombol Manual
+        document.getElementById('btnManual').addEventListener('click', function() {
+            window.location.href = targetUrl;
+        });
+
+        // Hitung Mundur Otomatis
         let timeLeft = 5;
         const timerElement = document.getElementById('timer');
 
@@ -80,8 +134,7 @@
             if (timeLeft <= 0) {
                 clearInterval(countdown);
                 timerElement.textContent = "0";
-                // Eksekusi redirect otomatis ke aplikasi
-                window.location.href = appSchemeUrl;
+                window.location.href = targetUrl; // Eksekusi Redirect Cerdas
             }
         }, 1000);
     </script>
