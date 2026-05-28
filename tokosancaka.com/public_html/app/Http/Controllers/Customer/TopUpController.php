@@ -537,20 +537,6 @@ class TopUpController extends Controller
         return self::processTopUp($merchantRef, $internalStatus, $data['order']['amount']);
     }
 
-    /**
-     * =========================================================================
-     * HANDLER WEBHOOK TRIPAY
-     * =========================================================================
-     */
-    public static function processTopUpCallback($merchantRef, $status, $amount)
-    {
-        Log::info('Processing Tripay Callback (di TopUpController)...', [
-            'ref' => $merchantRef, 'status' => $status
-        ]);
-
-        return self::processTopUp($merchantRef, $status, $amount);
-    }
-
 
     /**
      * =========================================================================
@@ -2790,19 +2776,155 @@ public function handleCallback(Request $request)
      */
     public function handleDanaCallback(array $data)
     {
-        // 1. Ekstrak data yang dikirim oleh DanaWebhookController
-        $merchantRef = $data['order']['invoice_number'];
-        $internalStatus = $data['transaction']['status']; // SUCCESS atau FAILED
-        $amount = $data['order']['amount'];
+        $merchantRef = $data['order']['invoice_number'] ?? null;
+        $statusRaw   = $data['transaction']['status'] ?? null; // Bisa "SUCCESS", "PAID", dll.
+        $amount      = $data['order']['amount'] ?? 0;
 
-        Log::info('Processing DANA Callback (di TopUpController)...', [
+        Log::info('Processing DANA Callback di TopUpController...', [
             'ref' => $merchantRef,
-            'status' => $internalStatus,
+            'status' => $statusRaw,
             'amount' => $amount
         ]);
 
-        // 2. Teruskan ke prosesor utama (yang bertugas nambah saldo & kirim notif)
-        return self::processTopUp($merchantRef, $internalStatus, $amount);
+        if (!$merchantRef || !$statusRaw) {
+            Log::error('TopUp Callback: Data webhook tidak valid/kosong.');
+            return response()->json(['message' => 'Invalid data'], 400);
+        }
+
+        // =====================================================================
+        // NORMALISASI STATUS: DANA kirim "SUCCESS" atau "00".
+        // Fungsi processTopUp di bawah butuh "PAID" untuk mengeksekusi penambahan saldo.
+        // =====================================================================
+        $internalStatus = in_array(strtoupper($statusRaw), ['SUCCESS', 'PAID', '00']) ? 'PAID' : 'FAILED';
+
+        try {
+            // Panggil prosesor utama
+            self::processTopUp($merchantRef, $internalStatus, $amount);
+
+            // Beri tahu DanaWebhookController (dan DANA) bahwa proses sukses
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            Log::error('Gagal mengeksekusi TopUp Callback: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Internal Error'], 500);
+        }
+    }
+
+    /**
+     * =========================================================================
+     * PROSESOR INTI TOP UP (Versi Lengkap & Aman)
+     * =========================================================================
+     */
+    public static function processTopUp($merchantRef, $status, $amount)
+    {
+        DB::beginTransaction();
+        try {
+            // Kita cari di tabel 'transactions'
+            $transaction = Transaction::where('reference_id', $merchantRef)->lockForUpdate()->first();
+
+            if (!$transaction) {
+                Log::error('LOG LOG: TopUp Callback: Transaksi tidak ditemukan di tabel transactions.', ['ref' => $merchantRef]);
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => 'Not Found'], 404);
+            }
+
+            // 1. Cek Idempotency: Jika sudah sukses, jangan diproses lagi
+            if ($transaction->status === 'success') {
+                Log::info('LOG LOG: TopUp Callback: Transaksi sudah sukses sebelumnya (Idempotent).', ['ref' => $merchantRef]);
+                DB::rollBack();
+                return response()->json(['success' => true, 'message' => 'Already processed']);
+            }
+
+            if ($transaction->payment_method === 'TRANSFER_MANUAL') {
+                 Log::warning('LOG LOG: TopUp Callback: Mencoba memproses TRANSFER_MANUAL via webhook.', ['ref' => $merchantRef]);
+                 DB::rollBack();
+                 return response()->json(['success' => false, 'message' => 'Manual transfer'], 400);
+            }
+
+            // 2. Validasi jumlah uang
+            if (abs((float)$transaction->amount - (float)$amount) > 0.01) {
+                 Log::warning('LOG LOG: TopUp Callback: Jumlah uang tidak cocok.', [
+                     'db_amount' => $transaction->amount,
+                     'paid_amount' => $amount
+                 ]);
+                 // Opsional: Anda bisa return error di sini jika tidak mentolerir perbedaan harga
+            }
+
+            // ==========================================================
+            // 3. LOGIKA PROSES STATUS (UBAH JADI LUNAS & TAMBAH SALDO)
+            // ==========================================================
+            if ($status === 'PAID') { // Ini sudah dinormalisasi dari SUCCESS menjadi PAID di handleDanaCallback
+
+                Log::info('LOG LOG: Status DANA diterima sebagai LUNAS. Mengeksekusi penambahan saldo...', ['invoice' => $merchantRef]);
+
+                $transaction->status = 'success';
+                $transaction->save();
+
+                $user = \App\Models\User::find($transaction->user_id);
+                if ($user) {
+                    // Eksekusi penambahan saldo di tabel pengguna/users
+                    $user->increment('saldo', $transaction->amount);
+
+                    Log::info('LOG LOG: Saldo user BERHASIL ditambah.', [
+                        'user_id' => $user->id_pengguna ?? $user->id,
+                        'nominal_topup' => $transaction->amount,
+                        'saldo_akhir' => $user->saldo
+                    ]);
+
+                    // A. Kirim event ke UI Customer
+                    try {
+                        $message = 'Top up Anda sebesar Rp ' . number_format($transaction->amount, 0, ',', '.') . ' telah berhasil.';
+                        event(new \App\Events\SaldoUpdated($user, $transaction->amount, $user->saldo, $message));
+                    } catch (\Exception $e) { Log::error('Gagal broadcast SaldoUpdated: ' . $e->getMessage()); }
+
+                    // B. Kirim notifikasi DB ke Customer
+                    try {
+                        $dataNotifCustomer = [
+                            'tipe'        => 'TopUp',
+                            'judul'       => 'Top Up Berhasil',
+                            'pesan_utama' => 'Top up saldo Rp ' . number_format($transaction->amount, 0, ',', '.') . ' telah berhasil.',
+                            'url'         => route('customer.topup.index'),
+                            'icon'        => 'fas fa-check-circle',
+                        ];
+                        $user->notify(new \App\Notifications\NotifikasiUmum($dataNotifCustomer));
+                    } catch (\Exception $e) { Log::error('Gagal kirim notif customer: ' . $e->getMessage()); }
+
+                    // C. Kirim notifikasi DB ke Admin
+                    try {
+                        $admins = \App\Models\User::where('role', 'admin')->get();
+                        if ($admins->isNotEmpty()) {
+                            $dataNotifAdmin = [
+                                'tipe'        => 'TopUp',
+                                'judul'       => 'Top Up Berhasil',
+                                'pesan_utama' => ($user->nama_lengkap ?? 'User') . ' berhasil top up Rp ' . number_format($transaction->amount, 0, ',', '.'),
+                                'url'         => route('admin.saldo.requests.history'), // Asumsi rute riwayat saldo admin
+                                'icon'        => 'fas fa-check-circle',
+                            ];
+                            \Illuminate\Support\Facades\Notification::send($admins, new \App\Notifications\NotifikasiUmum($dataNotifAdmin));
+                        }
+                    } catch (\Exception $e) { Log::error('Gagal kirim notif admin: ' . $e->getMessage()); }
+                } else {
+                    Log::error("LOG LOG: User terkait transaksi TopUp $merchantRef tidak ditemukan di database.");
+                }
+
+            } elseif ($status === 'PENDING') {
+                Log::info('LOG LOG: TopUp Callback: Transaksi masih PENDING.', ['ref' => $merchantRef]);
+            } else {
+                // FAILED, EXPIRED, DENY
+                $transaction->status = 'failed';
+                $transaction->save();
+                Log::info('LOG LOG: TopUp Callback: Transaksi digagalkan/expired.', ['ref' => $merchantRef, 'status' => $status]);
+            }
+
+            DB::commit();
+            return response()->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::critical('LOG LOG: TopUp Callback CRITICAL ERROR.', [
+                'ref' => $merchantRef, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['success' => false, 'message' => 'Internal Error'], 500);
+        }
     }
 
 }
