@@ -29,6 +29,12 @@ class DanaWebhookController extends Controller
         $statusDana = $request->input('latestTransactionStatus');
         $amountValue = $request->input('amount.value') ?? 0;
 
+        // --- TAMBAHKAN BARIS INI UNTUK MENGEMBALIKAN STRIP (-) PADA INVOICE ---
+        if ($orderId) {
+            $orderId = $this->normalizeReference($orderId);
+        }
+        // -----------------------------------------------------------------------
+
         // Standar Timestamp untuk balasan ke DANA
         $danaTimestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
 
