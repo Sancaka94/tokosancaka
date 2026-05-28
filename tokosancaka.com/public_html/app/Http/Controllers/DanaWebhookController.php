@@ -283,14 +283,30 @@ class DanaWebhookController extends Controller
                     } catch (\Exception $e) {}
                 }
             }
+
             // C. CEK TOPUP SALDO PUSAT (TOPUP-)
             elseif (\Illuminate\Support\Str::startsWith($refNo, 'TOPUP-')) {
                 $jenisTransaksi = 'topup';
+
+                // 1. Cek di model TopUp terlebih dahulu
                 $topup = \App\Models\TopUp::where('transaction_id', $refNo)->first();
-                if ($topup && $topup->status == 'success') {
-                    $statusPembayaran = 'sukses';
+
+                if ($topup) {
+                    if ($topup->status == 'success' || $topup->status == 'sukses') {
+                        $statusPembayaran = 'sukses';
+                    }
+                } else {
+                    // 2. Jika tidak ada di model TopUp, cari di model Transaction
+                    $trx = \App\Models\Transaction::where('reference_id', $refNo)
+                                                  ->orWhere('ref_id', $refNo)
+                                                  ->first();
+
+                    if ($trx && in_array(strtolower($trx->status), ['success', 'sukses'])) {
+                        $statusPembayaran = 'sukses';
+                    }
                 }
             }
+
             // D. CEK PPOB & TRANSAKSI LAINNYA
             else {
                 $trx = \App\Models\Transaction::where('ref_id', $refNo)
