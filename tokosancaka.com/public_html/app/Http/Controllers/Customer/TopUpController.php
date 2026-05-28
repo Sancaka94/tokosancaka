@@ -121,6 +121,17 @@ class TopUpController extends Controller
      */
     public function store(Request $request, DokuJokulService $dokuJokulService)
     {
+        // --- [DD: LOG DETAIL REQUEST SAAT TOMBOL SUBMIT DIKLIK] ---
+        Log::info('========== [DEBUG TOPUP SUBMIT] ==========');
+        Log::info('IP PENGIRIM: ' . $request->ip());
+        Log::info('METHOD: ' . $request->method());
+        Log::info('FULL URL: ' . $request->fullUrl());
+        Log::info('HEADERS: ', $request->headers->all());
+        Log::info('PAYLOAD (BODY): ', $request->all());
+        Log::info('USER AUTH ID: ' . (\Illuminate\Support\Facades\Auth::check() ? \Illuminate\Support\Facades\Auth::user()->id_pengguna : 'TIDAK LOGIN'));
+        Log::info('==========================================');
+        // ----------------------------------------------------------
+
         $validated = $request->validate([
             'amount'            => 'required|numeric|min:10000',
             'payment_method'    => 'required|string|max:255',
