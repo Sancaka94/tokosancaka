@@ -141,12 +141,12 @@ class DanaGatewayMobileController extends Controller
             "validUpTo" => $expiryTime,
             "urlParams" => [
                 [
-                    "url" => url('/api/mobile/dana/return?trx_id=' . $trxId),
+                    "url" => url('/dana/return?trx_id=' . $trxId),
                     "type" => "PAY_RETURN",
                     "isDeeplink" => "N"
                 ],
                 [
-                    "url" => url('/api/mobile/dana/notify'),
+                    "url" => url('/dana/notify'),
                     "type" => "NOTIFICATION",
                     "isDeeplink" => "N"
                 ]
@@ -1638,7 +1638,7 @@ class DanaGatewayMobileController extends Controller
         }
     }
 
-    public function returnPage(Request $request)
+    /*public function returnPage(Request $request)
     {
         Log::info('DANA Return Page Hit. Menampilkan halaman sukses (Blade) ke user.');
 
@@ -1646,4 +1646,5 @@ class DanaGatewayMobileController extends Controller
         return view('pembayaran_suksesdana');
 
     }
+    */
 }
