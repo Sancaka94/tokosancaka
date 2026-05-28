@@ -1837,7 +1837,7 @@ public function handleCallback(Request $request)
         Log::info('DANA START for Transaction Table: ' . $trxId); // LOG LOG dipertahankan
 
         $user = Auth::user();
-        $returnUrl = route('dana.return');
+        $returnUrl = route('dana.return', ['trx_id' => $trxId]);
         $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
 
@@ -2065,7 +2065,7 @@ public function handleCallback(Request $request)
             ],
             "validUpTo"          => $expiryTime,
             "urlParams"          => [
-                ["url" => route('dana.return'), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
+                ["url" => route('dana.return', ['trx_id' => $cleanInvoice]), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
                 ["url" => route('dana.notify'), "type" => "NOTIFICATION", "isDeeplink" => "Y"]
             ],
             // Opsi Pembayaran (Wajib BALANCE/Saldo agar aman tanpa Token)
@@ -2279,29 +2279,6 @@ public function handleCallback(Request $request)
 
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()]);
-        }
-    }
-
-    public function returnPage(Request $request)
-    {
-        Log::info('DANA Return Page Hit. Redirecting to History.');
-        return redirect()->route('customer.topup.index')
-            ->with('success', 'Pembayaran Anda sedang diproses oleh sistem. Silakan refresh halaman ini secara berkala untuk melihat perubahan status/saldo.');
-    }
-
-    public function dokuNotify(Request $request)
-    {
-        Log::info('DOKU NOTIFICATION HIT:', $request->all());
-
-        try {
-            $notification = $request->all();
-            if (!isset($notification['order']['invoice_number'])) {
-                return response()->json(['message' => 'Invalid Data'], 400);
-            }
-            return $this->handleDokuCallback($notification);
-        } catch (\Exception $e) {
-            Log::error('DOKU NOTIFY ERROR: ' . $e->getMessage());
-            return response()->json(['message' => 'Error'], 500);
         }
     }
 
