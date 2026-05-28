@@ -94,7 +94,7 @@
             if (jenisTransaksi === 'pesanan_ekspedisi') {
                 targetUrl = "sancakaexpress://riwayatpesanan?id=" + refNo;
             } else if (jenisTransaksi === 'pesanan_marketplace') {
-                targetUrl = "sancakaexpress://riwayatbelanja?id=" + refNo;
+                targetUrl = "sancakaexpress://RiwayatBelanja?id=" + refNo;
             } else if (jenisTransaksi === 'ppob') {
                 targetUrl = "sancakaexpress://riwayatppob?id=" + refNo;
             } else if (jenisTransaksi === 'topup') {

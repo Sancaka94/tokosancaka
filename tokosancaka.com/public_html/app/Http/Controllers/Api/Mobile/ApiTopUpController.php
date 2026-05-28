@@ -34,25 +34,33 @@ class ApiTopUpController extends Controller
      */
     public function getMethods()
     {
-        // 1. AMBIL METODE TRIPAY DARI API
+        // 1. AMBIL METODE TRIPAY DARI API (SECARA REAL-TIME, TANPA CACHE)
         $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
 
-        $tripayChannels = Cache::remember('tripay_channels_' . $mode, 60 * 24, function () use ($mode) {
-            $apiKey = ($mode === 'production') ? Api::getValue('TRIPAY_API_KEY', 'production') : Api::getValue('TRIPAY_API_KEY', 'sandbox');
-            $baseUrl = ($mode === 'production') ? 'https://tripay.co.id/api/merchant/payment-channel' : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
+        $apiKey = ($mode === 'production')
+            ? Api::getValue('TRIPAY_API_KEY', 'production')
+            : Api::getValue('TRIPAY_API_KEY', 'sandbox');
 
-            if (empty($apiKey)) return [];
+        $baseUrl = ($mode === 'production')
+            ? 'https://tripay.co.id/api/merchant/payment-channel'
+            : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
 
+        $tripayChannels = [];
+
+        if (!empty($apiKey)) {
             try {
-                $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->get($baseUrl);
+                $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+                                ->timeout(15)
+                                ->withoutVerifying() // Bypass SSL issue jika di localhost
+                                ->get($baseUrl);
+
                 if ($response->successful()) {
-                    return $response->json()['data'] ?? [];
+                    $tripayChannels = $response->json()['data'] ?? [];
                 }
             } catch (\Exception $e) {
                 Log::error('Tripay API Error: ' . $e->getMessage());
             }
-            return [];
-        });
+        }
 
         // 2. METODE DOKU JOKUL
         $dokuMethods = [
@@ -60,7 +68,7 @@ class ApiTopUpController extends Controller
                 'group' => 'Payment Gateway',
                 'code' => 'DOKU_JOKUL',
                 'name' => 'DOKU Payment Gateway',
-                'icon_url' => 'https://dashboard.doku.com/bo/assets/images/logodoku.png'
+                'icon_url' => 'https://tokosancaka.com/public/assets/doku.png'
             ]
         ];
 
@@ -70,7 +78,7 @@ class ApiTopUpController extends Controller
                 'group' => 'E-Wallet',
                 'code' => 'DANA',
                 'name' => 'DANA (Direct)',
-                'icon_url' => 'https://img.antaranews.com/cache/1200x800/2022/04/25/dana.jpg.webp'
+                'icon_url' => 'https://tokosancaka.com/public/assets/dana.png'
             ]
         ];
 
