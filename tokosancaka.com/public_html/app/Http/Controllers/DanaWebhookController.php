@@ -385,10 +385,17 @@ class DanaWebhookController extends Controller
                         App::make(\App\Http\Controllers\CheckoutController::class)->handleDokuCallback($mockDokuData);
                     } else {
                         // PENANGANAN PPOB BERDASARKAN TABEL transactionppobiak
-                        $trxPpob = DB::table('transactionppobiak')->where('ref_id', $orderId)->first();
+                        // Cek apakah ada prefix I/P atau TRX- (Misal P2604... atau I2604... atau TRX-)
+                        $trxPpob = DB::table('transactionppobiak')
+                            ->where('ref_id', $orderId)
+                            ->orWhere('ref_id', str_replace('PASCA', '', $orderId))
+                            ->first();
+
                         if ($trxPpob) {
-                            DB::table('transactionppobiak')->where('ref_id', $orderId)->update(['status' => 'SUCCESS']);
+                            DB::table('transactionppobiak')->where('id', $trxPpob->id)->update(['status' => 'SUCCESS']);
                             Log::info("LOG LOG: Webhook PPOB $orderId SUKSES.");
+                        } else {
+                            Log::warning("⚠️ Order $orderId tidak dikenali oleh sistem (Tidak ada di DB Utama, TopUp, maupun PPOB).");
                         }
                     }
                 }
@@ -407,9 +414,13 @@ class DanaWebhookController extends Controller
                 } elseif (Str::startsWith($orderId, 'TOPUP-') || Str::startsWith($orderId, 'ADM-')) {
                     App::make(\App\Http\Controllers\Customer\TopUpController::class)->handleDokuCallback($mockDokuData);
                 } else {
-                    $trxPpob = DB::table('transactionppobiak')->where('ref_id', $orderId)->first();
+                    $trxPpob = DB::table('transactionppobiak')
+                        ->where('ref_id', $orderId)
+                        ->orWhere('ref_id', str_replace('PASCA', '', $orderId))
+                        ->first();
+
                     if ($trxPpob) {
-                        DB::table('transactionppobiak')->where('ref_id', $orderId)->update(['status' => 'FAILED']);
+                        DB::table('transactionppobiak')->where('id', $trxPpob->id)->update(['status' => 'FAILED']);
                         Log::info("LOG LOG: Webhook PPOB $orderId GAGAL/EXPIRED.");
                     }
                 }
