@@ -1458,9 +1458,16 @@ public function handleCallback(Request $request)
         $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
         $readableBank = $cekBank ? $cekBank->bank_name : $request->bank_code;
 
-        // PAYLOAD SESUAI DOKUMENTASI DANA TRANSFER TO BANK
+        // --- TAMBAHKAN PENGECEKAN TOKEN BINDING DANA ---
+        if (empty($aff->dana_access_token)) {
+            return back()->with('error', 'Akun Anda belum terhubung dengan DANA untuk pencairan. Silakan hubungkan akun terlebih dahulu.');
+        }
+
+        // PAYLOAD SESUAI DOKUMENTASI DANA TRANSFER TO BANK (B2C2B)
         $body = [
             "partnerReferenceNo"       => $partnerRef,
+            // PASTIKAN MENGGUNAKAN ACCESS TOKEN YANG VALID DARI DATABASE
+            "customerToken"            => $aff->dana_access_token, 
             "customerNumber"           => $customerNumber,
             "beneficiaryAccountNumber" => (string) $request->account_no,
             "beneficiaryBankCode"      => (string) $request->bank_code,
@@ -1471,7 +1478,8 @@ public function handleCallback(Request $request)
             "additionalInfo" => [
                 "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
                 "beneficiaryAccountName" => (string) $request->account_name,
-                "notes"                  => "Transfer ke Bank " . $readableBank]
+                "notes"                  => "Transfer ke Bank " . $readableBank
+            ]
         ];
 
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
