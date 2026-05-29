@@ -397,7 +397,7 @@
                 </li>
 
                 {{-- OPSI MIDTRANS --}}
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
+                {{-- <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
                     data-value="MIDTRANS"
                     data-label="Midtrans"
                     data-img="https://tokosancaka.com/public/assets/midtrans.png">
@@ -412,6 +412,7 @@
                         <span class="text-xs text-gray-500">Virtual Account, QRIS, E-Wallet (Otomatis)</span>
                     </div>
                 </li>
+                --}}
 
                 {{-- OPSI DANA (DIRECT DEBIT) --}}
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
