@@ -1471,18 +1471,21 @@ public function transferToBank(Request $request)
 
         $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path       = '/v1.0/emoney/transfer-bank.htm';
-        $partnerRef = "TRF" . time() . Str::random(6);
+        
+        // PENTING UNTUK UAT: Buat identifier yang unik tapi seragam panjangnya
+        $uniqueId   = time() . Str::random(6);
+        $partnerRef = "TRF" . $uniqueId;
+        $externalId = "EXT" . $uniqueId;
 
         // AMBIL DATA BANK DARI DATABASE
         $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
         $readableBank = $cekBank ? $cekBank->bank_name : $request->bank_code;
 
         // PAYLOAD DANA TRANSFER TO BANK
-        // customerNumber wajib nomor Admin, Rekening & Nama tujuan adalah milik Pengguna (Affiliate)
         $body = [
             "partnerReferenceNo"       => $partnerRef,
-            "customerNumber"           => $customerNumber,
-            "beneficiaryAccountNumber" => (string) $request->account_no,
+            "customerNumber"           => $customerNumber, // Memakai No Admin ID 4
+            "beneficiaryAccountNumber" => (string) $request->account_no, // Memakai input pengguna
             "beneficiaryBankCode"      => (string) $request->bank_code,
             "amount" => [
                 "value"    => number_format((float)$request->amount, 2, '.', ''),
@@ -1498,10 +1501,12 @@ public function transferToBank(Request $request)
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
         $hashedBody = strtolower(hash('sha256', $jsonBody));
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+        
+        // Pastikan class ini di-inject/ada di controller kamu
         $signature = $this->generateSignature($stringToSign);
 
         try {
-            // Gunakan akses token milik Admin ID 4 langsung dari database untuk Bearer token b2b
+            // Gunakan akses token milik Admin ID 4
             $accessTokenB2B = $adminAccessToken ?? $this->danaSignature->getAccessToken();
 
             $headers = [
@@ -1511,7 +1516,7 @@ public function transferToBank(Request $request)
                 'X-SIGNATURE'   => $signature,
                 'ORIGIN'        => config('services.dana.origin'),
                 'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'X-EXTERNAL-ID' => $externalId, // Menggunakan variabel $externalId yang sudah dibuat
                 'X-IP-ADDRESS'  => $request->ip(),
                 'X-DEVICE-ID'   => 'SANCAKA-DANA-01',
                 'CHANNEL-ID'    => '95221'
@@ -1528,8 +1533,11 @@ public function transferToBank(Request $request)
             $resCode = $result['responseCode'] ?? '500';
 
             // ================================================================
-            // 🔥 KODE DD() SEMENTARA UNTUK MENGAMBIL DATA UAT EXCEL 🔥
+            // 🔥 TAMPILAN UAT UNTUK EXCEL (DUMP & DIE) 🔥
             // ================================================================
+            // Karena ini ada dd(), script akan BERHENTI di sini.
+            // Saldo sudah terpotong di atas, tapi belum ada database record transaksi yang tercipta.
+            // Hapus atau komen bagian dd() ini setelah mendapatkan data untuk Excel.
             dd([
                 'URL Request'               => $path,
                 'Header Request (optional)' => json_encode($headers, JSON_PRETTY_PRINT),
@@ -1537,6 +1545,7 @@ public function transferToBank(Request $request)
                 'Body Response'             => json_encode($result, JSON_PRETTY_PRINT),
             ]);
             // ================================================================
+
 
             // KONDISI 1: SUCCESS BERHASIL INSTAN
             if ($resCode == '2004300') {
@@ -1591,6 +1600,7 @@ public function transferToBank(Request $request)
                 if ($resCode == '4034318') $errorMsg = "Akun Merchant Tidak Aktif/Salah Konfigurasi.";
                 if ($resCode == '4004301') $errorMsg = "Format/Data Pengiriman Tidak Sesuai Standar DANA.";
                 if ($resCode == '4044318') $errorMsg = "Inconsistent Request: Referensi transaksi duplikat dengan nominal berbeda.";
+                if ($resCode == '4014202') $errorMsg = "Token Otorisasi DANA tidak valid / kadaluarsa.";
 
                 Log::error('[DANA TRANSFER BANK] Gagal & Refund', ['res' => $result]);
                 return back()->with('error', "Gagal: $errorMsg\n(Saldo Rp ".number_format($request->amount, 0, ',', '.')." telah dikembalikan).");
@@ -1604,7 +1614,7 @@ public function transferToBank(Request $request)
             return back()->with('error', 'Sistem Error saat eksekusi: ' . $e->getMessage() . "\n(Saldo telah dikembalikan).");
         }
     }
-    
+
     public function consultPaymentMethods(Request $request)
     {
         \Illuminate\Support\Facades\Log::debug('================ [GAPURA DEBUG LOG] CONSULT START ================');
