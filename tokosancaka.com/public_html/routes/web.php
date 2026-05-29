@@ -1155,7 +1155,6 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
 
     Route::post('/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferToBank'])->name('dana.transfer_bank');
 
-
     // Route Utama untuk menampilkan Tabel (Index)
     Route::get('/produk', [ProdukController::class, 'index'])->name('produk.index');
 
