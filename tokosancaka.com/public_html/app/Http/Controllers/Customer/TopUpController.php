@@ -1507,6 +1507,17 @@ public function handleCallback(Request $request)
             $result = $response->json();
             $resCode = $result['responseCode'] ?? '500';
 
+            // ================================================================
+            // 🔥 TARUH KODE DD() SEMENTARA DI SINI UNTUK DOKUMEN UAT EXCEL 🔥
+            // ================================================================
+            dd([
+                'URL Request'               => $path,
+                'Header Request (optional)' => json_encode($headers, JSON_PRETTY_PRINT),
+                'Body Request'              => json_encode($body, JSON_PRETTY_PRINT),
+                'Body Response'             => json_encode($result, JSON_PRETTY_PRINT),
+            ]);
+            // ================================================================
+
             // KONDISI 1: SUCCESS BERHASIL INSTAN
             if ($resCode == '2004300') {
                 DB::table('dana_transactions')->insert([
