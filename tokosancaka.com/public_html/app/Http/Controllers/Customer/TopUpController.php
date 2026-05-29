@@ -1378,7 +1378,7 @@ public function handleCallback(Request $request)
             //    'Body Response'             => $result,
             //]);
             // ================================================================
-            
+
 
             if ($resCode == '2004300') {
                 DB::table('dana_transactions')->insert([
@@ -2335,10 +2335,21 @@ public function handleCallback(Request $request)
 
     public function transferBankPage()
     {
-        // Ambil data bank dari database dan urutkan berdasarkan abjad
+        // 1. Ambil data bank dari database
         $banks = DB::table('dana_bank_codes')->orderBy('bank_name', 'asc')->get();
 
-        return view('admin.dana.transfer-bank', compact('banks'));
+        // 2. Ambil ID pengguna yang sedang login
+        $userId = auth()->user()->id_pengguna ?? null;
+
+        // 3. Ambil riwayat transfer bank user ini dari database
+        $transactions = DB::table('dana_transactions')
+            ->where('affiliate_id', $userId)
+            ->where('type', 'TRANSFER_BANK')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10); // Menampilkan 10 data per halaman
+
+        // 4. Kirim $banks dan $transactions ke file Blade
+        return view('admin.dana.transfer-bank', compact('banks', 'transactions'));
     }
 
 
