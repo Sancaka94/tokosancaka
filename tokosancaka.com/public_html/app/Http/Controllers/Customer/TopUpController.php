@@ -1820,13 +1820,13 @@ public function handleCallback(Request $request)
             // --- [DD KHUSUS UAT DANA - ROW 1 & 2] ---
             // Nanti kalau UAT sudah selesai, baris dd() ini di-comment (//) saja ya.
             // =========================================================================
-            //dd([
-            //    'UAT_SCENARIO'   => 'Payment Host to Host (Copy ke Excel UAT)',
-            //    'URL_REQUEST'    => $baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm',
-            //    'HEADER_REQUEST' => $headersUAT,
-            //    'BODY_REQUEST'   => $bodyArray,
-            //    'BODY_RESPONSE'  => $result
-            //]);
+            dd([
+                'UAT_SCENARIO'   => 'Payment Host to Host (Copy ke Excel UAT)',
+                'URL_REQUEST'    => $baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm',
+                'HEADER_REQUEST' => $headersUAT,
+                'BODY_REQUEST'   => $bodyArray,
+                'BODY_RESPONSE'  => $result
+            ]);
             // =========================================================================
 
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
