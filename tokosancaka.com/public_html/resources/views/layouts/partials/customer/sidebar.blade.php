@@ -331,12 +331,6 @@
                                 <i class="fas fa-id-card fa-fw w-4 mr-2 text-blue-400"></i> Daftar Merchant DANA
                             </a>
 
-                            {{-- 🔥 MENU TRANSFER BANK DANA 🔥 --}}
-                            <a href="{{ route('customer.dana.transfer_bank_page') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('customer.dana.transfer_bank_page') ? 'bg-gray-800 text-white' : '' }}">
-                                <i class="fas fa-money-bill-transfer fa-fw w-4 mr-2 text-green-400"></i> Pencairan Saldo Dana
-                            </a>
-                            {{-- END MENU TRANSFER BANK --}}
-
                             {{-- END MENU BARU --}}
                             <a href="{{ route('customer.merchant.index') }}"
                             class="{{ request()->routeIs('customer.merchant.*') ? 'bg-gray-900 text-white' : 'text-gray-300 hover:bg-gray-700 hover:text-white' }} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
