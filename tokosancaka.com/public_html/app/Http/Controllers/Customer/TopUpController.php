@@ -1507,7 +1507,8 @@ public function transferToBank(Request $request)
 
         try {
             // Gunakan akses token milik Admin ID 4
-            $accessTokenB2B = $adminAccessToken ?? $this->danaSignature->getAccessToken();
+            // $accessTokenB2B = $adminAccessToken ?? $this->danaSignature->getAccessToken();
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
 
             $headers = [
                 'Content-Type'  => 'application/json',
