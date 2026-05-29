@@ -842,27 +842,29 @@ class MarketplaceMobileController extends Controller
         }
     }
 
-    // --- Helper Tripay untuk API ---
-    private function _createTripayTransaction($order, $methodChannel, $amount, $user, $items)
+   private function _createTripayTransaction($order, $methodChannel, $amount, $user, $items)
     {
-        // 1. BYPASS CACHE: Kita ambil langsung menembak ke tabel database
-        // MENGGUNAKAN KOLOM 'environment' SESUAI STRUKTUR DATABASE KAMU!
-        $modeRecord = \Illuminate\Support\Facades\DB::table('API')
-                        ->where('key', 'TRIPAY_MODE')
-                        ->where('environment', 'global') // <-- PERBAIKAN
-                        ->first();
-        $mode = $modeRecord ? $modeRecord->value : 'sandbox';
+        // 1. KITA KEMBALIKAN KE LOGIKA Api::getValue() KARENA TERBUKTI AMAN
+        $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
 
         \Illuminate\Support\Facades\Log::info("LOG LOG: Memulai Tripay Transaction. Mode DB asli: " . $mode);
 
-        $baseUrl = $mode === 'production'
-            ? 'https://tripay.co.id/api/transaction/create'
-            : 'https://tripay.co.id/api-sandbox/transaction/create';
+        $baseUrl      = '';
+        $apiKey       = '';
+        $privateKey   = '';
+        $merchantCode = '';
 
-        // Bypass cache untuk Kunci API (Gunakan kolom 'environment' juga)
-        $apiKey       = \Illuminate\Support\Facades\DB::table('API')->where('key', 'TRIPAY_API_KEY')->where('environment', $mode)->value('value'); // <-- PERBAIKAN
-        $privateKey   = \Illuminate\Support\Facades\DB::table('API')->where('key', 'TRIPAY_PRIVATE_KEY')->where('environment', $mode)->value('value'); // <-- PERBAIKAN
-        $merchantCode = \Illuminate\Support\Facades\DB::table('API')->where('key', 'TRIPAY_MERCHANT_CODE')->where('environment', $mode)->value('value'); // <-- PERBAIKAN
+        if ($mode === 'production') {
+            $baseUrl      = 'https://tripay.co.id/api/transaction/create';
+            $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
+            $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'production');
+            $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', 'production');
+        } else {
+            $baseUrl      = 'https://tripay.co.id/api-sandbox/transaction/create';
+            $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'sandbox');
+            $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', 'sandbox');
+        }
 
         if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
             return ['success' => false, 'message' => 'Konfigurasi Kunci Tripay belum lengkap untuk mode: ' . strtoupper($mode)];
@@ -874,7 +876,7 @@ class MarketplaceMobileController extends Controller
         $amount = (int) $amount; // Pastikan formatnya angka bulat
 
         // Alih-alih mengirimkan daftar produk yang bisa memicu error selisih harga
-        // (karena ongkir/admin fee tidak ikut terhitung), kita rangkum menjadi 1 item global.
+        // kita rangkum menjadi 1 item global.
         $safeItems = [
             [
                 'sku'      => 'INV-' . $order->invoice_number,
