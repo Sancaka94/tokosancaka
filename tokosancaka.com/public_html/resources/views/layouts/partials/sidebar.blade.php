@@ -482,6 +482,7 @@
                 <i class="fa-solid fa-money-bill-transfer fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('customer.dana.bank_inquiry') || request()->routeIs('customer.dana.transfer_bank') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Transfer Bank</span>
             </a>
+            
 
             {{-- ================= MANAJEMEN INVOICE ================= --}}
             <div x-data="{ open: {{ request()->routeIs('invoice.*') ? 'true' : 'false' }} }"
