@@ -1424,7 +1424,7 @@ public function handleCallback(Request $request)
 
     }
 
-    public function transferToBank(Request $request)
+public function transferToBank(Request $request)
     {
         Log::info('[DANA TRANSFER BANK] Start', [
             'affiliate_id' => $request->affiliate_id,
@@ -1433,41 +1433,54 @@ public function handleCallback(Request $request)
             'amount'       => $request->amount
         ]);
 
-        // PERBAIKAN: Gunakan tabel Pengguna dan id_pengguna
+        // Gunakan tabel Pengguna dan id_pengguna untuk cek user yang mencairkan
         $aff = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
         if (!$aff) return back()->with('error', 'Pengguna tidak ditemukan.');
 
-        // PERBAIKAN: Cek menggunakan kolom saldo
+        // Cek menggunakan kolom saldo pengguna
         if ($aff->saldo < $request->amount) {
             return back()->with('error', 'Saldo Anda tidak mencukupi.');
         }
 
-        // PERBAIKAN: Format No WA untuk parameter DANA
-        $customerNumber = preg_replace('/[^0-9]/', '', $aff->no_wa);
-        if (substr($customerNumber, 0, 1) === '0') $customerNumber = '62' . substr($customerNumber, 1);
+        // ==============================================================
+        // SINKRONISASI UTAMA: Tarik Akses Token, Auth Code, & No WA Admin ID 4
+        // ==============================================================
+        $admin = DB::table('Pengguna')->where('id_pengguna', 4)->first();
+        if (!$admin) {
+            return back()->with('error', 'Gagal memproses: Data otorisasi DANA Admin tidak ditemukan.');
+        }
 
-        // POTONG SALDO DIAWAL SEBELUM HIT API
+        $adminPhone       = $admin->no_wa ?? '085745808809';
+        $adminAccessToken = $admin->dana_access_token;
+        $adminAuthCode    = $admin->dana_auth_code;
+
+        Log::info('[DANA TRANSFER BANK] Menggunakan Kredensial Otorisasi Admin ID 4', [
+            'admin_phone' => $adminPhone,
+            'has_token'   => !empty($adminAccessToken),
+            'has_auth'    => !empty($adminAuthCode)
+        ]);
+
+        // Format nomor HP Admin untuk parameter customerNumber DANA
+        $customerNumber = preg_replace('/[^0-9]/', '', $adminPhone);
+        if (substr($customerNumber, 0, 1) === '0') {
+            $customerNumber = '62' . substr($customerNumber, 1);
+        }
+
+        // POTONG SALDO DIAWAL SEBELUM HIT API (Saldo pengguna yang berkurang)
         DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->decrement('saldo', $request->amount);
 
         $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path       = '/v1.0/emoney/transfer-bank.htm';
         $partnerRef = "TRF" . time() . Str::random(6);
-        // $partnerRef = "TEST_INCONSISTENT_999";
 
         // AMBIL DATA BANK DARI DATABASE
         $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
         $readableBank = $cekBank ? $cekBank->bank_name : $request->bank_code;
 
-        // --- TAMBAHKAN PENGECEKAN TOKEN BINDING DANA ---
-        if (empty($aff->dana_access_token)) {
-            return back()->with('error', 'Akun Anda belum terhubung dengan DANA untuk pencairan. Silakan hubungkan akun terlebih dahulu.');
-        }
-
-        // PAYLOAD SESUAI DOKUMENTASI DANA TRANSFER TO BANK (B2C2B)
+        // PAYLOAD DANA TRANSFER TO BANK
+        // customerNumber wajib nomor Admin, Rekening & Nama tujuan adalah milik Pengguna (Affiliate)
         $body = [
             "partnerReferenceNo"       => $partnerRef,
-            // PASTIKAN MENGGUNAKAN ACCESS TOKEN YANG VALID DARI DATABASE
-            "customerToken"            => $aff->dana_access_token, 
             "customerNumber"           => $customerNumber,
             "beneficiaryAccountNumber" => (string) $request->account_no,
             "beneficiaryBankCode"      => (string) $request->bank_code,
@@ -1487,10 +1500,9 @@ public function handleCallback(Request $request)
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
         $signature = $this->generateSignature($stringToSign);
 
-
         try {
-
-        $accessTokenB2B = $this->danaSignature->getAccessToken();
+            // Gunakan akses token milik Admin ID 4 langsung dari database untuk Bearer token b2b
+            $accessTokenB2B = $adminAccessToken ?? $this->danaSignature->getAccessToken();
 
             $headers = [
                 'Content-Type'  => 'application/json',
@@ -1516,7 +1528,7 @@ public function handleCallback(Request $request)
             $resCode = $result['responseCode'] ?? '500';
 
             // ================================================================
-            // 🔥 TARUH KODE DD() SEMENTARA DI SINI UNTUK DOKUMEN UAT EXCEL 🔥
+            // 🔥 KODE DD() SEMENTARA UNTUK MENGAMBIL DATA UAT EXCEL 🔥
             // ================================================================
             dd([
                 'URL Request'               => $path,
@@ -1559,7 +1571,7 @@ public function handleCallback(Request $request)
 
             // KONDISI 3: TRANSAKSI GAGAL
             } else {
-                // REFUND SALDO JIKA TRANSFER GAGAL
+                // REFUND SALDO JIKA TRANSFER GAGAL (Dikembalikan ke saldo Pengguna asli)
                 DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
 
                 DB::table('dana_transactions')->insert([
@@ -1592,7 +1604,7 @@ public function handleCallback(Request $request)
             return back()->with('error', 'Sistem Error saat eksekusi: ' . $e->getMessage() . "\n(Saldo telah dikembalikan).");
         }
     }
-
+    
     public function consultPaymentMethods(Request $request)
     {
         \Illuminate\Support\Facades\Log::debug('================ [GAPURA DEBUG LOG] CONSULT START ================');
