@@ -1,4 +1,4 @@
-@extends('layouts.customer')
+@extends('layouts.admin')
 
 @section('title', 'Pencairan Saldo ke Bank')
 
