@@ -1301,29 +1301,18 @@ public function handleCallback(Request $request)
         }
     }
 
-    public function bankAccountInquiry(Request $request)
+   public function bankAccountInquiry(Request $request)
     {
-        // 1. Validasi Affiliate yang sedang login
+        // 1. Validasi Affiliate yang sedang login (Tetap diperlukan untuk validasi internal aplikasi)
         $aff = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
         if (!$aff) return back()->with('error', 'Pengguna tidak ditemukan.');
 
         // ==============================================================
-        // SINKRONISASI UTAMA: Ambil Data DANA Admin ID 4
-        // Agar Inquiry lolos otorisasi "Merchant Withdraw"
+        // MENGGUNAKAN DATA AKUN MERCHANT DEPOSIT (DISBURSEMENT B2B)
+        // Tidak perlu lagi query ke tabel Pengguna untuk mengambil token admin
         // ==============================================================
-        $admin = DB::table('Pengguna')->where('id_pengguna', 8)->first();
-        if (!$admin || empty($admin->dana_access_token)) {
-            return back()->with('error', 'Gagal memproses: Data otorisasi DANA Admin tidak ditemukan.');
-        }
-
-        $adminPhone = $admin->no_wa ?? '085745808809';
-        $adminAccessToken = $admin->dana_access_token;
-
-        // Sanitasi Nomor Admin (Digunakan sebagai customerNumber)
-        $customerNumber = preg_replace('/[^0-9]/', '', $adminPhone);
-        if (substr($customerNumber, 0, 1) === '0') {
-            $customerNumber = '62' . substr($customerNumber, 1);
-        }
+        $merchantDepositAccount = '20070000103315239788'; // No Akun Disbursement
+        $idToko = '216660001394664338723'; // ID Toko Sancaka Express
 
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path = '/v1.0/emoney/bank-account-inquiry.htm';
@@ -1334,7 +1323,7 @@ public function handleCallback(Request $request)
 
         $body = [
             "partnerReferenceNo" => $refNo,
-            "customerNumber"     => $customerNumber, // PENTING: Memakai Nomor Admin
+            "customerNumber"     => $merchantDepositAccount, // Pakai No Akun Merchant Deposit
             "beneficiaryAccountNumber" => $request->account_no, // Input dari pelanggan
             "amount" => [
                 "value"    => number_format((float)$request->amount, 2, '.', ''),
@@ -1344,6 +1333,7 @@ public function handleCallback(Request $request)
                 "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
                 "beneficiaryBankCode"    => (string) $request->bank_code,
                 "beneficiaryAccountName" => "",
+                "merchantId"             => $idToko // Disisipkan sebagai identitas corporate
             ]
         ];
 
@@ -1354,8 +1344,8 @@ public function handleCallback(Request $request)
         $signature = $this->generateSignature($stringToSign);
 
         try {
-            // Gunakan akses token milik Admin ID 4
-            $accessTokenB2B = $adminAccessToken ?? $this->danaSignature->getAccessToken();
+            // LANGSUNG GENERATE TOKEN B2B DARI SERVICE, BUKAN DARI DATABASE
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
 
             $headers = [
                 'Content-Type'  => 'application/json',
@@ -1370,14 +1360,14 @@ public function handleCallback(Request $request)
                 'CHANNEL-ID'    => '95221'
             ];
 
-            Log::info('[BANK INQUIRY] Sending Request to DANA', ['body' => $body]);
+            Log::info('[BANK INQUIRY B2B] Sending Request to DANA', ['body' => $body]);
 
             $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
-            Log::info('[BANK INQUIRY]', ['res' => $result]);
+            Log::info('[BANK INQUIRY B2B]', ['res' => $result]);
 
             $resCode = $result['responseCode'] ?? '500';
 
@@ -1411,7 +1401,6 @@ public function handleCallback(Request $request)
 
             $errMsg = $result['responseMessage'] ?? 'Unknown Error';
             
-            // Penyesuaian Pesan Error agar lebih informatif
             if ($resCode == '4034214') $errMsg = "Saldo Merchant DANA Tidak Cukup (Isi Saldo Sancaka Dulu!)";
             if ($resCode == '4034218') $errMsg = "Akun Merchant Inactive (Hubungi Admin DANA)";
             if ($resCode == '4044201') $errMsg = "Rekening Tidak Ditemukan/Salah Bank";
@@ -1457,6 +1446,12 @@ public function handleCallback(Request $request)
         // POTONG SALDO DIAWAL
         DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->decrement('saldo', $request->amount);
 
+       // =========================================================
+        // SAMAKAN DATA DISBURSEMENT SEPERTI DI INQUIRY
+        // =========================================================
+        $merchantDepositAccount = '20070000103315239788'; 
+        $idToko = '216660001394664338723';
+
         $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path       = '/v1.0/emoney/transfer-bank.htm';
         $partnerRef = "TRF" . time() . Str::random(6);
@@ -1466,7 +1461,7 @@ public function handleCallback(Request $request)
 
         $body = [
             "partnerReferenceNo"       => $partnerRef,
-            "customerNumber"           => $customerNumber, 
+            "customerNumber"           => $merchantDepositAccount, // HARUS NOMOR MERCHANT, BUKAN AFFILIATE
             "beneficiaryAccountNumber" => (string) $request->account_no,
             "beneficiaryBankCode"      => (string) $request->bank_code,
             "amount" => [
@@ -1476,6 +1471,7 @@ public function handleCallback(Request $request)
             "additionalInfo" => [
                 "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
                 "beneficiaryAccountName" => (string) $request->account_name,
+                "merchantId"             => $idToko,
                 "notes"                  => "Transfer ke Bank " . $readableBank,
                 "needNotify"             => true
             ]
