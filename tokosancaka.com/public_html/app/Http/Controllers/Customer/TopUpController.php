@@ -1303,18 +1303,27 @@ public function handleCallback(Request $request)
 
     public function bankAccountInquiry(Request $request)
     {
+        // 1. Validasi Affiliate yang sedang login
         $aff = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
         if (!$aff) return back()->with('error', 'Pengguna tidak ditemukan.');
 
         // ==============================================================
-        // PERBAIKAN: Inquiry juga wajib pakai Kredensial B2B Admin
-        // Karena fundType-nya MERCHANT_WITHDRAW_FOR_CORPORATE
+        // SINKRONISASI UTAMA: Ambil Data DANA Admin ID 4
+        // Agar Inquiry lolos otorisasi "Merchant Withdraw"
         // ==============================================================
         $admin = DB::table('Pengguna')->where('id_pengguna', 4)->first();
-        $adminPhone = $admin->no_wa ?? '085745808809';
+        if (!$admin || empty($admin->dana_access_token)) {
+            return back()->with('error', 'Gagal memproses: Data otorisasi DANA Admin tidak ditemukan.');
+        }
 
+        $adminPhone = $admin->no_wa ?? '085745808809';
+        $adminAccessToken = $admin->dana_access_token;
+
+        // Sanitasi Nomor Admin (Digunakan sebagai customerNumber)
         $customerNumber = preg_replace('/[^0-9]/', '', $adminPhone);
-        if (substr($customerNumber, 0, 1) === '0') $customerNumber = '62' . substr($customerNumber, 1);
+        if (substr($customerNumber, 0, 1) === '0') {
+            $customerNumber = '62' . substr($customerNumber, 1);
+        }
 
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path = '/v1.0/emoney/bank-account-inquiry.htm';
@@ -1325,8 +1334,8 @@ public function handleCallback(Request $request)
 
         $body = [
             "partnerReferenceNo" => $refNo,
-            "customerNumber"     => $customerNumber, // Harus pakai nomor Admin (Merchant)
-            "beneficiaryAccountNumber" => $request->account_no,
+            "customerNumber"     => $customerNumber, // PENTING: Memakai Nomor Admin
+            "beneficiaryAccountNumber" => $request->account_no, // Input dari pelanggan
             "amount" => [
                 "value"    => number_format((float)$request->amount, 2, '.', ''),
                 "currency" => "IDR"
@@ -1341,11 +1350,12 @@ public function handleCallback(Request $request)
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
         $hashedBody = strtolower(hash('sha256', $jsonBody));
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+        
         $signature = $this->generateSignature($stringToSign);
 
         try {
-            // Wajib B2B Token murni bawaan sistem
-            $accessTokenB2B = $this->danaSignature->getAccessToken();
+            // Gunakan akses token milik Admin ID 4
+            $accessTokenB2B = $adminAccessToken ?? $this->danaSignature->getAccessToken();
 
             $headers = [
                 'Content-Type'  => 'application/json',
@@ -1400,6 +1410,9 @@ public function handleCallback(Request $request)
             }
 
             $errMsg = $result['responseMessage'] ?? 'Unknown Error';
+            
+            // Penyesuaian Pesan Error agar lebih informatif
+            if ($resCode == '4034214') $errMsg = "Saldo Merchant DANA Tidak Cukup (Isi Saldo Sancaka Dulu!)";
             if ($resCode == '4034218') $errMsg = "Akun Merchant Inactive (Hubungi Admin DANA)";
             if ($resCode == '4044201') $errMsg = "Rekening Tidak Ditemukan/Salah Bank";
             if ($resCode == '4004201') $errMsg = "Format Kode Bank Tidak Valid (".$request->bank_code.")";
