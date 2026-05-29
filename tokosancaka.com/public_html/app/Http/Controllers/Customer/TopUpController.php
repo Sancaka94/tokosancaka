@@ -1792,22 +1792,42 @@ public function handleCallback(Request $request)
 
             $baseUrl = config('services.dana.base_url');
 
-            $response = Http::withHeaders([
+            Log::info('LOG LOG: [UAT DANA TESTING] Mengirim request API H2H payment-host-to-host.htm DANA');
+
+            // --- KITA DEFINISIKAN HEADER DULU AGAR BISA DI-DD DENGAN RAPI ---
+            $headersUAT = [
                 'Authorization' => 'Bearer ' . $accessToken,
-                'X-PARTNER-ID' => config('services.dana.x_partner_id'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
                 'X-EXTERNAL-ID' => Str::random(32),
-                'X-TIMESTAMP' => $timestamp,
-                'X-SIGNATURE' => $signature,
-                'Content-Type' => 'application/json',
-                'CHANNEL-ID' => '95221',
-                'ORIGIN' => config('services.dana.origin'),
-            ])->withBody($jsonBody, 'application/json')
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'Content-Type'  => 'application/json',
+                'CHANNEL-ID'    => '95221',
+                'ORIGIN'        => config('services.dana.origin'),
+            ];
+
+            $response = Http::withHeaders($headersUAT)
+              ->withBody($jsonBody, 'application/json')
               ->post($baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm');
 
             $result = $response->json();
 
             // Tambahan Log untuk memonitor hasil testing
             Log::info('DANA Create Payment Result:', $result);
+            Log::info('LOG LOG: [UAT DANA TESTING] Hasil Response createPaymentDANA:', $result);
+
+            // =========================================================================
+            // --- [DD KHUSUS UAT DANA - ROW 1 & 2] ---
+            // Nanti kalau UAT sudah selesai, baris dd() ini di-comment (//) saja ya.
+            // =========================================================================
+            dd([
+                'UAT_SCENARIO'   => 'Payment Host to Host (Copy ke Excel UAT)',
+                'URL_REQUEST'    => $baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm',
+                'HEADER_REQUEST' => $headersUAT,
+                'BODY_REQUEST'   => $bodyArray,
+                'BODY_RESPONSE'  => $result
+            ]);
+            // =========================================================================
 
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'] ?? null;
@@ -2687,13 +2707,22 @@ public function handleCallback(Request $request)
         // Fungsi processTopUp di bawah butuh "PAID" untuk mengeksekusi penambahan saldo.
         // =====================================================================
         $internalStatus = in_array(strtoupper($statusRaw), ['SUCCESS', 'PAID', '00']) ? 'PAID' : 'FAILED';
+        
+        Log::info('LOG LOG: [UAT DANA TESTING] Status DANA RAW: ' . $statusRaw . ' dinormalisasi menjadi Internal Status: ' . $internalStatus);
 
         try {
             // Panggil prosesor utama
             self::processTopUp($merchantRef, $internalStatus, $amount);
 
-            // Beri tahu DanaWebhookController (dan DANA) bahwa proses sukses
-            return response()->json(['success' => true]);
+            // =========================================================================
+            // --- [BALASAN WEBHOOK KHUSUS UAT DANA - ROW 3] ---
+            // Beri tahu DANA bahwa proses sukses sesuai format yang diminta dokumen UAT
+            // =========================================================================
+            return response()->json([
+                'responseCode'    => '2005600',
+                'responseMessage' => 'Successful'
+            ]);
+
         } catch (\Exception $e) {
             Log::error('Gagal mengeksekusi TopUp Callback: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Internal Error'], 500);
