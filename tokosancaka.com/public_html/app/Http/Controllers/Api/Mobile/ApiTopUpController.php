@@ -32,15 +32,29 @@ class ApiTopUpController extends Controller
      * sebenarnya tidak lagi dipanggil oleh aplikasi mobile terbaru Anda.
      * Namun tetap dibiarkan jika sewaktu-waktu dibutuhkan.
      */
+   /**
+     * ==========================================================
+     * 1. API: AMBIL DAFTAR METODE PEMBAYARAN (SUDAH FIX 4 METODE)
+     * ==========================================================
+     */
     public function getMethods()
     {
-        // 1. AMBIL METODE TRIPAY DARI API (SECARA REAL-TIME, TANPA CACHE)
-        $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+        // 1. AMBIL METODE TRIPAY DARI API (SECARA REAL-TIME, BYPASS CACHE)
+        
+        // Ambil mode langsung dari database untuk menghindari nyangkut di Production
+        $modeRecord = \Illuminate\Support\Facades\DB::table('API')
+            ->where('key', 'TRIPAY_MODE')
+            ->where('environment', 'global')
+            ->first();
+        $mode = $modeRecord ? $modeRecord->value : 'sandbox';
 
-        $apiKey = ($mode === 'production')
-            ? Api::getValue('TRIPAY_API_KEY', 'production')
-            : Api::getValue('TRIPAY_API_KEY', 'sandbox');
+        // Ambil API Key secara dinamis berdasarkan mode yang sedang aktif
+        $apiKey = \Illuminate\Support\Facades\DB::table('API')
+            ->where('key', 'TRIPAY_API_KEY')
+            ->where('environment', $mode)
+            ->value('value');
 
+        // Arahkan Base URL sesuai mode secara dinamis
         $baseUrl = ($mode === 'production')
             ? 'https://tripay.co.id/api/merchant/payment-channel'
             : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
