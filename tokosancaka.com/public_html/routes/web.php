@@ -1313,8 +1313,9 @@ Route::prefix('customer')->middleware(['auth'])->group(function () {
     // Route POST yang sudah ada sebelumnya
     Route::post('/dana/bank-inquiry', [App\Http\Controllers\Customer\TopUpController::class, 'bankAccountInquiry'])->name('customer.dana.bank_inquiry');
     Route::post('/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferToBank'])->name('customer.dana.transfer_bank');
+    Route::post('/dana/topup-corporate', [App\Http\Controllers\Customer\TopUpController::class, 'customerTopup'])->name('customer.dana.topup_corporate');
 
-});
+    });
 
 
 Route::get('/verifikasi-email', [AuthController::class, 'verifyEmailFromLink']);

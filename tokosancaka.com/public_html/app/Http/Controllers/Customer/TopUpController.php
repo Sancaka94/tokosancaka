@@ -2881,4 +2881,164 @@ public function handleCallback(Request $request)
         return self::processTopUp($merchantRef, $status, $amount);
     }
 
+    public function customerTopup(Request $request)
+    {
+        // 1. Validasi Input
+        $request->validate([
+            'affiliate_id' => 'required|exists:Pengguna,id_pengguna',
+            'phone'        => 'required|numeric',
+            'amount'       => 'required|numeric|min:1000',
+        ]);
+
+        $aff = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
+        if (!$aff) return back()->with('error', 'Pengguna tidak ditemukan.');
+
+        if ($aff->saldo < $request->amount) {
+            return back()->with('error', 'Saldo komisi Anda tidak mencukupi.');
+        }
+
+        // 2. Sanitasi Nomor HP Penerima (Tujuan Top Up)
+        $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
+        if (substr($cleanPhone, 0, 2) !== '62') {
+            $cleanPhone = (substr($cleanPhone, 0, 1) === '0') ? '62' . substr($cleanPhone, 1) : '62' . $cleanPhone;
+        }
+
+        // Potong saldo internal user di awal
+        DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->decrement('saldo', $request->amount);
+
+        // ==============================================================
+        // 3. IDENTITAS CORPORATE (DISBURSEMENT B2B)
+        // ==============================================================
+        $merchantDepositAccount = '20070000103315239788'; 
+        $idToko = '216660001394664338723';
+
+        $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $partnerRef = "TUP" . time() . \Illuminate\Support\Str::random(4);
+        $amountStr  = number_format((float)$request->amount, 2, '.', '');
+        $path       = '/rest/v1.0/emoney/topup';
+
+        // 4. SUSUN PAYLOAD SESUAI DOKUMENTASI
+        $body = [
+            "partnerReferenceNo" => $partnerRef,
+            "customerNumber"     => $cleanPhone, // NOMOR HP PENERIMA SALDO
+            "amount" => [
+                "value"    => $amountStr,
+                "currency" => "IDR"
+            ],
+            "feeAmount" => [
+                "value"    => "0.00",
+                "currency" => "IDR"
+            ],
+            "transactionDate" => $timestamp,
+            "categoryId"      => "6",
+            "additionalInfo"  => [
+                "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE", // Wajib untuk Disbursement Top Up
+                "chargeTarget" => "MERCHANT", // Tegaskan potong dari saldo Merchant Corporate
+                "merchantId"   => $idToko, // Disisipkan sebagai penanda Corporate
+                "accountId"    => $merchantDepositAccount // Opsional tapi aman untuk penanda
+            ]
+        ];
+
+        $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody   = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+        
+        $signature    = $this->generateSignature($stringToSign);
+
+        try {
+            // PENTING: Generate Token B2B Corporate Anda
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessTokenB2B, // WAJIB ADA UNTUK B2B
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
+                'CHANNEL-ID'    => '95221',
+                'ORIGIN'        => config('services.dana.origin'),
+            ];
+
+            Log::info('========== [DANA TOPUP CORPORATE START] ==========');
+            Log::info('[DANA REQUEST] Payload:', $body);
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->timeout(60)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            $resCode = $result['responseCode'] ?? ($response->status() == 504 ? '504' : '500');
+            $codeCheck = trim((string)$resCode);
+
+            Log::info('[DANA RESPONSE] Result:', $result);
+
+            if ($codeCheck === '2003800') { // 2003800 = SUCCESS berdasarkan dokumentasi
+                DB::table('dana_transactions')->insert([
+                    'affiliate_id'     => $aff->id_pengguna,
+                    'type'             => 'TOPUP_B2B',
+                    'reference_no'     => $partnerRef,
+                    'phone'            => $cleanPhone,
+                    'amount'           => $request->amount,
+                    'status'           => 'SUCCESS',
+                    'response_payload' => json_encode($result),
+                    'created_at'       => now()
+                ]);
+
+                return back()->with('success', '✅ Top Up ke pelanggan berhasil diproses dari akun Sancaka!');
+            
+            } elseif (in_array($codeCheck, ['504', '4293800', '5003801', '2023800'])) {
+                // STATUS PENDING (Timeout / Too Many Request)
+                DB::table('dana_transactions')->insert([
+                    'affiliate_id'     => $aff->id_pengguna,
+                    'type'             => 'TOPUP_B2B',
+                    'reference_no'     => $partnerRef,
+                    'phone'            => $cleanPhone,
+                    'amount'           => $request->amount,
+                    'status'           => 'PENDING',
+                    'response_payload' => json_encode($result),
+                    'created_at'       => now()
+                ]);
+
+                return back()->with('warning', '⏳ Transaksi sedang diproses (Pending) oleh DANA. Mohon tunggu.');
+            
+            } else {
+                // GAGAL - Kembalikan saldo pengguna
+                DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
+
+                DB::table('dana_transactions')->insert([
+                    'affiliate_id'     => $aff->id_pengguna,
+                    'type'             => 'TOPUP_B2B',
+                    'reference_no'     => $partnerRef,
+                    'phone'            => $cleanPhone,
+                    'amount'           => $request->amount,
+                    'status'           => 'FAILED',
+                    'response_payload' => json_encode($result),
+                    'created_at'       => now()
+                ]);
+
+                $resMsg = $result['responseMessage'] ?? 'Internal Error';
+                $userMsg = match($codeCheck) {
+                    '4033814' => 'Saldo Corporate Sancaka tidak mencukupi.',
+                    '4033805' => 'Nomor DANA tujuan tidak valid.',
+                    '4033818' => 'Nomor DANA tujuan tidak aktif (Inactive).',
+                    '4043811' => 'Nomor DANA tujuan tidak ditemukan/diblokir.',
+                    default   => "Gagal: $resMsg ($codeCheck)"
+                };
+
+                return back()->with('error', $userMsg . "\n(Saldo Anda telah dikembalikan)");
+            }
+
+        } catch (\Exception $e) {
+            // Sistem Error - Kembalikan saldo pengguna
+            DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
+            Log::error('[DANA TOPUP] Exception: ' . $e->getMessage());
+            
+            return back()->with('error', 'Koneksi terputus. Saldo Anda telah dikembalikan.');
+        } finally {
+            Log::info('========== [DANA TOPUP CORPORATE END] ==========');
+        }
+    }
+
 }
