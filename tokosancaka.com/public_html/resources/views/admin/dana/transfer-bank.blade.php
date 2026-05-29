@@ -2,13 +2,11 @@
 
 @section('title', 'Pencairan Saldo ke Bank')
 
-{{-- Tambahkan CSS Select2 di bagian atas (bisa juga dilempar via stack/push jika ada) --}}
 @push('styles')
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <style>
-        /* Penyesuaian tema Select2 dengan Tailwind */
         .select2-container .select2-selection--single {
-            height: 3rem; /* Setara py-3 */
+            height: 3rem;
             border-color: #d1d5db;
             border-radius: 0.5rem;
             background-color: #f9fafb;
@@ -25,11 +23,12 @@
     <h3 class="text-3xl font-semibold text-gray-700">Tarik Saldo ke Rekening Bank</h3>
     <p class="text-gray-500 mt-1">Cairkan saldo komisi/profit Anda langsung ke rekening bank tujuan (DANA Disbursement).</p>
 
+    {{-- BAGIAN ATAS: FORM --}}
     <div class="mt-8">
         <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg">
             <div class="p-6 md:p-8">
 
-                {{-- Alert Error / Success --}}
+                {{-- Alert Error / Success / Warning --}}
                 @if ($errors->any())
                     <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
                         <strong class="font-bold">Oops! Terjadi kesalahan.</strong>
@@ -40,24 +39,21 @@
                         </ul>
                     </div>
                 @endif
-
                 @if (session('error'))
                     <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
                         <strong class="font-bold">Gagal!</strong>
                         <span class="block sm:inline">{!! nl2br(e(session('error'))) !!}</span>
                     </div>
                 @endif
-
                 @if (session('success'))
                     <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
                         <strong class="font-bold">Berhasil!</strong>
                         <span class="block sm:inline">{!! session('success') !!}</span>
                     </div>
                 @endif
-
                 @if (session('warning'))
                     <div class="mb-4 bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative" role="alert">
-                        <strong class="font-bold">Pending:</strong>
+                        <strong class="font-bold">Perhatian:</strong>
                         <span class="block sm:inline">{!! nl2br(e(session('warning'))) !!}</span>
                     </div>
                 @endif
@@ -72,7 +68,6 @@
                         <div class="space-y-6">
                             <div>
                                 <label for="bank_code" class="block text-sm font-bold text-gray-700 mb-2">Pilih Bank Tujuan</label>
-                                {{-- GANTI HARDCODE DENGAN DATABASE --}}
                                 <select name="bank_code" id="bank_code" required class="select2-dropdown w-full">
                                     <option value="">-- Cari & Pilih Bank --</option>
                                     @foreach($banks as $bank)
@@ -109,7 +104,7 @@
                         </div>
                     </form>
                 @else
-                    {{-- ALUR 2: EKSEKUSI TRANSFER (SETELAH INQUIRY BERHASIL) --}}
+                    {{-- ALUR 2: EKSEKUSI TRANSFER --}}
                     <div class="bg-blue-50 border border-blue-200 rounded-lg p-5 mb-6 flex items-start">
                         <i class="fas fa-check-circle text-green-500 text-2xl mr-3 mt-1"></i>
                         <div>
@@ -129,10 +124,7 @@
                         <div class="space-y-4 bg-gray-50 p-6 rounded-lg border border-gray-200">
                             <div class="flex justify-between border-b pb-2">
                                 <span class="text-gray-500 font-medium">Bank Tujuan</span>
-                                {{-- Mengambil nama bank yang sudah disimpan ke session dari Controller --}}
-                                <span class="font-bold text-gray-800">
-                                    {{ session('valid_bank_name') ?? old('bank_code') }}
-                                </span>
+                                <span class="font-bold text-gray-800">{{ session('valid_bank_name') ?? old('bank_code') }}</span>
                             </div>
                             <div class="flex justify-between border-b pb-2">
                                 <span class="text-gray-500 font-medium">No. Rekening</span>
@@ -158,19 +150,93 @@
                         </div>
                     </form>
                 @endif
-
             </div>
         </div>
     </div>
 
+    {{-- ========================================================================= --}}
+    {{-- BAGIAN BAWAH: TABEL RIWAYAT TRANSAKSI --}}
+    {{-- ========================================================================= --}}
+    <div class="mt-12 max-w-6xl mx-auto">
+        <h4 class="text-2xl font-bold text-gray-800 mb-6">Riwayat Penarikan Dana</h4>
+        
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
+            <div class="overflow-x-auto">
+                <table class="w-full whitespace-nowrap">
+                    <thead>
+                        <tr class="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            <th class="px-6 py-4">Tanggal & Waktu</th>
+                            <th class="px-6 py-4">Ref. Transaksi</th>
+                            <th class="px-6 py-4">Tujuan (Bank - Rek)</th>
+                            <th class="px-6 py-4">Nominal</th>
+                            <th class="px-6 py-4 text-center">Status</th>
+                            <th class="px-6 py-4 text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        @forelse($transactions as $trx)
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-4 text-sm text-gray-700">
+                                    {{ \Carbon\Carbon::parse($trx->created_at)->format('d M Y, H:i') }}
+                                </td>
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900">
+                                    {{ $trx->reference_no }}
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-700">
+                                    {{ $trx->phone }}
+                                </td>
+                                <td class="px-6 py-4 text-sm font-bold text-green-600">
+                                    Rp {{ number_format($trx->amount, 0, ',', '.') }}
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    @if($trx->status === 'SUCCESS')
+                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Sukses</span>
+                                    @elseif($trx->status === 'PENDING')
+                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+                                    @else
+                                        <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Gagal</span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 text-center text-sm font-medium">
+                                    @if($trx->status === 'PENDING')
+                                        <form action="{{ route('customer.dana.check_transfer_status', $trx->id) }}" method="POST" onsubmit="return confirm('Cek status transaksi ke sistem DANA?');">
+                                            @csrf
+                                            <button type="submit" class="text-blue-600 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded-md transition-colors">
+                                                <i class="fas fa-sync-alt mr-1"></i> Cek
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="text-gray-400">-</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                    <i class="fas fa-inbox text-3xl mb-3 block text-gray-300"></i>
+                                    Belum ada riwayat penarikan dana.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            
+            {{-- Pagination Links --}}
+            @if($transactions->hasPages())
+                <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                    {{ $transactions->links() }}
+                </div>
+            @endif
+        </div>
+    </div>
+
     @push('scripts')
-    <!-- jQuery dan Select2 JS -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // Inisialisasi Fitur Pencarian Select2
             if ($('.select2-dropdown').length) {
                 $('.select2-dropdown').select2({
                     placeholder: "-- Cari & Pilih Bank --",
@@ -179,13 +245,12 @@
                 });
             }
 
-            // Fitur loading untuk mencegah Double Submit
             const inquiryForm = document.getElementById('inquiry-form');
             if(inquiryForm) {
                 inquiryForm.addEventListener('submit', function() {
                     const btn = document.getElementById('btn-inquiry');
                     btn.disabled = true;
-                    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mengecek Data...';
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mengecek...';
                     btn.classList.add('opacity-75', 'cursor-not-allowed');
                 });
             }
@@ -195,7 +260,7 @@
                 transferForm.addEventListener('submit', function() {
                     const btn = document.getElementById('btn-transfer');
                     btn.disabled = true;
-                    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses Transfer...';
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
                     btn.classList.add('opacity-75', 'cursor-not-allowed');
                 });
             }

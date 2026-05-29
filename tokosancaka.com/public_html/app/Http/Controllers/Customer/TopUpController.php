@@ -2902,4 +2902,101 @@ public function handleCallback(Request $request)
         }
     }
 
+    // =========================================================================
+    // FUNGSI: CEK STATUS TRANSFER BANK (DISBURSEMENT STATUS INQUIRY)
+    // =========================================================================
+    public function checkTransferStatus($id)
+    {
+        $trx = DB::table('dana_transactions')->where('id', $id)->first();
+        if (!$trx) return back()->with('error', 'Data transaksi tidak ditemukan.');
+
+        // 1. Jika status sudah final, tidak perlu cek ke DANA lagi
+        if (in_array($trx->status, ['SUCCESS', 'FAILED', 'REFUNDED'])) {
+            return back()->with('warning', 'Transaksi ini sudah berstatus final (' . $trx->status . ').');
+        }
+
+        $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $path = '/v1.0/emoney/transfer-bank-status.htm';
+
+        // 2. Body Sesuai Dokumentasi DANA SNAP (Disbursement)
+        $body = [
+            "originalPartnerReferenceNo" => $trx->reference_no,
+            "serviceCode"                => "00", // Wajib "00" menurut dokumen
+            "additionalInfo"             => [
+                "merchantId" => "216660001394664338723" // ID Corporate Sancaka
+            ]
+        ];
+
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+        
+        $signature = $this->generateSignature($stringToSign);
+
+        try {
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            Log::info('[DANA DISBURSEMENT STATUS CHECK] Request:', ['body' => $body]);
+
+            $response = Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            Log::info('[DANA DISBURSEMENT STATUS CHECK] Respon:', $result);
+
+            $resCode = $result['responseCode'] ?? '500';
+            
+            // 3. Evaluasi Berdasarkan Dokumentasi (ResponseCode = 2000000)
+            if ($resCode === '2000000' || $resCode === '2004400') {
+                $status = $result['latestTransactionStatus'] ?? null;
+
+                // 00 - Success
+                if ($status === '00') {
+                    DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'SUCCESS']);
+                    return back()->with('success', '✅ Transaksi BERHASIL. Dana sudah masuk ke rekening tujuan.');
+                } 
+                // 01, 02, 03 - Pending
+                elseif (in_array($status, ['01', '02', '03'])) {
+                    return back()->with('warning', '⏳ Transaksi masih berstatus PENDING di antrean bank. Silakan cek lagi nanti.');
+                } 
+                // 04, 05, 06, 07 - Failed/Refunded/Not Found
+                elseif (in_array($status, ['04', '05', '06', '07'])) {
+                    // TRANSAKSI GAGAL -> KEMBALIKAN SALDO USER
+                    DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'FAILED']);
+                    DB::table('Pengguna')->where('id_pengguna', $trx->affiliate_id)->increment('saldo', $trx->amount);
+
+                    $desc = $result['transactionStatusDesc'] ?? 'Gagal / Dibatalkan';
+                    return back()->with('error', "❌ Transaksi dinyatakan GAGAL ($desc). Saldo Rp " . number_format($trx->amount, 0, ',', '.') . " telah dikembalikan.");
+                }
+            } 
+            // 4. Handle Error API (4040001 = Transaction Not Found)
+            elseif ($resCode === '4040001') {
+                DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'FAILED']);
+                DB::table('Pengguna')->where('id_pengguna', $trx->affiliate_id)->increment('saldo', $trx->amount);
+                return back()->with('error', '❌ Transaksi tidak ditemukan di sistem DANA (Kadaluarsa/Gagal). Saldo dikembalikan.');
+            }
+            // 5. Handle Error Lainnya (Too Many Request, Server Error, dll) -> TETAP PENDING
+            else {
+                $errMsg = $result['responseMessage'] ?? 'Unknown Error';
+                return back()->with('warning', "⚠️ Gagal mengecek status ke DANA: [$resCode] $errMsg. Transaksi tetap dalam pengawasan (Pending).");
+            }
+
+        } catch (\Exception $e) {
+            Log::error('[DANA DISBURSEMENT STATUS CHECK] System Error', ['msg' => $e->getMessage()]);
+            return back()->with('error', 'Sistem Error saat mengecek status: ' . $e->getMessage());
+        }
+    }
+
 }

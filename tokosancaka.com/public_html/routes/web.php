@@ -1320,7 +1320,8 @@ Route::prefix('customer')->middleware(['auth'])->group(function () {
     Route::post('/dana/bank-inquiry', [App\Http\Controllers\Customer\TopUpController::class, 'bankAccountInquiry'])->name('customer.dana.bank_inquiry');
     Route::post('/dana/transfer_bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferToBank'])->name('customer.dana.transfer_bank');
     Route::post('/dana/topup-corporate', [App\Http\Controllers\Customer\TopUpController::class, 'customerTopup'])->name('customer.dana.topup_corporate');
-
+    Route::post('/dana/transfer-bank/{id}/cek-status', [App\Http\Controllers\Customer\TopUpController::class, 'checkTransferStatus'])->name('customer.dana.check_transfer_status');
+    
     });
 
 
