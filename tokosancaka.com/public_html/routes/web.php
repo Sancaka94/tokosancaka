@@ -1153,8 +1153,8 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
         return view('admin.dana.topup_corporate'); // <--- Sesuaikan dengan path file blade Anda
     })->name('dana.topup_corporate_form');
 
-    Route::get('/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferBankPage'])->name('admin.dana.transfer_bank');
-    
+    Route::get('/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferBankPage'])->name('dana.transfer_bank');
+
     // Route Utama untuk menampilkan Tabel (Index)
     Route::get('/produk', [ProdukController::class, 'index'])->name('produk.index');
 
