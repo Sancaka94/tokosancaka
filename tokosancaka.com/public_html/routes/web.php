@@ -1153,6 +1153,9 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
         return view('admin.dana.topup_corporate'); // <--- Sesuaikan dengan path file blade Anda
     })->name('dana.topup_corporate_form');
 
+    Route::post('/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferToBank'])->name('dana.transfer_bank');
+
+
     // Route Utama untuk menampilkan Tabel (Index)
     Route::get('/produk', [ProdukController::class, 'index'])->name('produk.index');
 
@@ -1316,7 +1319,6 @@ Route::prefix('customer')->middleware(['auth'])->group(function () {
 
     // Route POST yang sudah ada sebelumnya
     Route::post('/dana/bank-inquiry', [App\Http\Controllers\Customer\TopUpController::class, 'bankAccountInquiry'])->name('customer.dana.bank_inquiry');
-    Route::post('/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferToBank'])->name('customer.dana.transfer_bank');
     Route::post('/dana/topup-corporate', [App\Http\Controllers\Customer\TopUpController::class, 'customerTopup'])->name('customer.dana.topup_corporate');
 
     });
