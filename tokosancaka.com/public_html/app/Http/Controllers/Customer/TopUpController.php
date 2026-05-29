@@ -1503,12 +1503,12 @@ public function handleCallback(Request $request)
             // ================================================================
             // 🔥 KODE DD() SEMENTARA UNTUK MENGAMBIL DATA UAT EXCEL 🔥
             // ================================================================
-            dd([
-                'URL Request'               => $path,
-                'Header Request (optional)' => json_encode($headers, JSON_PRETTY_PRINT),
-                'Body Request'              => json_encode($body, JSON_PRETTY_PRINT),
-                'Body Response'             => json_encode($result, JSON_PRETTY_PRINT),
-            ]);
+            // dd([
+            //    'URL Request'               => $path,
+            //    'Header Request (optional)' => json_encode($headers, JSON_PRETTY_PRINT),
+            //    'Body Request'              => json_encode($body, JSON_PRETTY_PRINT),
+            //    'Body Response'             => json_encode($result, JSON_PRETTY_PRINT),
+            // ]);
             // ================================================================
 
             if ($resCode == '2004300') {
