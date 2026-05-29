@@ -1391,6 +1391,7 @@ public function handleCallback(Request $request)
                     'created_at'       => now()
                 ]);
 
+                $danaRef = $result['referenceNo'] ?? '-';
                 $msg = "Transfer Berhasil!\nRef: $partnerRef\nNominal: Rp " . number_format($request->amount, 0, ',', '.');
                 return back()->with('success', $msg);
 
@@ -2338,7 +2339,7 @@ public function handleCallback(Request $request)
 
         return view('admin.dana.transfer-bank', compact('banks'));
     }
-    
+
 
     /**
      * =========================================================================
