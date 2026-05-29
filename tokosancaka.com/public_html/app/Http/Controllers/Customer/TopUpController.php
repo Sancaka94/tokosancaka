@@ -1303,26 +1303,29 @@ public function handleCallback(Request $request)
 
     public function bankAccountInquiry(Request $request)
     {
-        // PERBAIKAN: Gunakan tabel Pengguna dan id_pengguna
         $aff = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
         if (!$aff) return back()->with('error', 'Pengguna tidak ditemukan.');
 
-        // PERBAIKAN: Ganti whatsapp menjadi no_wa
-        $customerNumber = preg_replace('/[^0-9]/', '', $aff->no_wa);
+        // ==============================================================
+        // PERBAIKAN: Inquiry juga wajib pakai Kredensial B2B Admin
+        // Karena fundType-nya MERCHANT_WITHDRAW_FOR_CORPORATE
+        // ==============================================================
+        $admin = DB::table('Pengguna')->where('id_pengguna', 4)->first();
+        $adminPhone = $admin->no_wa ?? '085745808809';
+
+        $customerNumber = preg_replace('/[^0-9]/', '', $adminPhone);
         if (substr($customerNumber, 0, 1) === '0') $customerNumber = '62' . substr($customerNumber, 1);
 
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path = '/v1.0/emoney/bank-account-inquiry.htm';
         $refNo = "BNK" . time() . Str::random(4);
 
-        // AMBIL DATA BANK DARI DATABASE UNTUK DISPLAY NAMA BANK
         $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
         $readableBank = $cekBank ? $cekBank->bank_name : $request->bank_code;
 
-        // PAYLOAD
         $body = [
             "partnerReferenceNo" => $refNo,
-            "customerNumber"     => $customerNumber,
+            "customerNumber"     => $customerNumber, // Harus pakai nomor Admin (Merchant)
             "beneficiaryAccountNumber" => $request->account_no,
             "amount" => [
                 "value"    => number_format((float)$request->amount, 2, '.', ''),
@@ -1341,11 +1344,9 @@ public function handleCallback(Request $request)
         $signature = $this->generateSignature($stringToSign);
 
         try {
+            // Wajib B2B Token murni bawaan sistem
             $accessTokenB2B = $this->danaSignature->getAccessToken();
 
-            Log::info('[BANK INQUIRY] Sending Request to DANA', ['body' => $body]);
-
-            // Siapkan headers standar
             $headers = [
                 'Content-Type'  => 'application/json',
                 'Authorization' => 'Bearer ' . $accessTokenB2B,
@@ -1359,12 +1360,8 @@ public function handleCallback(Request $request)
                 'CHANNEL-ID'    => '95221'
             ];
 
-            // HANYA MASUKKAN Authorization-Customer JIKA TOKENNYA ADA/TIDAK KOSONG
-            if (!empty($aff->dana_access_token)) {
-                $headers['Authorization-Customer'] = 'Bearer ' . $aff->dana_access_token;
-            }
+            Log::info('[BANK INQUIRY] Sending Request to DANA', ['body' => $body]);
 
-            // URL Dinamis
             $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post(config('services.dana.base_url') . $path);
@@ -1378,7 +1375,6 @@ public function handleCallback(Request $request)
                 'affiliate_id' => $aff->id_pengguna,
                 'type' => 'BANK_INQUIRY',
                 'reference_no' => $refNo,
-                // Kolom phone akan mencatat nama bank secara rapi: "12345678 (Bank BCA)"
                 'phone' => $request->account_no . " (" . $readableBank . ")",
                 'amount' => $request->amount,
                 'status' => ($resCode == '2004200') ? 'SUCCESS' : 'FAILED',
@@ -1389,7 +1385,6 @@ public function handleCallback(Request $request)
             if ($resCode == '2004200') {
                 $bankName = $result['beneficiaryBankShortName'] ?? $result['beneficiaryBankName'] ?? $readableBank;
                 $accName  = $result['beneficiaryAccountName'];
-                $accNo    = $result['beneficiaryAccountNumber'];
 
                 $report = (object) [
                     'is_success' => true,
@@ -1400,7 +1395,7 @@ public function handleCallback(Request $request)
                 return back()->with('success', "Rekening Valid: $accName ($bankName)")
                              ->with('dana_report', $report)
                              ->with('valid_account_name', $accName)
-                             ->with('valid_bank_name', $bankName) // Melempar session untuk UI Transfer
+                             ->with('valid_bank_name', $bankName)
                              ->withInput();
             }
 
@@ -1408,6 +1403,7 @@ public function handleCallback(Request $request)
             if ($resCode == '4034218') $errMsg = "Akun Merchant Inactive (Hubungi Admin DANA)";
             if ($resCode == '4044201') $errMsg = "Rekening Tidak Ditemukan/Salah Bank";
             if ($resCode == '4004201') $errMsg = "Format Kode Bank Tidak Valid (".$request->bank_code.")";
+            if ($resCode == '4014202') $errMsg = "Token Otorisasi DANA tidak valid / kadaluarsa.";
 
             $report = (object) [
                 'is_success' => false,
@@ -1421,7 +1417,6 @@ public function handleCallback(Request $request)
             Log::error('[BANK INQUIRY ERROR]', ['msg' => $e->getMessage()]);
             return back()->with('error', 'Sistem Error saat cek rekening.')->withInput();
         }
-
     }
 
     public function transferToBank(Request $request)
