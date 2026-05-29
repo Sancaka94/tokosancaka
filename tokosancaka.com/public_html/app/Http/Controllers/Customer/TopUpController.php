@@ -1426,6 +1426,7 @@ public function handleCallback(Request $request)
 
     public function transferToBank(Request $request)
     {
+        // --- [LOG 1] MULAI PROSES ---
         Log::info('[DANA TRANSFER BANK] Start', [
             'affiliate_id' => $request->affiliate_id,
             'bank_code'    => $request->bank_code,
@@ -1433,35 +1434,53 @@ public function handleCallback(Request $request)
             'amount'       => $request->amount
         ]);
 
-        // PERBAIKAN: Gunakan tabel Pengguna dan id_pengguna
-        $aff = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
-        if (!$aff) return back()->with('error', 'Pengguna tidak ditemukan.');
+        // 1. Validasi Affiliate (Menggunakan tabel Pengguna)
+        $user = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
 
-        // PERBAIKAN: Cek menggunakan kolom saldo
-        if ($aff->saldo < $request->amount) {
-            return back()->with('error', 'Saldo Anda tidak mencukupi.');
+        if (!$user) return back()->with('error', 'Pengguna tidak ditemukan.');
+
+        // 2. Cek Kecukupan Saldo
+        if ($user->saldo < $request->amount) {
+            return back()->with('error', 'Saldo komisi Anda tidak mencukupi.');
         }
 
-        // PERBAIKAN: Format No WA untuk parameter DANA
-        $customerNumber = preg_replace('/[^0-9]/', '', $aff->no_wa);
-        if (substr($customerNumber, 0, 1) === '0') $customerNumber = '62' . substr($customerNumber, 1);
+        // ==============================================================
+        // 3. SINKRONISASI UTAMA: Ambil Data DANA Admin ID 4
+        // Agar tidak terjadi "Invalid Customer Token" saat hit API
+        // ==============================================================
+        $admin = DB::table('Pengguna')->where('id_pengguna', 4)->first();
+        if (!$admin || empty($admin->dana_access_token)) {
+            return back()->with('error', 'Gagal memproses: Data otorisasi DANA Admin tidak ditemukan.');
+        }
 
-        // POTONG SALDO DIAWAL SEBELUM HIT API
-        DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->decrement('saldo', $request->amount);
+        $adminPhone = $admin->no_wa ?? '085745808809';
+        $adminAccessToken = $admin->dana_access_token;
 
+        // 4. Sanitasi Nomor Admin (Pengirim/Merchant)
+        $customerNumber = preg_replace('/[^0-9]/', '', $adminPhone);
+        if (substr($customerNumber, 0, 1) === '0') {
+            $customerNumber = '62' . substr($customerNumber, 1);
+        }
+
+        // 5. POTONG SALDO DULUAN (SAFETY FIRST)
+        // Mencegah double transfer. Jika gagal nanti kita refund.
+        DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $request->amount);
+
+        // 6. Setup Request DANA
         $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path       = '/v1.0/emoney/transfer-bank.htm';
-        $partnerRef = "TRF" . time() . Str::random(6);
-        // $partnerRef = "TEST_INCONSISTENT_999";
+        
+        $uniqueId   = time() . Str::random(6);
+        $partnerRef = "TRF" . $uniqueId; // Unique ID
+        $externalId = "EXT" . $uniqueId;
 
-        // AMBIL DATA BANK DARI DATABASE
+        // Ambil nama bank (Opsional, jika kamu punya tabel dana_bank_codes)
         $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
         $readableBank = $cekBank ? $cekBank->bank_name : $request->bank_code;
 
-        // PAYLOAD SESUAI DOKUMENTASI DANA TRANSFER TO BANK
         $body = [
             "partnerReferenceNo"       => $partnerRef,
-            "customerNumber"           => $customerNumber,
+            "customerNumber"           => $customerNumber, // Menggunakan Nomor Admin
             "beneficiaryAccountNumber" => (string) $request->account_no,
             "beneficiaryBankCode"      => (string) $request->bank_code,
             "amount" => [
@@ -1471,27 +1490,28 @@ public function handleCallback(Request $request)
             "additionalInfo" => [
                 "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
                 "beneficiaryAccountName" => (string) $request->account_name,
-                "notes"                  => "Transfer ke Bank " . $readableBank]
+                "notes"                  => "Transfer ke Bank " . $readableBank
+            ]
         ];
 
+        // 7. Generate Signature
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
         $hashedBody = strtolower(hash('sha256', $jsonBody));
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+        
+        // Pastikan generateSignature sudah tersedia di controller ini
         $signature = $this->generateSignature($stringToSign);
 
-
+        // 8. Kirim Request
         try {
-
-        $accessTokenB2B = $this->danaSignature->getAccessToken();
-
             $headers = [
                 'Content-Type'  => 'application/json',
-                'Authorization' => 'Bearer ' . $accessTokenB2B,
+                'Authorization' => 'Bearer ' . $adminAccessToken, // Menggunakan Token B2B Admin
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
                 'ORIGIN'        => config('services.dana.origin'),
                 'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'X-EXTERNAL-ID' => $externalId,
                 'X-IP-ADDRESS'  => $request->ip(),
                 'X-DEVICE-ID'   => 'SANCAKA-DANA-01',
                 'CHANNEL-ID'    => '95221'
@@ -1499,7 +1519,7 @@ public function handleCallback(Request $request)
 
             Log::info('[DANA TRANSFER BANK] Mengirim Request...', ['body' => $body]);
 
-            // EKSEKUSI API NORMAL
+            // Gunakan config base_url agar dinamis (Bisa Sandbox / Production via .env)
             $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post(config('services.dana.base_url') . $path);
@@ -1508,20 +1528,25 @@ public function handleCallback(Request $request)
             $resCode = $result['responseCode'] ?? '500';
 
             // ================================================================
-            // 🔥 TARUH KODE DD() SEMENTARA DI SINI UNTUK DOKUMEN UAT EXCEL 🔥
-            // ================================================================
+            // 🔥 KODE DD() SEMENTARA UNTUK MENGAMBIL DATA UAT EXCEL 🔥
+            // Hapus atau comment kode dd() ini setelah data disalin!
+            /*
             dd([
                 'URL Request'               => $path,
                 'Header Request (optional)' => json_encode($headers, JSON_PRETTY_PRINT),
                 'Body Request'              => json_encode($body, JSON_PRETTY_PRINT),
                 'Body Response'             => json_encode($result, JSON_PRETTY_PRINT),
             ]);
+            */
             // ================================================================
 
-            // KONDISI 1: SUCCESS BERHASIL INSTAN
+            // --- [LOGIC HANDLING RESPONSE] ---
+
+            // KONDISI A: SUKSES (2004300)
             if ($resCode == '2004300') {
+                // Catat Log Transaksi Sukses
                 DB::table('dana_transactions')->insert([
-                    'affiliate_id'     => $aff->id_pengguna,
+                    'affiliate_id'     => $user->id_pengguna,
                     'type'             => 'TRANSFER_BANK',
                     'reference_no'     => $partnerRef,
                     'phone'            => $request->account_no . " (" . $readableBank . ")",
@@ -1531,13 +1556,16 @@ public function handleCallback(Request $request)
                     'created_at'       => now()
                 ]);
 
+                // Pesan Sukses dengan \n (Baris Baru)
                 $msg = "Transfer Berhasil!\nRef: $partnerRef\nNominal: Rp " . number_format($request->amount, 0, ',', '.');
                 return back()->with('success', $msg);
+            }
 
-            // KONDISI 2: TRANSAKSI PENDING (DELAY DARI BANK / LIMIT REQUEST)
-            } elseif (in_array($resCode, ['2024300', '4294300', '5004301'])) {
+            // KONDISI B: PENDING (2024300, 4294300, 5004301)
+            // Uang tetap ditahan (tidak direfund), user diminta cek berkala
+            elseif (in_array($resCode, ['2024300', '4294300', '5004301'])) {
                 DB::table('dana_transactions')->insert([
-                    'affiliate_id'     => $aff->id_pengguna,
+                    'affiliate_id'     => $user->id_pengguna,
                     'type'             => 'TRANSFER_BANK',
                     'reference_no'     => $partnerRef,
                     'phone'            => $request->account_no . " (" . $readableBank . ")",
@@ -1547,15 +1575,17 @@ public function handleCallback(Request $request)
                     'created_at'       => now()
                 ]);
 
-                return back()->with('warning', "⏳ Transaksi Sedang Diproses (Pending).\nMohon cek riwayat saldo secara berkala.");
+                return back()->with('warning', "⏳ Transaksi Sedang Diproses (Pending).\nMohon cek status secara berkala.");
+            }
 
-            // KONDISI 3: TRANSAKSI GAGAL
-            } else {
-                // REFUND SALDO JIKA TRANSFER GAGAL
-                DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
+            // KONDISI C: GAGAL (KEMBALIKAN SALDO / REFUND)
+            else {
+                // REFUND SALDO PENGGUNA
+                DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->increment('saldo', $request->amount);
 
+                // Catat Log Gagal
                 DB::table('dana_transactions')->insert([
-                    'affiliate_id'     => $aff->id_pengguna,
+                    'affiliate_id'     => $user->id_pengguna,
                     'type'             => 'TRANSFER_BANK',
                     'reference_no'     => $partnerRef,
                     'phone'            => $request->account_no . " (" . $readableBank . ")",
@@ -1565,23 +1595,23 @@ public function handleCallback(Request $request)
                     'created_at'       => now()
                 ]);
 
+                // Mapping Pesan Error
                 $errorMsg = $result['responseMessage'] ?? 'Transaksi Gagal';
-                if ($resCode == '4034314') $errorMsg = "Saldo Merchant DANA Pusat Tidak Mencukupi.";
+                if ($resCode == '4034314') $errorMsg = "Saldo Merchant DANA Tidak Cukup.";
                 if ($resCode == '4044311') $errorMsg = "Rekening Salah atau Tidak Valid.";
                 if ($resCode == '4034318') $errorMsg = "Akun Merchant Tidak Aktif/Salah Konfigurasi.";
-                if ($resCode == '4004301') $errorMsg = "Format/Data Pengiriman Tidak Sesuai Standar DANA.";
-                if ($resCode == '4044318') $errorMsg = "Inconsistent Request: Referensi transaksi duplikat dengan nominal berbeda.";
+                if ($resCode == '4014202') $errorMsg = "Token Otorisasi DANA tidak valid / kadaluarsa.";
 
                 Log::error('[DANA TRANSFER BANK] Gagal & Refund', ['res' => $result]);
                 return back()->with('error', "Gagal: $errorMsg\n(Saldo Rp ".number_format($request->amount, 0, ',', '.')." telah dikembalikan).");
             }
 
         } catch (\Exception $e) {
-            // REFUND SALDO JIKA SISTEM/KONEKSI ERROR
-            DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
+            // SYSTEM ERROR -> REFUND JUGA
+            DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->increment('saldo', $request->amount);
 
             Log::error('[DANA TRANSFER BANK] Exception', ['msg' => $e->getMessage()]);
-            return back()->with('error', 'Sistem Error saat eksekusi: ' . $e->getMessage() . "\n(Saldo telah dikembalikan).");
+            return back()->with('error', 'System Error: ' . $e->getMessage());
         }
     }
 
