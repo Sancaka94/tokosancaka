@@ -2401,7 +2401,7 @@ public function handleCallback(Request $request)
                 $amount = $result['accountInfos'][0]['availableBalance']['value'] ?? 0;
 
                 // (Opsional) Jika Anda punya kolom dana_user_balance di tabel users, Anda bisa menyimpannya
-                // $user->update(['dana_user_balance' => $amount]);
+                $user->update(['dana_user_balance' => $amount]);
 
                 return response()->json([
                     'success' => true,
