@@ -1368,15 +1368,15 @@ public function handleCallback(Request $request)
             $result = $response->json();
             $resCode = $result['responseCode'] ?? '500';
 
-           // ================================================================
+            // ================================================================
             // 🔥 AKTIFKAN KODE DD() INI UNTUK MELIHAT BALASAN DANA 🔥
             // ================================================================
-            dd([
-                'URL Request'               => $path,
-                'Header Request (optional)' => $headers,
-                'Body Request'              => $body,
-                'Body Response'             => $result,
-            ]);
+            //dd([
+            //    'URL Request'               => $path,
+            //    'Header Request (optional)' => $headers,
+            //    'Body Request'              => $body,
+            //    'Body Response'             => $result,
+            //]);
             // ================================================================
 
             if ($resCode == '2004300') {
