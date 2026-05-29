@@ -1308,7 +1308,7 @@ Route::get('/debug/dana-status/{orderId}', [TopUpController::class, 'debugDanaSt
 Route::prefix('customer')->middleware(['auth'])->group(function () {
 
     // Pastikan ditaruh di dalam sini
-    // Route::get('/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferBankPage'])->name('customer.dana.transfer_bank_page');
+    Route::get('/dana/akun/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferBankPage'])->name('customer.dana.transfer_bank_page');
 
     // Route POST yang sudah ada sebelumnya
     Route::post('/dana/bank-inquiry', [App\Http\Controllers\Customer\TopUpController::class, 'bankAccountInquiry'])->name('customer.dana.bank_inquiry');
