@@ -476,13 +476,14 @@
             </a>
 
             {{-- 5. Menu Transfer Bank (Tarik Saldo) --}}
-            <a href="{{ route('admin.dana.transfer-bank') }}" wire:navigate
+            <a href="{{ route('admin.dana.transfer_bank') }}" wire:navigate
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
-               class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('customer.dana.bank_inquiry') || request()->routeIs('customer.dana.transfer_bank') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
-                <i class="fa-solid fa-money-bill-transfer fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('customer.dana.bank_inquiry') || request()->routeIs('customer.dana.transfer_bank') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+               class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.dana.transfer_bank') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                <i class="fa-solid fa-money-bill-transfer fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.dana.transfer_bank') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Transfer Bank</span>
             </a>
             
+
 
             {{-- ================= MANAJEMEN INVOICE ================= --}}
             <div x-data="{ open: {{ request()->routeIs('invoice.*') ? 'true' : 'false' }} }"
