@@ -1149,6 +1149,10 @@ Route::post('/admin/pricelist/upload', [AdminPricelistController::class, 'upload
 // Grouping Route Admin
 Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () {
 
+    Route::get('/dana/topup-corporate', function () {
+        return view('admin.dana.topup_corporate'); // <--- Sesuaikan dengan path file blade Anda
+    })->name('dana.topup_corporate_form');
+
     // Route Utama untuk menampilkan Tabel (Index)
     Route::get('/produk', [ProdukController::class, 'index'])->name('produk.index');
 
