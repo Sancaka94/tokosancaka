@@ -30,7 +30,7 @@
             <div class="p-6 md:p-8">
 
                 {{-- Alert Error / Success --}}
-                @i ($errors->any())
+                @if ($errors->any())
                     <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
                         <strong class="font-bold">Oops! Terjadi kesalahan.</strong>
                         <ul class="mt-2 list-disc list-inside">
@@ -39,7 +39,7 @@
                             @endforeach
                         </ul>
                     </div>
-                @endi
+                
 
                 @if (session('error'))
                     <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
