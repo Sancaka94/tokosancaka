@@ -1490,7 +1490,8 @@ public function handleCallback(Request $request)
             "additionalInfo" => [
                 "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
                 "beneficiaryAccountName" => (string) $request->account_name,
-                "notes"                  => "Transfer ke Bank " . $readableBank
+                "notes"                  => "Transfer ke Bank " . $readableBank,
+                "needNotify"             => true
             ]
         ];
 
