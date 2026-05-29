@@ -2336,7 +2336,7 @@ public function handleCallback(Request $request)
         // Ambil data bank dari database dan urutkan berdasarkan abjad
         $banks = DB::table('dana_bank_codes')->orderBy('bank_name', 'asc')->get();
 
-        return view('customer.dana.akun.transfer-bank', compact('banks'));
+        return view('admin.dana.transfer-bank', compact('banks'));
     }
 
     /**
