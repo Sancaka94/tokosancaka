@@ -2849,7 +2849,7 @@ public function handleCallback(Request $request)
 
             Log::info('[DANA RESPONSE] Result:', $result);
 
-            if ($codeCheck === '2003800') { // 2003800 = SUCCESS berdasarkan dokumentasi
+           if ($codeCheck === '2003800') { // 2003800 = SUCCESS berdasarkan dokumentasi
                 DB::table('dana_transactions')->insert([
                     'affiliate_id'     => $aff->id_pengguna,
                     'type'             => 'TOPUP_B2B',
@@ -2861,8 +2861,19 @@ public function handleCallback(Request $request)
                     'created_at'       => now()
                 ]);
 
-                return back()->with('success', '✅ Top Up ke pelanggan berhasil diproses dari akun Sancaka!');
-            
+                // --- PERBAIKAN UNTUK UAT DANA ---
+                $danaRef = $result['referenceNo'] ?? '-';
+                $trxDate = $result['transactionDate'] ?? $timestamp;
+                
+                $msg = "✅ Top Up Berhasil!\n\n" .
+                       "No. Ref Sancaka: $partnerRef\n" .
+                       "No. Ref DANA: $danaRef\n" .
+                       "Nominal: Rp " . number_format($request->amount, 0, ',', '.') . "\n" .
+                       "No. Pelanggan: $cleanPhone\n" .
+                       "Tanggal Transaksi: $trxDate";
+
+                return back()->with('success', $msg);
+
             } elseif (in_array($codeCheck, ['504', '4293800', '5003801', '2023800'])) {
                 // STATUS PENDING (Timeout / Too Many Request)
                 DB::table('dana_transactions')->insert([
@@ -3010,6 +3021,33 @@ public function handleCallback(Request $request)
         } catch (\Exception $e) {
             Log::error('[DANA DISBURSEMENT STATUS CHECK] System Error', ['msg' => $e->getMessage()]);
             return back()->with('error', 'Sistem Error saat mengecek status: ' . $e->getMessage());
+        }
+    }
+
+    // =========================================================================
+    // 1. FUNGSI UNTUK MENAMPILKAN HALAMAN & TABEL RIWAYAT TOP UP
+    // =========================================================================
+    public function topupCorporatePage()
+    {
+        // Ambil riwayat khusus tipe TOPUP_B2B
+        $transactions = DB::table('dana_transactions')
+            ->where('type', 'TOPUP_B2B')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        return view('admin.dana.topup_corporate', compact('transactions'));
+    }
+
+    // =========================================================================
+    // 2. FUNGSI UNTUK MENGHAPUS RIWAYAT TRANSAKSI (CRUD DELETE)
+    // =========================================================================
+    public function destroyTopupTransaction($id)
+    {
+        try {
+            DB::table('dana_transactions')->where('id', $id)->delete();
+            return back()->with('success', 'Riwayat transaksi berhasil dihapus dari sistem.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal menghapus transaksi: ' . $e->getMessage());
         }
     }
 
