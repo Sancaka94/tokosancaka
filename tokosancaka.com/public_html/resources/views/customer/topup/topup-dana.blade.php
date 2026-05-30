@@ -45,7 +45,7 @@
                         <div class="flex items-center">
                             <i class="fas fa-check-circle text-green-500 text-lg mr-3"></i>
                             <strong class="font-bold text-green-800 mr-2">Berhasil!</strong>
-                            <span class="block sm:inline text-green-700">{{ session('success') }}</span>
+                            <span class="block sm:inline text-green-700">{!! nl2br(e(session('success'))) !!}</span>
                         </div>
                     </div>
                 @endif
@@ -184,7 +184,7 @@
                 <form id="bulkDeleteForm" action="{{ route('customer.topupdana.bulk_destroy') }}" method="POST">
                     @csrf
                     @method('DELETE')
-                    <button type="button" onclick="confirmBulkDelete()" class="bg-red-500 hover:bg-red-600 text-white text-sm font-bold py-2 px-4 rounded-lg shadow-sm transition">
+                    <button type="button" onclick="confirmBulkDelete()" id="btnBulkDelete" class="bg-red-500 hover:bg-red-600 text-white text-sm font-bold py-2 px-4 rounded-lg shadow-sm transition hidden">
                         <i class="fas fa-trash-alt mr-1"></i> Hapus Terpilih
                     </button>
                 </form>
@@ -195,7 +195,7 @@
                     <thead class="bg-gray-50 text-xs text-gray-700 uppercase font-semibold">
                         <tr>
                             <th class="px-6 py-4 text-center">
-                                <input type="checkbox" id="checkAll" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                                <input type="checkbox" id="checkAll" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer">
                             </th>
                             <th class="px-6 py-4">No. Invoice</th>
                             <th class="px-6 py-4">Tujuan</th>
@@ -208,7 +208,7 @@
                         @forelse ($transactions ?? [] as $trx)
                             <tr class="hover:bg-blue-50/30 transition-colors">
                                 <td class="px-6 py-4 text-center">
-                                    <input type="checkbox" class="checkItem w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" value="{{ $trx->id }}">
+                                    <input type="checkbox" class="checkItem w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" value="{{ $trx->id }}">
                                 </td>
                                 <td class="px-6 py-4 font-medium text-gray-900">
                                     {{ $trx->reference_id }}
@@ -235,9 +235,9 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                                    {{-- Tombol Detail (DIPERBAIKI: Tambahan parameter 6 untuk danaRef) --}}
-                                    <button onclick="showDetail('{{ $trx->reference_id }}', '{{ $trx->target_phone }}', '{{ number_format($trx->amount, 0, ',', '.') }}', '{{ $trx->status }}', '{{ $trx->payment_method }}', '{{ $trx->dana_ref ?? '-' }}')" 
-                                        class="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition" title="Detail Transaksi">
+                                    {{-- Tombol Detail --}}
+                                    <button onclick="showDetail('{{ $trx->reference_id }}', '{{ $trx->target_phone }}', '{{ number_format($trx->amount, 0, ',', '.') }}', '{{ $trx->status }}', '{{ $trx->payment_method }}', '{{ json_decode($trx->response_payload)->referenceNo ?? '-' }}')" 
+                                        class="inline-block text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition" title="Detail Transaksi">
                                         <i class="fas fa-eye"></i>
                                     </button>
 
@@ -252,8 +252,8 @@
                                     </form>
                                     @endif
 
-                                    {{-- Tombol Hapus --}}
-                                    <form id="hapusForm-{{ $trx->id }}" action="{{ route('customer.topupdana.destroy', $trx->id) }}" method="POST" class="hidden">
+                                    {{-- Tombol Hapus (DIPERBAIKI) --}}
+                                    <form id="hapusForm-{{ $trx->id }}" action="{{ route('customer.topupdana.destroy', $trx->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus riwayat ini?');">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition" title="Hapus Riwayat">
@@ -275,7 +275,7 @@
             </div>
             
             {{-- Pagination --}}
-            <div class="p-6 border-t border-gray-100">
+            <div class="p-6 border-t border-gray-100 bg-gray-50">
                 {{ $transactions->links() ?? '' }}
             </div>
         </div>
@@ -315,7 +315,7 @@
                 </div>
             </div>
             <div class="p-4 bg-gray-50 text-right">
-                <button onclick="closeModal()" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-bold">Tutup</button>
+                <button onclick="closeModal()" class="bg-gray-500 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-bold transition">Tutup</button>
             </div>
         </div>
     </div>
@@ -356,16 +356,16 @@
         // Muncul/Hilangkan Tombol Bulk Delete
         function toggleBulkDeleteBtn() {
             if ($('.checkItem:checked').length > 0) {
-                $('#bulk-delete-form').removeClass('hidden');
+                $('#btnBulkDelete').removeClass('hidden');
             } else {
-                $('#bulk-delete-form').addClass('hidden');
+                $('#btnBulkDelete').addClass('hidden');
             }
         }
 
-        // Eksekusi Bulk Delete
+        // Eksekusi Bulk Delete (DIPERBAIKI)
         function confirmBulkDelete() {
             if (confirm('Yakin ingin menghapus riwayat top up yang dipilih?')) {
-                let form = $('#bulk-delete-form');
+                let form = $('#bulkDeleteForm');
                 
                 // Bersihkan input ids[] lama agar tidak tumpang tindih jika di-klik berkali-kali
                 form.find('input[name="ids[]"]').remove();
@@ -379,13 +379,13 @@
             }
         }
 
-        // Modal Detail Logic (DIPERBAIKI: Menambahkan parameter danaRef)
+        // Modal Detail Logic
         function showDetail(inv, phone, amount, status, method, danaRef) {
             $('#modInv').text(inv);
             $('#modPhone').text(phone);
             $('#modAmount').text(amount);
             $('#modMethod').text(method);
-            $('#modDanaRef').text(danaRef || '-'); // Sekarang danaRef akan terdefinisi dengan aman
+            $('#modDanaRef').text(danaRef || '-');
             
             let statusColor = status === 'SUCCESS' ? 'text-green-600' : (status.includes('FAIL') ? 'text-red-600' : 'text-yellow-600');
             $('#modStatus').text(status).removeClass('text-green-600 text-red-600 text-yellow-600').addClass(statusColor);
