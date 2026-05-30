@@ -398,6 +398,19 @@ class DanaWebhookController extends Controller
                         App::make(\App\Http\Controllers\CustomerOrderController::class)->handleDanaCallback($payloadData);
                     } else if (Str::startsWith($orderId, 'CVSANCAK-') || Str::startsWith($orderId, 'ORD-')) {
                         App::make(\App\Http\Controllers\CheckoutController::class)->handleDanaCallback($payloadData);
+                    } else if (Str::startsWith($orderId, 'TRF') || Str::startsWith($orderId, 'TUP')) {
+                        // PENANGANAN DISBURSEMENT (TRANSFER BANK / TOP UP CORPORATE)
+                        $danaTrx = DB::table('dana_transactions')->where('reference_no', $orderId)->first();
+                        
+                        if ($danaTrx) {
+                            DB::table('dana_transactions')->where('id', $danaTrx->id)->update([
+                                'status' => 'SUCCESS', 
+                                'updated_at' => now()
+                            ]);
+                            Log::info("✅ LOG LOG: Webhook Disbursement DANA $orderId SUKSES.");
+                        } else {
+                            Log::warning("⚠️ Order $orderId (DANA Disbursement) tidak ditemukan di tabel dana_transactions.");
+                        }
                     } else {
                         // PENANGANAN PPOB BERDASARKAN TABEL transactionppobiak
                         $trxPpob = DB::table('transactionppobiak')
