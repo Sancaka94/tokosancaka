@@ -1389,3 +1389,6 @@ Route::get('/pembayaran/sukses-tripay', function (\Illuminate\Http\Request $requ
     return view('sukses_tripay', compact('refNo', 'isMobile', 'statusPembayaran', 'jenisTransaksi'));
 })->name('tripay.return');
 
+
+// Tambahkan baris ini di tempat kamu mendeklarasikan rute admin DANA
+Route::delete('/admin/dana/bulk-destroy', [TopUpController::class, 'bulkDestroyTransaction'])->name('customer.dana.bulk_destroy_transaction');

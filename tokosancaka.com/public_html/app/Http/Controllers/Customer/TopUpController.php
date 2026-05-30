@@ -3111,4 +3111,25 @@ public function handleCallback(Request $request)
         return response()->json($formatted);
     }
 
+    // =========================================================================
+    // FUNGSI: MENGHAPUS BANYAK RIWAYAT TRANSAKSI SEKALIGUS (BULK DELETE)
+    // =========================================================================
+    public function bulkDestroyTransaction(Request $request)
+    {
+        $ids = $request->input('ids');
+        
+        if (empty($ids)) {
+            return back()->with('error', 'Pilih minimal satu transaksi untuk dihapus.');
+        }
+
+        try {
+            // Karena tabel Transfer Bank dan Top Up menggunakan tabel yang sama
+            DB::table('dana_transactions')->whereIn('id', $ids)->delete();
+            return back()->with('success', count($ids) . ' riwayat transaksi berhasil dihapus.');
+        } catch (\Exception $e) {
+            Log::error('[BULK DELETE ERROR] ' . $e->getMessage());
+            return back()->with('error', 'Gagal menghapus transaksi: ' . $e->getMessage());
+        }
+    }
+
 }
