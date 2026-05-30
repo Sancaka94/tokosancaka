@@ -3083,7 +3083,8 @@ public function handleCallback(Request $request)
         $search = $request->get('q');
         
         $query = DB::table('Pengguna')
-            ->select('id_pengguna', 'nama_lengkap', 'no_wa', 'store_name')
+            // Tambahkan kolom bank_name, bank_account_name, dan bank_account_number
+            ->select('id_pengguna', 'nama_lengkap', 'no_wa', 'store_name', 'bank_name', 'bank_account_name', 'bank_account_number')
             ->where('status', 'Aktif');
 
         if ($search) {
@@ -3096,13 +3097,18 @@ public function handleCallback(Request $request)
 
         $pengguna = $query->limit(20)->get();
 
-        // Format data agar sesuai dengan format yang dibaca oleh Select2
+        // Format data agar sesuai dengan format yang dibaca oleh Select2 dan Javascript
         $formatted = $pengguna->map(function ($item) {
             $store = $item->store_name ? " | Toko: {$item->store_name}" : "";
             return [
                 'id' => $item->id_pengguna,
                 'text' => "{$item->nama_lengkap} ({$item->no_wa}){$store}",
-                'phone' => $item->no_wa // Data ini akan dipakai untuk auto-fill nomor DANA
+                'phone' => $item->no_wa,
+                
+                // Kirim data bank ke Frontend (UI)
+                'bank_account_number' => $item->bank_account_number,
+                'bank_account_name' => $item->bank_account_name,
+                'bank_name' => $item->bank_name
             ];
         });
 

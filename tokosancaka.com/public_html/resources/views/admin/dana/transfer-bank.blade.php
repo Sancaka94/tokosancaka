@@ -1,16 +1,15 @@
 @extends('layouts.admin')
 
-@section('title', 'Top Up Saldo DANA Corporate')
+@section('title', 'Transfer Bank Corporate')
 
 @push('styles')
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <style>
-        /* Penyesuaian tema Select2 agar menyatu dengan Tailwind CSS */
         .select2-container .select2-selection--single {
-            height: 3rem; /* Setara dengan py-3 Tailwind */
-            border-color: #d1d5db; /* gray-300 */
-            border-radius: 0.5rem; /* rounded-lg */
-            background-color: #f9fafb; /* bg-gray-50 */
+            height: 3rem;
+            border-color: #d1d5db;
+            border-radius: 0.5rem;
+            background-color: #f9fafb;
             display: flex;
             align-items: center;
             padding-left: 0.5rem;
@@ -20,7 +19,7 @@
             right: 10px;
         }
         .select2-container--default .select2-selection--single .select2-selection__rendered {
-            color: #374151; /* text-gray-700 */
+            color: #374151;
             font-weight: 500;
         }
         .select2-search__field {
@@ -32,11 +31,11 @@
 @section('content')
 <div class="container mx-auto px-4 py-6">
     
-    {{-- BAGIAN ATAS: FORMULIR TOP UP --}}
+    {{-- BAGIAN ATAS: FORMULIR INQUIRY & TRANSFER --}}
     <div class="bg-white shadow-md rounded-lg p-6 max-w-4xl mx-auto mb-10 border border-gray-200">
         <div class="border-b pb-4 mb-6">
-            <h2 class="text-2xl font-bold text-gray-800">Top Up DANA Pelanggan (Corporate)</h2>
-            <p class="text-gray-600 mt-1">Formulir untuk mencairkan saldo komisi aplikasi menjadi saldo DANA secara otomatis melalui saldo Merchant Deposit Sancaka.</p>
+            <h2 class="text-2xl font-bold text-gray-800">Transfer ke Rekening Bank (Corporate)</h2>
+            <p class="text-gray-600 mt-1">Formulir untuk memproses cek rekening (Inquiry) dan pencairan saldo ke rekening Bank pelanggan.</p>
         </div>
 
         {{-- ALERT PESAN --}}
@@ -58,65 +57,107 @@
                 <p>{!! nl2br(e(session('error'))) !!}</p>
             </div>
         @endif
-        @if ($errors->any())
-            <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-5 rounded" role="alert">
-                <p class="font-bold">Mohon periksa kembali form Anda:</p>
-                <ul class="list-disc ml-5 mt-2">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
 
-        {{-- FORMULIR --}}
-        <form action="{{ route('customer.dana.topup_corporate') }}" method="POST">
-            @csrf
-            
-            <div class="mb-5">
-                <label for="affiliate_id" class="block text-gray-700 font-semibold mb-2">Cari Pelanggan (Nama / WA / Toko)</label>
-                {{-- Dropdown Select2 --}}
-                <select name="affiliate_id" id="affiliate_id" class="w-full" required>
-                    @if(old('affiliate_id'))
-                        <option value="{{ old('affiliate_id') }}" selected>ID Pelanggan Terpilih: {{ old('affiliate_id') }}</option>
-                    @endif
-                </select>
-                <p class="text-sm text-gray-500 mt-1">*Saldo komisi milik Pelanggan ini akan otomatis terpotong saat Top Up berhasil.</p>
-            </div>
-
-            <div class="mb-5">
-                <label for="phone" class="block text-gray-700 font-semibold mb-2">Nomor HP DANA Tujuan</label>
-                <input type="text" name="phone" id="phone" value="{{ old('phone') }}" 
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" 
-                    placeholder="Contoh: 081234567890 (Akan terisi otomatis jika ada data)" required>
-            </div>
-
-            <div class="mb-6">
-                <label for="amount" class="block text-gray-700 font-semibold mb-2">Nominal Top Up</label>
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                        <span class="text-gray-500 font-bold text-lg">Rp</span>
-                    </div>
-                    <input type="number" name="amount" id="amount" value="{{ old('amount') }}" min="1000" 
-                        class="w-full pl-12 px-4 py-3 text-lg font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" 
-                        placeholder="10000" required>
+        {{-- ALUR 1: FORM INQUIRY (MUNCUL JIKA BELUM ADA DATA REKENING VALID) --}}
+        @if (!session('valid_account_name'))
+            <form action="{{ route('customer.dana.bank_inquiry') }}" method="POST">
+                @csrf
+                
+                <div class="mb-5">
+                    <label for="affiliate_id" class="block text-gray-700 font-semibold mb-2">Cari Pelanggan (Nama / WA / Toko)</label>
+                    <select name="affiliate_id" id="affiliate_id" class="w-full" required>
+                        @if(old('affiliate_id'))
+                            <option value="{{ old('affiliate_id') }}" selected>ID Pelanggan Terpilih: {{ old('affiliate_id') }}</option>
+                        @endif
+                    </select>
                 </div>
-                <p class="text-sm text-gray-500 mt-1">*Minimal pengiriman DANA Rp 1.000</p>
+
+                <div class="mb-5">
+                    <label for="bank_code" class="block text-gray-700 font-semibold mb-2">Pilih Bank Tujuan</label>
+                    <select name="bank_code" id="bank_code" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" required>
+                        <option value="">-- Pilih Bank --</option>
+                        @foreach($banks as $bank)
+                            <option value="{{ $bank->bank_code }}" {{ old('bank_code') == $bank->bank_code ? 'selected' : '' }}>
+                                {{ $bank->bank_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="mb-5">
+                    <label for="account_no" class="block text-gray-700 font-semibold mb-2">Nomor Rekening</label>
+                    <input type="text" name="account_no" id="account_no" value="{{ old('account_no') }}" 
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" 
+                        placeholder="Contoh: 1234567890" required>
+                </div>
+
+                <div class="mb-6">
+                    <label for="amount" class="block text-gray-700 font-semibold mb-2">Nominal Transfer</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                            <span class="text-gray-500 font-bold text-lg">Rp</span>
+                        </div>
+                        <input type="number" name="amount" id="amount" value="{{ old('amount') }}" min="10000" 
+                            class="w-full pl-12 px-4 py-3 text-lg font-bold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" 
+                            placeholder="10000" required>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end border-t border-gray-200 pt-6">
+                    <button type="submit" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition duration-300 flex justify-center items-center">
+                        <i class="fas fa-search mr-2"></i> Cek Rekening (Inquiry)
+                    </button>
+                </div>
+            </form>
+
+        {{-- ALUR 2: FORM TRANSFER (MUNCUL SETELAH INQUIRY SUKSES) --}}
+        @else
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-5 mb-6">
+                <h3 class="text-lg font-bold text-blue-800 mb-3 border-b border-blue-200 pb-2">Hasil Cek Rekening Valid</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-500">Bank Tujuan</p>
+                        <p class="font-bold text-gray-800">{{ session('valid_bank_name') }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Nomor Rekening</p>
+                        <p class="font-bold text-gray-800">{{ old('account_no') }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Atas Nama</p>
+                        <p class="font-bold text-gray-800">{{ session('valid_account_name') }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500">Nominal Transfer</p>
+                        <p class="font-bold text-green-600 text-lg">Rp {{ number_format(old('amount'), 0, ',', '.') }}</p>
+                    </div>
+                </div>
             </div>
 
-            <div class="flex items-center justify-end border-t border-gray-200 pt-6">
-                <button type="submit" 
-                    class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition duration-300 flex justify-center items-center"
-                    onclick="return confirm('PENTING: Pastikan Saldo Corporate Sancaka mencukupi. Apakah Anda yakin ingin memproses top up DANA ini?')">
-                    <i class="fas fa-paper-plane mr-2"></i> Proses Pencairan DANA
-                </button>
-            </div>
-        </form>
+            <form action="{{ route('customer.dana.transfer_bank') }}" method="POST">
+                @csrf
+                <input type="hidden" name="affiliate_id" value="{{ old('affiliate_id') }}">
+                <input type="hidden" name="bank_code" value="{{ old('bank_code') }}">
+                <input type="hidden" name="account_no" value="{{ old('account_no') }}">
+                <input type="hidden" name="account_name" value="{{ session('valid_account_name') }}">
+                <input type="hidden" name="amount" value="{{ old('amount') }}">
+
+                <div class="flex flex-col sm:flex-row items-center justify-end space-y-3 sm:space-y-0 sm:space-x-4 border-t border-gray-200 pt-6">
+                    <a href="{{ url()->current() }}" class="w-full sm:w-auto bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-3 px-8 rounded-xl shadow-sm transition duration-300 text-center">
+                        Batal / Ubah Data
+                    </a>
+                    <button type="submit" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition duration-300 flex justify-center items-center"
+                        onclick="return confirm('PENTING: Saldo akan dipotong dan ditransfer ke rekening di atas. Lanjutkan?')">
+                        <i class="fas fa-paper-plane mr-2"></i> Proses Transfer Sekarang
+                    </button>
+                </div>
+            </form>
+        @endif
     </div>
 
-    {{-- BAGIAN BAWAH: TABEL RIWAYAT TRANSAKSI & CRUD --}}
+    {{-- BAGIAN BAWAH: TABEL RIWAYAT TRANSAKSI --}}
     <div class="max-w-6xl mx-auto">
-        <h3 class="text-2xl font-bold text-gray-800 mb-4">Riwayat Top Up Corporate</h3>
+        <h3 class="text-2xl font-bold text-gray-800 mb-4">Riwayat Transfer Bank Corporate</h3>
         
         <div class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
             <div class="overflow-x-auto">
@@ -126,7 +167,7 @@
                             <th class="px-6 py-4">Tanggal</th>
                             <th class="px-6 py-4">Ref. Transaksi</th>
                             <th class="px-6 py-4 text-center">ID User</th>
-                            <th class="px-6 py-4">No. DANA</th>
+                            <th class="px-6 py-4">Bank & Rekening</th>
                             <th class="px-6 py-4">Nominal</th>
                             <th class="px-6 py-4 text-center">Status</th>
                             <th class="px-6 py-4 text-center">Aksi</th>
@@ -134,7 +175,6 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200">
                         @forelse($transactions as $trx)
-                            {{-- Bedah JSON Response Payload --}}
                             @php
                                 $payload = json_decode($trx->response_payload, true);
                                 $danaRef = $payload['referenceNo'] ?? '-';
@@ -168,38 +208,26 @@
                                 </td>
                                 <td class="px-6 py-4 flex justify-center space-x-2">
                                     
-                                    {{-- TOMBOL CEK DETAIL (Selalu Muncul) --}}
                                     <button type="button" onclick="openDetailModal('{{ $trx->reference_no }}', '{{ $danaRef }}', '{{ $trx->phone }}', 'Rp {{ number_format($trx->amount, 0, ',', '.') }}', '{{ $trxDate }}', '{{ $trx->status }}')" class="text-white bg-teal-500 hover:bg-teal-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Cek Detail">
                                         <i class="fas fa-info-circle mr-1"></i> Detail
                                     </button>
 
-                                    {{-- TOMBOL CEK STATUS DARI API (Hanya muncul jika PENDING) --}}
+                                    {{-- TOMBOL CEK STATUS API (Pastikan route cek status mengarah ke checkTransferStatus) --}}
                                     @if($trx->status === 'PENDING')
-                                        <form action="{{ route('customer.dana.check_topup_status') }}" method="POST" onsubmit="return confirm('Cek status transaksi ini ke API DANA?');">
+                                        <form action="{{ route('customer.dana.check_transfer_status', $trx->id) }}" method="POST" onsubmit="return confirm('Cek status transaksi ini ke API Bank/DANA?');">
                                             @csrf
-                                            <input type="hidden" name="reference_no" value="{{ $trx->reference_no }}">
-                                            <input type="hidden" name="affiliate_id" value="{{ $trx->affiliate_id }}">
                                             <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Cek Status API">
                                                 <i class="fas fa-sync-alt mr-1"></i> Cek
                                             </button>
                                         </form>
                                     @endif
-                                    
-                                    {{-- TOMBOL HAPUS (CRUD) --}}
-                                    <form action="{{ route('customer.dana.destroy_topup', $trx->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus riwayat transaksi ini?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Hapus Riwayat">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </form>
                                 </td>
                             </tr>
                         @empty
                             <tr>
                                 <td colspan="7" class="px-6 py-10 text-center text-gray-500">
-                                    <i class="fas fa-box-open text-4xl mb-3 text-gray-300 block"></i>
-                                    Belum ada riwayat top up DANA Corporate.
+                                    <i class="fas fa-university text-4xl mb-3 text-gray-300 block"></i>
+                                    Belum ada riwayat transfer bank.
                                 </td>
                             </tr>
                         @endforelse
@@ -207,7 +235,6 @@
                 </table>
             </div>
             
-            {{-- Navigasi Pagination --}}
             @if(isset($transactions) && $transactions->hasPages())
                 <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
                     {{ $transactions->links() }}
@@ -217,13 +244,11 @@
     </div>
 </div>
 
+{{-- MODAL DETAIL (Tetap Sama dengan Kode Awalmu) --}}
 <div id="detailModal" class="fixed inset-0 z-[99] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
     <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        
         <div class="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" aria-hidden="true" onclick="closeDetailModal()"></div>
-
         <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
         <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
             <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div class="sm:flex sm:items-start">
@@ -231,7 +256,7 @@
                         <i class="fas fa-receipt text-teal-600"></i>
                     </div>
                     <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                        <h3 class="text-xl leading-6 font-bold text-gray-900" id="modal-title">Detail Struk Top Up</h3>
+                        <h3 class="text-xl leading-6 font-bold text-gray-900" id="modal-title">Detail Struk Transfer</h3>
                         <div class="mt-5 space-y-3">
                             <div class="flex justify-between border-b border-gray-100 pb-2">
                                 <span class="text-sm text-gray-500">Status</span>
@@ -242,15 +267,15 @@
                                 <span class="text-sm font-bold text-gray-800" id="modal-ref-sancaka"></span>
                             </div>
                             <div class="flex justify-between border-b border-gray-100 pb-2">
-                                <span class="text-sm text-gray-500">No. Ref DANA</span>
+                                <span class="text-sm text-gray-500">No. Ref Bank/DANA</span>
                                 <span class="text-sm font-bold text-gray-800" id="modal-ref-dana"></span>
                             </div>
                             <div class="flex justify-between border-b border-gray-100 pb-2">
-                                <span class="text-sm text-gray-500">No. Pelanggan</span>
+                                <span class="text-sm text-gray-500">Bank & Rekening</span>
                                 <span class="text-sm font-bold text-gray-800" id="modal-phone"></span>
                             </div>
                             <div class="flex justify-between border-b border-gray-100 pb-2">
-                                <span class="text-sm text-gray-500">Nominal Top Up</span>
+                                <span class="text-sm text-gray-500">Nominal Transfer</span>
                                 <span class="text-sm font-bold text-green-600" id="modal-amount"></span>
                             </div>
                             <div class="flex justify-between pb-2">
@@ -277,28 +302,32 @@
 <script>
     $(document).ready(function() {
         // ==============================================================
-        // INISIALISASI SELECT2 DENGAN AJAX
+        // 1. INISIALISASI SELECT2 UNTUK DROPDOWN BANK
+        // ==============================================================
+        $('#bank_code').select2({
+            placeholder: '-- Ketik / Pilih Bank Tujuan --',
+            allowClear: true
+        });
+
+        // ==============================================================
+        // 2. INISIALISASI SELECT2 UNTUK PENCARIAN PELANGGAN
         // ==============================================================
         $('#affiliate_id').select2({
             placeholder: 'Ketik nama, nomor WA, atau nama toko...',
             allowClear: true,
             ajax: {
-                url: '{{ route("customer.dana.search_pengguna") }}', // URL Endpoint pencarian
+                url: '{{ route("customer.dana.search_pengguna") }}',
                 dataType: 'json',
-                delay: 250, // Delay agar tidak membebani server saat mengetik
+                delay: 250,
                 data: function (params) {
-                    return {
-                        q: params.term // Kata kunci yang diketik user dikirim sebagai 'q'
-                    };
+                    return { q: params.term };
                 },
                 processResults: function (data) {
-                    return {
-                        results: data // Format data dari controller langsung dipakai
-                    };
+                    return { results: data };
                 },
                 cache: true
             },
-            minimumInputLength: 2, // Minimal 2 karakter baru mulai mencari
+            minimumInputLength: 2,
             language: {
                 inputTooShort: function() { return "Ketik minimal 2 huruf..."; },
                 searching: function() { return "Mencari data..."; },
@@ -307,26 +336,52 @@
         });
 
         // ==============================================================
-        // FITUR AUTO-FILL: MENGISI NOMOR HP DANA OTOMATIS
+        // 3. FITUR AUTO-FILL NOMOR REKENING & BANK
         // ==============================================================
         $('#affiliate_id').on('select2:select', function (e) {
             var data = e.params.data;
-            // Jika payload response memiliki properti 'phone', isi ke kolom input
-            if(data.phone) {
-                // Menghilangkan karakter non-angka (seperti spasi atau +, opsional)
-                let cleanPhone = data.phone.replace(/\D/g, '');
-                $('#phone').val(cleanPhone);
+
+            // Isi Nomor Rekening otomatis jika ada di database
+            if(data.bank_account_number) {
+                $('#account_no').val(data.bank_account_number);
+            } else {
+                $('#account_no').val('');
+            }
+
+            // Pencocokan Bank otomatis
+            if(data.bank_name) {
+                var userBank = data.bank_name.toLowerCase();
+                var matchedValue = null;
+
+                // Looping semua pilihan bank di dropdown untuk mencari kecocokan kata
+                // Misal: di tabel Pengguna 'BCA', di tabel Bank 'Bank BCA' -> akan otomatis cocok
+                $('#bank_code option').each(function() {
+                    var optionText = $(this).text().toLowerCase();
+                    if (optionText.includes(userBank) || userBank.includes(optionText.replace('bank ', '').trim())) {
+                        matchedValue = $(this).val();
+                        return false; // Hentikan loop jika sudah ketemu
+                    }
+                });
+
+                if (matchedValue) {
+                    $('#bank_code').val(matchedValue).trigger('change');
+                } else {
+                    $('#bank_code').val('').trigger('change');
+                }
+            } else {
+                $('#bank_code').val('').trigger('change');
             }
         });
 
-        // Membersihkan input Nomor HP jika pilihan dibatalkan (X)
+        // Membersihkan input jika form pencarian disilang (X)
         $('#affiliate_id').on('select2:clear', function (e) {
-            $('#phone').val('');
+            $('#account_no').val('');
+            $('#bank_code').val('').trigger('change');
         });
     });
 
     // ==============================================================
-    // FUNGSI MODAL STRUK
+    // 4. FUNGSI MODAL STRUK (TIDAK BERUBAH)
     // ==============================================================
     function openDetailModal(refSancaka, refDana, phone, amount, date, status) {
         document.getElementById('modal-ref-sancaka').innerText = refSancaka;
