@@ -2364,17 +2364,13 @@ public function handleCallback(Request $request)
         // 1. Ambil data bank dari database
         $banks = DB::table('dana_bank_codes')->orderBy('bank_name', 'asc')->get();
 
-        // 2. Ambil ID pengguna yang sedang login
-        $userId = auth()->user()->id_pengguna ?? null;
-
-        // 3. Ambil riwayat transfer bank user ini dari database
+        // 2. Ambil riwayat transfer bank DARI SEMUA PELANGGAN (Karena ini Dashboard Admin Corporate)
         $transactions = DB::table('dana_transactions')
-            ->where('affiliate_id', $userId)
             ->where('type', 'TRANSFER_BANK')
             ->orderBy('created_at', 'desc')
             ->paginate(10); // Menampilkan 10 data per halaman
 
-        // 4. Kirim $banks dan $transactions ke file Blade
+        // 3. Kirim $banks dan $transactions ke file Blade
         return view('admin.dana.transfer-bank', compact('banks', 'transactions'));
     }
 
