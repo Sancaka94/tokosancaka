@@ -1403,12 +1403,7 @@ Route::delete('/admin/dana/bulk-destroy', [TopUpController::class, 'bulkDestroyT
 */
 Route::prefix('customer')->name('customer.')->middleware(['auth'])->group(function () {
     
-    // ... rute customer kamu yang lain ada di sini ...
-
-    // Rute Form Top Up DANA
     Route::get('/topup-dana', [TopupDanaController::class, 'create'])->name('topupdana.create');
-    
-    // Rute Proses Pembayaran Top Up DANA
     Route::post('/topup-dana', [TopupDanaController::class, 'store'])->name('topupdana.store');
     
     // Rute Halaman Sukses (Kembalian dari DOKU/Tripay setelah bayar)
