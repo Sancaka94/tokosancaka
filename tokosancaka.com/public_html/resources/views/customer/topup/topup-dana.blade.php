@@ -15,7 +15,7 @@
         <div class="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
             <div class="p-6 md:p-8">
 
-                {{-- Alert Error / Success --}}
+                {{-- Alert Error / Success / Warning --}}
                 @if ($errors->any())
                     <div class="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm" role="alert">
                         <div class="flex items-center">
@@ -46,6 +46,16 @@
                             <i class="fas fa-check-circle text-green-500 text-lg mr-3"></i>
                             <strong class="font-bold text-green-800 mr-2">Berhasil!</strong>
                             <span class="block sm:inline text-green-700">{{ session('success') }}</span>
+                        </div>
+                    </div>
+                @endif
+
+                @if (session('warning'))
+                    <div class="mb-6 bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg shadow-sm" role="alert">
+                        <div class="flex items-center">
+                            <i class="fas fa-exclamation-triangle text-yellow-500 text-lg mr-3"></i>
+                            <strong class="font-bold text-yellow-800 mr-2">Perhatian!</strong>
+                            <span class="block sm:inline text-yellow-700">{{ session('warning') }}</span>
                         </div>
                     </div>
                 @endif
@@ -233,7 +243,7 @@
                                     </button>
 
                                     {{-- Tombol Cek Status --}}
-                                    <form action="{{ route('customer.topupdana.check_status') }}" method="POST" class="inline-block">
+                                    <form action="{{ route('topupdana.check_status') }}" method="POST" class="inline-block">
                                         @csrf
                                         <input type="hidden" name="reference_id" value="{{ $trx->reference_id }}">
                                         <button type="submit" class="text-yellow-500 hover:text-yellow-700 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition" title="Cek Status DANA">

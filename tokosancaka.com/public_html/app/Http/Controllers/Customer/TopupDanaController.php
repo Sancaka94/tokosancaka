@@ -508,7 +508,7 @@ class TopupDanaController extends Controller
         return $phone;
     }
 
-    /**
+   /**
      * =========================================================================
      * FUNGSI CEK STATUS TOP UP LANGSUNG KE API DANA
      * =========================================================================
@@ -526,7 +526,7 @@ class TopupDanaController extends Controller
 
         // 2. Siapkan Payload Query ke DANA
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        $path      = '/rest/v1.0/emoney/query'; // Endpoint query B2B Topup DANA
+        $path      = '/rest/v1.0/emoney/query'; 
         
         $body = [
             "partnerReferenceNo" => $trx->reference_id,
@@ -559,7 +559,8 @@ class TopupDanaController extends Controller
             $result = $response->json();
             $codeCheck = trim((string)($result['responseCode'] ?? '500'));
 
-            Log::info("LOG LOG: Hasil Query Status DANA untuk {$trx->reference_id}: ", $result);
+            // 🔥 PERBAIKAN DI SINI: Gunakan fallback array bawaan jika $result bernilai null
+            Log::info("LOG LOG: Hasil Query Status DANA untuk {$trx->reference_id}: ", $result ?? ['raw_body' => $response->body()]);
 
             // 4. Update Status Berdasarkan Jawaban DANA
             if ($codeCheck === '2003800' || ($result['transactionStatus'] ?? '') === 'SUCCESS') {
@@ -577,7 +578,9 @@ class TopupDanaController extends Controller
                     'status' => 'FAILED_DANA',
                     'updated_at' => now()
                 ]);
-                return back()->with('error', "Status dari DANA: GAGAL (Kode: {$codeCheck} - " . ($result['responseMessage'] ?? 'Unknown Error') . ")");
+                
+                $errMsg = $result['responseMessage'] ?? 'Terjadi kendala jaringan/server DANA';
+                return back()->with('error', "Status dari DANA: GAGAL (Kode: {$codeCheck} - {$errMsg})");
             }
         } catch (\Exception $e) {
             Log::error('LOG LOG: Exception cek status DANA: ' . $e->getMessage());
