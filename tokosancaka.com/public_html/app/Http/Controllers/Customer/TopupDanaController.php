@@ -803,25 +803,58 @@ class TopupDanaController extends Controller
         return base64_encode($binarySignature);
     }
 
-   // =========================================================================
+  // =========================================================================
     // FUNGSI: MENGHAPUS BANYAK RIWAYAT TRANSAKSI SEKALIGUS (BULK DELETE)
     // =========================================================================
     public function bulkDestroyTransaction(Request $request)
     {
-        $ids = $request->input('ids');
+        Log::info('LOG LOG: ========== [START BULK DELETE DANA TOPUP] ==========');
         
+        $ids = $request->input('ids');
+        Log::info('LOG LOG: Raw input IDs yang diterima dari request:', ['raw_ids' => $ids]);
+
+        // 1. Jika data kosong sama sekali, kembalikan error
         if (empty($ids)) {
+            Log::warning('LOG LOG: Bulk Delete dibatalkan karena Input IDs kosong.');
             return back()->with('error', 'Pilih minimal satu transaksi untuk dihapus.');
         }
 
+        // 2. Jika data yang masuk berupa teks gabungan (contoh: "1,2,3"), pecah menjadi array
+        if (is_string($ids)) {
+            Log::info('LOG LOG: Input terdeteksi sebagai string tunggal. Memecah string menjadi array...');
+            $ids = explode(',', $ids);
+        }
+
+        // 3. Jika data masuk sebagai array tapi elemen pertamanya adalah teks gabungan ["1,2,3"]
+        if (is_array($ids) && count($ids) === 1 && strpos($ids[0], ',') !== false) {
+            Log::info('LOG LOG: Input terdeteksi sebagai array dengan 1 elemen string gabungan. Memecah string...');
+            $ids = explode(',', $ids[0]);
+        }
+
+        // 4. Bersihkan spasi kosong dari array ID
+        $cleanIds = array_filter(array_map('trim', $ids));
+        Log::info('LOG LOG: Data IDs setelah diproses dan dibersihkan (Clean IDs):', ['clean_ids' => $cleanIds]);
+
         try {
-            // PERBAIKAN: Di sini letak masalahnya. Pastikan nama tabelnya dana_transaction_topup
-            DB::table('dana_transaction_topup')->whereIn('id', $ids)->delete();
-            
-            return back()->with('success', count($ids) . ' riwayat transaksi berhasil dihapus.');
+            // EKSEKUSI HAPUS KE TABEL YANG BENAR & HITUNG YANG TERHAPUS
+            Log::info('LOG LOG: Mulai mengeksekusi query DELETE pada tabel dana_transaction_topup...');
+            $deletedCount = DB::table('dana_transaction_topup')->whereIn('id', $cleanIds)->delete();
+
+            // 5. Cek apakah ada data yang benar-benar terhapus
+            if ($deletedCount > 0) {
+                Log::info("LOG LOG: SUCCESS! Berhasil menghapus $deletedCount baris data dari database.");
+                Log::info('LOG LOG: ========== [END BULK DELETE DANA TOPUP] ==========');
+                return back()->with('success', $deletedCount . ' riwayat transaksi berhasil dihapus secara permanen.');
+            } else {
+                Log::warning('LOG LOG: WARNING! Query dieksekusi tanpa error, tetapi 0 data terhapus. (ID kemungkinan tidak cocok dengan data di tabel dana_transaction_topup).');
+                Log::info('LOG LOG: ========== [END BULK DELETE DANA TOPUP] ==========');
+                return back()->with('error', 'Data gagal dihapus. Kemungkinan data sudah tidak ada di database.');
+            }
+
         } catch (\Exception $e) {
-            Log::error('[BULK DELETE ERROR] ' . $e->getMessage());
-            return back()->with('error', 'Gagal menghapus transaksi: ' . $e->getMessage());
+            Log::error('LOG LOG: [BULK DELETE ERROR] Terjadi exception saat menghapus: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::info('LOG LOG: ========== [END BULK DELETE DANA TOPUP WITH ERROR] ==========');
+            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
         }
     }
 
