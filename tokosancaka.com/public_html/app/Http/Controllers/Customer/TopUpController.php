@@ -1083,80 +1083,104 @@ public function handleCallback(Request $request)
         }
     }
 
+    // =========================================================================
+    // FUNGSI: CEK STATUS TOP UP (CUSTOMER TOP UP INQUIRY STATUS)
+    // Sesuai dengan dokumentasi API Service Code: 39
+    // =========================================================================
     public function checkTopupStatus(Request $request)
     {
-        Log::info('[DANA INQUIRY STATUS] Memulai pengecekan status...', [
+        Log::info('[DANA TOPUP STATUS] Memulai pengecekan status...', [
             'partnerReferenceNo' => $request->reference_no,
-            'affiliate_id' => $request->affiliate_id
+            'affiliate_id'       => $request->affiliate_id
         ]);
 
-        $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
         $trx = DB::table('dana_transactions')->where('reference_no', $request->reference_no)->first();
-
         if (!$trx) return back()->with('error', 'Data transaksi tidak ditemukan di database.');
 
-        $timestamp = now('Asia/Jakarta')->toIso8601String();
-        $path = '/v1.0/emoney/topup-status.htm';
+        // 1. Jika sudah sukses/gagal di database, tidak perlu buang kuota hit API
+        if (in_array($trx->status, ['SUCCESS', 'FAILED', 'REFUNDED'])) {
+            return back()->with('warning', 'Transaksi ini sudah berstatus final (' . $trx->status . ').');
+        }
 
+        $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        
+        // SESUAI DOKUMEN: Path tanpa .htm di belakangnya
+        $path = '/rest/v1.0/emoney/topup-status'; 
 
+        // SESUAI DOKUMEN: Body request sederhana
         $body = [
             "originalPartnerReferenceNo" => $trx->reference_no,
-            "originalReferenceNo"        => "",
-            "originalExternalId"         => "",
-            "serviceCode"                => "38",
-            "additionalInfo"             => (object)[]
+            "serviceCode"                => "38" // Service code asli saat transaksi Top Up
         ];
 
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
         $hashedBody = strtolower(hash('sha256', $jsonBody));
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-        $signature = $this->generateSignature($stringToSign);
-
-        $headers = [
-            'Content-Type'   => 'application/json',
-            'Authorization'  => 'Bearer ' . $aff->dana_access_token,
-            'X-TIMESTAMP'    => $timestamp,
-            'X-SIGNATURE'    => $signature,
-            'X-PARTNER-ID'   => config('services.dana.x_partner_id'),
-            'X-EXTERNAL-ID'  => (string) time() . Str::random(6),
-            'CHANNEL-ID'     => '95221'
-        ];
 
         try {
-            Log::info('[DANA INQUIRY STATUS] Mengirim Request Status ke DANA', ['body' => $body]);
+            $signature = $this->generateSignature($stringToSign);
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
 
-            // URL Dinamis
-            $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post(config('services.dana.base_url') . $path);
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
+                'ORIGIN'        => config('services.dana.origin'),
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            $response = Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
             $result = $response->json();
-            $resCode = $result['responseCode'] ?? '';
+            Log::info('[DANA TOPUP STATUS] Respon DANA:', $result);
 
-            Log::info('[DANA INQUIRY STATUS] Respon Diterima', ['result' => $result]);
+            $resCode = $result['responseCode'] ?? '500';
 
-            if (isset($result['responseCode']) && $result['responseCode'] == '2003900') {
-                $status = $result['latestTransactionStatus'];
+            // ========================================================
+            // EVALUASI RESPONSE CODE SESUAI DOKUMEN (2003900 = Sukses)
+            // ========================================================
+            if ($resCode === '2003900') {
+                $status = $result['latestTransactionStatus'] ?? null;
 
-                if ($status == '00') {
+                // 00 - Success
+                if ($status === '00') {
                     DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'SUCCESS']);
-                    return back()->with('success', '✅ Transaksi BERHASIL (Confirmed by DANA)');
-                } elseif (in_array($status, ['01', '02', '03'])) {
-                    return back()->with('error', '⏳ Transaksi masih PENDING di sistem DANA.');
-                } else {
+                    return back()->with('success', '✅ Transaksi BERHASIL (Terkonfirmasi). Saldo pelanggan telah masuk.');
+                } 
+                // 01, 02, 03 - Pending
+                elseif (in_array($status, ['01', '02', '03'])) {
+                    return back()->with('warning', '⏳ Transaksi masih PENDING di sistem DANA.');
+                } 
+                // 04, 05, 06, 07 - Failed/Refunded/Not Found
+                elseif (in_array($status, ['04', '05', '06', '07'])) {
+                    // TRANSAKSI GAGAL -> KEMBALIKAN SALDO USER SANCAKA
                     DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'FAILED']);
-                    return back()->with('error', '❌ Transaksi GAGAL: ' . ($result['transactionStatusDesc'] ?? 'Failed'));
+                    DB::table('Pengguna')->where('id_pengguna', $trx->affiliate_id)->increment('saldo', $trx->amount);
+
+                    $desc = $result['transactionStatusDesc'] ?? 'Transaksi Gagal';
+                    return back()->with('error', "❌ Transaksi DANA GAGAL ($desc). Saldo Rp " . number_format($trx->amount, 0, ',', '.') . " telah dikembalikan.");
                 }
-            } elseif ($resCode == '4043901') {
-                DB::table('dana_transactions')->where('id', $trx->id)->update([
-                    'status' => 'FAILED',
-                    'retry_count' => 5
-                ]);
-                return back()->with('error', '❌ Transaksi Tidak Ditemukan di DANA (Silakan coba Topup ulang).');
+            } 
+            // Handle: 4043901 - Transaction Not Found (Transaksi Kadaluarsa/Tidak Terdaftar)
+            elseif ($resCode === '4043901') {
+                DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'FAILED']);
+                DB::table('Pengguna')->where('id_pengguna', $trx->affiliate_id)->increment('saldo', $trx->amount);
+                return back()->with('error', '❌ Transaksi tidak ditemukan di DANA. Saldo telah dikembalikan.');
+            } 
+            // Handle Error Lainnya (Too Many Request, Internal Server Error, dll) -> Biarkan PENDING
+            else {
+                $errMsg = $result['responseMessage'] ?? 'Unknown Error';
+                return back()->with('warning', "⚠️ Gagal mengecek status ke DANA: [$resCode] $errMsg. (Status tetap Pending)");
             }
 
-            return back()->with('error', 'Gagal cek status: ' . ($result['responseMessage'] ?? 'Unknown Error'));
-
         } catch (\Exception $e) {
-            Log::error('[DANA INQUIRY STATUS] System Error', ['msg' => $e->getMessage()]);
-            return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+            Log::error('[DANA TOPUP STATUS] System Error', ['msg' => $e->getMessage()]);
+            return back()->with('error', 'Sistem Error saat mengecek status: ' . $e->getMessage());
         }
     }
 
