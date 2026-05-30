@@ -339,11 +339,18 @@ class TopupDanaController extends Controller
             $codeCheck = trim((string)($result['responseCode'] ?? '500'));
 
             if ($codeCheck === '2003800') {
+                // AMBIL REFERENCE NUMBER DARI DANA
+                $danaRef = $result['referenceNo'] ?? null; 
+
+                // UPDATE STATUS DAN SIMPAN DANA REF KE DATABASE
                 DB::table('dana_transaction_topup')->where('reference_id', $merchantRef)->update([
                     'status' => 'SUCCESS',
+                    'dana_reference' => $danaRef,
+                    'response_payload' => json_encode($result), // Simpan seluruh respons agar bisa dicek detailnya
                     'updated_at' => now()
                 ]);
-                Log::info("LOG LOG: SUCCESS! Saldo DANA berhasil masuk ke nomor {$targetPhone}");
+
+                Log::info("LOG LOG: SUCCESS! Saldo DANA berhasil masuk. DANA Ref: " . $danaRef);
                 return ['success' => true, 'message' => 'Success'];
             } else {
                 $statusUpdate = in_array($codeCheck, ['504', '4293800', '2023800']) ? 'PENDING_DANA' : 'FAILED_DANA';

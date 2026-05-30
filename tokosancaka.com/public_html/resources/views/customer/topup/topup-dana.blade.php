@@ -306,6 +306,10 @@
                     <span class="font-semibold">Metode Bayar:</span>
                     <span id="modMethod" class="text-gray-900"></span>
                 </div>
+                <div class="flex justify-between border-b pb-2">
+                    <span class="font-semibold">DANA Ref:</span>
+                    <span id="modDanaRef" class="font-mono text-gray-900"></span>
+                </div>
                 <div class="flex justify-between">
                     <span class="font-semibold">Status DANA:</span>
                     <span id="modStatus" class="font-bold"></span>
@@ -379,6 +383,7 @@
             $('#modPhone').text(phone);
             $('#modAmount').text(amount);
             $('#modMethod').text(method);
+            $('#modDanaRef').text(danaRef || '-');
             
             let statusColor = status === 'SUCCESS' ? 'text-green-600' : (status.includes('FAIL') ? 'text-red-600' : 'text-yellow-600');
             $('#modStatus').text(status).removeClass('text-green-600 text-red-600 text-yellow-600').addClass(statusColor);
