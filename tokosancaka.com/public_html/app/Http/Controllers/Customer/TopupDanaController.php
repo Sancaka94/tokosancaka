@@ -54,8 +54,8 @@ class TopupDanaController extends Controller
             $danaNumber = $this->normalizePhone($validated['dana_number']);
             $invoiceNumber = 'DANATOPUP-' . strtoupper(Str::random(10));
             $paymentMethod = strtoupper($validated['payment_method']);
-            $signature = $this->generateSignature($stringToSign);
-            $accessTokenB2B = $this->danaSignature->getAccessToken();
+            // $signature = $this->generateSignature($stringToSign);
+            // $accessTokenB2B = $this->danaSignature->getAccessToken();
 
             // =========================================================================
             // 1. LOGIKA POTONG SALDO (DI-MIRROR 100% DARI CUSTOMERTOPUP)
@@ -316,11 +316,13 @@ class TopupDanaController extends Controller
             ]
         ];
 
-        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody   = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
 
         try {
-            // PERBAIKAN: Mengirim 4 argumen sesuai yang diminta oleh DanaSignatureService
-            $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+            // Gunakan fungsi internal
+            $signature = $this->generateSignature($stringToSign);
             $accessTokenB2B = $this->danaSignature->getAccessToken();
 
             $headers = [
@@ -658,11 +660,13 @@ class TopupDanaController extends Controller
             "serviceCode"                => "38" // Wajib "38" untuk Top Up sesuai dokumen
         ];
 
-        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody   = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
 
         try {
-            // 2. Generate Signature & Tembak API
-            $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+            // Gunakan fungsi internal
+            $signature = $this->generateSignature($stringToSign);
             $accessTokenB2B = $this->danaSignature->getAccessToken();
 
             $headers = [
