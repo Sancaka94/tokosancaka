@@ -236,8 +236,8 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                                    {{-- Tombol Detail --}}
-                                    <button onclick="showDetail('{{ $trx->reference_id }}', '{{ $trx->target_phone }}', '{{ number_format($trx->amount, 0, ',', '.') }}', '{{ $trx->status }}', '{{ $trx->payment_method }}')" 
+                                    {{-- Tombol Detail (DIPERBAIKI: Tambahan parameter 6 untuk danaRef) --}}
+                                    <button onclick="showDetail('{{ $trx->reference_id }}', '{{ $trx->target_phone }}', '{{ number_format($trx->amount, 0, ',', '.') }}', '{{ $trx->status }}', '{{ $trx->payment_method }}', '{{ $trx->dana_ref ?? '-' }}')" 
                                         class="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-2 rounded-lg transition" title="Detail Transaksi">
                                         <i class="fas fa-eye"></i>
                                     </button>
@@ -377,13 +377,13 @@
             }
         }
 
-        // Modal Detail Logic
-        function showDetail(inv, phone, amount, status, method) {
+        // Modal Detail Logic (DIPERBAIKI: Menambahkan parameter danaRef)
+        function showDetail(inv, phone, amount, status, method, danaRef) {
             $('#modInv').text(inv);
             $('#modPhone').text(phone);
             $('#modAmount').text(amount);
             $('#modMethod').text(method);
-            $('#modDanaRef').text(danaRef || '-');
+            $('#modDanaRef').text(danaRef || '-'); // Sekarang danaRef akan terdefinisi dengan aman
             
             let statusColor = status === 'SUCCESS' ? 'text-green-600' : (status.includes('FAIL') ? 'text-red-600' : 'text-yellow-600');
             $('#modStatus').text(status).removeClass('text-green-600 text-red-600 text-yellow-600').addClass(statusColor);
