@@ -1403,8 +1403,8 @@ Route::delete('/admin/dana/bulk-destroy', [TopUpController::class, 'bulkDestroyT
 */
 Route::prefix('customer')->name('customer.')->middleware(['auth'])->group(function () {
     
-    Route::get('/topup-dana', [TopupDanaController::class, 'create'])->name('topupdana.create');
-    Route::post('/topup-dana', [TopupDanaController::class, 'store'])->name('topupdana.store');
+    Route::get('/topup-dana', [TopupDanaController::class, 'create'])->name('customer.topupdana.create');
+    Route::post('/topup-dana', [TopupDanaController::class, 'store'])->name('customer.topupdana.store');
     
     // Rute Halaman Sukses (Kembalian dari DOKU/Tripay setelah bayar)
     Route::get('/topup-dana/success/{invoice?}', function($invoice = null) {
