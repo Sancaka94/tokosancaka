@@ -103,6 +103,13 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200">
                         @forelse($transactions as $trx)
+                            {{-- Bedah JSON Response Payload untuk data Modal --}}
+                            @php
+                                $payload = json_decode($trx->response_payload, true);
+                                $danaRef = $payload['referenceNo'] ?? '-';
+                                $trxDate = $payload['transactionDate'] ?? \Carbon\Carbon::parse($trx->created_at)->format('Y-m-d\TH:i:sP');
+                            @endphp
+                            
                             <tr class="hover:bg-gray-50">
                                 <td class="px-6 py-4 text-sm text-gray-700">
                                     {{ \Carbon\Carbon::parse($trx->created_at)->format('d M Y, H:i') }}
@@ -129,23 +136,29 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 flex justify-center space-x-2">
-                                    {{-- TOMBOL CEK STATUS --}}
+                                    
+                                    {{-- TOMBOL CEK DETAIL (Selalu Muncul) --}}
+                                    <button type="button" onclick="openDetailModal('{{ $trx->reference_no }}', '{{ $danaRef }}', '{{ $trx->phone }}', 'Rp {{ number_format($trx->amount, 0, ',', '.') }}', '{{ $trxDate }}', '{{ $trx->status }}')" class="text-white bg-teal-500 hover:bg-teal-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Cek Detail">
+                                        <i class="fas fa-info-circle mr-1"></i> Detail
+                                    </button>
+
+                                    {{-- TOMBOL CEK STATUS DARI API (Hanya muncul jika PENDING) --}}
                                     @if($trx->status === 'PENDING')
                                         <form action="{{ route('customer.dana.check_topup_status') }}" method="POST" onsubmit="return confirm('Cek status transaksi ini ke API DANA?');">
                                             @csrf
                                             <input type="hidden" name="reference_no" value="{{ $trx->reference_no }}">
                                             <input type="hidden" name="affiliate_id" value="{{ $trx->affiliate_id }}">
-                                            <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm">
+                                            <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Cek Status API">
                                                 <i class="fas fa-sync-alt mr-1"></i> Cek
                                             </button>
                                         </form>
                                     @endif
                                     
-                                    {{-- TOMBOL HAPUS (CRUD) --}}
+                                    {{-- TOMBOL HAPUS (CRUD) (Selalu Muncul) --}}
                                     <form action="{{ route('customer.dana.destroy_topup', $trx->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus riwayat transaksi ini?');">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm">
+                                        <button type="submit" class="text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Hapus Riwayat">
                                             <i class="fas fa-trash-alt"></i>
                                         </button>
                                     </form>
@@ -172,4 +185,91 @@
         </div>
     </div>
 </div>
+
+<div id="detailModal" class="fixed inset-0 z-[99] hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" aria-hidden="true" onclick="closeDetailModal()"></div>
+
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+        <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div class="sm:flex sm:items-start">
+                    <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-teal-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <i class="fas fa-receipt text-teal-600"></i>
+                    </div>
+                    <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                        <h3 class="text-xl leading-6 font-bold text-gray-900" id="modal-title">Detail Struk Top Up</h3>
+                        <div class="mt-5 space-y-3">
+                            <div class="flex justify-between border-b border-gray-100 pb-2">
+                                <span class="text-sm text-gray-500">Status</span>
+                                <span class="text-sm font-bold" id="modal-status"></span>
+                            </div>
+                            <div class="flex justify-between border-b border-gray-100 pb-2">
+                                <span class="text-sm text-gray-500">No. Ref Sancaka</span>
+                                <span class="text-sm font-bold text-gray-800" id="modal-ref-sancaka"></span>
+                            </div>
+                            <div class="flex justify-between border-b border-gray-100 pb-2">
+                                <span class="text-sm text-gray-500">No. Ref DANA</span>
+                                <span class="text-sm font-bold text-gray-800" id="modal-ref-dana"></span>
+                            </div>
+                            <div class="flex justify-between border-b border-gray-100 pb-2">
+                                <span class="text-sm text-gray-500">No. Pelanggan</span>
+                                <span class="text-sm font-bold text-gray-800" id="modal-phone"></span>
+                            </div>
+                            <div class="flex justify-between border-b border-gray-100 pb-2">
+                                <span class="text-sm text-gray-500">Nominal Top Up</span>
+                                <span class="text-sm font-bold text-green-600" id="modal-amount"></span>
+                            </div>
+                            <div class="flex justify-between pb-2">
+                                <span class="text-sm text-gray-500">Waktu Transaksi</span>
+                                <span class="text-sm font-bold text-gray-800" id="modal-date"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-200">
+                <button type="button" onclick="closeDetailModal()" class="w-full inline-flex justify-center rounded-lg border border-gray-300 shadow-sm px-5 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 sm:ml-3 sm:w-auto sm:text-sm transition-colors">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+    // Fungsi untuk membuka Modal dan memasukkan data
+    function openDetailModal(refSancaka, refDana, phone, amount, date, status) {
+        document.getElementById('modal-ref-sancaka').innerText = refSancaka;
+        document.getElementById('modal-ref-dana').innerText = refDana;
+        document.getElementById('modal-phone').innerText = phone;
+        document.getElementById('modal-amount').innerText = amount;
+        document.getElementById('modal-date').innerText = date;
+        
+        // Atur warna dan icon status
+        const statusEl = document.getElementById('modal-status');
+        if(status === 'SUCCESS') {
+            statusEl.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Sukses';
+            statusEl.className = 'text-sm font-bold text-green-600';
+        } else if(status === 'PENDING') {
+            statusEl.innerHTML = '<i class="fas fa-clock mr-1"></i> Pending';
+            statusEl.className = 'text-sm font-bold text-yellow-600';
+        } else {
+            statusEl.innerHTML = '<i class="fas fa-times-circle mr-1"></i> Gagal';
+            statusEl.className = 'text-sm font-bold text-red-600';
+        }
+
+        // Tampilkan Modal
+        document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    // Fungsi untuk menutup Modal
+    function closeDetailModal() {
+        document.getElementById('detailModal').classList.add('hidden');
+    }
+</script>
+@endpush
 @endsection
