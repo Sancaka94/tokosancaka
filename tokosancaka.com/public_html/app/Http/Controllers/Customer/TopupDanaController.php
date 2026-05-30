@@ -28,9 +28,6 @@ class TopupDanaController extends Controller
         return view('customer.topup.topup-dana');
     }
 
-    /**
-     * Memproses pesanan dari Frontend dan membuat link bayar Tripay/DOKU
-     */
     public function store(Request $request, DokuJokulService $dokuJokulService)
     {
         Log::info('LOG LOG: ========== [DEBUG DIRECT TOPUP DANA SUBMIT] ==========');
@@ -49,8 +46,54 @@ class TopupDanaController extends Controller
             $amount = (int) $validated['amount'];
             $danaNumber = $this->normalizePhone($validated['dana_number']);
             $invoiceNumber = 'DANATOPUP-' . strtoupper(Str::random(10));
+            $paymentMethod = strtoupper($validated['payment_method']);
 
-            // Simpan ke database khusus dana_transaction_topup dengan status PENDING
+            // ====================================================================
+            // LOGIKA 1: PEMBAYARAN VIA POTONG SALDO (TANPA WEBHOOK)
+            // ====================================================================
+            if (in_array($paymentMethod, ['SALDO', 'POTONG SALDO', 'POTONG_SALDO'])) {
+                
+                // Cek Saldo User
+                if ($user->saldo < $amount) {
+                    DB::rollBack();
+                    return back()->with('error', 'Saldo Anda tidak mencukupi. Sisa saldo: Rp ' . number_format($user->saldo, 0, ',', '.'))->withInput();
+                }
+
+                // Catat ke DB (Status PROCESSING)
+                DB::table('dana_transaction_topup')->insert([
+                    'user_id'        => $user->id_pengguna,
+                    'reference_id'   => $invoiceNumber,
+                    'target_phone'   => $danaNumber,
+                    'amount'         => $amount,
+                    'payment_method' => $paymentMethod,
+                    'status'         => 'PROCESSING',
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
+                ]);
+
+                // Potong Saldo
+                DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $amount);
+
+                // Langsung Tembak API DANA
+                $danaResult = $this->executeDanaB2B($invoiceNumber, $danaNumber, $amount);
+
+                if ($danaResult['success']) {
+                    DB::commit();
+                    return redirect()->route('customer.topupdana.success', ['invoice' => $invoiceNumber])
+                                     ->with('success', 'Top Up DANA berhasil menggunakan Saldo Sancaka!');
+                } else {
+                    // JIKA GAGAL: Refund saldo kembali ke user (Auto-Refund)
+                    DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->increment('saldo', $amount);
+                    DB::table('dana_transaction_topup')->where('reference_id', $invoiceNumber)->update(['status' => 'FAILED_DANA']);
+                    DB::commit();
+                    return back()->with('error', 'Gagal memproses ke DANA: ' . $danaResult['message'])->withInput();
+                }
+            }
+
+            // ====================================================================
+            // LOGIKA 2: PEMBAYARAN VIA PAYMENT GATEWAY (TRIPAY/DOKU)
+            // ====================================================================
+            
             DB::table('dana_transaction_topup')->insert([
                 'user_id'        => $user->id_pengguna,
                 'reference_id'   => $invoiceNumber,
@@ -70,10 +113,8 @@ class TopupDanaController extends Controller
                 'phone' => $user->no_wa ?? '081234567890'
             ];
 
-            // PROSES PEMBAYARAN VIA DOKU
             if ($validated['payment_method'] === 'DOKU_JOKUL') {
                 Log::info('LOG LOG: Memulai Generate DOKU Jokul untuk ' . $invoiceNumber);
-
                 $lineItems = [['name' => 'Top Up DANA ' . $danaNumber, 'price' => $amount, 'quantity' => 1]];
                 $successRedirectUrl = route('customer.topupdana.success', ['invoice' => $invoiceNumber]);
                 
@@ -84,10 +125,8 @@ class TopupDanaController extends Controller
                 if (empty($paymentUrl)) throw new Exception('Gagal membuat link DOKU.');
                 return redirect()->away($paymentUrl);
             } 
-            // PROSES PEMBAYARAN VIA TRIPAY
             else {
                 Log::info('LOG LOG: Memulai Generate Tripay untuk ' . $invoiceNumber);
-
                 $apiKey       = config('tripay.api_key');
                 $privateKey   = config('tripay.private_key');
                 $merchantCode = config('tripay.merchant_code');
@@ -122,6 +161,75 @@ class TopupDanaController extends Controller
             DB::rollBack();
             Log::error('LOG LOG: Gagal memproses Direct Top Up DANA: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    /**
+     * Helper Khusus Eksekusi API DANA B2B
+     */
+    private function executeDanaB2B($merchantRef, $targetPhone, $amount)
+    {
+        Log::info("LOG LOG: Memulai tembak API DANA untuk Ref: $merchantRef ke nomor: $targetPhone");
+
+        $merchantDepositAccount = '20070000103315239788'; 
+        $idToko                 = '216660001394664338723';
+        $timestamp              = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $partnerRef             = "B2BTUP" . time() . Str::random(4);
+        $amountStr              = number_format((float)$amount, 2, '.', '');
+        $path                   = '/rest/v1.0/emoney/topup';
+
+        $body = [
+            "partnerReferenceNo" => $partnerRef,
+            "customerNumber"     => $targetPhone,
+            "amount" => ["value" => $amountStr, "currency" => "IDR"],
+            "feeAmount" => ["value" => "0.00", "currency" => "IDR"],
+            "transactionDate" => $timestamp,
+            "categoryId"      => "6",
+            "additionalInfo"  => [
+                "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
+                "chargeTarget" => "MERCHANT",
+                "merchantId"   => $idToko,
+                "accountId"    => $merchantDepositAccount
+            ]
+        ];
+
+        $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody   = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
+        try {
+            $signature = $this->danaSignature->generateSignature($stringToSign);
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'CHANNEL-ID'    => '95221',
+                'ORIGIN'        => config('services.dana.origin'),
+            ];
+
+            $response = Http::withHeaders($headers)
+                ->timeout(60)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            $codeCheck = trim((string)($result['responseCode'] ?? '500'));
+
+            if ($codeCheck === '2003800') {
+                DB::table('dana_transaction_topup')->where('reference_id', $merchantRef)->update(['status' => 'SUCCESS', 'updated_at' => now()]);
+                return ['success' => true, 'message' => 'Success'];
+            } else {
+                return ['success' => false, 'message' => $result['responseMessage'] ?? 'Unknown Error DANA'];
+            }
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: Exception saat tembak API DANA: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Terjadi kendala pada jaringan sistem ke DANA'];
         }
     }
 

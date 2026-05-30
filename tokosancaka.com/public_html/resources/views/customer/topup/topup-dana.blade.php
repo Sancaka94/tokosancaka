@@ -91,16 +91,41 @@
                         </div>
                     </div>
 
-                    {{-- 3. PILIH METODE PEMBAYARAN --}}
-                    <div class="space-y-8 mt-6">
+                    {{-- INFORMASI SALDO USER --}}
+                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-5 mb-6 flex items-center justify-between shadow-sm mt-4">
                         <div>
-                            <h5 class="text-sm font-extrabold text-gray-400 uppercase tracking-wider mb-4 pl-3 border-l-4 border-gray-400">Payment Gateway</h5>
+                            <span class="block text-sm font-bold text-blue-800 mb-1">Saldo Sancaka Anda saat ini</span>
+                            <span class="block text-3xl font-black text-blue-700">Rp {{ number_format(auth()->user()->saldo ?? 0, 0, ',', '.') }}</span>
+                        </div>
+                        <div class="h-14 w-14 bg-white rounded-full flex items-center justify-center shadow-md text-blue-600">
+                            <i class="fas fa-wallet text-2xl"></i>
+                        </div>
+                    </div>
+
+                    {{-- 3. PILIH METODE PEMBAYARAN --}}
+                    <div class="space-y-8 mt-4">
+                        <div>
+                            <h5 class="text-sm font-extrabold text-gray-400 uppercase tracking-wider mb-4 pl-3 border-l-4 border-gray-400">Pilih Metode</h5>
                             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
+                                {{-- POTONG SALDO (INTERNAL) --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="POTONG SALDO" class="peer sr-only" required>
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-green-400 peer-checked:border-green-600 peer-checked:bg-green-50 peer-checked:shadow-md transition-all flex flex-col items-center justify-center text-center">
+                                        <div class="h-12 w-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3">
+                                            <i class="fas fa-wallet text-2xl"></i>
+                                        </div>
+                                        <span class="text-sm font-bold text-gray-800">Potong Saldo</span>
+                                        <div class="absolute top-3 right-3 text-green-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
 
                                 {{-- DOKU --}}
                                 <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="DOKU_JOKUL" class="peer sr-only" required>
-                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center justify-center text-center">
                                         <img src="https://tokosancaka.com/public/storage/logo/doku-ewallet.png" class="h-12 object-contain mb-3 rounded-lg shadow-sm p-1">
                                         <span class="text-sm font-bold text-gray-800">DOKU</span>
                                         <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
@@ -112,8 +137,8 @@
                                 {{-- TRIPAY (Contoh QRIS) --}}
                                 <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="QRIS" class="peer sr-only" required>
-                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
-                                        <span class="text-xl font-black text-blue-800 mb-3">QRIS</span>
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center justify-center text-center">
+                                        <span class="text-xl font-black text-blue-800 mb-3 flex items-center h-12">QRIS</span>
                                         <span class="text-sm font-bold text-gray-800">Tripay (Otomatis)</span>
                                         <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
                                             <i class="fas fa-check-circle text-xl"></i>
