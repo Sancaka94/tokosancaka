@@ -77,7 +77,7 @@ class DanaWebhookController extends Controller
             if ($internalStatus === 'SUCCESS') {
 
                 // Kirim notifikasi pembayaran ke Expo Mobile (Customer & Admin)
-                $this->sendExpoPaymentNotification($orderId);
+                // $this->sendExpoPaymentNotification($orderId);
 
                 // -------------------------------------------------------------
                 // A.1 AKTIVASI TENANT BARU (SEWA-)
@@ -201,7 +201,10 @@ class DanaWebhookController extends Controller
 
                                 if ($affected) {
                                     Log::info("💰 SALDO POS BERTAMBAH: User ID {$transactionPos->affiliate_id} +{$transactionPos->amount}");
-                                } else {
+                                
+                                    $this->sendExpoPaymentNotification($orderId);
+                                
+                                    } else {
                                     Log::error("❌ Gagal Update Saldo User ID {$transactionPos->affiliate_id} di DB Second.");
                                 }
                             } else {
@@ -317,6 +320,9 @@ class DanaWebhookController extends Controller
 
                                 $percetakanDB->table('orders')->where('id', $orderMarketplace->id)->update($updateData);
                                 Log::info("✅ Selesai memproses Webhook untuk $orderId");
+
+                                $this->sendExpoPaymentNotification($orderId);
+
                             }
                         } catch (\Exception $e) {
                             Log::error("❌ CRITICAL ERROR WEBHOOK MARKETPLACE:", ['msg' => $e->getMessage()]);
@@ -367,6 +373,8 @@ class DanaWebhookController extends Controller
 
                         Log::info("✅ KODE LISENSI DIBUAT: $licenseCode untuk paket $newPackage");
 
+                        $this->sendExpoPaymentNotification($orderId);
+
                         if ($tenantSec && !empty($tenantSec->whatsapp)) {
                             $phone = preg_replace('/[^0-9]/', '', $tenantSec->whatsapp);
                             if (str_starts_with($phone, '62')) $phone = '0' . substr($phone, 2);
@@ -403,19 +411,27 @@ class DanaWebhookController extends Controller
                         $danaTrx = DB::table('dana_transactions')->where('reference_no', $orderId)->first();
                         
                         if ($danaTrx) {
-                            DB::table('dana_transactions')->where('id', $danaTrx->id)->update([
-                                'status' => 'SUCCESS', 
-                                'updated_at' => now()
-                            ]);
-                            Log::info("✅ LOG LOG: Webhook Disbursement DANA $orderId SUKSES.");
+                            // CEK IDEMPOTENCY: Pastikan belum sukses sebelumnya
+                            if ($danaTrx->status !== 'SUCCESS') {
+                                DB::table('dana_transactions')->where('id', $danaTrx->id)->update([
+                                    'status' => 'SUCCESS', 
+                                    'updated_at' => now()
+                                ]);
+                                Log::info("✅ LOG LOG: Webhook Disbursement DANA $orderId SUKSES.");
 
-                            // ---> [TAMBAHAN KIRIM EMAIL DISBURSEMENT] <---
-                            $user = DB::table('Pengguna')->where('id_pengguna', $danaTrx->affiliate_id)->first();
-                            if ($user) {
-                                $jenis = Str::startsWith($orderId, 'TRF') ? 'Pencairan Dana (Transfer Bank)' : 'Pencairan Dana (Top Up)';
-                                $this->_sendEmailNotification($user->email, $user->nama_lengkap, $orderId, $jenis, $danaTrx->amount);
+                                $this->sendExpoPaymentNotification($orderId);
+
+                                $user = DB::table('Pengguna')->where('id_pengguna', $danaTrx->affiliate_id)->first();
+                                if ($user) {
+                                    $jenis = Str::startsWith($orderId, 'TRF') ? 'Pencairan Dana (Transfer Bank)' : 'Pencairan Dana (Top Up)';
+                                    $this->_sendEmailNotification($user->email, $user->nama_lengkap, $orderId, $jenis, $danaTrx->amount);
+                                }
+
+                                // Panggil notif HP di sini agar tidak dobel
+                                $this->sendExpoPaymentNotification($orderId);
+                            } else {
+                                Log::info("⚠️ Transaksi Disbursement $orderId sudah diproses sebelumnya. Skip email & notif.");
                             }
-
                         } else {
                             Log::warning("⚠️ Order $orderId (DANA Disbursement) tidak ditemukan di tabel dana_transactions.");
                         }
@@ -427,15 +443,23 @@ class DanaWebhookController extends Controller
                             ->first();
 
                         if ($trxPpob) {
-                            DB::table('transactionppobiak')->where('id', $trxPpob->id)->update(['status' => 'SUCCESS']);
-                            Log::info("LOG LOG: Webhook PPOB $orderId SUKSES.");
+                            // CEK IDEMPOTENCY: Pastikan belum sukses sebelumnya
+                            if ($trxPpob->status !== 'SUCCESS') {
+                                DB::table('transactionppobiak')->where('id', $trxPpob->id)->update(['status' => 'SUCCESS']);
+                                Log::info("LOG LOG: Webhook PPOB $orderId SUKSES.");
 
-                            // ---> [TAMBAHAN KIRIM EMAIL PPOB] <---
-                            $user = DB::table('Pengguna')->where('id_pengguna', $trxPpob->user_id)->first();
-                            if ($user) {
-                                $this->_sendEmailNotification($user->email, $user->nama_lengkap, $orderId, 'Pembayaran Produk Digital (PPOB)', $trxPpob->price ?? $amountValue);
+                                $this->sendExpoPaymentNotification($orderId);
+
+                                $user = DB::table('Pengguna')->where('id_pengguna', $trxPpob->user_id)->first();
+                                if ($user) {
+                                    $this->_sendEmailNotification($user->email, $user->nama_lengkap, $orderId, 'Pembayaran Produk Digital (PPOB)', $trxPpob->price ?? $amountValue);
+                                }
+
+                                // Panggil notif HP di sini agar tidak dobel
+                                $this->sendExpoPaymentNotification($orderId);
+                            } else {
+                                Log::info("⚠️ Transaksi PPOB $orderId sudah diproses sebelumnya. Skip email & notif.");
                             }
-
                         } else {
                             Log::warning("⚠️ Order $orderId tidak dikenali oleh sistem (Tidak ada di DB Utama, TopUp, maupun PPOB).");
                         }
