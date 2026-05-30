@@ -137,24 +137,24 @@
                                 </td>
                                 <td class="px-6 py-4 flex justify-center space-x-2">
                                     
-                                    {{-- TOMBOL CEK DETAIL (Menampilkan Modal) --}}
+                                    {{-- TOMBOL CEK DETAIL (Selalu Muncul) --}}
                                     <button type="button" onclick="openDetailModal('{{ $trx->reference_no }}', '{{ $danaRef }}', '{{ $trx->phone }}', 'Rp {{ number_format($trx->amount, 0, ',', '.') }}', '{{ $trxDate }}', '{{ $trx->status }}')" class="text-white bg-teal-500 hover:bg-teal-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Cek Detail">
-                                        <i class="fas fa-info-circle"></i>
+                                        <i class="fas fa-info-circle mr-1"></i> Detail
                                     </button>
 
-                                    {{-- TOMBOL CEK STATUS DARI API --}}
+                                    {{-- TOMBOL CEK STATUS DARI API (Hanya muncul jika PENDING) --}}
                                     @if($trx->status === 'PENDING')
                                         <form action="{{ route('customer.dana.check_topup_status') }}" method="POST" onsubmit="return confirm('Cek status transaksi ini ke API DANA?');">
                                             @csrf
                                             <input type="hidden" name="reference_no" value="{{ $trx->reference_no }}">
                                             <input type="hidden" name="affiliate_id" value="{{ $trx->affiliate_id }}">
                                             <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Cek Status API">
-                                                <i class="fas fa-sync-alt"></i>
+                                                <i class="fas fa-sync-alt mr-1"></i> Cek
                                             </button>
                                         </form>
                                     @endif
                                     
-                                    {{-- TOMBOL HAPUS (CRUD) --}}
+                                    {{-- TOMBOL HAPUS (Selalu Muncul) --}}
                                     <form action="{{ route('customer.dana.destroy_topup', $trx->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus riwayat transaksi ini?');">
                                         @csrf
                                         @method('DELETE')
