@@ -116,96 +116,122 @@
 
     {{-- BAGIAN BAWAH: TABEL RIWAYAT TRANSAKSI & CRUD --}}
     <div class="max-w-6xl mx-auto">
-        <h3 class="text-2xl font-bold text-gray-800 mb-4">Riwayat Top Up Corporate</h3>
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-2xl font-bold text-gray-800">Riwayat Top Up Corporate</h3>
+            
+            {{-- Tombol Hapus Massal --}}
+            <button type="button" onclick="submitBulkDelete()" id="btnBulkDelete" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-sm transition-colors text-sm flex items-center hidden">
+                <i class="fas fa-trash-alt mr-2"></i> Hapus Terpilih
+            </button>
+        </div>
         
         <div class="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
-            <div class="overflow-x-auto">
-                <table class="w-full whitespace-nowrap">
-                    <thead>
-                        <tr class="bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            <th class="px-6 py-4">Tanggal</th>
-                            <th class="px-6 py-4">Ref. Transaksi</th>
-                            <th class="px-6 py-4 text-center">ID User</th>
-                            <th class="px-6 py-4">No. DANA</th>
-                            <th class="px-6 py-4">Nominal</th>
-                            <th class="px-6 py-4 text-center">Status</th>
-                            <th class="px-6 py-4 text-center">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        @forelse($transactions as $trx)
-                            {{-- Bedah JSON Response Payload --}}
-                            @php
-                                $payload = json_decode($trx->response_payload, true);
-                                $danaRef = $payload['referenceNo'] ?? '-';
-                                $trxDate = $payload['transactionDate'] ?? \Carbon\Carbon::parse($trx->created_at)->format('Y-m-d\TH:i:sP');
-                            @endphp
-                            
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 text-sm text-gray-700">
-                                    {{ \Carbon\Carbon::parse($trx->created_at)->format('d M Y, H:i') }}
-                                </td>
-                                <td class="px-6 py-4 text-sm font-medium text-gray-900">
-                                    {{ $trx->reference_no }}
-                                </td>
-                                <td class="px-6 py-4 text-sm text-center text-gray-700 font-bold">
-                                    {{ $trx->affiliate_id }}
-                                </td>
-                                <td class="px-6 py-4 text-sm text-blue-600 font-medium">
-                                    {{ $trx->phone }}
-                                </td>
-                                <td class="px-6 py-4 text-sm font-bold text-green-600">
-                                    Rp {{ number_format($trx->amount, 0, ',', '.') }}
-                                </td>
-                                <td class="px-6 py-4 text-center">
-                                    @if($trx->status === 'SUCCESS')
-                                        <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-green-100 text-green-800">Sukses</span>
-                                    @elseif($trx->status === 'PENDING')
-                                        <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
-                                    @else
-                                        <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-red-100 text-red-800">Gagal</span>
-                                    @endif
-                                </td>
-                                <td class="px-6 py-4 flex justify-center space-x-2">
-                                    
-                                    {{-- TOMBOL CEK DETAIL (Selalu Muncul) --}}
-                                    <button type="button" onclick="openDetailModal('{{ $trx->reference_no }}', '{{ $danaRef }}', '{{ $trx->phone }}', 'Rp {{ number_format($trx->amount, 0, ',', '.') }}', '{{ $trxDate }}', '{{ $trx->status }}')" class="text-white bg-teal-500 hover:bg-teal-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Cek Detail">
-                                        <i class="fas fa-info-circle mr-1"></i> Detail
-                                    </button>
+            {{-- FORM UNTUK BULK DELETE --}}
+            <form id="bulkDeleteForm" action="{{ route('customer.dana.bulk_destroy_transaction') }}" method="POST">
+                @csrf
+                @method('DELETE')
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                {{-- Checkbox Pilih Semua --}}
+                                <th class="px-6 py-4 text-center w-10">
+                                    <input type="checkbox" id="selectAll" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 cursor-pointer">
+                                </th>
+                                <th class="px-6 py-4">Tanggal</th>
+                                <th class="px-6 py-4">Ref. Transaksi</th>
+                                <th class="px-6 py-4 text-center">ID User</th>
+                                <th class="px-6 py-4">No. DANA</th>
+                                <th class="px-6 py-4">Nominal</th>
+                                <th class="px-6 py-4 text-center">Status</th>
+                                <th class="px-6 py-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            @forelse($transactions as $trx)
+                                @php
+                                    $payload = json_decode($trx->response_payload, true);
+                                    $danaRef = $payload['referenceNo'] ?? '-';
+                                    $trxDate = $payload['transactionDate'] ?? \Carbon\Carbon::parse($trx->created_at)->format('Y-m-d\TH:i:sP');
+                                @endphp
+                                
+                                <tr class="hover:bg-gray-50">
+                                    {{-- Checkbox Satuan --}}
+                                    <td class="px-6 py-4 text-center">
+                                        <input type="checkbox" name="ids[]" value="{{ $trx->id }}" class="rowCheckbox rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 cursor-pointer">
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-gray-700">
+                                        {{ \Carbon\Carbon::parse($trx->created_at)->format('d M Y, H:i') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm font-medium text-gray-900">
+                                        {{ $trx->reference_no }}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-center text-gray-700 font-bold">
+                                        {{ $trx->affiliate_id }}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm text-blue-600 font-medium">
+                                        {{ $trx->phone }}
+                                    </td>
+                                    <td class="px-6 py-4 text-sm font-bold text-green-600">
+                                        Rp {{ number_format($trx->amount, 0, ',', '.') }}
+                                    </td>
+                                    <td class="px-6 py-4 text-center">
+                                        @if($trx->status === 'SUCCESS')
+                                            <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-green-100 text-green-800">Sukses</span>
+                                        @elseif($trx->status === 'PENDING')
+                                            <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Pending</span>
+                                        @else
+                                            <span class="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-red-100 text-red-800">Gagal</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-6 py-4 flex justify-center space-x-2">
+                                        
+                                        {{-- TOMBOL CEK DETAIL (Selalu Muncul) --}}
+                                        <button type="button" onclick="openDetailModal('{{ $trx->reference_no }}', '{{ $danaRef }}', '{{ $trx->phone }}', 'Rp {{ number_format($trx->amount, 0, ',', '.') }}', '{{ $trxDate }}', '{{ $trx->status }}')" class="text-white bg-teal-500 hover:bg-teal-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Cek Detail">
+                                            <i class="fas fa-info-circle"></i> Detail
+                                        </button>
 
-                                    {{-- TOMBOL CEK STATUS DARI API --}}
-                                    @if($trx->status === 'PENDING')
-                                        <form action="{{ route('customer.dana.check_topup_status') }}" method="POST" onsubmit="return confirm('Cek status transaksi ini ke API DANA?');">
-                                            @csrf
-                                            <input type="hidden" name="reference_no" value="{{ $trx->reference_no }}">
-                                            <input type="hidden" name="affiliate_id" value="{{ $trx->affiliate_id }}">
-                                            <button type="submit" class="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Cek Status API">
-                                                <i class="fas fa-sync-alt mr-1"></i> Cek
+                                        {{-- TOMBOL CEK STATUS DARI API --}}
+                                        @if($trx->status === 'PENDING')
+                                            <button type="button" onclick="event.preventDefault(); if(confirm('Cek status transaksi ini ke API DANA?')) document.getElementById('cekStatusForm-{{ $trx->id }}').submit();" class="text-white bg-blue-500 hover:bg-blue-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Cek Status API">
+                                                <i class="fas fa-sync-alt"></i> Cek
                                             </button>
-                                        </form>
-                                    @endif
-                                    
-                                    {{-- TOMBOL HAPUS (CRUD) --}}
-                                    <form action="{{ route('customer.dana.destroy_topup', $trx->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus riwayat transaksi ini?');">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Hapus Riwayat">
+                                        @endif
+                                        
+                                        {{-- TOMBOL HAPUS (CRUD) --}}
+                                        <button type="button" onclick="event.preventDefault(); if(confirm('Yakin ingin menghapus riwayat transaksi ini?')) document.getElementById('hapusForm-{{ $trx->id }}').submit();" class="text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm" title="Hapus Riwayat">
                                             <i class="fas fa-trash-alt"></i>
                                         </button>
-                                    </form>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="px-6 py-10 text-center text-gray-500">
-                                    <i class="fas fa-box-open text-4xl mb-3 text-gray-300 block"></i>
-                                    Belum ada riwayat top up DANA Corporate.
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="8" class="px-6 py-10 text-center text-gray-500">
+                                        <i class="fas fa-box-open text-4xl mb-3 text-gray-300 block"></i>
+                                        Belum ada riwayat top up DANA Corporate.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </form>
+
+            {{-- Form Tersembunyi untuk Cek & Hapus Satuan (Mencegah form bentrok dengan form Bulk Delete) --}}
+            @foreach($transactions as $trx)
+                @if($trx->status === 'PENDING')
+                    <form id="cekStatusForm-{{ $trx->id }}" action="{{ route('customer.dana.check_topup_status') }}" method="POST" class="hidden">
+                        @csrf
+                        <input type="hidden" name="reference_no" value="{{ $trx->reference_no }}">
+                        <input type="hidden" name="affiliate_id" value="{{ $trx->affiliate_id }}">
+                    </form>
+                @endif
+                <form id="hapusForm-{{ $trx->id }}" action="{{ route('customer.dana.destroy_topup', $trx->id) }}" method="POST" class="hidden">
+                    @csrf
+                    @method('DELETE')
+                </form>
+            @endforeach
             
             {{-- Navigasi Pagination --}}
             @if(isset($transactions) && $transactions->hasPages())
@@ -316,7 +342,43 @@
                 $('#phone').val(cleanPhone);
             }
         });
+
+        // ==============================================================
+        // SCRIPT UNTUK CHECKBOX PISAH & HAPUS MASSAL
+        // ==============================================================
+        const selectAll = $('#selectAll');
+        const rowCheckboxes = $('.rowCheckbox');
+        const btnBulkDelete = $('#btnBulkDelete');
+
+        function toggleBulkDeleteButton() {
+            if ($('.rowCheckbox:checked').length > 0) {
+                btnBulkDelete.removeClass('hidden');
+            } else {
+                btnBulkDelete.addClass('hidden');
+            }
+        }
+
+        selectAll.on('change', function() {
+            rowCheckboxes.prop('checked', $(this).prop('checked'));
+            toggleBulkDeleteButton();
+        });
+
+        rowCheckboxes.on('change', function() {
+            if (!$(this).prop('checked')) {
+                selectAll.prop('checked', false);
+            } else if ($('.rowCheckbox:checked').length === rowCheckboxes.length) {
+                selectAll.prop('checked', true);
+            }
+            toggleBulkDeleteButton();
+        });
     });
+
+    // Fungsi Submit Hapus Massal
+    function submitBulkDelete() {
+        if (confirm('Yakin ingin menghapus semua data transaksi yang dipilih? Data yang dihapus tidak bisa dikembalikan.')) {
+            $('#bulkDeleteForm').submit();
+        }
+    }
 
     // Fungsi untuk membuka Modal dan memasukkan data Struk
     function openDetailModal(refSancaka, refDana, phone, amount, date, status) {
