@@ -402,7 +402,7 @@ class TopupDanaController extends Controller
         
         // Asumsi data ini sudah di-parsing sesuai Payment Gateway kamu (Tripay/Doku)
         // Sesuaikan cara pengambilan merchantRef & status dengan format payload Tripay/DOKU kamu
-        $merchantRef = $request->input('reference') ?? $request->input('merchant_ref');
+        $merchantRef = $request->input('merchant_ref') ?? $request->input('reference');
         $status      = strtoupper($request->input('status')); // Contoh: 'PAID' atau 'SUCCESS'
 
         Log::info("LOG LOG: Webhook Info. Ref: $merchantRef, Status: $status");
