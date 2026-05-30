@@ -282,6 +282,11 @@ class TopupDanaController extends Controller
 
                 $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->post($baseUrl, $payload);
                 
+                // TAMBAHKAN INI UNTUK DEBUG
+                if (!$response->successful()) {
+                    Log::error('LOG LOG: Respon Detail Tripay: ' . $response->body());
+                }
+                
                 if ($response->successful() && isset($response->json()['success']) && $response->json()['success'] === true) {
                     $checkoutUrl = $response->json()['data']['checkout_url'];
                     return redirect()->away($checkoutUrl);
