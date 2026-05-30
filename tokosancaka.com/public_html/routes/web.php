@@ -1336,15 +1336,6 @@ Route::prefix('customer')->middleware(['auth'])->group(function () {
     ->name('customer.dana.search_pengguna');
 
 
-    Route::get('/dana/topup-dana', [App\Http\Controllers\Customer\TopupDanaController::class, 'create'])->name('topupdana.create');
-    Route::post('/dana/topup-dana', [App\Http\Controllers\Customer\TopupDanaController::class, 'store'])->name('topupdana.store');
-    
-    // Rute Halaman Sukses (Kembalian dari DOKU/Tripay setelah bayar)
-    Route::get('/topup-dana/success/{invoice?}', function($invoice = null) {
-        // Kamu bisa buat view 'customer.topup.success' sendiri nanti
-        return redirect()->route('customer.topupdana.create')->with('success', 'Pembayaran berhasil! Saldo DANA sedang diproses untuk invoice: ' . $invoice);
-    })->name('topupdana.success');
-
     });
 
 
