@@ -1194,8 +1194,8 @@ public function handleCallback(Request $request)
         // MENGGUNAKAN DATA AKUN MERCHANT DEPOSIT (DISBURSEMENT B2B)
         // Tidak perlu lagi query ke tabel Pengguna untuk mengambil token admin
         // ==============================================================
-        $merchantDepositAccount = '20070000103315239788'; // No Akun Disbursement
-        $idToko = '216660001394664338723'; // ID Toko Sancaka Express
+        $merchantDepositAccount = config('services.dana.merchant_deposit_account'); 
+        $idToko = config('services.dana.id_toko');
 
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path = '/v1.0/emoney/bank-account-inquiry.htm';
@@ -1332,8 +1332,8 @@ public function handleCallback(Request $request)
        // =========================================================
         // SAMAKAN DATA DISBURSEMENT SEPERTI DI INQUIRY
         // =========================================================
-        $merchantDepositAccount = '20070000103315239788'; 
-        $idToko = '216660001394664338723';
+        $merchantDepositAccount = config('services.dana.merchant_deposit_account'); 
+        $idToko = config('services.dana.id_toko');
 
         $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path       = '/v1.0/emoney/transfer-bank.htm';
@@ -1834,9 +1834,10 @@ public function handleCallback(Request $request)
         // 1. CONFIGURATION (SYNC ID)
         // ====================================================================
         // Menggunakan ID Valid (2166...) untuk Header & Body agar sinkron
-        $validId = "216620080014040009735";
+        
         $merchantIdConf = $validId;
-        $partnerIdConf  = "2025081520100641466855"; // Partner ID yang sinkron dengan Merchant ID di atas
+        $validId = config('services.dana.valid_id');
+        $partnerIdConf = config('services.dana.partner_id_conf');
 
         // ====================================================================
         // 2. DATA PREPARATION
@@ -2823,8 +2824,8 @@ public function handleCallback(Request $request)
         // ==============================================================
         // 3. IDENTITAS CORPORATE (DISBURSEMENT B2B)
         // ==============================================================
-        $merchantDepositAccount = '20070000103315239788'; 
-        $idToko = '216660001394664338723';
+        $merchantDepositAccount = config('services.dana.merchant_deposit_account'); 
+        $idToko = config('services.dana.id_toko');
 
         $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $partnerRef = "TUP" . time() . \Illuminate\Support\Str::random(4);

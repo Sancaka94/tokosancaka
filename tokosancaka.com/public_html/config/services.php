@@ -62,6 +62,12 @@ return [
         'redirect_url_oauth'  => env('DANA_REDIRECT_URL_OAUTH'),
         'external_shop_id'    => env('DANA_EXTERNAL_SHOP_ID'),
         'origin'              => env('ORIGIN', 'https://tokosancaka.com'),
+
+        # DANA CORPORATE / B2B CONFIG
+        'merchant_deposit_account' => env('DANA_MERCHANT_DEPOSIT_ACCOUNT'),
+        'id_toko'                  => env('DANA_ID_TOKO'),
+        'valid_id'                 => env('DANA_VALID_ID'),
+        'partner_id_conf'          => env('DANA_PARTNER_ID_CONF'),
         
         'dana_env'            => env('DANA_ENV', 'SANDBOX'),
         
