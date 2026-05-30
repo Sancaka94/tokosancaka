@@ -810,17 +810,12 @@ class TopupDanaController extends Controller
     {
         $ids = $request->input('ids');
         
-        // Jika data yang masuk berupa string, pecah menjadi array
-        if (is_string($ids)) {
-            $ids = explode(',', $ids);
-        }
-        
         if (empty($ids)) {
             return back()->with('error', 'Pilih minimal satu transaksi untuk dihapus.');
         }
 
         try {
-            // PERBAIKAN: Ubah nama tabel menjadi 'dana_transaction_topup'
+            // PERBAIKAN: Di sini letak masalahnya. Pastikan nama tabelnya dana_transaction_topup
             DB::table('dana_transaction_topup')->whereIn('id', $ids)->delete();
             
             return back()->with('success', count($ids) . ' riwayat transaksi berhasil dihapus.');
