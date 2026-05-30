@@ -468,10 +468,18 @@ class DanaWebhookController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'responseCode' => '2005600',
-                'responseMessage' => 'Successful'
-            ])->withHeaders(['X-TIMESTAMP' => $danaTimestamp]);
+            // Format respons sukses universal standar SNAP BI
+            $responseBody = [
+                'responseCode' => '2000000',
+                'responseMessage' => 'Success'
+            ];
+
+            // Wajib mengembalikan/echo header X-PARTNER-ID dan X-EXTERNAL-ID agar DANA tahu kita merespons dengan benar
+            return response()->json($responseBody)->withHeaders([
+                'X-TIMESTAMP'   => $danaTimestamp,
+                'X-PARTNER-ID'  => $request->header('X-PARTNER-ID'),
+                'X-EXTERNAL-ID' => $request->header('X-EXTERNAL-ID'),
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
