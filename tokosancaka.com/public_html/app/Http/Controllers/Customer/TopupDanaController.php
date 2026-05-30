@@ -25,7 +25,13 @@ class TopupDanaController extends Controller
 
     public function create()
     {
-        return view('customer.topup.topup-dana');
+        // Ambil riwayat top up khusus user yang sedang login
+        $transactions = DB::table('dana_transaction_topup')
+            ->where('user_id', Auth::user()->id_pengguna)
+            ->orderBy('created_at', 'desc')
+            ->paginate(10); // Tampilkan 10 data per halaman
+
+        return view('customer.topup.topup-dana', compact('transactions'));
     }
 
     public function store(Request $request, DokuJokulService $dokuJokulService)
