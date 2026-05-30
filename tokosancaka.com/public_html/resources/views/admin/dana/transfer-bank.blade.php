@@ -39,27 +39,27 @@
         </div>
 
         {{-- ALERT PESAN --}}
-        @if (session('success'))
+        @if (session()->has('success'))
             <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-5 rounded" role="alert">
                 <p class="font-bold">Berhasil</p>
-                <p>{!! nl2br(e(session('success'))) !!}</p>
+                <p>{!! nl2br(e(session()->get('success'))) !!}</p>
             </div>
         @endif
-        @if (session('warning'))
+        @if (session()->has('warning'))
             <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-5 rounded" role="alert">
                 <p class="font-bold">Menunggu (Pending)</p>
-                <p>{!! nl2br(e(session('warning'))) !!}</p>
+                <p>{!! nl2br(e(session()->get('warning'))) !!}</p>
             </div>
         @endif
-        @if (session('error'))
+        @if (session()->has('error'))
             <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-5 rounded" role="alert">
                 <p class="font-bold">Gagal</p>
-                <p>{!! nl2br(e(session('error'))) !!}</p>
+                <p>{!! nl2br(e(session()->get('error'))) !!}</p>
             </div>
         @endif
 
         {{-- ALUR 1: FORM INQUIRY (MUNCUL JIKA BELUM ADA DATA REKENING VALID) --}}
-        @if (!session('valid_account_name'))
+        @if (!session()->has('valid_account_name'))
             <form action="{{ route('customer.dana.bank_inquiry') }}" method="POST">
                 @csrf
                 
@@ -112,24 +112,24 @@
 
         {{-- ALUR 2: FORM TRANSFER (MUNCUL SETELAH INQUIRY SUKSES) --}}
         @else
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-5 mb-6">
+            <div id="hasil-inquiry" class="bg-blue-50 border border-blue-200 rounded-lg p-5 mb-6">
                 <h3 class="text-lg font-bold text-blue-800 mb-3 border-b border-blue-200 pb-2">Hasil Cek Rekening Valid</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <p class="text-sm text-gray-500">Bank Tujuan</p>
-                        <p class="font-bold text-gray-800">{{ session('valid_bank_name') }}</p>
+                        <p class="font-bold text-gray-800">{{ session()->get('valid_bank_name') }}</p>
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Nomor Rekening</p>
                         <p class="font-bold text-gray-800">{{ old('account_no') }}</p>
                     </div>
                     <div>
-                        <p class="text-sm text-gray-500">Atas Nama</p>
-                        <p class="font-bold text-gray-800">{{ session('valid_account_name') }}</p>
+                        <p class="text-sm text-gray-500">Atas Nama Pemilik Bank</p>
+                        <p class="font-bold text-gray-800">{{ session()->get('valid_account_name') }}</p>
                     </div>
                     <div>
                         <p class="text-sm text-gray-500">Nominal Transfer</p>
-                        <p class="font-bold text-green-600 text-lg">Rp {{ number_format(old('amount'), 0, ',', '.') }}</p>
+                        <p class="font-bold text-green-600 text-lg">Rp {{ number_format((float)old('amount'), 0, ',', '.') }}</p>
                     </div>
                 </div>
             </div>
@@ -139,7 +139,7 @@
                 <input type="hidden" name="affiliate_id" value="{{ old('affiliate_id') }}">
                 <input type="hidden" name="bank_code" value="{{ old('bank_code') }}">
                 <input type="hidden" name="account_no" value="{{ old('account_no') }}">
-                <input type="hidden" name="account_name" value="{{ session('valid_account_name') }}">
+                <input type="hidden" name="account_name" value="{{ session()->get('valid_account_name') }}">
                 <input type="hidden" name="amount" value="{{ old('amount') }}">
 
                 <div class="flex flex-col sm:flex-row items-center justify-end space-y-3 sm:space-y-0 sm:space-x-4 border-t border-gray-200 pt-6">
@@ -152,6 +152,12 @@
                     </button>
                 </div>
             </form>
+            
+            <script>
+                document.addEventListener("DOMContentLoaded", function() {
+                    document.getElementById("hasil-inquiry").scrollIntoView({ behavior: 'smooth', block: 'center' });
+                });
+            </script>
         @endif
     </div>
 
