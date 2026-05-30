@@ -181,7 +181,7 @@
                 </h4>
                 
                 {{-- Form Bulk Delete --}}
-                <form action="{{ route('customer.dana.bulk_destroy_transaction') }}" method="POST" id="bulk-delete-form" class="hidden">
+                <form id="bulkDeleteForm" action="{{ route('customer.topupdana.bulk_destroy') }}" method="POST">
                     @csrf
                     @method('DELETE')
                     <button type="button" onclick="confirmBulkDelete()" class="bg-red-500 hover:bg-red-600 text-white text-sm font-bold py-2 px-4 rounded-lg shadow-sm transition">
@@ -243,7 +243,7 @@
 
                                     {{-- Tombol Cek Status (HANYA MUNCUL JIKA PENDING) --}}
                                     @if (in_array($trx->status, ['PENDING_PAYMENT', 'PROCESSING', 'PENDING_DANA']))
-                                    <form action="{{ route('customer.topupdana.check_status') }}" method="POST" class="inline-block">
+                                    <form action="{{ route('topupdana.check_status') }}" method="POST" class="inline-block">
                                         @csrf
                                         <input type="hidden" name="reference_id" value="{{ $trx->reference_id }}">
                                         <button type="submit" class="text-yellow-500 hover:text-yellow-700 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition" title="Cek Status DANA">
@@ -253,7 +253,7 @@
                                     @endif
 
                                     {{-- Tombol Hapus --}}
-                                    <form action="{{ route('customer.dana.destroy_topup', $trx->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus riwayat ini?');">
+                                    <form id="hapusForm-{{ $trx->id }}" action="{{ route('customer.topupdana.destroy', $trx->id) }}" method="POST" class="hidden">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-lg transition" title="Hapus Riwayat">
