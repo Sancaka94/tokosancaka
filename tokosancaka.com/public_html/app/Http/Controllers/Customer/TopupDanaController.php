@@ -802,4 +802,26 @@ class TopupDanaController extends Controller
 
         return base64_encode($binarySignature);
     }
+
+    public function bulkDestroyTransaction(Request $request)
+{
+    $ids = $request->input('ids');
+    
+    // Jika data yang masuk berupa string (contoh: "1,2,3"), pecah menjadi array
+    if (is_string($ids)) {
+        $ids = explode(',', $ids);
+    }
+    
+    if (empty($ids)) {
+        return back()->with('error', 'Pilih minimal satu transaksi untuk dihapus.');
+    }
+
+    try {
+        DB::table('dana_transactions')->whereIn('id', $ids)->delete();
+        return back()->with('success', count($ids) . ' riwayat transaksi berhasil dihapus.');
+    } catch (\Exception $e) {
+        Log::error('[BULK DELETE ERROR] ' . $e->getMessage());
+        return back()->with('error', 'Gagal menghapus transaksi: ' . $e->getMessage());
+    }
+}
 }

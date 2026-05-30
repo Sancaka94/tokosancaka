@@ -184,7 +184,6 @@
                 <form action="{{ route('customer.dana.bulk_destroy_transaction') }}" method="POST" id="bulk-delete-form" class="hidden">
                     @csrf
                     @method('DELETE')
-                    <input type="hidden" name="ids" id="bulk-delete-ids">
                     <button type="button" onclick="confirmBulkDelete()" class="bg-red-500 hover:bg-red-600 text-white text-sm font-bold py-2 px-4 rounded-lg shadow-sm transition">
                         <i class="fas fa-trash-alt mr-1"></i> Hapus Terpilih
                     </button>
@@ -366,14 +365,17 @@
         // Eksekusi Bulk Delete
         function confirmBulkDelete() {
             if (confirm('Yakin ingin menghapus riwayat top up yang dipilih?')) {
-                let selectedIds = [];
+                let form = $('#bulk-delete-form');
+                
+                // Bersihkan input ids[] lama agar tidak tumpang tindih jika di-klik berkali-kali
+                form.find('input[name="ids[]"]').remove();
+                
+                // Buat elemen input hidden untuk setiap checkbox yang dicentang
                 $('.checkItem:checked').each(function() {
-                    selectedIds.push($(this).val());
+                    form.append('<input type="hidden" name="ids[]" value="' + $(this).val() + '">');
                 });
                 
-                // Masukkan id ke input hidden lalu submit form
-                $('#bulk-delete-ids').val(selectedIds.join(','));
-                $('#bulk-delete-form').submit();
+                form.submit();
             }
         }
 
