@@ -634,6 +634,10 @@ class TopupDanaController extends Controller
             return back()->with('error', 'Data transaksi tidak ditemukan di database topup.');
         }
 
+        if (in_array($trx->status, ['SUCCESS', 'FAILED_DANA', 'FAILED_SYSTEM', 'FAILED'])) {
+            return back()->with('warning', 'Transaksi ini sudah berstatus final (' . $trx->status . '). Tidak perlu dicek lagi.');
+        }
+
         // 1. PASTIKAN PATH DAN BODY SESUAI DOKUMENTASI DANA TOP UP
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $path      = '/rest/v1.0/emoney/topup-status'; // <-- REVISI DI SINI

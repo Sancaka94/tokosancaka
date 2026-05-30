@@ -242,14 +242,16 @@
                                         <i class="fas fa-eye"></i>
                                     </button>
 
-                                    {{-- Tombol Cek Status --}}
-                                    <form action="{{ route('topupdana.check_status') }}" method="POST" class="inline-block">
+                                    {{-- Tombol Cek Status (HANYA MUNCUL JIKA PENDING) --}}
+                                    @if (in_array($trx->status, ['PENDING_PAYMENT', 'PROCESSING', 'PENDING_DANA']))
+                                    <form action="{{ route('customer.topupdana.check_status') }}" method="POST" class="inline-block">
                                         @csrf
                                         <input type="hidden" name="reference_id" value="{{ $trx->reference_id }}">
                                         <button type="submit" class="text-yellow-500 hover:text-yellow-700 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition" title="Cek Status DANA">
                                             <i class="fas fa-sync-alt"></i>
                                         </button>
                                     </form>
+                                    @endif
 
                                     {{-- Tombol Hapus --}}
                                     <form action="{{ route('customer.dana.destroy_topup', $trx->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus riwayat ini?');">
