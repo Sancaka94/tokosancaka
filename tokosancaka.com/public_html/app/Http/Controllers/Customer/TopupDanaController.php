@@ -510,33 +510,32 @@ class TopupDanaController extends Controller
 
    /**
      * =========================================================================
-     * FUNGSI CEK STATUS TOP UP LANGSUNG KE API DANA
+     * FUNGSI CEK STATUS TOP UP LANGSUNG KE API DANA (REVISI ENDPOINT TOPUP-STATUS)
      * =========================================================================
      */
     public function checkStatus(Request $request)
     {
         $request->validate(['reference_id' => 'required']);
         
-        // 1. Cari data di tabel yang benar
         $trx = DB::table('dana_transaction_topup')->where('reference_id', $request->reference_id)->first();
 
         if (!$trx) {
             return back()->with('error', 'Data transaksi tidak ditemukan di database topup.');
         }
 
-        // 2. Siapkan Payload Query ke DANA
+        // 1. PASTIKAN PATH DAN BODY SESUAI DOKUMENTASI DANA TOP UP
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        $path      = '/rest/v1.0/emoney/query'; 
+        $path      = '/rest/v1.0/emoney/topup-status'; // <-- REVISI DI SINI
         
         $body = [
-            "partnerReferenceNo" => $trx->reference_id,
-            "merchantId"         => '216660001394664338723'
+            "originalPartnerReferenceNo" => $trx->reference_id,
+            "serviceCode"                => "38" // Wajib "38" untuk Top Up sesuai dokumen
         ];
 
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
 
         try {
-            // 3. Generate Signature & Tembak API
+            // 2. Generate Signature & Tembak API
             $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
             $accessTokenB2B = $this->danaSignature->getAccessToken();
 
@@ -557,40 +556,66 @@ class TopupDanaController extends Controller
                 ->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
-            $codeCheck = trim((string)($result['responseCode'] ?? '500'));
+            $resCode = trim((string)($result['responseCode'] ?? '500'));
 
-            // 🔥 PERBAIKAN DI SINI: Gunakan fallback array bawaan jika $result bernilai null
-            Log::info("LOG LOG: Hasil Query Status DANA untuk {$trx->reference_id}: ", $result ?? ['raw_body' => $response->body()]);
+            Log::info("LOG LOG: Hasil Cek Status DANA untuk {$trx->reference_id}: ", $result ?? ['raw_body' => $response->body()]);
 
-            // 4. Update Status Berdasarkan Jawaban DANA
-            if ($codeCheck === '2003800' || ($result['transactionStatus'] ?? '') === 'SUCCESS') {
-                DB::table('dana_transaction_topup')->where('reference_id', $trx->reference_id)->update([
-                    'status' => 'SUCCESS',
-                    'updated_at' => now()
-                ]);
-                return back()->with('success', "Status dari DANA: SUKSES (Dana telah masuk).");
+            // 3. Evaluasi Response Code (2003900 adalah kode sukses untuk pengecekan)
+            if ($resCode === '2003900') {
+                $statusDana = $result['latestTransactionStatus'] ?? null;
+
+                // 00 - TRANSAKSI SUKSES (Uang Masuk)
+                if ($statusDana === '00') {
+                    DB::table('dana_transaction_topup')->where('reference_id', $trx->reference_id)->update([
+                        'status' => 'SUCCESS',
+                        'updated_at' => now()
+                    ]);
+                    return back()->with('success', 'Status DANA: SUKSES (Dana telah masuk ke tujuan).');
+                } 
+                // 01, 02, 03 - TRANSAKSI PENDING (Masih Proses)
+                elseif (in_array($statusDana, ['01', '02', '03'])) {
+                    return back()->with('warning', 'Status DANA: PENDING (Masih diproses sistem bank/DANA). Silakan cek lagi nanti.');
+                } 
+                // 04, 05, 06, 07 - TRANSAKSI GAGAL FINAL
+                elseif (in_array($statusDana, ['04', '05', '06', '07'])) {
+                    
+                    DB::table('dana_transaction_topup')->where('reference_id', $trx->reference_id)->update([
+                        'status' => 'FAILED_DANA',
+                        'updated_at' => now()
+                    ]);
+                    
+                    // Eksekusi Auto-Refund jika metode bayarnya adalah Potong Saldo
+                    if (in_array($trx->payment_method, ['POTONG SALDO', 'SALDO', 'POTONG_SALDO'])) {
+                        DB::table('Pengguna')->where('id_pengguna', $trx->user_id)->increment('saldo', $trx->amount);
+                        Log::info("LOG LOG: Auto-Refund Rp {$trx->amount} berhasil dikembalikan ke User ID {$trx->user_id} karena transaksi GAGAL FINAL.");
+                    }
+                    
+                    $desc = $result['transactionStatusDesc'] ?? 'Transaksi Gagal / Ditolak';
+                    return back()->with('error', "Status DANA: GAGAL ($desc). Saldo Anda telah dikembalikan otomatis.");
+                }
             } 
-            elseif (in_array($codeCheck, ['504', '4293800', '2023800']) || ($result['transactionStatus'] ?? '') === 'PENDING') {
-                return back()->with('warning', 'Status dari DANA: MASIH DIPROSES (Pending). Silakan cek lagi nanti.');
-            } 
-            else {
+            // 4. Jika Transaksi Tidak Ditemukan (4043901) = Berarti Gagal / Expired
+            elseif ($resCode === '4043901') {
                 DB::table('dana_transaction_topup')->where('reference_id', $trx->reference_id)->update([
                     'status' => 'FAILED_DANA',
                     'updated_at' => now()
                 ]);
-
-                if ($trx->payment_method === 'POTONG SALDO' || $trx->payment_method === 'POTONG_SALDO' || $trx->payment_method === 'SALDO') {
-                    // Kembalikan saldo hanya jika pembayaran menggunakan saldo internal
-                    DB::table('Pengguna')->where('id_pengguna', $trx->user_id)->increment('saldo', $trx->amount);
-                    Log::info("LOG LOG: Auto-Refund Rp {$trx->amount} berhasil dikembalikan ke User ID {$trx->user_id} karena transaksi GAGAL.");
-                }
                 
-                $errMsg = $result['responseMessage'] ?? 'Terjadi kendala jaringan/server DANA';
-                return back()->with('error', "Status dari DANA: GAGAL (Kode: {$codeCheck} - {$errMsg})");
+                // Eksekusi Auto-Refund jika potong saldo
+                if (in_array($trx->payment_method, ['POTONG SALDO', 'SALDO', 'POTONG_SALDO'])) {
+                    DB::table('Pengguna')->where('id_pengguna', $trx->user_id)->increment('saldo', $trx->amount);
+                }
+                return back()->with('error', 'Status DANA: GAGAL (Transaksi tidak ditemukan / Kadaluarsa). Saldo telah dikembalikan.');
+            } 
+            // 5. Gangguan Server DANA / Timeout
+            else {
+                $errMsg = $result['responseMessage'] ?? 'Unknown Error';
+                return back()->with('warning', "Gagal mengecek status ke DANA: [$resCode - $errMsg]. Sistem DANA sedang sibuk.");
             }
+
         } catch (\Exception $e) {
             Log::error('LOG LOG: Exception cek status DANA: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan sistem saat mengecek status ke DANA.');
+            return back()->with('error', 'Terjadi kesalahan jaringan saat mengecek status ke DANA.');
         }
     }
 }
