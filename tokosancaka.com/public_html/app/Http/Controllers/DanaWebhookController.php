@@ -440,6 +440,19 @@ class DanaWebhookController extends Controller
                     }
                 } elseif (Str::startsWith($orderId, 'TOPUP-') || Str::startsWith($orderId, 'ADM-')) {
                     App::make(\App\Http\Controllers\Customer\TopUpController::class)->handleDanaCallback($payloadData);
+                } elseif (Str::startsWith($orderId, 'TRF') || Str::startsWith($orderId, 'TUP')) {
+                    // PENANGANAN GAGAL DISBURSEMENT (TRANSFER BANK / TOP UP CORPORATE)
+                    $danaTrx = DB::table('dana_transactions')->where('reference_no', $orderId)->first();
+                    
+                    if ($danaTrx && $danaTrx->status !== 'FAILED') {
+                        DB::table('dana_transactions')->where('id', $danaTrx->id)->update([
+                            'status' => 'FAILED', 
+                            'updated_at' => now()
+                        ]);
+                        // Refund saldo pelanggan secara otomatis
+                        DB::table('Pengguna')->where('id_pengguna', $danaTrx->affiliate_id)->increment('saldo', $danaTrx->amount);
+                        Log::info("❌ LOG LOG: Webhook Disbursement DANA $orderId GAGAL/EXPIRED. Saldo Rp " . number_format($danaTrx->amount, 0, ',', '.') . " dikembalikan ke user ID {$danaTrx->affiliate_id}.");
+                    }
                 } else {
                     $trxPpob = DB::table('transactionppobiak')
                         ->where('ref_id', $orderId)
@@ -535,6 +548,12 @@ class DanaWebhookController extends Controller
             if (!$buyerId && Str::startsWith($orderId, 'TOPUP-')) {
                 $topup = DB::table('top_ups')->where('transaction_id', $orderId)->first();
                 if ($topup) $buyerId = $topup->customer_id ?? $topup->user_id ?? null;
+            }
+
+            // Cari Pemilik untuk Transaksi Disbursement (Transfer Bank & Top Up Corporate)
+            if (!$buyerId && (Str::startsWith($orderId, 'TRF') || Str::startsWith($orderId, 'TUP'))) {
+                $danaTrx = DB::table('dana_transactions')->where('reference_no', $orderId)->first();
+                if ($danaTrx) $buyerId = $danaTrx->affiliate_id;
             }
 
             // 2. SIAPKAN PESAN CUSTOMER
