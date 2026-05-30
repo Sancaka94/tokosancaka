@@ -1044,6 +1044,10 @@ class CheckoutController extends Controller
                 Log::info('Routing callback to TopUpController', ['ref' => $merchantRef]);
                 TopUpController::processTopUpCallback($merchantRef, $status, $amount, $data);
 
+            } elseif (Str::startsWith($merchantRef, 'DANATOPUP-')) {
+                Log::info('Routing callback to TopupDanaController', ['ref' => $merchantRef]);
+                return app(\App\Http\Controllers\Customer\TopupDanaController::class)->handlePaymentCallback($request);
+
             // 4. PPOB (Format: PXXXXX) ---> INI LOGIKA YANG BARU DITAMBAHKAN
             } elseif (Str::startsWith($merchantRef, 'P')) {
                 Log::info('Routing callback to PPOB Controller', ['ref' => $merchantRef]);
@@ -1105,6 +1109,10 @@ class CheckoutController extends Controller
             if (Str::startsWith($merchantRef, 'TOPUP-')) {
                 Log::info('Routing DOKU callback to TopUpController', ['ref' => $merchantRef]);
                 TopUpController::processTopUpCallback($merchantRef, $internalStatus, $data['order']['amount'], $data);
+
+            } elseif (Str::startsWith($merchantRef, 'DANATOPUP-')) {
+                Log::info('Routing DOKU callback to TopupDanaController', ['ref' => $merchantRef]);
+                return app(\App\Http\Controllers\Customer\TopupDanaController::class)->handleDokuCallback($data);
 
             } elseif (Str::startsWith($merchantRef, 'ORD-') || Str::startsWith($merchantRef, 'SCK-ORD-') || Str::startsWith($merchantRef, 'SCK-')) {
                 Log::info('Routing DOKU callback to processOrderCallback', ['ref' => $merchantRef]);
@@ -1862,6 +1870,11 @@ TEXT;
                 Log::info('Routing DANA callback to TopUpController', ['ref' => $merchantRef]);
                 $amount = isset($data['order']['amount']) ? (float) $data['order']['amount'] : 0;
                 TopUpController::processTopUpCallback($merchantRef, $internalStatus, $amount, $data);
+
+            } elseif (Str::startsWith($merchantRef, 'DANATOPUP-')) {
+                Log::info('Routing DANA callback to TopupDanaController', ['ref' => $merchantRef]);
+                // Karena array formatnya sama dengan DOKU, kita bisa tembak ke handleDokuCallback juga
+                return app(\App\Http\Controllers\Customer\TopupDanaController::class)->handleDokuCallback($data);
 
             } elseif (Str::startsWith($merchantRef, 'ORD-') || Str::startsWith($merchantRef, 'SCK-ORD-') || Str::startsWith($merchantRef, 'SCK-')) {
                 Log::info('Routing DANA callback to processOrderCallback', ['ref' => $merchantRef]);
