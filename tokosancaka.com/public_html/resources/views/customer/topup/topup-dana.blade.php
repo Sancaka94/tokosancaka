@@ -69,9 +69,7 @@
                             <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                                 <i class="fas fa-mobile-alt text-gray-400 group-focus-within:text-blue-600 text-xl transition-colors"></i>
                             </div>
-                            <input type="number" name="dana_number" id="dana_number"
-                                class="block w-full pl-14 pr-4 py-4 text-xl font-bold text-gray-800 border-2 border-gray-200 rounded-xl focus:ring-0 focus:border-blue-500 transition-colors bg-gray-50 focus:bg-white"
-                                placeholder="Contoh: 081234567890" required value="{{ old('dana_number') }}">
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" name="dana_number" value="{{ old('dana_number') }}">
                         </div>
                     </div>
 
