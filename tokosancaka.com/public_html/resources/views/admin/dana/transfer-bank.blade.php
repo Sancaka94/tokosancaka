@@ -78,7 +78,7 @@
                         <option value="">-- Pilih Bank --</option>
                         @foreach($banks as $bank)
                             <option value="{{ $bank->bank_code }}" {{ old('bank_code') == $bank->bank_code ? 'selected' : '' }}>
-                                {{ $bank->bank_name }}
+                                {{ $bank->bank_code }} - {{ $bank->bank_name }}
                             </option>
                         @endforeach
                     </select>
