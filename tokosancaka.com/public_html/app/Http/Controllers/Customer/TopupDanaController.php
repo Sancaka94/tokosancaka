@@ -247,6 +247,130 @@ class TopupDanaController extends Controller
         }
     }
 
+
+    /**
+     * =========================================================================
+     * INI FUNGSI BARU UNTUK MENANGKAP WEBHOOK DARI DOKU (VIA DOKU HUB)
+     * =========================================================================
+     */
+    public function handleDokuCallback(array $data)
+    {
+        Log::info('LOG LOG: ========== WEBHOOK DOKU TOP UP DANA DITERIMA ==========');
+
+        // Parse format bawaan DOKU Jokul dari array $data
+        $merchantRef = $data['order']['invoice_number'] ?? null;
+        $status      = strtoupper($data['transaction']['status'] ?? ''); 
+
+        Log::info("LOG LOG: Webhook DOKU Info. Ref: $merchantRef, Status: $status");
+
+        if ($status !== 'SUCCESS') {
+            Log::info("LOG LOG: Status pembayaran DOKU belum sukses, abaikan.");
+            return response()->json(['success' => true, 'message' => 'Ignored - Not Success']);
+        }
+
+        $trx = DB::table('dana_transaction_topup')->where('reference_id', $merchantRef)->first();
+
+        if (!$trx) {
+            Log::error("LOG LOG: Transaksi $merchantRef tidak ditemukan di dana_transaction_topup");
+            return response()->json(['success' => false, 'message' => 'Not Found'], 404);
+        }
+
+        if ($trx->status === 'SUCCESS') {
+            Log::info("LOG LOG: Transaksi $merchantRef sudah diproses sebelumnya (Idempotent).");
+            return response()->json(['success' => true, 'message' => 'Already Processed']);
+        }
+
+        // ==============================================================
+        // EKSEKUSI TOP UP KE DANA (DISBURSEMENT B2B)
+        // ==============================================================
+        Log::info("LOG LOG: Pembayaran valid. Memulai Top Up otomatis ke nomor DANA: " . $trx->target_phone);
+        
+        $merchantDepositAccount = '20070000103315239788'; 
+        $idToko                 = '216660001394664338723';
+        $timestamp              = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $partnerRef             = "B2BTUP" . time() . Str::random(4);
+        $amountStr              = number_format((float)$trx->amount, 2, '.', '');
+        $path                   = '/rest/v1.0/emoney/topup';
+
+        $body = [
+            "partnerReferenceNo" => $partnerRef,
+            "customerNumber"     => $trx->target_phone,
+            "amount" => [
+                "value"    => $amountStr,
+                "currency" => "IDR"
+            ],
+            "feeAmount" => [
+                "value"    => "0.00",
+                "currency" => "IDR"
+            ],
+            "transactionDate" => $timestamp,
+            "categoryId"      => "6",
+            "additionalInfo"  => [
+                "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
+                "chargeTarget" => "MERCHANT",
+                "merchantId"   => $idToko,
+                "accountId"    => $merchantDepositAccount
+            ]
+        ];
+
+        $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody   = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
+        try {
+            // Memanggil fungsi generate signature dari service DANA yang kamu buat
+            $signature = $this->danaSignature->generateSignature($stringToSign);
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'CHANNEL-ID'    => '95221',
+                'ORIGIN'        => config('services.dana.origin'),
+            ];
+
+            Log::info('LOG LOG: Mengirim payload TopUp API DANA via Webhook DOKU', $body);
+
+            $response = Http::withHeaders($headers)
+                ->timeout(60)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            $codeCheck = trim((string)($result['responseCode'] ?? '500'));
+
+            Log::info('LOG LOG: Respon DANA API: ', $result);
+
+            if ($codeCheck === '2003800') {
+                // UPDATE STATUS JADI SUCCESS
+                DB::table('dana_transaction_topup')->where('reference_id', $merchantRef)->update([
+                    'status' => 'SUCCESS',
+                    'updated_at' => now()
+                ]);
+                Log::info("LOG LOG: SUCCESS! Saldo DANA berhasil masuk ke nomor {$trx->target_phone}");
+            } else {
+                // UPDATE STATUS JADI FAILED/PENDING TERGANTUNG KODE
+                $statusUpdate = in_array($codeCheck, ['504', '4293800', '2023800']) ? 'PENDING_DANA' : 'FAILED_DANA';
+                DB::table('dana_transaction_topup')->where('reference_id', $merchantRef)->update([
+                    'status' => $statusUpdate,
+                    'updated_at' => now()
+                ]);
+                Log::error("LOG LOG: GAGAL TOPUP. Code: $codeCheck. Lakukan pengecekan manual.");
+            }
+
+            return response()->json(['success' => true, 'message' => 'Top Up DANA Processed']);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: DOKU Webhook Exception: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Internal Server Error'], 500);
+        }
+    }
+
+
     private function normalizePhone($phone) 
     {
         $phone = preg_replace('/[^0-9]/', '', $phone);

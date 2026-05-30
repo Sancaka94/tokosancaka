@@ -417,6 +417,11 @@ class DokuWebhookController extends Controller
                     } else if (Str::startsWith($orderId, 'CVSANCAK-') || Str::startsWith($orderId, 'ORD-')) {
                         return App::make(\App\Http\Controllers\CheckoutController::class)->handleDokuCallback($data);
                     }
+                    else if (Str::startsWith($orderId, 'DANATOPUP-')) {
+                        Log::info("➡️ Order $orderId (Top Up DANA) didelegasikan ke TopupDanaController.");
+                        // Melempar array $data dari DOKU ke TopupDanaController
+                        return App::make(\App\Http\Controllers\Customer\TopupDanaController::class)->handleDokuCallback($data);
+                    }
                 }
             } else {
                 Log::info("DOKU Webhook: Status Transaksi bukan SUCCESS ($status). Dilewati.");
