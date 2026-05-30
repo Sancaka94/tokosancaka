@@ -50,7 +50,12 @@ class TopupDanaController extends Controller
 
         try {
             $user = Auth::user();
-            $amount = (int) $validated['amount'];
+            $amount = (int) $validated['amount']; // Contoh: 10000
+
+            // 1. TAMBAHKAN LOGIKA ADMIN FEE DI SINI
+            $adminFee = 2000;
+            $totalAmount = $amount + $adminFee; // Contoh: 12000
+
             $danaNumber = $this->normalizePhone($validated['dana_number']);
             $invoiceNumber = 'DANATOPUP-' . strtoupper(Str::random(10));
             $paymentMethod = strtoupper($validated['payment_method']);
@@ -62,13 +67,13 @@ class TopupDanaController extends Controller
             // =========================================================================
             if (in_array($paymentMethod, ['SALDO', 'POTONG SALDO', 'POTONG_SALDO'])) {
                 
-                // A. Cek kecukupan saldo user
-                if ($user->saldo < $amount) {
+                // Cek kecukupan saldo user (PAKAI TOTAL AMOUNT)
+                if ($user->saldo < $totalAmount) {
                     return back()->with('error', 'Saldo komisi Anda tidak mencukupi. Sisa saldo: Rp ' . number_format($user->saldo, 0, ',', '.'))->withInput();
                 }
 
-                // B. POTONG SALDO DIAWAL
-                DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $amount);
+                // POTONG SALDO DIAWAL (PAKAI TOTAL AMOUNT)
+                DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $totalAmount);
 
                 // C. IDENTITAS CORPORATE (DISBURSEMENT B2B)
                 $merchantDepositAccount = config('services.dana.merchant_deposit_account');
@@ -217,7 +222,9 @@ class TopupDanaController extends Controller
                 'user_id'        => $user->id_pengguna,
                 'reference_id'   => $invoiceNumber,
                 'target_phone'   => $danaNumber,
-                'amount'         => $amount,
+                'amount'         => $amount,       // 10000
+                'admin_fee'      => $adminFee,     // 2000
+                'total_amount'   => $totalAmount,  // 12000
                 'payment_method' => $paymentMethod, // Simpan dalam format Uppercase
                 'status'         => 'PENDING_PAYMENT',
                 'created_at'     => now(),
@@ -235,11 +242,13 @@ class TopupDanaController extends Controller
             if ($paymentMethod === 'DOKU_JOKUL') {
                 Log::info('LOG LOG: Memulai Generate DOKU Jokul untuk ' . $invoiceNumber);
 
-                $lineItems = [['name' => 'Top Up DANA ' . $danaNumber, 'price' => $amount, 'quantity' => 1]];
+                // UBAH PRICE JADI $totalAmount
+                $lineItems = [['name' => 'Top Up DANA ' . $danaNumber, 'price' => $totalAmount, 'quantity' => 1]];
                 $successRedirectUrl = route('customer.topupdana.success', ['invoice' => $invoiceNumber]);
                 
+                // UBAH AMOUNT JADI $totalAmount
                 $paymentUrl = $dokuJokulService->createPayment(
-                    $invoiceNumber, $amount, $customerData, $lineItems, [], $successRedirectUrl
+                    $invoiceNumber, $totalAmount, $customerData, $lineItems, [], $successRedirectUrl
                 );
 
                 if (empty($paymentUrl)) throw new Exception('Gagal membuat link DOKU.');
@@ -261,8 +270,10 @@ class TopupDanaController extends Controller
                     'customer_name'  => $customerData['name'],
                     'customer_email' => $customerData['email'],
                     'customer_phone' => $customerData['phone'],
-                    'order_items'    => [['sku' => 'DANA', 'name' => 'Top Up DANA ' . $danaNumber, 'price' => $amount, 'quantity' => 1]],
-                    'signature'      => hash_hmac('sha256', $merchantCode.$invoiceNumber.$amount, $privateKey),
+                    // UBAH PRICE JADI $totalAmount
+                    'order_items'    => [['sku' => 'DANA', 'name' => 'Top Up DANA ' . $danaNumber, 'price' => $totalAmount, 'quantity' => 1]], 
+                    // PASTIKAN SIGNATURE JUGA MEMAKAI $totalAmount
+                    'signature'      => hash_hmac('sha256', $merchantCode.$invoiceNumber.$totalAmount, $privateKey),
                 ];
 
                 $baseUrl = $mode === 'production' 
