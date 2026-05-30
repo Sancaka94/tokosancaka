@@ -507,4 +507,81 @@ class TopupDanaController extends Controller
         if (substr($phone, 0, 1) == '8') return '62' . $phone;
         return $phone;
     }
+
+    /**
+     * =========================================================================
+     * FUNGSI CEK STATUS TOP UP LANGSUNG KE API DANA
+     * =========================================================================
+     */
+    public function checkStatus(Request $request)
+    {
+        $request->validate(['reference_id' => 'required']);
+        
+        // 1. Cari data di tabel yang benar
+        $trx = DB::table('dana_transaction_topup')->where('reference_id', $request->reference_id)->first();
+
+        if (!$trx) {
+            return back()->with('error', 'Data transaksi tidak ditemukan di database topup.');
+        }
+
+        // 2. Siapkan Payload Query ke DANA
+        $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $path      = '/rest/v1.0/emoney/query'; // Endpoint query B2B Topup DANA
+        
+        $body = [
+            "partnerReferenceNo" => $trx->reference_id,
+            "merchantId"         => '216660001394664338723'
+        ];
+
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+
+        try {
+            // 3. Generate Signature & Tembak API
+            $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'CHANNEL-ID'    => '95221',
+                'ORIGIN'        => config('services.dana.origin'),
+            ];
+
+            $response = Http::withHeaders($headers)
+                ->timeout(60)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            $codeCheck = trim((string)($result['responseCode'] ?? '500'));
+
+            Log::info("LOG LOG: Hasil Query Status DANA untuk {$trx->reference_id}: ", $result);
+
+            // 4. Update Status Berdasarkan Jawaban DANA
+            if ($codeCheck === '2003800' || ($result['transactionStatus'] ?? '') === 'SUCCESS') {
+                DB::table('dana_transaction_topup')->where('reference_id', $trx->reference_id)->update([
+                    'status' => 'SUCCESS',
+                    'updated_at' => now()
+                ]);
+                return back()->with('success', "Status dari DANA: SUKSES (Dana telah masuk).");
+            } 
+            elseif (in_array($codeCheck, ['504', '4293800', '2023800']) || ($result['transactionStatus'] ?? '') === 'PENDING') {
+                return back()->with('warning', 'Status dari DANA: MASIH DIPROSES (Pending). Silakan cek lagi nanti.');
+            } 
+            else {
+                DB::table('dana_transaction_topup')->where('reference_id', $trx->reference_id)->update([
+                    'status' => 'FAILED_DANA',
+                    'updated_at' => now()
+                ]);
+                return back()->with('error', "Status dari DANA: GAGAL (Kode: {$codeCheck} - " . ($result['responseMessage'] ?? 'Unknown Error') . ")");
+            }
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: Exception cek status DANA: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem saat mengecek status ke DANA.');
+        }
+    }
 }
