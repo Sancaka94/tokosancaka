@@ -2666,7 +2666,7 @@ public function handleCallback(Request $request)
                  // Opsional: Anda bisa return error di sini jika tidak mentolerir perbedaan harga
             }
 
-            // ==========================================================
+           // ==========================================================
             // 3. LOGIKA PROSES STATUS (UBAH JADI LUNAS & TAMBAH SALDO)
             // ==========================================================
             if ($status === 'PAID') { // Ini sudah dinormalisasi dari SUCCESS menjadi PAID di handleDanaCallback
@@ -2687,12 +2687,31 @@ public function handleCallback(Request $request)
                         'saldo_akhir' => $user->saldo
                     ]);
 
+                    // ---> [TAMBAHAN KIRIM EMAIL TOPUP SALDO USER] <---
+                    try {
+                        $htmlBody = view('emails.transaction_success', [
+                            'name' => $user->nama_lengkap,
+                            'invoice' => $merchantRef,
+                            'type' => 'Top Up Saldo Aplikasi',
+                            'amount' => $transaction->amount,
+                            'date' => now()->timezone('Asia/Jakarta')->format('d M Y, H:i:s')
+                        ])->render();
+
+                        \Illuminate\Support\Facades\Mail::html($htmlBody, function ($message) use ($user, $merchantRef) {
+                            $message->to($user->email)
+                                    ->subject("✅ Top Up Berhasil - $merchantRef")
+                                    ->from(config('mail.from.address', 'admin@tokosancaka.com'), 'Sancaka Server');
+                        });
+                    } catch (\Exception $e) {
+                        Log::error('Gagal kirim email TopUp: ' . $e->getMessage());
+                    }
+
                     // A. Kirim event ke UI Customer
                     try {
                         $message = 'Top up Anda sebesar Rp ' . number_format($transaction->amount, 0, ',', '.') . ' telah berhasil.';
                         event(new \App\Events\SaldoUpdated($user->id_pengguna, $transaction->amount, $user->saldo, $message));
                     } catch (\Exception $e) { Log::error('Gagal broadcast SaldoUpdated: ' . $e->getMessage()); }
-
+                    
                     // B. Kirim notifikasi DB ke Customer
                     try {
                         $dataNotifCustomer = [

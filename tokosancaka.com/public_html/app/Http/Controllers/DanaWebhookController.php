@@ -396,7 +396,7 @@ class DanaWebhookController extends Controller
                         App::make(\App\Http\Controllers\Customer\TopUpController::class)->handleDanaCallback($payloadData);
                     } else if (Str::startsWith($orderId, 'INV-')) {
                         App::make(\App\Http\Controllers\CustomerOrderController::class)->handleDanaCallback($payloadData);
-                    } else if (Str::startsWith($orderId, 'CVSANCAK-') || Str::startsWith($orderId, 'ORD-')) {
+                   } else if (Str::startsWith($orderId, 'CVSANCAK-') || Str::startsWith($orderId, 'ORD-')) {
                         App::make(\App\Http\Controllers\CheckoutController::class)->handleDanaCallback($payloadData);
                     } else if (Str::startsWith($orderId, 'TRF') || Str::startsWith($orderId, 'TUP')) {
                         // PENANGANAN DISBURSEMENT (TRANSFER BANK / TOP UP CORPORATE)
@@ -408,6 +408,14 @@ class DanaWebhookController extends Controller
                                 'updated_at' => now()
                             ]);
                             Log::info("✅ LOG LOG: Webhook Disbursement DANA $orderId SUKSES.");
+
+                            // ---> [TAMBAHAN KIRIM EMAIL DISBURSEMENT] <---
+                            $user = DB::table('Pengguna')->where('id_pengguna', $danaTrx->affiliate_id)->first();
+                            if ($user) {
+                                $jenis = Str::startsWith($orderId, 'TRF') ? 'Pencairan Dana (Transfer Bank)' : 'Pencairan Dana (Top Up)';
+                                $this->_sendEmailNotification($user->email, $user->nama_lengkap, $orderId, $jenis, $danaTrx->amount);
+                            }
+
                         } else {
                             Log::warning("⚠️ Order $orderId (DANA Disbursement) tidak ditemukan di tabel dana_transactions.");
                         }
@@ -421,6 +429,13 @@ class DanaWebhookController extends Controller
                         if ($trxPpob) {
                             DB::table('transactionppobiak')->where('id', $trxPpob->id)->update(['status' => 'SUCCESS']);
                             Log::info("LOG LOG: Webhook PPOB $orderId SUKSES.");
+
+                            // ---> [TAMBAHAN KIRIM EMAIL PPOB] <---
+                            $user = DB::table('Pengguna')->where('id_pengguna', $trxPpob->user_id)->first();
+                            if ($user) {
+                                $this->_sendEmailNotification($user->email, $user->nama_lengkap, $orderId, 'Pembayaran Produk Digital (PPOB)', $trxPpob->price ?? $amountValue);
+                            }
+
                         } else {
                             Log::warning("⚠️ Order $orderId tidak dikenali oleh sistem (Tidak ada di DB Utama, TopUp, maupun PPOB).");
                         }
@@ -716,6 +731,39 @@ class DanaWebhookController extends Controller
         } catch (Exception $e) {
             Log::error('[DANA RETURN PAGE ERROR]', ['msg' => $e->getMessage()]);
             return redirect('/')->with('error', 'Terjadi kesalahan sistem.');
+        }
+    }
+
+    /**
+     * Helper untuk mengirim Email Sukses (Background)
+     */
+    private function _sendEmailNotification($email, $name, $invoice, $type, $amount)
+    {
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) return;
+
+        try {
+            $subject = "✅ Pembayaran Berhasil - Invoice $invoice";
+            
+            $data = [
+                'name' => $name,
+                'invoice' => $invoice,
+                'type' => $type,
+                'amount' => $amount,
+                'date' => now()->timezone('Asia/Jakarta')->format('d M Y, H:i:s')
+            ];
+
+            // Render view blade menjadi format HTML string
+            $htmlBody = view('emails.transaction_success', $data)->render();
+
+            \Illuminate\Support\Facades\Mail::html($htmlBody, function ($message) use ($email, $subject) {
+                $message->to($email)
+                        ->subject($subject)
+                        ->from(config('mail.from.address', 'admin@tokosancaka.com'), config('mail.from.name', 'Sancaka Server'));
+            });
+
+            Log::info("📧 [EMAIL SENT] Notifikasi sukses dikirim ke: $email untuk invoice $invoice");
+        } catch (\Exception $e) {
+            Log::error("❌ [EMAIL FAILED] Gagal kirim email ke $email: " . $e->getMessage());
         }
     }
 }
