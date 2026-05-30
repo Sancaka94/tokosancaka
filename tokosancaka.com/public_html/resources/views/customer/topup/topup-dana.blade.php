@@ -233,7 +233,7 @@
                                     </button>
 
                                     {{-- Tombol Cek Status --}}
-                                    <form action="{{ route('customer.dana.check_topup_status') }}" method="POST" class="inline-block">
+                                    <form action="{{ route('customer.topupdana.check_status') }}" method="POST" class="inline-block">
                                         @csrf
                                         <input type="hidden" name="reference_id" value="{{ $trx->reference_id }}">
                                         <button type="submit" class="text-yellow-500 hover:text-yellow-700 bg-yellow-50 hover:bg-yellow-100 p-2 rounded-lg transition" title="Cek Status DANA">
