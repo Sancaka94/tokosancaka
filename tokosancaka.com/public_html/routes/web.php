@@ -1406,7 +1406,6 @@ Route::prefix('customer')->name('customer.')->middleware(['auth'])->group(functi
     
     Route::get('/topup-dana', [TopupDanaController::class, 'create'])->name('topupdana.create');
     Route::post('/topup-dana', [TopupDanaController::class, 'store'])->name('topupdana.store');
-    Route::post('/dana/topup-dana/cek-status', [App\Http\Controllers\Customer\TopupDanaController::class, 'checkStatus'])->name('topupdana.check_status');
     
     // Rute Halaman Sukses (Kembalian dari DOKU/Tripay setelah bayar)
     Route::get('/topup-dana/success/{invoice?}', function($invoice = null) {
@@ -1415,3 +1414,5 @@ Route::prefix('customer')->name('customer.')->middleware(['auth'])->group(functi
     })->name('topupdana.success');
 
 });
+
+Route::post('/dana/topup-dana/cek-status', [App\Http\Controllers\Customer\TopupDanaController::class, 'checkStatus'])->name('topupdana.check_status');
