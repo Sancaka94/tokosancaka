@@ -21,6 +21,7 @@ class TopupDanaController extends Controller
     public function __construct(DanaSignatureService $danaSignature)
     {
         $this->danaSignature = $danaSignature;
+        $this->applyDynamicConfig();
     }
 
     public function create()
@@ -53,6 +54,8 @@ class TopupDanaController extends Controller
             $danaNumber = $this->normalizePhone($validated['dana_number']);
             $invoiceNumber = 'DANATOPUP-' . strtoupper(Str::random(10));
             $paymentMethod = strtoupper($validated['payment_method']);
+            $signature = $this->generateSignature($stringToSign);
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
 
             // =========================================================================
             // 1. LOGIKA POTONG SALDO (DI-MIRROR 100% DARI CUSTOMERTOPUP)
@@ -103,8 +106,9 @@ class TopupDanaController extends Controller
 
                 try {
                     // Generate Token B2B & Signature
-                    $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+                    $signature = $this->generateSignature($stringToSign);
                     $accessTokenB2B = $this->danaSignature->getAccessToken();
+
 
                     $headers = [
                         'Content-Type'  => 'application/json',
@@ -443,7 +447,7 @@ class TopupDanaController extends Controller
 
         try {
             // Memanggil fungsi generate signature dari service DANA yang kamu buat
-            $signature = $this->danaSignature->generateSignature($stringToSign);
+            $signature = $this->generateSignature($stringToSign);
             $accessTokenB2B = $this->danaSignature->getAccessToken();
 
             $headers = [
@@ -566,7 +570,7 @@ class TopupDanaController extends Controller
 
         try {
             // Memanggil fungsi generate signature dari service DANA yang kamu buat
-            $signature = $this->danaSignature->generateSignature($stringToSign);
+            $signature = $this->generateSignature($stringToSign);
             $accessTokenB2B = $this->danaSignature->getAccessToken();
 
             $headers = [
@@ -739,5 +743,59 @@ class TopupDanaController extends Controller
             Log::error('LOG LOG: Exception cek status DANA: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan jaringan saat mengecek status ke DANA.');
         }
+    }
+
+    // =========================================================================
+    // HELPER 1: DINAMISASI CONFIG DANA BERDASARKAN DATABASE
+    // =========================================================================
+    private function applyDynamicConfig()
+    {
+        $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
+        $isProduction = ($danaMode == '1');
+
+        if ($isProduction) {
+            config([
+                'services.dana.dana_env'      => 'PRODUCTION',
+                'services.dana.base_url'      => 'https://api.saas.dana.id',
+                'services.dana.merchant_id'   => \App\Models\Api::getValue('dana_prod_merchant_id', 'production', env('DANA_PROD_MERCHANT_ID')),
+                'services.dana.client_id'     => \App\Models\Api::getValue('dana_prod_client_id', 'production', env('DANA_PROD_CLIENT_ID')),
+                'services.dana.x_partner_id'  => \App\Models\Api::getValue('dana_prod_client_id', 'production', env('DANA_PROD_CLIENT_ID')),
+                'services.dana.private_key'   => \App\Models\Api::getValue('dana_prod_private_key', 'production', env('DANA_PROD_PRIVATE_KEY')),
+                'services.dana.public_key'    => \App\Models\Api::getValue('dana_prod_public_key', 'production'),
+                'services.dana.client_secret' => \App\Models\Api::getValue('dana_prod_client_secret', 'production', env('DANA_PROD_CLIENT_SECRET')),
+            ]);
+        } else {
+            config([
+                'services.dana.dana_env'      => 'SANDBOX',
+                'services.dana.base_url'      => 'https://api.sandbox.dana.id',
+                'services.dana.merchant_id'   => \App\Models\Api::getValue('dana_sandbox_merchant_id', 'sandbox', env('DANA_MERCHANT_ID')),
+                'services.dana.client_id'     => \App\Models\Api::getValue('dana_sandbox_client_id', 'sandbox', env('DANA_X_PARTNER_ID')),
+                'services.dana.x_partner_id'  => \App\Models\Api::getValue('dana_sandbox_client_id', 'sandbox', env('DANA_X_PARTNER_ID')),
+                'services.dana.private_key'   => \App\Models\Api::getValue('dana_sandbox_private_key', 'sandbox', env('DANA_PRIVATE_KEY')),
+                'services.dana.public_key'    => \App\Models\Api::getValue('dana_sandbox_public_key', 'sandbox'),
+                'services.dana.client_secret' => \App\Models\Api::getValue('dana_sandbox_client_secret', 'sandbox', env('DANA_CLIENT_SECRET')),
+            ]);
+        }
+    }
+
+    // =========================================================================
+    // HELPER 2: GENERATE SIGNATURE OPENSSL (SAMA PERSIS DENGAN TOPUPCONTROLLER)
+    // =========================================================================
+    private function generateSignature($stringToSign) {
+        $rawKey = config('services.dana.private_key');
+        if (empty($rawKey)) throw new \Exception("Private Key kosong.");
+
+        $cleanKey = str_replace(["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " ", "\"", "'"], "", $rawKey);
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
+
+        $privateKeyResource = openssl_pkey_get_private($formattedKey);
+        if (!$privateKeyResource) throw new \Exception("Format Private Key salah.");
+
+        $binarySignature = "";
+        $isSignSuccess = openssl_sign($stringToSign, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256);
+
+        if (!$isSignSuccess) throw new \Exception("OpenSSL Sign Failed.");
+
+        return base64_encode($binarySignature);
     }
 }
