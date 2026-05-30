@@ -803,25 +803,45 @@ class TopupDanaController extends Controller
         return base64_encode($binarySignature);
     }
 
+   // =========================================================================
+    // FUNGSI: MENGHAPUS BANYAK RIWAYAT TRANSAKSI SEKALIGUS (BULK DELETE)
+    // =========================================================================
     public function bulkDestroyTransaction(Request $request)
-{
-    $ids = $request->input('ids');
-    
-    // Jika data yang masuk berupa string (contoh: "1,2,3"), pecah menjadi array
-    if (is_string($ids)) {
-        $ids = explode(',', $ids);
-    }
-    
-    if (empty($ids)) {
-        return back()->with('error', 'Pilih minimal satu transaksi untuk dihapus.');
+    {
+        $ids = $request->input('ids');
+        
+        // Jika data yang masuk berupa string, pecah menjadi array
+        if (is_string($ids)) {
+            $ids = explode(',', $ids);
+        }
+        
+        if (empty($ids)) {
+            return back()->with('error', 'Pilih minimal satu transaksi untuk dihapus.');
+        }
+
+        try {
+            // PERBAIKAN: Ubah nama tabel menjadi 'dana_transaction_topup'
+            DB::table('dana_transaction_topup')->whereIn('id', $ids)->delete();
+            
+            return back()->with('success', count($ids) . ' riwayat transaksi berhasil dihapus.');
+        } catch (\Exception $e) {
+            Log::error('[BULK DELETE ERROR] ' . $e->getMessage());
+            return back()->with('error', 'Gagal menghapus transaksi: ' . $e->getMessage());
+        }
     }
 
-    try {
-        DB::table('dana_transactions')->whereIn('id', $ids)->delete();
-        return back()->with('success', count($ids) . ' riwayat transaksi berhasil dihapus.');
-    } catch (\Exception $e) {
-        Log::error('[BULK DELETE ERROR] ' . $e->getMessage());
-        return back()->with('error', 'Gagal menghapus transaksi: ' . $e->getMessage());
+    // =========================================================================
+    // FUNGSI UNTUK MENGHAPUS RIWAYAT TRANSAKSI SATUAN (CRUD DELETE)
+    // =========================================================================
+    public function destroyTopupTransaction($id)
+    {
+        try {
+            // PERBAIKAN: Ubah nama tabel menjadi 'dana_transaction_topup'
+            DB::table('dana_transaction_topup')->where('id', $id)->delete();
+            
+            return back()->with('success', 'Riwayat transaksi berhasil dihapus dari sistem.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal menghapus transaksi: ' . $e->getMessage());
+        }
     }
-}
 }
