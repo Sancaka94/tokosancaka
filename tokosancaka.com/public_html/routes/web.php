@@ -1395,3 +1395,22 @@ Route::get('/pembayaran/sukses-tripay', function (\Illuminate\Http\Request $requ
 
 // Tambahkan baris ini di tempat kamu mendeklarasikan rute admin DANA
 Route::delete('/admin/dana/bulk-destroy', [TopUpController::class, 'bulkDestroyTransaction'])->name('customer.dana.bulk_destroy_transaction');
+
+
+/*
+|--------------------------------------------------------------------------
+| RUTE CUSTOMER (MEMBUTUHKAN LOGIN)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('customer')->name('customer.')->middleware(['auth'])->group(function () {
+    
+    Route::get('/topup-dana', [TopupDanaController::class, 'create'])->name('topupdana.create');
+    Route::post('/topup-dana', [TopupDanaController::class, 'store'])->name('topupdana.store');
+    
+    // Rute Halaman Sukses (Kembalian dari DOKU/Tripay setelah bayar)
+    Route::get('/topup-dana/success/{invoice?}', function($invoice = null) {
+        // Kamu bisa buat view 'customer.topup.success' sendiri nanti
+        return redirect()->route('customer.topupdana.create')->with('success', 'Pembayaran berhasil! Saldo DANA sedang diproses untuk invoice: ' . $invoice);
+    })->name('topupdana.success');
+
+});
