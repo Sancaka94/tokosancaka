@@ -578,6 +578,12 @@ class TopupDanaController extends Controller
                     'status' => 'FAILED_DANA',
                     'updated_at' => now()
                 ]);
+
+                if ($trx->payment_method === 'POTONG SALDO' || $trx->payment_method === 'POTONG_SALDO' || $trx->payment_method === 'SALDO') {
+                    // Kembalikan saldo hanya jika pembayaran menggunakan saldo internal
+                    DB::table('Pengguna')->where('id_pengguna', $trx->user_id)->increment('saldo', $trx->amount);
+                    Log::info("LOG LOG: Auto-Refund Rp {$trx->amount} berhasil dikembalikan ke User ID {$trx->user_id} karena transaksi GAGAL.");
+                }
                 
                 $errMsg = $result['responseMessage'] ?? 'Terjadi kendala jaringan/server DANA';
                 return back()->with('error', "Status dari DANA: GAGAL (Kode: {$codeCheck} - {$errMsg})");
