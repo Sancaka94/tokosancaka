@@ -91,7 +91,20 @@
                                 <span class="text-xs text-gray-500 font-medium mb-0.5 group-hover:text-blue-500">Rp</span>
                                 <span class="text-lg">50.000</span>
                             </button>
+                            
+                            {{-- TAMBAHAN: 75.000 --}}
+                            <button type="button" class="btn-quick-amount py-3 px-2 rounded-xl border-2 border-blue-100 bg-blue-50/50 text-blue-700 font-bold hover:bg-blue-100 shadow-sm flex flex-col items-center justify-center group" data-amount="75000">
+                                <span class="text-xs text-gray-500 font-medium mb-0.5 group-hover:text-blue-500">Rp</span>
+                                <span class="text-lg">75.000</span>
+                            </button>
+                            
+                            {{-- TAMBAHAN: 100.000 --}}
+                            <button type="button" class="btn-quick-amount py-3 px-2 rounded-xl border-2 border-blue-100 bg-blue-50/50 text-blue-700 font-bold hover:bg-blue-100 shadow-sm flex flex-col items-center justify-center group" data-amount="100000">
+                                <span class="text-xs text-gray-500 font-medium mb-0.5 group-hover:text-blue-500">Rp</span>
+                                <span class="text-lg">100.000</span>
+                            </button>
                         </div>
+                        
                         <div class="relative rounded-xl shadow-sm group">
                             <div class="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                                 <span class="text-gray-400 group-focus-within:text-blue-600 text-xl font-bold transition-colors">Rp</span>
