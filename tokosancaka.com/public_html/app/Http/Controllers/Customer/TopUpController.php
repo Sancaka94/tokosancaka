@@ -1432,7 +1432,7 @@ public function handleCallback(Request $request)
                     'created_at'       => now()
                 ]);
 
-                return redirect()->route('customer.dana.transfer_bank_page')->with('warning', "⏳ Transaksi Sedang Diproses (Pending).\nMohon cek riwayat saldo secara berkala.");
+                return redirect()->route('admin.dana.transfer_bank')->with('warning', "⏳ Transaksi Sedang Diproses (Pending).\nMohon cek riwayat saldo secara berkala.");
 
             } else {
                 DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
@@ -1451,13 +1451,13 @@ public function handleCallback(Request $request)
                 $errorMsg = $result['responseMessage'] ?? 'Transaksi Gagal';
                 Log::error('[DANA TRANSFER BANK] Gagal & Refund', ['res' => $result]);
                 
-                return redirect()->route('customer.dana.transfer_bank_page')->with('error', "Gagal: $errorMsg\n(Saldo Rp ".number_format($request->amount, 0, ',', '.')." telah dikembalikan).");
+                return redirect()->route('admin.dana.transfer_bank')->with('error', "Gagal: $errorMsg\n(Saldo Rp ".number_format($request->amount, 0, ',', '.')." telah dikembalikan).");
             }
 
         } catch (\Exception $e) {
             DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
             Log::error('[DANA TRANSFER BANK] Exception', ['msg' => $e->getMessage()]);
-            return redirect()->route('customer.dana.transfer_bank_page')->with('error', 'Sistem Error saat eksekusi: ' . $e->getMessage() . "\n(Saldo telah dikembalikan).");
+            return redirect()->route('admin.dana.transfer_bank')->with('error', 'Sistem Error saat eksekusi: ' . $e->getMessage() . "\n(Saldo telah dikembalikan).");
         }
     }
 
