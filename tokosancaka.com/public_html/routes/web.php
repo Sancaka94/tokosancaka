@@ -1149,9 +1149,9 @@ Route::post('/admin/pricelist/upload', [AdminPricelistController::class, 'upload
 // Grouping Route Admin
 Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () {
 
-    Route::get('/dana/topup-corporate', function () {
-        return view('admin.dana.topup_corporate'); // <--- Sesuaikan dengan path file blade Anda
-    })->name('dana.topup_corporate_form');
+    // Menampilkan Halaman & Tabel Riwayat Top Up Corporate
+    Route::get('/dana/topup-corporate', [App\Http\Controllers\Customer\TopUpController::class, 'topupCorporatePage'])
+        ->name('dana.topup_corporate_form');
 
     Route::get('/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferBankPage'])->name('dana.transfer_bank');
 
