@@ -164,8 +164,10 @@ class TopupDanaController extends Controller
         }
     }
 
-    /**
-     * Helper Khusus Eksekusi API DANA B2B
+   /**
+     * =========================================================================
+     * HELPER CENTRAL: EKSEKUSI API DANA B2B DISBURSEMENT
+     * =========================================================================
      */
     private function executeDanaB2B($merchantRef, $targetPhone, $amount)
     {
@@ -193,12 +195,11 @@ class TopupDanaController extends Controller
             ]
         ];
 
-        $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
-        $hashedBody   = strtolower(hash('sha256', $jsonBody));
-        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
 
         try {
-            $signature = $this->danaSignature->generateSignature($stringToSign);
+            // PERBAIKAN: Mengirim 4 argumen sesuai yang diminta oleh DanaSignatureService
+            $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
             $accessTokenB2B = $this->danaSignature->getAccessToken();
 
             $headers = [
@@ -221,14 +222,28 @@ class TopupDanaController extends Controller
             $codeCheck = trim((string)($result['responseCode'] ?? '500'));
 
             if ($codeCheck === '2003800') {
-                DB::table('dana_transaction_topup')->where('reference_id', $merchantRef)->update(['status' => 'SUCCESS', 'updated_at' => now()]);
+                DB::table('dana_transaction_topup')->where('reference_id', $merchantRef)->update([
+                    'status' => 'SUCCESS',
+                    'updated_at' => now()
+                ]);
+                Log::info("LOG LOG: SUCCESS! Saldo DANA berhasil masuk ke nomor {$targetPhone}");
                 return ['success' => true, 'message' => 'Success'];
             } else {
+                $statusUpdate = in_array($codeCheck, ['504', '4293800', '2023800']) ? 'PENDING_DANA' : 'FAILED_DANA';
+                DB::table('dana_transaction_topup')->where('reference_id', $merchantRef)->update([
+                    'status' => $statusUpdate,
+                    'updated_at' => now()
+                ]);
+                Log::error("LOG LOG: GAGAL TOPUP API DANA. Code: $codeCheck.");
                 return ['success' => false, 'message' => $result['responseMessage'] ?? 'Unknown Error DANA'];
             }
 
         } catch (\Exception $e) {
             Log::error('LOG LOG: Exception saat tembak API DANA: ' . $e->getMessage());
+            DB::table('dana_transaction_topup')->where('reference_id', $merchantRef)->update([
+                'status' => 'FAILED_SYSTEM',
+                'updated_at' => now()
+            ]);
             return ['success' => false, 'message' => 'Terjadi kendala pada jaringan sistem ke DANA'];
         }
     }
