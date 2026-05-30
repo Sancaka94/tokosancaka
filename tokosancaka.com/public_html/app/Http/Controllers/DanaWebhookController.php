@@ -404,9 +404,38 @@ class DanaWebhookController extends Controller
                         App::make(\App\Http\Controllers\Customer\TopUpController::class)->handleDanaCallback($payloadData);
                     } else if (Str::startsWith($orderId, 'INV-')) {
                         App::make(\App\Http\Controllers\CustomerOrderController::class)->handleDanaCallback($payloadData);
-                   } else if (Str::startsWith($orderId, 'CVSANCAK-') || Str::startsWith($orderId, 'ORD-')) {
+                    } else if (Str::startsWith($orderId, 'CVSANCAK-') || Str::startsWith($orderId, 'ORD-')) {
                         App::make(\App\Http\Controllers\CheckoutController::class)->handleDanaCallback($payloadData);
-                    } else if (Str::startsWith($orderId, 'TRF') || Str::startsWith($orderId, 'TUP')) {
+                    } 
+                    // =========================================================
+                    // TAMBAHKAN BLOK INI: PENANGANAN SUCCESS DANATOPUP (TOP UP DANA)
+                    // =========================================================
+                    else if (Str::startsWith($orderId, 'DANATOPUP-')) {
+                        $danaTopup = DB::table('dana_transaction_topup')->where('reference_id', $orderId)->first();
+                        
+                        if ($danaTopup) {
+                            if ($danaTopup->status !== 'SUCCESS') {
+                                DB::table('dana_transaction_topup')->where('id', $danaTopup->id)->update([
+                                    'status' => 'SUCCESS', 
+                                    'updated_at' => now()
+                                ]);
+                                Log::info("✅ LOG LOG: Webhook Top Up DANA Pelanggan ($orderId) SUKSES.");
+
+                                $this->sendExpoPaymentNotification($orderId);
+
+                                $user = DB::table('Pengguna')->where('id_pengguna', $danaTopup->user_id)->first();
+                                if ($user) {
+                                    $this->_sendEmailNotification($user->email, $user->nama_lengkap, $orderId, 'Top Up DANA', $danaTopup->amount);
+                                }
+                            } else {
+                                Log::info("⚠️ Transaksi Top Up DANA $orderId sudah diproses sebelumnya.");
+                            }
+                        } else {
+                            Log::warning("⚠️ Order $orderId (DANATOPUP) tidak ditemukan di tabel dana_transaction_topup.");
+                        }
+                    }
+                    // =========================================================
+                    else if (Str::startsWith($orderId, 'TRF') || Str::startsWith($orderId, 'TUP')) {
                         // PENANGANAN DISBURSEMENT (TRANSFER BANK / TOP UP CORPORATE)
                         $danaTrx = DB::table('dana_transactions')->where('reference_no', $orderId)->first();
                         
@@ -479,7 +508,35 @@ class DanaWebhookController extends Controller
                     }
                 } elseif (Str::startsWith($orderId, 'TOPUP-') || Str::startsWith($orderId, 'ADM-')) {
                     App::make(\App\Http\Controllers\Customer\TopUpController::class)->handleDanaCallback($payloadData);
-                } elseif (Str::startsWith($orderId, 'TRF') || Str::startsWith($orderId, 'TUP')) {
+                } 
+                // =========================================================
+                // TAMBAHKAN BLOK INI: PENANGANAN FAILED DANATOPUP (TOP UP DANA)
+                // =========================================================
+                elseif (Str::startsWith($orderId, 'DANATOPUP-')) {
+                    $danaTopup = DB::table('dana_transaction_topup')->where('reference_id', $orderId)->first();
+                    
+                    if ($danaTopup && !in_array($danaTopup->status, ['FAILED', 'FAILED_DANA'])) {
+                        DB::table('dana_transaction_topup')->where('id', $danaTopup->id)->update([
+                            'status' => 'FAILED_DANA', 
+                            'updated_at' => now()
+                        ]);
+                        
+                        // CEK METODE PEMBAYARAN: Hanya refund jika menggunakan Potong Saldo
+                        $metodeBayar = strtoupper($danaTopup->payment_method);
+                        if (in_array($metodeBayar, ['POTONG SALDO', 'SALDO', 'POTONG_SALDO'])) {
+                            DB::table('Pengguna')->where('id_pengguna', $danaTopup->user_id)->increment('saldo', $danaTopup->amount);
+                            Log::info("❌ LOG LOG: Webhook DANATOPUP $orderId GAGAL/EXPIRED. Saldo Rp " . number_format($danaTopup->amount, 0, ',', '.') . " di-REFUND ke user ID {$danaTopup->user_id} karena metode bayar adalah: $metodeBayar.");
+                        } else {
+                            // Jika pakai Payment Gateway (Tripay/DOKU), uang ada di PG. 
+                            // Kamu bisa mengatur apakah akan menambahkannya ke saldo akun atau membiarkannya untuk direfund manual.
+                            // Contoh: Tetap masuk saldo akun sebagai deposit.
+                            DB::table('Pengguna')->where('id_pengguna', $danaTopup->user_id)->increment('saldo', $danaTopup->amount);
+                            Log::info("❌ LOG LOG: Webhook DANATOPUP $orderId GAGAL/EXPIRED. User membayar via $metodeBayar. Dana telah dimasukkan ke saldo akun sebagai kompensasi kegagalan DANA.");
+                        }
+                    }
+                }
+                // =========================================================
+                elseif (Str::startsWith($orderId, 'TRF') || Str::startsWith($orderId, 'TUP')) {
                     // PENANGANAN GAGAL DISBURSEMENT (TRANSFER BANK / TOP UP CORPORATE)
                     $danaTrx = DB::table('dana_transactions')->where('reference_no', $orderId)->first();
                     
@@ -649,6 +706,10 @@ class DanaWebhookController extends Controller
         }
         if (Str::startsWith($refNo, 'TOPUP') && !str_contains($refNo, '-')) {
             return 'TOPUP-' . substr($refNo, 5);
+        }
+        // TAMBAHKAN BARIS INI UNTUK DANATOPUP
+        if (Str::startsWith($refNo, 'DANATOPUP') && !str_contains($refNo, '-')) {
+            return 'DANATOPUP-' . substr($refNo, 9);
         }
         if (preg_match('/^SCK(\d{8})([A-Z0-9]+)$/', $refNo, $matches)) {
             return 'SCK-' . $matches[1] . '-' . $matches[2];

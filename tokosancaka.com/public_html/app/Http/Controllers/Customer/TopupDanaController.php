@@ -68,8 +68,8 @@ class TopupDanaController extends Controller
                 DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $amount);
 
                 // C. IDENTITAS CORPORATE (DISBURSEMENT B2B)
-                $merchantDepositAccount = '20070000103315239788'; 
-                $idToko = '216660001394664338723';
+                $merchantDepositAccount = config('services.dana.merchant_deposit_account');
+                $idToko = config('services.dana.id_toko');
 
                 $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
                 $amountStr  = number_format((float)$amount, 2, '.', '');
@@ -290,8 +290,8 @@ class TopupDanaController extends Controller
     {
         Log::info("LOG LOG: Memulai tembak API DANA untuk Ref: $merchantRef ke nomor: $targetPhone");
 
-        $merchantDepositAccount = '20070000103315239788'; 
-        $idToko                 = '216660001394664338723';
+        $merchantDepositAccount = config('services.dana.merchant_deposit_account');
+        $idToko = config('services.dana.id_toko');
         $timestamp              = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $partnerRef             = "B2BTUP" . time() . Str::random(4);
         $amountStr              = number_format((float)$amount, 2, '.', '');
@@ -409,8 +409,8 @@ class TopupDanaController extends Controller
         // ==============================================================
         Log::info("LOG LOG: Pembayaran valid. Memulai Top Up otomatis ke nomor DANA: " . $trx->target_phone);
         
-        $merchantDepositAccount = '20070000103315239788'; 
-        $idToko                 = '216660001394664338723';
+        $merchantDepositAccount = config('services.dana.merchant_deposit_account');
+        $idToko                 = config('services.dana.id_toko');
         $timestamp              = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $partnerRef             = "B2BTUP" . time() . Str::random(4);
         $amountStr              = number_format((float)$trx->amount, 2, '.', '');
@@ -532,8 +532,8 @@ class TopupDanaController extends Controller
         // ==============================================================
         Log::info("LOG LOG: Pembayaran valid. Memulai Top Up otomatis ke nomor DANA: " . $trx->target_phone);
         
-        $merchantDepositAccount = '20070000103315239788'; 
-        $idToko                 = '216660001394664338723';
+        $merchantDepositAccount = config('services.dana.merchant_deposit_account');
+        $idToko                 = config('services.dana.id_toko');
         $timestamp              = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $partnerRef             = "B2BTUP" . time() . Str::random(4);
         $amountStr              = number_format((float)$trx->amount, 2, '.', '');
