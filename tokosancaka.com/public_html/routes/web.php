@@ -1314,14 +1314,20 @@ Route::get('/debug/dana-status/{orderId}', [TopUpController::class, 'debugDanaSt
 Route::prefix('customer')->middleware(['auth'])->group(function () {
 
     // Pastikan ditaruh di dalam sini
-    Route::get('/dana/akun/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferBankPage'])->name('customer.dana.transfer_bank_page');
+    // Route::get('/dana/akun/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferBankPage'])->name('customer.dana.transfer_bank_page');
 
     // Route POST yang sudah ada sebelumnya
     Route::post('/dana/bank-inquiry', [App\Http\Controllers\Customer\TopUpController::class, 'bankAccountInquiry'])->name('customer.dana.bank_inquiry');
     Route::post('/dana/transfer_bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferToBank'])->name('customer.dana.transfer_bank');
     Route::post('/dana/topup-corporate', [App\Http\Controllers\Customer\TopUpController::class, 'customerTopup'])->name('customer.dana.topup_corporate');
     Route::post('/dana/transfer-bank/{id}/cek-status', [App\Http\Controllers\Customer\TopUpController::class, 'checkTransferStatus'])->name('customer.dana.check_transfer_status');
-    
+    // 3. Tombol Cek Status API
+    Route::post('/dana/topup-corporate/cek-status', [App\Http\Controllers\Customer\TopUpController::class, 'checkTopupStatus'])
+        ->name('customer.dana.check_topup_status');
+
+    // 4. Tombol Hapus Riwayat
+    Route::delete('/dana/topup-corporate/{id}', [App\Http\Controllers\Customer\TopUpController::class, 'destroyTopupTransaction'])
+        ->name('customer.dana.destroy_topup');
     });
 
 
