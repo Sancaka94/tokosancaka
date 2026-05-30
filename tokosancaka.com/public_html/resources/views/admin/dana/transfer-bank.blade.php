@@ -2,6 +2,33 @@
 
 @section('title', 'Top Up Saldo DANA Corporate')
 
+@push('styles')
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        /* Penyesuaian tema Select2 agar menyatu dengan Tailwind CSS */
+        .select2-container .select2-selection--single {
+            height: 3rem; /* Setara dengan py-3 Tailwind */
+            border-color: #d1d5db; /* gray-300 */
+            border-radius: 0.5rem; /* rounded-lg */
+            background-color: #f9fafb; /* bg-gray-50 */
+            display: flex;
+            align-items: center;
+            padding-left: 0.5rem;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 100%;
+            right: 10px;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #374151; /* text-gray-700 */
+            font-weight: 500;
+        }
+        .select2-search__field {
+            outline: none !important;
+        }
+    </style>
+@endpush
+
 @section('content')
 <div class="container mx-auto px-4 py-6">
     
@@ -45,19 +72,23 @@
         {{-- FORMULIR --}}
         <form action="{{ route('customer.dana.topup_corporate') }}" method="POST">
             @csrf
+            
             <div class="mb-5">
-                <label for="affiliate_id" class="block text-gray-700 font-semibold mb-2">ID Pengguna Pelanggan</label>
-                <input type="text" name="affiliate_id" id="affiliate_id" value="{{ old('affiliate_id') }}" 
-                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" 
-                    placeholder="Contoh: 12" required>
-                <p class="text-sm text-gray-500 mt-1">*Saldo aplikasi milik ID Pengguna ini akan dipotong secara otomatis.</p>
+                <label for="affiliate_id" class="block text-gray-700 font-semibold mb-2">Cari Pelanggan (Nama / WA / Toko)</label>
+                {{-- Dropdown Select2 --}}
+                <select name="affiliate_id" id="affiliate_id" class="w-full" required>
+                    @if(old('affiliate_id'))
+                        <option value="{{ old('affiliate_id') }}" selected>ID Pelanggan Terpilih: {{ old('affiliate_id') }}</option>
+                    @endif
+                </select>
+                <p class="text-sm text-gray-500 mt-1">*Saldo komisi milik Pelanggan ini akan otomatis terpotong saat Top Up berhasil.</p>
             </div>
 
             <div class="mb-5">
                 <label for="phone" class="block text-gray-700 font-semibold mb-2">Nomor HP DANA Tujuan</label>
-                <input type="number" name="phone" id="phone" value="{{ old('phone') }}" 
+                <input type="text" name="phone" id="phone" value="{{ old('phone') }}" 
                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" 
-                    placeholder="Contoh: 081234567890" required>
+                    placeholder="Contoh: 081234567890 (Akan terisi otomatis jika ada data)" required>
             </div>
 
             <div class="mb-6">
@@ -154,7 +185,7 @@
                                         </form>
                                     @endif
                                     
-                                    {{-- TOMBOL HAPUS (Selalu Muncul) --}}
+                                    {{-- TOMBOL HAPUS (CRUD) --}}
                                     <form action="{{ route('customer.dana.destroy_topup', $trx->id) }}" method="POST" onsubmit="return confirm('Yakin ingin menghapus riwayat transaksi ini?');">
                                         @csrf
                                         @method('DELETE')
@@ -175,7 +206,6 @@
                     </tbody>
                 </table>
             </div>
-            
             
             {{-- Navigasi Pagination --}}
             @if(isset($transactions) && $transactions->hasPages())
@@ -241,8 +271,63 @@
 </div>
 
 @push('scripts')
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script>
-    // Fungsi untuk membuka Modal dan memasukkan data
+    $(document).ready(function() {
+        // ==============================================================
+        // INISIALISASI SELECT2 DENGAN AJAX
+        // ==============================================================
+        $('#affiliate_id').select2({
+            placeholder: 'Ketik nama, nomor WA, atau nama toko...',
+            allowClear: true,
+            ajax: {
+                url: '{{ route("customer.dana.search_pengguna") }}', // URL Endpoint pencarian
+                dataType: 'json',
+                delay: 250, // Delay agar tidak membebani server saat mengetik
+                data: function (params) {
+                    return {
+                        q: params.term // Kata kunci yang diketik user dikirim sebagai 'q'
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data // Format data dari controller langsung dipakai
+                    };
+                },
+                cache: true
+            },
+            minimumInputLength: 2, // Minimal 2 karakter baru mulai mencari
+            language: {
+                inputTooShort: function() { return "Ketik minimal 2 huruf..."; },
+                searching: function() { return "Mencari data..."; },
+                noResults: function() { return "Data pengguna tidak ditemukan."; }
+            }
+        });
+
+        // ==============================================================
+        // FITUR AUTO-FILL: MENGISI NOMOR HP DANA OTOMATIS
+        // ==============================================================
+        $('#affiliate_id').on('select2:select', function (e) {
+            var data = e.params.data;
+            // Jika payload response memiliki properti 'phone', isi ke kolom input
+            if(data.phone) {
+                // Menghilangkan karakter non-angka (seperti spasi atau +, opsional)
+                let cleanPhone = data.phone.replace(/\D/g, '');
+                $('#phone').val(cleanPhone);
+            }
+        });
+
+        // Membersihkan input Nomor HP jika pilihan dibatalkan (X)
+        $('#affiliate_id').on('select2:clear', function (e) {
+            $('#phone').val('');
+        });
+    });
+
+    // ==============================================================
+    // FUNGSI MODAL STRUK
+    // ==============================================================
     function openDetailModal(refSancaka, refDana, phone, amount, date, status) {
         document.getElementById('modal-ref-sancaka').innerText = refSancaka;
         document.getElementById('modal-ref-dana').innerText = refDana;
@@ -250,7 +335,6 @@
         document.getElementById('modal-amount').innerText = amount;
         document.getElementById('modal-date').innerText = date;
         
-        // Atur warna dan icon status
         const statusEl = document.getElementById('modal-status');
         if(status === 'SUCCESS') {
             statusEl.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Sukses';
@@ -263,11 +347,9 @@
             statusEl.className = 'text-sm font-bold text-red-600';
         }
 
-        // Tampilkan Modal
         document.getElementById('detailModal').classList.remove('hidden');
     }
 
-    // Fungsi untuk menutup Modal
     function closeDetailModal() {
         document.getElementById('detailModal').classList.add('hidden');
     }
