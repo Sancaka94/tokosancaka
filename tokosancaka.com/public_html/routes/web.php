@@ -1328,6 +1328,11 @@ Route::prefix('customer')->middleware(['auth'])->group(function () {
     // 4. Tombol Hapus Riwayat
     Route::delete('/dana/topup-corporate/{id}', [App\Http\Controllers\Customer\TopUpController::class, 'destroyTopupTransaction'])
         ->name('customer.dana.destroy_topup');
+
+    // Rute untuk Ajax Pencarian User
+    Route::get('/dana/topup-corporate/search-pengguna', [App\Http\Controllers\Customer\TopUpController::class, 'searchPengguna'])
+    ->name('customer.dana.search_pengguna');
+
     });
 
 

@@ -3075,4 +3075,38 @@ public function handleCallback(Request $request)
         }
     }
 
+    // =========================================================================
+    // FUNGSI: PENCARIAN PELANGGAN (AJAX UNTUK SELECT2)
+    // =========================================================================
+    public function searchPengguna(Request $request)
+    {
+        $search = $request->get('q');
+        
+        $query = DB::table('Pengguna')
+            ->select('id_pengguna', 'nama_lengkap', 'no_wa', 'store_name')
+            ->where('status', 'Aktif');
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('nama_lengkap', 'like', "%{$search}%")
+                  ->orWhere('no_wa', 'like', "%{$search}%")
+                  ->orWhere('store_name', 'like', "%{$search}%");
+            });
+        }
+
+        $pengguna = $query->limit(20)->get();
+
+        // Format data agar sesuai dengan format yang dibaca oleh Select2
+        $formatted = $pengguna->map(function ($item) {
+            $store = $item->store_name ? " | Toko: {$item->store_name}" : "";
+            return [
+                'id' => $item->id_pengguna,
+                'text' => "{$item->nama_lengkap} ({$item->no_wa}){$store}",
+                'phone' => $item->no_wa // Data ini akan dipakai untuk auto-fill nomor DANA
+            ];
+        });
+
+        return response()->json($formatted);
+    }
+
 }
