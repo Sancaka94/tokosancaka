@@ -266,14 +266,12 @@ class TopupDanaController extends Controller
                 $payload = [
                     'method'         => $validated['payment_method'], // Kirim sesuai input form aslinya
                     'merchant_ref'   => $invoiceNumber,
-                    'amount'         => $amount,
+                    'amount'         => $totalAmount, // ✅ UBAH MENJADI $totalAmount
                     'customer_name'  => $customerData['name'],
                     'customer_email' => $customerData['email'],
                     'customer_phone' => $customerData['phone'],
-                    // UBAH PRICE JADI $totalAmount
                     'order_items'    => [['sku' => 'DANA', 'name' => 'Top Up DANA ' . $danaNumber, 'price' => $totalAmount, 'quantity' => 1]], 
-                    // PASTIKAN SIGNATURE JUGA MEMAKAI $totalAmount
-                    'signature'      => hash_hmac('sha256', $merchantCode.$invoiceNumber.$totalAmount, $privateKey),
+                    'signature'      => hash_hmac('sha256', $merchantCode.$invoiceNumber.$totalAmount, $privateKey), // ✅ SEKARANG SUDAH SINKRON
                 ];
 
                 $baseUrl = $mode === 'production' 
