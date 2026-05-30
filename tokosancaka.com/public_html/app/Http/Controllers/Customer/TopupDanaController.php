@@ -1,0 +1,257 @@
+<?php
+
+namespace App\Http\Controllers\Customer;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use App\Services\DanaSignatureService;
+use Exception;
+use Carbon\Carbon;
+use App\Services\DokuJokulService;
+
+class TopupDanaController extends Controller
+{
+    protected $danaSignature;
+
+    public function __construct(DanaSignatureService $danaSignature)
+    {
+        $this->danaSignature = $danaSignature;
+    }
+
+    public function create()
+    {
+        return view('customer.topup.topup-dana');
+    }
+
+    /**
+     * Memproses pesanan dari Frontend dan membuat link bayar Tripay/DOKU
+     */
+    public function store(Request $request, DokuJokulService $dokuJokulService)
+    {
+        Log::info('LOG LOG: ========== [DEBUG DIRECT TOPUP DANA SUBMIT] ==========');
+        Log::info('LOG LOG: PAYLOAD (BODY): ', $request->all());
+
+        $validated = $request->validate([
+            'dana_number'    => 'required|numeric',
+            'amount'         => 'required|numeric|min:10000',
+            'payment_method' => 'required|string',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $user = Auth::user();
+            $amount = (int) $validated['amount'];
+            $danaNumber = $this->normalizePhone($validated['dana_number']);
+            $invoiceNumber = 'DANATOPUP-' . strtoupper(Str::random(10));
+
+            // Simpan ke database khusus dana_transaction_topup dengan status PENDING
+            DB::table('dana_transaction_topup')->insert([
+                'user_id'        => $user->id_pengguna,
+                'reference_id'   => $invoiceNumber,
+                'target_phone'   => $danaNumber,
+                'amount'         => $amount,
+                'payment_method' => $validated['payment_method'],
+                'status'         => 'PENDING_PAYMENT',
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
+            
+            DB::commit();
+
+            $customerData = [
+                'name'  => $user->nama_lengkap ?? 'Customer',
+                'email' => $user->email ?? 'customer@tokosancaka.com',
+                'phone' => $user->no_wa ?? '081234567890'
+            ];
+
+            // PROSES PEMBAYARAN VIA DOKU
+            if ($validated['payment_method'] === 'DOKU_JOKUL') {
+                Log::info('LOG LOG: Memulai Generate DOKU Jokul untuk ' . $invoiceNumber);
+
+                $lineItems = [['name' => 'Top Up DANA ' . $danaNumber, 'price' => $amount, 'quantity' => 1]];
+                $successRedirectUrl = route('customer.topupdana.success', ['invoice' => $invoiceNumber]);
+                
+                $paymentUrl = $dokuJokulService->createPayment(
+                    $invoiceNumber, $amount, $customerData, $lineItems, [], $successRedirectUrl
+                );
+
+                if (empty($paymentUrl)) throw new Exception('Gagal membuat link DOKU.');
+                return redirect()->away($paymentUrl);
+            } 
+            // PROSES PEMBAYARAN VIA TRIPAY
+            else {
+                Log::info('LOG LOG: Memulai Generate Tripay untuk ' . $invoiceNumber);
+
+                $apiKey       = config('tripay.api_key');
+                $privateKey   = config('tripay.private_key');
+                $merchantCode = config('tripay.merchant_code');
+                $mode         = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+                $payload = [
+                    'method'         => $validated['payment_method'],
+                    'merchant_ref'   => $invoiceNumber,
+                    'amount'         => $amount,
+                    'customer_name'  => $customerData['name'],
+                    'customer_email' => $customerData['email'],
+                    'customer_phone' => $customerData['phone'],
+                    'order_items'    => [['sku' => 'DANA', 'name' => 'Top Up DANA ' . $danaNumber, 'price' => $amount, 'quantity' => 1]],
+                    'signature'      => hash_hmac('sha256', $merchantCode.$invoiceNumber.$amount, $privateKey),
+                ];
+
+                $baseUrl = $mode === 'production' 
+                    ? 'https://tripay.co.id/api/transaction/create' 
+                    : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+                $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->post($baseUrl, $payload);
+                
+                if ($response->successful() && isset($response->json()['success']) && $response->json()['success'] === true) {
+                    $checkoutUrl = $response->json()['data']['checkout_url'];
+                    return redirect()->away($checkoutUrl);
+                }
+
+                throw new Exception('Gagal membuat transaksi di Tripay.');
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('LOG LOG: Gagal memproses Direct Top Up DANA: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage())->withInput();
+        }
+    }
+
+
+    /**
+     * Webhook Tripay/DOKU. Dipanggil otomatis oleh Payment Gateway saat lunas.
+     */
+    public function handlePaymentCallback(Request $request)
+    {
+        Log::info('LOG LOG: ========== WEBHOOK DIRECT TOP UP DANA DITERIMA ==========');
+        
+        // Asumsi data ini sudah di-parsing sesuai Payment Gateway kamu (Tripay/Doku)
+        // Sesuaikan cara pengambilan merchantRef & status dengan format payload Tripay/DOKU kamu
+        $merchantRef = $request->input('reference') ?? $request->input('merchant_ref');
+        $status      = strtoupper($request->input('status')); // Contoh: 'PAID' atau 'SUCCESS'
+
+        Log::info("LOG LOG: Webhook Info. Ref: $merchantRef, Status: $status");
+
+        if ($status !== 'PAID' && $status !== 'SUCCESS') {
+            Log::info("LOG LOG: Status pembayaran belum lunas/gagal, abaikan.");
+            return response()->json(['success' => true, 'message' => 'Ignored']);
+        }
+
+        $trx = DB::table('dana_transaction_topup')->where('reference_id', $merchantRef)->first();
+
+        if (!$trx) {
+            Log::error("LOG LOG: Transaksi $merchantRef tidak ditemukan di dana_transaction_topup");
+            return response()->json(['success' => false, 'message' => 'Not Found'], 404);
+        }
+
+        if ($trx->status === 'SUCCESS') {
+            Log::info("LOG LOG: Transaksi $merchantRef sudah diproses sebelumnya (Idempotent).");
+            return response()->json(['success' => true, 'message' => 'Already Processed']);
+        }
+
+        // ==============================================================
+        // EKSEKUSI TOP UP KE DANA (DISBURSEMENT B2B)
+        // ==============================================================
+        Log::info("LOG LOG: Pembayaran valid. Memulai Top Up otomatis ke nomor DANA: " . $trx->target_phone);
+        
+        $merchantDepositAccount = '20070000103315239788'; 
+        $idToko                 = '216660001394664338723';
+        $timestamp              = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $partnerRef             = "B2BTUP" . time() . Str::random(4);
+        $amountStr              = number_format((float)$trx->amount, 2, '.', '');
+        $path                   = '/rest/v1.0/emoney/topup';
+
+        $body = [
+            "partnerReferenceNo" => $partnerRef,
+            "customerNumber"     => $trx->target_phone,
+            "amount" => [
+                "value"    => $amountStr,
+                "currency" => "IDR"
+            ],
+            "feeAmount" => [
+                "value"    => "0.00",
+                "currency" => "IDR"
+            ],
+            "transactionDate" => $timestamp,
+            "categoryId"      => "6",
+            "additionalInfo"  => [
+                "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
+                "chargeTarget" => "MERCHANT",
+                "merchantId"   => $idToko,
+                "accountId"    => $merchantDepositAccount
+            ]
+        ];
+
+        $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody   = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
+        try {
+            // Memanggil fungsi generate signature dari service DANA yang kamu buat
+            $signature = $this->danaSignature->generateSignature($stringToSign);
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'CHANNEL-ID'    => '95221',
+                'ORIGIN'        => config('services.dana.origin'),
+            ];
+
+            Log::info('LOG LOG: Mengirim payload TopUp API DANA', $body);
+
+            $response = Http::withHeaders($headers)
+                ->timeout(60)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            $codeCheck = trim((string)($result['responseCode'] ?? '500'));
+
+            Log::info('LOG LOG: Respon DANA API: ', $result);
+
+            if ($codeCheck === '2003800') {
+                // UPDATE STATUS JADI SUCCESS
+                DB::table('dana_transaction_topup')->where('reference_id', $merchantRef)->update([
+                    'status' => 'SUCCESS',
+                    'updated_at' => now()
+                ]);
+                Log::info("LOG LOG: SUCCESS! Saldo DANA berhasil masuk ke nomor {$trx->target_phone}");
+            } else {
+                // UPDATE STATUS JADI FAILED/PENDING TERGANTUNG KODE
+                $statusUpdate = in_array($codeCheck, ['504', '4293800', '2023800']) ? 'PENDING_DANA' : 'FAILED_DANA';
+                DB::table('dana_transaction_topup')->where('reference_id', $merchantRef)->update([
+                    'status' => $statusUpdate,
+                    'updated_at' => now()
+                ]);
+                Log::error("LOG LOG: GAGAL TOPUP. Code: $codeCheck. Lakukan pengecekan manual.");
+            }
+
+            return response()->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: Webhook Exception: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Internal Server Error'], 500);
+        }
+    }
+
+    private function normalizePhone($phone) 
+    {
+        $phone = preg_replace('/[^0-9]/', '', $phone);
+        if (substr($phone, 0, 2) == '08') return '62' . substr($phone, 1);
+        if (substr($phone, 0, 1) == '8') return '62' . $phone;
+        return $phone;
+    }
+}

@@ -166,6 +166,13 @@
                         <a href="{{ route('public.pricelist') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200">
                             <i class="fas fa-sim-card fa-fw w-4 mr-2"></i> Isi Pulsa / Data
                         </a>
+
+                        {{-- TAMBAHAN: Menu Top Up DANA --}}
+                            <a href="{{ route('customer.topupdana.create') }}" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200 {{ request()->routeIs('customer.topupdana.*') ? 'bg-gray-800 text-white' : '' }}">
+                                <i class="fas fa-wallet fa-fw w-4 mr-2 text-blue-400"></i> Top Up DANA
+                            </a>
+                        {{-- END TAMBAHAN --}}
+
                         <a href="https://tokosancaka.com/etalase/ppob/digital/pln-pascabayar" target="_blank" class="flex items-center px-4 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded-md transition-colors duration-200">
                             <i class="fas fa-file-invoice-dollar fa-fw w-4 mr-2"></i> Bayar Tagihan
                         </a>
