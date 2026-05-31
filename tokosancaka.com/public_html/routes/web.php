@@ -1423,11 +1423,10 @@ Route::post('/dana/topup-dana/cek-status', [App\Http\Controllers\Customer\TopupD
 
 // ########################### API APLIKASI MOBILE EXPO TOPUP DANA #############################endregion
 
-// =========================================================================
-// RUTE BARU KHUSUS API / APLIKASI EXPO (TOP UP DANA)
-// =========================================================================
-Route::get('/api/topup-dana', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiGetTransactions']);
-Route::post('/api/topup-dana', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiStore']);
-Route::post('/api/topup-dana/cek-status', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiCheckStatus']);
-Route::delete('/api/topup-dana/bulk-destroy', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiBulkDestroyTransaction']);
-Route::delete('/api/topup-dana/{id}', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiDestroyTopupTransaction']);
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/api/topup-dana', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiGetTransactions']);
+    Route::post('/api/topup-dana', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiStore']);
+    Route::post('/api/topup-dana/cek-status', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiCheckStatus']);
+    Route::delete('/api/topup-dana/bulk-destroy', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiBulkDestroyTransaction']);
+    Route::delete('/api/topup-dana/{id}', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiDestroyTopupTransaction']);
+});

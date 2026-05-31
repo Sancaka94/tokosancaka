@@ -894,10 +894,16 @@ class TopupDanaController extends Controller
     // =========================================================================
 
 
-    public function apiGetTransactions()
+    public function apiGetTransactions(Request $request)
     {
+        $user = $request->user();
+        
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Sesi berakhir, silakan login ulang.'], 401);
+        }
+
         $transactions = DB::table('dana_transaction_topup')
-            ->where('user_id', Auth::user()->id_pengguna)
+            ->where('user_id', $user->id_pengguna)
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
@@ -917,12 +923,19 @@ class TopupDanaController extends Controller
             'payment_method' => 'required|string',
         ]);
 
-        try {
-            $user = Auth::user();
-            $amount = (int) $validated['amount'];
+       try {
+            // Ambil dari Auth (Web) atau Request (API)
+            $user = Auth::user() ?? $request->user();
 
+            if (!$user) {
+                return back()->with('error', 'Sesi Anda telah habis. Silakan login kembali.');
+            }
+
+            $amount = (int) $validated['amount']; // Contoh: 10000
+
+            // 1. TAMBAHKAN LOGIKA ADMIN FEE DI SINI
             $adminFee = 2000;
-            $totalAmount = $amount + $adminFee;
+            $totalAmount = $amount + $adminFee; // Contoh: 12000
 
             $danaNumber = $this->normalizePhone($validated['dana_number']);
             $invoiceNumber = 'DANATOPUP-' . strtoupper(Str::random(10));
