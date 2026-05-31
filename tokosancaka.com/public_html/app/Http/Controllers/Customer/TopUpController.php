@@ -3551,4 +3551,33 @@ public function handleCallback(Request $request)
         ]);
     }
 
+    /**
+     * =========================================================================
+     * [MESIN BARU] API EXPO: HAPUS RIWAYAT TRANSFER BANK (SINGLE & BULK)
+     * =========================================================================
+     */
+    public function apiDestroyTransferBankHistory(Request $request)
+    {
+        try {
+            $ids = $request->input('ids');
+
+            if (empty($ids) || !is_array($ids)) {
+                return response()->json(['success' => false, 'message' => 'Tidak ada data yang dipilih.'], 400);
+            }
+
+            // Hapus dari database (dana_transactions)
+            $deleted = DB::table('dana_transactions')->whereIn('id', $ids)->delete();
+
+            if ($deleted > 0) {
+                return response()->json(['success' => true, 'message' => "$deleted riwayat berhasil dihapus."]);
+            }
+
+            return response()->json(['success' => false, 'message' => 'Data tidak ditemukan atau sudah dihapus.'], 404);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [API EXPO DELETE HISTORY] Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error saat menghapus data.'], 500);
+        }
+    }
+
 }

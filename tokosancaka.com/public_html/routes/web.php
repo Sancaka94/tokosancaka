@@ -1439,5 +1439,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/api/admin/dana/transfer-bank/history', [App\Http\Controllers\Customer\TopUpController::class, 'apiTransferBankHistory']);
 
     Route::get('/api/admin/dana/search-pengguna', [App\Http\Controllers\Customer\TopUpController::class, 'apiSearchPengguna']);
-    
+
+    // Rute API Hapus Riwayat Transfer & Inquiry Bank
+    Route::delete('/api/admin/dana/transfer-bank/bulk-destroy', [App\Http\Controllers\Customer\TopUpController::class, 'apiDestroyTransferBankHistory']);
+
     });
