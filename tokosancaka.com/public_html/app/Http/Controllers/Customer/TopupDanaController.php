@@ -1074,6 +1074,7 @@ class TopupDanaController extends Controller
                             'amount'           => $amount,
                             'type'             => 'TOPUP_B2B',
                             'reference_id'     => $invoiceNumber,
+                            'dana_reference'   => $result['referenceNo'] ?? null,
                             'payment_method'   => $paymentMethod,
                             'status'           => 'SUCCESS',
                             'response_payload' => json_encode($result),
