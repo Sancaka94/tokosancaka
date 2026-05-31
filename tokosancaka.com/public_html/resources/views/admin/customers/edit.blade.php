@@ -3,32 +3,32 @@
 @section('title', 'Edit Data Pelanggan')
 
 @section('content')
-<div class="px-4 py-8 md:px-8 max-w-7xl mx-auto bg-gray-50/30 min-h-screen">
+<div class="px-4 py-6 md:px-8 max-w-[1400px] mx-auto bg-[#f8f9fa] min-h-screen">
 
-    {{-- ================= FLASH MESSAGES ================= --}}
+    {{-- ================= FLASH MESSAGES (Gaya Bootstrap 5 Alert) ================= --}}
     @if(session('success'))
-        <div x-data="{ show: true }" x-show="show" class="flex items-center justify-between p-4 mb-6 text-sm bg-black text-white rounded-lg shadow-md" role="alert">
-            <div class="flex items-center gap-3">
-                <i class="fa fa-check-circle"></i>
-                <span class="font-medium">{{ session('success') }}</span>
+        <div x-data="{ show: true }" x-show="show" class="flex items-center justify-between p-4 mb-6 bg-[#d1e7dd] text-[#0f5132] border border-[#badbcc] rounded transition-opacity" role="alert">
+            <div class="flex items-center gap-2">
+                <i class="fa fa-check-circle text-lg"></i>
+                <span class="font-semibold">{{ session('success') }}</span>
             </div>
-            <button type="button" @click="show = false" class="text-gray-400 hover:text-white transition-colors">
-                <i class="fa fa-times"></i>
+            <button type="button" @click="show = false" class="text-[#0f5132] hover:opacity-75">
+                <i class="fa fa-times text-lg"></i>
             </button>
         </div>
     @endif
 
     @if($errors->any())
-        <div x-data="{ show: true }" x-show="show" class="flex flex-col p-4 mb-6 text-sm border border-red-200 bg-red-50 rounded-lg shadow-sm" role="alert">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center font-bold text-red-800">
-                    <i class="fa fa-exclamation-triangle mr-2"></i> Terdapat kesalahan:
+        <div x-data="{ show: true }" x-show="show" class="flex flex-col p-4 mb-6 bg-[#f8d7da] text-[#842029] border border-[#f5c2c7] rounded transition-opacity" role="alert">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center font-bold">
+                    <i class="fa fa-exclamation-triangle mr-2"></i> Peringatan!
                 </div>
-                <button type="button" @click="show = false" class="text-red-500 hover:text-red-700">
-                    <i class="fa fa-times"></i>
+                <button type="button" @click="show = false" class="text-[#842029] hover:opacity-75">
+                    <i class="fa fa-times text-lg"></i>
                 </button>
             </div>
-            <ul class="list-disc list-inside text-red-700 space-y-1 mt-2 ml-1">
+            <ul class="list-disc list-inside space-y-1 ml-1">
                 @foreach($errors->all() as $error)
                     <li>{{ $error }}</li>
                 @endforeach
@@ -37,15 +37,15 @@
     @endif
 
     {{-- ================= HEADER PAGE ================= --}}
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 pb-5 border-b border-gray-200 gap-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 pb-3 border-b border-gray-300 gap-4">
         <div>
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Pengaturan Pengguna</h1>
-            <p class="mt-1.5 text-sm text-gray-500">
-                Kelola profil, konfigurasi alamat, dan keamanan untuk <span class="font-semibold text-gray-900">{{ $user->nama_lengkap }}</span>.
+            <h1 class="text-3xl font-normal text-[#212529] mb-1">Edit Pengguna (Super Admin Mode)</h1>
+            <p class="text-base text-[#6c757d]">
+                Semua form terbuka. Edit data untuk pengguna: <span class="font-bold">{{ $user->nama_lengkap }}</span>
             </p>
         </div>
-        <a href="{{ route('admin.customers.index') }}" class="inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors">
-            <i class="fa fa-arrow-left mr-2 text-xs"></i> Kembali
+        <a href="{{ route('admin.customers.index') }}" class="inline-flex items-center justify-center px-4 py-2 bg-[#6c757d] text-white rounded hover:bg-[#5c636a] focus:ring-4 focus:ring-[#6c757d]/50 transition duration-150 ease-in-out text-base">
+            <i class="fa fa-arrow-left mr-2"></i> Kembali
         </a>
     </div>
 
@@ -54,318 +54,350 @@
         @csrf
         @method('PUT')
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-            {{-- ================= KOLOM KIRI (Profil & Alamat) ================= --}}
-            <div class="lg:col-span-2 space-y-8">
-
-                {{-- SECTION: INFORMASI DASAR --}}
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center bg-gray-50/50">
-                        <i class="fa fa-user mr-3 text-gray-400"></i>
-                        <h3 class="text-base font-semibold text-gray-900">Informasi Dasar</h3>
+        {{-- BARIS 1: INFORMASI DASAR & KEAMANAN --}}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            
+            {{-- CARD: INFORMASI DASAR --}}
+            <div class="bg-white border border-gray-200 rounded shadow-sm">
+                <div class="bg-[#f8f9fa] border-b border-gray-200 px-5 py-3">
+                    <h5 class="text-lg font-medium text-[#212529] m-0"><i class="fa fa-user text-[#0d6efd] mr-2"></i> Informasi Dasar</h5>
+                </div>
+                <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="block text-base font-normal text-[#212529] mb-2">ID Pengguna <span class="text-red-500">*</span></label>
+                        <input type="text" name="id_pengguna" value="{{ old('id_pengguna', $user->id_pengguna) }}" required 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
                     </div>
-                    
-                    <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <div class="sm:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="nama_lengkap">Nama Lengkap *</label>
-                            <input type="text" id="nama_lengkap" name="nama_lengkap" value="{{ old('nama_lengkap', $user->nama_lengkap) }}" required 
-                                   class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white transition-colors">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="email">Alamat Email *</label>
-                            <input type="email" id="email" name="email" value="{{ old('email', $user->email) }}" required 
-                                   class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white transition-colors">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="no_wa">Nomor WhatsApp *</label>
-                            <input type="text" id="no_wa" name="no_wa" value="{{ old('no_wa', $user->no_wa) }}" required 
-                                   class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white transition-colors">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="store_name">Nama Toko <span class="text-gray-400 font-normal">(Opsional)</span></label>
-                            <input type="text" id="store_name" name="store_name" value="{{ old('store_name', $user->store_name) }}" 
-                                   class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white transition-colors">
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="role">Hak Akses (Role) *</label>
-                            <select id="role" name="role" required class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black bg-white transition-colors">
-                                <option value="Pelanggan" {{ old('role', $user->role) == 'Pelanggan' ? 'selected' : '' }}>Pelanggan</option>
-                                <option value="Seller" {{ old('role', $user->role) == 'Seller' ? 'selected' : '' }}>Seller</option>
-                                <option value="Admin" {{ old('role', $user->role) == 'Admin' ? 'selected' : '' }}>Admin</option>
-                            </select>
-                        </div>
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">Nama Lengkap <span class="text-red-500">*</span></label>
+                        <input type="text" name="nama_lengkap" value="{{ old('nama_lengkap', $user->nama_lengkap) }}" required 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                    </div>
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">Email <span class="text-red-500">*</span></label>
+                        <input type="email" name="email" value="{{ old('email', $user->email) }}" required 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                    </div>
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">Nomor WA <span class="text-red-500">*</span></label>
+                        <input type="text" name="no_wa" value="{{ old('no_wa', $user->no_wa) }}" required 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                    </div>
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">Nama Toko</label>
+                        <input type="text" name="store_name" value="{{ old('store_name', $user->store_name) }}" 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-base font-normal text-[#212529] mb-2">Path Logo Toko</label>
+                        <input type="text" name="store_logo_path" value="{{ old('store_logo_path', $user->store_logo_path) }}" 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
                     </div>
                 </div>
+            </div>
 
-                {{-- SECTION: ALAMAT PENGGUNA (ALPINE.JS KIRIMINAJA) --}}
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden" 
-                     x-data="addressFinder('{{ route('admin.api.search.address') }}', '{{ route('admin.api.geocode.address') }}')">
-                    
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center bg-gray-50/50">
-                        <i class="fa fa-map-pin mr-3 text-gray-400"></i>
-                        <h3 class="text-base font-semibold text-gray-900">Alamat & Koordinat</h3>
+            {{-- CARD: STATUS & KEAMANAN --}}
+            <div class="bg-white border border-gray-200 rounded shadow-sm">
+                <div class="bg-[#f8f9fa] border-b border-gray-200 px-5 py-3">
+                    <h5 class="text-lg font-medium text-[#212529] m-0"><i class="fa fa-shield-alt text-[#198754] mr-2"></i> Status & Keamanan</h5>
+                </div>
+                <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">Hak Akses (Role)</label>
+                        <select name="role" class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                            <option value="Pelanggan" {{ old('role', $user->role) == 'Pelanggan' ? 'selected' : '' }}>Pelanggan</option>
+                            <option value="Seller" {{ old('role', $user->role) == 'Seller' ? 'selected' : '' }}>Seller</option>
+                            <option value="Admin" {{ old('role', $user->role) == 'Admin' ? 'selected' : '' }}>Admin</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">Status Akun</label>
+                        <select name="status" class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                            <option value="Aktif" {{ old('status', $user->status) == 'Aktif' ? 'selected' : '' }}>Aktif</option>
+                            <option value="Nonaktif" {{ old('status', $user->status) == 'Nonaktif' ? 'selected' : '' }}>Nonaktif</option>
+                            <option value="Banned" {{ old('status', $user->status) == 'Banned' ? 'selected' : '' }}>Banned</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-base font-normal text-[#212529] mb-2">Status Verifikasi</label>
+                        <select name="is_verified" class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                            <option value="1" {{ old('is_verified', $user->is_verified) == '1' ? 'selected' : '' }}>1 - Terverifikasi</option>
+                            <option value="0" {{ old('is_verified', $user->is_verified) == '0' ? 'selected' : '' }}>0 - Belum Verifikasi</option>
+                        </select>
                     </div>
                     
-                    <div class="p-6 space-y-6">
-                        {{-- KiriminAja Search --}}
+                    <div class="sm:col-span-2 border-t border-gray-200 mt-2 pt-4">
+                        <p class="text-sm text-[#6c757d] mb-3">Kosongkan kolom sandi jika tidak ingin mengubah.</p>
+                    </div>
+
+                    <div x-data="{ show: false }">
+                        <label class="block text-base font-normal text-[#212529] mb-2">Ganti Password</label>
                         <div class="relative">
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="address_search">Pencarian Alamat Otomatis</label>
-                            <div class="relative rounded-md shadow-sm">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fa fa-search text-gray-400 sm:text-sm"></i>
-                                </div>
-                                <input type="text" id="address_search"
-                                       x-model.debounce.500ms="searchQuery"
-                                       @input.debounce.500ms="search"
-                                       placeholder="Ketik area, nama jalan, atau kelurahan..."
-                                       class="block w-full pl-9 pr-10 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black transition-colors" autocomplete="off">
-                                
-                                <div x-show="loading" x-cloak class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                    <i class="fa fa-spinner fa-spin text-gray-400"></i>
-                                </div>
-                            </div>
-                            
-                            {{-- Dropdown Results --}}
-                            <div x-show="results.length > 0" x-cloak @click.away="results = []" class="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                <ul class="divide-y divide-gray-100">
-                                    <template x-for="result in results" :key="result.district_id + result.subdistrict_id">
-                                        <li @click="selectAddress(result)" class="p-3 hover:bg-gray-50 cursor-pointer text-sm text-gray-800 transition-colors" x-text="result.text"></li>
-                                    </template>
-                                </ul>
-                            </div>
-                            <p x-show="message" x-cloak x-text="message" class="text-sm text-gray-600 mt-2"></p>
+                            <input :type="show ? 'text' : 'password'" name="password" autocomplete="new-password" 
+                                   class="block w-full px-4 py-2.5 pr-10 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                            <button type="button" @click="show = !show" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-600">
+                                <i class="fa" :class="show ? 'fa-eye' : 'fa-eye-slash'"></i>
+                            </button>
                         </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Provinsi</label>
-                                <input type="text" name="province" x-model="fields.province" readonly class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Kabupaten / Kota</label>
-                                <input type="text" name="regency" x-model="fields.city" readonly class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Kecamatan</label>
-                                <input type="text" name="district" x-model="fields.subdistrict" readonly class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Desa / Kelurahan</label>
-                                <input type="text" name="village" x-model="fields.village" readonly class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
-                            </div>
-                            <div class="sm:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Kode Pos</label>
-                                <input type="text" name="postal_code" x-model="fields.zip_code" readonly class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm bg-gray-50 text-gray-500 cursor-not-allowed">
-                            </div>
-                            <div class="sm:col-span-2">
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Detail Alamat Lengkap</label>
-                                <textarea name="address_detail" id="address_detail" rows="3" x-model="fields.address_detail" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black transition-colors resize-y"></textarea>
-                            </div>
-                        </div>
-
-                        {{-- Geocoding Section --}}
-                        <div class="p-5 border border-gray-200 rounded-lg bg-gray-50">
-                            <div class="flex flex-col sm:flex-row sm:items-end gap-4">
-                                <div class="flex-1">
-                                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Latitude</label>
-                                    <input type="text" name="latitude" x-model="fields.latitude" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm bg-white focus:outline-none focus:ring-1 focus:ring-black focus:border-black">
-                                </div>
-                                <div class="flex-1">
-                                    <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Longitude</label>
-                                    <input type="text" name="longitude" x-model="fields.longitude" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm bg-white focus:outline-none focus:ring-1 focus:ring-black focus:border-black">
-                                </div>
-                                <div>
-                                    <button type="button" @click="getCoords" :disabled="geocoding" class="w-full sm:w-auto inline-flex justify-center items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors disabled:opacity-50 h-[38px]">
-                                        <span x-show="!geocoding">Tarik Koordinat</span>
-                                        <span x-show="geocoding" x-cloak><i class="fa fa-spinner fa-spin mr-2"></i>Mencari...</span>
-                                    </button>
-                                </div>
-                            </div>
-                            <p x-show="geocodeMessage" x-cloak x-text="geocodeMessage" class="text-xs text-gray-700 mt-3 font-medium"></p>
+                    </div>
+                    <div x-data="{ showPin: false }">
+                        <label class="block text-base font-normal text-[#212529] mb-2">Ganti PIN (6 Digit)</label>
+                        <div class="relative">
+                            <input :type="showPin ? 'text' : 'password'" name="pin" maxlength="6" 
+                                   class="block w-full px-4 py-2.5 pr-10 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition font-mono tracking-widest">
+                            <button type="button" @click="showPin = !showPin" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-600">
+                                <i class="fa" :class="showPin ? 'fa-eye' : 'fa-eye-slash'"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            {{-- ================= KOLOM KANAN (Keamanan) ================= --}}
-            <div class="space-y-8">
-                
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center bg-gray-50/50">
-                        <i class="fa fa-lock mr-3 text-gray-400"></i>
-                        <h3 class="text-base font-semibold text-gray-900">Keamanan Akun</h3>
-                    </div>
-
-                    <div class="p-6 space-y-6">
-                        <p class="text-xs text-gray-500 leading-relaxed">
-                            Biarkan kolom di bawah ini kosong jika Anda tidak berencana untuk mengubah kata sandi atau PIN pengguna.
-                        </p>
-
-                        <div class="space-y-4">
-                            <label class="block text-sm font-medium text-gray-700">Password Baru</label>
-                            <div x-data="{ show: false }" class="relative rounded-md shadow-sm">
-                                <input :type="show ? 'text' : 'password'" name="password" autocomplete="new-password" placeholder="Minimal 8 karakter" 
-                                       class="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black transition-colors">
-                                <button type="button" @click="show = !show" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600">
-                                    <i class="fa" :class="show ? 'fa-eye' : 'fa-eye-slash'"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="pt-5 border-t border-gray-100 space-y-4">
-                            <div class="flex items-center justify-between">
-                                <label class="block text-sm font-medium text-gray-700 mb-0">PIN Transaksi Baru</label>
-                                @if(empty($user->pin))
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
-                                        Belum Diatur
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
-                                        Terkonfigurasi
-                                    </span>
-                                @endif
-                            </div>
-                            <div x-data="{ showPin: false }" class="relative rounded-md shadow-sm">
-                                <input :type="showPin ? 'text' : 'password'" name="pin" maxlength="6" pattern="\d{6}" placeholder="6 Digit Angka" 
-                                       class="block w-full px-3 py-2 pr-10 border border-gray-300 rounded-md text-sm font-mono tracking-widest focus:outline-none focus:ring-1 focus:ring-black focus:border-black transition-colors">
-                                <button type="button" @click="showPin = !showPin" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600">
-                                    <i class="fa" :class="showPin ? 'fa-eye' : 'fa-eye-slash'"></i>
-                                </button>
-                            </div>
-                        </div>
+        {{-- BARIS 2: KEUANGAN & BANK --}}
+        <div class="bg-white border border-gray-200 rounded shadow-sm mb-6">
+            <div class="bg-[#f8f9fa] border-b border-gray-200 px-5 py-3">
+                <h5 class="text-lg font-medium text-[#212529] m-0"><i class="fa fa-wallet text-[#ffc107] mr-2"></i> Keuangan & Data Bank</h5>
+            </div>
+            <div class="p-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                {{-- Saldo --}}
+                <div>
+                    <label class="block text-base font-normal text-[#212529] mb-2">Saldo Utama</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">Rp</span>
+                        <input type="text" name="saldo" value="{{ old('saldo', $user->saldo) }}" 
+                               class="block w-full pl-10 pr-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
                     </div>
                 </div>
-                
-                {{-- TOMBOL SUBMIT --}}
-                <div class="flex flex-col gap-3">
-                    <button type="submit" class="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors">
-                        Simpan Perubahan
-                    </button>
-                    <a href="{{ route('admin.customers.index') }}" class="w-full flex justify-center py-2.5 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors">
-                        Batal
-                    </a>
+                <div>
+                    <label class="block text-base font-normal text-[#212529] mb-2">Saldo DANA</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">Rp</span>
+                        <input type="text" name="dana_user_balance" value="{{ old('dana_user_balance', $user->dana_user_balance) }}" 
+                               class="block w-full pl-10 pr-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-base font-normal text-[#212529] mb-2">Saldo IAK</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">Rp</span>
+                        <input type="text" name="balance_iak" value="{{ old('balance_iak', $user->balance_iak) }}" 
+                               class="block w-full pl-10 pr-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                    </div>
+                </div>
+
+                {{-- Bank --}}
+                <div class="sm:col-span-1 md:col-span-1 border-t border-gray-200 pt-4 md:border-none md:pt-0 mt-4 md:mt-0">
+                    <label class="block text-base font-normal text-[#212529] mb-2">Nama Bank</label>
+                    <input type="text" name="bank_name" value="{{ old('bank_name', $user->bank_name) }}" 
+                           class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                </div>
+                <div class="sm:col-span-1 md:col-span-1 border-t border-gray-200 pt-4 md:border-none md:pt-0 mt-4 md:mt-0">
+                    <label class="block text-base font-normal text-[#212529] mb-2">Atas Nama Rekening</label>
+                    <input type="text" name="bank_account_name" value="{{ old('bank_account_name', $user->bank_account_name) }}" 
+                           class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                </div>
+                <div class="sm:col-span-2 md:col-span-1 border-t border-gray-200 pt-4 md:border-none md:pt-0 mt-4 md:mt-0">
+                    <label class="block text-base font-normal text-[#212529] mb-2">No. Rekening</label>
+                    <input type="text" name="bank_account_number" value="{{ old('bank_account_number', $user->bank_account_number) }}" 
+                           class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition font-mono">
                 </div>
             </div>
+        </div>
 
-            {{-- ================= SECTION DATABASE (READ-ONLY) ================= --}}
-            <div class="lg:col-span-3">
-                <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden mt-4">
-                    <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                        <div class="flex items-center">
-                            <i class="fa fa-database mr-3 text-gray-400"></i>
-                            <h3 class="text-base font-semibold text-gray-900">Informasi Lengkap Database (Read-Only)</h3>
+        {{-- BARIS 3: ALAMAT & LOKASI (Bebas Edit + KiriminAja) --}}
+        <div class="bg-white border border-gray-200 rounded shadow-sm mb-6" 
+             x-data="addressFinder('{{ route('admin.api.search.address') }}', '{{ route('admin.api.geocode.address') }}')">
+            <div class="bg-[#f8f9fa] border-b border-gray-200 px-5 py-3 flex justify-between items-center">
+                <h5 class="text-lg font-medium text-[#212529] m-0"><i class="fa fa-map-marker-alt text-[#dc3545] mr-2"></i> Alamat & Lokasi Geografis</h5>
+                <span class="bg-[#0dcaf0] text-black text-xs px-2 py-1 rounded font-bold">ALL EDITABLE</span>
+            </div>
+            
+            <div class="p-5">
+                {{-- Alat Bantu KiriminAja --}}
+                <div class="mb-6 p-4 bg-[#e2e3e5] border border-[#d3d6d8] rounded">
+                    <label class="block text-base font-bold text-[#212529] mb-2">Bantu Isi Otomatis dengan KiriminAja (Opsional)</label>
+                    <div class="relative">
+                        <input type="text" id="address_search" x-model.debounce.500ms="searchQuery" @input.debounce.500ms="search" 
+                               placeholder="Ketik kecamatan atau nama desa di sini..." autocomplete="off"
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                        
+                        <div x-show="loading" x-cloak class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <i class="fa fa-spinner fa-spin text-[#6c757d]"></i>
                         </div>
-                        <span class="text-xs text-gray-500 font-mono font-medium">ID: #{{ $user->id_pengguna }}</span>
                     </div>
                     
-                    <div class="px-6 py-4">
-                        <dl class="divide-y divide-gray-100">
-                            
-                            {{-- Status & Verifikasi --}}
-                            <div class="py-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <dt class="text-sm font-medium text-gray-500">Status Akun & Verifikasi</dt>
-                                <dd class="text-sm text-gray-900 sm:col-span-2 flex flex-wrap gap-2">
-                                    @if($user->status == 'Aktif')
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-900 text-white">Aktif</span>
-                                    @else
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">{{ $user->status ?? 'Non-Aktif' }}</span>
-                                    @endif
+                    <div x-show="results.length > 0" x-cloak @click.away="results = []" class="absolute z-10 w-full mt-1 bg-white border border-[#ced4da] rounded shadow-lg max-h-60 overflow-y-auto max-w-2xl">
+                        <ul class="m-0 p-0 list-none">
+                            <template x-for="result in results" :key="result.district_id + result.subdistrict_id">
+                                <li @click="selectAddress(result)" class="px-4 py-2 hover:bg-[#e9ecef] cursor-pointer text-base text-[#212529] border-b border-gray-100 last:border-0" x-text="result.text"></li>
+                            </template>
+                        </ul>
+                    </div>
+                    <p x-show="message" x-cloak x-text="message" class="text-sm text-[#dc3545] mt-2 mb-0 font-medium"></p>
+                </div>
 
-                                    @if($user->is_verified == 1)
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">Terverifikasi</span>
-                                    @else
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">Belum Verifikasi</span>
-                                    @endif
-                                </dd>
-                            </div>
+                {{-- Form Alamat (Full Input) --}}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">Provinsi</label>
+                        <input type="text" name="province" x-model="fields.province" 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                    </div>
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">Kabupaten/Kota</label>
+                        <input type="text" name="regency" x-model="fields.city" 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                    </div>
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">Kecamatan</label>
+                        <input type="text" name="district" x-model="fields.subdistrict" 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                    </div>
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">Desa/Kelurahan</label>
+                        <input type="text" name="village" x-model="fields.village" 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                    </div>
+                </div>
 
-                            {{-- Saldo --}}
-                            <div class="py-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <dt class="text-sm font-medium text-gray-500">Saldo Pengguna</dt>
-                                <dd class="text-sm text-gray-900 sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <div>
-                                        <span class="block text-xs text-gray-400 uppercase tracking-wider mb-1">Utama</span>
-                                        <span class="font-mono font-medium">Rp {{ number_format($user->saldo ?? 0, 0, ',', '.') }}</span>
-                                    </div>
-                                    <div>
-                                        <span class="block text-xs text-gray-400 uppercase tracking-wider mb-1">DANA</span>
-                                        <span class="font-mono font-medium">Rp {{ number_format($user->dana_user_balance ?? 0, 0, ',', '.') }}</span>
-                                    </div>
-                                    <div>
-                                        <span class="block text-xs text-gray-400 uppercase tracking-wider mb-1">IAK</span>
-                                        <span class="font-mono font-medium">Rp {{ number_format($user->balance_iak ?? 0, 0, ',', '.') }}</span>
-                                    </div>
-                                </dd>
-                            </div>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-4">
+                    <div class="md:col-span-3">
+                        <label class="block text-base font-normal text-[#212529] mb-2">Kode Pos</label>
+                        <input type="text" name="postal_code" x-model="fields.zip_code" 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                    </div>
+                    <div class="md:col-span-9">
+                        <label class="block text-base font-normal text-[#212529] mb-2">Detail Jalan / RT RW</label>
+                        <textarea name="address_detail" id="address_detail" rows="2" x-model="fields.address_detail" 
+                                  class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition"></textarea>
+                    </div>
+                </div>
 
-                            {{-- Bank --}}
-                            <div class="py-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <dt class="text-sm font-medium text-gray-500">Informasi Bank</dt>
-                                <dd class="text-sm text-gray-900 sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    <div>
-                                        <span class="block text-xs text-gray-400 uppercase tracking-wider mb-1">Nama Bank</span>
-                                        @if($user->bank_name) <span class="font-medium">{{ $user->bank_name }}</span> @else <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">Data Kosong</span> @endif
-                                    </div>
-                                    <div>
-                                        <span class="block text-xs text-gray-400 uppercase tracking-wider mb-1">Atas Nama</span>
-                                        @if($user->bank_account_name) <span class="font-medium">{{ $user->bank_account_name }}</span> @else <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">Data Kosong</span> @endif
-                                    </div>
-                                    <div>
-                                        <span class="block text-xs text-gray-400 uppercase tracking-wider mb-1">No. Rekening</span>
-                                        @if($user->bank_account_number) <span class="font-mono font-medium">{{ $user->bank_account_number }}</span> @else <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">Data Kosong</span> @endif
-                                    </div>
-                                </dd>
-                            </div>
+                {{-- Koordinat Maps --}}
+                <div class="bg-white border border-[#ced4da] rounded p-4">
+                    <div class="flex flex-col md:flex-row md:items-end gap-4">
+                        <div class="flex-1">
+                            <label class="block text-base font-normal text-[#212529] mb-2">Latitude</label>
+                            <input type="text" name="latitude" x-model="fields.latitude" 
+                                   class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-base font-normal text-[#212529] mb-2">Longitude</label>
+                            <input type="text" name="longitude" x-model="fields.longitude" 
+                                   class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                        </div>
+                        <div class="pt-2 md:pt-0">
+                            <button type="button" @click="getCoords" :disabled="geocoding" class="w-full md:w-auto inline-block px-4 py-2.5 bg-[#0dcaf0] text-black font-medium text-base leading-tight rounded shadow-sm hover:bg-[#31d2f2] focus:bg-[#31d2f2] focus:outline-none focus:ring-4 focus:ring-[#0dcaf0]/50 transition duration-150 ease-in-out h-[46px]">
+                                <span x-show="!geocoding"><i class="fa fa-map-marked-alt mr-1"></i> Tarik Koordinat API</span>
+                                <span x-show="geocoding" x-cloak><i class="fa fa-spinner fa-spin mr-1"></i> Loading...</span>
+                            </button>
+                        </div>
+                    </div>
+                    <p x-show="geocodeMessage" x-cloak x-text="geocodeMessage" class="text-sm text-[#198754] mt-3 mb-0 font-medium"></p>
+                </div>
+            </div>
+        </div>
 
-                            {{-- Token --}}
-                            <div class="py-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <dt class="text-sm font-medium text-gray-500">API Tokens</dt>
-                                <dd class="text-sm text-gray-900 sm:col-span-2 space-y-4">
-                                    <div>
-                                        <span class="block text-xs text-gray-400 uppercase tracking-wider mb-1">Expo Push Token</span>
-                                        @if($user->expo_token) <code class="text-xs bg-gray-50 px-2 py-1.5 border border-gray-200 rounded break-all block w-fit">{{ $user->expo_token }}</code> @else <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">Data Kosong</span> @endif
-                                    </div>
-                                    <div>
-                                        <span class="block text-xs text-gray-400 uppercase tracking-wider mb-1">DANA Access Token</span>
-                                        @if($user->dana_access_token) <code class="text-xs bg-gray-50 px-2 py-1.5 border border-gray-200 rounded break-all block w-fit">{{ $user->dana_access_token }}</code> @else <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">Data Kosong</span> @endif
-                                    </div>
-                                    <div>
-                                        <span class="block text-xs text-gray-400 uppercase tracking-wider mb-1">Setup Token</span>
-                                        @if($user->setup_token) <code class="text-xs bg-gray-50 px-2 py-1.5 border border-gray-200 rounded break-all block w-fit">{{ $user->setup_token }}</code> @else <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">Data Kosong</span> @endif
-                                    </div>
-                                </dd>
-                            </div>
+        {{-- BARIS 4: TOKENS & METADATA WAKTU --}}
+        <div class="bg-white border border-gray-200 rounded shadow-sm mb-8">
+            <div class="bg-[#f8f9fa] border-b border-gray-200 px-5 py-3">
+                <h5 class="text-lg font-medium text-[#212529] m-0"><i class="fa fa-key text-[#6f42c1] mr-2"></i> API Tokens, Integration & Metadata</h5>
+            </div>
+            <div class="p-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {{-- Token Section --}}
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">Expo Push Token</label>
+                        <input type="text" name="expo_token" value="{{ old('expo_token', $user->expo_token) }}" 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition font-mono text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">DANA Access Token</label>
+                        <input type="text" name="dana_access_token" value="{{ old('dana_access_token', $user->dana_access_token) }}" 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition font-mono text-sm">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-base font-normal text-[#212529] mb-2">DANA Auth Code</label>
+                            <input type="text" name="dana_auth_code" value="{{ old('dana_auth_code', $user->dana_auth_code) }}" 
+                                   class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition font-mono text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-base font-normal text-[#212529] mb-2">DANA Username</label>
+                            <input type="text" name="dana_user_name" value="{{ old('dana_user_name', $user->dana_user_name) }}" 
+                                   class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-base font-normal text-[#212529] mb-2">Setup Token</label>
+                            <input type="text" name="setup_token" value="{{ old('setup_token', $user->setup_token) }}" 
+                                   class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition font-mono text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-base font-normal text-[#212529] mb-2">Reset Token</label>
+                            <input type="text" name="reset_token" value="{{ old('reset_token', $user->reset_token) }}" 
+                                   class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition font-mono text-sm">
+                        </div>
+                    </div>
+                </div>
 
-                            {{-- Metadata --}}
-                            <div class="py-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <dt class="text-sm font-medium text-gray-500">Metadata</dt>
-                                <dd class="text-sm text-gray-900 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <span class="block text-xs text-gray-400 uppercase tracking-wider mb-1">Dibuat Pada</span>
-                                        @if($user->created_at) <span class="font-medium">{{ \Carbon\Carbon::parse($user->created_at)->translatedFormat('d M Y, H:i') }}</span> @else <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">Data Kosong</span> @endif
-                                    </div>
-                                    <div>
-                                        <span class="block text-xs text-gray-400 uppercase tracking-wider mb-1">Terakhir Aktif</span>
-                                        @if($user->last_seen_at) <span class="font-medium">{{ \Carbon\Carbon::parse($user->last_seen_at)->translatedFormat('d M Y, H:i') }}</span> @else <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">Data Kosong</span> @endif
-                                    </div>
-                                    <div class="sm:col-span-2">
-                                        <span class="block text-xs text-gray-400 uppercase tracking-wider mb-1">Logo Toko (Path)</span>
-                                        @if($user->store_logo_path) <code class="text-xs text-gray-500">{{ $user->store_logo_path }}</code> @else <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">Data Kosong</span> @endif
-                                    </div>
-                                </dd>
-                            </div>
-
-                        </dl>
+                {{-- Waktu & Log Section --}}
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">Token Expiry</label>
+                        <input type="text" name="token_expiry" value="{{ old('token_expiry', $user->token_expiry) }}" 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition" placeholder="YYYY-MM-DD HH:MM:SS">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-base font-normal text-[#212529] mb-2">Created At</label>
+                            <input type="text" name="created_at" value="{{ old('created_at', $user->created_at) }}" 
+                                   class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition" placeholder="YYYY-MM-DD HH:MM:SS">
+                        </div>
+                        <div>
+                            <label class="block text-base font-normal text-[#212529] mb-2">Deleted At</label>
+                            <input type="text" name="deleted_at" value="{{ old('deleted_at', $user->deleted_at) }}" 
+                                   class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition" placeholder="NULL">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-base font-normal text-[#212529] mb-2">Last Seen At (Timestamp)</label>
+                            <input type="text" name="last_seen_at" value="{{ old('last_seen_at', $user->last_seen_at) }}" 
+                                   class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition" placeholder="YYYY-MM-DD HH:MM:SS">
+                        </div>
+                        <div>
+                            <label class="block text-base font-normal text-[#212529] mb-2">Last Seen (DateTime)</label>
+                            <input type="text" name="last_seen" value="{{ old('last_seen', $user->last_seen) }}" 
+                                   class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition" placeholder="YYYY-MM-DD HH:MM:SS">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">IP Address Login Terakhir</label>
+                        <input type="text" name="ip_address" value="{{ old('ip_address', $user->ip_address) }}" 
+                               class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition font-mono">
+                    </div>
+                    <div>
+                        <label class="block text-base font-normal text-[#212529] mb-2">User Agent Login Terakhir</label>
+                        <textarea name="user_agent" rows="2" class="block w-full px-4 py-2.5 text-base font-normal text-[#212529] bg-white border border-[#ced4da] rounded focus:border-[#86b7fe] focus:outline-none focus:ring-[4px] focus:ring-[#0d6efd]/25 transition">{{ old('user_agent', $user->user_agent) }}</textarea>
                     </div>
                 </div>
             </div>
-
         </div>
+
+        {{-- ================= TOMBOL ACTION UTAMA ================= --}}
+        <div class="flex flex-col-reverse md:flex-row justify-end gap-3 pb-10">
+            <a href="{{ route('admin.customers.index') }}" class="inline-block px-6 py-3 bg-[#f8f9fa] border border-[#ced4da] text-[#212529] font-medium text-base leading-tight rounded hover:bg-[#e2e6ea] focus:bg-[#e2e6ea] focus:outline-none focus:ring-4 focus:ring-[#ced4da]/50 transition text-center">
+                Batal
+            </a>
+            <button type="submit" class="inline-block px-8 py-3 bg-[#0d6efd] text-white font-medium text-base leading-tight rounded shadow-md hover:bg-[#0b5ed7] hover:shadow-lg focus:bg-[#0b5ed7] focus:shadow-lg focus:outline-none focus:ring-4 focus:ring-[#0d6efd]/50 active:bg-[#0a58ca] active:shadow-lg transition text-center">
+                <i class="fa fa-save mr-2"></i> Simpan Semua Perubahan
+            </button>
+        </div>
+
     </form>
 </div>
 @endsection
@@ -453,7 +485,7 @@
                 ].filter(Boolean).join(', ');
 
                 if (fullAddress.length < 10) {
-                    this.geocodeMessage = 'Harap isi alamat lengkap terlebih dahulu.';
+                    this.geocodeMessage = 'Harap isi alamat lengkap (provinsi hingga jalan) terlebih dahulu.';
                     this.geocoding = false;
                     return;
                 }
@@ -484,7 +516,6 @@
     });
 </script>
 <style>
-    /* Menghindari flicker AlpineJS saat load */
     [x-cloak] { display: none !important; }
 </style>
 @endpush
