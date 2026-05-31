@@ -1,7 +1,7 @@
 {{--
     File: resources/views/auth/login.blade.php
     Ini adalah halaman formulir login custom yang kompatibel dengan Breeze.
-    (Versi Full Responsive Horizontal/Vertical)
+    (Versi Full Responsive - Input di Kiri, Aksi di Kanan)
 --}}
 
 @extends('layouts.app')
@@ -18,6 +18,7 @@
         margin: 0;
         font-family: 'Poppins', sans-serif;
         background-color: #f8f9fa;
+        position: relative;
     }
     .auth-wrapper {
         display: flex;
@@ -27,21 +28,21 @@
         padding: 2rem 1rem;
     }
     
-    /* ---- STYLE BARU UNTUK KARTU RESPONSIVE ---- */
+    /* ---- STYLE KARTU RESPONSIVE ---- */
     .auth-card-split {
-        max-width: 900px; /* Lebar maksimal kartu saat mendatar di desktop */
+        max-width: 1000px; /* Diperlebar sedikit agar form dan tombol tidak terlalu sempit */
         width: 100%;
         border: none;
         border-radius: 1.25rem;
-        overflow: hidden; /* Memastikan sudut tumpul tidak tertabrak warna background */
+        overflow: hidden;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
     }
-    .auth-brand-side {
-        background: linear-gradient(135deg, #dc3545 0%, #8b0000 100%); /* Warna Merah Sancaka */
-        color: white;
+    .auth-action-side {
+        background-color: #fcfcfc; /* Warna latar sedikit berbeda untuk membedakan sisi aksi */
+        border-left: 1px solid #f0f0f0;
     }
-    .auth-logo-mobile {
-        max-height: 50px;
+    .auth-logo {
+        max-height: 60px;
     }
     /* ------------------------------------------ */
 
@@ -70,64 +71,75 @@
         cursor: pointer;
         color: #6c757d;
     }
+    
+    /* Mengatur posisi copyright di kanan bawah */
+    .copyright-text {
+        position: absolute;
+        bottom: 1rem;
+        right: 2rem;
+    }
+    
+    @media (max-width: 768px) {
+        .auth-action-side {
+            border-left: none;
+            border-top: 1px solid #f0f0f0;
+        }
+        .copyright-text {
+            position: static;
+            text-align: center !important;
+            margin-top: 2rem;
+            padding-bottom: 1rem;
+        }
+    }
 </style>
 @endpush
 
 @section('content')
 <div class="auth-wrapper">
     
-    {{-- Kartu Utama dengan Grid (row g-0 menghilangkan jarak antar kolom) --}}
+    {{-- Menentukan action form --}}
+    @php
+        $formAction = request()->is('admin/*') ? route('admin.login') : route('login');
+        $passwordRequestRoute = Route::has('password.request') ? route('password.request') : '#';
+        $registerRoute = Route::has('register') ? route('register') : '#';
+    @endphp
+
+    {{-- Kartu Utama --}}
     <div class="card auth-card-split bg-white">
-        <div class="row g-0">
-            
-            {{-- 1. SISI KIRI (Branding Banner) --}}
-            {{-- col-md-6 artinya lebarnya 50% di tablet/desktop. d-none d-md-flex artinya disembunyikan di HP --}}
-            <div class="col-md-6 auth-brand-side d-none d-md-flex flex-column justify-content-center align-items-center p-5 text-center">
-                <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Logo Sancaka Express" class="mb-4" style="max-height: 80px; filter: brightness(0) invert(1);" onerror="this.style.display='none'">
-                <h2 class="fw-bold mb-3">Sancaka Express</h2>
-                <p class="mb-0 text-white-50">Solusi pengiriman paket cepat, aman, dan terpercaya ke seluruh penjuru negeri.</p>
-            </div>
-
-            {{-- 2. SISI KANAN (Form Login) --}}
-            {{-- col-12 artinya 100% lebar di HP, col-md-6 artinya 50% di tablet/desktop --}}
-            <div class="col-12 col-md-6 p-4 p-lg-5">
+        {{-- Form membungkus seluruh grid agar elemen di kiri dan kanan tetap dalam 1 proses submit --}}
+        <form method="POST" action="{{ $formAction }}" class="m-0">
+            @csrf
+            <div class="row g-0">
                 
-                <div class="text-center mb-4">
-                    {{-- Logo ini HANYA muncul di HP (d-md-none) karena di Desktop logonya ada di sisi kiri --}}
-                    <a href="{{ url('/') }}" class="d-md-none">
-                        <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Logo Sancaka Express" class="auth-logo-mobile mb-3" onerror="this.src='https://placehold.co/150x50?text=Sancaka'">
-                    </a>
-                    <h3 class="fw-bold">Selamat Datang Kembali</h3>
-                    <p class="text-muted">Masuk untuk melanjutkan ke akun Anda.</p>
-                </div>
-
-                {{-- Menampilkan Session Status (Standar Breeze) --}}
-                @if (session('status'))
-                    <div class="alert alert-success py-2 small mb-3">
-                        {{ session('status') }}
+                {{-- 1. SISI KIRI (Logo & Form Input) --}}
+                <div class="col-12 col-md-7 p-4 p-lg-5">
+                    
+                    <div class="text-center text-md-start mb-4">
+                        <a href="{{ url('/') }}">
+                            {{-- Filter invert dihapus karena sekarang berada di background putih --}}
+                            <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Logo Sancaka Express" class="auth-logo mb-3" onerror="this.src='https://placehold.co/150x50?text=Sancaka'">
+                        </a>
+                        <h3 class="fw-bold">Selamat Datang Kembali</h3>
+                        <p class="text-muted">Masuk untuk melanjutkan ke akun Anda.</p>
                     </div>
-                @endif
 
-                {{-- Menampilkan Error Validasi (Standar Breeze) --}}
-                @if ($errors->any())
-                    <div class="alert alert-danger py-2 small mb-3">
-                        <ul class="mb-0 ps-3">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
+                    {{-- Menampilkan Session Status --}}
+                    @if (session('status'))
+                        <div class="alert alert-success py-2 small mb-3">
+                            {{ session('status') }}
+                        </div>
+                    @endif
 
-                {{-- Menentukan action form --}}
-                @php
-                    $formAction = request()->is('admin/*') ? route('admin.login') : route('login');
-                    $passwordRequestRoute = Route::has('password.request') ? route('password.request') : '#';
-                    $registerRoute = Route::has('register') ? route('register') : '#';
-                @endphp
-
-                <form method="POST" action="{{ $formAction }}">
-                    @csrf
+                    {{-- Menampilkan Error Validasi --}}
+                    @if ($errors->any())
+                        <div class="alert alert-danger py-2 small mb-3">
+                            <ul class="mb-0 ps-3">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
 
                     {{-- Email Address --}}
                     <div class="form-floating mb-3">
@@ -148,7 +160,7 @@
                             Keamanan: Ketik karakter pada gambar di bawah
                         </label>
                         
-                        <div class="mb-3 text-center">
+                        <div class="mb-3">
                             {!! captcha_img('flat') !!}
                         </div>
 
@@ -160,39 +172,48 @@
                             </div>
                         @enderror
                     </div>
+                </div>
 
-                    {{-- Remember Me & Forgot Password --}}
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <div class="form-check">
+                {{-- 2. SISI KANAN (Aksi: Ceklis, Lupa Password, Submit, Register) --}}
+                <div class="col-12 col-md-5 auth-action-side p-4 p-lg-5 d-flex flex-column justify-content-center">
+                    
+                    <div class="mb-4">
+                        {{-- Remember Me --}}
+                        <div class="form-check mb-3">
                             <input class="form-check-input" type="checkbox" name="remember" id="remember_me">
                             <label class="form-check-label" for="remember_me">
                                 Ingat Saya
                             </label>
                         </div>
+
+                        {{-- Forgot Password --}}
                         @if (Route::has('password.request') && !request()->is('admin/*'))
-                            <a href="https://tokosancaka.com/password/reset" class="small text-danger text-decoration-none">Lupa password?</a>
+                            <a href="https://tokosancaka.com/password/reset" class="small text-danger text-decoration-none d-block">Lupa password?</a>
                         @endif
                     </div>
 
                     {{-- Submit Button --}}
-                    <div class="d-grid">
+                    <div class="d-grid mb-4">
                         <button type="submit" class="btn btn-danger btn-lg">Masuk</button>
                     </div>
 
                     {{-- Register Link --}}
                     @if (!request()->is('admin/*'))
-                        <p class="text-center mt-4 mb-0">
-                            Belum punya akun? <a href="{{ $registerRoute }}" class="fw-bold text-danger text-decoration-none">Daftar di sini</a>
+                        <p class="text-center mb-0 mt-auto">
+                            Belum punya akun? <br>
+                            <a href="{{ $registerRoute }}" class="fw-bold text-danger text-decoration-none">Daftar di sini</a>
                         </p>
                     @endif
-                </form>
-            </div>
-            {{-- Akhir Sisi Kanan --}}
 
-        </div>
+                </div>
+                {{-- Akhir Sisi Kanan --}}
+
+            </div>
+        </form>
     </div>
     
-    <p class="text-center text-muted small mt-4 mb-0 position-absolute bottom-0 mb-3">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
+    {{-- Copyright di posisi Kanan Bawah --}}
+    <p class="text-muted small mb-0 copyright-text text-end">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
 </div>
 @endsection
 
