@@ -3491,4 +3491,34 @@ public function handleCallback(Request $request)
         }
     }
 
+    /**
+     * =========================================================================
+     * [MESIN BARU] API EXPO: AMBIL RIWAYAT TRANSFER & INQUIRY BANK
+     * =========================================================================
+     */
+    public function apiTransferBankHistory(Request $request)
+    {
+        try {
+            // Karena ini halaman khusus Admin, kita langsung tarik semua data riwayat
+            // Tarik tipe TRANSFER_BANK dan BANK_INQUIRY dari database
+            $transactions = DB::table('dana_transactions')
+                ->whereIn('type', ['TRANSFER_BANK', 'BANK_INQUIRY'])
+                ->orderBy('created_at', 'desc')
+                ->limit(100) // Dibatasi 100 data terakhir agar aplikasi HP tidak lemot
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data'    => $transactions
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [API EXPO DANA HISTORY] Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Sistem Error saat mengambil data riwayat.'
+            ], 500);
+        }
+    }
+
 }
