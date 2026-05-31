@@ -198,9 +198,7 @@
                         </div>
                     @endif
 
-                    <div class="copyright-text">
-                        <p class="text-muted small mb-0">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
-                    </div>
+                    <p class="text-muted small mb-0">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
                 
                 </form>
 
