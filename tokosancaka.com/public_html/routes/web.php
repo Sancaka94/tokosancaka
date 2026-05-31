@@ -1435,5 +1435,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     // Rute API Eksekusi Transfer (Tahap 2)
     Route::post('/api/admin/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'apiTransferToBank']);
-    
+
+    Route::get('/api/admin/dana/transfer-bank/history', [App\Http\Controllers\Customer\TopUpController::class, 'apiTransferBankHistory']);
     });
