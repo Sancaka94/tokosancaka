@@ -17,6 +17,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Log;
 use App\Models\Store;
 use App\Services\FonnteService;
+use Illuminate\Support\Facades\Mail;
 
 class CustomerController extends Controller
 {
@@ -33,7 +34,7 @@ class CustomerController extends Controller
         return view('admin.customers.index', compact('requests', 'customers'));
     }
 
-   /**
+  /**
      * Menyetujui permintaan pendaftaran dan membuat akun pengguna baru.
      */
     public function approve($id, FonnteService $fonnteService)
@@ -48,54 +49,154 @@ class CustomerController extends Controller
         // 1. UPDATE STATUS PENGGUNA
         $request->status = 'Aktif';
 
-        // 2. PERBAIKAN: Gunakan Str::random(40) agar pasti berupa teks (String) dan aman disimpan
         if (empty($request->setup_token)) {
             $request->setup_token = Str::random(40); 
         }
-        
-        // Simpan perubahan status dan token sekaligus
         $request->save();
 
-        // 3. PERBAIKAN: Gunakan helper route() agar URL di-generate otomatis 100% valid
         $setupUrl = route('customer.profile.setup', ['token' => $request->setup_token]);
         
         $phoneNumber = $request->no_wa;
+        $userEmail = $request->email;
         $waStatus = "";
+        $emailStatus = "";
 
-        // 4. LOGIKA PENGIRIMAN WHATSAPP VIA FONNTE SERVICE
+        // 2. LOGIKA PENGIRIMAN EMAIL VIA SMTP
         try {
-            // Bersihkan nomor telepon: Ganti '0' di depan menjadi '62'
+            $subject = "Pendaftaran Disetujui - Aktivasi Akun Toko Sancaka";
+            $bodyHtml = "
+                <div style='font-family: Arial, sans-serif; color: #333;'>
+                    <h2>Selamat datang, {$request->nama_lengkap}!</h2>
+                    <p>Pendaftaran Anda di <strong>Toko Sancaka</strong> telah disetujui dan akun Anda sudah aktif.</p>
+                    <p>Silakan klik tombol di bawah ini untuk melengkapi profil dan mengatur password akun Anda (Link berlaku 48 jam):</p>
+                    <p style='margin: 20px 0;'>
+                        <a href='{$setupUrl}' style='background-color: #0d6efd; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Aktivasi Akun Saya</a>
+                    </p>
+                    <p>Atau copy-paste link berikut ke browser Anda:</p>
+                    <p><a href='{$setupUrl}'>{$setupUrl}</a></p>
+                    <p>Jika ada kendala, jangan ragu membalas email ini atau hubungi Admin via WhatsApp.</p>
+                    <br>
+                    <p>Terima kasih,<br><strong>Tim Toko Sancaka</strong></p>
+                </div>
+            ";
+
+            Mail::html($bodyHtml, function ($message) use ($userEmail, $subject) {
+                $message->to($userEmail)
+                        ->subject($subject)
+                        ->from(config('mail.from.address'), config('mail.from.name'));
+            });
+
+            Log::info("Email aktivasi berhasil dikirim ke: " . $userEmail);
+            $emailStatus = " & Email";
+        } catch (\Exception $e) {
+            Log::error("Gagal kirim email aktivasi ke {$userEmail}: " . $e->getMessage());
+            $emailStatus = " (Email gagal)";
+        }
+
+        // 3. LOGIKA PENGIRIMAN WHATSAPP VIA FONNTE SERVICE
+        try {
             if (substr($phoneNumber, 0, 1) === '0') {
                 $phoneNumber = '62' . substr($phoneNumber, 1);
             }
 
-            // Pesan WA yang akan dikirim
-            $message = "Selamat datang, {$request->nama_lengkap}! Pendaftaran Anda di Toko Sancaka telah disetujui. " .
-                       "Akun Anda sudah aktif Ya kak, Jika ada Kendala yang kakak alami jangan ragu WA ke ADMIN +6285745808809\n\n" .
+            $message = "Selamat datang, *{$request->nama_lengkap}*! Pendaftaran Anda di Toko Sancaka telah disetujui.\n\n" .
+                       "Akun Anda sudah aktif. Jika ada kendala, jangan ragu WA ke ADMIN +6285745808809\n\n" .
                        "Silakan klik link berikut untuk melengkapi profil dan mengatur password Anda (Link berlaku 48 jam):\n" .
                        $setupUrl . "\n\n" .
                        "Terima kasih!";
 
-            // Panggil Service Fonnte
             $response = $fonnteService->sendMessage($phoneNumber, $message);
 
-            // Cek respon
             if ($response && isset($response['status']) && $response['status'] === 'success') {
-                Log::info('WA Approved dikirim via Fonte: ' . $phoneNumber);
-                $waStatus = " dan notifikasi WA berhasil dikirim via Fonnte.";
+                Log::info('WA Approved dikirim via Fonnte: ' . $phoneNumber);
+                $waStatus = "notifikasi WA{$emailStatus} berhasil dikirim.";
             } else {
                 Log::error('Gagal kirim WA Approved via Fonnte. Respon: ' . json_encode($response));
-                $waStatus = " namun GAGAL mengirim notifikasi WA via Fonnte. (Cek log server)";
+                $waStatus = "GAGAL kirim WA{$emailStatus}.";
             }
 
         } catch (\Exception $e) {
             Log::error('Exception saat kirim WA via Fonnte Service: ' . $e->getMessage());
-            $waStatus = " namun terjadi kesalahan saat mencoba mengirim WA via Fonnte Service.";
+            $waStatus = "terjadi kesalahan koneksi WA{$emailStatus}.";
         }
 
-        // 5. REDIRECT DAN PESAN SUKSES
+        // 4. REDIRECT DAN PESAN SUKSES
         return Redirect::route('admin.customers.index')
-            ->with('success', 'Pendaftaran untuk ' . $request->nama_lengkap . ' berhasil disetujui' . $waStatus);
+            ->with('success', "Pendaftaran {$request->nama_lengkap} disetujui, " . $waStatus);
+    }
+
+    /**
+     * Mengirim ulang link setup profil ke pengguna menggunakan FonnteService & Email.
+     */
+    public function sendSetupLink(User $customer, FonnteService $fonnteService)
+    {
+        if (empty($customer->setup_token)) {
+            $customer->setup_token = Str::random(40);
+            $customer->save();
+        }
+
+        $setupUrl = route('customer.profile.setup', ['token' => $customer->setup_token]);
+        $phoneNumber = $customer->no_wa;
+        $userEmail = $customer->email;
+        $waStatus = "";
+        $emailStatus = "";
+
+        // 1. LOGIKA KIRIM EMAIL
+        try {
+            $subject = "Kirim Ulang: Link Aktivasi Akun Toko Sancaka";
+            $bodyHtml = "
+                <div style='font-family: Arial, sans-serif; color: #333;'>
+                    <h2>Halo {$customer->nama_lengkap},</h2>
+                    <p>Sesuai permintaan, kami mengirimkan ulang link untuk melengkapi profil dan mengatur password akun Toko Sancaka Anda.</p>
+                    <p style='margin: 20px 0;'>
+                        <a href='{$setupUrl}' style='background-color: #198754; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Aktivasi / Atur Password</a>
+                    </p>
+                    <p>Atau copy-paste link berikut ke browser Anda:</p>
+                    <p><a href='{$setupUrl}'>{$setupUrl}</a></p>
+                    <p><em>Jika Anda sudah mengatur password, abaikan pesan ini.</em></p>
+                </div>
+            ";
+
+            Mail::html($bodyHtml, function ($message) use ($userEmail, $subject) {
+                $message->to($userEmail)
+                        ->subject($subject)
+                        ->from(config('mail.from.address'), config('mail.from.name'));
+            });
+
+            Log::info("Email kirim ulang aktivasi berhasil dikirim ke: " . $userEmail);
+            $emailStatus = " & Email";
+        } catch (\Exception $e) {
+            Log::error("Gagal kirim ulang email aktivasi ke {$userEmail}: " . $e->getMessage());
+            $emailStatus = " (Email gagal)";
+        }
+
+        // 2. LOGIKA KIRIM WHATSAPP
+        if (substr($phoneNumber, 0, 1) === '0') {
+            $phoneNumber = '62' . substr($phoneNumber, 1);
+        }
+
+        $message  = "Halo *{$customer->nama_lengkap}*,\n\n";
+        $message .= "Kami mengirim ulang link untuk melengkapi profil dan mengatur password akun Toko Sancaka Anda.\n\n";
+        $message .= "Link Setup:\n{$setupUrl}\n\n";
+        $message .= "Jika Anda sudah mengatur password, abaikan pesan ini. Terima kasih.";
+
+        try {
+            $response = $fonnteService->sendMessage($phoneNumber, $message);
+
+            if ($response && isset($response['status']) && $response['status'] === 'success') {
+                Log::info('Link Setup WA berhasil dikirim via Fonnte ke: ' . $phoneNumber);
+                $waStatus = "notifikasi WA{$emailStatus} berhasil dikirim.";
+            } else {
+                Log::error('Gagal kirim Link Setup WA via Fonnte. Respon: ' . json_encode($response));
+                $waStatus = "GAGAL kirim notifikasi WA{$emailStatus}.";
+            }
+        } catch (\Exception $e) {
+            Log::error('Exception saat kirim Link Setup WA via Fonnte: ' . $e->getMessage());
+            $waStatus = "terjadi kesalahan pada WA{$emailStatus}.";
+        }
+
+        return redirect()->route('admin.customers.index')
+            ->with('success', "Link setup dibuat dan dikirim ke {$customer->nama_lengkap}. Status: {$waStatus}");
     }
 
     /**
@@ -243,53 +344,6 @@ class CustomerController extends Controller
     {
         $customers = User::where('role', 'pelanggan')->get();
         return view('admin.customers.print', compact('customers'));
-    }
-
-  /**
-     * Mengirim ulang link setup profil ke pengguna menggunakan FonnteService.
-     */
-    public function sendSetupLink(User $customer, FonnteService $fonnteService)
-    {
-        // 1. PERBAIKAN: Gunakan Str::random(40) agar pasti teks dan aman
-        if (empty($customer->setup_token)) {
-            $customer->setup_token = Str::random(40);
-            $customer->save();
-        }
-
-        // 2. PERBAIKAN: Gunakan helper route() agar URL akurat
-        $setupUrl = route('customer.profile.setup', ['token' => $customer->setup_token]);
-
-        // 3. Format nomor dan buat pesan
-        $phoneNumber = $customer->no_wa;
-        if (substr($phoneNumber, 0, 1) === '0') {
-            $phoneNumber = '62' . substr($phoneNumber, 1);
-        }
-
-        $message  = "Halo {$customer->nama_lengkap},\n\n";
-        $message .= "Kami mengirim ulang link untuk melengkapi profil dan mengatur password akun Toko Sancaka Anda.\n\n";
-        $message .= "Link Setup:\n{$setupUrl}\n\n";
-        $message .= "Jika Anda sudah mengatur password, abaikan pesan ini. Terima kasih.";
-        $waStatus = "";
-
-        // 4. KIRIM WA VIA FONNTE SERVICE
-        try {
-            $response = $fonnteService->sendMessage($phoneNumber, $message);
-
-            if ($response && isset($response['status']) && $response['status'] === 'success') {
-                Log::info('Link Setup WA berhasil dikirim via Fonnte ke: ' . $phoneNumber);
-                $waStatus = " dan notifikasi WA berhasil dikirim via Fonnte.";
-            } else {
-                Log::error('Gagal kirim Link Setup WA via Fonnte. Respon: ' . json_encode($response));
-                $waStatus = " namun GAGAL mengirim notifikasi WA via Fonnte. (Cek log server)";
-            }
-        } catch (\Exception $e) {
-            Log::error('Exception saat kirim Link Setup WA via Fonnte: ' . $e->getMessage());
-            $waStatus = " namun terjadi kesalahan saat mencoba mengirim WA via Fonnte Service.";
-        }
-
-        // 5. Redirect ke halaman index
-        return redirect()->route('admin.customers.index')
-            ->with('success', 'Link setup berhasil dibuat dan dikirim ke ' . $customer->nama_lengkap . $waStatus);
     }
 
     /**
