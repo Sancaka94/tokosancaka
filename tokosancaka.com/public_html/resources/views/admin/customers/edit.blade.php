@@ -214,9 +214,10 @@
             </div>
             
             <div class="p-5">
-                {{-- Alat Bantu KiriminAja --}}
+               {{-- Alat Bantu KiriminAja --}}
                 <div class="mb-6 p-4 bg-[#e2e3e5] border border-[#d3d6d8] rounded">
                     <label class="block text-base font-bold text-[#212529] mb-2">Bantu Isi Otomatis dengan KiriminAja (Opsional)</label>
+                    
                     <div class="relative">
                         <input type="text" id="address_search" x-model.debounce.500ms="searchQuery" @input.debounce.500ms="search" 
                                placeholder="Ketik kecamatan atau nama desa di sini..." autocomplete="off"
@@ -225,15 +226,16 @@
                         <div x-show="loading" x-cloak class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                             <i class="fa fa-spinner fa-spin text-[#6c757d]"></i>
                         </div>
+                        
+                        <div x-show="results.length > 0" x-cloak @click.away="results = []" class="absolute left-0 top-full z-[999] w-full mt-1 bg-white border border-[#ced4da] rounded shadow-lg max-h-60 overflow-y-auto">
+                            <ul class="m-0 p-0 list-none">
+                                <template x-for="result in results" :key="result.district_id + result.subdistrict_id">
+                                    <li @click="selectAddress(result)" class="px-4 py-2 hover:bg-[#e9ecef] cursor-pointer text-base text-[#212529] border-b border-gray-100 last:border-0" x-text="result.text"></li>
+                                </template>
+                            </ul>
+                        </div>
                     </div>
                     
-                    <div x-show="results.length > 0" x-cloak @click.away="results = []" class="absolute z-10 w-full mt-1 bg-white border border-[#ced4da] rounded shadow-lg max-h-60 overflow-y-auto max-w-2xl">
-                        <ul class="m-0 p-0 list-none">
-                            <template x-for="result in results" :key="result.district_id + result.subdistrict_id">
-                                <li @click="selectAddress(result)" class="px-4 py-2 hover:bg-[#e9ecef] cursor-pointer text-base text-[#212529] border-b border-gray-100 last:border-0" x-text="result.text"></li>
-                            </template>
-                        </ul>
-                    </div>
                     <p x-show="message" x-cloak x-text="message" class="text-sm text-[#dc3545] mt-2 mb-0 font-medium"></p>
                 </div>
 
@@ -403,10 +405,10 @@
 @endsection
 
 @push('scripts')
-<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script>
-    document.addEventListener('alpine:init', () => {
-        Alpine.data('addressFinder', (searchUrl, geocodeUrl) => ({
+    // Daftarkan fungsi ke window agar langsung terdeteksi oleh x-data HTML
+    window.addressFinder = function(searchUrl, geocodeUrl) {
+        return {
             fields: {
                 province: @json(old('province', $user->province)),
                 city: @json(old('regency', $user->regency)), 
@@ -435,11 +437,13 @@
                 this.message = '';
                 
                 try {
-                    const csrfToken = document.querySelector('meta[name="csrf-token"]');
-                    const headers = { 'X-Requested-With': 'XMLHttpRequest' };
-                    if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken.content;
-
-                    const response = await fetch(`${searchUrl}?query=${encodeURIComponent(this.searchQuery)}`, { headers });
+                    const response = await fetch(`${searchUrl}?query=${encodeURIComponent(this.searchQuery)}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+                    
                     const data = await response.json();
                     
                     if (data.success && data.data.length > 0) {
@@ -450,7 +454,7 @@
                     }
                 } catch (error) {
                     console.error('Error searching address:', error);
-                    this.message = 'Sistem sedang sibuk. Coba lagi.';
+                    this.message = 'Gagal terhubung ke server pencari alamat.';
                 } finally {
                     this.loading = false;
                 }
@@ -473,7 +477,7 @@
 
             async getCoords() {
                 this.geocoding = true;
-                this.geocodeMessage = '';
+                this.geocodeMessage = 'Mencari koordinat...';
                 
                 const fullAddress = [
                     this.fields.address_detail,
@@ -485,35 +489,36 @@
                 ].filter(Boolean).join(', ');
 
                 if (fullAddress.length < 10) {
-                    this.geocodeMessage = 'Harap isi alamat lengkap (provinsi hingga jalan) terlebih dahulu.';
+                    this.geocodeMessage = 'Harap isi detail alamat lebih lengkap.';
                     this.geocoding = false;
                     return;
                 }
 
                 try {
-                    const csrfToken = document.querySelector('meta[name="csrf-token"]');
-                    const headers = { 'X-Requested-With': 'XMLHttpRequest' };
-                    if (csrfToken) headers['X-CSRF-TOKEN'] = csrfToken.content;
-
-                    const response = await fetch(`${geocodeUrl}?address=${encodeURIComponent(fullAddress)}`, { headers });
+                    const response = await fetch(`${geocodeUrl}?address=${encodeURIComponent(fullAddress)}`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
                     const data = await response.json();
                     
                     if (data.success && data.data.lat) {
                         this.fields.latitude = data.data.lat;
                         this.fields.longitude = data.data.lng;
-                        this.geocodeMessage = `Berhasil ditarik.`;
+                        this.geocodeMessage = `Berhasil! Lat: ${data.data.lat}, Lng: ${data.data.lng}`;
                     } else {
-                        this.geocodeMessage = 'Koordinat tidak valid untuk alamat ini.';
+                        this.geocodeMessage = 'Koordinat tidak ditemukan untuk alamat ini.';
                     }
                 } catch (error) {
                     console.error('Error geocoding:', error);
-                    this.geocodeMessage = 'Gagal memuat API koordinat.';
+                    this.geocodeMessage = 'Gagal terhubung ke server geocoding.';
                 } finally {
                     this.geocoding = false;
                 }
             }
-        }));
-    });
+        };
+    }
 </script>
 <style>
     [x-cloak] { display: none !important; }

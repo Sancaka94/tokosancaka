@@ -337,126 +337,46 @@
 
 </div>
 
+{{-- Script AlpineJS Management Data --}}
 @push('scripts')
-{{-- KEMBALIKAN KE FORMAT ASLI: Define fungsi langsung di window agar tidak bentrok dengan sistem --}}
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 <script>
-    window.addressFinder = function(searchUrl, geocodeUrl) {
-        return {
-            fields: {
-                province: @json(old('province', $user->province)),
-                city: @json(old('regency', $user->regency)), 
-                subdistrict: @json(old('district', $user->district)), 
-                village: @json(old('village', $user->village)),
-                zip_code: @json(old('postal_code', $user->postal_code)),
-                address_detail: @json(old('address_detail', $user->address_detail)),
-                latitude: @json(old('latitude', $user->latitude)),
-                longitude: @json(old('longitude', $user->longitude)),
-            },
-            searchQuery: '',
-            results: [],
-            loading: false,
-            message: '',
-            geocoding: false,
-            geocodeMessage: '',
-            
-            async search() {
-                if (this.searchQuery.length < 3) {
-                    this.results = [];
-                    this.message = '';
-                    return;
-                }
-                
-                this.loading = true;
-                this.message = '';
-                
-                try {
-                    const response = await fetch(`${searchUrl}?query=${encodeURIComponent(this.searchQuery)}`, {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        }
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.success && data.data.length > 0) {
-                        this.results = data.data;
-                    } else {
-                        this.results = [];
-                        this.message = data.message || 'Alamat tidak ditemukan.';
-                    }
-                } catch (error) {
-                    console.error('Error searching address:', error);
-                    this.message = 'Gagal terhubung ke server pencari alamat.';
-                } finally {
-                    this.loading = false;
-                }
-            },
-            
-            selectAddress(result) {
-                this.fields.province = result.province;
-                this.fields.city = result.city;
-                this.fields.subdistrict = result.subdistrict;
-                this.fields.village = result.village;
-                this.fields.zip_code = result.zip_code;
-                
-                this.searchQuery = '';
-                this.results = [];
-                
-                this.$nextTick(() => {
-                    document.getElementById('address_detail').focus();
-                });
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('customerManagement', () => ({
+            showModal: false,
+            user: null,
+
+            openModal(userData) {
+                // Parse the JSON data strictly embedded in the data-user attribute
+                this.user = JSON.parse(userData);
+                this.showModal = true;
+                // Prevent body scroll when modal open
+                document.body.style.overflow = 'hidden';
             },
 
-            async getCoords() {
-                this.geocoding = true;
-                this.geocodeMessage = 'Mencari koordinat...';
-                
-                const fullAddress = [
-                    this.fields.address_detail,
-                    this.fields.village,
-                    this.fields.subdistrict,
-                    this.fields.city,
-                    this.fields.province,
-                    this.fields.zip_code
-                ].filter(Boolean).join(', ');
+            closeModal() {
+                this.showModal = false;
+                setTimeout(() => { this.user = null; }, 300); // Clear after animation
+                document.body.style.overflow = 'auto';
+            },
 
-                if (fullAddress.length < 10) {
-                    this.geocodeMessage = 'Harap isi detail alamat lebih lengkap.';
-                    this.geocoding = false;
-                    return;
-                }
+            formatCurrency(value) {
+                if (value === null || value === undefined || value === '') return 'Rp 0';
+                return new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR',
+                    maximumFractionDigits: 0
+                }).format(value);
+            },
 
-                try {
-                    const response = await fetch(`${geocodeUrl}?address=${encodeURIComponent(fullAddress)}`, {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                        }
-                    });
-                    const data = await response.json();
-                    
-                    if (data.success && data.data.lat) {
-                        this.fields.latitude = data.data.lat;
-                        this.fields.longitude = data.data.lng;
-                        this.geocodeMessage = `Berhasil! Lat: ${data.data.lat}, Lng: ${data.data.lng}`;
-                    } else {
-                        this.geocodeMessage = 'Koordinat tidak ditemukan untuk alamat ini.';
-                    }
-                } catch (error) {
-                    console.error('Error geocoding:', error);
-                    this.geocodeMessage = 'Gagal terhubung ke server geocoding.';
-                } finally {
-                    this.geocoding = false;
-                }
+            formatDate(dateString) {
+                if (!dateString) return '-';
+                const options = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+                return new Date(dateString).toLocaleDateString('id-ID', options) + ' WIB';
             }
-        };
-    }
+        }));
+    });
 </script>
-<style>
-    [x-cloak] { display: none !important; }
-</style>
 @endpush
-
 
 @endsection
