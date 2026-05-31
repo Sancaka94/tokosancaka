@@ -40,6 +40,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/dana/*',
             'dana/notify', // Sesuaikan dengan route webhook DANA Anda
             'dana/callback',
+            'api/topup-dana',
+            'api/topup-dana/*',
         ]);
 
         // --- TAMBAHKAN BAGIAN INI ---
