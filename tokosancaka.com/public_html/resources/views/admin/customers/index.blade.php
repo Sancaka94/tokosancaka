@@ -3,7 +3,13 @@
 @section('title', 'Manajemen Pelanggan & Pendaftaran')
 
 @section('content')
-<div class="space-y-8">
+{{-- Style tambahan untuk mencegah flicker Alpine.js sebelum script dimuat --}}
+<style>
+    [x-cloak] { display: none !important; }
+</style>
+
+{{-- Wrapper utama dengan state Alpine.js --}}
+<div class="space-y-8" x-data="customerManagement()">
     
     {{-- Header Halaman --}}
     <div>
@@ -11,7 +17,7 @@
         <p class="mt-1 text-sm text-gray-600">Setujui permintaan baru dan kelola pelanggan yang sudah terdaftar di satu tempat.</p>
     </div>
 
-    {{-- Notifikasi (Dihilangkan otomatis setelah 5 detik) --}}
+    {{-- Notifikasi --}}
     @if(session('success') || session('error'))
         <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
              x-transition:leave="transition ease-in duration-300"
@@ -25,10 +31,10 @@
                 <i class="fa-solid fa-exclamation-triangle w-5 h-5"></i>
             @endif
 
-            <div class="ml-3 font-medium">
+            <div class="ml-3 font-medium flex items-center">
                 {{ session('success') ?? session('error') }}
                 @if(session('success') && session('whatsapp_url'))
-                    <a href="{{ session('whatsapp_url') }}" target="_blank" class="ml-3 inline-flex items-center px-3 py-1.5 text-xs font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300">
+                    <a href="{{ session('whatsapp_url') }}" target="_blank" class="ml-3 inline-flex items-center px-3 py-1.5 text-xs font-medium text-center text-white bg-green-600 rounded-lg hover:bg-green-700 focus:ring-4 focus:outline-none focus:ring-green-300 transition-colors">
                         <i class="fa-brands fa-whatsapp mr-2"></i> Kirim Link Setup
                     </a>
                 @endif
@@ -42,41 +48,45 @@
     {{-- Bagian Tabel Permintaan Pending --}}
     <div class="space-y-4">
         <h2 class="text-xl font-semibold text-gray-800">Daftar Permintaan Pending</h2>
-        <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
+        <div class="overflow-x-auto relative shadow-md sm:rounded-lg border border-gray-200">
             <table class="w-full text-sm text-left text-gray-500">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
                     <tr>
                         <th scope="col" class="py-3 px-6">Tanggal</th>
                         <th scope="col" class="py-3 px-6">Nama</th>
                         <th scope="col" class="py-3 px-6">Email</th>
                         <th scope="col" class="py-3 px-6">No. WA</th>
                         <th scope="col" class="py-3 px-6">Nama Toko</th>
-                        {{-- PERBAIKAN: Menambahkan class sticky untuk kolom Aksi --}}
-                        <th scope="col" class="py-3 px-6 sticky right-0 bg-gray-50">Aksi</th>
+                        <th scope="col" class="py-3 px-6 sticky right-0 bg-gray-50 shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($requests as $request)
-                        <tr class="bg-white border-b hover:bg-gray-50">
-                            {{-- PERBAIKAN: Menambahkan Carbon::parse untuk memastikan ini adalah objek Carbon --}}
+                        <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
                             <td class="py-4 px-6">{{ $request->created_at ? \Carbon\Carbon::parse($request->created_at)->translatedFormat('d M Y, H:i') : '-' }}</td>
-                            <td class="py-4 px-6">{{ $request->nama_lengkap }}</td>
+                            <td class="py-4 px-6 font-medium text-gray-900">{{ $request->nama_lengkap }}</td>
                             <td class="py-4 px-6">{{ $request->email }}</td>
                             <td class="py-4 px-6">{{ $request->no_wa }}</td>
                             <td class="py-4 px-6">{{ $request->store_name ?? '-' }}</td>
-                            {{-- PERBAIKAN: Mengganti teks dengan ikon dan menambahkan class sticky --}}
-                            <td class="py-4 px-6 sticky right-0 bg-white">
-                                <form action="{{ route('admin.registrations.approve', $request->id_pengguna) }}" method="POST" onsubmit="return confirm('Anda yakin ingin menyetujui pendaftar ini?');">
-                                    @csrf
-                                    <button type="submit" title="Setujui" class="text-green-600 hover:text-green-900">
-                                        <i class="fa-solid fa-check fa-lg"></i>
+                            <td class="py-4 px-6 sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
+                                <div class="flex items-center space-x-4">
+                                    {{-- Tombol Mata (Lihat Detail) --}}
+                                    <button type="button" @click="openModal($event.currentTarget.dataset.user)" data-user="{{ json_encode($request) }}" title="Lihat Detail" class="text-blue-600 hover:text-blue-900 transition-colors">
+                                        <i class="fa-solid fa-eye fa-lg"></i>
                                     </button>
-                                </form>
+                                    {{-- Tombol Setujui --}}
+                                    <form action="{{ route('admin.registrations.approve', $request->id_pengguna) }}" method="POST" onsubmit="return confirm('Anda yakin ingin menyetujui pendaftar ini?');">
+                                        @csrf
+                                        <button type="submit" title="Setujui" class="text-green-600 hover:text-green-900 transition-colors">
+                                            <i class="fa-solid fa-check fa-lg"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="py-4 px-6 text-center text-gray-500">
+                            <td colspan="6" class="py-6 px-6 text-center text-gray-500 bg-white">
                                 Tidak ada permintaan pendaftaran baru.
                             </td>
                         </tr>
@@ -89,50 +99,77 @@
     {{-- Bagian Tabel Pengguna Terdaftar --}}
     <div class="space-y-4">
         <h2 class="text-xl font-semibold text-gray-800">Daftar Pelanggan Terdaftar</h2>
-        <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
+        <div class="overflow-x-auto relative shadow-md sm:rounded-lg border border-gray-200">
             <table class="w-full text-sm text-left text-gray-500">
-                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
                     <tr>
-                        <th scope="col" class="py-3 px-6">Nama</th>
-                        <th scope="col" class="py-3 px-6">Email</th>
-                        <th scope="col" class="py-3 px-6">No. WA</th>
-                        <th scope="col" class="py-3 px-6">Status Profil</th>
-                        <th scope="col" class="py-3 px-6">Tanggal Daftar</th>
-                        {{-- PERBAIKAN: Menambahkan class sticky untuk kolom Aksi --}}
-                        <th scope="col" class="py-3 px-6 sticky right-0 bg-gray-50">Aksi</th>
+                        <th scope="col" class="py-3 px-6 whitespace-nowrap">ID / Nama</th>
+                        <th scope="col" class="py-3 px-6">Kontak (Email & WA)</th>
+                        <th scope="col" class="py-3 px-6">Toko / Perusahaan</th>
+                        <th scope="col" class="py-3 px-6">Role</th>
+                        <th scope="col" class="py-3 px-6">Saldo</th>
+                        <th scope="col" class="py-3 px-6 text-center">Status</th>
+                        <th scope="col" class="py-3 px-6 sticky right-0 bg-gray-50 shadow-[-2px_0_4px_rgba(0,0,0,0.05)] text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse ($customers as $user)
-                        <tr class="bg-white border-b hover:bg-gray-50">
-                            <td class="py-4 px-6">{{ $user->nama_lengkap }}</td>
-                            <td class="py-4 px-6">{{ $user->email }}</td>
-                            <td class="py-4 px-6">{{ $user->no_wa }}</td>
+                        <tr class="bg-white border-b hover:bg-gray-50 transition-colors">
                             <td class="py-4 px-6">
-                                @if($user->status == 'Aktif')
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Terverifikasi</span>
-                                @else
-                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Belum Verifikasi</span>
-                                @endif
+                                <span class="text-xs text-gray-400 block mb-1">#{{ $user->id_pengguna }}</span>
+                                <span class="font-medium text-gray-900">{{ $user->nama_lengkap }}</span>
                             </td>
-                            {{-- PERBAIKAN: Menambahkan Carbon::parse untuk memastikan ini adalah objek Carbon --}}
-                            <td class="py-4 px-6">{{ $user->created_at ? \Carbon\Carbon::parse($user->created_at)->translatedFormat('d M Y') : '-' }}</td>
-                            {{-- PERBAIKAN: Mengganti teks dengan ikon dan menambahkan class sticky --}}
-                            <td class="py-4 px-6 sticky right-0 bg-white">
-                                <div class="flex items-center space-x-4">
-                                    <a href="{{ route('admin.customers.edit', $user->id_pengguna) }}" title="Edit" class="text-indigo-600 hover:text-indigo-900">
+                            <td class="py-4 px-6">
+                                <div class="text-gray-900">{{ $user->email }}</div>
+                                <div class="text-xs text-gray-500 mt-1"><i class="fa-brands fa-whatsapp text-green-500 mr-1"></i>{{ $user->no_wa }}</div>
+                            </td>
+                            <td class="py-4 px-6">{{ $user->store_name ?? '-' }}</td>
+                            <td class="py-4 px-6">
+                                <span class="px-2.5 py-1 text-xs font-semibold rounded-md 
+                                    {{ $user->role == 'Admin' ? 'bg-purple-100 text-purple-800' : ($user->role == 'Seller' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800') }}">
+                                    {{ $user->role }}
+                                </span>
+                            </td>
+                            <td class="py-4 px-6 font-medium text-gray-900 whitespace-nowrap">
+                                Rp {{ number_format($user->saldo ?? 0, 0, ',', '.') }}
+                            </td>
+                            <td class="py-4 px-6 text-center">
+                                <div class="flex flex-col items-center space-y-1.5">
+                                    @if($user->status == 'Aktif')
+                                        <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">Aktif</span>
+                                    @else
+                                        <span class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-red-100 text-red-800 border border-red-200">{{ $user->status ?? 'Nonaktif' }}</span>
+                                    @endif
+
+                                    @if($user->is_verified)
+                                        <i class="fa-solid fa-circle-check text-blue-500" title="Terverifikasi"></i>
+                                    @else
+                                        <i class="fa-solid fa-circle-exclamation text-yellow-500" title="Belum Verifikasi"></i>
+                                    @endif
+                                </div>
+                            </td>
+                            <td class="py-4 px-6 sticky right-0 bg-white shadow-[-2px_0_4px_rgba(0,0,0,0.05)]">
+                                <div class="flex items-center justify-center space-x-4">
+                                    {{-- Tombol Mata (Lihat Detail Modal) --}}
+                                    <button type="button" @click="openModal($event.currentTarget.dataset.user)" data-user="{{ json_encode($user) }}" title="Lihat Detail Lengkap" class="text-blue-600 hover:text-blue-900 transition-colors">
+                                        <i class="fa-solid fa-eye fa-lg"></i>
+                                    </button>
+
+                                    <a href="{{ route('admin.customers.edit', $user->id_pengguna) }}" title="Edit" class="text-indigo-600 hover:text-indigo-900 transition-colors">
                                         <i class="fa-solid fa-pencil fa-lg"></i>
                                     </a>
+                                    
                                     <form action="{{ route('admin.customers.send-setup-link', $user->id_pengguna) }}" method="POST">
                                         @csrf
-                                        <button type="submit" title="Kirim Link Setup" class="text-blue-600 hover:text-blue-900">
+                                        <button type="submit" title="Kirim Link Setup" class="text-teal-600 hover:text-teal-900 transition-colors">
                                             <i class="fa-solid fa-paper-plane fa-lg"></i>
                                         </button>
                                     </form>
+                                    
                                     <form action="{{ route('admin.customers.destroy', $user->id_pengguna) }}" method="POST" onsubmit="return confirm('PERINGATAN: Menghapus pengguna tidak dapat diurungkan. Anda yakin?');">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" title="Hapus" class="text-red-600 hover:text-red-900">
+                                        <button type="submit" title="Hapus" class="text-red-600 hover:text-red-900 transition-colors">
                                             <i class="fa-solid fa-trash-can fa-lg"></i>
                                         </button>
                                     </form>
@@ -141,7 +178,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="py-4 px-6 text-center text-gray-500">
+                            <td colspan="7" class="py-6 px-6 text-center text-gray-500 bg-white">
                                 Belum ada pelanggan yang terdaftar.
                             </td>
                         </tr>
@@ -150,10 +187,196 @@
             </table>
         </div>
 
-        {{-- Pagination untuk Pengguna Terdaftar --}}
+        {{-- Pagination --}}
         <div class="mt-4">
             {{ $customers->links() }}
         </div>
     </div>
+
+    {{-- ================= MODAL DETAIL PENGGUNA LENGKAP ================= --}}
+    <div x-show="showModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            
+            {{-- Background overlay --}}
+            <div x-show="showModal" 
+                 x-transition:enter="ease-out duration-300" 
+                 x-transition:enter-start="opacity-0" 
+                 x-transition:enter-end="opacity-100" 
+                 x-transition:leave="ease-in duration-200" 
+                 x-transition:leave-start="opacity-100" 
+                 x-transition:leave-end="opacity-0" 
+                 class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" 
+                 @click="closeModal()" aria-hidden="true"></div>
+
+            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            {{-- Modal Panel --}}
+            <div x-show="showModal" 
+                 x-transition:enter="ease-out duration-300" 
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
+                 x-transition:leave="ease-in duration-200" 
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                 class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl w-full">
+                
+                {{-- Header Modal --}}
+                <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <h3 class="text-xl leading-6 font-bold text-gray-900 flex items-center" id="modal-title">
+                        <i class="fa-solid fa-address-card text-blue-600 mr-3"></i> Detail Lengkap Pengguna
+                    </h3>
+                    <button type="button" @click="closeModal()" class="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <span class="sr-only">Close</span>
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+
+                {{-- Body Modal --}}
+                <div class="px-6 py-5 max-h-[75vh] overflow-y-auto">
+                    <template x-if="user">
+                        <div class="space-y-8">
+                            
+                            {{-- Section: Info Dasar & Kontak --}}
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Informasi Dasar & Kontak</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-y-4 gap-x-6">
+                                    <div><span class="block text-xs text-gray-500 mb-1">ID Pengguna</span><p class="text-sm font-medium text-gray-900" x-text="'#' + (user.id_pengguna || '-')"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Nama Lengkap</span><p class="text-sm font-medium text-gray-900" x-text="user.nama_lengkap || '-'"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Email</span><p class="text-sm font-medium text-gray-900" x-text="user.email || '-'"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Nomor WhatsApp</span><p class="text-sm font-medium text-gray-900" x-text="user.no_wa || '-'"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Nama Toko</span><p class="text-sm font-medium text-gray-900" x-text="user.store_name || '-'"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Status Akun / Role</span>
+                                        <p class="text-sm font-medium text-gray-900">
+                                            <span x-text="user.status || '-'"></span> / <span x-text="user.role || '-'"></span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Section: Alamat & Lokasi --}}
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Alamat & Lokasi Geografis</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-y-4 gap-x-6">
+                                    <div class="sm:col-span-3">
+                                        <span class="block text-xs text-gray-500 mb-1">Detail Alamat</span>
+                                        <p class="text-sm font-medium text-gray-900" x-text="user.address_detail || 'Data kosong'"></p>
+                                    </div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Provinsi</span><p class="text-sm font-medium text-gray-900" x-text="user.province || '-'"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Kabupaten/Kota</span><p class="text-sm font-medium text-gray-900" x-text="user.regency || '-'"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Kecamatan</span><p class="text-sm font-medium text-gray-900" x-text="user.district || '-'"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Desa/Kelurahan</span><p class="text-sm font-medium text-gray-900" x-text="user.village || '-'"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Kode Pos</span><p class="text-sm font-medium text-gray-900" x-text="user.postal_code || '-'"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Koordinat Peta (Lat, Long)</span>
+                                        <p class="text-sm font-medium text-gray-900 font-mono">
+                                            <span x-text="user.latitude || '-'"></span>, <span x-text="user.longitude || '-'"></span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Section: Keuangan & Bank --}}
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Keuangan & Data Bank</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-y-4 gap-x-6">
+                                    <div><span class="block text-xs text-gray-500 mb-1">Saldo Utama</span><p class="text-sm font-bold text-blue-600" x-text="formatCurrency(user.saldo)"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Saldo DANA</span><p class="text-sm font-medium text-gray-900" x-text="formatCurrency(user.dana_user_balance)"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Saldo IAK</span><p class="text-sm font-medium text-gray-900" x-text="formatCurrency(user.balance_iak)"></p></div>
+                                    
+                                    <div><span class="block text-xs text-gray-500 mb-1">Nama Bank</span><p class="text-sm font-medium text-gray-900" x-text="user.bank_name || '-'"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Atas Nama Rekening</span><p class="text-sm font-medium text-gray-900" x-text="user.bank_account_name || '-'"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Nomor Rekening</span><p class="text-sm font-medium text-gray-900 font-mono" x-text="user.bank_account_number || '-'"></p></div>
+                                </div>
+                            </div>
+
+                            {{-- Section: Token & Keamanan --}}
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">API Tokens & Keamanan</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6">
+                                    <div><span class="block text-xs text-gray-500 mb-1">Expo Push Token</span>
+                                        <p class="text-xs p-1.5 bg-gray-100 rounded border border-gray-200 text-gray-800 break-all" x-text="user.expo_token || 'Tidak tersedia'"></p>
+                                    </div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">DANA Access Token</span>
+                                        <p class="text-xs p-1.5 bg-gray-100 rounded border border-gray-200 text-gray-800 break-all" x-text="user.dana_access_token || 'Tidak tersedia'"></p>
+                                    </div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Setup Token</span>
+                                        <p class="text-xs p-1.5 bg-gray-100 rounded border border-gray-200 text-gray-800 break-all" x-text="user.setup_token || 'Tidak tersedia'"></p>
+                                    </div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Token Expiry</span>
+                                        <p class="text-sm font-medium text-gray-900" x-text="formatDate(user.token_expiry)"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Section: Log & Metadata --}}
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 border-b pb-2">Log Sistem & Metadata</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-y-4 gap-x-6">
+                                    <div><span class="block text-xs text-gray-500 mb-1">Tanggal Bergabung</span><p class="text-sm font-medium text-gray-900" x-text="formatDate(user.created_at)"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">Terakhir Aktif (Last Seen)</span><p class="text-sm font-medium text-gray-900" x-text="formatDate(user.last_seen_at)"></p></div>
+                                    <div><span class="block text-xs text-gray-500 mb-1">IP Address Terakhir</span><p class="text-sm font-medium text-gray-900 font-mono" x-text="user.ip_address || '-'"></p></div>
+                                    <div class="sm:col-span-3">
+                                        <span class="block text-xs text-gray-500 mb-1">User Agent Log</span>
+                                        <p class="text-xs text-gray-600 bg-gray-50 p-2 rounded border border-gray-200" x-text="user.user_agent || '-'"></p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </template>
+                </div>
+
+                {{-- Footer Modal --}}
+                <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
+                    <button type="button" @click="closeModal()" class="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:text-sm transition-colors">
+                        Tutup
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
+
+{{-- Script AlpineJS Management Data --}}
+@push('scripts')
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('customerManagement', () => ({
+            showModal: false,
+            user: null,
+
+            openModal(userData) {
+                // Parse the JSON data strictly embedded in the data-user attribute
+                this.user = JSON.parse(userData);
+                this.showModal = true;
+                // Prevent body scroll when modal open
+                document.body.style.overflow = 'hidden';
+            },
+
+            closeModal() {
+                this.showModal = false;
+                setTimeout(() => { this.user = null; }, 300); // Clear after animation
+                document.body.style.overflow = 'auto';
+            },
+
+            formatCurrency(value) {
+                if (value === null || value === undefined || value === '') return 'Rp 0';
+                return new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR',
+                    maximumFractionDigits: 0
+                }).format(value);
+            },
+
+            formatDate(dateString) {
+                if (!dateString) return '-';
+                const options = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+                return new Date(dateString).toLocaleDateString('id-ID', options) + ' WIB';
+            }
+        }));
+    });
+</script>
+@endpush
+
 @endsection
