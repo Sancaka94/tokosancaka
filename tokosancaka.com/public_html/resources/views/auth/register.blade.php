@@ -189,10 +189,12 @@
                                 <label for="password_confirmation"><i class="fas fa-check-double me-2 text-muted"></i>Konfirmasi Password</label>
                                 <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('password_confirmation')"></i>
                             </div>
+
+                          {{-- Copyright di posisi Kanan Bawah --}}
+                        <p class="text-muted small mb-0 copyright-text text-end">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
                         </div>
 
-                      {{-- Copyright di posisi Kanan Bawah --}}
-    <p class="text-muted small mb-0 copyright-text text-end">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
+                    
 
                     </div>
                     {{-- Akhir Grid Form --}}
