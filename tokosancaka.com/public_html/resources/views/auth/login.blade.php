@@ -198,8 +198,11 @@
                             <p class="text-center mb-0 text-muted">
                                 Belum punya akun? <br>
                                 <a href="{{ $registerRoute }}" class="fw-bold text-danger text-decoration-none">Daftar di sini</a>
-                            </p>
+                            </p> <br>
                         @endif
+
+                        {{-- Copyright diletakkan di LUAR card tapi di DALAM wrapper agar menempel di pojok layar --}}
+                        <p class="text-muted small mb-0 copyright-text text-end">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
 
                     </div>
 
@@ -210,8 +213,7 @@
         </form>
     </div>
     
-    {{-- Copyright diletakkan di LUAR card tapi di DALAM wrapper agar menempel di pojok layar --}}
-    <p class="text-muted small mb-0 copyright-text text-end">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
+    
 </div>
 @endsection
 
