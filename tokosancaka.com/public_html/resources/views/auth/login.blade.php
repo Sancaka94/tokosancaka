@@ -197,12 +197,10 @@
                             <a href="https://tokosancaka.com/password/reset" class="small text-muted text-decoration-none">Lupa password?</a>
                         </div>
                     @endif
-
-                    <p class="text-muted small mb-0">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
                 
                 </form>
 
-                
+                <p class="text-muted small mb-0">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
 
             </div>
         </div>
