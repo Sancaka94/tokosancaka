@@ -886,4 +886,436 @@ class TopupDanaController extends Controller
             return back()->with('error', 'Gagal menghapus transaksi: ' . $e->getMessage());
         }
     }
+
+    // =========================================================================
+    // =========================================================================
+    // [MESIN BARU - KHUSUS EXPO/API] MERESPONS DALAM FORMAT JSON
+    // =========================================================================
+    // =========================================================================
+
+
+    public function apiGetTransactions()
+    {
+        $transactions = DB::table('dana_transaction_topup')
+            ->where('user_id', Auth::user()->id_pengguna)
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        return response()->json([
+            'success' => true,
+            'data' => $transactions
+        ]);
+    }
+
+    public function apiStore(Request $request, DokuJokulService $dokuJokulService)
+    {
+        Log::info('LOG LOG: ========== [DEBUG DIRECT TOPUP DANA SUBMIT - API EXPO] ==========');
+
+        $validated = $request->validate([
+            'dana_number'    => 'required|numeric',
+            'amount'         => 'required|numeric|min:10000',
+            'payment_method' => 'required|string',
+        ]);
+
+        try {
+            $user = Auth::user();
+            $amount = (int) $validated['amount'];
+
+            $adminFee = 2000;
+            $totalAmount = $amount + $adminFee;
+
+            $danaNumber = $this->normalizePhone($validated['dana_number']);
+            $invoiceNumber = 'DANATOPUP-' . strtoupper(Str::random(10));
+            $paymentMethod = strtoupper($validated['payment_method']);
+
+            // 1. LOGIKA POTONG SALDO
+            if (in_array($paymentMethod, ['SALDO', 'POTONG SALDO', 'POTONG_SALDO'])) {
+                
+                if ($user->saldo < $totalAmount) {
+                    return response()->json([
+                        'success' => false, 
+                        'message' => 'Saldo komisi Anda tidak mencukupi. Sisa saldo: Rp ' . number_format($user->saldo, 0, ',', '.')
+                    ], 400);
+                }
+
+                DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $totalAmount);
+
+                $merchantDepositAccount = config('services.dana.merchant_deposit_account');
+                $idToko = config('services.dana.id_toko');
+
+                $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+                $amountStr  = number_format((float)$amount, 2, '.', '');
+                $path       = '/rest/v1.0/emoney/topup';
+
+                $body = [
+                    "partnerReferenceNo" => $invoiceNumber,
+                    "customerNumber"     => $danaNumber,
+                    "amount" => ["value" => $amountStr, "currency" => "IDR"],
+                    "feeAmount" => ["value" => "0.00", "currency" => "IDR"],
+                    "transactionDate" => $timestamp,
+                    "categoryId"      => "6",
+                    "additionalInfo"  => [
+                        "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
+                        "chargeTarget" => "MERCHANT",
+                        "merchantId"   => $idToko,
+                        "accountId"    => $merchantDepositAccount
+                    ]
+                ];
+
+                $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
+                $hashedBody   = strtolower(hash('sha256', $jsonBody));
+                $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
+                try {
+                    $signature = $this->generateSignature($stringToSign);
+                    $accessTokenB2B = $this->danaSignature->getAccessToken();
+
+                    $headers = [
+                        'Content-Type'  => 'application/json',
+                        'Authorization' => 'Bearer ' . $accessTokenB2B,
+                        'X-TIMESTAMP'   => $timestamp,
+                        'X-SIGNATURE'   => $signature,
+                        'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                        'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                        'CHANNEL-ID'    => '95221',
+                        'ORIGIN'        => config('services.dana.origin'),
+                    ];
+
+                    Log::info('========== [DANA TOPUP DIRECT START - API] ==========');
+                    Log::info('[DANA REQUEST] Payload:', $body);
+
+                    $response = Http::withHeaders($headers)
+                        ->timeout(60)
+                        ->withBody($jsonBody, 'application/json')
+                        ->post(config('services.dana.base_url') . $path);
+
+                    $result = $response->json();
+                    $resCode = $result['responseCode'] ?? ($response->status() == 504 ? '504' : '500');
+                    $codeCheck = trim((string)$resCode);
+
+                    Log::info('[DANA RESPONSE] Result:', $result ?? ['raw_body' => $response->body()]);
+
+                    if ($codeCheck === '2003800') { 
+                        DB::table('dana_transaction_topup')->insert([
+                            'user_id'          => $user->id_pengguna,
+                            'target_phone'     => $danaNumber,
+                            'amount'           => $amount,
+                            'type'             => 'TOPUP_B2B',
+                            'reference_id'     => $invoiceNumber,
+                            'payment_method'   => $paymentMethod,
+                            'status'           => 'SUCCESS',
+                            'response_payload' => json_encode($result),
+                            'created_at'       => now(),
+                            'updated_at'       => now()
+                        ]);
+
+                        return response()->json([
+                            'success' => true,
+                            'message' => "Top Up Berhasil!",
+                            'data' => [
+                                'invoice' => $invoiceNumber,
+                                'dana_number' => $danaNumber,
+                                'amount' => $amount
+                            ]
+                        ]);
+
+                    } elseif (in_array($codeCheck, ['504', '4293800', '5003801', '2023800'])) {
+                        DB::table('dana_transaction_topup')->insert([
+                            'user_id'          => $user->id_pengguna,
+                            'target_phone'     => $danaNumber,
+                            'amount'           => $amount,
+                            'type'             => 'TOPUP_B2B',
+                            'reference_id'     => $invoiceNumber,
+                            'payment_method'   => $paymentMethod,
+                            'status'           => 'PENDING_DANA',
+                            'response_payload' => json_encode($result),
+                            'created_at'       => now(),
+                            'updated_at'       => now()
+                        ]);
+
+                        return response()->json([
+                            'success' => true, 
+                            'message' => 'Transaksi sedang diproses (Pending) oleh DANA. Mohon tunggu.',
+                            'status' => 'PENDING_DANA'
+                        ]);
+
+                    } else {
+                        DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->increment('saldo', $amount);
+
+                        DB::table('dana_transaction_topup')->insert([
+                            'user_id'          => $user->id_pengguna,
+                            'target_phone'     => $danaNumber,
+                            'amount'           => $amount,
+                            'type'             => 'TOPUP_B2B',
+                            'reference_id'     => $invoiceNumber,
+                            'payment_method'   => $paymentMethod,
+                            'status'           => 'FAILED_DANA',
+                            'response_payload' => json_encode($result),
+                            'created_at'       => now(),
+                            'updated_at'       => now()
+                        ]);
+
+                        $userMsg = match($codeCheck) {
+                            '4033814' => 'Saldo Corporate Sancaka tidak mencukupi.',
+                            '4033805' => 'Nomor DANA tujuan tidak valid.',
+                            '4033818' => 'Nomor DANA tujuan tidak aktif (Inactive).',
+                            '4043811' => 'Nomor DANA tujuan tidak ditemukan/diblokir.',
+                            default   => "Gagal: " . ($result['responseMessage'] ?? 'Error') . " ($codeCheck)"
+                        };
+
+                        return response()->json([
+                            'success' => false, 
+                            'message' => $userMsg . " (Saldo Anda telah dikembalikan)"
+                        ], 400);
+                    }
+
+                } catch (\Exception $e) {
+                    DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->increment('saldo', $amount);
+                    Log::error('[DANA TOPUP DIRECT API] Exception: ' . $e->getMessage());
+                    return response()->json(['success' => false, 'message' => 'Koneksi terputus. Saldo Anda telah dikembalikan.'], 500);
+                }
+            }
+
+
+            // 2. LOGIKA PAYMENT GATEWAY (BUTUH WEBHOOK TRIPAY / DOKU)
+            DB::beginTransaction();
+            DB::table('dana_transaction_topup')->insert([
+                'user_id'        => $user->id_pengguna,
+                'reference_id'   => $invoiceNumber,
+                'target_phone'   => $danaNumber,
+                'amount'         => $amount,
+                'admin_fee'      => $adminFee,
+                'total_amount'   => $totalAmount,
+                'payment_method' => $paymentMethod,
+                'status'         => 'PENDING_PAYMENT',
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
+            DB::commit();
+
+            $customerData = [
+                'name'  => $user->nama_lengkap ?? 'Customer',
+                'email' => $user->email ?? 'customer@tokosancaka.com',
+                'phone' => $user->no_wa ?? '081234567890'
+            ];
+
+            // PROSES VIA DOKU
+            if ($paymentMethod === 'DOKU_JOKUL') {
+                Log::info('LOG LOG: Memulai Generate DOKU Jokul API untuk ' . $invoiceNumber);
+
+                $lineItems = [['name' => 'Top Up DANA ' . $danaNumber, 'price' => $totalAmount, 'quantity' => 1]];
+                $successRedirectUrl = route('customer.topupdana.success', ['invoice' => $invoiceNumber]);
+                
+                $paymentUrl = $dokuJokulService->createPayment(
+                    $invoiceNumber, $totalAmount, $customerData, $lineItems, [], $successRedirectUrl
+                );
+
+                if (empty($paymentUrl)) throw new Exception('Gagal membuat link DOKU.');
+                
+                return response()->json([
+                    'success' => true, 
+                    'payment_url' => $paymentUrl, 
+                    'invoice' => $invoiceNumber
+                ]);
+            } 
+            // PROSES VIA TRIPAY
+            else {
+                Log::info('LOG LOG: Memulai Generate Tripay API untuk ' . $invoiceNumber);
+
+                $apiKey       = config('tripay.api_key');
+                $privateKey   = config('tripay.private_key');
+                $merchantCode = config('tripay.merchant_code');
+                $mode         = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+                $payload = [
+                    'method'         => $validated['payment_method'],
+                    'merchant_ref'   => $invoiceNumber,
+                    'amount'         => $totalAmount,
+                    'customer_name'  => $customerData['name'],
+                    'customer_email' => $customerData['email'],
+                    'customer_phone' => $customerData['phone'],
+                    'order_items'    => [['sku' => 'DANA', 'name' => 'Top Up DANA ' . $danaNumber, 'price' => $totalAmount, 'quantity' => 1]], 
+                    'signature'      => hash_hmac('sha256', $merchantCode.$invoiceNumber.$totalAmount, $privateKey),
+                ];
+
+                $baseUrl = $mode === 'production' 
+                    ? 'https://tripay.co.id/api/transaction/create' 
+                    : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+                $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->post($baseUrl, $payload);
+                
+                if (!$response->successful()) {
+                    Log::error('LOG LOG: Respon Detail Tripay API: ' . $response->body());
+                }
+                
+                if ($response->successful() && isset($response->json()['success']) && $response->json()['success'] === true) {
+                    $checkoutUrl = $response->json()['data']['checkout_url'];
+                    return response()->json([
+                        'success' => true, 
+                        'payment_url' => $checkoutUrl, 
+                        'invoice' => $invoiceNumber
+                    ]);
+                }
+
+                throw new Exception('Gagal membuat transaksi di Tripay.');
+            }
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: Gagal memproses Direct Top Up DANA API: ' . $e->getMessage());
+            return response()->json([
+                'success' => false, 
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function apiCheckStatus(Request $request)
+    {
+        $request->validate(['reference_id' => 'required']);
+        
+        $trx = DB::table('dana_transaction_topup')->where('reference_id', $request->reference_id)->first();
+
+        if (!$trx) {
+            return response()->json(['success' => false, 'message' => 'Data transaksi tidak ditemukan di database topup.'], 404);
+        }
+
+        if (in_array($trx->status, ['SUCCESS', 'FAILED_DANA', 'FAILED_SYSTEM', 'FAILED'])) {
+            return response()->json([
+                'success' => true, 
+                'message' => 'Transaksi ini sudah berstatus final.', 
+                'status' => $trx->status
+            ]);
+        }
+
+        $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $path      = '/rest/v1.0/emoney/topup-status';
+        
+        $body = [
+            "originalPartnerReferenceNo" => $trx->reference_id,
+            "serviceCode"                => "38"
+        ];
+
+        $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody   = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
+        try {
+            $signature = $this->generateSignature($stringToSign);
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'CHANNEL-ID'    => '95221',
+                'ORIGIN'        => config('services.dana.origin'),
+            ];
+
+            $response = Http::withHeaders($headers)
+                ->timeout(60)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            $resCode = trim((string)($result['responseCode'] ?? '500'));
+
+            Log::info("LOG LOG: Hasil Cek Status DANA API untuk {$trx->reference_id}: ", $result ?? ['raw_body' => $response->body()]);
+
+            if ($resCode === '2003900') {
+                $statusDana = $result['latestTransactionStatus'] ?? null;
+
+                if ($statusDana === '00') {
+                    DB::table('dana_transaction_topup')->where('reference_id', $trx->reference_id)->update([
+                        'status' => 'SUCCESS',
+                        'updated_at' => now()
+                    ]);
+                    return response()->json(['success' => true, 'message' => 'Status DANA: SUKSES (Dana telah masuk ke tujuan).', 'status' => 'SUCCESS']);
+                } 
+                elseif (in_array($statusDana, ['01', '02', '03'])) {
+                    return response()->json(['success' => true, 'message' => 'Status DANA: PENDING (Masih diproses sistem bank/DANA).', 'status' => 'PENDING']);
+                } 
+                elseif (in_array($statusDana, ['04', '05', '06', '07'])) {
+                    DB::table('dana_transaction_topup')->where('reference_id', $trx->reference_id)->update([
+                        'status' => 'FAILED_DANA',
+                        'updated_at' => now()
+                    ]);
+                    
+                    if (in_array($trx->payment_method, ['POTONG SALDO', 'SALDO', 'POTONG_SALDO'])) {
+                        DB::table('Pengguna')->where('id_pengguna', $trx->user_id)->increment('saldo', $trx->amount);
+                        Log::info("LOG LOG: Auto-Refund Rp {$trx->amount} berhasil dikembalikan ke User ID {$trx->user_id} karena transaksi GAGAL FINAL.");
+                    }
+                    
+                    $desc = $result['transactionStatusDesc'] ?? 'Transaksi Gagal / Ditolak';
+                    return response()->json(['success' => false, 'message' => "Status DANA: GAGAL ($desc). Saldo Anda telah dikembalikan otomatis.", 'status' => 'FAILED_DANA']);
+                }
+            } 
+            elseif ($resCode === '4043901') {
+                DB::table('dana_transaction_topup')->where('reference_id', $trx->reference_id)->update([
+                    'status' => 'FAILED_DANA',
+                    'updated_at' => now()
+                ]);
+                
+                if (in_array($trx->payment_method, ['POTONG SALDO', 'SALDO', 'POTONG_SALDO'])) {
+                    DB::table('Pengguna')->where('id_pengguna', $trx->user_id)->increment('saldo', $trx->amount);
+                }
+                return response()->json(['success' => false, 'message' => 'Status DANA: GAGAL (Transaksi tidak ditemukan / Kadaluarsa). Saldo telah dikembalikan.', 'status' => 'FAILED_DANA']);
+            } 
+            else {
+                $errMsg = $result['responseMessage'] ?? 'Unknown Error';
+                return response()->json(['success' => false, 'message' => "Gagal mengecek status ke DANA: [$resCode - $errMsg]. Sistem DANA sedang sibuk."]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: Exception cek status DANA API: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan jaringan saat mengecek status ke DANA.'], 500);
+        }
+    }
+
+    public function apiBulkDestroyTransaction(Request $request)
+    {
+        Log::info('LOG LOG: ========== [START BULK DELETE DANA TOPUP API] ==========');
+        
+        $ids = $request->input('ids');
+
+        if (empty($ids)) {
+            return response()->json(['success' => false, 'message' => 'Pilih minimal satu transaksi untuk dihapus.'], 400);
+        }
+
+        if (is_string($ids)) {
+            $ids = explode(',', $ids);
+        }
+
+        if (is_array($ids) && count($ids) === 1 && strpos($ids[0], ',') !== false) {
+            $ids = explode(',', $ids[0]);
+        }
+
+        $cleanIds = array_filter(array_map('trim', $ids));
+
+        try {
+            $deletedCount = DB::table('dana_transaction_topup')->whereIn('id', $cleanIds)->delete();
+
+            if ($deletedCount > 0) {
+                return response()->json(['success' => true, 'message' => $deletedCount . ' riwayat transaksi berhasil dihapus secara permanen.']);
+            } else {
+                return response()->json(['success' => false, 'message' => 'Data gagal dihapus. Kemungkinan data sudah tidak ada di database.'], 404);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [BULK DELETE API ERROR]: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function apiDestroyTopupTransaction($id)
+    {
+        try {
+            DB::table('dana_transaction_topup')->where('id', $id)->delete();
+            return response()->json(['success' => true, 'message' => 'Riwayat transaksi berhasil dihapus dari sistem.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal menghapus transaksi: ' . $e->getMessage()], 500);
+        }
+    }
 }
