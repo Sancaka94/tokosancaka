@@ -2988,7 +2988,7 @@ public function handleCallback(Request $request)
             "originalPartnerReferenceNo" => $trx->reference_no,
             "serviceCode"                => "00", // Wajib "00" menurut dokumen
             "additionalInfo"             => [
-                "merchantId" => "216660001394664338723" // ID Corporate Sancaka
+                "merchantId"             => config('services.dana.id_toko')
             ]
         ];
 

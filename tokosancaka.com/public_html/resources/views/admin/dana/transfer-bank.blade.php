@@ -487,6 +487,15 @@
             $('#bulkDeleteForm').submit();
         }
     }
+
+    // Mencegah double submit pada form transfer
+    $('form[action="{{ route('customer.dana.transfer_bank') }}"]').on('submit', function() {
+        let btn = $(this).find('button[type="submit"]');
+        // Ubah teks dan matikan tombol setelah diklik
+        btn.html('<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...');
+        btn.prop('disabled', true);
+        btn.addClass('opacity-50 cursor-not-allowed');
+    });
     
 </script>
 @endpush
