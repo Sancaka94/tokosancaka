@@ -208,12 +208,14 @@
                 </div>
                 {{-- Akhir Sisi Kanan --}}
 
+                    {{-- Copyright di posisi Kanan Bawah --}}
+                <p class="text-muted small mb-0 copyright-text text-end">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
+
+
             </div>
         </form>
     </div>
     
-    {{-- Copyright di posisi Kanan Bawah --}}
-    <p class="text-muted small mb-0 copyright-text text-end">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
 </div>
 @endsection
 
