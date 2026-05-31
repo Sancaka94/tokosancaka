@@ -193,6 +193,9 @@
 
                     </div>
                     {{-- Akhir Grid Form --}}
+                        {{-- Copyright di posisi Kanan Bawah --}}
+    <p class="text-muted small mb-0 copyright-text text-end">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
+
                 </div>
 
                 {{-- 2. SISI KANAN (Aksi: Register & Login Link) --}}
@@ -222,8 +225,6 @@
         </form>
     </div>
 
-    {{-- Copyright di posisi Kanan Bawah --}}
-    <p class="text-muted small mb-0 copyright-text text-end">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
 </div>
 @endsection
 
