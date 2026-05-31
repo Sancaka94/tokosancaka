@@ -1430,6 +1430,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/api/topup-dana/bulk-destroy', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiBulkDestroyTransaction']);
     Route::delete('/api/topup-dana/{id}', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiDestroyTopupTransaction']);
 
-    Route::post('/api/admin/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferToBank']);
-
+// Rute API Cek Rekening (Tahap 1)
+    Route::post('/api/admin/dana/bank-inquiry', [App\Http\Controllers\Customer\TopUpController::class, 'apiBankAccountInquiry']);
+    
+    // Rute API Eksekusi Transfer (Tahap 2)
+    Route::post('/api/admin/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'apiTransferToBank']);
+    
     });
