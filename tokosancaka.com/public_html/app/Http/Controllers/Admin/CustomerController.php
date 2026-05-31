@@ -16,7 +16,7 @@ use Illuminate\Validation\Rules\Password;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\Log;
 use App\Models\Store;
-use App\Services\FonnteService; // ✅ TAMBAH INI
+use App\Services\FonnteService;
 
 class CustomerController extends Controller
 {
@@ -26,23 +26,23 @@ class CustomerController extends Controller
     public function index()
     {
         $requests = User::where('status', 'Tidak Aktif')->orderBy('created_at', 'desc')->get();
-        $customers = User::whereIn('role', ['pelanggan', 'seller'])
+        $customers = User::whereIn('role', ['pelanggan', 'seller', 'Pelanggan', 'Seller'])
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
         return view('admin.customers.index', compact('requests', 'customers'));
     }
 
-   /**
+    /**
      * Menyetujui permintaan pendaftaran dan membuat akun pengguna baru.
      */
-    public function approve($id, FonnteService $fonnteService) // ✅ INJECT SERVICE DI SINI
+    public function approve($id, FonnteService $fonnteService)
     {
-        $request = User::where('id_pengguna',$id)->first();
+        $request = User::where('id_pengguna', $id)->firstOrFail();
 
-        if (User::where('email', $request->email)->exists()) {
+        if (User::where('email', $request->email)->where('id_pengguna', '!=', $id)->exists()) {
             $request->update(['status' => 'approved_duplicate']);
-            return Redirect::route('admin.customers.index')->with('error', 'Email ' . $request->email . ' sudah terdaftar.');
+            return Redirect::route('admin.customers.index')->with('error', 'Email ' . $request->email . ' sudah terdaftar pada akun lain.');
         }
 
         // 1. UPDATE STATUS PENGGUNA
@@ -56,6 +56,7 @@ class CustomerController extends Controller
 
         $setupUrl = url("/customer/profile/setup/{$request->setup_token}");
         $phoneNumber = $request->no_wa;
+        $waStatus = "";
 
         // 2. LOGIKA PENGIRIMAN WHATSAPP VIA FONNTE SERVICE
         try {
@@ -66,13 +67,13 @@ class CustomerController extends Controller
 
             // Pesan WA yang akan dikirim
             $message = "Selamat datang, {$request->nama_lengkap}! Pendaftaran Anda di Toko Sancaka telah disetujui. " .
-                       "Akun Anda sudah aktif Ya kak, Jika ada Kendala yang kakak alami angan ragu WA ke ADMIN +6285745808809\n\n" .
+                       "Akun Anda sudah aktif Ya kak, Jika ada Kendala yang kakak alami jangan ragu WA ke ADMIN +6285745808809\n\n" .
                        "Silakan klik link berikut untuk melengkapi profil dan mengatur password Anda (Link berlaku 48 jam):\n" .
                        $setupUrl . "\n\n" .
                        "Terima kasih!";
 
             // Panggil Service Fonnte
-            $response = $fonnteService->sendMessage($phoneNumber, $message); // ✅ MENGGUNAKAN SERVICE
+            $response = $fonnteService->sendMessage($phoneNumber, $message);
 
             // Cek respon
             if ($response && isset($response['status']) && $response['status'] === 'success') {
@@ -94,106 +95,100 @@ class CustomerController extends Controller
     }
 
     /**
-     * ✅ METHOD YANG HILANG: Menampilkan detail satu pelanggan.
+     * Menampilkan detail satu pelanggan.
      */
     public function show(User $customer)
     {
-        // Karena DataPenggunaController yang seharusnya menangani detail lengkap,
-        // kita bisa me-redirect atau menggunakan view dasar di sini.
-        // Jika Anda ingin ini berfungsi sebagai view detail standar:
         return view('admin.customers.show', compact('customer'));
-
-        // CATATAN: Pastikan resources/views/admin/customers/show.blade.php tersedia.
     }
-
 
     /**
      * Menampilkan form untuk mengedit data pelanggan.
      */
-    public function edit(User $customer) // Nama variabel di sini $customer
+    public function edit(User $customer)
     {
-        $provinces = DB::table('reg_provinces')->get();
-
-        // --- TAMBAHAN: CARI ID BERDASARKAN NAMA TEKS DARI DATABASE ---
-        $userProvinceId = DB::table('reg_provinces')
-                            ->where('name', $customer->province)
-                            ->value('id');
-
-        $userRegencyId = null;
-        if ($userProvinceId) {
-            $userRegencyId = DB::table('reg_regencies')
-                               ->where('name', $customer->regency)
-                               ->where('province_id', $userProvinceId)
-                               ->value('id');
-        }
-
-        $userDistrictId = null;
-        if ($userRegencyId) {
-            $userDistrictId = DB::table('reg_districts')
-                                 ->where('name', $customer->district)
-                                 ->where('regency_id', $userRegencyId)
-                                 ->value('id');
-        }
-
-        $userVillageId = null;
-        if ($userDistrictId) {
-            $userVillageId = DB::table('reg_villages')
-                               ->where('name', $customer->village)
-                               ->where('district_id', $userDistrictId)
-                               ->value('id');
-        }
-        // --- AKHIR BLOK TAMBAHAN ---
+        // PERBAIKAN: Karena frontend sudah menggunakan Alpine.js (KiriminAja) yang menyimpan
+        // data lokasi murni sebagai STRING (bukan ID referensi tabel), maka kita TIDAK PERLU 
+        // lagi melakukan query berat ke tabel reg_provinces dll.
+        // Cukup kirim model usernya ke view.
 
         return view('admin.customers.edit', [
-            'user' => $customer, // Blade Anda memanggil $user
-            'provinces' => $provinces,
-            'userProvinceId' => $userProvinceId,
-            'userRegencyId' => $userRegencyId,
-            'userDistrictId' => $userDistrictId,
-            'userVillageId' => $userVillageId,
+            'user' => $customer,
         ]);
     }
 
-    /**
+   /**
      * Memperbarui data pelanggan di database (TERMASUK EDIT & SET PIN).
      */
     public function update(Request $request, User $customer)
     {
-        // 1. Validasi Dasar + PIN
+        // 1. Validasi Dasar + PIN + Alamat (Format Baru String)
         $validated = $request->validate([
+            'id_pengguna'    => ['nullable'], // Tergantung kebutuhan, biasanya ID tidak diubah
             'nama_lengkap'   => ['required', 'string', 'max:255'],
             'email'          => ['required', 'string', 'email', 'max:255', Rule::unique('Pengguna', 'email')->ignore($customer->id_pengguna, 'id_pengguna')],
-            'no_wa'          => ['required', 'string', 'max:15'],
+            'no_wa'          => ['required', 'string', 'max:25'],
             'store_name'     => ['nullable', 'string', 'max:255'],
+            'store_logo_path'=> ['nullable', 'string', 'max:255'],
             'role'           => ['required', 'string', Rule::in(['Admin', 'Pelanggan', 'Seller'])],
-            'province_id'    => ['required', 'exists:reg_provinces,id'],
-            'regency_id'     => ['required', 'exists:reg_regencies,id'],
-            'district_id'    => ['required', 'exists:reg_districts,id'],
-            'village_id'     => ['required', 'exists:reg_villages,id'],
+            'status'         => ['required', 'string'],
+            'is_verified'    => ['nullable', 'boolean'],
+
+            // ---> PERBAIKAN: Hapus province_id dll, ganti dengan format String <---
+            'province'       => ['nullable', 'string', 'max:255'],
+            'regency'        => ['nullable', 'string', 'max:255'],
+            'district'       => ['nullable', 'string', 'max:255'],
+            'village'        => ['nullable', 'string', 'max:255'],
+            'postal_code'    => ['nullable', 'string', 'max:20'],
             'address_detail' => ['nullable', 'string', 'max:500'],
-            'pin'            => ['nullable', 'digits:6'], // ✅ Validasi PIN 6 Digit ditambahkan
+            'latitude'       => ['nullable', 'string', 'max:50'],
+            'longitude'      => ['nullable', 'string', 'max:50'],
+
+            // Keuangan & Bank
+            'saldo'               => ['nullable', 'numeric'],
+            'dana_user_balance'   => ['nullable', 'numeric'],
+            'balance_iak'         => ['nullable', 'numeric'],
+            'bank_name'           => ['nullable', 'string', 'max:255'],
+            'bank_account_name'   => ['nullable', 'string', 'max:255'],
+            'bank_account_number' => ['nullable', 'string', 'max:255'],
+
+            // API Tokens & Meta
+            'expo_token'        => ['nullable', 'string'],
+            'dana_access_token' => ['nullable', 'string'],
+            'dana_auth_code'    => ['nullable', 'string'],
+            'dana_user_name'    => ['nullable', 'string'],
+            'setup_token'       => ['nullable', 'string'],
+            'reset_token'       => ['nullable', 'string'],
+            'token_expiry'      => ['nullable', 'date'],
+            'created_at'        => ['nullable', 'date'],
+            'deleted_at'        => ['nullable', 'date'],
+            'last_seen_at'      => ['nullable', 'date'],
+            'last_seen'         => ['nullable', 'date'],
+            'ip_address'        => ['nullable', 'string'],
+            'user_agent'        => ['nullable', 'string'],
+
+            'pin'            => ['nullable', 'digits:6'], 
         ]);
+
+        // Buang password dan pin dari array validated agar tidak tersimpan sebagai teks biasa
+        $updateData = collect($validated)->except(['password', 'pin'])->toArray();
 
         // 2. Logika Update Password (Opsional)
         if ($request->filled('password')) {
+            // Asumsi tidak pakai confirmation di frontend baru
             $request->validate([
-                'password' => ['required', 'confirmed', Password::min(8)],
+                'password' => ['required', 'string', 'min:8'],
             ]);
-            $validated['password'] = Hash::make($request->password);
+            $updateData['password_hash'] = Hash::make($request->password);
         }
 
-        // 3. ✅ Logika Update PIN Transaksi (Opsional)
+        // 3. Logika Update PIN Transaksi (Opsional)
         if ($request->filled('pin')) {
-            // Hash PIN sebelum disimpan ke database agar aman
-            $validated['pin'] = Hash::make($request->pin);
-        } else {
-            // Jika input PIN dikosongkan di form, hapus key 'pin' dari array
-            // agar PIN lama di database tidak tertimpa menjadi null
-            unset($validated['pin']);
+            $updateData['pin'] = Hash::make($request->pin);
         }
 
         // 4. Simpan Perubahan
-        $customer->update($validated);
+        $customer->update($updateData);
 
         return redirect()->route('admin.customers.index')
                          ->with('success', 'Data pelanggan ' . $customer->nama_lengkap . ' berhasil diperbarui.');
@@ -227,7 +222,7 @@ class CustomerController extends Controller
                     $customer->no_wa,
                     $customer->store_name,
                     $customer->role,
-                    $customer->email_verified_at ? 'Terverifikasi' : 'Belum Verifikasi',
+                    $customer->is_verified ? 'Terverifikasi' : 'Belum Verifikasi', // Disesuaikan dari email_verified_at ke is_verified
                     $customer->created_at->format('Y-m-d H:i:s'),
                 ]);
             }
@@ -249,7 +244,7 @@ class CustomerController extends Controller
    /**
      * Mengirim ulang link setup profil ke pengguna menggunakan FonnteService.
      */
-    public function sendSetupLink(User $customer, FonnteService $fonnteService) // ✅ INJECT SERVICE DI SINI
+    public function sendSetupLink(User $customer, FonnteService $fonnteService)
     {
         // 1. Pastikan token tersedia
         if (empty($customer->setup_token)) {
@@ -258,7 +253,6 @@ class CustomerController extends Controller
         }
 
         // 2. Buat URL setup
-        // Menggunakan URL biasa karena signed route hanya berlaku untuk waktu tertentu
         $setupUrl = url("/customer/profile/setup/{$customer->setup_token}");
 
         // 3. Format nomor dan buat pesan
@@ -271,12 +265,12 @@ class CustomerController extends Controller
         $message .= "Kami mengirim ulang link untuk melengkapi profil dan mengatur password akun Toko Sancaka Anda.\n\n";
         $message .= "Link Setup:\n{$setupUrl}\n\n";
         $message .= "Jika Anda sudah mengatur password, abaikan pesan ini. Terima kasih.";
+        $waStatus = "";
 
         // 4. KIRIM WA VIA FONNTE SERVICE
         try {
             $response = $fonnteService->sendMessage($phoneNumber, $message);
 
-            // Cek respon
             if ($response && isset($response['status']) && $response['status'] === 'success') {
                 Log::info('Link Setup WA berhasil dikirim via Fonnte ke: ' . $phoneNumber);
                 $waStatus = " dan notifikasi WA berhasil dikirim via Fonnte.";
@@ -307,7 +301,7 @@ class CustomerController extends Controller
     /**
      * Menambahkan saldo ke customer.
      */
-    public function addSaldo(Request $request, User $customer) // PERBAIKAN: Menggunakan Route Model Binding
+    public function addSaldo(Request $request, User $customer)
     {
         $request->validate([
             'amount' => 'required|numeric|min:1000',
