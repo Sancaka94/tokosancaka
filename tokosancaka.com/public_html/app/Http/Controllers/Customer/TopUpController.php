@@ -1326,48 +1326,52 @@ public function handleCallback(Request $request)
             $customerNumber = '62' . substr($customerNumber, 1);
         }
 
-        // POTONG SALDO DIAWAL
-        DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->decrement('saldo', $request->amount);
-
-       // =========================================================
-        // SAMAKAN DATA DISBURSEMENT SEPERTI DI INQUIRY
         // =========================================================
-        $merchantDepositAccount = config('services.dana.merchant_deposit_account'); 
-        $idToko = config('services.dana.id_toko');
-
-        $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        $path       = '/v1.0/emoney/transfer-bank.htm';
-        $partnerRef = "TRF" . time() . Str::random(6);
-
-        $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
-        $readableBank = $cekBank ? $cekBank->bank_name : $request->bank_code;
-
-        $body = [
-            "partnerReferenceNo"       => $partnerRef,
-            "customerNumber"           => $merchantDepositAccount, // HARUS NOMOR MERCHANT, BUKAN AFFILIATE
-            "beneficiaryAccountNumber" => (string) $request->account_no,
-            "beneficiaryBankCode"      => (string) $request->bank_code,
-            "amount" => [
-                "value"    => number_format((float)$request->amount, 2, '.', ''),
-                "currency" => "IDR"
-            ],
-            "additionalInfo" => [
-                "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
-                "beneficiaryAccountName" => (string) $request->account_name,
-                "merchantId"             => $idToko,
-                "notes"                  => "Transfer ke Bank " . $readableBank,
-                "needNotify"             => true
-            ]
-        ];
-
-        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
-        $hashedBody = strtolower(hash('sha256', $jsonBody));
-        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-        
-        $signature = $this->generateSignature($stringToSign);
+        // MENGGUNAKAN TRANSACTION UNTUK MENCEGAH RACE CONDITION
+        // =========================================================
+        DB::beginTransaction(); 
 
         try {
-            // Gunakan akses token pengguna
+            // POTONG SALDO DIAWAL SECARA AMAN (LOCKING DALAM TRANSACTION)
+            DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->decrement('saldo', $request->amount);
+
+            // =========================================================
+            // PERSIAPAN DATA DANA
+            // =========================================================
+            $merchantDepositAccount = config('services.dana.merchant_deposit_account'); 
+            $idToko = config('services.dana.id_toko');
+
+            $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $path       = '/v1.0/emoney/transfer-bank.htm';
+            $partnerRef = "TRF" . time() . Str::random(6);
+
+            $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
+            $readableBank = $cekBank ? $cekBank->bank_name : $request->bank_code;
+
+            $body = [
+                "partnerReferenceNo"       => $partnerRef,
+                "customerNumber"           => $merchantDepositAccount, 
+                "beneficiaryAccountNumber" => (string) $request->account_no,
+                "beneficiaryBankCode"      => (string) $request->bank_code,
+                "amount" => [
+                    "value"    => number_format((float)$request->amount, 2, '.', ''),
+                    "currency" => "IDR"
+                ],
+                "additionalInfo" => [
+                    "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
+                    "beneficiaryAccountName" => (string) $request->account_name,
+                    "merchantId"             => $idToko,
+                    "notes"                  => "Transfer ke Bank " . $readableBank,
+                    "needNotify"             => true
+                ]
+            ];
+
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+            $hashedBody = strtolower(hash('sha256', $jsonBody));
+            $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+            
+            $signature = $this->generateSignature($stringToSign);
+
             $accessTokenB2B = $this->danaSignature->getAccessToken();
 
             $headers = [
@@ -1392,19 +1396,12 @@ public function handleCallback(Request $request)
             $result = $response->json();
             $resCode = $result['responseCode'] ?? '500';
 
-            // ================================================================
-            // 🔥 AKTIFKAN KODE DD() INI UNTUK MELIHAT BALASAN DANA 🔥
-            // ================================================================
-            //dd([
-            //    'URL Request'               => $path,
-            //    'Header Request (optional)' => $headers,
-            //    'Body Request'              => $body,
-            //    'Body Response'             => $result,
-            //]);
-            // ================================================================
-
-
+            // =========================================================
+            // EVALUASI RESPON DANA
+            // =========================================================
             if ($resCode == '2004300') {
+                
+                // TRANSAKSI BERHASIL: Simpan log dan COMMIT saldo
                 DB::table('dana_transactions')->insert([
                     'affiliate_id'     => $aff->id_pengguna,
                     'type'             => 'TRANSFER_BANK',
@@ -1416,11 +1413,15 @@ public function handleCallback(Request $request)
                     'created_at'       => now()
                 ]);
 
+                DB::commit(); // PERMANENKAN PEMOTONGAN SALDO
+
                 $danaRef = $result['referenceNo'] ?? '-';
                 $msg = "Transfer Berhasil!\nRef: $partnerRef\nNominal: Rp " . number_format($request->amount, 0, ',', '.');
                 return back()->with('success', $msg);
 
             } elseif (in_array($resCode, ['2024300', '4294300', '5004301'])) {
+                
+                // TRANSAKSI PENDING: Simpan log dan COMMIT saldo sementara
                 DB::table('dana_transactions')->insert([
                     'affiliate_id'     => $aff->id_pengguna,
                     'type'             => 'TRANSFER_BANK',
@@ -1432,11 +1433,17 @@ public function handleCallback(Request $request)
                     'created_at'       => now()
                 ]);
 
+                DB::commit(); // PERMANENKAN PEMOTONGAN SALDO KARENA PENDING
+
                 return redirect()->route('admin.dana.transfer_bank')->with('warning', "⏳ Transaksi Sedang Diproses (Pending).\nMohon cek riwayat saldo secara berkala.");
 
             } else {
-                DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
+                
+                // TRANSAKSI GAGAL: BATALKAN PEMOTONGAN SALDO DENGAN ROLLBACK
+                DB::rollBack(); 
 
+                // Setelah rollback dipanggil, saldo user otomatis aman (tidak jadi terpotong).
+                // Sekarang kita tetap catat histori kegagalannya ke database.
                 DB::table('dana_transactions')->insert([
                     'affiliate_id'     => $aff->id_pengguna,
                     'type'             => 'TRANSFER_BANK',
@@ -1449,15 +1456,18 @@ public function handleCallback(Request $request)
                 ]);
 
                 $errorMsg = $result['responseMessage'] ?? 'Transaksi Gagal';
-                Log::error('[DANA TRANSFER BANK] Gagal & Refund', ['res' => $result]);
+                Log::error('[DANA TRANSFER BANK] Gagal & Refund Auto (Rollback)', ['res' => $result]);
                 
                 return redirect()->route('admin.dana.transfer_bank')->with('error', "Gagal: $errorMsg\n(Saldo Rp ".number_format($request->amount, 0, ',', '.')." telah dikembalikan).");
             }
 
         } catch (\Exception $e) {
-            DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
+            
+            // JIKA TERJADI ERROR KONEKSI / FATAL ERROR: BATALKAN PEMOTONGAN SALDO
+            DB::rollBack(); 
+            
             Log::error('[DANA TRANSFER BANK] Exception', ['msg' => $e->getMessage()]);
-            return redirect()->route('admin.dana.transfer_bank')->with('error', 'Sistem Error saat eksekusi: ' . $e->getMessage() . "\n(Saldo telah dikembalikan).");
+            return redirect()->route('admin.dana.transfer_bank')->with('error', 'Sistem Error saat eksekusi: ' . $e->getMessage() . "\n(Saldo telah dikembalikan otomatis).");
         }
     }
 

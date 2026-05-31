@@ -1429,4 +1429,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/api/topup-dana/cek-status', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiCheckStatus']);
     Route::delete('/api/topup-dana/bulk-destroy', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiBulkDestroyTransaction']);
     Route::delete('/api/topup-dana/{id}', [App\Http\Controllers\Customer\TopupDanaController::class, 'apiDestroyTopupTransaction']);
-});
+
+    Route::post('/api/admin/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'transferToBank']);
+
+    });
