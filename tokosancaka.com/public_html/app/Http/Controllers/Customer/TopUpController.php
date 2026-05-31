@@ -3162,4 +3162,333 @@ public function handleCallback(Request $request)
         }
     }
 
+    // ############################ API KHUSUS APLIKASI EXPO MOBILE #######################################endregion
+
+    /**
+     * =========================================================================
+     * [MESIN BARU] API EXPO: CEK REKENING BANK (BANK ACCOUNT INQUIRY)
+     * =========================================================================
+     */
+    public function apiBankAccountInquiry(Request $request)
+    {
+        Log::info('LOG LOG: [API BANK INQUIRY] Start', $request->all());
+
+        $request->validate([
+            'affiliate_id' => 'required',
+            'bank_code'    => 'required|string',
+            'account_no'   => 'required|string',
+            'amount'       => 'required|numeric|min:10000',
+        ]);
+
+        $aff = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
+        if (!$aff) {
+            return response()->json(['success' => false, 'message' => 'Pengguna tidak ditemukan.'], 404);
+        }
+
+        // Persiapan Data DANA
+        $merchantDepositAccount = config('services.dana.merchant_deposit_account'); 
+        $idToko = config('services.dana.id_toko');
+
+        $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $path = '/v1.0/emoney/bank-account-inquiry.htm';
+        $refNo = "BNK" . time() . Str::random(4);
+
+        $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
+        $readableBank = $cekBank ? $cekBank->bank_name : $request->bank_code;
+
+        $body = [
+            "partnerReferenceNo" => $refNo,
+            "customerNumber"     => $merchantDepositAccount, 
+            "beneficiaryAccountNumber" => $request->account_no, 
+            "amount" => [
+                "value"    => number_format((float)$request->amount, 2, '.', ''),
+                "currency" => "IDR"
+            ],
+            "additionalInfo" => [
+                "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
+                "beneficiaryBankCode"    => (string) $request->bank_code,
+                "beneficiaryAccountName" => "",
+                "merchantId"             => $idToko 
+            ]
+        ];
+
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+        
+        try {
+            $signature = $this->generateSignature($stringToSign);
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'X-IP-ADDRESS'  => $request->ip() ?? '82.25.62.13',
+                'X-DEVICE-ID'   => 'SANCAKA-API-01',
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            $response = Http::withHeaders($headers)
+                ->timeout(60)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            $resCode = trim((string)($result['responseCode'] ?? '500'));
+
+            // Catat log ke database
+            DB::table('dana_transactions')->insert([
+                'affiliate_id'     => $aff->id_pengguna,
+                'type'             => 'BANK_INQUIRY',
+                'reference_no'     => $refNo,
+                'phone'            => $request->account_no . " (" . $readableBank . ")",
+                'amount'           => $request->amount,
+                'status'           => ($resCode == '2004200') ? 'SUCCESS' : 'FAILED',
+                'response_payload' => json_encode($result),
+                'created_at'       => now()
+            ]);
+
+            // Evaluasi Jika Sukses
+            if ($resCode == '2004200') {
+                $bankName = $result['beneficiaryBankShortName'] ?? $result['beneficiaryBankName'] ?? $readableBank;
+                $accName  = $result['beneficiaryAccountName'];
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Rekening Valid",
+                    'data'    => [
+                        'account_name' => $accName,
+                        'bank_name'    => $bankName,
+                        'account_no'   => $request->account_no,
+                        'amount'       => $request->amount
+                    ]
+                ]);
+            }
+
+            // Evaluasi Jika Gagal
+            $errMsg = $result['responseMessage'] ?? 'Unknown Error';
+            if ($resCode == '4034214') $errMsg = "Saldo Merchant DANA Sancaka Tidak Cukup.";
+            if ($resCode == '4044201') $errMsg = "Rekening Tidak Ditemukan / Salah Pilih Bank.";
+            if ($resCode == '4004201') $errMsg = "Format Kode Bank Tidak Valid.";
+
+            return response()->json([
+                'success' => false,
+                'message' => $errMsg,
+                'code'    => $resCode
+            ], 400);
+
+        } catch (\Exception $e) {
+            Log::error('[API BANK INQUIRY ERROR] ' . $e->getMessage());
+            return response()->json([
+                'success' => false, 
+                'message' => 'Sistem Error saat cek rekening.'
+            ], 500);
+        }
+    }
+
+    /**
+     * =========================================================================
+     * [MESIN BARU] API EXPO: TRANSFER BANK (DISBURSEMENT B2B)
+     * =========================================================================
+     */
+    public function apiTransferToBank(Request $request)
+    {
+        Log::info('LOG LOG: [API DANA TRANSFER BANK] Start', $request->all());
+
+        // 1. Validasi Input dari Expo
+        $request->validate([
+            'affiliate_id' => 'required',
+            'bank_code'    => 'required|string',
+            'account_no'   => 'required|string',
+            'account_name' => 'required|string',
+            'amount'       => 'required|numeric|min:10000',
+        ]);
+
+        $amount = (int) $request->amount;
+
+        // 2. Cek Pengguna & Saldo
+        $aff = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
+        
+        if (!$aff) {
+            return response()->json(['success' => false, 'message' => 'Pengguna tidak ditemukan.'], 404);
+        }
+
+        if ($aff->saldo < $amount) {
+            return response()->json([
+                'success' => false, 
+                'message' => 'Saldo pengguna tidak mencukupi. Sisa: Rp ' . number_format($aff->saldo, 0, ',', '.')
+            ], 400);
+        }
+
+        // Sanitasi nomor HP pengguna
+        $customerNumber = preg_replace('/[^0-9]/', '', $aff->no_wa);
+        if (substr($customerNumber, 0, 1) === '0') {
+            $customerNumber = '62' . substr($customerNumber, 1);
+        }
+
+        // =========================================================
+        // MENGGUNAKAN TRANSACTION UNTUK MENCEGAH RACE CONDITION
+        // =========================================================
+        DB::beginTransaction(); 
+
+        try {
+            // POTONG SALDO DIAWAL SECARA AMAN
+            DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->decrement('saldo', $amount);
+
+            // =========================================================
+            // PERSIAPAN DATA DANA
+            // =========================================================
+            $merchantDepositAccount = config('services.dana.merchant_deposit_account'); 
+            $idToko = config('services.dana.id_toko');
+
+            $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $path       = '/v1.0/emoney/transfer-bank.htm';
+            $partnerRef = "TRF" . time() . Str::random(6);
+
+            $cekBank = DB::table('dana_bank_codes')->where('bank_code', $request->bank_code)->first();
+            $readableBank = $cekBank ? $cekBank->bank_name : $request->bank_code;
+
+            $body = [
+                "partnerReferenceNo"       => $partnerRef,
+                "customerNumber"           => $merchantDepositAccount, 
+                "beneficiaryAccountNumber" => (string) $request->account_no,
+                "beneficiaryBankCode"      => (string) $request->bank_code,
+                "amount" => [
+                    "value"    => number_format((float)$amount, 2, '.', ''),
+                    "currency" => "IDR"
+                ],
+                "additionalInfo" => [
+                    "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
+                    "beneficiaryAccountName" => (string) $request->account_name,
+                    "merchantId"             => $idToko,
+                    "notes"                  => "Transfer ke Bank " . $readableBank,
+                    "needNotify"             => true
+                ]
+            ];
+
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+            $hashedBody = strtolower(hash('sha256', $jsonBody));
+            $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+            
+            $signature = $this->generateSignature($stringToSign);
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . Str::random(6),
+                'X-IP-ADDRESS'  => $request->ip() ?? '82.25.62.13',
+                'X-DEVICE-ID'   => 'SANCAKA-API-01',
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            Log::info('LOG LOG: [API DANA TRANSFER BANK] Mengirim Request...', ['body' => $body]);
+
+            $response = Http::withHeaders($headers)
+                ->timeout(60)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            $resCode = trim((string)($result['responseCode'] ?? '500'));
+
+            Log::info('LOG LOG: [API DANA TRANSFER BANK] Result:', $result ?? ['raw_body' => $response->body()]);
+
+            // =========================================================
+            // EVALUASI RESPON DANA
+            // =========================================================
+            if ($resCode === '2004300') {
+                
+                // TRANSAKSI BERHASIL: Simpan log dan COMMIT saldo
+                DB::table('dana_transactions')->insert([
+                    'affiliate_id'     => $aff->id_pengguna,
+                    'type'             => 'TRANSFER_BANK',
+                    'reference_no'     => $partnerRef,
+                    'phone'            => $request->account_no . " (" . $readableBank . ")",
+                    'amount'           => $amount,
+                    'status'           => 'SUCCESS',
+                    'response_payload' => json_encode($result),
+                    'created_at'       => now()
+                ]);
+
+                DB::commit(); // PERMANENKAN PEMOTONGAN SALDO
+
+                $danaRef = $result['referenceNo'] ?? '-';
+                return response()->json([
+                    'success' => true,
+                    'message' => "Transfer Berhasil!\nRef DANA: $danaRef\nNominal: Rp " . number_format($amount, 0, ',', '.'),
+                    'status'  => 'SUCCESS'
+                ]);
+
+            } elseif (in_array($resCode, ['2024300', '4294300', '5004301'])) {
+                
+                // TRANSAKSI PENDING: Simpan log dan COMMIT saldo sementara
+                DB::table('dana_transactions')->insert([
+                    'affiliate_id'     => $aff->id_pengguna,
+                    'type'             => 'TRANSFER_BANK',
+                    'reference_no'     => $partnerRef,
+                    'phone'            => $request->account_no . " (" . $readableBank . ")",
+                    'amount'           => $amount,
+                    'status'           => 'PENDING',
+                    'response_payload' => json_encode($result),
+                    'created_at'       => now()
+                ]);
+
+                DB::commit(); // PERMANENKAN PEMOTONGAN SALDO KARENA PENDING
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Transaksi Sedang Diproses (Pending) oleh sistem Bank/DANA.",
+                    'status'  => 'PENDING'
+                ]);
+
+            } else {
+                
+                // TRANSAKSI GAGAL: BATALKAN PEMOTONGAN SALDO DENGAN ROLLBACK
+                DB::rollBack(); 
+
+                DB::table('dana_transactions')->insert([
+                    'affiliate_id'     => $aff->id_pengguna,
+                    'type'             => 'TRANSFER_BANK',
+                    'reference_no'     => $partnerRef,
+                    'phone'            => $request->account_no . " (" . $readableBank . ")",
+                    'amount'           => $amount,
+                    'status'           => 'FAILED',
+                    'response_payload' => json_encode($result),
+                    'created_at'       => now()
+                ]);
+
+                $errorMsg = $result['responseMessage'] ?? 'Transaksi Gagal';
+                Log::error('LOG LOG: [API DANA TRANSFER BANK] Gagal & Refund Auto (Rollback)', ['res' => $result]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => "Gagal: $errorMsg (Saldo telah dikembalikan)",
+                    'status'  => 'FAILED'
+                ], 400);
+            }
+
+        } catch (\Exception $e) {
+            
+            // JIKA TERJADI ERROR KONEKSI / FATAL ERROR: BATALKAN PEMOTONGAN SALDO
+            DB::rollBack(); 
+            
+            Log::error('LOG LOG: [API DANA TRANSFER BANK] Exception', ['msg' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Sistem Error saat eksekusi. Saldo telah dikembalikan otomatis.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
 }
