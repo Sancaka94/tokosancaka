@@ -1,6 +1,7 @@
 {{--
     File: resources/views/auth/login.blade.php
     Ini adalah halaman formulir login custom yang kompatibel dengan Breeze.
+    (Versi Full Responsive Horizontal/Vertical)
 --}}
 
 @extends('layouts.app')
@@ -25,15 +26,25 @@
         min-height: 100vh;
         padding: 2rem 1rem;
     }
-    .auth-card {
-        max-width: 500px;
+    
+    /* ---- STYLE BARU UNTUK KARTU RESPONSIVE ---- */
+    .auth-card-split {
+        max-width: 900px; /* Lebar maksimal kartu saat mendatar di desktop */
         width: 100%;
         border: none;
-        margin-top: 5px;
+        border-radius: 1.25rem;
+        overflow: hidden; /* Memastikan sudut tumpul tidak tertabrak warna background */
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
     }
-    .auth-logo {
+    .auth-brand-side {
+        background: linear-gradient(135deg, #dc3545 0%, #8b0000 100%); /* Warna Merah Sancaka */
+        color: white;
+    }
+    .auth-logo-mobile {
         max-height: 50px;
     }
+    /* ------------------------------------------ */
+
     .btn-danger {
         background-color: #dc3545;
         border-color: #dc3545;
@@ -64,13 +75,27 @@
 
 @section('content')
 <div class="auth-wrapper">
-    {{-- Card login tunggal --}}
-    <div class="container bg-white rounded-4 shadow p-4 p-lg-5 auth-card">
-        <div class="row">
-            <div class="col-12">
+    
+    {{-- Kartu Utama dengan Grid (row g-0 menghilangkan jarak antar kolom) --}}
+    <div class="card auth-card-split bg-white">
+        <div class="row g-0">
+            
+            {{-- 1. SISI KIRI (Branding Banner) --}}
+            {{-- col-md-6 artinya lebarnya 50% di tablet/desktop. d-none d-md-flex artinya disembunyikan di HP --}}
+            <div class="col-md-6 auth-brand-side d-none d-md-flex flex-column justify-content-center align-items-center p-5 text-center">
+                <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Logo Sancaka Express" class="mb-4" style="max-height: 80px; filter: brightness(0) invert(1);" onerror="this.style.display='none'">
+                <h2 class="fw-bold mb-3">Sancaka Express</h2>
+                <p class="mb-0 text-white-50">Solusi pengiriman paket cepat, aman, dan terpercaya ke seluruh penjuru negeri.</p>
+            </div>
+
+            {{-- 2. SISI KANAN (Form Login) --}}
+            {{-- col-12 artinya 100% lebar di HP, col-md-6 artinya 50% di tablet/desktop --}}
+            <div class="col-12 col-md-6 p-4 p-lg-5">
+                
                 <div class="text-center mb-4">
-                    <a href="{{ url('/') }}">
-                        <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Logo Sancaka Express" class="auth-logo mb-2" onerror="this.src='https://placehold.co/150x50?text=Sancaka'">
+                    {{-- Logo ini HANYA muncul di HP (d-md-none) karena di Desktop logonya ada di sisi kiri --}}
+                    <a href="{{ url('/') }}" class="d-md-none">
+                        <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Logo Sancaka Express" class="auth-logo-mobile mb-3" onerror="this.src='https://placehold.co/150x50?text=Sancaka'">
                     </a>
                     <h3 class="fw-bold">Selamat Datang Kembali</h3>
                     <p class="text-muted">Masuk untuk melanjutkan ke akun Anda.</p>
@@ -106,7 +131,6 @@
 
                     {{-- Email Address --}}
                     <div class="form-floating mb-3">
-                        {{-- PENTING: name="email" adalah default Breeze. Jika controller Anda custom pakai 'login', ubah jadi name="login" --}}
                         <input type="text" class="form-control @error('email') is-invalid @enderror" id="email" name="login" placeholder="Email atau Nomor WhatsApp" value="{{ old('email') }}" required autofocus>
                         <label for="email">Email atau Nomor WhatsApp</label>
                     </div>
@@ -118,20 +142,17 @@
                         <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('password')"></i>
                     </div>
 
-               {{-- Captcha Gambar Mews --}}
+                    {{-- Captcha Gambar Mews --}}
                     <div class="mb-3">
                         <label for="captcha" class="form-label text-muted small d-block">
                             Keamanan: Ketik karakter pada gambar di bawah
                         </label>
                         
-                        {{-- Tampilan Gambar Captcha --}}
                         <div class="mb-3 text-center">
                             {!! captcha_img('flat') !!}
                         </div>
 
-                        <input type="text" class="form-control @error('captcha') is-invalid @enderror" 
-                               id="captcha" name="captcha" placeholder="Masukkan karakter pada gambar" 
-                               required autocomplete="off">
+                        <input type="text" class="form-control @error('captcha') is-invalid @enderror" id="captcha" name="captcha" placeholder="Masukkan karakter pada gambar" required autocomplete="off">
                         
                         @error('captcha')
                             <div class="invalid-feedback">
@@ -166,9 +187,12 @@
                     @endif
                 </form>
             </div>
+            {{-- Akhir Sisi Kanan --}}
+
         </div>
-        <p class="text-center text-muted small mt-5 mb-0">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
     </div>
+    
+    <p class="text-center text-muted small mt-4 mb-0 position-absolute bottom-0 mb-3">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
 </div>
 @endsection
 
@@ -176,7 +200,6 @@
 <script>
     function togglePasswordVisibility(fieldId) {
         const input = document.getElementById(fieldId);
-        // Mengambil icon yang berada tepat setelah input di dalam parent yang sama
         const icon = input.parentElement.querySelector('.password-toggle-icon');
 
         if (input.type === "password") {
@@ -189,6 +212,5 @@
             icon.classList.add('fa-eye');
         }
     }
-
 </script>
 @endpush
