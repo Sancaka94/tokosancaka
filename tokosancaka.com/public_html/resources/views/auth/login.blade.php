@@ -1,7 +1,6 @@
 {{--
     File: resources/views/auth/login.blade.php
-    Ini adalah halaman formulir login custom yang kompatibel dengan Breeze.
-    (Versi Full Responsive - Input di Kiri, Aksi di Kanan - Layout Fixed)
+    Desain mengikuti referensi Split Layout (Kiri Branding, Kanan Form Penuh)
 --}}
 
 @extends('layouts.app')
@@ -16,8 +15,7 @@
         height: 100%;
         margin: 0;
         font-family: 'Poppins', sans-serif;
-        background-color: #f8f9fa;
-        position: relative;
+        background-color: #f0f4f8; /* Warna background luar yang lembut */
     }
     .auth-wrapper {
         display: flex;
@@ -25,70 +23,83 @@
         align-items: center;
         min-height: 100vh;
         padding: 2rem 1rem;
+        position: relative;
     }
     
-    /* ---- STYLE KARTU RESPONSIVE ---- */
-    .auth-card-split {
-        max-width: 1000px;
+    /* Kartu Utama */
+    .auth-card {
+        max-width: 950px;
         width: 100%;
         border: none;
-        border-radius: 1.25rem;
+        border-radius: 1rem;
         overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
     }
-    .auth-action-side {
-        background-color: #fcfcfc;
-        border-left: 1px solid #f0f0f0;
-    }
-    .auth-logo {
-        max-height: 60px;
-    }
-    /* ------------------------------------------ */
 
-    .btn-danger {
-        background-color: #dc3545;
-        border-color: #dc3545;
-        padding: 0.75rem 1rem;
-        font-weight: 500;
-        transition: all 0.3s ease;
+    /* Sisi Kiri (Branding) */
+    .auth-brand-side {
+        background: linear-gradient(135deg, #dc3545 0%, #8b0000 100%);
+        position: relative;
+        overflow: hidden;
     }
-    .btn-danger:hover {
-        background-color: #c82333;
-        border-color: #bd2130;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    /* Efek garis/pattern abstrak sederhana */
+    .auth-brand-side::before {
+        content: '';
+        position: absolute;
+        top: -50%; left: -50%; width: 200%; height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 10%, transparent 10%), radial-gradient(circle, rgba(255,255,255,0.1) 10%, transparent 10%);
+        background-size: 50px 50px;
+        background-position: 0 0, 25px 25px;
+        opacity: 0.5;
+    }
+    
+    .brand-logo-container {
+        position: absolute;
+        top: 2rem;
+        left: 2rem;
+        z-index: 2;
+    }
+
+    /* Input & Tombol */
+    .form-control {
+        background-color: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 0.5rem;
     }
     .form-control:focus {
+        background-color: #fff;
         border-color: #dc3545;
-        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.15);
+    }
+    .btn-danger {
+        background-color: #dc3545;
+        border: none;
+        padding: 0.85rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        border-radius: 0.5rem;
+        transition: 0.3s;
+    }
+    .btn-danger:hover {
+        background-color: #bd2130;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
     }
     .password-toggle-icon {
         position: absolute;
         top: 50%;
-        right: 1rem;
+        right: 1.2rem;
         transform: translateY(-50%);
         cursor: pointer;
-        color: #6c757d;
+        color: #adb5bd;
     }
     
-    /* Mengatur posisi copyright di kanan bawah terhadap wrapper */
+    /* Teks Copyright di bawah tengah seperti di referensi */
     .copyright-text {
         position: absolute;
         bottom: 1.5rem;
-        right: 2rem;
-    }
-    
-    @media (max-width: 768px) {
-        .auth-action-side {
-            border-left: none;
-            border-top: 1px solid #f0f0f0;
-        }
-        .copyright-text {
-            position: static;
-            text-align: center !important;
-            margin-top: 2rem;
-            padding-bottom: 1rem;
-        }
+        width: 100%;
+        text-align: center;
     }
 </style>
 @endpush
@@ -98,122 +109,103 @@
     
     @php
         $formAction = request()->is('admin/*') ? route('admin.login') : route('login');
-        $passwordRequestRoute = Route::has('password.request') ? route('password.request') : '#';
         $registerRoute = Route::has('register') ? route('register') : '#';
     @endphp
 
-    {{-- Kartu Utama --}}
-    <div class="card auth-card-split bg-white">
-        <form method="POST" action="{{ $formAction }}" class="m-0">
-            @csrf
-            <div class="row g-0">
+    <div class="card auth-card bg-white">
+        <div class="row g-0 h-100">
+            
+            {{-- 1. SISI KIRI (Branding & Sambutan) --}}
+            <div class="col-md-5 d-none d-md-flex auth-brand-side flex-column">
+                <div class="brand-logo-container">
+                    {{-- Logo putih (invert) --}}
+                    <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Sancaka Express" style="max-height: 40px; filter: brightness(0) invert(1);" onerror="this.src='https://placehold.co/150x40?text=Sancaka'">
+                </div>
                 
-                {{-- 1. SISI KIRI (Logo & Form Input) --}}
-                <div class="col-12 col-md-7 p-4 p-lg-5">
+                <div class="my-auto px-4 px-lg-5 text-center text-white position-relative z-2">
+                    <p class="mb-2 fw-medium text-uppercase tracking-wider" style="letter-spacing: 1px; font-size: 0.9rem;">Nice to see you again</p>
+                    <h2 class="fw-bold mb-4" style="font-size: 2.5rem;">WELCOME BACK</h2>
+                    <hr class="w-25 mx-auto opacity-100 border-2 rounded">
+                    <p class="mt-4 small text-white-50">Solusi pengiriman paket cepat, aman, dan terpercaya ke seluruh penjuru negeri.</p>
+                </div>
+            </div>
+
+            {{-- 2. SISI KANAN (Form & Aksi) --}}
+            <div class="col-12 col-md-7 p-4 p-md-5 d-flex flex-column justify-content-center">
+                
+                {{-- Logo untuk Mobile --}}
+                <div class="text-center d-md-none mb-4">
+                    <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Sancaka Express" style="max-height: 45px;">
+                </div>
+
+                <div class="text-center mb-4">
+                    <h3 class="fw-bold text-danger">Login Account</h3>
+                    <p class="text-muted small">Masuk untuk melanjutkan ke akun Anda.</p>
+                </div>
+
+                @if (session('status'))
+                    <div class="alert alert-success py-2 small mb-3 text-center">{{ session('status') }}</div>
+                @endif
+                @if ($errors->any())
+                    <div class="alert alert-danger py-2 small mb-3">
+                        <ul class="mb-0 ps-3">
+                            @foreach ($errors->all() as $error) <li>{{ $error }}</li> @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ $formAction }}" class="px-xl-4">
+                    @csrf
                     
-                    <div class="text-center text-md-start mb-4">
-                        <a href="{{ url('/') }}">
-                            <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Logo Sancaka Express" class="auth-logo mb-3" onerror="this.src='https://placehold.co/150x50?text=Sancaka'">
-                        </a>
-                        <h3 class="fw-bold">Selamat Datang Kembali</h3>
-                        <p class="text-muted">Masuk untuk melanjutkan ke akun Anda.</p>
-                    </div>
-
-                    @if (session('status'))
-                        <div class="alert alert-success py-2 small mb-3">
-                            {{ session('status') }}
-                        </div>
-                    @endif
-
-                    @if ($errors->any())
-                        <div class="alert alert-danger py-2 small mb-3">
-                            <ul class="mb-0 ps-3">
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-
-                    {{-- Email Address --}}
                     <div class="form-floating mb-3">
-                        <input type="text" class="form-control @error('email') is-invalid @enderror" id="email" name="login" placeholder="Email atau Nomor WhatsApp" value="{{ old('email') }}" required autofocus>
-                        <label for="email">Email atau Nomor WhatsApp</label>
+                        <input type="text" class="form-control" id="email" name="login" placeholder="Email / WA" value="{{ old('email') }}" required autofocus>
+                        <label for="email" class="text-muted">Email atau Nomor WhatsApp</label>
                     </div>
 
-                    {{-- Password --}}
                     <div class="form-floating mb-3 position-relative">
-                        <input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password" placeholder="Password" required autocomplete="current-password">
-                        <label for="password">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                        <label for="password" class="text-muted">Password</label>
                         <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('password')"></i>
                     </div>
 
-                    {{-- Captcha Gambar Mews --}}
-                    <div class="mb-3">
-                        <label for="captcha" class="form-label text-muted small d-block">
-                            Keamanan: Ketik karakter pada gambar di bawah
-                        </label>
-                        
-                        <div class="mb-3">
+                    {{-- Keamanan Captcha --}}
+                    <div class="mb-3 p-3 bg-light rounded-3 border">
+                        <label class="form-label text-muted small mb-2 d-block text-center">Keamanan: Ketik karakter pada gambar</label>
+                        <div class="text-center mb-2">
                             {!! captcha_img('flat') !!}
                         </div>
-
-                        <input type="text" class="form-control @error('captcha') is-invalid @enderror" id="captcha" name="captcha" placeholder="Masukkan karakter pada gambar" required autocomplete="off">
-                        
-                        @error('captcha')
-                            <div class="invalid-feedback">
-                                {{ $message }}
-                            </div>
-                        @enderror
+                        <input type="text" class="form-control text-center" name="captcha" placeholder="Masukkan karakter di atas" required autocomplete="off">
                     </div>
-                </div>
 
-                {{-- 2. SISI KANAN (Aksi: Ceklis, Lupa Password, Submit, Register) --}}
-                <div class="col-12 col-md-5 auth-action-side p-4 p-lg-5 d-flex flex-column justify-content-center align-items-center">
-                    
-                    {{-- Bungkus inner-content agar tetap rapat dan berada persis di tengah secara vertikal --}}
-                    <div class="w-100 px-xl-3">
-                        
-                        {{-- Row untuk Ingat Saya & Lupa Password agar sejajar --}}
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <div class="form-check mb-0">
-                                <input class="form-check-input" type="checkbox" name="remember" id="remember_me">
-                                <label class="form-check-label text-muted" for="remember_me">
-                                    Ingat Saya
-                                </label>
-                            </div>
-
-                            @if (Route::has('password.request') && !request()->is('admin/*'))
-                                <a href="https://tokosancaka.com/password/reset" class="small text-danger text-decoration-none">Lupa password?</a>
-                            @endif
+                    {{-- Opsi Bawah Form --}}
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="remember" id="remember_me">
+                            <label class="form-check-label text-muted small" for="remember_me">Keep me signed in</label>
                         </div>
-
-                        {{-- Submit Button --}}
-                        <div class="d-grid mb-4">
-                            <button type="submit" class="btn btn-danger btn-lg shadow-sm">Masuk</button>
-                        </div>
-
-                        {{-- Register Link --}}
                         @if (!request()->is('admin/*'))
-                            <p class="text-center mb-0 text-muted">
-                                Belum punya akun? <br>
-                                <a href="{{ $registerRoute }}" class="fw-bold text-danger text-decoration-none">Daftar di sini</a>
-                            </p> <br>
+                            <a href="{{ $registerRoute }}" class="small text-danger text-decoration-none fw-medium">Already a member?</a>
                         @endif
-
-                        {{-- Copyright diletakkan di LUAR card tapi di DALAM wrapper agar menempel di pojok layar --}}
-                        <p class="text-muted small mb-0 copyright-text text-end">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
-
                     </div>
 
-                </div>
-                {{-- Akhir Sisi Kanan --}}
+                    <div class="d-grid mb-3">
+                        <button type="submit" class="btn btn-danger btn-lg text-uppercase">Login</button>
+                    </div>
+                    
+                    @if (Route::has('password.request') && !request()->is('admin/*'))
+                        <div class="text-center mt-3">
+                            <a href="https://tokosancaka.com/password/reset" class="small text-muted text-decoration-none">Lupa password?</a>
+                        </div>
+                    @endif
+                </form>
 
             </div>
-        </form>
+        </div>
     </div>
-    
-    
+
+    <div class="copyright-text">
+        <p class="text-muted small mb-0">&copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.</p>
+    </div>
 </div>
 @endsection
 
@@ -222,15 +214,12 @@
     function togglePasswordVisibility(fieldId) {
         const input = document.getElementById(fieldId);
         const icon = input.parentElement.querySelector('.password-toggle-icon');
-
         if (input.type === "password") {
             input.type = "text";
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
+            icon.classList.replace('fa-eye', 'fa-eye-slash');
         } else {
             input.type = "password";
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
+            icon.classList.replace('fa-eye-slash', 'fa-eye');
         }
     }
 </script>
