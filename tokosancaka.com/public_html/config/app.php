@@ -250,6 +250,8 @@ return [
 
         App\Providers\ViewServiceProvider::class,
 
+        Mews\Captcha\CaptchaServiceProvider::class,
+
 
     ],
 
@@ -274,6 +276,8 @@ return [
         'DNS1D' => Milon\Barcode\Facades\DNS1DFacade::class, // <-- PERBAIKAN: Menambahkan alias barcode 1D
 
         'DNS2D' => Milon\Barcode\Facades\DNS2DFacade::class, // <-- PERBAIKAN: Menambahkan alias barcode 2D
+
+        'Captcha' => Mews\Captcha\Facades\Captcha::class,
 
     ])->toArray(),
 
