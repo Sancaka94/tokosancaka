@@ -33,7 +33,7 @@ class CustomerController extends Controller
         return view('admin.customers.index', compact('requests', 'customers'));
     }
 
-    /**
+   /**
      * Menyetujui permintaan pendaftaran dan membuat akun pengguna baru.
      */
     public function approve($id, FonnteService $fonnteService)
@@ -46,19 +46,23 @@ class CustomerController extends Controller
         }
 
         // 1. UPDATE STATUS PENGGUNA
-        $request->update(['status' => 'Aktif']);
+        $request->status = 'Aktif';
 
-        // Pastikan setup_token ada
+        // 2. PERBAIKAN: Gunakan Str::random(40) agar pasti berupa teks (String) dan aman disimpan
         if (empty($request->setup_token)) {
-            $request->setup_token = Str::uuid();
-            $request->save();
+            $request->setup_token = Str::random(40); 
         }
+        
+        // Simpan perubahan status dan token sekaligus
+        $request->save();
 
-        $setupUrl = url("/customer/profile/setup/{$request->setup_token}");
+        // 3. PERBAIKAN: Gunakan helper route() agar URL di-generate otomatis 100% valid
+        $setupUrl = route('customer.profile.setup', ['token' => $request->setup_token]);
+        
         $phoneNumber = $request->no_wa;
         $waStatus = "";
 
-        // 2. LOGIKA PENGIRIMAN WHATSAPP VIA FONNTE SERVICE
+        // 4. LOGIKA PENGIRIMAN WHATSAPP VIA FONNTE SERVICE
         try {
             // Bersihkan nomor telepon: Ganti '0' di depan menjadi '62'
             if (substr($phoneNumber, 0, 1) === '0') {
@@ -89,7 +93,7 @@ class CustomerController extends Controller
             $waStatus = " namun terjadi kesalahan saat mencoba mengirim WA via Fonnte Service.";
         }
 
-        // 3. REDIRECT DAN PESAN SUKSES
+        // 5. REDIRECT DAN PESAN SUKSES
         return Redirect::route('admin.customers.index')
             ->with('success', 'Pendaftaran untuk ' . $request->nama_lengkap . ' berhasil disetujui' . $waStatus);
     }
@@ -241,19 +245,19 @@ class CustomerController extends Controller
         return view('admin.customers.print', compact('customers'));
     }
 
-   /**
+  /**
      * Mengirim ulang link setup profil ke pengguna menggunakan FonnteService.
      */
     public function sendSetupLink(User $customer, FonnteService $fonnteService)
     {
-        // 1. Pastikan token tersedia
+        // 1. PERBAIKAN: Gunakan Str::random(40) agar pasti teks dan aman
         if (empty($customer->setup_token)) {
-            $customer->setup_token = Str::uuid();
+            $customer->setup_token = Str::random(40);
             $customer->save();
         }
 
-        // 2. Buat URL setup
-        $setupUrl = url("/customer/profile/setup/{$customer->setup_token}");
+        // 2. PERBAIKAN: Gunakan helper route() agar URL akurat
+        $setupUrl = route('customer.profile.setup', ['token' => $customer->setup_token]);
 
         // 3. Format nomor dan buat pesan
         $phoneNumber = $customer->no_wa;
