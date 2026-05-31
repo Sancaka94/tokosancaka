@@ -1381,13 +1381,4 @@ class TopupDanaController extends Controller
         }
     }
 
-    public function apiDestroyTopupTransaction($id)
-    {
-        try {
-            DB::table('dana_transaction_topup')->where('id', $id)->delete();
-            return response()->json(['success' => true, 'message' => 'Riwayat transaksi berhasil dihapus dari sistem.']);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Gagal menghapus transaksi: ' . $e->getMessage()], 500);
-        }
-    }
 }
