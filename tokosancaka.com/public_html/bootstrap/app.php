@@ -42,6 +42,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'dana/callback',
             'api/topup-dana',
             'api/topup-dana/*',
+            'api/admin/dana/*',  // Mengecualikan rute Transfer & Inquiry Bank yang baru kita buat
+            'api/*',             // (OPSIONAL TAPI SANGAT DISARANKAN) Mengecualikan SEMUA rute yang berawalan api/ agar kamu tidak pusing lagi ke depannya
         ]);
 
         // --- TAMBAHKAN BAGIAN INI ---
