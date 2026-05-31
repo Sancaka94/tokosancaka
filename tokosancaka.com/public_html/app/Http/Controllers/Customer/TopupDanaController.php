@@ -894,23 +894,82 @@ class TopupDanaController extends Controller
     // =========================================================================
 
 
+  // =========================================================================
+    // 1. GET TRANSAKSI DENGAN FILTER & PROTEKSI ROLE (ADMIN VS USER)
+    // =========================================================================
     public function apiGetTransactions(Request $request)
     {
         $user = $request->user();
-        
         if (!$user) {
-            return response()->json(['success' => false, 'message' => 'Sesi berakhir, silakan login ulang.'], 401);
+            return response()->json(['success' => false, 'message' => 'Sesi berakhir.'], 401);
         }
 
-        $transactions = DB::table('dana_transaction_topup')
-            ->where('user_id', $user->id_pengguna)
-            ->orderBy('created_at', 'desc')
-            ->paginate(10);
+        // Ambil parameter filter dari request (jika ada)
+        $filterStatus = $request->input('status', 'SEMUA');
+        $filterTanggal = $request->input('tanggal', null);
+
+        // Mulai Query
+        $query = DB::table('dana_transaction_topup')->orderBy('created_at', 'desc');
+
+        // PROTEKSI SUPER KETAT: Cek apakah user adalah Admin
+        $isAdmin = (strtolower($user->role) === 'admin' || (string)$user->id_pengguna === '4');
+
+        if (!$isAdmin) {
+            // JIKA BUKAN ADMIN: Kunci query HANYA untuk id_pengguna milik user yang login
+            $query->where('user_id', $user->id_pengguna);
+        }
+
+        // Terapkan Filter Status
+        if ($filterStatus !== 'SEMUA') {
+            if ($filterStatus === 'PENDING') {
+                $query->whereIn('status', ['PENDING_PAYMENT', 'PENDING_DANA']);
+            } elseif ($filterStatus === 'FAILED') {
+                $query->whereIn('status', ['FAILED_DANA', 'FAILED_SYSTEM', 'FAILED']);
+            } else {
+                $query->where('status', $filterStatus);
+            }
+        }
+
+        // (Opsional) Terapkan Filter Tanggal YYYY-MM-DD
+        if ($filterTanggal) {
+            $query->whereDate('created_at', $filterTanggal);
+        }
+
+        // Ambil data (Bisa pakai paginate(15) kalau datanya mau di-load bertahap)
+        $transactions = $query->get();
 
         return response()->json([
             'success' => true,
+            'is_admin' => $isAdmin, // Kirim flag ke frontend agar frontend tau ini admin atau bukan
             'data' => $transactions
         ]);
+    }
+
+    // =========================================================================
+    // 2. DELETE TRANSAKSI SATUAN DENGAN PROTEKSI KEPEMILIKAN
+    // =========================================================================
+    public function apiDestroyTopupTransaction(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            $isAdmin = (strtolower($user->role) === 'admin' || (string)$user->id_pengguna === '4');
+
+            $trx = DB::table('dana_transaction_topup')->where('id', $id)->first();
+
+            if (!$trx) {
+                return response()->json(['success' => false, 'message' => 'Data tidak ditemukan.'], 404);
+            }
+
+            // CEK KEPEMILIKAN JIKA BUKAN ADMIN
+            if (!$isAdmin && $trx->user_id != $user->id_pengguna) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak! Ini bukan transaksi Anda.'], 403);
+            }
+
+            DB::table('dana_transaction_topup')->where('id', $id)->delete();
+            return response()->json(['success' => true, 'message' => 'Riwayat transaksi berhasil dihapus.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal menghapus: ' . $e->getMessage()], 500);
+        }
     }
 
     public function apiStore(Request $request, DokuJokulService $dokuJokulService)
