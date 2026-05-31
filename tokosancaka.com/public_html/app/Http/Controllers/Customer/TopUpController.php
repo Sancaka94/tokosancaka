@@ -3521,4 +3521,34 @@ public function handleCallback(Request $request)
         }
     }
 
+    /**
+     * =========================================================================
+     * [MESIN BARU] API EXPO: PENCARIAN PENGGUNA (AUTO-FILL BANK)
+     * =========================================================================
+     */
+    public function apiSearchPengguna(Request $request)
+    {
+        $search = $request->get('q');
+        
+        $query = DB::table('Pengguna')
+            ->select('id_pengguna', 'nama_lengkap', 'no_wa', 'store_name', 'bank_name', 'bank_account_name', 'bank_account_number')
+            ->where('status', 'Aktif');
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('nama_lengkap', 'like', "%{$search}%")
+                  ->orWhere('no_wa', 'like', "%{$search}%")
+                  ->orWhere('id_pengguna', 'like', "%{$search}%")
+                  ->orWhere('store_name', 'like', "%{$search}%");
+            });
+        }
+
+        $pengguna = $query->limit(20)->get();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $pengguna
+        ]);
+    }
+
 }
