@@ -508,7 +508,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         }); // END MODULE TICKETING
 
-        // ==========================================
+    });
+
+      // ==========================================
             // MODULE: TRAIN (TIKET KERETA API)
             // ==========================================
             Route::prefix('train')->group(function () {
@@ -528,8 +530,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/booking-detail', [TrainController::class, 'trainBookingDetail']);
                 Route::post('/cancel', [TrainController::class, 'trainCancel']);
             });
-
-
-    });
 
 
