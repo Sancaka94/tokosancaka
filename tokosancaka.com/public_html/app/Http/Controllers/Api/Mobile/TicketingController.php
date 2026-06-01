@@ -1308,4 +1308,57 @@ class TicketingController extends BaseController
         ], 401);
     }
 
+    /**
+     * POST Airline/LocalOrders/Delete
+     * Menghapus riwayat pesanan tiket lokal secara massal (Bulk Delete)
+     */
+    public function deleteLocalOrders(Request $request)
+    {
+        // 1. Validasi input: pastikan 'ids' adalah sebuah array
+        $validator = Validator::make($request->all(), [
+            'ids'   => 'required|array',
+            'ids.*' => 'integer'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Validasi gagal, data ID tidak valid.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // Gunakan Transaction agar aman jika terjadi kegagalan parsial
+            DB::transaction(function () use ($request) {
+                // Hapus data addons dan passengers terlebih dahulu jika database-mu
+                // belum menggunakan relasi ON DELETE CASCADE
+
+                $passengers = DB::table('flight_passengers')->whereIn('order_id', $request->ids)->pluck('id');
+                if ($passengers->isNotEmpty()) {
+                    DB::table('flight_addons')->whereIn('passenger_id', $passengers)->delete();
+                }
+                DB::table('flight_passengers')->whereIn('order_id', $request->ids)->delete();
+
+                // Terakhir, hapus data utama (Order)
+                DB::table('flight_orders')->whereIn('id', $request->ids)->delete();
+            });
+
+            Log::info("LOG SUCCESS: Berhasil menghapus " . count($request->ids) . " data riwayat tiket.");
+
+            return response()->json([
+                'status'  => 'SUCCESS',
+                'message' => 'Data riwayat berhasil dihapus secara permanen.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("LOG FATAL ERROR: Gagal hapus data riwayat tiket! Pesan: " . $e->getMessage());
+
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Sistem gagal menghapus data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 }
