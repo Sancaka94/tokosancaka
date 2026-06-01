@@ -22,7 +22,7 @@ use App\Http\Controllers\Api\Mobile\EditPenggunaController;
 use App\Http\Controllers\Api\Mobile\PesananController;
 use App\Http\Controllers\Api\Mobile\TicketingController;
 use App\Http\Controllers\Customer\TopUpController;
-use App\Http\Controllers\Api\Mobile\TrainController;
+use App\Http\Controllers\Api\Mobile\TrainTicketingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -487,20 +487,20 @@ Route::middleware(['auth:sanctum'])->group(function () {
         // ==========================================
         Route::prefix('train')->group(function () {
             // Endpoint List & Pencarian Jadwal
-            Route::post('/list', [TrainController::class, 'trainList']);
-            Route::post('/route', [TrainController::class, 'trainRoute']);
-            Route::post('/schedule', [TrainController::class, 'trainSchedule']);
+            Route::post('/list', [TrainTicketingController::class, 'trainList']);
+            Route::post('/route', [TrainTicketingController::class, 'trainRoute']);
+            Route::post('/schedule', [TrainTicketingController::class, 'trainSchedule']);
             
             // Endpoint Flow Transaksi
-            Route::post('/booking', [TrainController::class, 'trainBooking']);
-            Route::post('/seatmap', [TrainController::class, 'trainSeatMap']);
-            Route::post('/takeseat', [TrainController::class, 'trainTakeSeat']);
-            Route::post('/issued', [TrainController::class, 'trainIssued']);
+            Route::post('/booking', [TrainTicketingController::class, 'trainBooking']);
+            Route::post('/seatmap', [TrainTicketingController::class, 'trainSeatMap']);
+            Route::post('/takeseat', [TrainTicketingController::class, 'trainTakeSeat']);
+            Route::post('/issued', [TrainTicketingController::class, 'trainIssued']);
             
             // Endpoint Riwayat & Manajemen Tiket
-            Route::post('/booking-list', [TrainController::class, 'trainBookingList']);
-            Route::post('/booking-detail', [TrainController::class, 'trainBookingDetail']);
-            Route::post('/cancel', [TrainController::class, 'trainCancel']);
+            Route::post('/booking-list', [TrainTicketingController::class, 'trainBookingList']);
+            Route::post('/booking-detail', [TrainTicketingController::class, 'trainBookingDetail']);
+            Route::post('/cancel', [TrainTicketingController::class, 'trainCancel']);
 
         });
 

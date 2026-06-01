@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 
-class TrainController extends BaseController
+class TrainTicketingController extends BaseController
 {
     public function __construct()
     {
