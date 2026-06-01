@@ -491,6 +491,7 @@ class TicketingController extends BaseController
                     'message' => 'Gagal dari Darmawisata: ' . $message
                 ]);
             }
+            
 
         } catch (\Exception $e) {
             Log::error("Proses Issued Gagal (System Error): " . $e->getMessage());
