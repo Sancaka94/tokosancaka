@@ -467,6 +467,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/save-db', [TicketingController::class, 'saveToDatabase']);
             Route::get('/local-orders', [TicketingController::class, 'getLocalOrders']);
 
+            Route::post('/local-orders/delete', [TicketingController::class, 'deleteLocalOrders']);
+
             // Rute untuk eksekusi booking ke Darmawisata
             Route::post('/process-booking', [TicketingController::class, 'processBooking']);
 
@@ -480,7 +482,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             // Flow Sistem Khusus
             Route::post('/timer-elapsed', [TicketingController::class, 'airlineTimerElapsed']);
         });
-           
+
 
         // ==========================================
         // MODULE: TRAIN (TIKET KERETA API) -> PINDAHKAN KE SINI!
@@ -490,13 +492,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/list', [TrainTicketingController::class, 'trainList']);
             Route::post('/route', [TrainTicketingController::class, 'trainRoute']);
             Route::post('/schedule', [TrainTicketingController::class, 'trainSchedule']);
-            
+
             // Endpoint Flow Transaksi
             Route::post('/booking', [TrainTicketingController::class, 'trainBooking']);
             Route::post('/seatmap', [TrainTicketingController::class, 'trainSeatMap']);
             Route::post('/takeseat', [TrainTicketingController::class, 'trainTakeSeat']);
             Route::post('/issued', [TrainTicketingController::class, 'trainIssued']);
-            
+
             // Endpoint Riwayat & Manajemen Tiket
             Route::post('/booking-list', [TrainTicketingController::class, 'trainBookingList']);
             Route::post('/booking-detail', [TrainTicketingController::class, 'trainBookingDetail']);
