@@ -474,11 +474,21 @@ class TicketingController extends BaseController
                     'data' => $json
                 ]);
 
-            } else {
+           } else {
+                // TAMBAHKAN LOGIKA DETEKSI SALDO HABIS
+                $message = $json['respMessage'] ?? 'Maskapai menolak penerbitan tiket.';
+                
+                if (str_contains(strtolower($message), 'insufficient balance')) {
+                    Log::error("LOG LOG: Gagal Issued karena Saldo H2H Habis!");
+                    return response()->json([
+                        'status' => 'FAILED',
+                        'message' => 'Tiket gagal diterbitkan: Saldo deposit pusat tidak cukup. Silakan hubungi admin.'
+                    ]);
+                }
+
                 return response()->json([
                     'status' => 'FAILED',
-                    'message' => 'Gagal mencetak tiket: ' . ($json['respMessage'] ?? 'Maskapai menolak penerbitan tiket.'),
-                    'data' => $json
+                    'message' => 'Gagal dari Darmawisata: ' . $message
                 ]);
             }
 
