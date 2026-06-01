@@ -927,12 +927,14 @@ class TicketingController extends BaseController
             }
             // =========================================================================
 
-            return response()->json([
+            /* return response()->json([
                 'status' => 'FAILED', // Sengaja dibuat FAILED agar masuk ke blok error di HP
                 'message' => 'DEBUG MODE AKTIF: Periksa payload di terminal/log',
                 'debug_payload' => $dwPayload, // Ini isi lengkap keranjang sebelum dikirim
                 'debug_addons' => $addonsPayload ?? 'Tidak ada addons' // Sekalian cek addons
             ]);
+            */
+            
             // =====================================================================
 
             // 4. Hit Darmawisata (Booking)
