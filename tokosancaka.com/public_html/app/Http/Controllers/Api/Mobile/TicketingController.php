@@ -791,7 +791,15 @@ class TicketingController extends BaseController
             $scheduleData = json_decode($order->detail_schedule, true);
 
             // Ambil data dari JSON (Jika bukan JSON/data lama, gunakan fallback)
+            // $dwDetailSchedule = is_array($scheduleData) ? $scheduleData['ref'] : $order->detail_schedule;
             $dwDetailSchedule = is_array($scheduleData) ? $scheduleData['ref'] : $order->detail_schedule;
+
+            // --- TAMBAHAN SAPU JAGAT ---
+            // Jika ternyata isi $dwDetailSchedule masih berupa string JSON lagi, bongkar sekali lagi!
+            $innerCheck = json_decode($dwDetailSchedule, true);
+            if (is_array($innerCheck) && isset($innerCheck['ref'])) {
+                $dwDetailSchedule = $innerCheck['ref'];
+            }
             $dwFlightNumber   = is_array($scheduleData) ? $scheduleData['fn'] : $order->flight_number;
             $dwDepartTime     = is_array($scheduleData) ? $scheduleData['depTime'] : "";
             $dwArrivalTime    = is_array($scheduleData) ? $scheduleData['arrTime'] : "";
