@@ -847,7 +847,7 @@ class TicketingController extends BaseController
                 'tripType'                => $dwPayload['tripType'],
                 'departDate'              => $dwPayload['departDate'],
                 'returnDate'              => $dwPayload['returnDate'],
-                'schDepart'               => $dwDetailSchedule, //$order->detail_schedule,
+                'schDepart'               => $dwDetailSchedule,
                 'schReturn'               => "",
                 'paxAdult'                => $dwPayload['paxAdult'],
                 'paxChild'                => $dwPayload['paxChild'],
