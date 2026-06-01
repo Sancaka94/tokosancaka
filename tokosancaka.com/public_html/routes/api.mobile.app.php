@@ -480,13 +480,28 @@ Route::middleware(['auth:sanctum'])->group(function () {
             // Flow Sistem Khusus
             Route::post('/timer-elapsed', [TicketingController::class, 'airlineTimerElapsed']);
         });
-            // Train
-            Route::prefix('train')->group(function () {
-                Route::post('/route', [TicketingController::class, 'trainRoute']);
-                Route::post('/schedule', [TicketingController::class, 'trainSchedule']);
-                Route::post('/booking', [TicketingController::class, 'trainBooking']);
-                Route::post('/seatmap', [TicketingController::class, 'trainSeatMap']);
-            });
+           
+
+        // ==========================================
+        // MODULE: TRAIN (TIKET KERETA API) -> PINDAHKAN KE SINI!
+        // ==========================================
+        Route::prefix('train')->group(function () {
+            // Endpoint List & Pencarian Jadwal
+            Route::post('/list', [TrainController::class, 'trainList']);
+            Route::post('/route', [TrainController::class, 'trainRoute']);
+            Route::post('/schedule', [TrainController::class, 'trainSchedule']);
+            
+            // Endpoint Flow Transaksi
+            Route::post('/booking', [TrainController::class, 'trainBooking']);
+            Route::post('/seatmap', [TrainController::class, 'trainSeatMap']);
+            Route::post('/takeseat', [TrainController::class, 'trainTakeSeat']);
+            Route::post('/issued', [TrainController::class, 'trainIssued']);
+            
+            // Endpoint Riwayat & Manajemen Tiket
+            Route::post('/booking-list', [TrainController::class, 'trainBookingList']);
+            Route::post('/booking-detail', [TrainController::class, 'trainBookingDetail']);
+            Route::post('/cancel', [TrainController::class, 'trainCancel']);
+        });
 
             // Hotel
             Route::prefix('hotel')->group(function () {
@@ -510,25 +525,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     });
 
-      // ==========================================
-            // MODULE: TRAIN (TIKET KERETA API)
-            // ==========================================
-            Route::prefix('train')->group(function () {
-                // Endpoint List & Pencarian Jadwal
-                Route::post('/list', [TrainController::class, 'trainList']);
-                Route::post('/route', [TrainController::class, 'trainRoute']);
-                Route::post('/schedule', [TrainController::class, 'trainSchedule']);
-                
-                // Endpoint Flow Transaksi
-                Route::post('/booking', [TrainController::class, 'trainBooking']);
-                Route::post('/seatmap', [TrainController::class, 'trainSeatMap']);
-                Route::post('/takeseat', [TrainController::class, 'trainTakeSeat']);
-                Route::post('/issued', [TrainController::class, 'trainIssued']);
-                
-                // Endpoint Riwayat & Manajemen Tiket
-                Route::post('/booking-list', [TrainController::class, 'trainBookingList']);
-                Route::post('/booking-detail', [TrainController::class, 'trainBookingDetail']);
-                Route::post('/cancel', [TrainController::class, 'trainCancel']);
-            });
+    
 
 
