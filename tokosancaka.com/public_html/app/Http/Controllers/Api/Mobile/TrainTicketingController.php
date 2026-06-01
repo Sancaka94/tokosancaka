@@ -14,37 +14,20 @@ class TrainController extends BaseController
         parent::__construct();
     }
 
-    // 1. STEP: SCHEDULE
-    public function trainSchedule(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'origin'      => 'required|string',
-            'destination' => 'required|string',
-            'departDate'  => 'required|date',
-            'trainID'     => 'required|string'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['status' => 'FAILED', 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
-        }
-
-        $payload = $request->all();
-        $payload['paxAdult'] = $payload['paxAdult'] ?? 1;
-        $payload['paxChild'] = $payload['paxChild'] ?? 0;
-        $payload['paxInfant'] = $payload['paxInfant'] ?? 0;
-
-        return $this->forwardRequest('Train/Schedule', $payload);
-    }
-
-    // 2. STEP: BOOKING (Mendapatkan bookingCode)
+    /**
+     * POST Train/Booking
+     * Flow: Simpan DRAFT -> Tembak API Booking -> Update ke HOLD jika sukses
+     */
     public function trainBooking(Request $request)
     {
+        // 1. Validasi Input dari Aplikasi Mobile
         $validator = Validator::make($request->all(), [
             'origin'            => 'required|string',
             'destination'       => 'required|string',
             'departDate'        => 'required|string',
             'trainID'           => 'required|string',
             'trainNumber'       => 'required|string',
+            'trainName'         => 'nullable|string',
             'availabilityClass' => 'required|string',
             'subClass'          => 'required|string',
             'contactName'       => 'required|string',
@@ -56,80 +39,202 @@ class TrainController extends BaseController
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
-        $response = $this->forwardRequest('Train/Booking', $request->all());
-        
-        // Disarankan: Simpan bookingCode yang didapat ke database lokal Anda dengan status HOLD
-        return $response;
-    }
+        try {
+            // 2. SIMPAN KE DATABASE LOKAL DENGAN STATUS "DRAFT"
+            $orderId = DB::transaction(function () use ($request) {
+                // Hitung Pax
+                $paxAdult = 0; $paxChild = 0; $paxInfant = 0;
+                foreach ($request->passengers as $pax) {
+                    if ($pax['type'] == 0) $paxAdult++;
+                    elseif ($pax['type'] == 1) $paxChild++;
+                    elseif ($pax['type'] == 2) $paxInfant++;
+                }
 
-    // 3A. STEP: SEAT MAP (Dipanggil jika user klik "Ubah Kursi")
-    public function trainSeatMap(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'origin'      => 'required|string',
-            'destination' => 'required|string',
-            'departDate'  => 'required|string',
-            'trainID'     => 'required|string',
-            'trainNumber' => 'required|string',
-            'subClass'    => 'required|string',
-            'bookingCode' => 'required|string', // Didapat dari proses Booking
-            'bookingDate' => 'required|string'
-        ]);
+                // Insert Order (Induk)
+                $id = DB::table('train_orders')->insertGetId([
+                    'user_id'            => $request->user()->id_pengguna ?? null,
+                    'dw_access_token'    => $request->accessToken, // Token fresh dari Darmawisata
+                    'train_id'           => $request->trainID,
+                    'train_number'       => $request->trainNumber,
+                    'train_name'         => $request->trainName ?? '-',
+                    'origin'             => $request->origin,
+                    'destination'        => $request->destination,
+                    'depart_date'        => date('Y-m-d H:i:s', strtotime($request->departDate)),
+                    'availability_class' => $request->availabilityClass,
+                    'sub_class'          => $request->subClass,
+                    'contact_name'       => $request->contactName,
+                    'contact_phone'      => $request->contactPhone,
+                    'pax_adult'          => $paxAdult,
+                    'pax_child'          => $paxChild,
+                    'pax_infant'         => $paxInfant,
+                    'status'             => 'DRAFT', // <-- STATUS AWAL DRAFT
+                    'created_at'         => now(),
+                    'updated_at'         => now(),
+                ]);
 
-        if ($validator->fails()) {
-            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+                // Insert Penumpang (Anak)
+                foreach ($request->passengers as $pax) {
+                    DB::table('train_passengers')->insert([
+                        'train_order_id' => $id,
+                        'name'           => $pax['name'],
+                        'id_number'      => $pax['IDNumber'] ?? null,
+                        'pax_type'       => $pax['type'],
+                        'created_at'     => now(),
+                        'updated_at'     => now(),
+                    ]);
+                }
+
+                return $id;
+            });
+
+            Log::info("Train Order DRAFT berhasil dibuat. Local ID: " . $orderId);
+
+            // 3. SIAPKAN PAYLOAD UNTUK DARMAWISATA (Sesuai Dokumentasi Train Booking)
+            $dwPayload = [
+                "origin"            => $request->origin,
+                "destination"       => $request->destination,
+                "departDate"        => date('Y-m-d\T00:00:00', strtotime($request->departDate)),
+                "trainNumber"       => $request->trainNumber,
+                "availabilityClass" => $request->availabilityClass,
+                "subClass"          => $request->subClass,
+                "contactName"       => $request->contactName,
+                "contactPhone"      => $request->contactPhone,
+                "paxAdult"          => DB::table('train_passengers')->where('train_order_id', $orderId)->where('pax_type', 0)->count(),
+                "paxChild"          => DB::table('train_passengers')->where('train_order_id', $orderId)->where('pax_type', 1)->count(),
+                "paxInfant"         => DB::table('train_passengers')->where('train_order_id', $orderId)->where('pax_type', 2)->count(),
+                "passengers"        => $request->passengers, // Pastikan format array sesuai dokumen Darmawisata
+                "trainID"           => $request->trainID,
+                "userID"            => $this->darmawisataUserId,
+                "accessToken"       => $request->accessToken
+            ];
+
+            // 4. TEMBAK API DARMAWISATA
+            $response = $this->forwardRequest('Train/Booking', $dwPayload);
+            $json = json_decode($response->getContent(), true);
+
+            // 5. UPDATE DATABASE JIKA BOOKING SUKSES (Dapat PNR)
+            if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+                DB::table('train_orders')->where('id', $orderId)->update([
+                    'booking_code' => $json['bookingCode'],
+                    'time_limit'   => date('Y-m-d H:i:s', strtotime($json['issuedTimeLimit'])),
+                    'ticket_price' => $json['ticketPrice'] ?? 0,
+                    'admin_fee'    => $json['adminFee'] ?? 0,
+                    'total_fare'   => $json['salesPrice'] ?? 0,
+                    'status'       => 'HOLD', // <-- UBAH JADI HOLD KARENA BERHASIL
+                    'updated_at'   => now()
+                ]);
+                Log::info("Train Order HOLD. PNR: " . $json['bookingCode']);
+            } else {
+                // Jika API menolak, ubah status jadi FAILED
+                DB::table('train_orders')->where('id', $orderId)->update([
+                    'status' => 'FAILED',
+                    'updated_at' => now()
+                ]);
+            }
+
+            // Kembalikan response Darmawisata ke HP
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("Gagal Booking Kereta: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'System Error: ' . $e->getMessage()], 500);
         }
-
-        return $this->forwardRequest('Train/SeatMap', $request->all());
     }
 
-    // 3B. STEP: TAKE SEAT (Dipanggil untuk mengunci kursi yang dipilih)
-    public function trainTakeSeat(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'bookingCode' => 'required|string',
-            'bookingDate' => 'required|string',
-            'trainID'     => 'required|string',
-            'passengers'  => 'required|array' // Berisi mapping penumpang dengan kursi baru
-        ]);
 
-        if ($validator->fails()) {
-            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
-        }
-
-        return $this->forwardRequest('Train/TakeSeat', $request->all());
-    }
-
-    // 4. STEP: ISSUED (Bayar tiket)
+    /**
+     * POST Train/Issued
+     * Flow: Tombol Issued ditekan -> Tembak API Issued -> Potong Saldo -> Update Lunas
+     */
     public function trainIssued(Request $request)
     {
+        // 1. Validasi: HP cukup mengirim order_id (ID Lokal)
         $validator = Validator::make($request->all(), [
-            'bookingCode' => 'required|string',
-            'bookingDate' => 'required|string',
+            'order_id' => 'required|integer'
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+            return response()->json(['status' => 'FAILED', 'message' => 'Order ID tidak valid', 'errors' => $validator->errors()], 422);
         }
 
-        // Logic pemotongan saldo lokal bisa disisipkan sebelum atau sesudah forwardRequest, 
-        // mirip dengan alur AirlineIssued
-        
-        return $this->forwardRequest('Train/Issued', $request->all());
-    }
+        try {
+            // 2. Ambil data dari database lokal
+            $order = DB::table('train_orders')->where('id', $request->order_id)->first();
 
-    // 5. STEP: BOOKING DETAIL (Cek status akhir tiket)
-    public function trainBookingDetail(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'bookingCode' => 'required|string',
-            'bookingDate' => 'required|string',
-        ]);
+            if (!$order) {
+                return response()->json(['status' => 'FAILED', 'message' => 'Pesanan tidak ditemukan di database.']);
+            }
 
-        if ($validator->fails()) {
-            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+            if ($order->status === 'ISSUED') {
+                return response()->json(['status' => 'FAILED', 'message' => 'Tiket ini sudah lunas/Issued.']);
+            }
+
+            if (empty($order->booking_code)) {
+                return response()->json(['status' => 'FAILED', 'message' => 'Kode Booking (PNR) kosong, tidak bisa mencetak tiket.']);
+            }
+
+            // 3. Rakit Payload untuk Issued Kereta
+            $payloadIssued = [
+                "bookingCode" => $order->booking_code,
+                "bookingDate" => date('Y-m-d\TH:i:s', strtotime($order->created_at)), // Sesuai permintaan format Darmawisata
+                "userID"      => $this->darmawisataUserId,
+                "accessToken" => $order->dw_access_token
+            ];
+
+            // 4. Tembak API Darmawisata
+            $response = $this->forwardRequest('Train/Issued', $payloadIssued);
+            $json = json_decode($response->getContent(), true);
+
+            // 5. EVALUASI DAN EKSEKUSI PEMOTONGAN SALDO
+            if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+                
+                $amount = (float) $order->total_fare;
+                $user = $request->user();
+
+                // Cek Saldo User (Failsafe)
+                if ($user->saldo < $amount) {
+                    return response()->json(['status' => 'FAILED', 'message' => 'Saldo tidak cukup untuk melakukan Issued tiket ini.']);
+                }
+
+                // Proses Potong Saldo User (Asumsi tabel 'Pengguna' dan kolom 'saldo')
+                DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $amount);
+                
+                // Proses Potong Saldo Agen Darmawisata Induk (Opsional, sesuai logika bisnis Anda)
+                DB::table('Pengguna')->where('id_pengguna', 4)->decrement('balance_iak', $amount);
+
+                // Update Status Order Lokal menjadi ISSUED
+                DB::table('train_orders')->where('id', $order->id)->update([
+                    'status'     => 'ISSUED',
+                    'updated_at' => now()
+                ]);
+
+                return response()->json([
+                    'status'      => 'SUCCESS',
+                    'bookingCode' => $order->booking_code,
+                    'message'     => 'Tiket Kereta Berhasil Dicetak (LUNAS) dan Saldo Terpotong!',
+                    'data'        => $json
+                ]);
+
+            } else {
+                // Deteksi jika saldo H2H pusat (Sandbox/Production) habis
+                $message = $json['respMessage'] ?? 'KAI menolak penerbitan tiket.';
+                if (str_contains(strtolower($message), 'insufficient balance')) {
+                    Log::error("Gagal Issued Kereta karena Saldo H2H Habis!");
+                    return response()->json([
+                        'status' => 'FAILED',
+                        'message' => 'Tiket gagal diterbitkan: Saldo deposit pusat tidak cukup. Hubungi admin.'
+                    ]);
+                }
+
+                return response()->json([
+                    'status' => 'FAILED',
+                    'message' => 'Gagal Issued dari KAI: ' . $message
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error("Proses Issued Kereta Gagal: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
         }
-
-        return $this->forwardRequest('Train/BookingDetail', $request->all());
     }
 }
