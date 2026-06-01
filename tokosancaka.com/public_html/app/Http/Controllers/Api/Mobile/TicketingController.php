@@ -403,13 +403,13 @@ class TicketingController extends BaseController
             $paxAdult = DB::table('flight_passengers')->where('order_id', $order->id)->where('pax_type', 0)->count();
             $paxChild = DB::table('flight_passengers')->where('order_id', $order->id)->where('pax_type', 1)->count();
             $paxInfant = DB::table('flight_passengers')->where('order_id', $order->id)->where('pax_type', 2)->count();
-            
+
             // Failsafe jika tabel penumpang tidak sinkron
             if ($paxAdult == 0) { $paxAdult = 1; }
 
           // 4. PERBAIKAN FORMAT TANGGAL (Wajib ISO 8601 pakai huruf 'T')
             $formattedDepartDate = str_replace(' ', 'T', $order->depart_date);
-            
+
             // Format Tanggal Booking (Bisa mengambil dari waktu order dibuat di database)
             $formattedBookingDate = date('Y-m-d\TH:i:s', strtotime($order->created_at));
 
@@ -443,7 +443,7 @@ class TicketingController extends BaseController
 
             // 8. EVALUASI DAN EKSEKUSI PEMOTONGAN SALDO
             if (isset($json['status']) && $json['status'] === 'SUCCESS') {
-                
+
                 // --- PROSES POTONG SALDO ---
                 $amount = (float) $order->total_fare;
                 $user = $request->user();
@@ -457,7 +457,7 @@ class TicketingController extends BaseController
                 if (!in_array(strtoupper($order->payment_method), ['DANA', 'DOKU', 'TRIPAY', 'CASH'])) {
                     DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $amount);
                 }
-                
+
                 // 2. Potong Saldo Agen Darmawisata Utama (ID 4)
                 DB::table('Pengguna')->where('id_pengguna', 4)->decrement('balance_iak', $amount);
 
@@ -477,7 +477,7 @@ class TicketingController extends BaseController
            } else {
                 // TAMBAHKAN LOGIKA DETEKSI SALDO HABIS
                 $message = $json['respMessage'] ?? 'Maskapai menolak penerbitan tiket.';
-                
+
                 if (str_contains(strtolower($message), 'insufficient balance')) {
                     Log::error("LOG LOG: Gagal Issued karena Saldo H2H Habis!");
                     return response()->json([
@@ -491,7 +491,7 @@ class TicketingController extends BaseController
                     'message' => 'Gagal dari Darmawisata: ' . $message
                 ]);
             }
-            
+
 
         } catch (\Exception $e) {
             Log::error("Proses Issued Gagal (System Error): " . $e->getMessage());
@@ -519,9 +519,27 @@ class TicketingController extends BaseController
         }
 
         $payload = $request->all();
-
-        // Parameter opsional
         $payload['referenceNo'] = $payload['referenceNo'] ?? "";
+
+        // ================================================================
+        // PERBAIKAN: SUNTIKKAN USER ID & ACCESS TOKEN DARI DATABASE LOKAL
+        // ================================================================
+
+        // Cari data pesanan berdasarkan PNR untuk mengambil token-nya
+        $order = DB::table('flight_orders')->where('booking_code', $request->bookingCode)->first();
+
+        if (!$order || empty($order->dw_access_token)) {
+             return response()->json([
+                 'status'  => 'FAILED',
+                 'message' => 'Data order tidak ditemukan atau token Darmawisata kedaluwarsa.'
+             ], 404);
+        }
+
+        // Tambahkan ke payload sebelum dilempar ke Darmawisata
+        $payload['userID']      = $this->darmawisataUserId;
+        $payload['accessToken'] = $order->dw_access_token;
+
+        // ================================================================
 
         $response = $this->forwardRequest('Airline/BookingDetail', $payload);
 
@@ -1043,7 +1061,7 @@ class TicketingController extends BaseController
                 $pnr = $json['bookingCode'];
                 $amount = (float) $json['ticketPrice']; // Gunakan harga asli maskapai
                 $paymentMethod = strtoupper($request->payment_method ?? 'SALDO');
-                
+
                 // Update order jadi BOOKED/HOLD
                 DB::table('flight_orders')->where('id', $orderId)->update([
                     'status'       => 'HOLD',
@@ -1069,7 +1087,7 @@ class TicketingController extends BaseController
 
                     // Opsional: Langsung potong saldo di sini jika memang konsepmu auto-issued
                     // DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $amount);
-                    
+
                     return response()->json([
                         'status' => 'SUCCESS',
                         'bookingCode' => $pnr,
@@ -1122,7 +1140,7 @@ class TicketingController extends BaseController
                     try {
                         $dokuService = new \App\Services\DokuJokulService();
                         $paymentUrl = $dokuService->createPayment($merchantRef, $amount);
-                        
+
                         DB::table('flight_orders')->where('id', $orderId)->update(['payment_url' => $paymentUrl]);
                         return response()->json([
                             'status' => 'SUCCESS',
