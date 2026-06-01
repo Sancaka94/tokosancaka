@@ -407,27 +407,29 @@ class TicketingController extends BaseController
             // Failsafe jika tabel penumpang tidak sinkron
             if ($paxAdult == 0) { $paxAdult = 1; }
 
-            // 4. PERBAIKAN FORMAT TANGGAL (Wajib ISO 8601 pakai huruf 'T')
+          // 4. PERBAIKAN FORMAT TANGGAL (Wajib ISO 8601 pakai huruf 'T')
             $formattedDepartDate = str_replace(' ', 'T', $order->depart_date);
+            
+            // Format Tanggal Booking (Bisa mengambil dari waktu order dibuat di database)
+            $formattedBookingDate = date('Y-m-d\TH:i:s', strtotime($order->created_at));
 
             // 5. Ambil User ID Darmawisata
             $env = \App\Models\Api::getValue('DARMAWISATA_MODE', 'global', 'development');
             $dwUserId = \App\Models\Api::getValue('DARMAWISATA_USERID', $env);
 
-            // 6. RAKIT PAYLOAD MURNI UNTUK DARMAWISATA
+            // 6. RAKIT PAYLOAD MURNI (Sesuai Dokumentasi Resmi)
             $payloadIssued = [
-                "airlineID"   => $order->airline_id,
-                "bookingCode" => $pnr,
-                "origin"      => $order->origin,
-                "destination" => $order->destination,
-                "tripType"    => $order->trip_type ?? "OneWay",
-                "departDate"  => $formattedDepartDate,
-                "returnDate"  => "0001-01-01T00:00:00",
-                "paxAdult"    => (int) $paxAdult,   // <--- Hapus kata clone, ganti (int)
-                "paxChild"    => (int) $paxChild,   // <--- Hapus kata clone, ganti (int)
-                "paxInfant"   => (int) $paxInfant,  // <--- Hapus kata clone, ganti (int)
-                "userID"      => $dwUserId,
-                "accessToken" => $order->dw_access_token
+                "airlineID"         => $order->airline_id,
+                "origin"            => $order->origin,
+                "destination"       => $order->destination,
+                "tripType"          => $order->trip_type ?? "OneWay",
+                "departDate"        => $formattedDepartDate,
+                "returnDate"        => "0001-01-01T00:00:00",
+                "bookingCode"       => $pnr,
+                "bookingDate"       => $formattedBookingDate, // <--- INI PARAMETER YANG HILANG!
+                "airlineAccessCode" => "", // Opsional tapi lebih aman dikirim kosong
+                "userID"            => $dwUserId,
+                "accessToken"       => $order->dw_access_token
             ];
 
             Log::info("\nLOG LOG: Request Airline/Issued dieksekusi untuk PNR: " . $pnr);
