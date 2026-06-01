@@ -501,6 +501,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/booking-list', [TrainController::class, 'trainBookingList']);
             Route::post('/booking-detail', [TrainController::class, 'trainBookingDetail']);
             Route::post('/cancel', [TrainController::class, 'trainCancel']);
+
         });
 
             // Hotel
@@ -524,7 +525,3 @@ Route::middleware(['auth:sanctum'])->group(function () {
         }); // END MODULE TICKETING
 
     });
-
-    
-
-
