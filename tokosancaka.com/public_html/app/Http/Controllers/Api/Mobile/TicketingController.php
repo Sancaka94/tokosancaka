@@ -1075,60 +1075,22 @@ class TicketingController extends BaseController
                 $isSaldo = in_array($paymentMethod, ['SALDO', 'POTONG SALDO', 'CASH']);
 
                 // ========================================================
-                // JALUR 1: POTONG SALDO INTERNAL (LANGSUNG AUTO-ISSUED)
+                // JALUR 1: PEMBAYARAN SALDO (KEMBALI KE MANUAL)
                 // ========================================================
                 if ($isSaldo) {
                     if ($user->saldo < $amount) {
-                        Log::warning("LOG LOG: Saldo user gagal potong untuk PNR {$pnr}. Butuh: {$amount}, Saldo: {$user->saldo}");
                         return response()->json([
                             'status' => 'FAILED',
-                            'message' => 'Booking sukses (PNR: '.$pnr.'), tapi saldo Anda tidak cukup untuk cetak tiket. Segera top-up.'
+                            'message' => 'Booking sukses (PNR: '.$pnr.'), tapi saldo Anda tidak cukup. Segera top-up.'
                         ]);
                     }
 
-                    Log::info("\nLOG LOG: ==================== AUTO-CHAIN STARTED ====================");
-                    Log::info("LOG LOG: Memulai tembakan beruntun (Issued -> Detail -> Issued) untuk PNR {$pnr}");
-
-                    // ----------------------------------------------------
-                    // TEMBAKAN 1: ISSUED (PERTAMA)
-                    // ----------------------------------------------------
-                    Log::info("LOG LOG: [STEP 1] Eksekusi tembakan Issued Pertama...");
-                    $reqIssued1 = new \Illuminate\Http\Request();
-                    $reqIssued1->replace(['order_id' => $orderId]);
-                    $reqIssued1->setUserResolver(function () use ($user) { return $user; });
-
-                    // Dieksekusi secara diam-diam (Silent) dan tangkap hasilnya untuk di-log
-                    $resIssued1 = $this->airlineIssued($reqIssued1);
-                    Log::info("LOG LOG: [RESULT STEP 1] " . $resIssued1->getContent());
-
-                    // ----------------------------------------------------
-                    // TEMBAKAN 2: CEK BOOKING DETAIL
-                    // ----------------------------------------------------
-                    Log::info("LOG LOG: [STEP 2] Eksekusi tembakan Booking Detail...");
-                    $reqDetail = new \Illuminate\Http\Request();
-                    $reqDetail->replace([
+                    // Hanya return SUCCESS biasa (Status di DB sudah otomatis HOLD)
+                    return response()->json([
+                        'status' => 'SUCCESS',
                         'bookingCode' => $pnr,
-                        'bookingDate' => date('Y-m-d\TH:i:s', strtotime($order->created_at ?? now()))
+                        'message' => 'Tiket berhasil di-HOLD. Silakan cek detail maskapai.'
                     ]);
-
-                    // Dieksekusi secara diam-diam (Silent) dan tangkap hasilnya untuk di-log
-                    $resDetail = $this->airlineBookingDetail($reqDetail);
-                    Log::info("LOG LOG: [RESULT STEP 2] " . $resDetail->getContent());
-
-                    // ----------------------------------------------------
-                    // TEMBAKAN 3: ISSUED (KEDUA / FINAL)
-                    // ----------------------------------------------------
-                    Log::info("LOG LOG: [STEP 3] Eksekusi tembakan Issued Kedua (Final)...");
-                    $reqIssued2 = new \Illuminate\Http\Request();
-                    $reqIssued2->replace(['order_id' => $orderId]);
-                    $reqIssued2->setUserResolver(function () use ($user) { return $user; });
-
-                    // Eksekusi terakhir dan langsung kembalikan hasilnya ke layar HP User
-                    $resFinal = $this->airlineIssued($reqIssued2);
-                    Log::info("LOG LOG: [RESULT STEP 3] " . $resFinal->getContent());
-                    Log::info("LOG LOG: ==================== AUTO-CHAIN FINISHED ====================\n");
-
-                    return $resFinal;
                 }
 
                 // ========================================================
