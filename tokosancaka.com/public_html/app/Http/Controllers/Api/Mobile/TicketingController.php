@@ -1075,24 +1075,44 @@ class TicketingController extends BaseController
                 $isSaldo = in_array($paymentMethod, ['SALDO', 'POTONG SALDO', 'CASH']);
 
                 // ========================================================
-                // JALUR 1: POTONG SALDO INTERNAL (LANGSUNG ISSUED)
+                // JALUR 1: POTONG SALDO INTERNAL (LANGSUNG AUTO-ISSUED)
                 // ========================================================
                 if ($isSaldo) {
                     if ($user->saldo < $amount) {
                         return response()->json([
                             'status' => 'FAILED',
-                            'message' => 'Booking sukses (PNR: '.$pnr.'), tapi saldo Anda tidak cukup untuk Issued. Silakan topup lalu buka menu Riwayat.'
+                            'message' => 'Booking sukses (PNR: '.$pnr.'), tapi saldo Anda tidak cukup untuk cetak tiket. Segera top-up & hubungi Admin.'
                         ]);
                     }
 
-                    // Opsional: Langsung potong saldo di sini jika memang konsepmu auto-issued
-                    // DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $amount);
+                    Log::info("LOG AUTO-CHAIN: Memulai tembakan beruntun untuk PNR {$pnr}");
 
-                    return response()->json([
-                        'status' => 'SUCCESS',
+                    // ----------------------------------------------------
+                    // TEMBAKAN 1: Cek Booking Detail ke Maskapai (Silent)
+                    // ----------------------------------------------------
+                    $reqDetail = new \Illuminate\Http\Request();
+                    $reqDetail->replace([
                         'bookingCode' => $pnr,
-                        'message' => 'Tiket di-HOLD. Lanjut ke proses Issued.'
+                        'bookingDate' => date('Y-m-d\TH:i:s', strtotime($order->created_at))
                     ]);
+                    // Kita eksekusi secara diam-diam tanpa me-return hasilnya
+                    $this->airlineBookingDetail($reqDetail);
+
+
+                    // ----------------------------------------------------
+                    // TEMBAKAN 2: Langsung Eksekusi Issued & Potong Saldo
+                    // ----------------------------------------------------
+                    $reqIssued = new \Illuminate\Http\Request();
+                    $reqIssued->replace(['order_id' => $orderId]);
+
+                    // Kita operasikan sesi User asli ke dalam request palsu ini
+                    // Agar fungsi airlineIssued() tahu siapa yang harus dipotong saldonya
+                    $reqIssued->setUserResolver(function () use ($user) {
+                        return $user;
+                    });
+
+                    // Kita eksekusi Issued dan kembalikan response final-nya ke Frontend!
+                    return $this->airlineIssued($reqIssued);
                 }
 
                 // ========================================================

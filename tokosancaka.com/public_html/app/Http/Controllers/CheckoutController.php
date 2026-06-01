@@ -1054,6 +1054,45 @@ class CheckoutController extends Controller
                 // Pastikan class/controller ini punya fungsi static processPpobCallback
                 \App\Http\Controllers\Api\Mobile\PpobMobileController::processPpobCallback($merchantRef, $status, $data);
 
+            // ====================================================================
+            // 5. TIKET PESAWAT (Format: FLT-{order_id}-{pnr}) ---> TAMBAHKAN INI
+            // ====================================================================
+            } elseif (Str::startsWith($merchantRef, 'FLT-')) {
+                Log::info('Routing callback to TicketingController (Tiket Pesawat)', ['ref' => $merchantRef]);
+
+                // Pecah merchantRef "FLT-123-PNRXYZ" untuk mengambil angka 123 (order_id)
+                $parts = explode('-', $merchantRef);
+                $orderId = $parts[1] ?? null;
+
+                if ($orderId && $status === 'PAID') {
+                    $orderFlight = DB::table('flight_orders')->where('id', $orderId)->first();
+
+                    // Cek order ada dan belum terlanjur Issued
+                    if ($orderFlight && $orderFlight->status !== 'ISSUED') {
+                        Log::info("Memulai Eksekusi Auto-Issued Pesawat untuk Order ID: {$orderId}");
+
+                        $ticketingController = new \App\Http\Controllers\Api\Mobile\TicketingController();
+
+                        // Buat Request buatan (Mock Request) untuk menipu Controller seolah-olah ditekan dari HP
+                        $reqIssued = new \Illuminate\Http\Request();
+                        $reqIssued->replace(['order_id' => $orderId]);
+
+                        // Cari data User untuk di-inject ke dalam Request
+                        $user = \App\Models\User::where('id_pengguna', $orderFlight->user_id)->first();
+
+                        if ($user) {
+                            $reqIssued->setUserResolver(function () use ($user) {
+                                return $user;
+                            });
+
+                            // TEMBAK! Eksekusi pencetakan tiket ke maskapai
+                            $ticketingController->airlineIssued($reqIssued);
+                        } else {
+                            Log::error("User tidak ditemukan untuk order penerbangan ID {$orderId}");
+                        }
+                    }
+                }
+
             } elseif (Str::startsWith($merchantRef, 'ORD-')) {
                 Log::info('Routing callback to processOrderCallback (this controller)', ['ref' => $merchantRef]);
                 $this->processOrderCallback($merchantRef, $status, $data);
