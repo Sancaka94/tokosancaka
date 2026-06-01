@@ -423,11 +423,11 @@ class TicketingController extends BaseController
                 "tripType"    => $order->trip_type ?? "OneWay",
                 "departDate"  => $formattedDepartDate,
                 "returnDate"  => "0001-01-01T00:00:00",
-                "paxAdult"    => clone $paxAdult,
-                "paxChild"    => clone $paxChild,
-                "paxInfant"   => clone $paxInfant,
+                "paxAdult"    => (int) $paxAdult,   // <--- Hapus kata clone, ganti (int)
+                "paxChild"    => (int) $paxChild,   // <--- Hapus kata clone, ganti (int)
+                "paxInfant"   => (int) $paxInfant,  // <--- Hapus kata clone, ganti (int)
                 "userID"      => $dwUserId,
-                "accessToken" => $order->dw_access_token // Token bawaan dari DB
+                "accessToken" => $order->dw_access_token
             ];
 
             Log::info("\nLOG LOG: Request Airline/Issued dieksekusi untuk PNR: " . $pnr);
