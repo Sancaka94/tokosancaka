@@ -369,37 +369,124 @@ class TicketingController extends BaseController
      */
     public function airlineIssued(Request $request)
     {
+        // 1. Validasi Input Dasar
         $validator = Validator::make($request->all(), [
+            'bookingCode' => 'required|string', // PNR adalah kunci utama
             'airlineID'   => 'required|string',
             'origin'      => 'required|string',
-            'destination' => 'required|string',
-            'tripType'    => 'required|string',
-            'departDate'  => 'required|string',
-            'bookingCode' => 'required|string',
-            'bookingDate' => 'required|string'
+            'destination' => 'required|string'
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status'  => 'FAILED',
-                'message' => 'Validasi gagal, data issued tidak lengkap.',
+                'message' => 'Validasi gagal, parameter tidak lengkap.',
                 'errors'  => $validator->errors()
             ], 422);
         }
 
-        $payload = $request->all();
+        $pnr = $request->bookingCode;
 
-        // Parameter opsional diisi string kosong jika tidak ada
-        $payload['returnDate'] = $payload['returnDate'] ?? "0001-01-01T00:00:00";
-        $payload['airlineAccessCode'] = $payload['airlineAccessCode'] ?? "";
+        try {
+            // 2. Ambil Data Pesanan dari Database Lokal
+            $order = DB::table('flight_orders')->where('booking_code', $pnr)->first();
 
-        // Kirim ke Darmawisata
-        $response = $this->forwardRequest('Airline/Issued', $payload);
+            if (!$order) {
+                return response()->json(['status' => 'FAILED', 'message' => 'Data pesanan tidak ditemukan di database.']);
+            }
 
-        Log::info("\nLOG LOG: Request Airline/Issued dieksekusi untuk PNR: " . $payload['bookingCode']);
-        Log::info("LOG LOG: Response Issued:\n" . json_encode(json_decode($response->getContent()), JSON_PRETTY_PRINT));
+            if ($order->status === 'ISSUED') {
+                return response()->json(['status' => 'FAILED', 'message' => 'Tiket ini sudah berstatus LUNAS / ISSUED.']);
+            }
 
-        return $response;
+            // 3. Kalkulasi Jumlah Penumpang (Mandatory Darmawisata)
+            $paxAdult = DB::table('flight_passengers')->where('order_id', $order->id)->where('pax_type', 0)->count();
+            $paxChild = DB::table('flight_passengers')->where('order_id', $order->id)->where('pax_type', 1)->count();
+            $paxInfant = DB::table('flight_passengers')->where('order_id', $order->id)->where('pax_type', 2)->count();
+            
+            // Failsafe jika tabel penumpang kosong, ambil dari request frontend atau default 1
+            if ($paxAdult == 0) { $paxAdult = $request->paxAdult ?? 1; }
+            if ($paxChild == 0) { $paxChild = $request->paxChild ?? 0; }
+            if ($paxInfant == 0) { $paxInfant = $request->paxInfant ?? 0; }
+
+            // 4. PERBAIKAN FORMAT TANGGAL (Wajib ISO 8601 pakai huruf 'T')
+            $rawDepartDate = $request->departDate ?? $order->depart_date;
+            $formattedDepartDate = str_replace(' ', 'T', $rawDepartDate); // Mengubah "2026-06-02 00:00:00" -> "2026-06-02T00:00:00"
+
+            // 5. Ambil User ID Darmawisata
+            $env = \App\Models\Api::getValue('DARMAWISATA_MODE', 'global', 'development');
+            $dwUserId = \App\Models\Api::getValue('DARMAWISATA_USERID', $env);
+
+            // 6. RAKIT PAYLOAD MURNI (Sesuai Dokumentasi Resmi)
+            $payloadIssued = [
+                "airlineID"   => $request->airlineID,
+                "bookingCode" => $pnr,
+                "origin"      => $request->origin,
+                "destination" => $request->destination,
+                "tripType"    => $request->tripType ?? $order->trip_type ?? "OneWay",
+                "departDate"  => $formattedDepartDate,
+                "returnDate"  => $request->returnDate ?? "0001-01-01T00:00:00",
+                "paxAdult"    => clone $paxAdult,
+                "paxChild"    => clone $paxChild,
+                "paxInfant"   => clone $paxInfant,
+                "userID"      => $dwUserId,
+                "accessToken" => $order->dw_access_token // Menggunakan token yang sama dengan saat Booking!
+            ];
+
+            Log::info("\nLOG LOG: Request Airline/Issued dieksekusi untuk PNR: " . $pnr);
+            Log::info("LOG PAYLOAD ISSUED: " . json_encode($payloadIssued));
+
+            // 7. Tembak API Darmawisata
+            $response = $this->forwardRequest('Airline/Issued', $payloadIssued);
+            $json = json_decode($response->getContent(), true);
+
+            Log::info("LOG RESPONSE ISSUED:\n" . json_encode($json, JSON_PRETTY_PRINT));
+
+            // 8. EVALUASI DAN EKSEKUSI PEMOTONGAN SALDO
+            if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+                
+                // --- PROSES POTONG SALDO LOKAL ---
+                $amount = (float) $order->total_fare;
+                $user = $request->user();
+
+                // Pastikan saldo cukup sebelum benar-benar memotong (Failsafe)
+                if ($user->saldo < $amount && !in_array($order->payment_method, ['DANA', 'DOKU', 'TRIPAY'])) {
+                     return response()->json(['status' => 'FAILED', 'message' => 'Tiket berhasil dicetak, tapi saldo Anda kurang dari tagihan. Segera lapor Admin.']);
+                }
+
+                // 1. Potong Saldo User (Hanya jika metodenya Saldo)
+                if (!in_array(strtoupper($order->payment_method), ['DANA', 'DOKU', 'TRIPAY', 'CASH'])) {
+                    DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $amount);
+                }
+                
+                // 2. Potong Saldo Agen Darmawisata Utama (ID 4)
+                DB::table('Pengguna')->where('id_pengguna', 4)->decrement('balance_iak', $amount);
+
+                // 3. Update Status Order menjadi ISSUED
+                DB::table('flight_orders')->where('id', $order->id)->update([
+                    'status'     => 'ISSUED',
+                    'updated_at' => now()
+                ]);
+
+                return response()->json([
+                    'status' => 'SUCCESS',
+                    'bookingCode' => $pnr,
+                    'message' => 'Tiket Berhasil Dicetak (LUNAS) dan Saldo Terpotong!',
+                    'data' => $json
+                ]);
+
+            } else {
+                return response()->json([
+                    'status' => 'FAILED',
+                    'message' => 'Gagal mencetak tiket: ' . ($json['respMessage'] ?? 'Maskapai menolak penerbitan tiket.'),
+                    'data' => $json
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error("Proses Issued Gagal (System Error): " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
