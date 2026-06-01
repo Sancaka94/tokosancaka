@@ -405,6 +405,51 @@ class DokuWebhookController extends Controller
                     }
                 }
 
+                // =============================================================
+                // A.5 TIKET PESAWAT (FLT-) --> TAMBAHKAN BLOK INI DI SINI
+                // =============================================================
+                else if (Str::startsWith($orderId, 'FLT-')) {
+                    Log::info("✈️ LOG FLIGHT: Webhook DOKU Masuk untuk Tiket Pesawat: $orderId");
+                    try {
+                        $parts = explode('-', $orderId);
+                        $flightDbId = $parts[1] ?? null;
+
+                        if ($flightDbId) {
+                            $orderFlight = DB::table('flight_orders')->where('id', $flightDbId)->first();
+
+                            // Eksekusi jika order ditemukan dan belum berstatus ISSUED
+                            if ($orderFlight && $orderFlight->status !== 'ISSUED') {
+                                Log::info("Memulai Eksekusi Auto-Issued Pesawat via DOKU untuk Order ID: {$flightDbId}");
+
+                                $ticketingController = app(\App\Http\Controllers\Api\Mobile\TicketingController::class);
+
+                                // Buat Mock Request
+                                $reqIssued = new \Illuminate\Http\Request();
+                                $reqIssued->replace(['order_id' => $flightDbId]);
+
+                                // Resolusi User
+                                $user = \App\Models\User::where('id_pengguna', $orderFlight->user_id)->first();
+
+                                if ($user) {
+                                    $reqIssued->setUserResolver(function () use ($user) {
+                                        return $user;
+                                    });
+
+                                    // TEMBAK! Eksekusi pencetakan tiket ke maskapai
+                                    $ticketingController->airlineIssued($reqIssued);
+                                    Log::info("Tembakan Auto-Issued untuk PNR {$orderFlight->booking_code} dieksekusi.");
+                                } else {
+                                    Log::error("User tidak ditemukan untuk order penerbangan ID {$flightDbId}");
+                                }
+                            } else {
+                                Log::info("Order tiket $flightDbId tidak ditemukan atau sudah ISSUED.");
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        Log::error("❌ CRITICAL ERROR FLIGHT DOKU WEBHOOK: " . $e->getMessage());
+                    }
+                }
+
                 // -------------------------------------------------------------
                 // A.5 DELEGASI KE CONTROLLER LAIN (TOPUP, ADM, INV, ORD)
                 // -------------------------------------------------------------
