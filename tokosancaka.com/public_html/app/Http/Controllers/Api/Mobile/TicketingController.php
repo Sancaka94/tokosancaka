@@ -369,27 +369,22 @@ class TicketingController extends BaseController
      */
     public function airlineIssued(Request $request)
     {
-        // 1. Validasi Input Dasar
+        // 1. Validasi Input: Kita HANYA butuh order_id dari React Native
         $validator = Validator::make($request->all(), [
-            'bookingCode' => 'required|string', // PNR adalah kunci utama
-            'airlineID'   => 'required|string',
-            'origin'      => 'required|string',
-            'destination' => 'required|string'
+            'order_id' => 'required'
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status'  => 'FAILED',
-                'message' => 'Validasi gagal, parameter tidak lengkap.',
+                'message' => 'Validasi gagal, order_id tidak dikirim oleh aplikasi.',
                 'errors'  => $validator->errors()
             ], 422);
         }
 
-        $pnr = $request->bookingCode;
-
         try {
-            // 2. Ambil Data Pesanan dari Database Lokal
-            $order = DB::table('flight_orders')->where('booking_code', $pnr)->first();
+            // 2. Tarik SEMUA data dari Database (Lebih Praktis & Aman)
+            $order = DB::table('flight_orders')->where('id', $request->order_id)->first();
 
             if (!$order) {
                 return response()->json(['status' => 'FAILED', 'message' => 'Data pesanan tidak ditemukan di database.']);
@@ -399,38 +394,40 @@ class TicketingController extends BaseController
                 return response()->json(['status' => 'FAILED', 'message' => 'Tiket ini sudah berstatus LUNAS / ISSUED.']);
             }
 
-            // 3. Kalkulasi Jumlah Penumpang (Mandatory Darmawisata)
+            $pnr = $order->booking_code;
+            if (empty($pnr)) {
+                 return response()->json(['status' => 'FAILED', 'message' => 'Kode Booking (PNR) kosong, tidak bisa mencetak tiket.']);
+            }
+
+            // 3. Kalkulasi Jumlah Penumpang Otomatis dari Database
             $paxAdult = DB::table('flight_passengers')->where('order_id', $order->id)->where('pax_type', 0)->count();
             $paxChild = DB::table('flight_passengers')->where('order_id', $order->id)->where('pax_type', 1)->count();
             $paxInfant = DB::table('flight_passengers')->where('order_id', $order->id)->where('pax_type', 2)->count();
             
-            // Failsafe jika tabel penumpang kosong, ambil dari request frontend atau default 1
-            if ($paxAdult == 0) { $paxAdult = $request->paxAdult ?? 1; }
-            if ($paxChild == 0) { $paxChild = $request->paxChild ?? 0; }
-            if ($paxInfant == 0) { $paxInfant = $request->paxInfant ?? 0; }
+            // Failsafe jika tabel penumpang tidak sinkron
+            if ($paxAdult == 0) { $paxAdult = 1; }
 
             // 4. PERBAIKAN FORMAT TANGGAL (Wajib ISO 8601 pakai huruf 'T')
-            $rawDepartDate = $request->departDate ?? $order->depart_date;
-            $formattedDepartDate = str_replace(' ', 'T', $rawDepartDate); // Mengubah "2026-06-02 00:00:00" -> "2026-06-02T00:00:00"
+            $formattedDepartDate = str_replace(' ', 'T', $order->depart_date);
 
             // 5. Ambil User ID Darmawisata
             $env = \App\Models\Api::getValue('DARMAWISATA_MODE', 'global', 'development');
             $dwUserId = \App\Models\Api::getValue('DARMAWISATA_USERID', $env);
 
-            // 6. RAKIT PAYLOAD MURNI (Sesuai Dokumentasi Resmi)
+            // 6. RAKIT PAYLOAD MURNI UNTUK DARMAWISATA
             $payloadIssued = [
-                "airlineID"   => $request->airlineID,
+                "airlineID"   => $order->airline_id,
                 "bookingCode" => $pnr,
-                "origin"      => $request->origin,
-                "destination" => $request->destination,
-                "tripType"    => $request->tripType ?? $order->trip_type ?? "OneWay",
+                "origin"      => $order->origin,
+                "destination" => $order->destination,
+                "tripType"    => $order->trip_type ?? "OneWay",
                 "departDate"  => $formattedDepartDate,
-                "returnDate"  => $request->returnDate ?? "0001-01-01T00:00:00",
+                "returnDate"  => "0001-01-01T00:00:00",
                 "paxAdult"    => clone $paxAdult,
                 "paxChild"    => clone $paxChild,
                 "paxInfant"   => clone $paxInfant,
                 "userID"      => $dwUserId,
-                "accessToken" => $order->dw_access_token // Menggunakan token yang sama dengan saat Booking!
+                "accessToken" => $order->dw_access_token // Token bawaan dari DB
             ];
 
             Log::info("\nLOG LOG: Request Airline/Issued dieksekusi untuk PNR: " . $pnr);
@@ -445,12 +442,12 @@ class TicketingController extends BaseController
             // 8. EVALUASI DAN EKSEKUSI PEMOTONGAN SALDO
             if (isset($json['status']) && $json['status'] === 'SUCCESS') {
                 
-                // --- PROSES POTONG SALDO LOKAL ---
+                // --- PROSES POTONG SALDO ---
                 $amount = (float) $order->total_fare;
                 $user = $request->user();
 
                 // Pastikan saldo cukup sebelum benar-benar memotong (Failsafe)
-                if ($user->saldo < $amount && !in_array($order->payment_method, ['DANA', 'DOKU', 'TRIPAY'])) {
+                if ($user->saldo < $amount && !in_array(strtoupper($order->payment_method), ['DANA', 'DOKU', 'TRIPAY'])) {
                      return response()->json(['status' => 'FAILED', 'message' => 'Tiket berhasil dicetak, tapi saldo Anda kurang dari tagihan. Segera lapor Admin.']);
                 }
 
