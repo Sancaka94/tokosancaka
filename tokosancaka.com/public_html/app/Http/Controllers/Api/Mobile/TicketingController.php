@@ -934,38 +934,127 @@ class TicketingController extends BaseController
                 'debug_addons' => $addonsPayload ?? 'Tidak ada addons' // Sekalian cek addons
             ]);
             */
-            
+
             // =====================================================================
 
-            // 4. Hit Darmawisata (Booking)
+           // 4. Hit Darmawisata (Booking)
             $response = $this->forwardRequest('Airline/Booking', $dwPayload);
             $json = json_decode($response->getContent(), true);
 
-            // 5. Update Status DB jika Berhasil
+            // 5. EVALUASI HASIL BOOKING & GENERATE PEMBAYARAN
             if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+                $pnr = $json['bookingCode'];
+                $amount = (float) $json['ticketPrice']; // Gunakan harga asli maskapai
+                $paymentMethod = strtoupper($request->payment_method ?? 'SALDO');
+                
+                // Update order jadi BOOKED/HOLD
                 DB::table('flight_orders')->where('id', $orderId)->update([
-                    'status'       => 'BOOKED',
-                    'booking_code' => $json['bookingCode'],
+                    'status'       => 'HOLD',
+                    'booking_code' => $pnr,
+                    'payment_method' => $paymentMethod,
+                    'total_fare'   => $amount,
                     'updated_at'   => now()
                 ]);
 
-                // Opsional: Kamu bisa memanggil Model PesananTiket::create() di sini
-                // jika kamu ingin mencatatnya juga di tabel sistem lama milikmu.
+                $user = $request->user();
+                $isSaldo = in_array($paymentMethod, ['SALDO', 'POTONG SALDO', 'CASH']);
+
+                // ========================================================
+                // JALUR 1: POTONG SALDO INTERNAL (LANGSUNG ISSUED)
+                // ========================================================
+                if ($isSaldo) {
+                    if ($user->saldo < $amount) {
+                        return response()->json([
+                            'status' => 'FAILED',
+                            'message' => 'Booking sukses (PNR: '.$pnr.'), tapi saldo Anda tidak cukup untuk Issued. Silakan topup lalu buka menu Riwayat.'
+                        ]);
+                    }
+
+                    // Opsional: Langsung potong saldo di sini jika memang konsepmu auto-issued
+                    // DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $amount);
+                    
+                    return response()->json([
+                        'status' => 'SUCCESS',
+                        'bookingCode' => $pnr,
+                        'message' => 'Tiket di-HOLD. Lanjut ke proses Issued.'
+                    ]);
+                }
+
+                // ========================================================
+                // JALUR 2: TRIPAY
+                // ========================================================
+                if ($paymentMethod === 'TRIPAY') {
+                    $tripayMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+                    $apiKey = \App\Models\Api::getValue('TRIPAY_API_KEY', $tripayMode);
+                    $privateKey = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', $tripayMode);
+                    $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', $tripayMode);
+
+                    $merchantRef = 'FLT-' . $orderId . '-' . $pnr;
+                    $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+                    $signature = hash_hmac('sha256', $merchantCode.$merchantRef.$amount, $privateKey);
+
+                    $responseTripay = Http::withHeaders(['Authorization' => 'Bearer ' . trim($apiKey)])->post($tripayUrl, [
+                        'method'         => 'BRIVA', // Bisa dinamis atau kosong untuk memunculkan semua metode
+                        'merchant_ref'   => $merchantRef,
+                        'amount'         => $amount,
+                        'customer_name'  => $user->nama_lengkap ?? $order->contact_first_name,
+                        'customer_email' => $user->email ?? $order->contact_email,
+                        'customer_phone' => $user->no_hp ?? $order->contact_phone,
+                        'order_items'    => [['sku' => 'TIKET-PESAWAT', 'name' => 'Tiket Pesawat PNR: '.$pnr, 'price' => $amount, 'quantity' => 1]],
+                        'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayattiket',
+                        'signature'      => $signature
+                    ]);
+
+                    $resTripay = $responseTripay->json();
+                    if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
+                        DB::table('flight_orders')->where('id', $orderId)->update(['payment_url' => $resTripay['data']['checkout_url']]);
+                        return response()->json([
+                            'status' => 'SUCCESS',
+                            'bookingCode' => $pnr,
+                            'payment_url' => $resTripay['data']['checkout_url'],
+                            'message' => 'Silakan selesaikan pembayaran.'
+                        ]);
+                    }
+                }
+
+                // ========================================================
+                // JALUR 3: DOKU JOKUL
+                // ========================================================
+                if ($paymentMethod === 'DOKU') {
+                    $merchantRef = 'FLT-' . $orderId . '-' . $pnr;
+                    try {
+                        $dokuService = new \App\Services\DokuJokulService();
+                        $paymentUrl = $dokuService->createPayment($merchantRef, $amount);
+                        
+                        DB::table('flight_orders')->where('id', $orderId)->update(['payment_url' => $paymentUrl]);
+                        return response()->json([
+                            'status' => 'SUCCESS',
+                            'bookingCode' => $pnr,
+                            'payment_url' => $paymentUrl
+                        ]);
+                    } catch (\Exception $e) {
+                        Log::error('DOKU Error: ' . $e->getMessage());
+                    }
+                }
+
+                // Jika DANA atau gateway gagal, fallback ke SUCCESS dasar dengan PNR
+                return response()->json([
+                    'status' => 'SUCCESS',
+                    'bookingCode' => $pnr,
+                    'message' => 'Tiket berhasil di-HOLD, namun pembuatan link bayar gagal. Cek riwayat.'
+                ]);
+
             } else {
                 DB::table('flight_orders')->where('id', $orderId)->update([
                     'status'     => 'FAILED',
                     'updated_at' => now()
                 ]);
+                return $response; // Return raw Darmawisata Error
             }
-
-            return $response;
 
         } catch (\Exception $e) {
             Log::error("Proses Booking Gagal: " . $e->getMessage());
-            return response()->json([
-                'status'  => 'FAILED',
-                'message' => 'Gagal memproses booking: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
         }
     }
 
