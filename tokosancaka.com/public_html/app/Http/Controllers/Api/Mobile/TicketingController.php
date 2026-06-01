@@ -1079,40 +1079,56 @@ class TicketingController extends BaseController
                 // ========================================================
                 if ($isSaldo) {
                     if ($user->saldo < $amount) {
+                        Log::warning("LOG LOG: Saldo user gagal potong untuk PNR {$pnr}. Butuh: {$amount}, Saldo: {$user->saldo}");
                         return response()->json([
                             'status' => 'FAILED',
-                            'message' => 'Booking sukses (PNR: '.$pnr.'), tapi saldo Anda tidak cukup untuk cetak tiket. Segera top-up & hubungi Admin.'
+                            'message' => 'Booking sukses (PNR: '.$pnr.'), tapi saldo Anda tidak cukup untuk cetak tiket. Segera top-up.'
                         ]);
                     }
 
-                    Log::info("LOG AUTO-CHAIN: Memulai tembakan beruntun untuk PNR {$pnr}");
+                    Log::info("\nLOG LOG: ==================== AUTO-CHAIN STARTED ====================");
+                    Log::info("LOG LOG: Memulai tembakan beruntun (Issued -> Detail -> Issued) untuk PNR {$pnr}");
 
                     // ----------------------------------------------------
-                    // TEMBAKAN 1: Cek Booking Detail ke Maskapai (Silent)
+                    // TEMBAKAN 1: ISSUED (PERTAMA)
                     // ----------------------------------------------------
+                    Log::info("LOG LOG: [STEP 1] Eksekusi tembakan Issued Pertama...");
+                    $reqIssued1 = new \Illuminate\Http\Request();
+                    $reqIssued1->replace(['order_id' => $orderId]);
+                    $reqIssued1->setUserResolver(function () use ($user) { return $user; });
+
+                    // Dieksekusi secara diam-diam (Silent) dan tangkap hasilnya untuk di-log
+                    $resIssued1 = $this->airlineIssued($reqIssued1);
+                    Log::info("LOG LOG: [RESULT STEP 1] " . $resIssued1->getContent());
+
+                    // ----------------------------------------------------
+                    // TEMBAKAN 2: CEK BOOKING DETAIL
+                    // ----------------------------------------------------
+                    Log::info("LOG LOG: [STEP 2] Eksekusi tembakan Booking Detail...");
                     $reqDetail = new \Illuminate\Http\Request();
                     $reqDetail->replace([
                         'bookingCode' => $pnr,
-                        'bookingDate' => date('Y-m-d\TH:i:s', strtotime($order->created_at))
+                        'bookingDate' => date('Y-m-d\TH:i:s', strtotime($order->created_at ?? now()))
                     ]);
-                    // Kita eksekusi secara diam-diam tanpa me-return hasilnya
-                    $this->airlineBookingDetail($reqDetail);
 
+                    // Dieksekusi secara diam-diam (Silent) dan tangkap hasilnya untuk di-log
+                    $resDetail = $this->airlineBookingDetail($reqDetail);
+                    Log::info("LOG LOG: [RESULT STEP 2] " . $resDetail->getContent());
 
                     // ----------------------------------------------------
-                    // TEMBAKAN 2: Langsung Eksekusi Issued & Potong Saldo
+                    // TEMBAKAN 3: ISSUED (KEDUA / FINAL)
                     // ----------------------------------------------------
-                    $reqIssued = new \Illuminate\Http\Request();
-                    $reqIssued->replace(['order_id' => $orderId]);
+                    Log::info("LOG LOG: [STEP 3] Eksekusi tembakan Issued Kedua (Final)...");
+                    $reqIssued2 = new \Illuminate\Http\Request();
+                    $reqIssued2->replace(['order_id' => $orderId]);
+                    $reqIssued2->setUserResolver(function () use ($user) { return $user; });
 
-                    // Kita operasikan sesi User asli ke dalam request palsu ini
-                    // Agar fungsi airlineIssued() tahu siapa yang harus dipotong saldonya
-                    $reqIssued->setUserResolver(function () use ($user) {
-                        return $user;
-                    });
+                    // Eksekusi terakhir dan langsung kembalikan hasilnya ke layar HP User
+                    $resFinal = $this->airlineIssued($reqIssued2);
+                    Log::info("LOG LOG: [RESULT STEP 3] " . $resFinal->getContent());
+                    Log::info("LOG LOG: ==================== AUTO-CHAIN FINISHED ====================\n");
 
-                    // Kita eksekusi Issued dan kembalikan response final-nya ke Frontend!
-                    return $this->airlineIssued($reqIssued);
+                    return $resFinal;
                 }
 
                 // ========================================================
