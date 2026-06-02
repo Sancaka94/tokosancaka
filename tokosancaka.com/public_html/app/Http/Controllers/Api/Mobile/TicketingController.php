@@ -1359,4 +1359,36 @@ class TicketingController extends BaseController
         }
     }
 
+    public function agentBalance(Request $request)
+    {
+        // 1. Validate the incoming data from your React Native app
+        $request->validate([
+            'userID' => 'required|string',
+            'accessToken' => 'required|string',
+        ]);
+
+        try {
+            $userID = $request->userID;
+            $accessToken = $request->accessToken;
+
+            // TODO: Add your actual Darmawisata API cURL/Http request here using the credentials
+
+            // Example of a successful response formatted exactly how your frontend expects it:
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'balance' => 1500000 // Replace this hardcoded number with the actual Darmawisata balance
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Darmawisata Balance Error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menarik data dari server Darmawisata.'
+            ], 500);
+        }
+    }
+
 }
