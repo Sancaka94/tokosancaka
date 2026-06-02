@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http; // Wajib di-import untuk API request
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
