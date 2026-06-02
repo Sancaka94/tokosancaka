@@ -192,11 +192,34 @@ class TrainTicketingController extends BaseController
                 ]);
                 Log::info("Train Order UPDATE ke HOLD sukses. PNR: " . $json['bookingCode']);
             } else {
-                DB::table('train_orders')->where('id', $orderId)->update(['status' => 'FAILED', 'updated_at' => now()]);
-                Log::error("Train Order GAGAL dari Darmawisata. Status diubah ke FAILED.");
-            }
+                $message = $json['respMessage'] ?? 'KAI menolak penerbitan tiket.';
 
-            return $response;
+                // [TAMBAHAN BARU] Tangkap jika KAI membatalkan tiket karena Expired / Time Limit Habis
+                if (isset($json['bookingStatus']) && strtolower($json['bookingStatus']) === 'canceled') {
+                    // Update status lokal menjadi CANCELLED agar di aplikasi berubah jadi Batal
+                    DB::table('train_orders')->where('id', $order->id)->update([
+                        'status' => 'CANCELLED',
+                        'updated_at' => now()
+                    ]);
+
+                    Log::warning("Train Issued Gagal: Time limit habis untuk PNR {$order->booking_code}. Status diubah ke CANCELLED.");
+                    return response()->json([
+                        'status' => 'FAILED',
+                        'message' => 'Batas waktu pembayaran habis. Tiket telah dibatalkan otomatis oleh sistem KAI. Silakan pesan ulang.'
+                    ]);
+                }
+
+                // Tangkap jika saldo agen H2H pusat habis
+                if (str_contains(strtolower($message), 'insufficient balance')) {
+                    Log::error("FATAL: Gagal Issued Kereta karena Saldo H2H Pusat Darmawisata Habis!");
+                    return response()->json([
+                        'status' => 'FAILED',
+                        'message' => 'Tiket gagal diterbitkan: Saldo deposit pusat tidak cukup. Hubungi admin.'
+                    ]);
+                }
+
+                return response()->json(['status' => 'FAILED', 'message' => 'Gagal Issued: ' . $message]);
+            }
 
         } catch (\Exception $e) {
             Log::error("FATAL ERROR [Train Booking]: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
