@@ -285,23 +285,28 @@ class TrainTicketingController extends BaseController
             return response()->json(['status' => 'FAILED', 'message' => 'Tiket sudah Issued.']);
         }
 
-        // ==========================================
-        // TAMBAHKAN PENGECEKAN INI
+       // ==========================================
+        // VALIDASI PNR KOSONG (Sangat Penting)
         // ==========================================
         if (empty($order->booking_code)) {
-            Log::error("Train Issued Gagal: booking_code kosong di database untuk order ID: " . $order->id);
-            return response()->json(['status' => 'FAILED', 'message' => 'Kode Booking (PNR) belum tersedia atau pesanan gagal di-hold.'], 400);
+            Log::error('LOG LOG: [TRAIN ISSUED] Gagal: booking_code kosong di database untuk order ID: ' . $order->id);
+            return response()->json([
+                'status' => 'FAILED',
+                'message' => 'Kode Booking (PNR) tidak ditemukan. Pesanan ini kemungkinan gagal saat proses Booking.'
+            ], 400);
         }
 
+        // Pastikan format ISO 8601 (T) dan zona waktu mengikuti standar Darmawisata
         $payloadIssued = [
             "bookingCode" => $order->booking_code,
-            "bookingDate" => date('Y-m-d\TH:i:s', strtotime($order->created_at)), // Darmawisata butuh BookingDate
+            "bookingDate" => date('c', strtotime($order->created_at)), // Mengubah format menjadi standar ISO dengan Timezone
             "userID"      => $this->darmawisataUserId,
             "accessToken" => $order->dw_access_token
         ];
 
-            Log::info("Payload to Darmawisata [Train/Issued]: ", $payloadIssued);
-            $response = $this->forwardRequest('Train/Issued', $payloadIssued);
+        Log::info("LOG LOG: [TRAIN ISSUED] Payload to Darmawisata: ", $payloadIssued);
+        $response = $this->forwardRequest('Train/Issued', $payloadIssued);
+
             $json = json_decode($response->getContent(), true);
 
             Log::info("Response Darmawisata [Train/Issued]: ", $json ?? ['error' => 'No JSON']);
