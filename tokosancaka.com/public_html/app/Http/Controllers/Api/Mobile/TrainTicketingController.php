@@ -410,4 +410,54 @@ class TrainTicketingController extends BaseController
 
         return $response;
     }
+
+    // ========================================================================
+    // 6. HISTORY (PENGAMBILAN DATA LOKAL UNTUK FRONTEND)
+    // ========================================================================
+
+    public function trainHistory(Request $request)
+    {
+        Log::info("\n========== [TRAIN HISTORY - START] ==========");
+
+        try {
+            $user = $request->user();
+
+            // Ambil data riwayat dari database lokal berdasarkan user yang login
+            $orders = DB::table('train_orders')
+                ->where('user_id', $user->id_pengguna ?? $user->id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            // Format data agar sesuai persis dengan interface BookingItem di React Native
+            $formattedData = $orders->map(function ($order) {
+                return [
+                    'id'            => $order->id,
+                    'bookingCode'   => $order->booking_code ?? 'PROSES',
+                    'trainName'     => $order->train_name,
+                    'origin'        => $order->origin,
+                    'destination'   => $order->destination,
+                    'departDate'    => $order->depart_date,
+                    'status'        => $order->status, // HOLD, ISSUED, CANCELLED, FAILED
+                    'totalFare'     => (float) $order->total_fare,
+                    'paymentMethod' => $order->payment_method ?? 'SALDO',
+                    'paymentUrl'    => $order->payment_url,
+                    'timeLimit'     => $order->time_limit,
+                ];
+            });
+
+            Log::info("Berhasil mengambil " . $formattedData->count() . " riwayat transaksi kereta.");
+
+            return response()->json([
+                'status' => 'SUCCESS',
+                'data'   => $formattedData
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Train History]: " . $e->getMessage());
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Sistem Error saat memuat riwayat.'
+            ], 500);
+        }
+    }
 }
