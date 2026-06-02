@@ -1359,9 +1359,14 @@ class TicketingController extends BaseController
         }
     }
 
-    public function agentBalance(Request $request)
+   public function agentBalance(Request $request)
     {
-        // 1. Validate the incoming data from your React Native app
+        // --- 1. LOG INCOMING REQUEST ---
+        // Mencatat semua payload JSON yang dikirim dari aplikasi React Native
+        Log::info('--- Darmawisata Balance Request Started ---');
+        Log::info('Incoming Request Payload from React Native:', $request->all());
+
+        // 2. Validasi data masuk
         $request->validate([
             'userID' => 'required|string',
             'accessToken' => 'required|string',
@@ -1371,22 +1376,63 @@ class TicketingController extends BaseController
             $userID = $request->userID;
             $accessToken = $request->accessToken;
 
-            // TODO: Add your actual Darmawisata API cURL/Http request here using the credentials
+            // URL Endpoint API Darmawisata (Ganti dengan endpoint produksi/sandbox yang asli)
+            $apiUrl = 'https://api.darmawisata.co.id/api/agen/balance';
 
-            // Example of a successful response formatted exactly how your frontend expects it:
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'balance' => 1500000 // Replace this hardcoded number with the actual Darmawisata balance
-                ]
-            ], 200);
+            // --- 3. EXECUTE API REQUEST ---
+            // Mengirim request POST ke server Darmawisata
+            $darmawisataResponse = Http::post($apiUrl, [
+                'userID' => $userID,
+                'accessToken' => $accessToken,
+            ]);
+
+            // --- 4. LOG RESPONSE FROM EXTERNAL SERVER ---
+            // Mencatat HTTP Status Code dan Body Response lengkap dari server Darmawisata
+            Log::info('Darmawisata API HTTP Status Code: ' . $darmawisataResponse->status());
+            Log::info('Darmawisata API Response Body: ' . $darmawisataResponse->body());
+
+            // 5. Cek apakah HTTP status code dari Darmawisata sukses (200-299)
+            if ($darmawisataResponse->successful()) {
+
+                $responseData = $darmawisataResponse->json();
+
+                // CATATAN: Pastikan key 'balance' sesuai dengan response asli dari dokumentasi Darmawisata
+                // Contoh jika struktur dari Darmawisata: { "status": "SUCCESS", "balance": 1500000 }
+                $balance = $responseData['balance'] ?? 0;
+
+                Log::info('--- Darmawisata Balance Request Completed Successfully ---');
+
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'balance' => $balance
+                    ]
+                ], 200);
+
+            } else {
+                // Jika server Darmawisata mengembalikan error (misal 400, 401, atau 500)
+                Log::warning('Darmawisata API returned an error response.');
+
+                // Kamu bisa melempar code status dari Darmawisata ke frontend, atau diset default 400
+                $statusCode = $darmawisataResponse->status() ?: 400;
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal menarik data dari server Darmawisata. Periksa kredensial atau koneksi.',
+                    'darmawisata_error' => $darmawisataResponse->json() // Opsional: kirim detail error ke frontend jika diperlukan
+                ], $statusCode);
+            }
 
         } catch (\Exception $e) {
-            Log::error('Darmawisata Balance Error: ' . $e->getMessage());
+            // --- 6. LOG SYSTEM ERROR ---
+            // Jika terjadi error pada kode, server, atau timeout saat request Http
+            Log::error('Darmawisata Balance System Exception: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString() // Menyimpan log file & baris error secara rinci
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Gagal menarik data dari server Darmawisata.'
+                'message' => 'Terjadi kesalahan sistem saat menghubungi server Darmawisata.'
             ], 500);
         }
     }
