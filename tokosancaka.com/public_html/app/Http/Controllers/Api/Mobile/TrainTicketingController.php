@@ -210,6 +210,9 @@ class TrainTicketingController extends BaseController
                     'updated_at'   => now()
                 ]);
                 Log::info("Train Order UPDATE ke HOLD sukses. PNR: " . $json['bookingCode']);
+
+                return response()->json($json);
+
             } else {
                 $message = $json['respMessage'] ?? 'KAI menolak penerbitan tiket.';
 
