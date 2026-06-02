@@ -1365,29 +1365,52 @@ class TicketingController extends BaseController
         Log::info('--- Darmawisata Balance Request Started ---');
         Log::info('Incoming Request Payload from React Native:', $request->all());
 
-        // 1. Validasi data masuk
+        // 1. Validasi parameter wajib dari aplikasi mobile
         $request->validate([
-            'userID' => 'required|string',
+            'userID'      => 'required|string',
             'accessToken' => 'required|string',
         ]);
 
         try {
-            // Siapkan payload
+            // Siapkan payload murni sesuai Schema API Darmawisata
             $payload = [
-                'userID' => $request->userID,
+                'userID'      => $request->userID,
                 'accessToken' => $request->accessToken
             ];
 
-            // 2. Eksekusi request menggunakan BaseController agar Base URL-nya dinamis (UAT/PROD)
-            // PASTIKAN path 'Agen/Balance' ini sesuai dengan dokumentasi resmi Darmawisata!
-            $response = $this->forwardRequest('Agen/Balance', $payload);
+            // 2. Eksekusi Request menggunakan BaseController
+            // Endpoint diubah menjadi "Agent/Balance" sesuai dokumen resmi
+            $response = $this->forwardRequest('Agent/Balance', $payload);
 
-            Log::info('--- Darmawisata Balance Request Completed ---');
+            // 3. Buka bungkusan JSON dari respons Darmawisata
+            $jsonResponse = json_decode($response->getContent(), true);
 
-            // Kembalikan response langsung ke frontend
-            return $response;
+            // 4. Evaluasi Status dari server Darmawisata
+            if (isset($jsonResponse['status']) && strtoupper($jsonResponse['status']) === 'SUCCESS') {
+                Log::info('--- Darmawisata Balance Request Completed Successfully ---');
+
+                // Format kembalian disesuaikan dengan ekspektasi Frontend React Native
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        // Ambil nilai balance, fallback ke 0 jika kosong
+                        'balance' => $jsonResponse['balance'] ?? 0
+                    ]
+                ], 200);
+
+            } else {
+                // Jika Darmawisata membalas dengan status FAILED (misal token expired/salah)
+                $errorMessage = $jsonResponse['respMessage'] ?? 'Gagal memuat saldo dari server Darmawisata.';
+                Log::warning('Darmawisata Balance Failed: ' . $errorMessage);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $errorMessage
+                ], 400);
+            }
 
         } catch (\Exception $e) {
+            // Tangkap error jika server sedang down atau timeout
             Log::error('Darmawisata Balance System Exception: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
             ]);
