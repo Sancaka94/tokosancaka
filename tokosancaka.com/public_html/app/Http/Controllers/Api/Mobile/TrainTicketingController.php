@@ -70,7 +70,7 @@ class TrainTicketingController extends BaseController
 
         Log::info("Payload to Darmawisata [Train/Schedule]: ", $payload);
         $response = $this->forwardRequest('Train/Schedule', $payload);
-        
+
         // Log opsional (bisa di-comment jika response terlalu panjang)
         // Log::info("Response Darmawisata [Train/Schedule]: " . $response->getContent());
 
@@ -216,7 +216,7 @@ class TrainTicketingController extends BaseController
         $payload = $request->all();
         $payload['userID'] = $this->darmawisataUserId;
         $payload['departDate'] = date('Y-m-d\TH:i:s', strtotime($request->departDate));
-        
+
         // Darmawisata wajib meminta format tanggal booking sama persis
         if(isset($payload['bookingDate'])) {
             $payload['bookingDate'] = date('Y-m-d\TH:i:s', strtotime($request->bookingDate));
@@ -251,7 +251,7 @@ class TrainTicketingController extends BaseController
 
         Log::info("Payload to Darmawisata [Train/TakeSeat]: ", $payload);
         $response = $this->forwardRequest('Train/TakeSeat', $payload);
-        
+
         // Jika sukses, opsional update tabel train_passengers dengan kursi baru
         $json = json_decode($response->getContent(), true);
         if (isset($json['status']) && $json['status'] === 'SUCCESS') {
@@ -266,27 +266,39 @@ class TrainTicketingController extends BaseController
     // ========================================================================
 
     public function trainIssued(Request $request)
-    {
-        Log::info("\n========== [TRAIN ISSUED - START] ==========");
-        $validator = Validator::make($request->all(), ['order_id' => 'required|integer']);
+{
+    Log::info("\n========== [TRAIN ISSUED - START] ==========");
+    $validator = Validator::make($request->all(), ['order_id' => 'required|integer']);
 
-        if ($validator->fails()) {
-            Log::warning("Train Issued Validasi Gagal: ", $validator->errors()->toArray());
-            return response()->json(['status' => 'FAILED', 'message' => 'Order ID tidak valid'], 422);
+    if ($validator->fails()) {
+        return response()->json(['status' => 'FAILED', 'message' => 'Order ID tidak valid'], 422);
+    }
+
+    try {
+        $order = DB::table('train_orders')->where('id', $request->order_id)->first();
+
+        if (!$order) {
+            return response()->json(['status' => 'FAILED', 'message' => 'Pesanan tidak ditemukan.']);
         }
 
-        try {
-            $order = DB::table('train_orders')->where('id', $request->order_id)->first();
-            if (!$order) return response()->json(['status' => 'FAILED', 'message' => 'Pesanan tidak ditemukan.']);
-            if ($order->status === 'ISSUED') return response()->json(['status' => 'FAILED', 'message' => 'Tiket sudah Issued.']);
+        if ($order->status === 'ISSUED') {
+            return response()->json(['status' => 'FAILED', 'message' => 'Tiket sudah Issued.']);
+        }
 
-            // Pastikan format ISO 8601 (T) untuk KAI
-            $payloadIssued = [
-                "bookingCode" => $order->booking_code,
-                "bookingDate" => date('Y-m-d\TH:i:s', strtotime($order->created_at)), // Darmawisata butuh BookingDate
-                "userID"      => $this->darmawisataUserId,
-                "accessToken" => $order->dw_access_token
-            ];
+        // ==========================================
+        // TAMBAHKAN PENGECEKAN INI
+        // ==========================================
+        if (empty($order->booking_code)) {
+            Log::error("Train Issued Gagal: booking_code kosong di database untuk order ID: " . $order->id);
+            return response()->json(['status' => 'FAILED', 'message' => 'Kode Booking (PNR) belum tersedia atau pesanan gagal di-hold.'], 400);
+        }
+
+        $payloadIssued = [
+            "bookingCode" => $order->booking_code,
+            "bookingDate" => date('Y-m-d\TH:i:s', strtotime($order->created_at)), // Darmawisata butuh BookingDate
+            "userID"      => $this->darmawisataUserId,
+            "accessToken" => $order->dw_access_token
+        ];
 
             Log::info("Payload to Darmawisata [Train/Issued]: ", $payloadIssued);
             $response = $this->forwardRequest('Train/Issued', $payloadIssued);
@@ -384,7 +396,7 @@ class TrainTicketingController extends BaseController
 
         Log::info("Payload to Darmawisata [Train/Cancel]: ", $payload);
         $response = $this->forwardRequest('Train/Cancel', $payload);
-        
+
         $json = json_decode($response->getContent(), true);
         if (isset($json['status']) && $json['status'] === 'SUCCESS') {
             DB::table('train_orders')->where('booking_code', $request->bookingCode)->update(['status' => 'CANCELLED', 'updated_at' => now()]);
