@@ -504,6 +504,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/booking-detail', [TrainTicketingController::class, 'trainBookingDetail']);
             Route::post('/cancel', [TrainTicketingController::class, 'trainCancel']);
 
+            Route::get('/history', [TrainTicketingController::class, 'trainHistory']);
+
         });
 
             // Hotel
