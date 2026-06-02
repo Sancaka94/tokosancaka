@@ -434,6 +434,11 @@ class TrainTicketingController extends BaseController
                     'id'            => $order->id,
                     'bookingCode'   => $order->booking_code ?? 'PROSES',
                     'trainName'     => $order->train_name,
+                    // Tambahkan 3 baris ini untuk kebutuhan Seat Map
+                    'trainNumber'   => $order->train_number,
+                    'subClass'      => $order->sub_class,
+                    'bookingDate'   => $order->created_at, // Darmawisata butuh format tanggal order
+
                     'origin'        => $order->origin,
                     'destination'   => $order->destination,
                     'departDate'    => $order->depart_date,
