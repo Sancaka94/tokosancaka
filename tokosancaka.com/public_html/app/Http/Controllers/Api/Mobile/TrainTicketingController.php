@@ -416,7 +416,46 @@ class TrainTicketingController extends BaseController
         ];
 
         Log::info("Payload to Darmawisata [Train/BookingDetail]: ", $payload);
-        return $this->forwardRequest('Train/BookingDetail', $payload);
+
+        // 1. Tembak API Darmawisata
+        $response = $this->forwardRequest('Train/BookingDetail', $payload);
+        $json = json_decode($response->getContent(), true);
+
+        // 2. LOGIKA BACKUP & FALLBACK
+        if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+            // A. Jika API Darmawisata SUKSES, simpan/update payload utuh ke Database
+            DB::table('train_ticket_booking')->updateOrInsert(
+                ['booking_code' => $request->bookingCode],
+                [
+                    'payload'    => json_encode($json),
+                    'updated_at' => now()
+                ]
+            );
+            Log::info("Data detail tiket PNR {$request->bookingCode} berhasil disimpan ke DB Backup.");
+
+            return $response; // Kembalikan data aslinya
+
+        } else {
+            // B. Jika API Darmawisata GAGAL (Token expired, KAI timeout, dll)
+            Log::warning("Darmawisata API Gagal mengambil detail tiket. Alasan: " . ($json['respMessage'] ?? 'Unknown'));
+
+            // Cek apakah kita punya backup data ini di database
+            $backup = DB::table('train_ticket_booking')->where('booking_code', $request->bookingCode)->first();
+
+            if ($backup && $backup->payload) {
+                Log::info("MENGGUNAKAN DATA BACKUP DARI DATABASE untuk PNR: {$request->bookingCode}");
+
+                // Decode teks JSON dari database menjadi array PHP
+                $backupData = json_decode($backup->payload, true);
+
+                // Kembalikan response seolah-olah sukses
+                return response()->json($backupData, 200);
+            }
+
+            // Jika tidak ada backup sama sekali, kembalikan pesan error aslinya
+            Log::error("Backup tidak ditemukan untuk PNR: {$request->bookingCode}");
+            return $response;
+        }
     }
 
     public function trainBookingList(Request $request)
