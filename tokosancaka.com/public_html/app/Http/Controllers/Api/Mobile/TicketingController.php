@@ -1362,73 +1362,34 @@ class TicketingController extends BaseController
 
    public function agentBalance(Request $request)
     {
-        // --- 1. LOG INCOMING REQUEST ---
-        // Mencatat semua payload JSON yang dikirim dari aplikasi React Native
         Log::info('--- Darmawisata Balance Request Started ---');
         Log::info('Incoming Request Payload from React Native:', $request->all());
 
-        // 2. Validasi data masuk
+        // 1. Validasi data masuk
         $request->validate([
             'userID' => 'required|string',
             'accessToken' => 'required|string',
         ]);
 
         try {
-            $userID = $request->userID;
-            $accessToken = $request->accessToken;
+            // Siapkan payload
+            $payload = [
+                'userID' => $request->userID,
+                'accessToken' => $request->accessToken
+            ];
 
-            // URL Endpoint API Darmawisata (Ganti dengan endpoint produksi/sandbox yang asli)
-            $apiUrl = 'https://api.darmawisata.co.id/api/agen/balance';
+            // 2. Eksekusi request menggunakan BaseController agar Base URL-nya dinamis (UAT/PROD)
+            // PASTIKAN path 'Agen/Balance' ini sesuai dengan dokumentasi resmi Darmawisata!
+            $response = $this->forwardRequest('Agen/Balance', $payload);
 
-            // --- 3. EXECUTE API REQUEST ---
-            // Mengirim request POST ke server Darmawisata
-            $darmawisataResponse = Http::post($apiUrl, [
-                'userID' => $userID,
-                'accessToken' => $accessToken,
-            ]);
+            Log::info('--- Darmawisata Balance Request Completed ---');
 
-            // --- 4. LOG RESPONSE FROM EXTERNAL SERVER ---
-            // Mencatat HTTP Status Code dan Body Response lengkap dari server Darmawisata
-            Log::info('Darmawisata API HTTP Status Code: ' . $darmawisataResponse->status());
-            Log::info('Darmawisata API Response Body: ' . $darmawisataResponse->body());
-
-            // 5. Cek apakah HTTP status code dari Darmawisata sukses (200-299)
-            if ($darmawisataResponse->successful()) {
-
-                $responseData = $darmawisataResponse->json();
-
-                // CATATAN: Pastikan key 'balance' sesuai dengan response asli dari dokumentasi Darmawisata
-                // Contoh jika struktur dari Darmawisata: { "status": "SUCCESS", "balance": 1500000 }
-                $balance = $responseData['balance'] ?? 0;
-
-                Log::info('--- Darmawisata Balance Request Completed Successfully ---');
-
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'balance' => $balance
-                    ]
-                ], 200);
-
-            } else {
-                // Jika server Darmawisata mengembalikan error (misal 400, 401, atau 500)
-                Log::warning('Darmawisata API returned an error response.');
-
-                // Kamu bisa melempar code status dari Darmawisata ke frontend, atau diset default 400
-                $statusCode = $darmawisataResponse->status() ?: 400;
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Gagal menarik data dari server Darmawisata. Periksa kredensial atau koneksi.',
-                    'darmawisata_error' => $darmawisataResponse->json() // Opsional: kirim detail error ke frontend jika diperlukan
-                ], $statusCode);
-            }
+            // Kembalikan response langsung ke frontend
+            return $response;
 
         } catch (\Exception $e) {
-            // --- 6. LOG SYSTEM ERROR ---
-            // Jika terjadi error pada kode, server, atau timeout saat request Http
             Log::error('Darmawisata Balance System Exception: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString() // Menyimpan log file & baris error secara rinci
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
