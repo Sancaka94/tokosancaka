@@ -1390,5 +1390,4 @@ class TicketingController extends BaseController
             ], 500);
         }
     }
-
 }
