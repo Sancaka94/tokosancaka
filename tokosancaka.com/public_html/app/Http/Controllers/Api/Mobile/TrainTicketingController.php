@@ -173,6 +173,25 @@ class TrainTicketingController extends BaseController
 
             Log::info("Payload to Darmawisata [Train/Booking]: ", $dwPayload);
 
+            // ====================================================================
+            // [TAMBAHAN BARU]: SILENT RE-HIT SCHEDULE
+            // Mencegah error "train schedule step missed" jika user kelamaan isi form
+            // ====================================================================
+            Log::info("Silent re-hit Train/Schedule untuk merefresh sesi Darmawisata...");
+            $silentSchedulePayload = [
+                'trainID'     => $request->trainID,
+                'paxAdult'    => $dwPayload['paxAdult'],
+                'paxChild'    => $dwPayload['paxChild'],
+                'paxInfant'   => $dwPayload['paxInfant'],
+                'departDate'  => $dwPayload['departDate'],
+                'origin'      => $request->origin,
+                'destination' => $request->destination,
+                'userID'      => $this->darmawisataUserId,
+                'accessToken' => $request->accessToken
+            ];
+            $this->forwardRequest('Train/Schedule', $silentSchedulePayload);
+            // ====================================================================
+
             // STEP C: TEMBAK API
             $response = $this->forwardRequest('Train/Booking', $dwPayload);
             $json = json_decode($response->getContent(), true);
