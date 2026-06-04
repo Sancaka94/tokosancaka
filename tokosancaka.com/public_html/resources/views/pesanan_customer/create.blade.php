@@ -1047,7 +1047,7 @@ $('#item_price').on('input', function() {
                         const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${codFee}`;
 
                         // PENAMBAHAN: Kalkulasi ongkir total (biaya dasar + asuransi + COD fee jika ada) untuk disematkan di tombol
-                        const totalOngkirCost = i.cost + insuranceFeeValue + codFee;
+                        const totalOngkirCost = parseInt(i.cost || 0) + parseInt(insuranceFeeValue || 0) + parseInt(codFee || 0);
 
                         const hasDiscount = i.price?.base_price && i.price.base_price > i.cost;
                         const basePriceFmt = hasDiscount ? formatRupiah(i.price.base_price) : '';
