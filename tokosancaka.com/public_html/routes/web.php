@@ -307,6 +307,14 @@ Route::get('/api/cari-alamat', [CustomerOrderController::class, 'searchAddressAp
 Route::get('/api/cari-alamat-kontak', [App\Http\Controllers\Customer\KontakController::class, 'searchAddressApi'])
     ->name('api.alamat.search');
 
+// =========================================================================
+// RUTE PESANAN PUBLIK (FIX ERROR ROUTE NOT FOUND)
+// =========================================================================
+Route::get('/pesanan/public/create', [\App\Http\Controllers\CustomerOrderController::class, 'create'])->name('pesanan.public.create');
+Route::post('/pesanan/public/store', [\App\Http\Controllers\CustomerOrderController::class, 'store'])->name('pesanan.public.store');
+Route::get('/pesanan/public/channels', [\App\Http\Controllers\CustomerOrderController::class, 'getTripayChannels'])->name('pesanan.public.get_channels');
+Route::get('/pesanan/public/success', [\App\Http\Controllers\CustomerOrderController::class, 'success'])->name('pesanan.public.success');
+
 // Marketplace Public
 Route::get('/etalase', [EtalaseController::class, 'index'])->name('etalase.index');
 Route::get('/etalase/category/{category:slug}', [EtalaseController::class, 'showCategory'])->name('public.categories.show');
