@@ -2076,163 +2076,123 @@ public function handleCallback(Request $request)
         }
     }
 
-   public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
-{
-    $trxId = $transaction->reference_id;
-    Log::info('LOG LOG: [DANA BINDING] Memulai Auto-Debit / Checkout untuk Top Up: ' . $trxId);
+public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
+    {
+        $trxId = $transaction->reference_id;
+        Log::info('LOG LOG: [DANA BINDING] Memulai Express Checkout (1-Click) untuk Top Up: ' . $trxId);
 
-    // 1. FORMAT WAKTU STANDAR ISO8601 GMT+7
-    $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        // 1. FORMAT WAKTU STANDAR ISO8601 GMT+7
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+        $amountValue = number_format($transaction->amount, 2, '.', '');
 
-    // validUpTo (Wajib di Sandbox minimal 30 menit ke depan, di Prod disesuaikan)
-    $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+        // 2. ENDPOINT SESUAI DOKUMENTASI RESMI DANA SNAP
+        $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
-    // 2. ENDPOINT DIRECT DEBIT SNAP BI
-    $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
-
-    $amountValue = number_format($transaction->amount, 2, '.', '');
-
-    // 3. MENYUSUN PAYLOAD BERDASARKAN DOKUMENTASI TERBARU
-    $body = [
-        "partnerReferenceNo" => $trxId,
-        "merchantId"         => config('services.dana.merchant_id'),
-        "validUpTo"          => $validUpTo,
-        "amount" => [
-            "value"    => $amountValue,
-            "currency" => "IDR"
-        ],
-        "urlParams" => [
+        // 3. PAYLOAD DISAMAKAN PERSIS DENGAN DOKUMENTASI (Tanpa payOptionDetails)
+        $body = [
+            "partnerReferenceNo" => $trxId,
+            "merchantId"         => config('services.dana.merchant_id'),
+            "validUpTo"          => $validUpTo,
+            "amount" => [
+                "value"    => $amountValue,
+                "currency" => "IDR"
+            ],
+            "urlParams" => [
                 [
-                    // PAY_RETURN BOLEH pakai tanda tanya (?)
                     "url" => route('dana.return', ['trx_id' => $trxId]),
                     "type" => "PAY_RETURN",
-                    "isDeeplink" => "N"
+                    "isDeeplink" => "Y"
                 ],
                 [
-                    // NOTIFICATION TIDAK BOLEH ada tanda tanya (?). Harus bersih!
                     "url" => url('/dana/notify'),
                     "type" => "NOTIFICATION",
                     "isDeeplink" => "N"
                 ]
             ],
-        // Wajib: payOptionDetails untuk menentukan sumber dana
-        "payOptionDetails" => [
-            [
-                "payMethod"   => "BALANCE", // Sesuai enum dokumentasi
-                "payOption"   => "BALANCE",
-                "transAmount" => [
-                    "value"    => $amountValue,
-                    "currency" => "IDR"
+            "additionalInfo" => [
+                "supportDeepLinkCheckoutUrl" => "true",
+                "productCode"                => "51051000100000000001",
+                "mcc"                        => "5732",
+                "order" => [
+                    "orderTitle"        => substr("Top Up " . $trxId, 0, 64),
+                    "merchantTransType" => "01",
+                    "scenario"          => "REDIRECT",
+                    "buyer" => [
+                        "externalUserId"   => (string) $userAccount->id_pengguna,
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $userAccount->nama_lengkap ?? 'Customer'), 0, 64)
+                    ]
+                ],
+                "envInfo" => [
+                    "sourcePlatform"    => "IPG",
+                    "terminalType"      => "SYSTEM",
+                    "orderTerminalType" => "WEB"
                 ]
             ]
-        ],
-        // Wajib: additionalInfo yang sangat spesifik
-        "additionalInfo" => [
-            "supportDeepLinkCheckoutUrl" => "true", // Wajib string "true" sesuai dokumentasi
-            "productCode"                => "51051000100000000001", // Wajib ada
-            "mcc"                        => "5732",
-            "order" => [
-                "orderTitle"        => substr("Top Up " . $trxId, 0, 64),
-                "merchantTransType" => "01",
-                "scenario"          => "DIRECT_DEBIT",
-                "buyer" => [
-                    "externalUserId"   => (string) $userAccount->id_pengguna,
-                    "externalUserType" => "MERCHANT_USER",
-                    "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $userAccount->nama_lengkap ?? 'Customer'), 0, 64)
-                ]
-            ],
-            "envInfo" => [
-                "sourcePlatform"    => "IPG",
-                "terminalType"      => "SYSTEM",
-                "orderTerminalType" => "WEB"
-            ]
-        ]
-    ];
-
-    // Encode tanpa escaping slash agar hash valid
-    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-    try {
-        $accessTokenB2B = $this->danaSignature->getAccessToken();
-
-        // PENTING: Generate Signature sesuai standar DANA
-        $signature = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
-        $baseUrl   = config('services.dana.base_url');
-
-        $headers = [
-            'Content-Type'           => 'application/json',
-            'Authorization'          => 'Bearer ' . $accessTokenB2B,
-            // HANYA SERTAKAN Authorization-Customer JIKA MELAKUKAN AUTO-DEBIT INSTAN
-            // Jika user belum bind/token tidak ada, ini akan memicu "Checkout Payment" biasa.
-            'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token,
-            'X-TIMESTAMP'            => $timestamp,
-            'X-SIGNATURE'            => $signature,
-            'ORIGIN'                 => config('services.dana.origin'),
-            'X-PARTNER-ID'           => config('services.dana.x_partner_id'),
-            'X-EXTERNAL-ID'          => (string) time() . \Illuminate\Support\Str::random(6),
-            'X-DEVICE-ID'            => 'SANCAKA-WEB-POS',
-            'CHANNEL-ID'             => '95221'
         ];
 
-        Log::info('LOG LOG: [DANA BINDING] Menyiapkan Request API.', [
-            'URL' => $baseUrl . $path,
-            'Headers' => [
-                'X-TIMESTAMP' => $timestamp,
-                'X-PARTNER-ID' => config('services.dana.x_partner_id')
-            ]
-        ]);
-        Log::info('LOG LOG: [DANA BINDING] Payload Body: ', $body);
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        // Eksekusi HTTP Request
-        $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
-            ->withBody($jsonBody, 'application/json')
-            ->post($baseUrl . $path);
+        try {
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+            $signature      = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+            $baseUrl        = config('services.dana.base_url');
 
-        $result = $response->json();
+            $headers = [
+                'Content-Type'           => 'application/json',
+                'Authorization'          => 'Bearer ' . $accessTokenB2B,
+                'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token, // Bypass Login DANA
+                'X-TIMESTAMP'            => $timestamp,
+                'X-SIGNATURE'            => $signature,
+                'ORIGIN'                 => config('services.dana.origin'),
+                'X-PARTNER-ID'           => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID'          => (string) time() . \Illuminate\Support\Str::random(6),
+                'X-DEVICE-ID'            => 'SANCAKA-WEB-POS',
+                'CHANNEL-ID'             => '95221'
+            ];
 
-        Log::info('LOG LOG: [DANA BINDING] Respon API DANA: ', [
-            'HTTP_Status' => $response->status(),
-            'Result'      => $result
-        ]);
+            // Eksekusi HTTP Request
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post($baseUrl . $path);
 
-        // Cek Respon Sukses (Sesuai dokumentasi: 2005400)
-        if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
+            $result = $response->json();
 
-            // Skenario 1: DANA Mengembalikan URL Redirect (Berarti butuh persetujuan user / input PIN)
-            if (!empty($result['webRedirectUrl'])) {
-                Log::info('LOG LOG: [DANA BINDING] User perlu diarahkan ke Web DANA untuk konfirmasi PIN/Pembayaran.');
-                $transaction->update(['payment_url' => $result['webRedirectUrl']]);
-                return redirect()->away($result['webRedirectUrl']);
+            // CEK RESPON SUKSES SESUAI DOKUMEN (2005400)
+            if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
+
+                // Sesuai dokumen, webRedirectUrl PASTI ADA jika sukses
+                if (!empty($result['webRedirectUrl']) || !empty($result['appLinkUrl'])) {
+                    $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'];
+                    
+                    Log::info('LOG LOG: [DANA BINDING] Berhasil generate URL Express Checkout.');
+                    
+                    $transaction->update(['payment_url' => $redirectUrl]);
+                    
+                    // Arahkan user ke DANA. Karena sudah Binding, user akan langsung lihat tombol Bayar!
+                    return redirect()->away($redirectUrl);
+                }
+
+                // Fallback jika anehnya DANA sukses tapi nggak ngasih URL
+                $transaction->update(['status' => 'failed']);
+                return back()->with('error', 'Gagal: URL Pembayaran DANA tidak diterbitkan.');
             }
 
-            // Skenario 2: DANA langsung memotong saldo (Seamless Auto-Debit berhasil)
-            Log::info('LOG LOG: [DANA BINDING] Auto-Debit berhasil seketika tanpa PIN.');
-            $transaction->update(['status' => 'success']);
-            $userAccount->increment('saldo', $transaction->amount);
-
-            event(new \App\Events\SaldoUpdated($userAccount, $transaction->amount, $userAccount->saldo, 'Top up Saldo DANA Anda berhasil.'));
-
-            return redirect()->route('customer.topup.index')
-                ->with('success', 'Pembayaran Berhasil! Saldo DANA Anda telah terpotong secara otomatis.');
-
-        }
-
-        // Penanganan Error (4045418 Inconsistent, 4035405 Do Not Honor, dsb)
-        else {
+            // Penanganan Error
             $transaction->update(['status' => 'failed']);
             $errorCode  = $result['responseCode'] ?? 'UNKNOWN';
             $pesanGagal = $result['responseMessage'] ?? 'Terjadi kesalahan pada sistem pembayaran.';
 
-            Log::error("LOG LOG: [DANA BINDING] Gagal memotong saldo. Code: $errorCode | Msg: $pesanGagal");
+            Log::error("LOG LOG: [DANA BINDING] Gagal generate URL. Code: $errorCode | Msg: $pesanGagal");
 
             return back()->with('error', "Gagal dari DANA [$errorCode]: $pesanGagal");
-        }
 
-    } catch (\Exception $e) {
-        Log::error('LOG LOG: [DANA BINDING] Fatal Exception: ' . $e->getMessage());
-        return back()->with('error', 'Koneksi ke sistem DANA gagal. Silakan coba beberapa saat lagi.');
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [DANA BINDING] Fatal Exception: ' . $e->getMessage());
+            return back()->with('error', 'Koneksi ke sistem DANA gagal. Silakan coba beberapa saat lagi.');
+        }
     }
-}
 
 
     /**

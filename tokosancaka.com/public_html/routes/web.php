@@ -1444,3 +1444,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::delete('/api/admin/dana/transfer-bank/bulk-destroy', [App\Http\Controllers\Customer\TopUpController::class, 'apiDestroyTransferBankHistory']);
 
     });
+
+Route::get('/dana/debug-status/{orderId}', [\App\Http\Controllers\DanaWebhookController::class, 'debugDanaStatus']);

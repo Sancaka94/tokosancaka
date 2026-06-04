@@ -232,9 +232,126 @@ class DanaWebhookController extends Controller
                         App::make(\App\Http\Controllers\Admin\PesananController::class)->handleDanaCallback($payloadData);
                     }
                     else if ($pesananTokoUtama) {
-                        Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Toko Utama (Checkout Sancaka).");
-                        App::make(\App\Http\Controllers\CheckoutController::class)->handleDanaCallback($payloadData);
-                    }
+					    Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Toko Utama (Tabel orders).");
+					    
+					    // 1. UPDATE STATUS JADI PAID SEBELUM HIT API
+					    if ($pesananTokoUtama->status !== 'paid' && $pesananTokoUtama->status !== 'processing') {
+					        $pesananTokoUtama->status = 'paid';
+					        $pesananTokoUtama->save();
+					    }
+					
+					    // 2. HIT API KIRIMINAJA JIKA BELUM ADA RESI / MASIH MOCK
+					    if (empty($pesananTokoUtama->shipping_reference) || Str::startsWith($pesananTokoUtama->shipping_reference, 'MOCK-')) {
+					        Log::info("🚀 Menyiapkan Payload API KiriminAja untuk Order: $orderId");
+					
+					        try {
+					            $kiriminAja = new \App\Services\KiriminAjaService();
+					            $now = now()->timezone('Asia/Jakarta');
+					            $pickupSchedule = ($now->hour >= 15 || $now->isSunday()) 
+					                ? $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s') 
+					                : $now->addHours(1)->format('Y-m-d H:i:s');
+					
+					            // Ekstrak Courier & Service dari shipping_method (Contoh: regular-spx-1-6000-0-0)
+					            $shipParts = explode('-', $pesananTokoUtama->shipping_method);
+					            $shipType = $shipParts[0] ?? 'regular';
+					            $courier = $shipParts[1] ?? 'jne';
+					            $service = $shipParts[2] ?? 'REG';
+					
+					            $weight = max(1000, (int) $pesananTokoUtama->weight);
+					            $category = ($shipType == 'cargo' || $weight >= 30000) ? 'trucking' : 'regular';
+					
+					            // Ambil data subdistrict pengirim dari tabel Store (karena tidak ada di tabel orders)
+					            $store = \App\Models\Store::find($pesananTokoUtama->store_id);
+					            $originDistId = $pesananTokoUtama->sender_district_id ?? ($store->district_id ?? 4354);
+					            $originSubId  = $pesananTokoUtama->sender_subdistrict_id ?? ($store->subdistrict_id ?? 40343); 
+					
+					            $payloadKA = [
+					                'address'      => $pesananTokoUtama->sender_address ?? ($store->address_detail ?? 'Alamat Toko'),
+					                'phone'        => $pesananTokoUtama->sender_phone ?? '085745808809',
+					                'name'         => $pesananTokoUtama->sender_name ?? 'Toko Sancaka',
+					                'kecamatan_id' => (int) $originDistId,
+					                'kelurahan_id' => (int) $originSubId,
+					                'zipcode'      => '00000',
+					                'latitude'     => (float) ($store->latitude ?? 0),
+					                'longitude'    => (float) ($store->longitude ?? 0),
+					                'schedule'     => $pickupSchedule,
+					                'category'     => $category,
+					                'platform_name'=> 'Sancaka Marketplace',
+					                'packages'     => [[
+					                    'order_id'                 => $orderId,
+					                    'item_name'                => \Illuminate\Support\Str::limit('Pesanan ' . $orderId, 45),
+					                    'package_type_id'          => 1,
+					                    'destination_name'         => $pesananTokoUtama->receiver_name ?? 'Customer',
+					                    'destination_phone' 	   => $pesananTokoUtama->receiver_phone ?? '081234567890',
+					                    'destination_address'      => $pesananTokoUtama->receiver_address ?? $pesananTokoUtama->shipping_address,
+					                    'destination_kecamatan_id' => (int) $pesananTokoUtama->receiver_district_id,
+					                    'destination_kelurahan_id' => (int) ($pesananTokoUtama->receiver_subdistrict_id ?? 40334),
+					                    'destination_zipcode'      => '00000',
+					                    'weight'                   => $weight,
+					                    'width'                    => 10,
+					                    'height'                   => 10,
+					                    'length'                   => 10,
+					                    'item_value'               => (int) ($pesananTokoUtama->subtotal ?? 10000),
+					                    'insurance_amount'         => (int) ($pesananTokoUtama->insurance_cost ?? 0),
+					                    'cod'                      => 0,
+					                    'service'                  => $courier,
+					                    'service_type'             => $service,
+					                    'shipping_cost'            => (int) ($pesananTokoUtama->shipping_cost ?? 0)
+					                ]]
+					            ];
+					
+					            if ($shipType === 'instant') {
+					                $payloadInstant = [
+					                    'service' => strtolower($courier), 
+					                    'service_type' => strtoupper($service), 
+					                    'vehicle' => 'motor',
+					                    'order_prefix' => $orderId,
+					                    'packages' => [[
+					                        'origin_lat' => (float) ($store->latitude ?? 0), 
+					                        'origin_long' => (float) ($store->longitude ?? 0),
+					                        'origin_name' => $payloadKA['name'], 
+					                        'origin_phone' => $payloadKA['phone'],
+					                        'origin_address' => $payloadKA['address'],
+					                        'destination_lat' => (float) ($pesananTokoUtama->customer_latitude ?? 0), 
+					                        'destination_long' => (float) ($pesananTokoUtama->customer_longitude ?? 0),
+					                        'destination_name' => $payloadKA['packages'][0]['destination_name'], 
+					                        'destination_phone' => $payloadKA['packages'][0]['destination_phone'],
+					                        'destination_address' => $payloadKA['packages'][0]['destination_address'],
+					                        'item' => ['name' => $payloadKA['packages'][0]['item_name'], 'price' => $payloadKA['packages'][0]['item_value'], 'weight' => $weight],
+					                        'shipping_price' => $payloadKA['packages'][0]['shipping_cost']
+					                    ]]
+					                ];
+					                Log::info("🚀 Menembak API KiriminAja INSTANT...", ['payload' => $payloadInstant]);
+					                $kaResponse = $kiriminAja->createInstantOrder($payloadInstant);
+					            } else {
+					                Log::info("🚀 Menembak API KiriminAja EXPRESS...", ['payload' => $payloadKA]);
+					                $kaResponse = $kiriminAja->createExpressOrder($payloadKA);
+					            }
+					
+					            if ($kaResponse && isset($kaResponse['status']) && $kaResponse['status'] == true) {
+    
+								    // ✅ SESUAIKAN DENGAN DOKUMENTASI RESMI
+								    $bookingId = $kaResponse['pickup_number'] ?? 
+								                 ($kaResponse['details'][0]['kj_order_id'] ?? 
+								                 ($kaResponse['details'][0]['awb'] ?? null));
+								    
+								    if ($bookingId) {
+								        $pesananTokoUtama->shipping_reference = $bookingId;
+								        $pesananTokoUtama->status = 'processing';
+								        $pesananTokoUtama->save();
+								        Log::info("✅ AUTO-BOOKING BERHASIL: $bookingId");
+								    }
+								} else {
+								    Log::error("❌ API KA GAGAL:", ['response' => $kaResponse]);
+								}
+					        } catch (\Exception $e) {
+					            Log::error("❌ CRITICAL ERROR API KA:", ['msg' => $e->getMessage()]);
+					        }
+					    }
+					
+					    // Notifikasi ke aplikasi/customer tetap dipanggil
+					    $this->sendExpoPaymentNotification($orderId);
+					}
                     else {
                         Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Marketplace (mysql_second).");
                         try {
@@ -564,13 +681,13 @@ class DanaWebhookController extends Controller
 
             DB::commit();
 
-            // Format respons sukses universal standar SNAP BI
+            // Format respons sukses spesifik sesuai dokumentasi Notify DANA (SNAP 56)
             $responseBody = [
-                'responseCode' => '2000000',
-                'responseMessage' => 'Success'
+                'responseCode' => '2005600',
+                'responseMessage' => 'Successful'
             ];
 
-            // Wajib mengembalikan/echo header X-PARTNER-ID dan X-EXTERNAL-ID agar DANA tahu kita merespons dengan benar
+            // Wajib mengembalikan header X-TIMESTAMP (dan standar SNAP tambahan)
             return response()->json($responseBody)->withHeaders([
                 'X-TIMESTAMP'   => $danaTimestamp,
                 'X-PARTNER-ID'  => $request->header('X-PARTNER-ID'),
@@ -717,7 +834,7 @@ class DanaWebhookController extends Controller
         return trim($refNo);
     }
 
-    // =========================================================
+  // =========================================================
     // UNIVERSAL RETURN PAGE (DANA CALLBACK/RETURN) - SMART HUB
     // =========================================================
     public function returnPage(Request $request)
@@ -757,7 +874,7 @@ class DanaWebhookController extends Controller
             $statusPembayaran = 'pending';
             $jenisTransaksi = 'unknown';
 
-            if (Str::startsWith($refNo, 'SCK-')) {
+            if (Str::startsWith($refNo, 'SCK-') && !Str::startsWith($refNo, 'SCK-ORD-')) {
                 $jenisTransaksi = 'pesanan_ekspedisi';
                 $order = \App\Models\Pesanan::where('nomor_invoice', $refNo)->first();
 
@@ -765,12 +882,48 @@ class DanaWebhookController extends Controller
                     $statusPembayaran = 'sukses';
                 }
             }
-            elseif (Str::startsWith($refNo, 'ORD-') || Str::startsWith($refNo, 'CVSANCAK-')) {
+            elseif (Str::startsWith($refNo, 'ORD-') || Str::startsWith($refNo, 'CVSANCAK-') || Str::startsWith($refNo, 'SCK-ORD-')) {
                 $jenisTransaksi = 'pesanan_marketplace';
                 $orderUtama = \App\Models\Order::where('invoice_number', $refNo)->first();
 
                 if ($orderUtama) {
-                    if($orderUtama->payment_status == 'paid') $statusPembayaran = 'sukses';
+                    // Jika Webhook sempat masuk lebih dulu
+                    if($orderUtama->status == 'paid' || $orderUtama->payment_status == 'paid') {
+                        $statusPembayaran = 'sukses';
+                    } else {
+                        // ==========================================================
+                        // 🔥 AUTO-FALLBACK: PAKSA CEK STATUS JIKA WEBHOOK DELAY/GAGAL
+                        // ==========================================================
+                        try {
+                            Log::info('[DANA FALLBACK] Memulai cek status otomatis untuk ' . $refNo);
+                            $danaStatus = $this->checkDanaGatewayStatus($refNo);
+
+                            $resCode = $danaStatus['responseCode'] ?? '';
+                            $txStatus = $danaStatus['transactionStatus'] ?? '';
+
+                            if ($resCode === '2005400' && in_array(strtoupper($txStatus), ['SUCCESS', 'PAID'])) {
+                                Log::info('[DANA FALLBACK] DANA mengonfirmasi LUNAS! Memicu API KiriminAja secara manual...');
+                                
+                                // Rakit payload palsu yang menyerupai data Webhook
+                                $payloadData = [
+                                    'order' => [
+                                        'invoice_number' => $refNo, 
+                                        'amount' => $orderUtama->total_amount
+                                    ],
+                                    'transaction' => [
+                                        'status' => 'SUCCESS'
+                                    ]
+                                ];
+
+                                // Panggil CheckoutController untuk memproses status & menembak API KiriminAja
+                                app(\App\Http\Controllers\CheckoutController::class)->handleDanaCallback($payloadData);
+                                
+                                $statusPembayaran = 'sukses';
+                            }
+                        } catch (\Exception $e) {
+                            Log::error('[DANA FALLBACK ERROR] ' . $e->getMessage());
+                        }
+                    }
                 } else {
                     try {
                         $orderMarketplace = DB::connection('mysql_second')->table('orders')->where('order_number', $refNo)->first();
@@ -780,7 +933,7 @@ class DanaWebhookController extends Controller
                     } catch (\Exception $e) {}
                 }
             }
-            elseif (Str::startsWith($refNo, 'TOPUP-')) {
+            elseif (Str::startsWith($refNo, 'TOPUP-') || Str::startsWith($refNo, 'DANATOPUP-')) {
                 $jenisTransaksi = 'topup';
                 $topup = \App\Models\TopUp::where('transaction_id', $refNo)->first();
                 if ($topup && in_array(strtolower($topup->status), ['success', 'sukses'])) {
@@ -813,7 +966,7 @@ class DanaWebhookController extends Controller
                 'jenisTransaksi' => $jenisTransaksi
             ]);
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             Log::error('[DANA RETURN PAGE ERROR]', ['msg' => $e->getMessage()]);
             return redirect('/')->with('error', 'Terjadi kesalahan sistem.');
         }
@@ -850,5 +1003,162 @@ class DanaWebhookController extends Controller
         } catch (\Exception $e) {
             Log::error("❌ [EMAIL FAILED] Gagal kirim email ke $email: " . $e->getMessage());
         }
+    }
+
+	/**
+     * =========================================================================
+     * AUTO-FALLBACK: CEK STATUS KE DANA JIKA WEBHOOK DELAY (VERSI SNAP BI)
+     * =========================================================================
+     */
+    private function checkDanaGatewayStatus($orderId)
+    {
+        \Illuminate\Support\Facades\Log::info("[DANA FALLBACK] Checking Status for Order: $orderId");
+
+        // 1. Ambil config dinamis dari DB
+        $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
+        $isProduction = ($danaMode == '1');
+
+        if ($isProduction) {
+            $merchantId = \App\Models\Api::getValue('dana_prod_merchant_id', 'production');
+            $partnerId  = \App\Models\Api::getValue('dana_prod_client_id', 'production');
+            $privateKey = \App\Models\Api::getValue('dana_prod_private_key', 'production');
+            $publicKey  = \App\Models\Api::getValue('dana_prod_public_key', 'production');
+            $clientSecret = \App\Models\Api::getValue('dana_prod_client_secret', 'production');
+            $baseUrl    = 'https://api.saas.dana.id'; 
+        } else {
+            $merchantId = \App\Models\Api::getValue('dana_sandbox_merchant_id', 'sandbox');
+            $partnerId  = \App\Models\Api::getValue('dana_sandbox_client_id', 'sandbox');
+            $privateKey = \App\Models\Api::getValue('dana_sandbox_private_key', 'sandbox');
+            $publicKey  = \App\Models\Api::getValue('dana_sandbox_public_key', 'sandbox');
+            $clientSecret = \App\Models\Api::getValue('dana_sandbox_client_secret', 'sandbox');
+            $baseUrl    = 'https://api.sandbox.dana.id';
+        }
+
+        // 2. Timpa config() runtime agar DanaSignatureService menggunakan kunci dinamis DB
+        config([
+            'services.dana.merchant_id'   => $merchantId,
+            'services.dana.client_id'     => $partnerId,
+            'services.dana.x_partner_id'  => $partnerId,
+            'services.dana.private_key'   => $privateKey,
+            'services.dana.public_key'    => $publicKey,
+            'services.dana.client_secret' => $clientSecret,
+            'services.dana.base_url'      => $baseUrl,
+            'services.dana.dana_env'      => $isProduction ? 'PRODUCTION' : 'SANDBOX',
+            'services.dana.origin'        => url('/')
+        ]);
+
+        $danaSignature = app(\App\Services\DanaSignatureService::class);
+
+        // 3. Endpoint SNAP BI Status DANA yang benar
+        $relativePath = '/v1.0/transaction/status'; 
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+
+        $cleanOrderId = preg_replace('/[^a-zA-Z0-9]/', '', $orderId);
+
+        // 4. Parameter Body Sesuai SNAP BI DANA (Service Code 54 = Hosted Checkout)
+        $body = [
+            "originalPartnerReferenceNo" => $cleanOrderId,
+            "merchantId"                 => $merchantId,
+            "serviceCode"                => "54"
+        ];
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+
+        try {
+            // 5. Generate Access Token & Signature
+            $accessTokenB2B = $danaSignature->getAccessToken();
+            $signature = $danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp);
+
+            // 6. Tembak API Cek Status DANA
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
+                'X-PARTNER-ID'  => $partnerId,
+                'X-EXTERNAL-ID' => \Illuminate\Support\Str::random(32),
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'Content-Type'  => 'application/json',
+                'CHANNEL-ID'    => '95221',
+                'ORIGIN'        => url('/')
+            ])->post($baseUrl . $relativePath, $body);
+
+            $result = $response->json();
+            
+            \Illuminate\Support\Facades\Log::info('[DANA FALLBACK SNAP BI] Status Check Result:', $result ?? []);
+
+            if ($result === null) {
+                return ['error_parsing' => 'Respons dari DANA bukan JSON yang valid'];
+            }
+
+            // 7. Normalisasi Data B2B SNAP BI (2004700 adalah kode sukses inquiry)
+            if (isset($result['responseCode']) && in_array($result['responseCode'], ['2004700', '2000000'])) {
+                $statusKode = $result['latestTransactionStatus'] ?? $result['transactionStatus'] ?? '';
+                
+                // Di SNAP BI DANA, "00" atau "SUCCESS" artinya Lunas
+                if ($statusKode === '00' || $statusKode === 'SUCCESS') {
+                    $result['transactionStatus'] = 'SUCCESS';
+                } elseif ($statusKode === 'INIT' || $statusKode === 'PROCESSING' || $statusKode === '01') {
+                    $result['transactionStatus'] = 'PENDING';
+                } else {
+                    $result['transactionStatus'] = 'FAILED';
+                }
+
+                // Paksa responseCode menjadi 2005400 agar Sancaka Return Page mengenali bahwa cek status berhasil
+                $result['responseCode'] = '2005400'; 
+            }
+
+            return $result;
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[DANA FALLBACK] Check Status Error: ' . $e->getMessage());
+            return ['error_exception' => $e->getMessage()];
+        }
+    }
+
+	/**
+     * =========================================================================
+     * DEBUGGING: Cek Status DANA via URL Browser / Postman
+     * =========================================================================
+     */
+    public function debugDanaStatus($orderId)
+    {
+        try {
+            // Memanggil fungsi private yang sudah kita perbaiki
+            $result = $this->checkDanaGatewayStatus($orderId);
+
+            return response()->json([
+                'INFO' => 'Hasil Pengecekan Status DANA (Bypass Webhook)',
+                'ORDER_ID' => $orderId,
+                'RESULT_DARI_DANA' => $result
+            ], 200, [], JSON_PRETTY_PRINT);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'ERROR' => $e->getMessage()
+            ], 500, [], JSON_PRETTY_PRINT);
+        }
+    }
+
+	/**
+     * Memastikan nomor HP dimulai dengan 08 agar diterima KiriminAja
+     */
+    private function formatNomorHP($phone)
+    {
+        $phone = preg_replace('/[^0-9]/', '', $phone); // Hapus karakter non-angka
+        
+        // Jika mulai dengan 62, ubah jadi 0
+        if (substr($phone, 0, 2) == '62') {
+            $phone = '0' . substr($phone, 2);
+        }
+        
+        // Jika tidak mulai dengan 0, paksa tambah 0
+        if (substr($phone, 0, 1) !== '0') {
+            $phone = '0' . $phone;
+        }
+
+        // Validasi tambahan: Jika panjang tidak masuk akal, gunakan nomor default
+        if (strlen($phone) < 10 || strlen($phone) > 13) {
+            return '081234567890'; // Nomor aman default
+        }
+
+        return $phone;
     }
 }

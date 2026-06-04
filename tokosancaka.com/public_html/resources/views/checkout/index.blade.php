@@ -415,27 +415,69 @@
                 --}}
 
                 {{-- OPSI DANA (DIRECT DEBIT) --}}
+               {{-- ================================================================= --}}
+                {{-- OPSI DANA (GAPURA & BINDING) BERDASARKAN DATABASE PENGGUNA --}}
+                {{-- ================================================================= --}}
+                @php
+                    $userDanaToken = Auth::user()->dana_access_token;
+                    $userDanaBalance = Auth::user()->dana_user_balance ?? 0;
+                    $hasDanaBinding = !empty($userDanaToken);
+                @endphp
+
+                {{-- 1. OPSI DANA GAPURA (STANDARD WEB CHECKOUT) --}}
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
                     data-value="DANA"
-                    data-label="DANA Indonesia"
+                    data-label="DANA (Web Checkout)"
                     data-img="{{ asset('public/assets/dana.webp') }}">
 
-                    {{-- Logo DANA --}}
                     <img src="{{ asset('public/assets/dana.webp') }}"
                          alt="DANA"
                          class="h-8 w-8 object-contain mr-4"
                          onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
 
                     <div class="flex flex-col">
-                        <span class="text-sm font-bold text-gray-900">DANA</span>
-                        <span class="text-xs text-gray-500">Sambungkan akun DANA (Direct Debit)</span>
+                        <span class="text-sm font-bold text-gray-900">DANA Checkout</span>
+                        <span class="text-xs text-gray-500">Diarahkan ke aplikasi / web DANA</span>
                     </div>
-
-                    {{-- Badge Bebas Admin (Opsional, pemanis tampilan) --}}
-                    <span class="ml-auto bg-blue-100 text-blue-800 text-[10px] font-semibold px-2 py-0.5 rounded">
-                        Otomatis
-                    </span>
                 </li>
+
+                {{-- 2. OPSI DANA BINDING (AUTO DEBIT) --}}
+                @if($hasDanaBinding)
+                    {{-- Jika Sudah Binding: Munculkan Opsi Bayar & Saldo --}}
+                    <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
+                        data-value="DANA_BINDING"
+                        data-label="DANA Auto-Debit"
+                        data-img="{{ asset('public/assets/dana.webp') }}">
+                        
+                        <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="h-8 w-8 object-contain mr-4">
+                        
+                        <div class="flex flex-col flex-1">
+                            <span class="text-sm font-bold text-gray-900">DANA Auto-Debit</span>
+                            <span class="text-xs text-gray-600 font-medium mt-0.5">Saldo Anda: <span class="text-blue-700">Rp{{ number_format($userDanaBalance, 0, ',', '.') }}</span></span>
+                        </div>
+                        
+                        <span class="ml-auto bg-blue-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded shadow-sm">
+                            Tersambung
+                        </span>
+                    </li>
+                @else
+                    {{-- Jika Belum Binding: Munculkan Tombol Hubungkan --}}
+                    <li class="flex items-center p-4 border border-dashed border-gray-300 rounded-lg bg-gray-50 justify-between">
+                        <div class="flex items-center">
+                            <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="h-8 w-8 object-contain mr-4 grayscale opacity-50">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-500">DANA Auto-Debit</span>
+                                <span class="text-[11px] text-gray-400 mt-0.5">Bayar instan 1-klik tanpa PIN</span>
+                            </div>
+                        </div>
+                        
+                        {{-- Sesuaikan URL href ini dengan route startBinding Anda di web.php --}}
+                        <a href="{{ url('/dana/start-binding') }}" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-700 shadow-sm transition-colors">
+                            Hubungkan
+                        </a>
+                    </li>
+                @endif
+                {{-- ================================================================= --}}
 
                 {{-- 3. OPSI INTERNAL (COD) --}}
                 <li class="px-2 pt-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Bayar Ditempat</li>

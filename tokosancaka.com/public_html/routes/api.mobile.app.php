@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\Mobile\PesananController;
 use App\Http\Controllers\Api\Mobile\TicketingController;
 use App\Http\Controllers\Customer\TopUpController;
 use App\Http\Controllers\Api\Mobile\TrainTicketingController;
+use App\Http\Controllers\Api\Mobile\BusTicketingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -506,6 +507,32 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             Route::get('/history', [TrainTicketingController::class, 'trainHistory']);
 
+        });
+
+		 // ==========================================
+        // MODULE: BUS (TIKET BUS API)
+        // ==========================================
+        Route::prefix('bus')->group(function () {
+            // Endpoint List & Data Master
+            Route::post('/list',            [BusTicketingController::class, 'busList']);
+            Route::post('/route',           [BusTicketingController::class, 'busRoute']);
+            Route::post('/terminal',        [BusTicketingController::class, 'busTerminal']);
+            Route::post('/terminal-search', [BusTicketingController::class, 'busTerminalSearch']);
+
+            // Endpoint Jadwal & Seat
+            Route::post('/schedule',        [BusTicketingController::class, 'busSchedule']);
+            Route::post('/seatmap',         [BusTicketingController::class, 'busSeatMap']);
+
+            // Endpoint Flow Transaksi
+            Route::post('/booking',         [BusTicketingController::class, 'busBooking']);
+            Route::post('/issued',          [BusTicketingController::class, 'busIssued']);
+
+            // Endpoint Riwayat & Manajemen Tiket
+            Route::post('/booking-list',    [BusTicketingController::class, 'busBookingList']);
+            Route::post('/booking-detail',  [BusTicketingController::class, 'busBookingDetail']);
+
+            // Endpoint History Lokal (dari Database)
+            Route::get('/history',          [BusTicketingController::class, 'busHistory']);
         });
 
             // Hotel

@@ -332,48 +332,64 @@ class TopUpController extends Controller
         }
     }
 
-    /**
+ /**
      * =========================================================================
-     * HELPER: EKSEKUTOR API DANA BINDING (AUTO DEBIT)
+     * HELPER: EKSEKUTOR API DANA BINDING (EXPRESS CHECKOUT MOBILE - VIA WEBVIEW)
      * =========================================================================
      */
-    private function _createTopUpDanaBinding(Transaction $transaction, $user)
+    private function _createTopUpDanaBinding(Transaction $transaction, $userAccount)
     {
-        $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        $validUpTo = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+        $trxId = $transaction->reference_id;
+        Log::info('LOG LOG: [DANA BINDING] Memulai Express Checkout (1-Click) untuk Top Up: ' . $trxId);
+
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
         $amountValue = number_format($transaction->amount, 2, '.', '');
+        
         $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
         $body = [
-            "partnerReferenceNo" => $transaction->reference_id,
+            "partnerReferenceNo" => $trxId,
             "merchantId"         => config('services.dana.merchant_id'),
             "validUpTo"          => $validUpTo,
             "amount"             => ["value" => $amountValue, "currency" => "IDR"],
             "urlParams"          => [
-                ["url" => route('dana.return', ['trx_id' => $transaction->reference_id]), "type" => "PAY_RETURN", "isDeeplink" => "Y"],
-                ["url" => url('/dana/notify'), "type" => "NOTIFICATION", "isDeeplink" => "N"]
+                [
+                    "url" => route('dana.return', ['trx_id' => $trxId]),
+                    "type" => "PAY_RETURN",
+                    "isDeeplink" => "N" // KUNCI 1: Paksa ke "N" agar DANA memberikan Web URL murni
+                ],
+                [
+                    "url" => url('/dana/notify'),
+                    "type" => "NOTIFICATION",
+                    "isDeeplink" => "N"
+                ]
             ],
             "payOptionDetails"   => [
-                ["payMethod" => "BALANCE", "payOption" => "BALANCE", "transAmount" => ["value" => $amountValue, "currency" => "IDR"]]
+                [
+                    "payMethod"   => "BALANCE", 
+                    "payOption"   => "BALANCE", 
+                    "transAmount" => ["value" => $amountValue, "currency" => "IDR"]
+                ]
             ],
             "additionalInfo"     => [
                 "supportDeepLinkCheckoutUrl" => "true",
                 "productCode"                => "51051000100000000001",
                 "mcc"                        => "5732",
                 "order" => [
-                    "orderTitle"        => substr("Top Up " . $transaction->reference_id, 0, 64),
+                    "orderTitle"        => substr("Top Up " . $trxId, 0, 64),
                     "merchantTransType" => "01",
-                    "scenario"          => "DIRECT_DEBIT",
+                    "scenario"          => "REDIRECT",
                     "buyer" => [
-                        "externalUserId"   => (string) $user->id_pengguna,
+                        "externalUserId"   => (string) $userAccount->id_pengguna,
                         "externalUserType" => "MERCHANT_USER",
-                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap ?? 'Customer'), 0, 64)
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $userAccount->nama_lengkap ?? 'Customer'), 0, 64)
                     ]
                 ],
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "APP" // Khusus Mobile
+                    "orderTerminalType" => "WEB" // KUNCI 2: Pertahankan "WEB"
                 ]
             ]
         ];
@@ -388,31 +404,49 @@ class TopUpController extends Controller
             $headers = [
                 'Content-Type'           => 'application/json',
                 'Authorization'          => 'Bearer ' . $accessTokenB2B,
-                'Authorization-Customer' => 'Bearer ' . $user->dana_access_token, // WAJIB ADA UNTUK AUTO DEBIT
+                'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token, 
                 'X-TIMESTAMP'            => $timestamp,
                 'X-SIGNATURE'            => $signature,
                 'ORIGIN'                 => config('services.dana.origin'),
                 'X-PARTNER-ID'           => config('services.dana.x_partner_id'),
-                'X-EXTERNAL-ID'          => (string) time() . Str::random(6),
+                'X-EXTERNAL-ID'          => (string) time() . \Illuminate\Support\Str::random(6),
                 'X-DEVICE-ID'            => 'SANCAKA-APP-MBL',
                 'CHANNEL-ID'             => '95221'
             ];
 
-            $response = Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post($baseUrl . $path);
+
             $result = $response->json();
 
+            // CEK RESPON SUKSES SESUAI DOKUMEN (2005400)
             if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
-                if (!empty($result['appLinkUrl']) || !empty($result['webRedirectUrl'])) {
-                    return ['success' => true, 'redirect_url' => $result['appLinkUrl'] ?? $result['webRedirectUrl']];
+
+                // KUNCI 3: KITA HANYA AMBIL WEB URL-NYA SAJA (webRedirectUrl). JANGAN AMBIL appLinkUrl!
+                // Ini memastikan In-App Browser (WebBrowser) di HP bisa merendernya dengan lancar.
+                $redirectUrl = $result['webRedirectUrl'] ?? null;
+                
+                if (!empty($redirectUrl)) {
+                    Log::info('LOG LOG: [DANA BINDING] Berhasil generate URL Web Express Checkout.');
+                    
+                    // Kembalikan URL web ini ke aplikasi mobile
+                    return [
+                        'success' => true, 
+                        'redirect_url' => $redirectUrl
+                    ];
                 }
-                // Jika tidak ada URL, berarti Auto-Debit berhasil instan tanpa konfirmasi PIN
-                return ['success' => true];
+
+                // Fallback jika anehnya DANA tidak memberikan URL Web
+                Log::error('LOG LOG: [API MOBILE] Transaksi DANA menggantung. Tidak ada Web URL yang diterbitkan.');
+                return ['success' => false, 'message' => 'Gagal: URL Pembayaran Web DANA tidak diterbitkan.'];
             }
 
             return ['success' => false, 'message' => $result['responseMessage'] ?? 'DANA API Error'];
 
         } catch (\Exception $e) {
-            return ['success' => false, 'message' => 'Exception: ' . $e->getMessage()];
+            Log::error('LOG LOG: [DANA BINDING] Fatal Exception: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Koneksi ke sistem DANA gagal. Silakan coba beberapa saat lagi.'];
         }
     }
 
@@ -463,24 +497,36 @@ class TopUpController extends Controller
         }
     }
 
-    /**
+   /**
      * Helper: Dinamisasi Config DANA
      */
     private function applyDynamicConfig()
     {
-        $danaMode = Api::getValue('dana_production_mode', 'global', '0');
-        $isProduction = ($danaMode == '1');
-        $envType = $isProduction ? 'production' : 'sandbox';
+        $settings = \App\Models\Api::pluck('value', 'key')->toArray();
+        $isProduction = ($settings['dana_production_mode'] ?? '0') == '1';
 
-        config([
-            'services.dana.dana_env'      => strtoupper($envType),
-            'services.dana.base_url'      => $isProduction ? 'https://api.saas.dana.id' : 'https://api.sandbox.dana.id',
-            'services.dana.merchant_id'   => Api::getValue("dana_{$envType}_merchant_id", $envType, env('DANA_MERCHANT_ID')),
-            'services.dana.client_id'     => Api::getValue("dana_{$envType}_client_id", $envType, env('DANA_X_PARTNER_ID')),
-            'services.dana.x_partner_id'  => Api::getValue("dana_{$envType}_client_id", $envType, env('DANA_X_PARTNER_ID')),
-            'services.dana.private_key'   => Api::getValue("dana_{$envType}_private_key", $envType, env('DANA_PRIVATE_KEY')),
-            'services.dana.public_key'    => Api::getValue("dana_{$envType}_public_key", $envType),
-            'services.dana.client_secret' => Api::getValue("dana_{$envType}_client_secret", $envType, env('DANA_CLIENT_SECRET')),
-        ]);
+        if ($isProduction) {
+            config([
+                'services.dana.dana_env'      => 'PRODUCTION',
+                'services.dana.base_url'      => 'https://api.saas.dana.id',
+                'services.dana.merchant_id'   => $settings['dana_prod_merchant_id'] ?? env('DANA_PROD_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.private_key'   => $settings['dana_prod_private_key'] ?? env('DANA_PROD_PRIVATE_KEY'),
+                'services.dana.client_secret' => $settings['dana_prod_client_secret'] ?? env('DANA_PROD_CLIENT_SECRET'),
+                'services.dana.origin'        => env('DANA_ORIGIN', 'https://tokosancaka.com'),
+            ]);
+        } else {
+            config([
+                'services.dana.dana_env'      => 'SANDBOX',
+                'services.dana.base_url'      => 'https://api.sandbox.dana.id',
+                'services.dana.merchant_id'   => $settings['dana_sandbox_merchant_id'] ?? env('DANA_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.private_key'   => $settings['dana_sandbox_private_key'] ?? env('DANA_PRIVATE_KEY'),
+                'services.dana.client_secret' => $settings['dana_sandbox_client_secret'] ?? env('DANA_CLIENT_SECRET'),
+                'services.dana.origin'        => env('DANA_ORIGIN', 'https://tokosancaka.com'),
+            ]);
+        }
     }
 }

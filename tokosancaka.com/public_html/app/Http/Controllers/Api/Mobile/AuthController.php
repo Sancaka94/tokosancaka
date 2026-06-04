@@ -250,16 +250,20 @@ class AuthController extends Controller
         return response()->json(['success' => true, 'message' => 'Kode verifikasi baru telah dikirim ke WA dan Email Anda.'], 200);
     }
 
-    // LOG LOG: Fungsi Verifikasi Token (Mobile)
+     // LOG LOG: Fungsi Verifikasi Token (Mobile)
     public function verifyToken(Request $request)
     {
         $request->validate([
-            'identifier' => 'required', // Ini adalah no_wa yang dikirim dari HP
+            'identifier' => 'required', // Ini bisa berupa no_wa, email, nama_lengkap, atau store_name
             'token' => 'required|string|size:6'
         ]);
 
-        // Cari user berdasarkan no_wa
-        $user = User::where('no_wa', $request->identifier)->first();
+        // Cari user berdasarkan no_wa, email, nama_lengkap, atau store_name
+        $user = User::where('no_wa', $request->identifier)
+                    ->orWhere('email', $request->identifier)
+                    ->orWhere('nama_lengkap', $request->identifier)
+                    ->orWhere('store_name', $request->identifier)
+                    ->first();
 
         if (!$user) {
             return response()->json([
@@ -268,8 +272,28 @@ class AuthController extends Controller
             ], 404);
         }
 
-        // Cek token (memastikan tidak sensitif terhadap huruf besar/kecil)
-        if ($user->setup_token && strtoupper($user->setup_token) === strtoupper($request->token)) {
+        // Loloskan otomatis jika setup_token sudah kosong (sudah disetujui manual oleh Admin)
+        if (empty($user->setup_token)) {
+            
+            // LOG LOG: Token Valid, Aktifkan User
+            $user->status = 'Aktif';
+            $user->save();
+
+            $authToken = $user->createToken('sancaka-mobile')->plainTextToken;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Verifikasi berhasil.',
+                'data' => [
+                    'token' => $authToken,
+                    'user' => $user,
+                    'is_profile_completed' => !empty($user->pin) ? true : false
+                ]
+            ], 200);
+        }
+
+        // Jalur normal jika setup_token masih ada
+        if (strtoupper($user->setup_token) === strtoupper($request->token)) {
 
             // LOG LOG: Token Valid, Aktifkan User
             $user->status = 'Aktif';
