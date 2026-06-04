@@ -56,12 +56,12 @@
         font-family: var(--font-family-sans-serif);
         color: var(--text-color);
     }
-    
+
     .navbar {
         background-color: var(--card-bg);
         box-shadow: var(--card-shadow);
     }
-    
+
     /* PERBAIKAN: Konten tidak tertutup header */
     .main-content-container {
         padding-top: 8rem; /* Disesuaikan agar ada ruang dari header */
@@ -261,7 +261,7 @@
             z-index: 1020;
         }
     }
-    
+
     /*
     ============================================
     PERBAIKAN DESAIN: Modal Cek Ongkir
@@ -334,7 +334,7 @@
 @include('layouts.partials.notifications')
 
 <div class="container main-content-container">
-    
+
     <!-- Stepper/Progres Indikator -->
     <div class="stepper">
         <div class="step active" id="step-indicator-1">
@@ -350,7 +350,7 @@
             <div class="step-text">Detail & Bayar</div>
         </div>
     </div>
-    
+
     <form id="orderForm" action="{{ route('pesanan.public.store') }}" method="POST">
         @csrf
         <div class="row g-4 g-lg-5">
@@ -450,7 +450,7 @@
                             <div class="col-md-6"><label for="item_price" class="form-label">Harga Barang</label><div class="input-group"><span class="input-group-text fw-bold">Rp</span><input type="number" name="item_price" id="item_price" class="form-control" placeholder="50000" required min="1"></div></div>
                             <div class="col-md-6"><label for="weight" class="form-label">Berat</label><div class="input-group"><span class="input-group-text"><i class="fas fa-weight-hanging"></i></span><input type="number" name="weight" id="weight" class="form-control" placeholder="1000" required min="1"><span class="input-group-text">gr</span></div></div>
                             <div class="col-12"><label class="form-label mb-2">Dimensi (Opsional)</label><div class="row g-2"><div class="col-4"><div class="input-group"><span class="input-group-text">P</span><input type="number" name="length" id="length" class="form-control" placeholder="cm"></div></div><div class="col-4"><div class="input-group"><span class="input-group-text">L</span><input type="number" name="width" id="width" class="form-control" placeholder="cm"></div></div><div class="col-4"><div class="input-group"><span class="input-group-text">T</span><input type="number" name="height" id="height" class="form-control" placeholder="cm"></div></div></div></div>
-                            
+
                             <div class="col-md-6">
   <label for="item_type" class="form-label">Jenis Barang</label>
   <select name="item_type" id="item_type" class="form-select" required>
@@ -555,7 +555,7 @@
             <div class="modal-body p-0">
                 <ul id="paymentOptionsList" class="list-group list-group-flush" style="cursor: pointer;">
 
-                    @auth
+
                     {{-- 1. OPSI INTERNAL: SALDO SANCAKA (Hanya jika Login) --}}
                     <li class="list-group-item bg-light fw-bold text-muted border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
                         Dompet Sancaka
@@ -678,14 +678,14 @@ $(document).ready(function () {
         $(`#${stepCardId} [required]`).each(function() {
             if ($(this).is(':visible') && !$(this).val()) {
                 isValid = false;
-                $(this).addClass('is-invalid'); 
+                $(this).addClass('is-invalid');
             } else {
                 $(this).removeClass('is-invalid');
             }
         });
         return isValid;
     }
-    
+
     $('form [required]').on('input', function() {
         if ($(this).val()) {
             $(this).removeClass('is-invalid');
@@ -711,7 +711,7 @@ $(document).ready(function () {
             Swal.fire('Data Tidak Lengkap', 'Harap isi semua informasi penerima yang wajib diisi.', 'warning');
         }
     });
-    
+
     // ============================================
     // LOGIKA INTI: Pencarian, Modal, Submit
     // ============================================
@@ -736,7 +736,7 @@ $(document).ready(function () {
     // Inisialisasi Modal
     const ongkirModal = new bootstrap.Modal(document.getElementById('ongkirModal'));
     const paymentModal = new bootstrap.Modal(document.getElementById('paymentMethodModal'));
-    
+
     // Helper
     let searchTimeout = null;
     const debounce = (func, delay) => (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
@@ -745,7 +745,7 @@ $(document).ready(function () {
     function maskData(type, value) { if (!value) return '***'; if (type === 'name') { const parts = value.split(' '); return parts.length > 1 ? parts[0] + ' ' + parts.slice(1).map(p => p.replace(/./g, '*')).join(' ') : (value.length > 2 ? value.substring(0, 2) + '***' : value); } if (type === 'phone') { const num = value.replace(/\D/g, ''); return num.length > 8 ? num.substring(0, 3) + '****' + num.substring(num.length - 4) : num.substring(0, 3) + '****'; } if (type === 'address') { const parts = value.split(' '); return parts.length > 2 ? parts.slice(0, 2).join(' ') + ' **** **** ****' : value; } return '***'; }
     // [PERBAIKAN] Pastikan lat/lng juga di-clear
     function clearHiddenAddress(prefix) { $(`#${prefix}_province, #${prefix}_regency, #${prefix}_district, #${prefix}_village, #${prefix}_postal_code, #${prefix}_district_id, #${prefix}_subdistrict_id, #${prefix}_lat, #${prefix}_lng`).val(''); }
-    
+
     // ✅✅✅ [FUNGSI DIPERBAIKI] Bug 2: Menyimpan Lat/Lng dari Kontak ✅✅✅
     function fillContactForm(prefix, data) {
         $(`#${prefix}_name`).val(maskData('name', data.nama)).trigger('blur').attr('data-real-value', data.nama);
@@ -754,14 +754,14 @@ $(document).ready(function () {
         $(`#${prefix}_id`).val(data.id);
         clearHiddenAddress(prefix);
         const addressSearchInput = $(`#${prefix}_address_search`);
-        
+
         if (data.village && data.district) {
             const addressQuery = `${data.village}, ${data.district}`;
             addressSearchInput.val(`Mencari: ${addressQuery}...`).prop('disabled', true).removeClass('is-invalid is-valid');
-            
+
             $.get("{{ route('api.address.search') }}", { search: addressQuery }).done(function(results) {
                 if (results && results.length > 0) {
-                    const item = results[0]; 
+                    const item = results[0];
                     const parts = item.full_address.split(',').map(s => s.trim());
                     $(`#${prefix}_village`).val(parts[0] || data.village).trigger('change');
                     $(`#${prefix}_district`).val(parts[1] || data.district).trigger('change');
@@ -770,7 +770,7 @@ $(document).ready(function () {
                     $(`#${prefix}_postal_code`).val(parts[4] || data.postal_code).trigger('change');
                     $(`#${prefix}_district_id`).val(item.district_id).trigger('change');
                     $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id).trigger('change');
-                    
+
                     // ✅ PERBAIKAN (Bug 2): Simpan Lat/Lng dari kontak
                     $(`#${prefix}_lat`).val(item.lat || '');
                     $(`#${prefix}_lng`).val(item.lon || ''); // API KiriminAja pakai 'lon'
@@ -855,7 +855,7 @@ $(document).ready(function () {
             s.removeClass('is-valid is-invalid');
             const q = s.val();
             if (q.length < 3) return r.addClass('d-none');
-            
+
             $.get("{{ route('api.address.search') }}", { search: q }).done(d => {
                 r.html('').removeClass('d-none');
                 if (d && d.length > 0) {
@@ -869,11 +869,11 @@ $(document).ready(function () {
                         $(`#${prefix}_postal_code`).val(p[4] || '').trigger('change');
                         $(`#${prefix}_district_id`).val(i.district_id).trigger('change');
                         $(`#${prefix}_subdistrict_id`).val(i.subdistrict_id).trigger('change');
-                        
+
                         // ✅ PERBAIKAN (Bug 1): Simpan Lat/Lng dari pencarian
                         $(`#${prefix}_lat`).val(i.lat || '');
                         $(`#${prefix}_lng`).val(i.lon || ''); // API KiriminAja pakai 'lon'
-                        
+
                         r.addClass('d-none');
                     })));
                 } else {
@@ -889,9 +889,9 @@ $(document).ready(function () {
     function runCekOngkir() {
         let formData = $('#orderForm').serializeArray();
         formData.forEach((item, index) => { let realVal = $(`#${item.name.replace(/\[/g, '\\[').replace(/\]/g, '\\]')}`).attr('data-real-value'); if (realVal) formData[index].value = realVal; });
-        
+
         let tempForm = $('<form>').append($.map(formData, item => $('<input>').attr({type: 'hidden', name: item.name, value: item.value})));
-        
+
         // ✅ PERBAIKAN (Bug 1): Pastikan Lat/Lng terkirim
         tempForm.append($('<input>').attr({type: 'hidden', name: 'sender_lat', value: $('#sender_lat').val()}));
         tempForm.append($('<input>').attr({type: 'hidden', name: 'sender_lng', value: $('#sender_lng').val()}));
@@ -933,16 +933,16 @@ $(document).ready(function () {
                         if (providerNameForLogo === 'grab_express') {
                             providerNameForLogo = 'grab'; // Ganti untuk nama file logo
                         }
-                        
+
                         return provider.costs.map(cost => ({
-                            ...cost, 
+                            ...cost,
                             service: providerNameForLogo, // Untuk LOGO ('gosend' atau 'grab')
                             service_name: `${provider.name.toUpperCase()}`, // Untuk TAMPILAN
-                            service_type_label: `${cost.service_type}`, 
-                            cost: cost.price.total_price, 
-                            price: cost.price, 
-                            etd: cost.estimation || '-', 
-                            setting: cost.setting || {}, 
+                            service_type_label: `${cost.service_type}`,
+                            cost: cost.price.total_price,
+                            price: cost.price,
+                            etd: cost.estimation || '-',
+                            setting: cost.setting || {},
                             insurance: cost.price.insurance_fee || 0,
                             cod: cost.cod_available ?? false,
                             is_instant: true // ✅ PERBAIKAN (Bug 3): Flag untuk ETD
@@ -963,7 +963,7 @@ $(document).ready(function () {
                      $('#ongkirResultsContainer').html(`<div class="alert alert-warning text-center">Tidak ada layanan yang tersedia untuk filter ini.</div>`);
                      return;
                 }
-                
+
                 // Hapus header, sesuai desain
                 const headerHtml = `<div class="ongkir-header-row d-none d-lg-flex"><div class="ongkir-item-col col-service">Layanan</div><div class="ongkir-item-col col-etd">Estimasi</div><div class="ongkir-item-col col-cod">COD</div><div class="ongkir-item-col col-pickup">Opsi Penjemputan</div><div class="ongkir-item-col col-discount">Diskon</div><div class="ongkir-item-col col-price">Tarif</div><div class="ongkir-item-col col-action"></div></div>`;
                 b.append(headerHtml);
@@ -981,7 +981,7 @@ $(document).ready(function () {
                     } else if (logoName) {
                         logoUrl = `{{ asset('public/storage/logo-ekspedisi/') }}/${logoName}.png`;
                     }
-                    
+
                     const safeService = (i.service || '').toString().replace(/-/g, ' ');
                     const safeServiceTypeLabel = (i.service_type_label || '').toString().replace(/-/g, ' ');
                     const useInsurance = $('#ansuransi').val() === 'iya';
@@ -989,10 +989,10 @@ $(document).ready(function () {
                     // [PERBAIKAN] Pastikan 'setting' ada
                     const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
                     const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${codFee}`;
-                    
+
                     const hasDiscount = i.price?.base_price && i.price.base_price > i.cost;
                     const basePriceFmt = hasDiscount ? formatRupiah(i.price.base_price) : '';
-                    
+
                     const insuranceFee = i.insurance || 0;
                     let feeDetailsHtml = '';
                     if (useInsurance && insuranceFee > 0) { feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFee)}</small></div>`; }
@@ -1010,7 +1010,7 @@ $(document).ready(function () {
                     }
 
                     const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}">Kirim Paket</button>`;
-                    
+
                     // Gunakan variabel logoUrl dan etdHtml yang baru
                     const itemHtml = `
                     <div class="ongkir-item-card">
@@ -1089,9 +1089,9 @@ $(document).ready(function () {
 
     function loadTripayChannels() {
         if (isPaymentApiLoaded) return;
-        
+
         const container = $('#dynamicPaymentChannels');
-        
+
         // Panggil endpoint backend kamu (Tripay channels)
         // Controller ini harus mengirim JSON dengan menyesuaikan Sandbox / Production dari DB
         $.ajax({
@@ -1100,15 +1100,15 @@ $(document).ready(function () {
             success: function(res) {
                 if (res.success && res.data && res.data.length > 0) {
                     container.empty(); // Bersihkan spinner
-                    
+
                     res.data.forEach(ch => {
                         if (ch.active) {
                             const li = $(`
-                                <li class="list-group-item list-group-item-action d-flex align-items-center" 
-                                    data-value="${ch.code}" 
+                                <li class="list-group-item list-group-item-action d-flex align-items-center"
+                                    data-value="${ch.code}"
                                     data-label="${ch.name}">
-                                    <img src="${ch.icon_url}" class="me-3 border rounded p-1 bg-white" 
-                                         style="width: 40px; height: 40px; object-fit: contain;" 
+                                    <img src="${ch.icon_url}" class="me-3 border rounded p-1 bg-white"
+                                         style="width: 40px; height: 40px; object-fit: contain;"
                                          onerror="this.src='https://placehold.co/40x40?text=IMG'">
                                     <div>
                                         <div class="fw-bold text-dark" style="font-size: 0.95rem;">${ch.name}</div>
@@ -1148,13 +1148,13 @@ $(document).ready(function () {
 
         $('#payment_method').val(value);
         $('#selectedPaymentName').text(label);
-        
+
         $('#defaultPaymentIcon').addClass('d-none');
         $('#selectedPaymentLogo').attr('src', imgSrc).removeClass('d-none');
 
         // Reset visual aktif dari semua list item
         $('#paymentOptionsList .list-group-item-action').removeClass('active');
-        
+
         // Aktifkan visual untuk item yang diklik (menggunakan kelas active Bootstrap)
         $(this).addClass('active');
 
