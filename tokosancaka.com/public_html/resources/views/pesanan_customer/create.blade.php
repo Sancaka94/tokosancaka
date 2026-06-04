@@ -1164,19 +1164,14 @@
         // 1. Ambil harga barang (jika kosong, nilainya 0)
         let itemPrice = parseInt($('#item_price').val()) || 0;
 
-        // 2. Ambil ongkir paksa dari value expedition (Format: regular-Tiki-REG-9500-0-0)
-        let expVal = $('#expedition').val();
-        let shippingCost = 0;
-        if (expVal) {
-            let parts = expVal.split('-');
-            shippingCost = parseInt(parts[3]) || 0; // Array ke-3 pasti berisi angka ongkir murni
-        }
+        // 2. Ambil ongkir langsung dari input hidden yang terpercaya (bukan hasil split)
+        let shippingCost = parseInt($('#selected_shipping_cost').val()) || 0;
 
-        // 3. Hitung total keseluruhan
-        let totalTransaksi = itemPrice + shippingCost;
+        // 3. Hitung total keseluruhan murni (Hanya Ongkir. Jika ingin termasuk harga barang, hapus komentar di atas)
+        let totalTransaksi = shippingCost; // <-- Sesuai permintaan Anda: HANYA berdasarkan Ongkir
 
         // 4. KUNCI JIKA TOTAL DI BAWAH 10.000
-        if (totalTransaksi < 10000) {
+        if (totalTransaksi < 10000 && totalTransaksi > 0) { // Pastikan > 0 supaya tidak terkunci saat awal buka form
             // Matikan tombol dengan CSS paksa
             $('.gateway-option')
                 .addClass('disabled')
@@ -1187,7 +1182,7 @@
                 });
 
             // Munculkan pesan peringatan merah
-            let alertMsg = `<i class="fas fa-exclamation-triangle me-1"></i> Total Bayar (Rp ${totalTransaksi.toLocaleString('id-ID')}) di bawah minimum Rp 10.000. Payment Gateway dimatikan.`;
+            let alertMsg = `<i class="fas fa-exclamation-triangle me-1"></i> Total Ongkir (Rp ${totalTransaksi.toLocaleString('id-ID')}) di bawah minimum Rp 10.000. Payment Gateway dimatikan.`;
             if ($('#min-tx-alert').length === 0) {
                 $('#paymentOptionsList').prepend(`<li id="min-tx-alert" class="list-group-item list-group-item-danger text-center small fw-bold p-2 mb-2 rounded border border-danger">${alertMsg}</li>`);
             } else {
