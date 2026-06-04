@@ -3,837 +3,547 @@
 @section('title', 'Konfigurasi API')
 
 @section('content')
-{{-- Tambahkan Style untuk mencegah flicker (kedip) saat loading --}}
+{{-- Style Kustom Monokrom untuk Toggle Switch ala Next.js --}}
 <style>
     [x-cloak] { display: none !important; }
-    /* Toggle Switch Custom Style */
     .toggle-checkbox:checked {
-        border-color: #ef4444; /* Red-500 */
+        border-color: #18181b; /* zinc-900 */
     }
     .toggle-checkbox:checked + .toggle-label {
-        background-color: #ef4444; /* Red-500 */
+        background-color: #18181b; /* zinc-900 */
     }
     .toggle-checkbox:not(:checked) + .toggle-label {
-        background-color: #6366f1; /* Indigo-500 */
+        background-color: #e4e4e7; /* zinc-200 */
     }
 </style>
 
-<div class="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8" x-data="apiSettings" x-cloak>
-    <div class="max-w-5xl mx-auto">
+<div class="min-h-screen bg-zinc-50/50 py-8 px-4 sm:px-6 lg:px-8" x-data="apiSettings" x-cloak>
+    <div class="max-w-6xl mx-auto">
 
-        {{-- Header --}}
-        <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
-            <div>
-                <h2 class="text-3xl font-bold text-gray-900">
-                    <i class="fas fa-network-wired text-indigo-600 mr-2"></i> Konfigurasi API
-                </h2>
-                <p class="mt-2 text-sm text-gray-500">
-                    Kelola kredensial pihak ketiga. Data tersimpan terpisah antara <b>Sandbox/Development</b> dan <b>Production</b>.
-                </p>
-            </div>
+        {{-- Header Minimalis --}}
+        <div class="mb-8 pb-6 border-b border-zinc-200">
+            <h2 class="text-2xl font-bold tracking-tight text-zinc-900 flex items-center">
+                <i class="fas fa-sliders-h text-zinc-900 mr-3 text-xl"></i> Konfigurasi Integrasi API
+            </h2>
+            <p class="mt-1 text-sm text-zinc-500">
+                Kelola kredensial pihak ketiga secara dinamis. Data Sandbox dan Live/Production disimpan terpisah.
+            </p>
         </div>
 
-        {{-- Alert Messages --}}
+        {{-- Alert Messages Monokrom --}}
         @if(session('success'))
-            <div class="mb-6 p-4 rounded-lg bg-green-50 border-l-4 border-green-400 flex items-center shadow-sm">
-                <i class="fas fa-check-circle text-green-500 mr-3 text-xl"></i>
-                <p class="text-green-800 font-medium">{{ session('success') }}</p>
+            <div class="mb-6 p-4 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center shadow-sm">
+                <i class="fas fa-check text-white mr-3 text-sm"></i>
+                <p class="text-white text-sm font-medium">{!! session('success') !!}</p>
             </div>
         @endif
 
         @if(session('error'))
-            <div class="mb-6 p-4 rounded-lg bg-red-50 border-l-4 border-red-400 flex items-center shadow-sm">
-                <i class="fas fa-exclamation-circle text-red-500 mr-3 text-xl"></i>
-                <p class="text-red-800 font-medium">{{ session('error') }}</p>
+            <div class="mb-6 p-4 rounded-lg bg-white border border-zinc-200 flex items-center shadow-sm">
+                <i class="fas fa-times text-zinc-900 mr-3 text-sm"></i>
+                <p class="text-zinc-900 text-sm font-medium">{{ session('error') }}</p>
             </div>
         @endif
 
-        {{-- Tabs Navigation --}}
-        <div class="bg-white shadow-sm rounded-t-xl border-b border-gray-200 overflow-x-auto">
-            <div class="flex">
-                <button @click="activeTab = 'kiriminaja'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'kiriminaja', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'kiriminaja' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
-                    <i class="fas fa-shipping-fast mr-2"></i> KiriminAja
+        {{-- Navigasi Tab Sleek Monokrom --}}
+        <div class="mb-8 border-b border-zinc-200 overflow-x-auto scrollbar-none">
+            <div class="flex space-x-1">
+                <button @click="activeTab = 'kiriminaja'" :class="{ 'border-zinc-900 text-zinc-900 font-semibold border-b-2': activeTab === 'kiriminaja', 'text-zinc-400 hover:text-zinc-900': activeTab !== 'kiriminaja' }" class="px-4 py-3 text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    KiriminAja
                 </button>
-                <button @click="activeTab = 'tripay'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'tripay', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'tripay' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
-                    <i class="fas fa-wallet mr-2"></i> Tripay
+                <button @click="activeTab = 'tripay'" :class="{ 'border-zinc-900 text-zinc-900 font-semibold border-b-2': activeTab === 'tripay', 'text-zinc-400 hover:text-zinc-900': activeTab !== 'tripay' }" class="px-4 py-3 text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    Tripay
                 </button>
-                <button @click="activeTab = 'doku'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'doku', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'doku' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
-                    <i class="fas fa-credit-card mr-2"></i> DOKU
+                <button @click="activeTab = 'doku'" :class="{ 'border-zinc-900 text-zinc-900 font-semibold border-b-2': activeTab === 'doku', 'text-zinc-400 hover:text-zinc-900': activeTab !== 'doku' }" class="px-4 py-3 text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    DOKU
                 </button>
-                <button @click="activeTab = 'iak'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'iak', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'iak' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
-                    <i class="fas fa-mobile-alt mr-2"></i> IAK PPOB
+                <button @click="activeTab = 'iak'" :class="{ 'border-zinc-900 text-zinc-900 font-semibold border-b-2': activeTab === 'iak', 'text-zinc-400 hover:text-zinc-900': activeTab !== 'iak' }" class="px-4 py-3 text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    IAK PPOB
                 </button>
-
-                {{-- TAMBAHAN TAB DARMAWISATA --}}
-                <button @click="activeTab = 'dharmawisata'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'dharmawisata', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'dharmawisata' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
-                    <i class="fas fa-plane-departure mr-2"></i> Darmawisata
+                <button @click="activeTab = 'dharmawisata'" :class="{ 'border-zinc-900 text-zinc-900 font-semibold border-b-2': activeTab === 'dharmawisata', 'text-zinc-400 hover:text-zinc-900': activeTab !== 'dharmawisata' }" class="px-4 py-3 text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    Darmawisata
                 </button>
-
-                <button @click="activeTab = 'fonnte'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'fonnte', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'fonnte' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
-                    <i class="fab fa-whatsapp mr-2"></i> Fonnte
+                <button @click="activeTab = 'fonnte'" :class="{ 'border-zinc-900 text-zinc-900 font-semibold border-b-2': activeTab === 'fonnte', 'text-zinc-400 hover:text-zinc-900': activeTab !== 'fonnte' }" class="px-4 py-3 text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    Fonnte
                 </button>
-
-                {{-- TAMBAHAN TAB DANA --}}
-                <button @click="activeTab = 'dana'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'dana', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'dana' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
-                    <i class="fas fa-wallet mr-2"></i> DANA
+                <button @click="activeTab = 'dana'" :class="{ 'border-zinc-900 text-zinc-900 font-semibold border-b-2': activeTab === 'dana', 'text-zinc-400 hover:text-zinc-900': activeTab !== 'dana' }" class="px-4 py-3 text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    DANA
                 </button>
-
-                {{-- TAMBAHAN TAB MIDTRANS --}}
-                <button @click="activeTab = 'midtrans'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'midtrans', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'midtrans' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
-                    <i class="fas fa-credit-card mr-2"></i> Midtrans
+                <button @click="activeTab = 'midtrans'" :class="{ 'border-zinc-900 text-zinc-900 font-semibold border-b-2': activeTab === 'midtrans', 'text-zinc-400 hover:text-zinc-900': activeTab !== 'midtrans' }" class="px-4 py-3 text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    Midtrans
                 </button>
-
-                {{-- TAMBAHAN TAB LALAMOVE --}}
-                <button @click="activeTab = 'lalamove'" :class="{ 'bg-indigo-50 text-indigo-700 border-b-2 border-indigo-600': activeTab === 'lalamove', 'text-gray-500 hover:text-gray-700 hover:bg-gray-50': activeTab !== 'lalamove' }" class="px-6 py-4 font-medium text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
-                    <i class="fas fa-truck mr-2"></i> Lalamove
+                <button @click="activeTab = 'lalamove'" :class="{ 'border-zinc-900 text-zinc-900 font-semibold border-b-2': activeTab === 'lalamove', 'text-zinc-400 hover:text-zinc-900': activeTab !== 'lalamove' }" class="px-4 py-3 text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    Lalamove
                 </button>
-
+                <button @click="activeTab = 'paypal'" :class="{ 'border-zinc-900 text-zinc-900 font-semibold border-b-2': activeTab === 'paypal', 'text-zinc-400 hover:text-zinc-900': activeTab !== 'paypal' }" class="px-4 py-3 text-sm focus:outline-none transition-all whitespace-nowrap flex items-center">
+                    PayPal
+                </button>
             </div>
         </div>
 
-        {{-- Content Area --}}
-        <div class="bg-white shadow-xl rounded-b-xl border border-gray-100 p-6 sm:p-8">
+        {{-- Area Konten Split View (Kiri: Judul & Info, Kanan: Form Box) --}}
+        <div class="py-4">
 
             {{-- 1. TAB KIRIMINAJA --}}
-            <div x-show="activeTab === 'kiriminaja'" x-transition.opacity>
-                <!-- ... (Kode KiriminAja Anda tetap tidak diubah) ... -->
-                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+            <div x-show="activeTab === 'kiriminaja'" x-transition.opacity class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <div class="space-y-4">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900">KiriminAja Configuration</h3>
-                        <p class="text-xs text-gray-500 mt-1">Status Aktif:
-                            <span class="px-2 py-0.5 rounded text-xs font-bold transition-colors duration-300"
-                                  :class="kaData.mode === 'production' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'"
-                                  x-text="kaData.mode === 'production' ? 'PRODUCTION (LIVE)' : 'STAGING (TEST)'">
-                            </span>
-                        </p>
+                        <h3 class="text-lg font-bold text-zinc-900">KiriminAja Logistics</h3>
+                        <p class="text-xs text-zinc-500 mt-1">Konfigurasi token kurir pengiriman Sancaka Express.</p>
                     </div>
-
-                    {{-- Toggle Switch KiriminAja --}}
-                    <div class="flex items-center">
-                        <span class="mr-3 text-sm font-medium" :class="kaData.mode === 'staging' ? 'text-indigo-600 font-bold' : 'text-gray-500'">SANDBOX</span>
-
-                        <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" name="kiriminaja_mode_toggle" id="ka_toggle"
-                                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
-                                   :class="{'translate-x-full border-red-500': kaData.mode === 'production', 'border-indigo-500': kaData.mode === 'staging'}"
-                                   @click="kaData.mode = (kaData.mode === 'production' ? 'staging' : 'production')"
-                                   :checked="kaData.mode === 'production'"/>
-                            <label for="ka_toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
-                                   :class="{'bg-red-500': kaData.mode === 'production', 'bg-indigo-500': kaData.mode === 'staging'}"></label>
+                    <div class="flex items-center space-x-2 pt-2">
+                        <span class="text-xs font-medium" :class="kaData.mode === 'staging' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">SANDBOX</span>
+                        <div class="relative inline-block w-10 align-middle select-none transition duration-200">
+                            <input type="checkbox" id="ka_toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': kaData.mode === 'production', 'border-zinc-300': kaData.mode === 'staging'}" @click="kaData.mode = (kaData.mode === 'production' ? 'staging' : 'production')" :checked="kaData.mode === 'production'"/>
+                            <label for="ka_toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
                         </div>
-
-                        <span class="ml-1 text-sm font-medium" :class="kaData.mode === 'production' ? 'text-red-600 font-bold' : 'text-gray-500'">PRODUCTION</span>
+                        <span class="text-xs font-medium" :class="kaData.mode === 'production' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">PRODUCTION</span>
+                    </div>
+                    <div class="p-3 rounded-md border border-zinc-200 bg-zinc-50/50 text-xs text-zinc-600">
+                        <i class="fas fa-info-circle mr-1"></i> <span x-text="kaData.mode === 'production' ? 'Mode Produksi Aktif. Transaksi nyata memotong saldo asli.' : 'Mode Sandbox Aktif. Aman untuk pengetesan.'"></span>
                     </div>
                 </div>
-
-                <form action="{{ route('admin.settings.api.update') }}" method="POST">
-                    @csrf @method('PUT')
-                    <input type="hidden" name="type" value="kiriminaja">
-                    <input type="hidden" name="kiriminaja_mode" x-model="kaData.mode">
-
-                    <div class="space-y-6">
-                        {{-- Visual Warning --}}
-                        <div class="p-4 rounded-lg border flex items-start"
-                             :class="kaData.mode === 'production' ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'">
-                            <div class="flex-shrink-0 mt-0.5">
-                                <i class="fas" :class="kaData.mode === 'production' ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle text-indigo-500'"></i>
-                            </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium" :class="kaData.mode === 'production' ? 'text-red-800' : 'text-indigo-800'" x-text="kaData.mode === 'production' ? 'Mode Produksi Aktif' : 'Mode Sandbox Aktif'"></h3>
-                                <div class="mt-1 text-sm" :class="kaData.mode === 'production' ? 'text-red-700' : 'text-indigo-700'">
-                                    <p x-text="kaData.mode === 'production' ? 'Hati-hati! Transaksi bersifat nyata dan akan memotong saldo atau biaya asli.' : 'Aman untuk testing. Transaksi hanya simulasi dan tidak memotong biaya.'"></p>
-                                </div>
-                            </div>
+                <div class="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="space-y-4">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="kiriminaja">
+                        <input type="hidden" name="kiriminaja_mode" x-model="kaData.mode">
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">API Token</label>
+                            <input type="text" name="kiriminaja_token" x-model="kaData[kaData.mode].token" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs font-mono p-2.5 border" required>
                         </div>
-
-                        <div x-show="kaData.mode" x-transition.opacity>
-                            <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700">API Token (<span x-text="kaData.mode.toUpperCase()"></span>)</label>
-                                <input type="text" name="kiriminaja_token"
-                                       x-model="kaData[kaData.mode].token"
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3 border font-mono text-xs transition-all duration-300"
-                                       placeholder="Masukkan Token..." required>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Base URL (<span x-text="kaData.mode.toUpperCase()"></span>)</label>
-                                <input type="url" name="kiriminaja_base_url"
-                                       x-model="kaData[kaData.mode].base_url"
-                                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3 border transition-all duration-300"
-                                       placeholder="Biarkan kosong untuk auto-generate">
-                            </div>
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Base URL Override</label>
+                            <input type="url" name="kiriminaja_base_url" x-model="kaData[kaData.mode].base_url" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border" placeholder="Kosongkan untuk auto-generate default">
                         </div>
-                    </div>
-
-                    <div class="mt-6 flex justify-end">
-                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors flex items-center">
-                            <i class="fas fa-save mr-2"></i> Simpan KiriminAja
-                        </button>
-                    </div>
-                </form>
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded-md hover:bg-black text-xs font-medium transition-colors shadow-sm">Simpan KiriminAja</button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             {{-- 2. TAB TRIPAY --}}
-            <div x-show="activeTab === 'tripay'" style="display: none;">
-                <!-- ... (Kode Tripay Anda tetap tidak diubah) ... -->
-                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+            <div x-show="activeTab === 'tripay'" x-transition.opacity class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start" style="display: none;">
+                <div class="space-y-4">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900">Tripay Payment</h3>
-                        <p class="text-xs text-gray-500 mt-1">Status: <span x-text="tpData.mode.toUpperCase()" class="font-bold"></span></p>
+                        <h3 class="text-lg font-bold text-zinc-900">Tripay Payment</h3>
+                        <p class="text-xs text-zinc-500 mt-1">Konfigurasi Virtual Account & Retail Payment Tripay.</p>
                     </div>
-
-                    {{-- Toggle Switch Tripay --}}
-                    <div class="flex items-center">
-                        <span class="mr-3 text-sm font-medium" :class="tpData.mode === 'sandbox' ? 'text-indigo-600 font-bold' : 'text-gray-500'">SANDBOX</span>
-
-                        <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" id="tp_toggle"
-                                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
-                                   :class="{'translate-x-full border-red-500': tpData.mode === 'production', 'border-indigo-500': tpData.mode === 'sandbox'}"
-                                   @click="tpData.mode = (tpData.mode === 'production' ? 'sandbox' : 'production')"
-                                   :checked="tpData.mode === 'production'"/>
-                            <label for="tp_toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
-                                   :class="{'bg-red-500': tpData.mode === 'production', 'bg-indigo-500': tpData.mode === 'sandbox'}"></label>
+                    <div class="flex items-center space-x-2 pt-2">
+                        <span class="text-xs font-medium" :class="tpData.mode === 'sandbox' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">SANDBOX</span>
+                        <div class="relative inline-block w-10 align-middle select-none transition duration-200">
+                            <input type="checkbox" id="tp_toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': tpData.mode === 'production', 'border-zinc-300': tpData.mode === 'sandbox'}" @click="tpData.mode = (tpData.mode === 'production' ? 'sandbox' : 'production')" :checked="tpData.mode === 'production'"/>
+                            <label for="tp_toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
                         </div>
-
-                        <span class="ml-1 text-sm font-medium" :class="tpData.mode === 'production' ? 'text-red-600 font-bold' : 'text-gray-500'">PRODUCTION</span>
+                        <span class="text-xs font-medium" :class="tpData.mode === 'production' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">PRODUCTION</span>
                     </div>
                 </div>
-
-                <form action="{{ route('admin.settings.api.update') }}" method="POST">
-                    @csrf @method('PUT')
-                    <input type="hidden" name="type" value="tripay">
-                    <input type="hidden" name="tripay_mode" x-model="tpData.mode">
-
-                    <div class="space-y-6">
-                        {{-- Visual Warning --}}
-                        <div class="p-4 rounded-lg border flex items-start"
-                             :class="tpData.mode === 'production' ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'">
-                            <div class="flex-shrink-0 mt-0.5">
-                                <i class="fas" :class="tpData.mode === 'production' ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle text-indigo-500'"></i>
-                            </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium" :class="tpData.mode === 'production' ? 'text-red-800' : 'text-indigo-800'" x-text="tpData.mode === 'production' ? 'Mode Produksi Aktif' : 'Mode Sandbox Aktif'"></h3>
-                            </div>
-                        </div>
-
-                        <div x-show="tpData.mode" x-transition.opacity>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Merchant Code</label>
-                                    <input type="text" name="tripay_merchant_code" x-model="tpData[tpData.mode].merchant_code" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">API Key</label>
-                                    <input type="text" name="tripay_api_key" x-model="tpData[tpData.mode].api_key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
-                                </div>
-                            </div>
-
+                <div class="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="space-y-4">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="tripay">
+                        <input type="hidden" name="tripay_mode" x-model="tpData.mode">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Private Key</label>
-                                <input type="text" name="tripay_private_key" x-model="tpData[tpData.mode].private_key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Merchant Code</label>
+                                <input type="text" name="tripay_merchant_code" x-model="tpData[tpData.mode].merchant_code" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">API Key</label>
+                                <input type="text" name="tripay_api_key" x-model="tpData[tpData.mode].api_key" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
                             </div>
                         </div>
-                    </div>
-
-                    <div class="mt-6 flex justify-end">
-                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors">
-                            Simpan Tripay
-                        </button>
-                    </div>
-                </form>
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Private Key</label>
+                            <input type="text" name="tripay_private_key" x-model="tpData[tpData.mode].private_key" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs font-mono p-2.5 border">
+                        </div>
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded-md hover:bg-black text-xs font-medium transition-colors shadow-sm">Simpan Tripay</button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             {{-- 3. TAB DOKU --}}
-            <div x-show="activeTab === 'doku'" style="display: none;">
-                 <!-- ... (Kode DOKU Anda tetap tidak diubah) ... -->
-                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+            <div x-show="activeTab === 'doku'" x-transition.opacity class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start" style="display: none;">
+                <div class="space-y-4">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900">DOKU Payment</h3>
-                        <p class="text-xs text-gray-500 mt-1">Status: <span x-text="dokuData.env.toUpperCase()" class="font-bold"></span></p>
+                        <h3 class="text-lg font-bold text-zinc-900">DOKU Payment</h3>
+                        <p class="text-xs text-zinc-500 mt-1">Konfigurasi Kredensial Payment Gateway DOKU Direct API.</p>
                     </div>
-
-                    {{-- Toggle Switch DOKU --}}
-                    <div class="flex items-center">
-                        <span class="mr-3 text-sm font-medium" :class="dokuData.env === 'sandbox' ? 'text-indigo-600 font-bold' : 'text-gray-500'">SANDBOX</span>
-
-                        <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" id="doku_toggle"
-                                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
-                                   :class="{'translate-x-full border-red-500': dokuData.env === 'production', 'border-indigo-500': dokuData.env === 'sandbox'}"
-                                   @click="dokuData.env = (dokuData.env === 'production' ? 'sandbox' : 'production')"
-                                   :checked="dokuData.env === 'production'"/>
-                            <label for="doku_toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
-                                   :class="{'bg-red-500': dokuData.env === 'production', 'bg-indigo-500': dokuData.env === 'sandbox'}"></label>
+                    <div class="flex items-center space-x-2 pt-2">
+                        <span class="text-xs font-medium" :class="dokuData.env === 'sandbox' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">SANDBOX</span>
+                        <div class="relative inline-block w-10 align-middle select-none transition duration-200">
+                            <input type="checkbox" id="doku_toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': dokuData.env === 'production', 'border-zinc-300': dokuData.env === 'sandbox'}" @click="dokuData.env = (dokuData.env === 'production' ? 'sandbox' : 'production')" :checked="dokuData.env === 'production'"/>
+                            <label for="doku_toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
                         </div>
-
-                        <span class="ml-1 text-sm font-medium" :class="dokuData.env === 'production' ? 'text-red-600 font-bold' : 'text-gray-500'">PRODUCTION</span>
+                        <span class="text-xs font-medium" :class="dokuData.env === 'production' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">PRODUCTION</span>
                     </div>
                 </div>
-
-                <form action="{{ route('admin.settings.api.update') }}" method="POST">
-                    @csrf @method('PUT')
-                    <input type="hidden" name="type" value="doku">
-                    <input type="hidden" name="doku_env" x-model="dokuData.env">
-
-                    <div class="space-y-6">
-                        {{-- Visual Warning --}}
-                        <div class="p-4 rounded-lg border flex items-start"
-                             :class="dokuData.env === 'production' ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'">
-                            <div class="flex-shrink-0 mt-0.5">
-                                <i class="fas" :class="dokuData.env === 'production' ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle text-indigo-500'"></i>
-                            </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium" :class="dokuData.env === 'production' ? 'text-red-800' : 'text-indigo-800'" x-text="dokuData.env === 'production' ? 'Mode Produksi Aktif' : 'Mode Sandbox Aktif'"></h3>
-                            </div>
-                        </div>
-
-                        <div x-show="dokuData.env" x-transition.opacity>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Client ID</label>
-                                    <input type="text" name="doku_client_id" x-model="dokuData[dokuData.env].client_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Secret Key</label>
-                                    <input type="text" name="doku_secret_key" x-model="dokuData[dokuData.env].secret_key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
-                                </div>
-                            </div>
-
-                            <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700">DOKU Public Key</label>
-                                <textarea name="doku_public_key" x-model="dokuData[dokuData.env].public_key" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 font-mono text-xs"></textarea>
-                            </div>
-
+                <div class="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="space-y-4">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="doku">
+                        <input type="hidden" name="doku_env" x-model="dokuData.env">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Merchant Private Key</label>
-                                <textarea name="merchant_private_key" x-model="dokuData[dokuData.env].merchant_private_key" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 font-mono text-xs"></textarea>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Client ID</label>
+                                <input type="text" name="doku_client_id" x-model="dokuData[dokuData.env].client_id" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Secret Key</label>
+                                <input type="text" name="doku_secret_key" x-model="dokuData[dokuData.env].secret_key" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
                             </div>
                         </div>
-                    </div>
-
-                    <div class="mt-8 border-t border-gray-100 pt-6">
-                        <h4 class="text-sm font-bold text-gray-800 uppercase tracking-wide mb-4">
-                            <i class="fas fa-university mr-2 text-indigo-500"></i> Akun Utama (Master Account)
-                        </h4>
-
-                        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4 rounded-r-lg">
-                            <div class="flex">
-                                <div class="flex-shrink-0">
-                                    <i class="fas fa-info-circle text-blue-500"></i>
-                                </div>
-                                <div class="ml-3">
-                                    <p class="text-sm text-blue-700">
-                                        ID ini diperlukan untuk fitur <b>Pencairan Saldo Utama</b> ke Dompet Seller. Pastikan ID ini adalah <b>Sub Account ID</b> milik akun pusat Sancaka Express.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">DOKU Main SAC ID</label>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">DOKU Public Key</label>
+                            <textarea name="doku_public_key" x-model="dokuData[dokuData.env].public_key" rows="2" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs font-mono p-2 border"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Merchant Private Key</label>
+                            <textarea name="merchant_private_key" x-model="dokuData[dokuData.env].merchant_private_key" rows="2" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs font-mono p-2 border"></textarea>
+                        </div>
+                        <div class="border-t border-zinc-100 pt-4 mt-2">
+                            <label class="block text-xs font-bold text-zinc-800 uppercase tracking-wider mb-1">DOKU Main SAC ID</label>
                             <div class="mt-1 relative rounded-md shadow-sm">
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <span class="text-gray-500 sm:text-sm">SAC-</span>
+                                    <span class="text-zinc-400 text-xs font-mono">SAC-</span>
                                 </div>
-                                <input type="text"
-                                    name="doku_main_sac_id"
-                                    x-model="dokuData.sac_id"
-                                    class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-12 sm:text-sm border-gray-300 rounded-md border p-2"
-                                    placeholder="Contoh: 0000-0000000000001">
+                                <input type="text" name="doku_main_sac_id" x-model="dokuData.sac_id" class="focus:ring-zinc-900 focus:border-zinc-900 block w-full pl-12 text-xs border-zinc-200 rounded-md p-2.5 border" placeholder="0000-0000000000001">
                             </div>
-                            <p class="mt-1 text-xs text-gray-500">Format biasanya diawali dengan SAC-XXXX-XXXXX.</p>
                         </div>
-                    </div>
-
-                    <div class="mt-6 flex justify-end">
-                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors">
-                            Simpan DOKU
-                        </button>
-                    </div>
-                </form>
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded-md hover:bg-black text-xs font-medium transition-colors shadow-sm">Simpan DOKU</button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             {{-- 4. TAB IAK (PPOB) --}}
-            <div x-show="activeTab === 'iak'" style="display: none;">
-                 <!-- ... (Kode IAK Anda tetap tidak diubah) ... -->
-                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+            <div x-show="activeTab === 'iak'" x-transition.opacity class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start" style="display: none;">
+                <div class="space-y-4">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900">IAK PPOB Configuration</h3>
-                        <p class="text-xs text-gray-500 mt-1">Status Aktif:
-                            <span class="px-2 py-0.5 rounded text-xs font-bold transition-colors duration-300"
-                                  :class="iakData.mode === 'production' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'"
-                                  x-text="iakData.mode === 'production' ? 'PRODUCTION (LIVE)' : 'DEVELOPMENT (TEST)'">
-                            </span>
-                        </p>
+                        <h3 class="text-lg font-bold text-zinc-900">IAK PPOB Gateway</h3>
+                        <p class="text-xs text-zinc-500 mt-1">Integrasi produk digital pulsa, kuota, dan tagihan (PPOB).</p>
                     </div>
-
-                    {{-- Toggle Switch IAK --}}
-                    <div class="flex items-center">
-                        <span class="mr-3 text-sm font-medium" :class="iakData.mode === 'development' ? 'text-indigo-600 font-bold' : 'text-gray-500'">DEVELOPMENT</span>
-
-                        <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" id="iak_toggle"
-                                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
-                                   :class="{'translate-x-full border-red-500': iakData.mode === 'production', 'border-indigo-500': iakData.mode === 'development'}"
-                                   @click="iakData.mode = (iakData.mode === 'production' ? 'development' : 'production')"
-                                   :checked="iakData.mode === 'production'"/>
-                            <label for="iak_toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
-                                   :class="{'bg-red-500': iakData.mode === 'production', 'bg-indigo-500': iakData.mode === 'development'}"></label>
+                    <div class="flex items-center space-x-2 pt-2">
+                        <span class="text-xs font-medium" :class="iakData.mode === 'development' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">DEVELOPMENT</span>
+                        <div class="relative inline-block w-10 align-middle select-none transition duration-200">
+                            <input type="checkbox" id="iak_toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': iakData.mode === 'production', 'border-zinc-300': iakData.mode === 'development'}" @click="iakData.mode = (iakData.mode === 'production' ? 'development' : 'production')" :checked="iakData.mode === 'production'"/>
+                            <label for="iak_toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
                         </div>
-
-                        <span class="ml-1 text-sm font-medium" :class="iakData.mode === 'production' ? 'text-red-600 font-bold' : 'text-gray-500'">PRODUCTION</span>
+                        <span class="text-xs font-medium" :class="iakData.mode === 'production' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">PRODUCTION</span>
                     </div>
                 </div>
-
-                <form action="{{ route('admin.settings.api.update') }}" method="POST">
-                    @csrf @method('PUT')
-                    <input type="hidden" name="type" value="iak">
-                    <input type="hidden" name="iak_mode" x-model="iakData.mode">
-
-                    <div class="space-y-6">
-                        {{-- Visual Warning --}}
-                        <div class="p-4 rounded-lg border flex items-start"
-                             :class="iakData.mode === 'production' ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'">
-                            <div class="flex-shrink-0 mt-0.5">
-                                <i class="fas" :class="iakData.mode === 'production' ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle text-indigo-500'"></i>
+                <div class="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="space-y-4">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="iak">
+                        <input type="hidden" name="iak_mode" x-model="iakData.mode">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">User HP Account</label>
+                                <input type="text" name="iak_user_hp" x-model="iakData[iakData.mode].user_hp" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
                             </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium" :class="iakData.mode === 'production' ? 'text-red-800' : 'text-indigo-800'" x-text="iakData.mode === 'production' ? 'Mode Produksi Aktif' : 'Mode Development Aktif'"></h3>
-                                <div class="mt-1 text-sm" :class="iakData.mode === 'production' ? 'text-red-700' : 'text-indigo-700'">
-                                    <p x-text="iakData.mode === 'production' ? 'Transaksi asli. Pastikan saldo deposit Anda mencukupi.' : 'Mode testing (Development). Transaksi tidak memotong saldo.'"></p>
-                                </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">API Key</label>
+                                <input type="text" name="iak_api_key" x-model="iakData[iakData.mode].api_key" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
                             </div>
                         </div>
-
-                        <div x-show="iakData.mode" x-transition.opacity>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">User HP (No. WhatsApp)</label>
-                                    <input type="text" name="iak_user_hp" x-model="iakData[iakData.mode].user_hp" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Contoh: 08123456789">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">API Key</label>
-                                    <input type="text" name="iak_api_key" x-model="iakData[iakData.mode].api_key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Masukkan API Key IAK">
-                                </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Prepaid Base URL</label>
+                                <input type="url" name="iak_prepaid_base_url" x-model="iakData[iakData.mode].prepaid_base_url" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
                             </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Prepaid Base URL</label>
-                                    <input type="url" name="iak_prepaid_base_url" x-model="iakData[iakData.mode].prepaid_base_url" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Biarkan kosong untuk otomatis (Default disediakan)">
-                                    <p class="text-xs text-gray-500 mt-1" x-text="iakData.mode === 'production' ? 'Default: https://prepaid.iak.id' : 'Default: https://prepaid.iak.dev'"></p>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Postpaid Base URL</label>
-                                    <input type="url" name="iak_postpaid_base_url" x-model="iakData[iakData.mode].postpaid_base_url" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Biarkan kosong untuk otomatis (Default disediakan)">
-                                    <p class="text-xs text-gray-500 mt-1" x-text="iakData.mode === 'production' ? 'Default: https://mobilepulsa.net' : 'Default: https://testpostpaid.mobilepulsa.net'"></p>
-                                </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Postpaid Base URL</label>
+                                <input type="url" name="iak_postpaid_base_url" x-model="iakData[iakData.mode].postpaid_base_url" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
                             </div>
                         </div>
-                    </div>
-
-                    <div class="mt-6 flex justify-end">
-                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors">
-                            Simpan IAK
-                        </button>
-                    </div>
-                </form>
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded-md hover:bg-black text-xs font-medium transition-colors shadow-sm">Simpan IAK</button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
-            {{-- 5. TAB DARMAWISATA (BARU) --}}
-            <div x-show="activeTab === 'dharmawisata'" style="display: none;">
-                 <!-- ... (Kode Darmawisata Anda tetap tidak diubah) ... -->
-                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+            {{-- 5. TAB DARMAWISATA --}}
+            <div x-show="activeTab === 'dharmawisata'" x-transition.opacity class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start" style="display: none;">
+                <div class="space-y-4">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900">Darmawisata H2H (Tiket Pesawat)</h3>
-                        <p class="text-xs text-gray-500 mt-1">Status Aktif:
-                            <span class="px-2 py-0.5 rounded text-xs font-bold transition-colors duration-300"
-                                  :class="dwData.mode === 'production' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'"
-                                  x-text="dwData.mode === 'production' ? 'PRODUCTION (LIVE)' : 'DEVELOPMENT (TEST)'">
-                            </span>
-                        </p>
+                        <h3 class="text-lg font-bold text-zinc-900">Darmawisata H2H</h3>
+                        <p class="text-xs text-zinc-500 mt-1">Konfigurasi core konektivitas API Tiket Pesawat Maskapai Penerbangan.</p>
                     </div>
-
-                    {{-- Toggle Switch Darmawisata --}}
-                    <div class="flex items-center">
-                        <span class="mr-3 text-sm font-medium" :class="dwData.mode === 'development' ? 'text-indigo-600 font-bold' : 'text-gray-500'">DEVELOPMENT</span>
-
-                        <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" id="dw_toggle"
-                                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
-                                   :class="{'translate-x-full border-red-500': dwData.mode === 'production', 'border-indigo-500': dwData.mode === 'development'}"
-                                   @click="dwData.mode = (dwData.mode === 'production' ? 'development' : 'production')"
-                                   :checked="dwData.mode === 'production'"/>
-                            <label for="dw_toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
-                                   :class="{'bg-red-500': dwData.mode === 'production', 'bg-indigo-500': dwData.mode === 'development'}"></label>
+                    <div class="flex items-center space-x-2 pt-2">
+                        <span class="text-xs font-medium" :class="dwData.mode === 'development' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">DEVELOPMENT</span>
+                        <div class="relative inline-block w-10 align-middle select-none transition duration-200">
+                            <input type="checkbox" id="dw_toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': dwData.mode === 'production', 'border-zinc-300': dwData.mode === 'development'}" @click="dwData.mode = (dwData.mode === 'production' ? 'development' : 'production')" :checked="dwData.mode === 'production'"/>
+                            <label for="dw_toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
                         </div>
-
-                        <span class="ml-1 text-sm font-medium" :class="dwData.mode === 'production' ? 'text-red-600 font-bold' : 'text-gray-500'">PRODUCTION</span>
+                        <span class="text-xs font-medium" :class="dwData.mode === 'production' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">PRODUCTION</span>
                     </div>
                 </div>
-
-                <form action="{{ route('admin.settings.api.update') }}" method="POST">
-                    @csrf @method('PUT')
-                    <input type="hidden" name="type" value="dharmawisata">
-                    <input type="hidden" name="dharmawisata_mode" x-model="dwData.mode">
-
-                    <div class="space-y-6">
-                        {{-- Visual Warning --}}
-                        <div class="p-4 rounded-lg border flex items-start"
-                             :class="dwData.mode === 'production' ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'">
-                            <div class="flex-shrink-0 mt-0.5">
-                                <i class="fas" :class="dwData.mode === 'production' ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle text-indigo-500'"></i>
+                <div class="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="space-y-4">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="dharmawisata">
+                        <input type="hidden" name="dharmawisata_mode" x-model="dwData.mode">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">User ID</label>
+                                <input type="text" name="dharmawisata_user_id" x-model="dwData[dwData.mode].user_id" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
                             </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium" :class="dwData.mode === 'production' ? 'text-red-800' : 'text-indigo-800'" x-text="dwData.mode === 'production' ? 'Mode Produksi Aktif' : 'Mode Development Aktif'"></h3>
-                                <div class="mt-1 text-sm" :class="dwData.mode === 'production' ? 'text-red-700' : 'text-indigo-700'">
-                                    <p x-text="dwData.mode === 'production' ? 'Transaksi asli! Issued tiket pesawat akan memotong saldo B2B Anda secara otomatis.' : 'Mode testing. Transaksi tidak memotong saldo akun H2H Anda.'"></p>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Access Token</label>
+                                <input type="text" name="dharmawisata_access_token" x-model="dwData[dwData.mode].access_token" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Base URL API</label>
+                            <input type="url" name="dharmawisata_base_url" x-model="dwData[dwData.mode].base_url" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                        </div>
+                        <div class="border-t border-zinc-100 pt-4 mt-2">
+                            <h4 class="text-xs font-bold text-zinc-800 uppercase tracking-wider mb-3">Auto-Reconnect Credentials</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Static Token</label>
+                                    <input type="text" name="dharmawisata_static_token" x-model="dwData[dwData.mode].static_token" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Password / Security Code</label>
+                                    <input type="text" name="dharmawisata_password" x-model="dwData[dwData.mode].password" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
                                 </div>
                             </div>
                         </div>
-
-                        <div x-show="dwData.mode" x-transition.opacity>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">User ID</label>
-                                    <input type="text" name="dharmawisata_user_id" x-model="dwData[dwData.mode].user_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Masukkan User ID Darmawisata">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Access Token</label>
-                                    <input type="text" name="dharmawisata_access_token" x-model="dwData[dwData.mode].access_token" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Masukkan Access Token / API Key">
-                                </div>
-                            </div>
-
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-gray-700">Base URL</label>
-                                <input type="url" name="dharmawisata_base_url" x-model="dwData[dwData.mode].base_url" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Biarkan kosong untuk URL otomatis (https://api.darmawisata.com/REST/)">
-                                <p class="text-xs text-gray-500 mt-1">URL standar: https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/</p>
-                            </div>
-
-                            <div class="border-t border-gray-100 pt-5 mt-2">
-                                <h4 class="text-sm font-bold text-gray-800 mb-4"><i class="fas fa-sync-alt text-indigo-500 mr-2"></i>Kredensial Auto-Reconnect</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700">Static Token</label>
-                                        <input type="text" name="dharmawisata_static_token" x-model="dwData[dwData.mode].static_token" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Token dari Dashboard Darmawisata">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700">Password / Security Code</label>
-                                        <input type="text" name="dharmawisata_password" x-model="dwData[dwData.mode].password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Contoh: Darmaj4y4">
-                                    </div>
-                                </div>
-                            </div>
-
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded-md hover:bg-black text-xs font-medium transition-colors shadow-sm">Simpan Darmawisata</button>
                         </div>
-                    </div>
-
-                    <div class="mt-6 flex justify-end">
-                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors">
-                            Simpan Darmawisata
-                        </button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
 
             {{-- 6. TAB FONNTE --}}
-            <div x-show="activeTab === 'fonnte'" style="display: none;">
-                 <!-- ... (Kode Fonnte Anda tetap tidak diubah) ... -->
-                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+            <div x-show="activeTab === 'fonnte'" x-transition.opacity class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start" style="display: none;">
+                <div class="space-y-4">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900">Fonnte (WhatsApp Gateway)</h3>
-                        <p class="text-xs text-gray-500 mt-1">Status: GLOBAL</p>
+                        <h3 class="text-lg font-bold text-zinc-900">Fonnte WhatsApp</h3>
+                        <p class="text-xs text-zinc-500 mt-1">Konfigurasi API gateway pengiriman notifikasi otomatis WhatsApp.</p>
                     </div>
                 </div>
-
-                <form action="{{ route('admin.settings.api.update') }}" method="POST">
-                    @csrf @method('PUT')
-                    <input type="hidden" name="type" value="fonnte">
-
-                    <div class="space-y-6">
+                <div class="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="space-y-4">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="fonnte">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">API Key / Token</label>
-                            <div class="relative rounded-md shadow-sm">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fab fa-whatsapp text-green-500"></i>
-                                </div>
-                                <input type="text" name="fonnte_api_key" value="{{ $fonnte['api_key'] }}" class="focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-10 sm:text-sm border-gray-300 rounded-md border p-3" placeholder="Masukkan Token Fonnte">
-                            </div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">App API Key / Token Global</label>
+                            <input type="text" name="fonnte_api_key" value="{{ $fonnte['api_key'] }}" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs font-mono p-2.5 border" placeholder="Masukkan Token Fonnte">
                         </div>
-                    </div>
-
-                    <div class="mt-6 flex justify-end">
-                        <button type="submit" class="bg-green-600 text-white px-5 py-2.5 rounded-lg hover:bg-green-700 text-sm font-medium shadow-md transition-colors">
-                            Simpan Fonnte
-                        </button>
-                    </div>
-                </form>
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded-md hover:bg-black text-xs font-medium transition-colors shadow-sm">Simpan Fonnte</button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
-            {{-- 7. TAB DANA (BARU) --}}
-            <div x-show="activeTab === 'dana'" style="display: none;">
-                 <!-- ... (Kode DANA Anda tetap tidak diubah) ... -->
-                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+            {{-- 7. TAB DANA --}}
+            <div x-show="activeTab === 'dana'" x-transition.opacity class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start" style="display: none;">
+                <div class="space-y-4">
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900">DANA Payment Gateway</h3>
-                        <p class="text-xs text-gray-500 mt-1">Status Aktif:
-                            <span class="px-2 py-0.5 rounded text-xs font-bold transition-colors duration-300"
-                                  :class="danaData.mode === 'production' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'"
-                                  x-text="danaData.mode === 'production' ? 'PRODUCTION (LIVE)' : 'SANDBOX (TEST)'">
-                            </span>
+                        <h3 class="text-lg font-bold text-zinc-900">DANA Enterprise</h3>
+                        <p class="text-xs text-zinc-500 mt-1">Koneksi standardisasi SNAP BI untuk dompet digital DANA.</p>
+                    </div>
+                    <div class="flex items-center space-x-2 pt-2">
+                        <span class="text-xs font-medium" :class="danaData.mode === 'sandbox' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">SANDBOX</span>
+                        <div class="relative inline-block w-10 align-middle select-none transition duration-200">
+                            <input type="checkbox" id="dana_toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': danaData.mode === 'production', 'border-zinc-300': danaData.mode === 'sandbox'}" @click="danaData.mode = (danaData.mode === 'production' ? 'sandbox' : 'production')" :checked="danaData.mode === 'production'"/>
+                            <label for="dana_toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                        </div>
+                        <span class="text-xs font-medium" :class="danaData.mode === 'production' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">PRODUCTION</span>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="space-y-4">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="dana">
+                        <input type="hidden" name="dana_mode" x-model="danaData.mode">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Merchant ID</label>
+                                <input type="text" name="dana_merchant_id" x-model="danaData[danaData.mode].merchant_id" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Client ID (Partner ID)</label>
+                                <input type="text" name="dana_client_id" x-model="danaData[danaData.mode].client_id" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Client Secret</label>
+                            <input type="text" name="dana_client_secret" x-model="danaData[danaData.mode].client_secret" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Asymmetric Private Key</label>
+                            <textarea name="dana_private_key" x-model="danaData[danaData.mode].private_key" rows="2" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs font-mono p-2 border"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">DANA Public Key</label>
+                            <textarea name="dana_public_key" x-model="danaData[danaData.mode].public_key" rows="2" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs font-mono p-2 border"></textarea>
+                        </div>
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded-md hover:bg-black text-xs font-medium transition-colors shadow-sm">Simpan DANA</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {{-- 8. TAB MIDTRANS --}}
+            <div x-show="activeTab === 'midtrans'" x-transition.opacity class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start" style="display: none;">
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-zinc-900">Midtrans SNAP</h3>
+                        <p class="text-xs text-zinc-500 mt-1">Konfigurasi kredensial utama sistem Midtrans BI-SNAP Gateway.</p>
+                    </div>
+                    <div class="flex items-center space-x-2 pt-2">
+                        <span class="text-xs font-medium" :class="midtransData.mode === 'sandbox' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">SANDBOX</span>
+                        <div class="relative inline-block w-10 align-middle select-none transition duration-200">
+                            <input type="checkbox" id="midtrans_toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': midtransData.mode === 'production', 'border-zinc-300': midtransData.mode === 'sandbox'}" @click="midtransData.mode = (midtransData.mode === 'production' ? 'sandbox' : 'production')" :checked="midtransData.mode === 'production'"/>
+                            <label for="midtrans_toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                        </div>
+                        <span class="text-xs font-medium" :class="midtransData.mode === 'production' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">PRODUCTION</span>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="space-y-4">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="midtrans">
+                        <input type="hidden" name="midtrans_mode" x-model="midtransData.mode">
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Merchant ID</label>
+                            <input type="text" name="midtrans_merchant_id" x-model="midtransData[midtransData.mode].merchant_id" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border" placeholder="G850780499">
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-zinc-100 pt-4">
+                            <div class="col-span-2"><h4 class="text-xs font-bold text-zinc-800 uppercase tracking-wider">SNAP BI Credentials (Wajib)</h4></div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">SNAP Client ID</label>
+                                <input type="text" name="midtrans_snap_client_id" x-model="midtransData[midtransData.mode].snap_client_id" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">SNAP Client Secret</label>
+                                <input type="text" name="midtrans_snap_client_secret" x-model="midtransData[midtransData.mode].snap_client_secret" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-zinc-100 pt-4">
+                            <div class="col-span-2"><h4 class="text-xs font-bold text-zinc-400 uppercase tracking-wider">Core API Legacy (Opsional)</h4></div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-400 uppercase tracking-wider">Client Key</label>
+                                <input type="text" name="midtrans_client_key" x-model="midtransData[midtransData.mode].client_key" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-400 uppercase tracking-wider">Server Key</label>
+                                <input type="text" name="midtrans_server_key" x-model="midtransData[midtransData.mode].server_key" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                            </div>
+                        </div>
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded-md hover:bg-black text-xs font-medium transition-colors shadow-sm">Simpan Midtrans</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {{-- 9. TAB LALAMOVE --}}
+            <div x-show="activeTab === 'lalamove'" x-transition.opacity class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start" style="display: none;">
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-zinc-900">Lalamove Delivery</h3>
+                        <p class="text-xs text-zinc-500 mt-1">Konfigurasi API pengiriman instan on-demand Lalamove.</p>
+                    </div>
+                    <div class="flex items-center space-x-2 pt-2">
+                        <span class="text-xs font-medium" :class="lalamoveData.mode === 'sandbox' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">SANDBOX</span>
+                        <div class="relative inline-block w-10 align-middle select-none transition duration-200">
+                            <input type="checkbox" id="lalamove_toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': lalamoveData.mode === 'production', 'border-zinc-300': lalamoveData.mode === 'sandbox'}" @click="lalamoveData.mode = (lalamoveData.mode === 'production' ? 'sandbox' : 'production')" :checked="lalamoveData.mode === 'production'"/>
+                            <label for="lalamove_toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                        </div>
+                        <span class="text-xs font-medium" :class="lalamoveData.mode === 'production' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">PRODUCTION</span>
+                    </div>
+                </div>
+                <div class="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="space-y-4">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="lalamove">
+                        <input type="hidden" name="lalamove_mode" x-model="lalamoveData.mode">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">API Key</label>
+                                <input type="text" name="lalamove_api_key" x-model="lalamoveData[lalamoveData.mode].api_key" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">API Secret</label>
+                                <input type="text" name="lalamove_api_secret" x-model="lalamoveData[lalamoveData.mode].api_secret" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border">
+                            </div>
+                        </div>
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded-md hover:bg-black text-xs font-medium transition-colors shadow-sm">Simpan Lalamove</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {{-- 10. TAB PAYPAL (NEW TWO-COLUMN DESIGN) --}}
+            <div x-show="activeTab === 'paypal'" x-transition.opacity class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start" style="display: none;">
+                {{-- Kolom Kiri: Judul & Informasi Singkat --}}
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-zinc-900">PayPal International</h3>
+                        <p class="text-xs text-zinc-500 mt-1">
+                            Konfigurasi REST API Gateway untuk menerima pembayaran global kartu kredit dan saldo PayPal.
                         </p>
                     </div>
-
-                    {{-- Toggle Switch DANA --}}
-                    <div class="flex items-center">
-                        <span class="mr-3 text-sm font-medium" :class="danaData.mode === 'sandbox' ? 'text-indigo-600 font-bold' : 'text-gray-500'">SANDBOX</span>
-
-                        <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" id="dana_toggle"
-                                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
-                                   :class="{'translate-x-full border-red-500': danaData.mode === 'production', 'border-indigo-500': danaData.mode === 'sandbox'}"
-                                   @click="danaData.mode = (danaData.mode === 'production' ? 'sandbox' : 'production')"
-                                   :checked="danaData.mode === 'production'"/>
-                            <label for="dana_toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
-                                   :class="{'bg-red-500': danaData.mode === 'production', 'bg-indigo-500': danaData.mode === 'sandbox'}"></label>
+                    
+                    {{-- Switcher Mode Minimalis --}}
+                    <div class="flex items-center space-x-2 pt-2">
+                        <span class="text-xs font-medium" :class="paypalData.mode === 'sandbox' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">SANDBOX</span>
+                        <div class="relative inline-block w-10 align-middle select-none transition duration-200">
+                            <input type="checkbox" id="paypal_toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': paypalData.mode === 'production', 'border-zinc-300': paypalData.mode === 'sandbox'}" @click="paypalData.mode = (paypalData.mode === 'production' ? 'sandbox' : 'production')" :checked="paypalData.mode === 'production'"/>
+                            <label for="paypal_toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
                         </div>
+                        <span class="text-xs font-medium" :class="paypalData.mode === 'production' ? 'text-zinc-900 font-bold' : 'text-zinc-400'">PRODUCTION</span>
+                    </div>
 
-                        <span class="ml-1 text-sm font-medium" :class="danaData.mode === 'production' ? 'text-red-600 font-bold' : 'text-gray-500'">PRODUCTION</span>
+                    <div class="p-3 rounded-md border border-zinc-200 bg-zinc-50/50 text-xs text-zinc-500">
+                        <p><i class="fas fa-link mr-1"></i> <b>Webhook URL Listener:</b></p>
+                        <p class="font-mono bg-zinc-100 p-1.5 rounded mt-1 text-[10px] break-all select-all">https://{{ Request::getHost() }}/api/webhook/paypal</p>
                     </div>
                 </div>
 
-                <form action="{{ route('admin.settings.api.update') }}" method="POST">
-                    @csrf @method('PUT')
-                    <input type="hidden" name="type" value="dana">
-                    <input type="hidden" name="dana_mode" x-model="danaData.mode">
+                {{-- Kolom Kanan: Kotak Form Input --}}
+                <div class="lg:col-span-2 bg-white border border-zinc-200 rounded-xl p-6 shadow-sm">
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="space-y-4">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="paypal">
+                        <input type="hidden" name="paypal_mode" x-model="paypalData.mode">
 
-                    <div class="space-y-6">
-                        {{-- Visual Warning --}}
-                        <div class="p-4 rounded-lg border flex items-start"
-                             :class="danaData.mode === 'production' ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'">
-                            <div class="flex-shrink-0 mt-0.5">
-                                <i class="fas" :class="danaData.mode === 'production' ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle text-indigo-500'"></i>
-                            </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium" :class="danaData.mode === 'production' ? 'text-red-800' : 'text-indigo-800'" x-text="danaData.mode === 'production' ? 'Mode Produksi Aktif' : 'Mode Sandbox Aktif'"></h3>
-                            </div>
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Client ID (<span x-text="paypalData.mode.toUpperCase()"></span>)</label>
+                            <input type="text" name="paypal_client_id" x-model="paypalData[paypalData.mode].client_id" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border font-mono" placeholder="Masukkan Client ID PayPal" required>
                         </div>
 
-                        <div x-show="danaData.mode" x-transition.opacity>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Merchant ID</label>
-                                    <input type="text" name="dana_merchant_id" x-model="danaData[danaData.mode].merchant_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Client ID</label>
-                                    <input type="text" name="dana_client_id" x-model="danaData[danaData.mode].client_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Client Secret</label>
-                                    <input type="text" name="dana_client_secret" x-model="danaData[danaData.mode].client_secret" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Private Key</label>
-                                    <textarea name="dana_private_key" x-model="danaData[danaData.mode].private_key" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 font-mono text-xs"></textarea>
-                                </div>
-
-                                <div class="mb-4 mt-4">
-                                    <label class="block text-sm font-medium text-gray-700">Public Key</label>
-                                    <textarea name="dana_public_key" x-model="danaData[danaData.mode].public_key" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2 font-mono text-xs"></textarea>
-                                </div>
-                                
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-6 flex justify-end">
-                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors">
-                            Simpan DANA
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            {{-- 8. TAB MIDTRANS (BARU) --}}
-            <div x-show="activeTab === 'midtrans'" style="display: none;">
-                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900">Midtrans BI-SNAP</h3>
-                        <p class="text-xs text-gray-500 mt-1">Status Aktif:
-                            <span class="px-2 py-0.5 rounded text-xs font-bold transition-colors duration-300"
-                                  :class="midtransData.mode === 'production' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'"
-                                  x-text="midtransData.mode === 'production' ? 'PRODUCTION (LIVE)' : 'SANDBOX (TEST)'">
-                            </span>
-                        </p>
-                    </div>
-
-                    {{-- Toggle Switch Midtrans --}}
-                    <div class="flex items-center">
-                        <span class="mr-3 text-sm font-medium" :class="midtransData.mode === 'sandbox' ? 'text-indigo-600 font-bold' : 'text-gray-500'">SANDBOX</span>
-
-                        <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" id="midtrans_toggle"
-                                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
-                                   :class="{'translate-x-full border-red-500': midtransData.mode === 'production', 'border-indigo-500': midtransData.mode === 'sandbox'}"
-                                   @click="midtransData.mode = (midtransData.mode === 'production' ? 'sandbox' : 'production')"
-                                   :checked="midtransData.mode === 'production'"/>
-                            <label for="midtrans_toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
-                                   :class="{'bg-red-500': midtransData.mode === 'production', 'bg-indigo-500': midtransData.mode === 'sandbox'}"></label>
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Secret Key (<span x-text="paypalData.mode.toUpperCase()"></span>)</label>
+                            <input type="text" name="paypal_secret" x-model="paypalData[paypalData.mode].secret" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border font-mono" placeholder="Masukkan Secret Key PayPal" required>
                         </div>
 
-                        <span class="ml-1 text-sm font-medium" :class="midtransData.mode === 'production' ? 'text-red-600 font-bold' : 'text-gray-500'">PRODUCTION</span>
-                    </div>
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase tracking-wider">Webhook ID (<span x-text="paypalData.mode.toUpperCase()"></span>)</label>
+                            <input type="text" name="paypal_webhook_id" x-model="paypalData[paypalData.mode].webhook_id" class="mt-1 block w-full rounded-md border-zinc-200 shadow-sm focus:border-zinc-900 focus:ring-zinc-900 text-xs p-2.5 border font-mono" placeholder="Contoh: 8YA33094D2492333M">
+                        </div>
+
+                        <div class="flex justify-end pt-2">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded-md hover:bg-black text-xs font-medium transition-colors shadow-sm">
+                                Simpan PayPal
+                            </button>
+                        </div>
+                    </form>
                 </div>
-
-                <form action="{{ route('admin.settings.api.update') }}" method="POST">
-                    @csrf @method('PUT')
-                    <input type="hidden" name="type" value="midtrans">
-                    <input type="hidden" name="midtrans_mode" x-model="midtransData.mode">
-
-                    <div class="space-y-6">
-                        {{-- Visual Warning --}}
-                        <div class="p-4 rounded-lg border flex items-start"
-                             :class="midtransData.mode === 'production' ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'">
-                            <div class="flex-shrink-0 mt-0.5">
-                                <i class="fas" :class="midtransData.mode === 'production' ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle text-indigo-500'"></i>
-                            </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium" :class="midtransData.mode === 'production' ? 'text-red-800' : 'text-indigo-800'" x-text="midtransData.mode === 'production' ? 'Mode Produksi Aktif' : 'Mode Sandbox Aktif'"></h3>
-                            </div>
-                        </div>
-
-                        <div x-show="midtransData.mode" x-transition.opacity>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Merchant ID</label>
-                                    <input type="text" name="midtrans_merchant_id" x-model="midtransData[midtransData.mode].merchant_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Contoh: G850780499">
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4 border-t border-gray-100 pt-4">
-                                <div class="col-span-2"><h4 class="text-sm font-bold text-gray-800">Kredensial Core API Lama (Opsional/Legacy)</h4></div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Client Key</label>
-                                    <input type="text" name="midtrans_client_key" x-model="midtransData[midtransData.mode].client_key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Mid-client-...">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Server Key</label>
-                                    <input type="text" name="midtrans_server_key" x-model="midtransData[midtransData.mode].server_key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Mid-server-...">
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4 border-t border-gray-100 pt-4">
-                                <div class="col-span-2"><h4 class="text-sm font-bold text-gray-800">Kredensial BI-SNAP (Wajib)</h4></div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">SNAP Client ID</label>
-                                    <input type="text" name="midtrans_snap_client_id" x-model="midtransData[midtransData.mode].snap_client_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2" placeholder="Contoh: hDiYCXyc-G850780499-SNAP">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">SNAP Client Secret</label>
-                                    <input type="text" name="midtrans_snap_client_secret" x-model="midtransData[midtransData.mode].snap_client_secret" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
-                                </div>
-                            </div>
-                            
-                            <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4 mt-4 rounded-r-lg">
-                                <div class="flex">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-info-circle text-blue-500"></i>
-                                    </div>
-                                    <div class="ml-3">
-                                        <p class="text-sm text-blue-700">
-                                            <b>Catatan PKCS8:</b> Kunci Asimetris (Private Key `.pem` milik Anda dan Public Key milik Midtrans) wajib diletakkan secara fisik di dalam folder <code>storage/app/keys/</code> demi keamanan format multi-baris.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <div class="mt-6 flex justify-end">
-                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors">
-                            Simpan Midtrans
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-
-            {{-- 9. TAB LALAMOVE (BARU) --}}
-            <div x-show="activeTab === 'lalamove'" style="display: none;">
-                <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900">Lalamove API</h3>
-                        <p class="text-xs text-gray-500 mt-1">Status Aktif:
-                            <span class="px-2 py-0.5 rounded text-xs font-bold transition-colors duration-300"
-                                  :class="lalamoveData.mode === 'production' ? 'bg-red-100 text-red-700' : 'bg-indigo-100 text-indigo-700'"
-                                  x-text="lalamoveData.mode === 'production' ? 'PRODUCTION (LIVE)' : 'SANDBOX (TEST)'">
-                            </span>
-                        </p>
-                    </div>
-
-                    {{-- Toggle Switch Lalamove --}}
-                    <div class="flex items-center">
-                        <span class="mr-3 text-sm font-medium" :class="lalamoveData.mode === 'sandbox' ? 'text-indigo-600 font-bold' : 'text-gray-500'">SANDBOX</span>
-
-                        <div class="relative inline-block w-12 mr-3 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" id="lalamove_toggle"
-                                   class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer transition-all duration-300 transform translate-x-0"
-                                   :class="{'translate-x-full border-red-500': lalamoveData.mode === 'production', 'border-indigo-500': lalamoveData.mode === 'sandbox'}"
-                                   @click="lalamoveData.mode = (lalamoveData.mode === 'production' ? 'sandbox' : 'production')"
-                                   :checked="lalamoveData.mode === 'production'"/>
-                            <label for="lalamove_toggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"
-                                   :class="{'bg-red-500': lalamoveData.mode === 'production', 'bg-indigo-500': lalamoveData.mode === 'sandbox'}"></label>
-                        </div>
-
-                        <span class="ml-1 text-sm font-medium" :class="lalamoveData.mode === 'production' ? 'text-red-600 font-bold' : 'text-gray-500'">PRODUCTION</span>
-                    </div>
-                </div>
-
-                <form action="{{ route('admin.settings.api.update') }}" method="POST">
-                    @csrf @method('PUT')
-                    <input type="hidden" name="type" value="lalamove">
-                    <input type="hidden" name="lalamove_mode" x-model="lalamoveData.mode">
-
-                    <div class="space-y-6">
-                        {{-- Visual Warning --}}
-                        <div class="p-4 rounded-lg border flex items-start"
-                             :class="lalamoveData.mode === 'production' ? 'bg-red-50 border-red-200' : 'bg-indigo-50 border-indigo-200'">
-                            <div class="flex-shrink-0 mt-0.5">
-                                <i class="fas" :class="lalamoveData.mode === 'production' ? 'fa-exclamation-triangle text-red-500' : 'fa-info-circle text-indigo-500'"></i>
-                            </div>
-                            <div class="ml-3">
-                                <h3 class="text-sm font-medium" :class="lalamoveData.mode === 'production' ? 'text-red-800' : 'text-indigo-800'" x-text="lalamoveData.mode === 'production' ? 'Mode Produksi Aktif' : 'Mode Sandbox Aktif'"></h3>
-                                <div class="mt-1 text-sm" :class="lalamoveData.mode === 'production' ? 'text-red-700' : 'text-indigo-700'">
-                                    <p x-text="lalamoveData.mode === 'production' ? 'Order memanggil kurir sungguhan dan memotong wallet.' : 'Aman untuk testing. Order hanya simulasi.'"></p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div x-show="lalamoveData.mode" x-transition.opacity>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">API Key</label>
-                                    <input type="text" name="lalamove_api_key" x-model="lalamoveData[lalamoveData.mode].api_key" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">API Secret</label>
-                                    <input type="text" name="lalamove_api_secret" x-model="lalamoveData[lalamoveData.mode].api_secret" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm border p-2">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="mt-6 flex justify-end">
-                        <button type="submit" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg hover:bg-indigo-700 text-sm font-medium shadow-md transition-colors">
-                            Simpan Lalamove
-                        </button>
-                    </div>
-                </form>
             </div>
 
         </div>
@@ -843,13 +553,12 @@
 {{-- Alpine JS --}}
 <script src="//unpkg.com/alpinejs" defer></script>
 
-{{-- Inisialisasi Data Alpine di Script Tag --}}
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('apiSettings', () => ({
-            activeTab: 'kiriminaja', // Tab default yang terbuka
+            activeTab: 'kiriminaja', // Default tab yang aktif saat pertama buka
 
-            // Mengambil Data Langsung dari PHP Variable (Controller)
+            // Sinkronisasi data JSON terstruktur aman dari Controller Laravel
             kaData: @json($kiriminaja),
             tpData: @json($tripay),
             dokuData: @json($doku),
@@ -858,7 +567,7 @@
             danaData: @json($dana),
             midtransData: @json($midtrans),
             lalamoveData: @json($lalamove),
-            
+            paypalData: @json($paypal),
         }))
     })
 </script>
