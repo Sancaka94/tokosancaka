@@ -638,7 +638,9 @@ class CheckoutController extends Controller
 				} elseif ($paymentMethodRaw === 'MIDTRANS') {
 				    $paymentGateway = 'midtrans';
 				} elseif (in_array($paymentMethodRaw, ['DANA', 'NETWORK_PAY_PG_DANA', 'DANA_BINDING'])) {
-				    $paymentGateway = 'dana_direct'; // 👉 1. Tambahkan ini agar tidak masuk ke Tripay
+				    $paymentGateway = 'dana_direct';
+				} elseif ($paymentMethodRaw === 'PAYPAL') { // <--- TAMBAHAN UNTUK PAYPAL
+				    $paymentGateway = 'paypal';
 				}
 				
 				// ==========================================================
@@ -725,6 +727,16 @@ class CheckoutController extends Controller
 				        throw new \Exception($tripayResult['message']);
 				    }
 				}
+
+                // ==========================================================
+				// PROSES VIA PAYPAL
+				// ==========================================================
+				elseif ($paymentGateway === 'paypal') {
+				    Log::info('Memulai proses PAYPAL Marketplace untuk ' . $order->invoice_number);
+				    $paymentUrl = $this->createPaymentPayPal($order);
+				    $order->payment_url = $paymentUrl;
+				}
+
             // --- 7. Selesai Semua, Commit Transaksi ---
             }
 
@@ -2128,6 +2140,92 @@ TEXT;
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('LOG LOG: [DANA BINDING] Exception: ' . $e->getMessage());
             return redirect()->route('checkout.index')->with('error', 'Koneksi ke DANA terputus. Silakan coba metode pembayaran lain.');
+        }
+    }
+
+    /**
+     * =========================================================================
+     * 1. EKSEKUTOR CREATE PAYMENT PAYPAL
+     * =========================================================================
+     */
+    private function createPaymentPayPal(Order $order)
+    {
+        Log::info('LOG LOG: Generate Link PayPal Marketplace untuk ' . $order->invoice_number);
+
+        try {
+            $paypalService = app(\App\Http\Controllers\Api\PayPalGatewayController::class);
+
+            // PENTING: PayPal WAJIB menggunakan USD. 
+            // Ubah IDR ke USD. Di sini kita menggunakan kurs manual statis (misal Rp 16.000)
+            $rate = 16000; 
+            $usdAmount = round($order->total_amount / $rate, 2);
+
+            $items = [[
+                'name' => 'Pesanan ' . $order->invoice_number,
+                'quantity' => '1',
+                'unit_amount' => [
+                    'currency_code' => 'USD',
+                    'value' => number_format($usdAmount, 2, '.', '')
+                ]
+            ]];
+
+            // Panggil API PayPal
+            $response = $paypalService->createOrder(
+                $items, 
+                $usdAmount, 
+                $order->invoice_number, // custom_id
+                'CAPTURE', 
+                route('paypal.capture.return', ['invoice' => $order->invoice_number]), // URL Redirect sukses
+                route('checkout.index') // URL Redirect batal
+            );
+
+            $result = $response->getData(true);
+
+            if (isset($result['success']) && $result['success'] === true && !empty($result['approve_url'])) {
+                return $result['approve_url'];
+            }
+
+            Log::error('PayPal Create Order Error', $result);
+            throw new \Exception('Gagal mendapatkan link pembayaran PayPal.');
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: Exception PayPal (Marketplace): ' . $e->getMessage());
+            throw new \Exception('Terjadi kesalahan sistem saat menghubungi PayPal.');
+        }
+    }
+
+    /**
+     * =========================================================================
+     * 2. PENERIMA REDIRECT PAYPAL (DARI FRONTEND)
+     * =========================================================================
+     * Ketika user klik "Approve" di PayPal, mereka dilempar ke sini
+     */
+    public function capturePaypalReturn(Request $request, $invoice)
+    {
+        $token = $request->query('token'); // Order ID dari PayPal
+
+        if (!$token) {
+            return redirect()->route('checkout.index')->with('error', 'Sesi PayPal tidak valid.');
+        }
+
+        try {
+            $paypalService = app(\App\Http\Controllers\Api\PayPalGatewayController::class);
+            $response = $paypalService->captureOrder($token);
+            $result = $response->getData(true);
+
+            if ($result['success'] === true && $result['status'] === 'COMPLETED') {
+                
+                // MENGAKALI RACE CONDITION: Tembak KiriminAja dari sini jika webhook terlambat
+                $this->processOrderCallback($invoice, 'PAID', $result);
+                
+                return redirect()->route('customer.pesanan.riwayat_belanja')
+                    ->with('success', 'Pembayaran via PayPal Berhasil! Pesanan sedang diproses dan kurir KiriminAja telah dipanggil.');
+            }
+
+            return redirect()->route('checkout.index')->with('error', 'Dana belum berhasil ditarik oleh PayPal.');
+        } catch (\Exception $e) {
+            Log::error("PayPal Capture Error: " . $e->getMessage());
+            return redirect()->route('checkout.index')->with('error', 'Terjadi kesalahan saat memverifikasi PayPal.');
         }
     }
 
