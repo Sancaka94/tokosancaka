@@ -668,6 +668,52 @@
                     </div>
 
                 </ul>
+
+                @auth
+                    {{-- 1. OPSI INTERNAL: SALDO SANCAKA (Hanya jika Login) --}}
+                    <li class="list-group-item bg-light fw-bold text-muted border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
+                        Dompet Sancaka
+                    </li>
+                    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="POTONG SALDO" data-label="Potong Saldo">
+                        <img src="{{ asset('public/assets/saldo.png') }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain;">
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">Potong Saldo</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">Tersedia: Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</div>
+                        </div>
+                    </li>
+
+                    {{-- 2. OPSI DANA AUTO-DEBIT / BINDING (Hanya jika Login) --}}
+                    <li class="list-group-item bg-light fw-bold text-muted border-top border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
+                        E-Wallet Auto Debit
+                    </li>
+                    @php
+                        $userDanaToken = Auth::user()->dana_access_token ?? null;
+                        $userDanaBalance = Auth::user()->dana_user_balance ?? 0;
+                        $hasDanaBinding = !empty($userDanaToken);
+                    @endphp
+
+                    @if($hasDanaBinding)
+                        <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="DANA_BINDING" data-label="DANA Auto-Debit" style="background-color: #f0f7ff;">
+                            <img src="{{ asset('public/assets/dana.webp') }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain;">
+                            <div class="flex-grow-1">
+                                <div class="fw-bold text-primary" style="font-size: 0.95rem;">DANA Auto-Debit</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">Saldo DANA: Rp {{ number_format($userDanaBalance, 0, ',', '.') }}</div>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">Tersambung</span>
+                        </li>
+                    @else
+                        <li class="list-group-item d-flex align-items-center justify-content-between" style="background-color: #fafafa; border-style: dashed;">
+                            <div class="d-flex align-items-center">
+                                <img src="{{ asset('public/assets/dana.webp') }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain; filter: grayscale(100%); opacity: 0.6;">
+                                <div>
+                                    <div class="fw-bold text-muted" style="font-size: 0.95rem;">DANA Auto-Debit</div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">Bayar 1-klik tanpa PIN</div>
+                                </div>
+                            </div>
+                            <a href="{{ url('/dana/start-binding') }}" class="btn btn-sm btn-primary" style="font-size: 0.75rem;">Hubungkan</a>
+                        </li>
+                    @endif
+                    @endauth
             </div>
         </div>
     </div>
