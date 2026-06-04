@@ -819,13 +819,15 @@
         function maskData(type, value) { if (!value) return '***'; if (type === 'name') { const parts = value.split(' '); return parts.length > 1 ? parts[0] + ' ' + parts.slice(1).map(p => p.replace(/./g, '*')).join(' ') : (value.length > 2 ? value.substring(0, 2) + '***' : value); } if (type === 'phone') { const num = value.replace(/\D/g, ''); return num.length > 8 ? num.substring(0, 3) + '****' + num.substring(num.length - 4) : num.substring(0, 3) + '****'; } if (type === 'address') { const parts = value.split(' '); return parts.length > 2 ? parts.slice(0, 2).join(' ') + ' **** **** ****' : value; } return '***'; }
         function clearHiddenAddress(prefix) { $(`#${prefix}_province, #${prefix}_regency, #${prefix}_district, #${prefix}_village, #${prefix}_postal_code, #${prefix}_district_id, #${prefix}_subdistrict_id, #${prefix}_lat, #${prefix}_lng`).val(''); }
 
+       // --- FUNGSI MENGISI FORM (DENGAN SENSOR MASKING) ---
         function fillContactForm(prefix, data) {
-            $(`#${prefix}_name`).val(data.nama).trigger('blur');
-            $(`#${prefix}_phone`).val(data.no_hp).trigger('blur');
-            $(`#${prefix}_address`).val(data.alamat || '').trigger('blur');
+            // Masking (Sensor) aktif untuk tampilan, tapi data asli disimpan di 'data-real-value'
+            $(`#${prefix}_name`).val(maskData('name', data.nama)).trigger('blur').attr('data-real-value', data.nama);
+            $(`#${prefix}_phone`).val(maskData('phone', data.no_hp)).trigger('blur').attr('data-real-value', data.no_hp);
+            $(`#${prefix}_address`).val(maskData('address', data.alamat)).trigger('blur').attr('data-real-value', data.alamat || '');
             $(`#${prefix}_id`).val(data.id);
-            clearHiddenAddress(prefix);
 
+            clearHiddenAddress(prefix);
             const addressSearchInput = $(`#${prefix}_address_search`);
 
             if (data.village && data.district) {
@@ -843,10 +845,12 @@
                         $(`#${prefix}_postal_code`).val(parts[4] || data.postal_code).trigger('change');
                         $(`#${prefix}_district_id`).val(item.district_id).trigger('change');
                         $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id).trigger('change');
+
+                        // Simpan Lat/Lng
                         $(`#${prefix}_lat`).val(item.lat || '');
                         $(`#${prefix}_lng`).val(item.lon || '');
 
-                        addressSearchInput.val('Alamat Ditemukan (Otomatis Diisi)').addClass('is-valid').removeClass('is-invalid');
+                        addressSearchInput.val('Alamat Ditemukan (Privasi Terjaga)').addClass('is-valid').removeClass('is-invalid');
                         setTimeout(() => addressSearchInput.removeClass('is-valid'), 2500);
                     } else {
                         addressSearchInput.val('').addClass('is-invalid').removeClass('is-valid');
@@ -860,7 +864,7 @@
             }
         }
 
-        // --- MENGGUNAKAN AUTOCOMPLETE JQUERY UI ---
+        // --- FUNGSI AUTOCOMPLETE JQUERY UI (DENGAN SENSOR DROPDOWN) ---
         function setupContactSearch(prefix) {
             $(`#${prefix}_name, #${prefix}_phone`).each(function() {
                 $(this).autocomplete({
@@ -895,10 +899,15 @@
                     if (item.disabled) {
                         return $("<li class='ui-state-disabled p-2 text-muted text-center'></li>").text(item.label).appendTo(ul);
                     }
+
+                    // PROSES MASKING/SENSOR UNTUK TAMPILAN DROPDOWN
+                    const maskedName = maskData('name', item.data.nama);
+                    const maskedPhone = maskData('phone', item.data.no_hp);
+
                     return $("<li>").append(`
                         <div class="ui-menu-item-wrapper">
-                            <div class="fw-bold text-dark">${item.data.nama}</div>
-                            <small class="text-muted"><i class="fas fa-phone me-1"></i>${item.data.no_hp}</small>
+                            <div class="fw-bold text-dark">${maskedName}</div>
+                            <small class="text-muted"><i class="fas fa-phone me-1"></i>${maskedPhone}</small>
                         </div>
                     `).appendTo(ul);
                 };
