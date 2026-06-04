@@ -461,21 +461,27 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                         throw new Exception('Gagal transaksi Tripay. ' . ($tripayResponse['message'] ?? ''));
                     }
                     $pesanan->payment_url = $tripayResponse['data']['checkout_url'] ?? null;
+
+                    // ✅ TAMBAHKAN BARIS INI
+                    $paymentUrl = $pesanan->payment_url;
                 }
             }
-            if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'cash'])) {
-                // Pembayaran Online via Tripay
-                $orderItemsPayload = $this->_prepareOrderItemsPayload($shipping_cost, $insurance_cost, $validatedData['ansuransi']);
+            // ❌ HAPUS ATAU COMMENT SELURUH BLOK INI:
+                /*
+                if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'cash'])) {
+                    // Pembayaran Online via Tripay
+                    $orderItemsPayload = $this->_prepareOrderItemsPayload($shipping_cost, $insurance_cost, $validatedData['ansuransi']);
 
-                // Panggil _createTripayTransactionInternal (Fungsi baru)
-                $tripayResponse = $this->_createTripayTransactionInternal($validatedData, $pesanan, $total_paid_ongkir, $orderItemsPayload);
+                    // Panggil _createTripayTransactionInternal (Fungsi baru)
+                    $tripayResponse = $this->_createTripayTransactionInternal($validatedData, $pesanan, $total_paid_ongkir, $orderItemsPayload);
 
-                if (empty($tripayResponse['success'])) {
-                    throw new Exception('Gagal membuat transaksi pembayaran. Pesan: ' . ($tripayResponse['message'] ?? 'Tidak ada pesan.'));
+                    if (empty($tripayResponse['success'])) {
+                        throw new Exception('Gagal membuat transaksi pembayaran. Pesan: ' . ($tripayResponse['message'] ?? 'Tidak ada pesan.'));
+                    }
+                    $paymentUrl = $tripayResponse['data']['checkout_url'] ?? null;
+                    $pesanan->payment_url = $paymentUrl;
                 }
-                $paymentUrl = $tripayResponse['data']['checkout_url'] ?? null;
-                $pesanan->payment_url = $paymentUrl;
-            }
+                */
 
             // 6. Proses KiriminAja HANYA jika COD/Cash
             if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'cash'])) {
