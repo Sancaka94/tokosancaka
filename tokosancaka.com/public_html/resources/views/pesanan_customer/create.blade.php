@@ -538,11 +538,13 @@
                     <li class="list-group-item bg-light fw-bold text-muted border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
                         Dompet Sancaka
                     </li>
-                    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="Potong Saldo" data-label="Potong Saldo">
+                    <li class="list-group-item list-group-item-action d-flex align-items-center requires-pin" data-value="Potong Saldo" data-label="Potong Saldo" data-real-balance="{{ Auth::user()->saldo ?? 0 }}">
                         <img src="{{ asset('public/assets/saldo.png') }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain;">
                         <div>
                             <div class="fw-bold text-dark" style="font-size: 0.95rem;">Potong Saldo</div>
-                            <div class="text-muted" style="font-size: 0.75rem;">Tersedia: Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</div>
+                            <div class="text-muted balance-text" style="font-size: 0.75rem;" data-prefix="Tersedia: ">
+                                Tersedia: Rp *** <i class="fas fa-lock ms-1" style="font-size: 0.7rem;"></i>
+                            </div>
                         </div>
                     </li>
                     @endauth
@@ -572,13 +574,15 @@
                     @endphp
 
                     @if($hasDanaBinding)
-                        <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="DANA_BINDING" data-label="DANA Auto-Debit" style="background-color: #f0f7ff;">
+                        <li class="list-group-item list-group-item-action d-flex align-items-center requires-pin" data-value="DANA_BINDING" data-label="DANA Auto-Debit" style="background-color: #f0f7ff;" data-real-balance="{{ $userDanaBalance }}">
                             <img src="{{ asset('public/assets/dana.webp') }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain;">
                             <div class="flex-grow-1">
                                 <div class="fw-bold text-primary" style="font-size: 0.95rem;">DANA Auto-Debit</div>
-                                <div class="text-muted" style="font-size: 0.75rem;">Saldo DANA: Rp {{ number_format($userDanaBalance, 0, ',', '.') }}</div>
+                                <div class="text-muted balance-text" style="font-size: 0.75rem;" data-prefix="Saldo DANA: ">
+                                    Saldo DANA: Rp *** <i class="fas fa-lock ms-1" style="font-size: 0.7rem;"></i>
+                                </div>
                             </div>
-                            <span class="badge bg-primary rounded-pill">Tersambung</span>
+                            <span class="badge bg-secondary rounded-pill status-badge"><i class="fas fa-lock me-1"></i> Terkunci</span>
                         </li>
                     @else
                         <li class="list-group-item d-flex align-items-center justify-content-between" style="background-color: #fafafa; border-style: dashed;">
@@ -704,6 +708,9 @@
 
     // Pindahkan $(document).ready() kamu ke dalam fungsi ini
     function initSancakaScripts() {
+
+       let isPinVerified = false;
+     let pendingPaymentSelection = null;
         // ============================================
         // LOGIKA STEP-BY-STEP FORM
         // ============================================
@@ -1193,21 +1200,50 @@
             loadTripayChannels();
         });
 
-        $('#paymentOptionsList').on('click', '.list-group-item-action', function() {
-            if (!$(this).data('value')) return;
-            // Cegah klik untuk opsi yang di-disable
-            if ($(this).hasClass('disabled')) return;
+      // Fungsi Helper untuk mengeksekusi pilihan metode pembayaran
+function executePaymentSelection(element) {
+    const value = element.data('value');
+    const label = element.data('label');
+    const imgSrc = element.find('img').attr('src');
 
-            const value = $(this).data('value');
-            const label = $(this).data('label');
-            const imgSrc = $(this).find('img').attr('src');
-            $('#payment_method').val(value);
-            $('#selectedPaymentName').text(label);
-            $('#defaultPaymentIcon').addClass('d-none');
-            $('#selectedPaymentLogo').attr('src', imgSrc).removeClass('d-none');
-            $('#paymentOptionsList .list-group-item-action').removeClass('active');
-            $(this).addClass('active');
-            paymentModal.hide();
+    // Tampilkan saldo aslinya di kotak pilihan (opsional agar lebih informatif)
+    let finalLabel = label;
+    let realBal = element.data('real-balance');
+    if (realBal !== undefined && value !== 'COD' && value !== 'CODBARANG') {
+        finalLabel = `${label} (${formatRupiah(realBal)})`;
+    }
+
+    $('#payment_method').val(value);
+    $('#selectedPaymentName').text(finalLabel);
+    $('#defaultPaymentIcon').addClass('d-none');
+    $('#selectedPaymentLogo').attr('src', imgSrc).removeClass('d-none');
+    $('#paymentOptionsList .list-group-item-action').removeClass('active');
+    element.addClass('active');
+    $('#paymentMethodModal').modal('hide');
+}
+
+        // Logika Klik Opsi Pembayaran
+        $('#paymentOptionsList').on('click', '.list-group-item-action', function() {
+            if (!$(this).data('value') || $(this).hasClass('disabled')) return;
+
+            // Jika butuh PIN dan belum verifikasi, CEGAT DISINI
+            if ($(this).hasClass('requires-pin') && !isPinVerified) {
+                pendingPaymentSelection = $(this); // Simpan sementara opsi yang diklik
+                $('#paymentMethodModal').modal('hide');
+
+                // Munculkan Modal PIN
+                setTimeout(() => {
+                    $('#pin_error_msg').addClass('d-none');
+                    $('.pin-digit').val('');
+                    $('#full_pin_value').val('');
+                    $('#pinModal').modal('show');
+                    setTimeout(() => { $('.pin-digit').first().focus(); }, 500);
+                }, 400);
+                return; // Hentikan eksekusi di sini
+            }
+
+            // Jika tidak butuh PIN, langsung eksekusi
+            executePaymentSelection($(this));
         });
 
         $('.cod-payment-option').hide();
@@ -1237,7 +1273,7 @@
                 if (result.isConfirmed) {
                     const paymentMethodVal = $('#payment_method').val().toUpperCase();
 
-                    if (paymentMethodVal === 'POTONG SALDO' || paymentMethodVal === 'DANA_BINDING') {
+                    if ((paymentMethodVal === 'POTONG SALDO' || paymentMethodVal === 'DANA_BINDING') && !isPinVerified) {
                         const pinModal = new bootstrap.Modal(document.getElementById('pinModal'));
                         $('#pin_error_msg').addClass('d-none');
                         $('.pin-digit').val('');
@@ -1287,19 +1323,38 @@
                 type: "POST",
                 data: { pin: pin },
                 success: function(res) {
-                    if (res.success) {
-                        $('#pinModal').modal('hide');
-                        Swal.fire({
-                            title: 'PIN Terverifikasi!',
-                            text: 'Memproses pembayaran Anda...',
-                            icon: 'success',
-                            showConfirmButton: false,
-                            timer: 1500
-                        }).then(() => {
+                   if (res.success) {
+                    $('#pinModal').modal('hide');
+                    isPinVerified = true; // Tandai bahwa PIN sudah benar untuk sesi ini
+
+                    // BUKA SENSOR SALDO & STATUS di list HTML
+                    $('.requires-pin').each(function() {
+                        let realBal = $(this).data('real-balance');
+                        let prefix = $(this).find('.balance-text').data('prefix') || '';
+                        if (realBal !== undefined) {
+                            $(this).find('.balance-text').html(`${prefix}${formatRupiah(realBal)}`);
+                        }
+                        let badge = $(this).find('.status-badge');
+                        if(badge.length) { badge.removeClass('bg-secondary').addClass('bg-primary').html('<i class="fas fa-check-circle me-1"></i> Tersambung'); }
+                    });
+
+                    // Cek dari mana asalnya verifikasi ini
+                    if (pendingPaymentSelection) {
+                        // Asalnya dari memilih metode pembayaran
+                        Swal.fire({ title: 'Akses Terbuka!', text: 'Saldo ditampilkan dan metode dipilih.', icon: 'success', showConfirmButton: false, timer: 1500 })
+                        .then(() => {
+                            executePaymentSelection(pendingPaymentSelection); // Eksekusi pilihan yang tertunda
+                            pendingPaymentSelection = null;
+                        });
+                    } else {
+                        // Asalnya dari meng-klik tombol konfirmasi "Buat Pesanan" (Bypass)
+                        Swal.fire({ title: 'PIN Terverifikasi!', text: 'Memproses pembayaran Anda...', icon: 'success', showConfirmButton: false, timer: 1500 })
+                        .then(() => {
                             $('#confirmBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Memproses...');
                             document.getElementById('orderForm').submit();
                         });
-                    } else {
+                    }
+                } else {
                         $('#pin_error_msg').text(res.message).removeClass('d-none');
                         $('.pin-digit').val('').first().focus();
                         $('#full_pin_value').val('');
