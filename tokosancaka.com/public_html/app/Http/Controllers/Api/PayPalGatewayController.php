@@ -69,23 +69,33 @@ class PayPalGatewayController extends Controller
      * 1. Create Order (POST /v2/checkout/orders)
      * Ditambahkan dukungan payment_source & experience_context sesuai dokumentasi
      */
-    // Tambahkan parameter $invoiceNumber
     public function createOrder(array $items, $amount, $invoiceNumber, $intent = 'CAPTURE', $returnUrl = null, $cancelUrl = null)
     {
         $accessToken = $this->getAccessToken();
         if (!$accessToken) return $this->unauthorizedResponse();
 
         $requestId = Str::uuid()->toString();
+        
+        // Format angka desimal wajib 2 digit di belakang koma untuk PayPal (misal: 10.00)
+        $formattedAmount = number_format($amount, 2, '.', '');
 
+        // Format standar payload Create Order
         $payload = [
-            "intent" => strtoupper($intent),
+            "intent" => strtoupper($intent), // CAPTURE atau AUTHORIZE
             "purchase_units" => [
                 [
                     "reference_id" => "order_" . time(),
-                    "custom_id" => $invoiceNumber, // <--- SANGAT KRUSIAL UNTUK WEBHOOK NANTI
+                    "custom_id" => $invoiceNumber, // Sangat krusial untuk webhook
                     "amount" => [
-                        "currency_code" => "USD",
-                        "value" => number_format($amount, 2, '.', '')
+                        "currency_code" => "USD", // Sesuaikan mata uang
+                        "value" => $formattedAmount,
+                        // BOK INI YANG SEBELUMNYA KURANG:
+                        "breakdown" => [
+                            "item_total" => [
+                                "currency_code" => "USD",
+                                "value" => $formattedAmount
+                            ]
+                        ]
                     ],
                     "items" => $items 
                 ]
@@ -95,7 +105,7 @@ class PayPalGatewayController extends Controller
                 "paypal" => [
                     "experience_context" => [
                         "brand_name" => "Sancaka Express", // Tampil di atas form login PayPal
-                        "shipping_preference" => "NO_SHIPPING", // Ubah ke GET_FROM_FILE jika butuh alamat fisik
+                        "shipping_preference" => "NO_SHIPPING", 
                         "user_action" => "PAY_NOW", // Langsung bayar tanpa review 2x di web kita
                         "return_url" => $returnUrl ?? url('/payment/success'),
                         "cancel_url" => $cancelUrl ?? url('/payment/cancel')
