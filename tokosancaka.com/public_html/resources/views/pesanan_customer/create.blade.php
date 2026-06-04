@@ -1160,26 +1160,26 @@
             });
         }
 
-        // PENAMBAHAN: Fungsi terpisah agar mudah dipanggil untuk mengecek limit 10rb
-       function applyGatewayMinimumLimit() {
-            // Hanya ambil dari tarif ongkir yang dipilih (sudah termasuk fee asuransi/COD jika ada)
+       // PENAMBAHAN: Fungsi terpisah agar mudah dipanggil untuk mengecek limit 10rb
+        function applyGatewayMinimumLimit() {
+            // HANYA ambil tarif ongkir dari hidden input (tanpa item_price)
             let totalTransaksi = parseInt($('#selected_shipping_cost').val()) || 0;
 
-            // Cek apakah belum milih ekspedisi (0) atau ongkir di bawah 10rb
+            // Cek apakah di bawah 10rb
             let isBelowLimit = totalTransaksi < 10000;
 
             if (isBelowLimit) {
-                // Beri efek transparan dan disable interaksi klik
+                // Beri efek transparan dan disable interaksi klik pada semua opsi PG
                 $('.gateway-option').addClass('disabled text-muted').css({'pointer-events': 'none', 'opacity': '0.5'});
 
-                // Tambahkan pesan peringatan jika belum ada
+                // Tambahkan pesan peringatan jika belum ada di dalam modal
                 if ($('#min-tx-alert').length === 0) {
-                    $('#paymentOptionsList').prepend('<li id="min-tx-alert" class="list-group-item list-group-item-danger text-center small fw-bold p-2 mb-2 rounded border border-danger"><i class="fas fa-info-circle me-1"></i> Total di bawah Rp 10.000, Payment Gateway dinonaktifkan.</li>');
+                    $('#paymentOptionsList').prepend('<li id="min-tx-alert" class="list-group-item list-group-item-danger text-center small fw-bold p-2 mb-2 rounded border border-danger"><i class="fas fa-info-circle me-1"></i> Total Ongkir di bawah Rp 10.000, Payment Gateway dinonaktifkan.</li>');
                 } else {
                     $('#min-tx-alert').show();
                 }
 
-                // Jika user sudah terlanjur memilih opsi PG dan harganya diturunkan, Reset Form-nya.
+                // Jika user sudah terlanjur memilih opsi PG lalu ongkirnya diganti jadi di bawah 10rb, batalkan pilihannya
                 let selectedMethod = $('#payment_method').val();
                 if (selectedMethod && $('.gateway-option[data-value="'+selectedMethod+'"]').length > 0) {
                     $('#payment_method').val('');
@@ -1189,7 +1189,7 @@
                     $('.list-group-item-action').removeClass('active');
                 }
             } else {
-                // Buka kembali jika nilainya di atas 10.000
+                // Buka kembali jika nilainya Rp 10.000 atau lebih
                 $('.gateway-option').removeClass('disabled text-muted').css({'pointer-events': 'auto', 'opacity': '1'});
                 $('#min-tx-alert').hide();
             }
