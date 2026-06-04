@@ -126,14 +126,6 @@
                     </div>
                 </div>
 
-                {{-- Menu Fonnte --}}
-                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
-                     :class="activeTab === 'fonnte' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
-                     @click="activeTab = 'fonnte'">
-                    <span class="text-sm font-semibold" :class="activeTab === 'fonnte' ? 'text-zinc-900' : 'text-zinc-600'">Fonnte</span>
-                    <span class="text-[9px] font-bold text-zinc-400 bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded uppercase tracking-wider">GLOBAL</span>
-                </div>
-
                 {{-- Menu DANA --}}
                 <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
                      :class="activeTab === 'dana' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
@@ -200,6 +192,14 @@
                         </button>
                         <span class="text-[9px] font-bold uppercase tracking-wider" :class="paypalData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
                     </div>
+                </div>
+
+                {{-- Menu Fonnte --}}
+                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                     :class="activeTab === 'fonnte' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                     @click="activeTab = 'fonnte'">
+                    <span class="text-sm font-semibold" :class="activeTab === 'fonnte' ? 'text-zinc-900' : 'text-zinc-600'">Fonnte</span>
+                    <span class="text-[9px] font-bold text-zinc-400 bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded uppercase tracking-wider">GLOBAL</span>
                 </div>
 
             </div>
