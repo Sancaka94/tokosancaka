@@ -1231,7 +1231,46 @@ TEXT;
                     $pesanan->status_pesanan = 'Menunggu Pickup';
                     Log::info('Tripay Callback (CUSTO-): KiriminAja Order SUCCESS.', ['invoice' => $merchantRef, 'resi' => $pesanan->resi]);
 
-                    // TODO: Kirim notifikasi WA sukses?
+                    // ==========================================================
+                    // 🔥 EKSEKUSI FONNTE: WA PENGIRIM & PENERIMA 🔥
+                    // ==========================================================
+                    try {
+                        // Karena fungsi ini static, kita sanitize nomornya manual via regex
+                        $senderWa = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $pesanan->sender_phone));
+                        $receiverWa = preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $pesanan->receiver_phone));
+
+                        $formattedTotal = 'Rp ' . number_format($pesanan->price, 0, ',', '.');
+                        $kurirLayanan = strtoupper($pesanan->expedition . ' - ' . $pesanan->service_type);
+                        $finalResi = $pesanan->resi ?? 'Sedang diproses';
+
+                        // Susun Pesan WA
+                        $waMessage = "*Pembayaran Berhasil Diterima!* ✅\n\n";
+                        $waMessage .= "Pesanan Anda dengan nomor invoice *{$pesanan->nomor_invoice}* telah *LUNAS* dan diteruskan ke ekspedisi.\n\n";
+                        $waMessage .= "*Detail Pesanan:*\n";
+                        $waMessage .= "📦 Pengirim: {$pesanan->sender_name}\n";
+                        $waMessage .= "👤 Penerima: {$pesanan->receiver_name}\n";
+                        $waMessage .= "🚚 Ekspedisi: {$kurirLayanan}\n";
+                        $waMessage .= "🏷️ *Nomor Resi: {$finalResi}*\n";
+                        $waMessage .= "💰 Total Bayar: {$formattedTotal}\n\n";
+                        $waMessage .= "Lacak paket Anda di sini:\n";
+                        $waMessage .= "https://tokosancaka.com/tracking/search?resi={$pesanan->nomor_invoice}\n\n";
+                        $waMessage .= "Terima kasih telah menggunakan layanan Sancaka Express! 🙏";
+
+                        // Tembak API Fonnte
+                        if (!empty($senderWa)) {
+                            \App\Services\FonnteService::sendMessage($senderWa, $waMessage);
+                            Log::info("Notifikasi WA Lunas (Public) ke Pengirim: $senderWa");
+                        }
+
+                        if (!empty($receiverWa)) {
+                            \App\Services\FonnteService::sendMessage($receiverWa, $waMessage);
+                            Log::info("Notifikasi WA Lunas (Public) ke Penerima: $receiverWa");
+                        }
+
+                    } catch (\Exception $e) {
+                        Log::error('Gagal mengirim WA Fonnte di Webhook Public: ' . $e->getMessage());
+                    }
+                    // ==========================================================
                 }
                 $pesanan->save();
 

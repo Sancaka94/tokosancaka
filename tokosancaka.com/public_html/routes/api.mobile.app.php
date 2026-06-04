@@ -535,6 +535,46 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::get('/history',          [BusTicketingController::class, 'busHistory']);
         });
 
+          // ==========================================
+        // MODULE: SHIP (TIKET KAPAL)
+        // ==========================================
+        Route::prefix('ship')->group(function () {
+            Route::post('/route',          [ShipTicketingController::class, 'shipRoute']);
+            Route::post('/schedule',       [ShipTicketingController::class, 'shipSchedule']);
+            Route::post('/availability',   [ShipTicketingController::class, 'shipAvailability']);
+            Route::post('/getroom',        [ShipTicketingController::class, 'shipGetRoom']);
+
+            // Flow Transaksi
+            Route::post('/booking',        [ShipTicketingController::class, 'shipBooking']);
+            Route::post('/issued',         [ShipTicketingController::class, 'shipIssued']);
+
+            // Riwayat & Manajemen
+            Route::post('/booking-list',   [ShipTicketingController::class, 'shipBookingList']);
+            Route::post('/booking-detail', [ShipTicketingController::class, 'shipBookingDetail']);
+            Route::get('/history',         [ShipTicketingController::class, 'shipHistory']);
+        });
+
+        // ==========================================
+        // MODULE: SHIP DLU (TIKET KAPAL DLU)
+        // ==========================================
+        Route::prefix('ship-dlu')->group(function () {
+            Route::post('/route',             [ShipDluTicketingController::class, 'shipDluRoute']);
+            Route::post('/schedule',          [ShipDluTicketingController::class, 'shipDluSchedule']);
+            Route::post('/select-schedule',   [ShipDluTicketingController::class, 'shipDluSelectSchedule']);
+            Route::post('/price',             [ShipDluTicketingController::class, 'shipDluPrice']);
+            Route::post('/get-eticket',       [ShipDluTicketingController::class, 'shipDluGetEticket']);
+            Route::post('/issued',            [ShipDluTicketingController::class, 'shipDluIssued']);
+
+            // Master / Helpers
+            Route::post('/class-types',       [ShipDluTicketingController::class, 'shipDluClassTypes']);
+            Route::post('/vehicle-types',     [ShipDluTicketingController::class, 'shipDlueVehicleTypes']);
+            Route::post('/ticket-types',      [ShipDluTicketingController::class, 'shipDluTicketTypes']);
+            Route::post('/room-classes',      [ShipDluTicketingController::class, 'shipDluRoomClasses']);
+
+            // Riwayat Lokal
+            Route::get('/history',            [ShipDluTicketingController::class, 'shipDluHistory']);
+        });
+
             // Hotel
             Route::prefix('hotel')->group(function () {
                 Route::post('/search', [TicketingController::class, 'hotelSearch']);
