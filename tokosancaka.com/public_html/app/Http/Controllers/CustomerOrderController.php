@@ -56,7 +56,7 @@ class CustomerOrderController extends Controller
 
     /**
      * Endpoint API untuk pencarian kontak berdasarkan nama atau no_hp.
-     * Disesuaikan untuk 'term' (jQuery UI) atau 'search'
+     * Disesuaikan untuk mencari di tabel Pengguna DAN tabel Kontak.
      */
     public function searchKontak(Request $request)
     {
@@ -65,12 +65,27 @@ class CustomerOrderController extends Controller
              return response()->json([], 422);
         }
 
+        // 1. Cari dari tabel Pengguna (Karena "Amal" dkk ada di sini)
+        $users = \App\Models\User::where('nama_lengkap', 'LIKE', "%{$searchTerm}%")
+                         ->orWhere('no_wa', 'LIKE', "%{$searchTerm}%")
+                         ->limit(5)
+                         ->get([
+                             'id_pengguna as id', 'nama_lengkap as nama', 'no_wa as no_hp',
+                             'address_detail as alamat', 'province', 'regency', 'district', 'village', 'postal_code'
+                         ]);
+
+        // 2. Cari dari tabel Kontak (Buku Alamat)
         $kontaks = Kontak::where('nama', 'LIKE', "%{$searchTerm}%")
                          ->orWhere('no_hp', 'LIKE', "%{$searchTerm}%")
-                         ->limit(10)
-                         ->get(['id', 'nama', 'no_hp', 'alamat', 'province', 'regency', 'district', 'village', 'postal_code']);
+                         ->limit(5)
+                         ->get([
+                             'id', 'nama', 'no_hp', 'alamat', 'province', 'regency', 'district', 'village', 'postal_code'
+                         ]);
 
-        return response()->json($kontaks);
+        // 3. Gabungkan hasil dari kedua tabel
+        $results = $users->merge($kontaks);
+
+        return response()->json($results);
     }
 
     /**

@@ -156,12 +156,26 @@
         margin-top: 0.25rem;
         list-style: none;
     }
-    .ui-autocomplete { min-width: 300px; }
-    .search-result-item, .ui-menu-item-wrapper {
-        padding: 0.75rem 1rem;
-        cursor: pointer;
-        font-size: 0.9rem;
-        border-radius: 0.375rem;
+   /* PERBAIKAN Z-INDEX & TAMPILAN AUTOCOMPLETE */
+    .ui-autocomplete {
+        z-index: 9999 !important; /* Paksa tampil paling depan */
+        background-color: #ffffff !important;
+        border: 1px solid var(--input-border-color);
+        border-radius: var(--border-radius-md);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        max-height: 300px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    .ui-menu-item-wrapper {
+        padding: 10px 15px !important;
+        border-bottom: 1px solid #f3f4f6;
+        transition: background-color 0.2s;
+    }
+    .ui-menu-item-wrapper.ui-state-active {
+        background-color: rgba(220, 53, 69, 0.1) !important; /* Warna merah tipis */
+        color: var(--primary-color) !important;
+        border: none;
     }
     .search-result-item:hover, .ui-menu-item-wrapper.ui-state-active {
         background-color: rgba(var(--primary-rgb), 0.08);
@@ -775,13 +789,15 @@ $(document).ready(function () {
     // [PERBAIKAN] Pastikan lat/lng juga di-clear
     function clearHiddenAddress(prefix) { $(`#${prefix}_province, #${prefix}_regency, #${prefix}_district, #${prefix}_village, #${prefix}_postal_code, #${prefix}_district_id, #${prefix}_subdistrict_id, #${prefix}_lat, #${prefix}_lng`).val(''); }
 
-    // ✅✅✅ [FUNGSI DIPERBAIKI] Bug 2: Menyimpan Lat/Lng dari Kontak ✅✅✅
+    // --- FUNGSI MENGISI FORM ---
     function fillContactForm(prefix, data) {
-        $(`#${prefix}_name`).val(maskData('name', data.nama)).trigger('blur').attr('data-real-value', data.nama);
-        $(`#${prefix}_phone`).val(maskData('phone', data.no_hp)).trigger('blur').attr('data-real-value', data.no_hp);
-        $(`#${prefix}_address`).val(maskData('address', data.alamat)).trigger('blur').attr('data-real-value', data.alamat);
+        // Hapus sistem masking (***) agar nama yang masuk sesuai aslinya
+        $(`#${prefix}_name`).val(data.nama).trigger('blur');
+        $(`#${prefix}_phone`).val(data.no_hp).trigger('blur');
+        $(`#${prefix}_address`).val(data.alamat || '').trigger('blur');
         $(`#${prefix}_id`).val(data.id);
         clearHiddenAddress(prefix);
+
         const addressSearchInput = $(`#${prefix}_address_search`);
 
         if (data.village && data.district) {
@@ -799,73 +815,70 @@ $(document).ready(function () {
                     $(`#${prefix}_postal_code`).val(parts[4] || data.postal_code).trigger('change');
                     $(`#${prefix}_district_id`).val(item.district_id).trigger('change');
                     $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id).trigger('change');
-
-                    // ✅ PERBAIKAN (Bug 2): Simpan Lat/Lng dari kontak
                     $(`#${prefix}_lat`).val(item.lat || '');
-                    $(`#${prefix}_lng`).val(item.lon || ''); // API KiriminAja pakai 'lon'
+                    $(`#${prefix}_lng`).val(item.lon || '');
 
-                    addressSearchInput.val('Alamat Ditemukan (Privasi Terjaga)').addClass('is-valid').removeClass('is-invalid');
+                    addressSearchInput.val('Alamat Ditemukan (Otomatis Diisi)').addClass('is-valid').removeClass('is-invalid');
                     setTimeout(() => addressSearchInput.removeClass('is-valid'), 2500);
                 } else {
                     addressSearchInput.val('').addClass('is-invalid').removeClass('is-valid');
-                    Swal.fire({ title: 'Alamat Tidak Ditemukan', text: `Detail alamat untuk "${addressQuery}" tidak ditemukan. Anda wajib mencari alamat secara manual.`, icon: 'warning', confirmButtonColor: '#dc3545' }).then(() => addressSearchInput.focus());
+                    Swal.fire({ title: 'Alamat Tidak Ditemukan', text: `Detail alamat untuk "${addressQuery}" tidak ditemukan. Anda wajib mencari alamat secara manual.`, icon: 'warning' }).then(() => addressSearchInput.focus());
                 }
             }).fail(() => {
                 addressSearchInput.val('').addClass('is-invalid').removeClass('is-valid');
-                Swal.fire({ title: 'Error', text: 'Gagal memuat detail alamat. Anda wajib mencari alamat secara manual.', icon: 'error', confirmButtonColor: '#dc3545' }).then(() => addressSearchInput.focus());
             }).always(() => addressSearchInput.prop('disabled', false));
         } else {
             addressSearchInput.val('').addClass('is-invalid');
-            Swal.fire({ title: 'Data Tidak Lengkap', text: 'Kontak yang dipilih tidak memiliki data alamat. Anda wajib mengisi dan mencari alamat secara manual.', icon: 'info', confirmButtonColor: '#0d6efd' }).then(() => addressSearchInput.focus());
         }
     }
 
-    // Fungsi masking (dari kode Anda, sudah OK)
-    function maskDropdownPhone(phone) { if (!phone) return '****'; const num = String(phone).replace(/\D/g, ''); if (num.length > 7) { return num.substring(0, 4) + ' **** ' + num.substring(num.length - 3); } return num.substring(0, 3) + '****'; }
-    function maskDropdownName(name) { if (!name) return '****'; const titleCase = (str) => { if (!str) return ''; return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase(); }; const words = String(name).split(' '); if (words.length === 1) { const word = words[0]; if (word.length <= 2) return titleCase(word); if (word.length === 3) return titleCase(word.substring(0, 2)) + '*'; return titleCase(word.substring(0, 2)) + '**'; } const firstWord = titleCase(words[0]); const maskedRest = words.slice(1).map(() => '****').join(' '); return firstWord + ' ' + maskedRest; }
-
+    // --- FUNGSI SETUP AUTOCOMPLETE PENCARIAN ---
     function setupContactSearch(prefix) {
-        $(`#${prefix}_name, #${prefix}_phone`).autocomplete({
-            source: function(request, response) {
-                $.ajax({
-                    url: "{{ route('api.search.kontak') }}",
-                    dataType: "json",
-                    data: { term: request.term },
-                    success: function(data) {
-                        if (!data || !data.length) {
-                            response([{ label: 'Kontak tidak ditemukan', value: request.term, disabled: true }]);
-                            return;
-                        }
-                        response($.map(data, function(item) {
-                            return { label: `${item.nama} - ${item.no_hp}`, value: item.nama, data: item };
-                        }));
-                    },
-                    error: function() { response([]); }
-                });
-            },
-            minLength: 2,
-            select: function(event, ui) {
-                if (ui.item.disabled) return false;
-                event.preventDefault();
-                fillContactForm(prefix, ui.item.data);
-            },
-            focus: function(event, ui) {
-                if (ui.item.disabled) return false;
-                event.preventDefault();
-                const maskedName = maskDropdownName(ui.item.data.nama);
-                const maskedPhone = maskDropdownPhone(ui.item.data.no_hp);
-                $(`#${prefix}_name`).val(maskedName);
-                $(`#${prefix}_phone`).val(maskedPhone);
-            }
-        }).autocomplete("instance")._renderItem = function(ul, item) {
-            if (item.disabled) {
-                return $("<li class='ui-state-disabled p-3 text-muted'></li>").text(item.label).appendTo(ul);
-            }
-            const maskedName = maskDropdownName(item.data.nama);
-            const maskedPhone = maskDropdownPhone(item.data.no_hp);
-            return $("<li>").append(`<div class="ui-menu-item-wrapper"><div class="font-weight-bold">${maskedName}</div><small>${maskedPhone}</small></div>`).appendTo(ul);
-        };
+        // Gunakan .each() agar _renderItem nempel ke Nama DAN Nomor HP
+        $(`#${prefix}_name, #${prefix}_phone`).each(function() {
+            $(this).autocomplete({
+                source: function(request, response) {
+                    $.ajax({
+                        url: "{{ route('api.search.kontak') }}", // Pastikan route ini benar
+                        dataType: "json",
+                        data: { term: request.term },
+                        success: function(data) {
+                            if (!data || !data.length) {
+                                response([{ label: 'Tidak ada data', disabled: true }]);
+                                return;
+                            }
+                            response($.map(data, function(item) {
+                                return {
+                                    label: item.nama,
+                                    value: item.nama, // Text yang masuk ke input box
+                                    data: item
+                                };
+                            }));
+                        },
+                        error: function() { response([{ label: 'Gagal mengambil data', disabled: true }]); }
+                    });
+                },
+                minLength: 2,
+                select: function(event, ui) {
+                    if (ui.item.disabled) return false;
+                    event.preventDefault();
+                    fillContactForm(prefix, ui.item.data);
+                }
+            }).autocomplete("instance")._renderItem = function(ul, item) {
+                if (item.disabled) {
+                    return $("<li class='ui-state-disabled p-2 text-muted text-center'></li>").text(item.label).appendTo(ul);
+                }
+                // Desain Dropdown yang Elegan
+                return $("<li>").append(`
+                    <div class="ui-menu-item-wrapper">
+                        <div class="fw-bold text-dark">${item.data.nama}</div>
+                        <small class="text-muted"><i class="fas fa-phone me-1"></i>${item.data.no_hp}</small>
+                    </div>
+                `).appendTo(ul);
+            };
+        });
     }
+
     setupContactSearch('sender');
     setupContactSearch('receiver');
 
