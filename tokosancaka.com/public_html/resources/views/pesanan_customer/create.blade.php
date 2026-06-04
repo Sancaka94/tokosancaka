@@ -1055,8 +1055,9 @@ $('#item_price').on('input', function() {
                         const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
                         const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${codFee}`;
 
-                        // PENAMBAHAN: Kalkulasi ongkir total (biaya dasar + asuransi + COD fee jika ada) untuk disematkan di tombol
-                        const totalOngkirCost = parseInt(i.cost || 0) + parseInt(insuranceFeeValue || 0) + parseInt(codFee || 0);
+                        // PERBAIKAN: Pisahkan murni Ongkir Dasar dan Biaya COD
+                        const baseOngkirCost = parseInt(i.cost || 0) + parseInt(insuranceFeeValue || 0);
+                        const actualCodFee = parseInt(codFee || 0);
 
                         const hasDiscount = i.price?.base_price && i.price.base_price > i.cost;
                         const basePriceFmt = hasDiscount ? formatRupiah(i.price.base_price) : '';
@@ -1077,7 +1078,7 @@ $('#item_price').on('input', function() {
                         }
 
                         // PENAMBAHAN: Atribut data-shipping-cost di HTML
-                        const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}" data-shipping-cost="${totalOngkirCost}">Kirim Paket</button>`;
+                        const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}" data-shipping-cost="${baseOngkirCost}" data-cod-fee="${actualCodFee}">Kirim Paket</button>`;
 
                         const itemHtml = `
                         <div class="ongkir-item-card">
@@ -1141,13 +1142,14 @@ $('#item_price').on('input', function() {
 
         $('#selected_expedition_display').on('click', runCekOngkir);
 
-        $(document).on('click', '.select-ongkir-btn', function() {
+       $(document).on('click', '.select-ongkir-btn', function() {
             const expeditionValue = $(this).data('value');
             $('#expedition').val(expeditionValue);
             $('#selected_expedition_display').val($(this).data('display')).addClass('is-valid');
 
-            // Menyimpan cost tarif saat dipilih untuk kalkulasi limit PG nanti
+            // Tangkap nilai yang sudah terpisah murni
             $('#selected_shipping_cost').val($(this).data('shipping-cost'));
+            $('#selected_cod_fee').val($(this).data('cod-fee'));
 
             if ($(this).data('cod-supported')) {
                 $('.cod-payment-option').show();
@@ -1161,7 +1163,6 @@ $('#item_price').on('input', function() {
                 $('.cod-payment-option').hide();
             }
 
-            // PENAMBAHAN: Taruh updateTotalSummary di sini (paling bawah)
             updateTotalSummary();
             ongkirModal.hide();
         });
