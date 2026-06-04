@@ -1403,14 +1403,14 @@ Route::delete('/admin/dana/bulk-destroy', [TopUpController::class, 'bulkDestroyT
 |--------------------------------------------------------------------------
 */
 Route::prefix('customer')->name('customer.')->middleware(['auth'])->group(function () {
-    
+
     Route::get('/topup-dana', [TopupDanaController::class, 'create'])->name('topupdana.create');
     Route::post('/topup-dana', [TopupDanaController::class, 'store'])->name('topupdana.store');
 
     // PERBAIKAN: Pindahkan route bulk-destroy ke ATAS route {id}
     Route::delete('/topup-dana/bulk-destroy', [TopupDanaController::class, 'bulkDestroyTransaction'])->name('topupdana.bulk_destroy');
     Route::delete('/topup-dana/{id}', [TopupDanaController::class, 'destroyTopupTransaction'])->name('topupdana.destroy');
-    
+
     // Rute Halaman Sukses (Kembalian dari DOKU/Tripay setelah bayar)
     Route::get('/topup-dana/success/{invoice?}', function($invoice = null) {
         // Kamu bisa buat view 'customer.topup.success' sendiri nanti
@@ -1432,7 +1432,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 // Rute API Cek Rekening (Tahap 1)
     Route::post('/api/admin/dana/bank-inquiry', [App\Http\Controllers\Customer\TopUpController::class, 'apiBankAccountInquiry']);
-    
+
     // Rute API Eksekusi Transfer (Tahap 2)
     Route::post('/api/admin/dana/transfer-bank', [App\Http\Controllers\Customer\TopUpController::class, 'apiTransferToBank']);
 
@@ -1450,3 +1450,4 @@ Route::get('/dana/debug-status/{orderId}', [\App\Http\Controllers\DanaWebhookCon
 // Redirect saat pembayaran sukses dari PayPal
 Route::get('/checkout/paypal/return/{invoice}', [App\Http\Controllers\CheckoutController::class, 'capturePaypalReturn'])->name('paypal.capture.return');
 
+Route::post('/pesanan/verify-pin', [CustomerOrderController::class, 'verifyPin'])->name('verify.pin');
