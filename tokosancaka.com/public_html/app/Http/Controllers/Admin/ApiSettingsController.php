@@ -17,7 +17,7 @@ class ApiSettingsController extends Controller
         $tripayMode       = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
         $dokuEnv          = Api::getValue('DOKU_ENV', 'global', 'sandbox');
         $iakMode          = Api::getValue('IAK_MODE', 'global', 'development');
-        $dharmawisataMode = Api::getValue('DHARMAWISATA_MODE', 'global', 'development'); // Tambahan Darmawisata
+        $dharmawisataMode = Api::getValue('DHARMAWISATA_MODE', 'global', 'development');
         $danaProductionMode = Api::getValue('dana_production_mode', 'global', '0');
         $danaMode = $danaProductionMode == '1' ? 'production' : 'sandbox';
         
@@ -32,7 +32,6 @@ class ApiSettingsController extends Controller
         $paypalMode       = Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
 
         // 2. Siapkan Struktur Data Lengkap (Active Mode + Data per Environment)
-
         $kiriminaja = [
             'mode' => $kaMode,
             'staging' => [
@@ -92,22 +91,22 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-       // --- TAMBAHAN DARMAWISATA ---
+        // --- TAMBAHAN DARMAWISATA ---
         $dharmawisata = [
             'mode' => $dharmawisataMode,
             'development' => [
                 'user_id'      => Api::getValue('DHARMAWISATA_USER_ID', 'development'),
                 'access_token' => Api::getValue('DHARMAWISATA_ACCESS_TOKEN', 'development'),
                 'base_url'     => Api::getValue('DHARMAWISATA_BASE_URL', 'development'),
-                'static_token' => Api::getValue('DHARMAWISATA_STATIC_TOKEN', 'development'), // TAMBAHAN BARU
-                'password'     => Api::getValue('DHARMAWISATA_PASSWORD', 'development'),     // TAMBAHAN BARU
+                'static_token' => Api::getValue('DHARMAWISATA_STATIC_TOKEN', 'development'),
+                'password'     => Api::getValue('DHARMAWISATA_PASSWORD', 'development'),
             ],
             'production' => [
                 'user_id'      => Api::getValue('DHARMAWISATA_USER_ID', 'production'),
                 'access_token' => Api::getValue('DHARMAWISATA_ACCESS_TOKEN', 'production'),
                 'base_url'     => Api::getValue('DHARMAWISATA_BASE_URL', 'production'),
-                'static_token' => Api::getValue('DHARMAWISATA_STATIC_TOKEN', 'production'), // TAMBAHAN BARU
-                'password'     => Api::getValue('DHARMAWISATA_PASSWORD', 'production'),     // TAMBAHAN BARU
+                'static_token' => Api::getValue('DHARMAWISATA_STATIC_TOKEN', 'production'),
+                'password'     => Api::getValue('DHARMAWISATA_PASSWORD', 'production'),
             ]
         ];
 
@@ -115,7 +114,7 @@ class ApiSettingsController extends Controller
             'api_key' => Api::getValue('FONNTE_API_KEY', 'global'),
         ];
 
-       // --- TAMBAHAN ARRAY DANA ---
+        // --- TAMBAHAN ARRAY DANA ---
         $dana = [
             'mode' => $danaMode,
             'sandbox' => [
@@ -123,14 +122,14 @@ class ApiSettingsController extends Controller
                 'client_id'     => Api::getValue('dana_sandbox_client_id', 'sandbox'),
                 'client_secret' => Api::getValue('dana_sandbox_client_secret', 'sandbox'),
                 'private_key'   => Api::getValue('dana_sandbox_private_key', 'sandbox'),
-                'public_key'    => Api::getValue('dana_sandbox_public_key', 'sandbox'), // <-- TAMBAHKAN BARIS INI
+                'public_key'    => Api::getValue('dana_sandbox_public_key', 'sandbox'),
             ],
             'production' => [
                 'merchant_id'   => Api::getValue('dana_prod_merchant_id', 'production'),
                 'client_id'     => Api::getValue('dana_prod_client_id', 'production'),
                 'client_secret' => Api::getValue('dana_prod_client_secret', 'production'),
                 'private_key'   => Api::getValue('dana_prod_private_key', 'production'),
-                'public_key'    => Api::getValue('dana_prod_public_key', 'production'), // <-- TAMBAHKAN BARIS INI
+                'public_key'    => Api::getValue('dana_prod_public_key', 'production'),
             ]
         ];
 
@@ -171,18 +170,19 @@ class ApiSettingsController extends Controller
         $paypal = [
             'mode' => $paypalMode,
             'sandbox' => [
-                'client_id' => Api::getValue('PAYPAL_CLIENT_ID', 'sandbox'),
-                'secret'    => Api::getValue('PAYPAL_SECRET', 'sandbox'),
-                'webhook_id'=> Api::getValue('PAYPAL_WEBHOOK_ID', 'sandbox'),
+                'client_id'  => Api::getValue('PAYPAL_CLIENT_ID', 'sandbox'),
+                'secret_1'   => Api::getValue('PAYPAL_SECRET_1', 'sandbox'),
+                'secret_2'   => Api::getValue('PAYPAL_SECRET_2', 'sandbox'),
+                'webhook_id' => Api::getValue('PAYPAL_WEBHOOK_ID', 'sandbox'),
             ],
             'production' => [
-                'client_id' => Api::getValue('PAYPAL_CLIENT_ID', 'production'),
-                'secret'    => Api::getValue('PAYPAL_SECRET', 'production'),
-                'webhook_id'=> Api::getValue('PAYPAL_WEBHOOK_ID', 'production'),
+                'client_id'  => Api::getValue('PAYPAL_CLIENT_ID', 'production'),
+                'secret_1'   => Api::getValue('PAYPAL_SECRET_1', 'production'),
+                'secret_2'   => Api::getValue('PAYPAL_SECRET_2', 'production'),
+                'webhook_id' => Api::getValue('PAYPAL_WEBHOOK_ID', 'production'),
             ]
         ];
 
-        // Tambahkan variabel $dana, $midtrans, $lalamove, dan $paypal ke compact
         return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal'));
     }
 
@@ -193,31 +193,24 @@ class ApiSettingsController extends Controller
         try {
             if ($type === 'kiriminaja') {
                 $env = $request->kiriminaja_mode;
-
                 Api::setValue('KIRIMINAJA_MODE', $env, 'kiriminaja', 'global');
-
                 $baseUrl = $request->kiriminaja_base_url;
                 if (empty($baseUrl)) {
                     $baseUrl = ($env === 'production') ? 'https://client.kiriminaja.com' : 'https://tdev.kiriminaja.com';
                 }
-
                 Api::setValue('KIRIMINAJA_TOKEN', $request->kiriminaja_token, 'kiriminaja', $env);
                 Api::setValue('KIRIMINAJA_BASE_URL', $baseUrl, 'kiriminaja', $env);
 
             } elseif ($type === 'tripay') {
                 $env = $request->tripay_mode;
-
                 Api::setValue('TRIPAY_MODE', $env, 'tripay', 'global');
-
                 Api::setValue('TRIPAY_MERCHANT_CODE', $request->tripay_merchant_code, 'tripay', $env);
                 Api::setValue('TRIPAY_API_KEY', $request->tripay_api_key, 'tripay', $env);
                 Api::setValue('TRIPAY_PRIVATE_KEY', $request->tripay_private_key, 'tripay', $env);
 
             } elseif ($type === 'doku') {
                 $env = $request->doku_env;
-
                 Api::setValue('DOKU_ENV', $env, 'doku', 'global');
-
                 Api::setValue('DOKU_CLIENT_ID', $request->doku_client_id, 'doku', $env);
                 Api::setValue('DOKU_SECRET_KEY', $request->doku_secret_key, 'doku', $env);
                 Api::setValue('DOKU_PUBLIC_KEY', $request->doku_public_key, 'doku', $env);
@@ -229,101 +222,80 @@ class ApiSettingsController extends Controller
 
             } elseif ($type === 'iak') {
                 $env = $request->iak_mode;
-
                 Api::setValue('IAK_MODE', $env, 'iak', 'global');
-
                 $prepaidUrl = $request->iak_prepaid_base_url;
                 if (empty($prepaidUrl)) {
                     $prepaidUrl = ($env === 'production') ? 'https://prepaid.iak.id' : 'https://prepaid.iak.dev';
                 }
-
                 $postpaidUrl = $request->iak_postpaid_base_url;
                 if (empty($postpaidUrl)) {
                     $postpaidUrl = ($env === 'production') ? 'https://mobilepulsa.net' : 'https://testpostpaid.mobilepulsa.net';
                 }
-
                 Api::setValue('IAK_USER_HP', $request->iak_user_hp, 'iak', $env);
                 Api::setValue('IAK_API_KEY', $request->iak_api_key, 'iak', $env);
                 Api::setValue('IAK_PREPAID_BASE_URL', $prepaidUrl, 'iak', $env);
                 Api::setValue('IAK_POSTPAID_BASE_URL', $postpaidUrl, 'iak', $env);
 
-            // --- TAMBAHAN DARMAWISATA UPDATE ---
             } elseif ($type === 'dharmawisata') {
-                $env = $request->dharmawisata_mode; // development atau production
-
+                $env = $request->dharmawisata_mode;
                 Api::setValue('DHARMAWISATA_MODE', $env, 'dharmawisata', 'global');
-
                 $baseUrl = $request->dharmawisata_base_url;
                 if (empty($baseUrl)) {
-                    $baseUrl = 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/'; // Base URL default darmawisata
+                    $baseUrl = 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/';
                 }
-
                 Api::setValue('DHARMAWISATA_USER_ID', $request->dharmawisata_user_id, 'dharmawisata', $env);
                 Api::setValue('DHARMAWISATA_ACCESS_TOKEN', $request->dharmawisata_access_token, 'dharmawisata', $env);
                 Api::setValue('DHARMAWISATA_BASE_URL', $baseUrl, 'dharmawisata', $env);
-
-                // --- 2 BARIS TAMBAHAN BARU UNTUK AUTO-RECONNECT ---
                 Api::setValue('DHARMAWISATA_STATIC_TOKEN', $request->dharmawisata_static_token, 'dharmawisata', $env);
                 Api::setValue('DHARMAWISATA_PASSWORD', $request->dharmawisata_password, 'dharmawisata', $env);
 
             } elseif ($type === 'fonnte') {
                 Api::setValue('FONNTE_API_KEY', $request->fonnte_api_key, 'fonnte', 'global');
 
-           // --- TAMBAHAN UPDATE DANA ---
             } elseif ($type === 'dana') {
-                $env = $request->dana_mode; // Menangkap 'sandbox' atau 'production' dari form
+                $env = $request->dana_mode;
                 $isProdMode = ($env === 'production') ? '1' : '0';
-
-                // Simpan Mode Global (0 untuk Sandbox, 1 untuk Production)
                 Api::setValue('dana_production_mode', $isProdMode, 'dana', 'global');
 
-                // Simpan Kredensial sesuai Mode yang dipilih
                 if ($env === 'production') {
                     Api::setValue('dana_prod_merchant_id', $request->dana_merchant_id, 'dana', 'production');
                     Api::setValue('dana_prod_client_id', $request->dana_client_id, 'dana', 'production');
                     Api::setValue('dana_prod_client_secret', $request->dana_client_secret, 'dana', 'production');
                     Api::setValue('dana_prod_private_key', $request->dana_private_key, 'dana', 'production');
-                    Api::setValue('dana_prod_public_key', $request->dana_public_key, 'dana', 'production'); // <-- TAMBAHKAN BARIS INI
+                    Api::setValue('dana_prod_public_key', $request->dana_public_key, 'dana', 'production');
                 } else {
                     Api::setValue('dana_sandbox_merchant_id', $request->dana_merchant_id, 'dana', 'sandbox');
                     Api::setValue('dana_sandbox_client_id', $request->dana_client_id, 'dana', 'sandbox');
                     Api::setValue('dana_sandbox_client_secret', $request->dana_client_secret, 'dana', 'sandbox');
                     Api::setValue('dana_sandbox_private_key', $request->dana_private_key, 'dana', 'sandbox');
-                    Api::setValue('dana_sandbox_public_key', $request->dana_public_key, 'dana', 'sandbox'); // <-- TAMBAHKAN BARIS INI
+                    Api::setValue('dana_sandbox_public_key', $request->dana_public_key, 'dana', 'sandbox');
                 }
 
-            // --- TAMBAHAN UPDATE MIDTRANS ---
             } elseif ($type === 'midtrans') {
-                $env = $request->midtrans_mode; // 'sandbox' atau 'production'
-
+                $env = $request->midtrans_mode;
                 Api::setValue('MIDTRANS_MODE', $env, 'midtrans', 'global');
-
                 Api::setValue('MIDTRANS_MERCHANT_ID', $request->midtrans_merchant_id, 'midtrans', $env);
                 Api::setValue('MIDTRANS_CLIENT_KEY', $request->midtrans_client_key, 'midtrans', $env);
                 Api::setValue('MIDTRANS_SERVER_KEY', $request->midtrans_server_key, 'midtrans', $env);
                 Api::setValue('MIDTRANS_SNAP_CLIENT_ID', $request->midtrans_snap_client_id, 'midtrans', $env);
                 Api::setValue('MIDTRANS_SNAP_CLIENT_SECRET', $request->midtrans_snap_client_secret, 'midtrans', $env);
             
-            // --- TAMBAHAN UPDATE LALAMOVE ---
             // LOG LOG
             } elseif ($type === 'lalamove') {
-                $env = $request->lalamove_mode; // 'sandbox' atau 'production'
-
+                $env = $request->lalamove_mode;
                 Api::setValue('LALAMOVE_MODE', $env, 'lalamove', 'global');
-
                 Api::setValue('LALAMOVE_API_KEY', $request->lalamove_api_key, 'lalamove', $env);
                 Api::setValue('LALAMOVE_API_SECRET', $request->lalamove_api_secret, 'lalamove', $env);
             
             // --- TAMBAHAN UPDATE PAYPAL ---
             } elseif ($type === 'paypal') {
-                $env = $request->paypal_mode; // 'sandbox' atau 'production'
+                $env = $request->paypal_mode;
                 
                 Api::setValue('PAYPAL_MODE', $env, 'paypal', 'global');
-                
                 Api::setValue('PAYPAL_CLIENT_ID', $request->paypal_client_id, 'paypal', $env);
-                Api::setValue('PAYPAL_SECRET', $request->paypal_secret, 'paypal', $env);
+                Api::setValue('PAYPAL_SECRET_1', $request->paypal_secret_1, 'paypal', $env);
+                Api::setValue('PAYPAL_SECRET_2', $request->paypal_secret_2, 'paypal', $env);
                 
-                // Webhook optional tapi sangat direkomendasikan
                 if ($request->has('paypal_webhook_id')) {
                     Api::setValue('PAYPAL_WEBHOOK_ID', $request->paypal_webhook_id, 'paypal', $env);
                 }
@@ -336,7 +308,7 @@ class ApiSettingsController extends Controller
         }
     }
 
-   public function toggle(Request $request)
+    public function toggle(Request $request)
     {
         try {
             $currentMode = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
@@ -348,9 +320,9 @@ class ApiSettingsController extends Controller
                 $targetIAK          = 'development';
                 $targetDharmawisata = 'development';
                 $targetDana         = '0'; // 0 = Sandbox DANA
-                $targetMidtrans     = 'sandbox'; // --- TAMBAHAN MIDTRANS ---
-                $targetLalamove     = 'sandbox'; // --- TAMBAHAN LALAMOVE ---
-                $targetPaypal       = 'sandbox'; // --- TAMBAHAN PAYPAL ---
+                $targetMidtrans     = 'sandbox';
+                $targetLalamove     = 'sandbox';
+                $targetPaypal       = 'sandbox';
                 $label              = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
                 $targetKA           = 'production';
@@ -359,9 +331,9 @@ class ApiSettingsController extends Controller
                 $targetIAK          = 'production';
                 $targetDharmawisata = 'production';
                 $targetDana         = '1'; // 1 = Production DANA
-                $targetMidtrans     = 'production'; // --- TAMBAHAN MIDTRANS ---
-                $targetLalamove     = 'production'; // --- TAMBAHAN LALAMOVE ---
-                $targetPaypal       = 'production'; // --- TAMBAHAN PAYPAL ---
+                $targetMidtrans     = 'production';
+                $targetLalamove     = 'production';
+                $targetPaypal       = 'production';
                 $label              = 'PRODUCTION (LIVE)';
             }
 
@@ -370,18 +342,11 @@ class ApiSettingsController extends Controller
             Api::setValue('DOKU_ENV', $targetDoku, 'doku', 'global');
             Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global');
             Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global');
-            
-            // --- TAMBAHAN TOGGLE DANA ---
             Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
-
-            // --- TAMBAHAN TOGGLE MIDTRANS ---
             Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
-
-            // --- TAMBAHAN TOGGLE LALAMOVE ---
+            
             // LOG LOG
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
-
-            // --- TAMBAHAN TOGGLE PAYPAL ---
             Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
 
             event(new SystemModeUpdated($targetKA));
@@ -393,7 +358,7 @@ class ApiSettingsController extends Controller
         }
     }
 
-   public function toggleApi(Request $request)
+    public function toggleApi(Request $request)
     {
         try {
             $isProduction = filter_var($request->input('is_production'), FILTER_VALIDATE_BOOLEAN);
@@ -404,10 +369,10 @@ class ApiSettingsController extends Controller
                 $targetDoku         = 'production';
                 $targetIAK          = 'production';
                 $targetDharmawisata = 'production';
-                $targetDana         = '1'; // Production DANA
-                $targetMidtrans     = 'production'; // --- TAMBAHAN MIDTRANS ---
-                $targetLalamove     = 'production'; // --- TAMBAHAN LALAMOVE ---
-                $targetPaypal       = 'production'; // --- TAMBAHAN PAYPAL ---
+                $targetDana         = '1'; 
+                $targetMidtrans     = 'production';
+                $targetLalamove     = 'production';
+                $targetPaypal       = 'production';
                 $label              = 'PRODUCTION (LIVE)';
             } else {
                 $targetKA           = 'staging';
@@ -415,10 +380,10 @@ class ApiSettingsController extends Controller
                 $targetDoku         = 'sandbox';
                 $targetIAK          = 'development';
                 $targetDharmawisata = 'development';
-                $targetDana         = '0'; // Sandbox DANA
-                $targetMidtrans     = 'sandbox'; // --- TAMBAHAN MIDTRANS ---
-                $targetLalamove     = 'sandbox'; // --- TAMBAHAN LALAMOVE ---
-                $targetPaypal       = 'sandbox'; // --- TAMBAHAN PAYPAL ---
+                $targetDana         = '0'; 
+                $targetMidtrans     = 'sandbox';
+                $targetLalamove     = 'sandbox';
+                $targetPaypal       = 'sandbox';
                 $label              = 'SANDBOX / MAINTENANCE';
             }
 
@@ -427,18 +392,11 @@ class ApiSettingsController extends Controller
             Api::setValue('DOKU_ENV', $targetDoku, 'doku', 'global');
             Api::setValue('IAK_MODE', $targetIAK, 'iak', 'global');
             Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global');
-            
-            // --- TAMBAHAN TOGGLE API DANA ---
             Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
-
-            // --- TAMBAHAN TOGGLE API MIDTRANS ---
             Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
-
-            // --- TAMBAHAN TOGGLE API LALAMOVE ---
+            
             // LOG LOG
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
-            
-            // --- TAMBAHAN TOGGLE API PAYPAL ---
             Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
 
             event(new SystemModeUpdated($targetKA));

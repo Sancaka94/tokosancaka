@@ -520,7 +520,17 @@
                 {{-- 10. TAB PAYPAL --}}
                 <div x-show="activeTab === 'paypal'" style="display:none;" x-transition.opacity>
                     <div class="p-6 border-b border-zinc-200">
-                        <h3 class="text-lg font-bold text-zinc-900 mb-1">PayPal REST API</h3>
+                        <div class="flex items-center gap-4 mb-1">
+                            <h3 class="text-lg font-bold text-zinc-900">PayPal REST API</h3>
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sandbox</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': paypalData.mode === 'production', 'border-zinc-300': paypalData.mode === 'sandbox'}" @click="paypalData.mode = (paypalData.mode === 'production' ? 'sandbox' : 'production')" :checked="paypalData.mode === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
+                            </div>
+                        </div>
                         <p class="text-sm text-zinc-500">Menerima pembayaran Global (USD) & Kartu Kredit.</p>
                     </div>
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
@@ -528,9 +538,22 @@
                         <input type="hidden" name="type" value="paypal">
                         <input type="hidden" name="paypal_mode" x-model="paypalData.mode">
 
-                        <div class="p-3 bg-zinc-50 border border-zinc-200 rounded">
-                            <p class="text-xs text-zinc-600 font-bold mb-1">Webhook URL Endpoint:</p>
-                            <p class="text-xs font-mono text-zinc-800 break-all select-all">https://{{ Request::getHost() }}/api/webhook/paypal</p>
+                        {{-- INFO ENDPOINT URL (Dinamis berdasarkan toggle) --}}
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="p-3 bg-zinc-50 border border-zinc-200 rounded">
+                                <p class="text-[10px] text-zinc-500 font-bold mb-1 uppercase tracking-wider">API Base URL</p>
+                                <p class="text-xs font-mono text-zinc-900 break-all select-all flex items-center">
+                                    <i class="fas fa-link text-zinc-400 mr-2"></i>
+                                    <span x-text="paypalData.mode === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'"></span>
+                                </p>
+                            </div>
+                            <div class="p-3 bg-zinc-50 border border-zinc-200 rounded">
+                                <p class="text-[10px] text-zinc-500 font-bold mb-1 uppercase tracking-wider">Webhook URL Endpoint</p>
+                                <p class="text-xs font-mono text-zinc-900 break-all select-all flex items-center">
+                                    <i class="fas fa-plug text-zinc-400 mr-2"></i>
+                                    https://{{ Request::getHost() }}/api/webhook/paypal
+                                </p>
+                            </div>
                         </div>
 
                         <div>
