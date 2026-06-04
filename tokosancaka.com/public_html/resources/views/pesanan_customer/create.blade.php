@@ -1160,40 +1160,61 @@
             });
         }
 
-       // PENAMBAHAN: Fungsi terpisah agar mudah dipanggil untuk mengecek limit 10rb
-        function applyGatewayMinimumLimit() {
-            // HANYA ambil tarif ongkir dari hidden input (tanpa item_price)
-            let totalTransaksi = parseInt($('#selected_shipping_cost').val()) || 0;
+       function applyGatewayMinimumLimit() {
+        // 1. Ambil harga barang (jika kosong, nilainya 0)
+        let itemPrice = parseInt($('#item_price').val()) || 0;
 
-            // Cek apakah di bawah 10rb
-            let isBelowLimit = totalTransaksi < 10000;
-
-            if (isBelowLimit) {
-                // Beri efek transparan dan disable interaksi klik pada semua opsi PG
-                $('.gateway-option').addClass('disabled text-muted').css({'pointer-events': 'none', 'opacity': '0.5'});
-
-                // Tambahkan pesan peringatan jika belum ada di dalam modal
-                if ($('#min-tx-alert').length === 0) {
-                    $('#paymentOptionsList').prepend('<li id="min-tx-alert" class="list-group-item list-group-item-danger text-center small fw-bold p-2 mb-2 rounded border border-danger"><i class="fas fa-info-circle me-1"></i> Total Ongkir di bawah Rp 10.000, Payment Gateway dinonaktifkan.</li>');
-                } else {
-                    $('#min-tx-alert').show();
-                }
-
-                // Jika user sudah terlanjur memilih opsi PG lalu ongkirnya diganti jadi di bawah 10rb, batalkan pilihannya
-                let selectedMethod = $('#payment_method').val();
-                if (selectedMethod && $('.gateway-option[data-value="'+selectedMethod+'"]').length > 0) {
-                    $('#payment_method').val('');
-                    $('#selectedPaymentName').text('Pilih Pembayaran...');
-                    $('#selectedPaymentLogo').addClass('d-none').attr('src', '');
-                    $('#defaultPaymentIcon').removeClass('d-none');
-                    $('.list-group-item-action').removeClass('active');
-                }
-            } else {
-                // Buka kembali jika nilainya Rp 10.000 atau lebih
-                $('.gateway-option').removeClass('disabled text-muted').css({'pointer-events': 'auto', 'opacity': '1'});
-                $('#min-tx-alert').hide();
-            }
+        // 2. Ambil ongkir paksa dari value expedition (Format: regular-Tiki-REG-9500-0-0)
+        let expVal = $('#expedition').val();
+        let shippingCost = 0;
+        if (expVal) {
+            let parts = expVal.split('-');
+            shippingCost = parseInt(parts[3]) || 0; // Array ke-3 pasti berisi angka ongkir murni
         }
+
+        // 3. Hitung total keseluruhan
+        let totalTransaksi = itemPrice + shippingCost;
+
+        // 4. KUNCI JIKA TOTAL DI BAWAH 10.000
+        if (totalTransaksi < 10000) {
+            // Matikan tombol dengan CSS paksa
+            $('.gateway-option')
+                .addClass('disabled')
+                .css({
+                    'pointer-events': 'none',
+                    'opacity': '0.3',
+                    'background-color': '#f3f4f6'
+                });
+
+            // Munculkan pesan peringatan merah
+            let alertMsg = `<i class="fas fa-exclamation-triangle me-1"></i> Total Bayar (Rp ${totalTransaksi.toLocaleString('id-ID')}) di bawah minimum Rp 10.000. Payment Gateway dimatikan.`;
+            if ($('#min-tx-alert').length === 0) {
+                $('#paymentOptionsList').prepend(`<li id="min-tx-alert" class="list-group-item list-group-item-danger text-center small fw-bold p-2 mb-2 rounded border border-danger">${alertMsg}</li>`);
+            } else {
+                $('#min-tx-alert').html(alertMsg).show();
+            }
+
+            // Reset form jika terlanjur diklik
+            let selectedMethod = $('#payment_method').val();
+            if (selectedMethod && $('.gateway-option[data-value="'+selectedMethod+'"]').length > 0) {
+                $('#payment_method').val('');
+                $('#selectedPaymentName').text('Pilih Pembayaran...');
+                $('#selectedPaymentLogo').addClass('d-none').attr('src', '');
+                $('#defaultPaymentIcon').removeClass('d-none');
+                $('.gateway-option').removeClass('active');
+            }
+        } else {
+            // BUKA KUNCI JIKA 10.000 ATAU LEBIH
+            $('.gateway-option')
+                .removeClass('disabled')
+                .css({
+                    'pointer-events': 'auto',
+                    'opacity': '1',
+                    'background-color': ''
+                });
+            $('#min-tx-alert').hide();
+        }
+    }
 
         $('#paymentMethodButton').on('click', function() {
             // PENAMBAHAN: Validasi dijalankan setiap kali tombol "Metode Pembayaran" diklik
@@ -1226,8 +1247,14 @@ function executePaymentSelection(element) {
 }
 
         // Logika Klik Opsi Pembayaran
-        $('#paymentOptionsList').on('click', '.list-group-item-action', function() {
-            if (!$(this).data('value') || $(this).hasClass('disabled')) return;
+        $('#paymentOptionsList').on('click', '.list-group-item-action', function(e) {
+            // BLOKIR KERAS JIKA TOMBOL DALAM MODE DISABLED
+            if ($(this).hasClass('disabled')) {
+                e.preventDefault();
+                return false;
+            }
+
+            if (!$(this).data('value')) return;
 
             // Jika butuh PIN dan belum verifikasi, CEGAT DISINI
             if ($(this).hasClass('requires-pin') && !isPinVerified) {
