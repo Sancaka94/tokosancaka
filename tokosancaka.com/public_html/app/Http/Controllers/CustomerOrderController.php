@@ -1528,94 +1528,150 @@ TEXT;
     }
 
     /**
-     * EKSEKUTOR DANA BINDING (AUTO DEBIT) UNTUK PESANAN PUBLIK
+     * =========================================================================
+     * EKSEKUTOR PEMBAYARAN DANA BINDING (AUTO-DEBIT / DIRECT DEBIT) UNTUK PUBLIC
+     * =========================================================================
      */
-    private function createPaymentDanaBindingPublic(Pesanan $pesanan, int $amount, \App\Models\User $user)
+    private function createPaymentDanaBindingPublic(Pesanan $pesanan, int $amount, \App\Models\User $userAccount)
     {
-        try {
-            $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
-            $isProduction = ($danaMode == '1');
+        // 1. DYNAMIC CONFIGURATION DARI DATABASE
+        $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
+        $isProduction = ($danaMode == '1');
 
-            if ($isProduction) {
-                $merchantIdConf = \App\Models\Api::getValue('dana_prod_merchant_id', 'production');
-                $partnerIdConf  = \App\Models\Api::getValue('dana_prod_client_id', 'production');
-                $baseUrl        = 'https://api.saas.dana.id';
-            } else {
-                $merchantIdConf = \App\Models\Api::getValue('dana_sandbox_merchant_id', 'sandbox');
-                $partnerIdConf  = \App\Models\Api::getValue('dana_sandbox_client_id', 'sandbox');
-                $baseUrl        = 'https://api.sandbox.dana.id';
-            }
+        if ($isProduction) {
+            $merchantIdConf = \App\Models\Api::getValue('dana_prod_merchant_id', 'production');
+            $partnerIdConf  = \App\Models\Api::getValue('dana_prod_client_id', 'production');
+            $privateKey     = \App\Models\Api::getValue('dana_prod_private_key', 'production');
+            $publicKey      = \App\Models\Api::getValue('dana_prod_public_key', 'production');
+            $baseUrl        = 'https://api.saas.dana.id';
+        } else {
+            $merchantIdConf = \App\Models\Api::getValue('dana_sandbox_merchant_id', 'sandbox');
+            $partnerIdConf  = \App\Models\Api::getValue('dana_sandbox_client_id', 'sandbox');
+            $privateKey     = \App\Models\Api::getValue('dana_sandbox_private_key', 'sandbox');
+            $publicKey      = \App\Models\Api::getValue('dana_sandbox_public_key', 'sandbox');
+            $baseUrl        = 'https://api.sandbox.dana.id';
+        }
 
-            $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $pesanan->nomor_invoice);
-            $timestamp    = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
-            $amountValue  = number_format((float)$amount, 2, '.', '');
+        // WAJIB: Timpa config runtime agar DanaSignatureService membaca key yang dinamis ini
+        config([
+            'services.dana.merchant_id'   => $merchantIdConf,
+            'services.dana.client_id'     => $partnerIdConf,
+            'services.dana.x_partner_id'  => $partnerIdConf,
+            'services.dana.private_key'   => $privateKey,
+            'services.dana.public_key'    => $publicKey,
+            'services.dana.base_url'      => $baseUrl,
+            'services.dana.dana_env'      => $isProduction ? 'PRODUCTION' : 'SANDBOX',
+            'services.dana.origin'        => url('/')
+        ]);
 
-            // PERBAIKAN: Melengkapi struktur payload standar DANA (Memasukkan data Buyer/Pelanggan)
-            $bodyArray = [
-                "partnerReferenceNo" => $cleanInvoice,
-                "merchantId"         => $merchantIdConf,
-                "amount"             => ["value" => $amountValue, "currency" => "IDR"],
-                "payOption"          => "BALANCE", // Minta DANA memotong dari Saldo DANA user
-                "additionalInfo"     => [
-                    "mcc" => "5732",
-                    "envInfo" => [
-                        "sourcePlatform"    => "IPG",
-                        "terminalType"      => "SYSTEM",
-                        "orderTerminalType" => "WEB"
-                    ],
-                    "order" => [
-                        "orderTitle"        => substr("Pay " . $cleanInvoice, 0, 64),
-                        "merchantTransType" => "01",
-                        // 👇 DATA BUYER DITAMBAHKAN DI SINI
-                        "buyer" => [
-                            "externalUserId"   => "USER_" . ($user->id_pengguna ?? '0'),
-                            "externalUserType" => "MERCHANT_USER",
-                            "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap ?? 'Pelanggan'), 0, 64),
-                        ],
-                        "goods" => [
-                            [
-                                "name"            => "Pengiriman Paket " . $pesanan->nomor_invoice,
-                                "merchantGoodsId" => substr("ITEM" . $cleanInvoice, 0, 64),
-                                "description"     => "Layanan Pengiriman",
-                                "category"        => "LOGISTICS",
-                                "price"           => ["value" => $amountValue, "currency" => "IDR"],
-                                "unit"            => "pcs",
-                                "quantity"        => "1"
-                            ]
-                        ]
+        // Cek Keberadaan Token User
+        if (empty($userAccount->dana_access_token)) {
+            Log::error('DANA_BINDING_FAIL (Public): Token DANA user kosong.');
+            return null;
+        }
+
+        // 2. DATA PREPARATION
+        $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $pesanan->nomor_invoice);
+        $timestamp    = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $validUpTo    = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+        $amountValue  = number_format((float)$amount, 2, '.', '');
+        $path         = '/rest/redirection/v1.0/debit/payment-host-to-host';
+
+        // 3. BODY REQUEST (DANA SNAP BI B2B2C)
+        $bodyArray = [
+            "partnerReferenceNo" => $cleanInvoice,
+            "merchantId"         => $merchantIdConf,
+            "validUpTo"          => $validUpTo,
+            "amount" => [
+                "value"    => $amountValue,
+                "currency" => "IDR"
+            ],
+            "urlParams" => [
+                [
+                    "url" => route('dana.return', ['trx_id' => $cleanInvoice]),
+                    "type" => "PAY_RETURN",
+                    "isDeeplink" => "N"
+                ],
+                [
+                    "url" => url('/dana/notify'),
+                    "type" => "NOTIFICATION",
+                    "isDeeplink" => "N"
+                ]
+            ],
+            "payOptionDetails" => [
+                [
+                    "payMethod"   => "BALANCE",
+                    "payOption"   => "BALANCE",
+                    "transAmount" => [
+                        "value"    => $amountValue,
+                        "currency" => "IDR"
                     ]
                 ]
-            ];
+            ],
+            "additionalInfo" => [
+                "supportDeepLinkCheckoutUrl" => "true",
+                "productCode"                => "51051000100000000001",
+                "mcc"                        => "5732",
+                "order" => [
+                    "orderTitle"        => substr("Checkout " . $cleanInvoice, 0, 64),
+                    "merchantTransType" => "01",
+                    "scenario"          => "DIRECT_DEBIT",
+                    "buyer" => [
+                        "externalUserId"   => (string) ($userAccount->id_pengguna ?? 'GUEST'),
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $userAccount->nama_lengkap ?? 'Customer'), 0, 64)
+                    ]
+                ],
+                "envInfo" => [
+                    "sourcePlatform"    => "IPG",
+                    "terminalType"      => "SYSTEM",
+                    "orderTerminalType" => "WEB"
+                ]
+            ]
+        ];
 
-            $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-            $danaSignature = app(\App\Services\DanaSignatureService::class);
-            // Gunakan token binding user untuk otorisasinya
-            $signature    = $danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp, $user->dana_access_token);
+        try {
+            // 4. GENERATE TOKEN B2B & SIGNATURE
+            $danaSignature  = app(\App\Services\DanaSignatureService::class);
+            $accessTokenB2B = $danaSignature->getAccessToken();
+            $signature      = $danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
             $headers = [
-                'Authorization'  => 'Bearer ' . $user->dana_access_token,
-                'X-PARTNER-ID'   => $partnerIdConf,
-                'X-EXTERNAL-ID'  => \Illuminate\Support\Str::random(32),
-                'X-TIMESTAMP'    => $timestamp,
-                'X-SIGNATURE'    => $signature,
-                'Content-Type'   => 'application/json',
-                'CHANNEL-ID'     => '95221',
-                'ORIGIN'         => url('/'),
+                'Content-Type'           => 'application/json',
+                'Authorization'          => 'Bearer ' . $accessTokenB2B,
+                'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token, // TOKEN USER
+                'X-TIMESTAMP'            => $timestamp,
+                'X-SIGNATURE'            => $signature,
+                'ORIGIN'                 => url('/'),
+                'X-PARTNER-ID'           => $partnerIdConf,
+                'X-EXTERNAL-ID'          => (string) time() . \Illuminate\Support\Str::random(6),
+                'X-DEVICE-ID'            => 'SANCAKA-WEB-POS',
+                'CHANNEL-ID'             => '95221'
             ];
 
+            \Illuminate\Support\Facades\Log::info('DANA_BINDING_REQ (Public)', ['URL' => $baseUrl . $path]);
+
+            // 5. SEND REQUEST
             $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
-                ->post($baseUrl . $relativePath);
+                ->post($baseUrl . $path);
 
             $result = $response->json();
 
-            // Jika berhasil ditarik saldonya secara auto-debit
-            if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
-                 // DANA Auto-debit sukses.
-                 // Kembalikan URL yang mengarah ke halaman sukses kita sendiri
-                 return route('pesanan.public.success', ['invoice' => $pesanan->nomor_invoice, 'status' => 'paid']);
+            \Illuminate\Support\Facades\Log::info('DANA_BINDING_RES (Public)', ['Result' => $result]);
+
+            // 6. HANDLE RESPONSE
+            if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
+
+                // Skenario 1: Dana mengembalikan URL (Butuh PIN / Limit harian tercapai / Token Expired)
+                if (!empty($result['webRedirectUrl'])) {
+                    return $result['webRedirectUrl'];
+                }
+
+                // Skenario 2: Instant Success (Auto-Debit Berhasil Seketika)
+                return route('pesanan.public.success', ['invoice' => $pesanan->nomor_invoice, 'status' => 'paid']);
             }
 
             Log::error('DANA_BINDING_FAIL (Public)', ['Result' => $result]);
