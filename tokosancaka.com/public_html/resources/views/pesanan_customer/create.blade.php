@@ -349,7 +349,6 @@
 
 <div class="container main-content-container">
 
-    <!-- Stepper/Progres Indikator -->
     <div class="stepper">
         <div class="step active" id="step-indicator-1">
             <div class="step-icon">1</div>
@@ -458,7 +457,6 @@
                         <i class="fas fa-box-open fa-icon me-2"></i> Detail Paket & Pengiriman
                     </div>
                     <div class="card-body p-3 p-md-4">
-                        {{-- Konten detail paket tidak berubah --}}
                         <div class="row g-3">
                             <div class="col-12"><label for="item_description" class="form-label">Deskripsi Barang</label><div class="input-group"><span class="input-group-text"><i class="fas fa-tag"></i></span><input type="text" name="item_description" id="item_description" class="form-control" placeholder="Contoh: Baju, Sepatu, Dokumen" required></div></div>
                             <div class="col-md-6"><label for="item_price" class="form-label">Harga Barang</label><div class="input-group"><span class="input-group-text fw-bold">Rp</span><input type="number" name="item_price" id="item_price" class="form-control" placeholder="50000" required min="1"></div></div>
@@ -466,69 +464,35 @@
                             <div class="col-12"><label class="form-label mb-2">Dimensi (Opsional)</label><div class="row g-2"><div class="col-4"><div class="input-group"><span class="input-group-text">P</span><input type="number" name="length" id="length" class="form-control" placeholder="cm"></div></div><div class="col-4"><div class="input-group"><span class="input-group-text">L</span><input type="number" name="width" id="width" class="form-control" placeholder="cm"></div></div><div class="col-4"><div class="input-group"><span class="input-group-text">T</span><input type="number" name="height" id="height" class="form-control" placeholder="cm"></div></div></div></div>
 
                             <div class="col-md-6">
-  <label for="item_type" class="form-label">Jenis Barang</label>
-  <select name="item_type" id="item_type" class="form-select" required>
-    <option value="" disabled selected>Pilih...</option>
-
-    <!-- Elektronik & Gadget -->
-    <option value="1">Elektronik</option>
-    <option value="2">HP & Gadget</option>
-    <option value="3">Komputer & Laptop</option>
-    <option value="4">Aksesoris Elektronik</option>
-
-    <!-- Fashion -->
-    <option value="5">Pakaian Pria</option>
-    <option value="6">Pakaian Wanita</option>
-    <option value="7">Pakaian Anak</option>
-    <option value="8">Sepatu & Sandal</option>
-    <option value="9">Tas & Dompet</option>
-    <option value="10">Perhiasan & Aksesoris</option>
-
-    <!-- Rumah Tangga -->
-    <option value="11">Peralatan Rumah Tangga</option>
-    <option value="12">Peralatan Dapur</option>
-    <option value="13">Furniture</option>
-    <option value="14">Dekorasi Rumah</option>
-
-    <!-- Kecantikan & Kesehatan -->
-    <option value="15">Kosmetik & Makeup</option>
-    <option value="16">Skincare</option>
-    <option value="17">Alat Kesehatan</option>
-    <option value="18">Obat & Suplemen</option>
-
-    <!-- Hobi & Lifestyle -->
-    <option value="19">Olahraga</option>
-    <option value="20">Alat Musik</option>
-    <option value="21">Fotografi & Kamera</option>
-    <option value="22">Otomotif (Sparepart, Aksesoris Motor/Mobil)</option>
-
-    <!-- Bayi & Anak -->
-    <option value="23">Mainan Anak</option>
-    <option value="24">Perlengkapan Bayi</option>
-    <option value="25">Fashion Bayi & Anak</option>
-
-    <!-- Makanan & Minuman -->
-    <option value="26">Makanan & Minuman</option>
-    <option value="27">Snack & Camilan</option>
-    <option value="28">Kopi & Teh</option>
-    <option value="29">Bahan Pokok</option>
-
-    <!-- Buku & ATK -->
-    <option value="30">Buku</option>
-    <option value="31">Alat Tulis & Kantor</option>
-
-    <!-- Lainnya -->
-    <option value="32">Dokumen</option>
-    <option value="33">Barang Pecah Belah</option>
-    <option value="34">Lainnya</option>
-  </select>
-</div>
-
+                                <label for="item_type" class="form-label">Jenis Barang</label>
+                                <select name="item_type" id="item_type" class="form-select" required>
+                                    <option value="" disabled selected>Pilih...</option>
+                                    <option value="1">Peralatan Elektronik & Gadget</option>
+                                    <option value="2">Pakaian / Baju / Kain</option>
+                                    <option value="3">Pecah Belah</option>
+                                    <option value="4">Dokumen / Berkas / Buku</option>
+                                    <option value="5">Peralatan Rumah Tangga</option>
+                                    <option value="6">Aksesoris</option>
+                                    <option value="7">Lain-Lain</option>
+                                    <option value="8">Dokumen Berharga</option>
+                                    <option value="9">Peralatan Kesehatan / Kecantikan / Kosmetik</option>
+                                    <option value="10">Peralatan Olahraga & Hiburan</option>
+                                    <option value="11">Perlengkapan Mobil & Motor</option>
+                                </select>
+                            </div>
 
                             <div class="col-md-6"><label for="service_type" class="form-label">Jenis Layanan</label><select name="service_type" id="service_type" class="form-select" required><option value="regular" selected>Regular</option><option value="cargo">Cargo</option><option value="instant">Instant / Sameday</option></select></div>
                             <div class="col-12"><label for="ansuransi" class="form-label">Asuransi</label><div class="input-group"><span class="input-group-text"><i class="fas fa-shield-alt"></i></span><select name="ansuransi" id="ansuransi" class="form-select" required><option value="tidak" selected>Tidak Pakai Asuransi</option><option value="iya">Ya, Pakai Asuransi</option></select></div></div>
                             <div class="col-12"><hr class="my-3"></div>
-                            <div class="col-12"><label for="selected_expedition_display" class="form-label">Pilih Ekspedisi</label><input type="text" id="selected_expedition_display" class="form-control text-start fw-bold" placeholder="Lengkapi data & klik di sini" readonly required><input type="hidden" name="expedition" id="expedition" required></div>
+
+                            {{-- PENAMBAHAN: Hidden input untuk menampung tarif ongkir yang terpilih guna keperluan kalkulasi limit minimum --}}
+                            <div class="col-12">
+                                <label for="selected_expedition_display" class="form-label">Pilih Ekspedisi</label>
+                                <input type="text" id="selected_expedition_display" class="form-control text-start fw-bold" placeholder="Lengkapi data & klik di sini" readonly required>
+                                <input type="hidden" name="expedition" id="expedition" required>
+                                <input type="hidden" id="selected_shipping_cost" value="0">
+                            </div>
+
                             <div class="col-12"><label for="paymentMethodButton" class="form-label">Metode Pembayaran</label><div id="paymentMethodButton" class="form-control d-flex justify-content-between align-items-center" style="cursor: pointer;"><div class="d-flex align-items-center"><i id="defaultPaymentIcon" class="fas fa-credit-card fa-lg me-3 text-muted"></i><img id="selectedPaymentLogo" src="" alt="Logo" class="me-2 d-none" style="width:50px; height:25px; object-fit:contain;"><span id="selectedPaymentName">Pilih Pembayaran...</span></div><i class="fas fa-chevron-down text-muted"></i></div><input type="hidden" name="payment_method" id="payment_method" required></div>
                             <div class="d-grid gap-2 mt-4"><button type="button" id="confirmBtn" class="btn btn-primary btn-lg"><i class="fas fa-paper-plane me-2"></i>Buat Pesanan Sekarang</button><button type="button" id="cekOngkirWaBtn" class="btn btn-outline-success"><i class="fab fa-whatsapp me-2"></i>Tanya Ongkir via WA</button></div>
                         </div>
@@ -631,24 +595,25 @@
                     @endauth
 
                     {{-- 4. OPSI PAYMENT GATEWAY UTAMA (DOKU, MIDTRANS, DANA WEB) --}}
+                    {{-- PENAMBAHAN: Ditambahkan class "gateway-option" untuk di target saat validasi limit minimum --}}
                     <li class="list-group-item bg-light fw-bold text-muted border-top border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
                         Payment Gateway Terintegrasi
                     </li>
-                    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="DOKU_JOKUL" data-label="Doku (Rekomendasi)">
+                    <li class="list-group-item list-group-item-action d-flex align-items-center gateway-option" data-value="DOKU_JOKUL" data-label="Doku (Rekomendasi)">
                         <img src="{{ asset('public/assets/doku.png') }}" class="me-3 border rounded p-1 bg-white" style="width: 40px; height: 40px; object-fit: contain;">
                         <div>
                             <div class="fw-bold text-dark" style="font-size: 0.95rem;">DOKU (Rekomendasi Sancaka)</div>
                             <div class="text-muted" style="font-size: 0.75rem;">VA, QRIS, E-Wallet, CC</div>
                         </div>
                     </li>
-                    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="MIDTRANS" data-label="Midtrans">
+                    <li class="list-group-item list-group-item-action d-flex align-items-center gateway-option" data-value="MIDTRANS" data-label="Midtrans">
                         <img src="{{ asset('public/assets/midtrans.png') }}" class="me-3 border rounded p-1 bg-white" style="width: 40px; height: 40px; object-fit: contain;">
                         <div>
                             <div class="fw-bold text-dark" style="font-size: 0.95rem;">Midtrans</div>
                             <div class="text-muted" style="font-size: 0.75rem;">VA, QRIS, E-Wallet (Otomatis)</div>
                         </div>
                     </li>
-                    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="DANA" data-label="DANA (Web Checkout)">
+                    <li class="list-group-item list-group-item-action d-flex align-items-center gateway-option" data-value="DANA" data-label="DANA (Web Checkout)">
                         <img src="{{ asset('public/assets/dana.webp') }}" class="me-3 border rounded p-1 bg-white" style="width: 40px; height: 40px; object-fit: contain;">
                         <div>
                             <div class="fw-bold text-dark" style="font-size: 0.95rem;">DANA (Checkout Gapura)</div>
@@ -668,52 +633,6 @@
                     </div>
 
                 </ul>
-
-                @auth
-                    {{-- 1. OPSI INTERNAL: SALDO SANCAKA (Hanya jika Login) --}}
-                    <li class="list-group-item bg-light fw-bold text-muted border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
-                        Dompet Sancaka
-                    </li>
-                    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="POTONG SALDO" data-label="Potong Saldo">
-                        <img src="{{ asset('public/assets/saldo.png') }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain;">
-                        <div>
-                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">Potong Saldo</div>
-                            <div class="text-muted" style="font-size: 0.75rem;">Tersedia: Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</div>
-                        </div>
-                    </li>
-
-                    {{-- 2. OPSI DANA AUTO-DEBIT / BINDING (Hanya jika Login) --}}
-                    <li class="list-group-item bg-light fw-bold text-muted border-top border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
-                        E-Wallet Auto Debit
-                    </li>
-                    @php
-                        $userDanaToken = Auth::user()->dana_access_token ?? null;
-                        $userDanaBalance = Auth::user()->dana_user_balance ?? 0;
-                        $hasDanaBinding = !empty($userDanaToken);
-                    @endphp
-
-                    @if($hasDanaBinding)
-                        <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="DANA_BINDING" data-label="DANA Auto-Debit" style="background-color: #f0f7ff;">
-                            <img src="{{ asset('public/assets/dana.webp') }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain;">
-                            <div class="flex-grow-1">
-                                <div class="fw-bold text-primary" style="font-size: 0.95rem;">DANA Auto-Debit</div>
-                                <div class="text-muted" style="font-size: 0.75rem;">Saldo DANA: Rp {{ number_format($userDanaBalance, 0, ',', '.') }}</div>
-                            </div>
-                            <span class="badge bg-primary rounded-pill">Tersambung</span>
-                        </li>
-                    @else
-                        <li class="list-group-item d-flex align-items-center justify-content-between" style="background-color: #fafafa; border-style: dashed;">
-                            <div class="d-flex align-items-center">
-                                <img src="{{ asset('public/assets/dana.webp') }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain; filter: grayscale(100%); opacity: 0.6;">
-                                <div>
-                                    <div class="fw-bold text-muted" style="font-size: 0.95rem;">DANA Auto-Debit</div>
-                                    <div class="text-muted" style="font-size: 0.75rem;">Bayar 1-klik tanpa PIN</div>
-                                </div>
-                            </div>
-                            <a href="{{ url('/dana/start-binding') }}" class="btn btn-sm btn-primary" style="font-size: 0.75rem;">Hubungkan</a>
-                        </li>
-                    @endif
-                    @endauth
             </div>
         </div>
     </div>
@@ -757,14 +676,6 @@
 {{-- SweetAlert untuk notifikasi --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-@push('scripts')
-{{-- SweetAlert untuk notifikasi --}}
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-{{--
-  PERBAIKAN: Kita pastikan jQuery UI dimuat menggunakan script dinamis
-  AGAR selalu dieksekusi setelah jQuery bawaan Laravel/Layouts selesai dimuat.
---}}
 <script>
     // Fungsi untuk memuat script secara berurutan
     function loadScript(url, callback) {
@@ -867,7 +778,6 @@
 
        // --- FUNGSI MENGISI FORM (DENGAN SENSOR MASKING) ---
         function fillContactForm(prefix, data) {
-            // Masking (Sensor) aktif untuk tampilan, tapi data asli disimpan di 'data-real-value'
             $(`#${prefix}_name`).val(maskData('name', data.nama)).trigger('blur').attr('data-real-value', data.nama);
             $(`#${prefix}_phone`).val(maskData('phone', data.no_hp)).trigger('blur').attr('data-real-value', data.no_hp);
             $(`#${prefix}_address`).val(maskData('address', data.alamat)).trigger('blur').attr('data-real-value', data.alamat || '');
@@ -892,7 +802,6 @@
                         $(`#${prefix}_district_id`).val(item.district_id).trigger('change');
                         $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id).trigger('change');
 
-                        // Simpan Lat/Lng
                         $(`#${prefix}_lat`).val(item.lat || '');
                         $(`#${prefix}_lng`).val(item.lon || '');
 
@@ -910,7 +819,7 @@
             }
         }
 
-        // --- FUNGSI AUTOCOMPLETE JQUERY UI (DENGAN SENSOR DROPDOWN) ---
+        // --- FUNGSI AUTOCOMPLETE JQUERY UI ---
         function setupContactSearch(prefix) {
             $(`#${prefix}_name, #${prefix}_phone`).each(function() {
                 $(this).autocomplete({
@@ -945,8 +854,6 @@
                     if (item.disabled) {
                         return $("<li class='ui-state-disabled p-2 text-muted text-center'></li>").text(item.label).appendTo(ul);
                     }
-
-                    // PROSES MASKING/SENSOR UNTUK TAMPILAN DROPDOWN
                     const maskedName = maskData('name', item.data.nama);
                     const maskedPhone = maskData('phone', item.data.no_hp);
 
@@ -1095,6 +1002,9 @@
                         const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
                         const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${codFee}`;
 
+                        // PENAMBAHAN: Kalkulasi ongkir total (biaya dasar + asuransi + COD fee jika ada) untuk disematkan di tombol
+                        const totalOngkirCost = i.cost + insuranceFeeValue + codFee;
+
                         const hasDiscount = i.price?.base_price && i.price.base_price > i.cost;
                         const basePriceFmt = hasDiscount ? formatRupiah(i.price.base_price) : '';
 
@@ -1113,7 +1023,8 @@
                             }
                         }
 
-                        const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}">Kirim Paket</button>`;
+                        // PENAMBAHAN: Atribut data-shipping-cost di HTML
+                        const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}" data-shipping-cost="${totalOngkirCost}">Kirim Paket</button>`;
 
                         const itemHtml = `
                         <div class="ongkir-item-card">
@@ -1162,6 +1073,14 @@
             $('#expedition').val('');
             $('#selected_expedition_display').val('Data berubah, klik untuk cek ulang ongkir').removeClass('is-valid');
             $('.cod-payment-option').hide();
+
+            // PENAMBAHAN: Reset cost ongkir dan reset payment gateway jika harga berubah
+            $('#selected_shipping_cost').val('0');
+
+            $('#payment_method').val('');
+            $('#selectedPaymentName').text('Pilih Pembayaran...');
+            $('#selectedPaymentLogo').addClass('d-none').attr('src', '');
+            $('#defaultPaymentIcon').removeClass('d-none');
         });
 
         $('#selected_expedition_display').on('click', runCekOngkir);
@@ -1170,6 +1089,10 @@
             const expeditionValue = $(this).data('value');
             $('#expedition').val(expeditionValue);
             $('#selected_expedition_display').val($(this).data('display')).addClass('is-valid');
+
+            // PENAMBAHAN: Menyimpan cost tarif saat dipilih untuk kalkulasi limit PG nanti
+            $('#selected_shipping_cost').val($(this).data('shipping-cost'));
+
             if ($(this).data('cod-supported')) {
                 $('.cod-payment-option').show();
             } else {
@@ -1196,8 +1119,9 @@
                         container.empty();
                         res.data.forEach(ch => {
                             if (ch.active) {
+                                // PENAMBAHAN: Inject class "gateway-option" agar secara otomatis kena filter styling di event klik modal PG
                                 const li = $(`
-                                    <li class="list-group-item list-group-item-action d-flex align-items-center"
+                                    <li class="list-group-item list-group-item-action d-flex align-items-center gateway-option"
                                         data-value="${ch.code}"
                                         data-label="${ch.name}">
                                         <img src="${ch.icon_url}" class="me-3 border rounded p-1 bg-white"
@@ -1213,6 +1137,9 @@
                             }
                         });
                         isPaymentApiLoaded = true;
+
+                        // Eksekusi ulang pengecekan style (kalau API Tripay lebih lambat me-render daripada modal di klik)
+                        applyGatewayMinimumLimit();
                     } else {
                         container.html('<div class="p-3 text-center text-muted small">Saluran pembayaran Tripay tidak tersedia.</div>');
                     }
@@ -1224,13 +1151,53 @@
             });
         }
 
+        // PENAMBAHAN: Fungsi terpisah agar mudah dipanggil untuk mengecek limit 10rb
+        function applyGatewayMinimumLimit() {
+            let itemPrice = parseInt($('#item_price').val()) || 0;
+            let shippingCost = parseInt($('#selected_shipping_cost').val()) || 0;
+            let totalTransaksi = itemPrice + shippingCost;
+            let isBelowLimit = totalTransaksi < 10000;
+
+            if (isBelowLimit) {
+                // Beri efek transparan dan disable interaksi klik
+                $('.gateway-option').addClass('disabled text-muted').css({'pointer-events': 'none', 'opacity': '0.5'});
+
+                // Tambahkan pesan peringatan jika belum ada
+                if ($('#min-tx-alert').length === 0) {
+                    $('#paymentOptionsList').prepend('<li id="min-tx-alert" class="list-group-item list-group-item-danger text-center small fw-bold p-2 mb-2 rounded border border-danger"><i class="fas fa-info-circle me-1"></i> Total di bawah Rp 10.000, Payment Gateway dinonaktifkan.</li>');
+                } else {
+                    $('#min-tx-alert').show();
+                }
+
+                // Jika user sudah terlanjur memilih opsi PG dan harganya diturunkan, Reset Form-nya.
+                let selectedMethod = $('#payment_method').val();
+                if (selectedMethod && $('.gateway-option[data-value="'+selectedMethod+'"]').length > 0) {
+                    $('#payment_method').val('');
+                    $('#selectedPaymentName').text('Pilih Pembayaran...');
+                    $('#selectedPaymentLogo').addClass('d-none').attr('src', '');
+                    $('#defaultPaymentIcon').removeClass('d-none');
+                    $('.list-group-item-action').removeClass('active');
+                }
+            } else {
+                // Buka kembali jika nilainya di atas 10.000
+                $('.gateway-option').removeClass('disabled text-muted').css({'pointer-events': 'auto', 'opacity': '1'});
+                $('#min-tx-alert').hide();
+            }
+        }
+
         $('#paymentMethodButton').on('click', function() {
+            // PENAMBAHAN: Validasi dijalankan setiap kali tombol "Metode Pembayaran" diklik
+            applyGatewayMinimumLimit();
+
             paymentModal.show();
             loadTripayChannels();
         });
 
         $('#paymentOptionsList').on('click', '.list-group-item-action', function() {
             if (!$(this).data('value')) return;
+            // Cegah klik untuk opsi yang di-disable
+            if ($(this).hasClass('disabled')) return;
+
             const value = $(this).data('value');
             const label = $(this).data('label');
             const imgSrc = $(this).find('img').attr('src');

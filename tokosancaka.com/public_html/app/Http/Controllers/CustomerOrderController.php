@@ -836,10 +836,37 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             $customerEmail = 'customer' . Str::random(5) . '@tokosancaka.com';
         }
 
+        $finalAmount = (int) $total;
+        if ($finalAmount < 10000) {
+            Log::info("Total transaksi Rp {$finalAmount} di bawah minimum. Menaikkan menjadi Rp 10.000 agar Tripay memproses.");
+            $finalAmount = 10000;
+        }
+
+        // 4. Validasi Hitungan Total (Safety Net)
+        $calculatedTotalItems = 0;
+        foreach ($orderItems as $item) {
+            $calculatedTotalItems += ($item['price'] * $item['quantity']);
+        }
+
+        // Jika ada selisih (misal karena kita menaikkan harga jadi 10rb),
+        // update item agar sesuai dengan $finalAmount
+        if ($calculatedTotalItems !== $finalAmount) {
+            $orderItems = [[
+                'sku'      => 'INV-' . $pesanan->nomor_invoice,
+                'name'     => 'Pembayaran Invoice #' . $pesanan->nomor_invoice,
+                'price'    => $finalAmount,
+                'quantity' => 1
+            ]];
+        }
+
+        // 5. Buat Signature menggunakan $finalAmount
+        $signature = hash_hmac('sha256', $merchantCode . $pesanan->nomor_invoice . $finalAmount, $privateKey);
+
+        // 6. Siapkan Payload
         $payload = [
-            'method'         => $data['payment_method'], // Dikirim otomatis dari Blade
+            'method'         => $data['payment_method'],
             'merchant_ref'   => $pesanan->nomor_invoice,
-            'amount'         => (int) $total,
+            'amount'         => $finalAmount, // Pakai nilai yang sudah di-floor 10rb
             'customer_name'  => $data['receiver_name'],
             'customer_email' => $customerEmail,
             'customer_phone' => $data['receiver_phone'],
