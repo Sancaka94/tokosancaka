@@ -802,10 +802,19 @@
         function formatRupiah(angka) { return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); }
 
         // PENAMBAHAN: Fungsi Update Monitor Total
+// PENAMBAHAN: Fungsi Update Monitor Total (Dinamis Berdasarkan Metode Pembayaran)
 function updateTotalSummary() {
     let itemPrice = parseInt($('#item_price').val()) || 0;
     let shippingCost = parseInt($('#selected_shipping_cost').val()) || 0;
-    let total = itemPrice + shippingCost;
+    let paymentMethod = $('#payment_method').val();
+
+    // Default: Total Tagihan HANYA Tarif Ongkir
+    let total = shippingCost;
+
+    // Jika metode pembayarannya "COD Barang + Ongkir", barulah Harga Barang ikut ditambahkan ke Total
+    if (paymentMethod === 'CODBARANG') {
+        total = itemPrice + shippingCost;
+    }
 
     $('#summary_item_price').text(formatRupiah(itemPrice));
     $('#summary_shipping_cost').text(formatRupiah(shippingCost));
