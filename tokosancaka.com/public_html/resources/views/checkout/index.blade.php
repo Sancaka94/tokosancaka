@@ -396,8 +396,25 @@
                     <span class="text-sm font-medium text-gray-900">Rekomendasi Sancaka (Kartu Kredit, E-Wallet, dll)</span>
                 </li>
 
+                {{-- OPSI PAYPAL (GLOBAL PAYMENT) --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
+                    data-value="PAYPAL"
+                    data-label="PayPal / Credit Card"
+                    data-img="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg">
+                    
+                    <img src="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg" 
+                         alt="PayPal" 
+                         class="h-8 object-contain mr-4"
+                         onerror="this.src='https://placehold.co/32x32/EFEFEF/AAAAAA?text=PP'">
+                    
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">PayPal / Kartu Kredit</span>
+                        <span class="text-xs text-gray-500">Pembayaran Global (Otomatis konversi USD)</span>
+                    </div>
+                </li>
+
                 {{-- OPSI MIDTRANS --}}
-                {{-- <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
                     data-value="MIDTRANS"
                     data-label="Midtrans"
                     data-img="https://tokosancaka.com/public/assets/midtrans.png">
@@ -412,10 +429,10 @@
                         <span class="text-xs text-gray-500">Virtual Account, QRIS, E-Wallet (Otomatis)</span>
                     </div>
                 </li>
-                --}}
+            
 
                 {{-- OPSI DANA (DIRECT DEBIT) --}}
-               {{-- ================================================================= --}}
+                {{-- ================================================================= --}}
                 {{-- OPSI DANA (GAPURA & BINDING) BERDASARKAN DATABASE PENGGUNA --}}
                 {{-- ================================================================= --}}
                 @php
