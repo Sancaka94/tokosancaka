@@ -543,21 +543,118 @@
 </div>
 
 {{-- Modal Metode Pembayaran --}}
-<div class="modal fade" id="paymentMethodModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title fw-bold"><i class="fas fa-credit-card me-2 text-danger"></i>Pilih Metode Pembayaran</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-0"><ul id="paymentOptionsList" class="list-group list-group-flush" style="cursor: pointer;">
-    <li class="list-group-item list-group-item-action d-flex align-items-center cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="me-3" style="width: 50px; object-fit: contain;">COD Ongkir</li>
-    <li class="list-group-item list-group-item-action d-flex align-items-center cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="me-3" style="width: 50px; object-fit: contain;">COD Barang + Ongkir</li>
-    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="PERMATAVA" data-label="Permata VA"><img src="{{ asset('public/assets/permata.webp') }}" class="me-3" style="width: 50px; object-fit: contain;">Permata VA</li>
-    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="BNIVA" data-label="BNI VA"><img src="{{ asset('public/assets/bni.webp') }}" class="me-3" style="width: 50px; object-fit: contain;">BNI VA</li>
-    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="BRIVA" data-label="BRI VA"><img src="{{ asset('public/assets/bri.webp') }}" class="me-3" style="width: 50px; object-fit: contain;">BRI VA</li>
-    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="MANDIRIVA" data-label="Mandiri VA"><img src="{{ asset('public/assets/mandiri.webp') }}" class="me-3" style="width: 50px; object-fit: contain;">Mandiri VA</li>
-    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="BCAVA" data-label="BCA VA"><img src="{{ asset('public/assets/bca.webp') }}" class="me-3" style="width: 50px; object-fit: contain;">BCA VA</li>
-    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="ALFAMART" data-label="Alfamart"><img src="{{ asset('public/assets/alfamart.webp') }}" class="me-3" style="width: 50px; object-fit: contain;">Alfamart</li>
-    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="INDOMARET" data-label="Indomaret"><img src="{{ asset('public/assets/indomaret.webp') }}" class="me-3" style="width: 50px; object-fit: contain;">Indomaret</li>
-    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="OVO" data-label="OVO"><img src="{{ asset('public/assets/ovo.webp') }}" class="me-3" style="width: 50px; object-fit: contain;">OVO</li>
-    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="DANA" data-label="DANA"><img src="{{ asset('public/assets/dana.webp') }}" class="me-3" style="width: 50px; object-fit: contain;">DANA</li>
-    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="SHOPEEPAY" data-label="ShopeePay"><img src="{{ asset('public/assets/shopeepay.webp') }}" class="me-3" style="width: 50px; object-fit: contain;">ShopeePay</li>
-    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="QRIS" data-label="QRIS"><img src="{{ asset('public/assets/qris2.png') }}" class="me-3" style="width: 50px; object-fit: contain;">QRIS</li>
-</ul></div></div></div></div>
+<div class="modal fade" id="paymentMethodModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-credit-card me-2 text-danger"></i>Pilih Metode Pembayaran
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <ul id="paymentOptionsList" class="list-group list-group-flush" style="cursor: pointer;">
+
+                    {{-- 1. OPSI INTERNAL: SALDO SANCAKA --}}
+                    <li class="list-group-item bg-light fw-bold text-muted border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
+                        Dompet Sancaka
+                    </li>
+                    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="Potong Saldo" data-label="Potong Saldo">
+                        <img src="{{ asset('public/assets/saldo.png') }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain;">
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">Potong Saldo</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">Tersedia: Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</div>
+                        </div>
+                    </li>
+
+                    {{-- 2. OPSI INTERNAL: COD --}}
+                    <li class="list-group-item bg-light fw-bold text-muted border-top border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
+                        Bayar Di Tempat (Otomatis)
+                    </li>
+                    <li class="list-group-item list-group-item-action d-flex align-items-center cod-payment-option" data-value="COD" data-label="COD Ongkir">
+                        <img src="{{ asset('public/assets/cod.png') }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain;">
+                        <div class="fw-bold text-dark" style="font-size: 0.95rem;">COD Ongkir</div>
+                    </li>
+                    <li class="list-group-item list-group-item-action d-flex align-items-center cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir">
+                        <img src="{{ asset('public/assets/cod.png') }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain;">
+                        <div class="fw-bold text-dark" style="font-size: 0.95rem;">COD Barang + Ongkir</div>
+                    </li>
+
+                    {{-- 3. OPSI DANA AUTO-DEBIT (BINDING) --}}
+                    <li class="list-group-item bg-light fw-bold text-muted border-top border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
+                        E-Wallet Auto Debit
+                    </li>
+                    @php
+                        $userDanaToken = Auth::user()->dana_access_token ?? null;
+                        $userDanaBalance = Auth::user()->dana_user_balance ?? 0;
+                        $hasDanaBinding = !empty($userDanaToken);
+                    @endphp
+
+                    @if($hasDanaBinding)
+                        <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="DANA_BINDING" data-label="DANA Auto-Debit" style="background-color: #f0f7ff;">
+                            <img src="{{ asset('public/assets/dana.webp') }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain;">
+                            <div class="flex-grow-1">
+                                <div class="fw-bold text-primary" style="font-size: 0.95rem;">DANA Auto-Debit</div>
+                                <div class="text-muted" style="font-size: 0.75rem;">Saldo DANA: Rp {{ number_format($userDanaBalance, 0, ',', '.') }}</div>
+                            </div>
+                            <span class="badge bg-primary rounded-pill">Tersambung</span>
+                        </li>
+                    @else
+                        <li class="list-group-item d-flex align-items-center justify-content-between" style="background-color: #fafafa; border-style: dashed;">
+                            <div class="d-flex align-items-center">
+                                <img src="{{ asset('public/assets/dana.webp') }}" class="me-3" style="width: 40px; height: 40px; object-fit: contain; filter: grayscale(100%); opacity: 0.6;">
+                                <div>
+                                    <div class="fw-bold text-muted" style="font-size: 0.95rem;">DANA Auto-Debit</div>
+                                    <div class="text-muted" style="font-size: 0.75rem;">Bayar 1-klik tanpa PIN</div>
+                                </div>
+                            </div>
+                            <a href="{{ url('/dana/start-binding') }}" class="btn btn-sm btn-primary" style="font-size: 0.75rem;">Hubungkan</a>
+                        </li>
+                    @endif
+
+                    {{-- 4. OPSI PAYMENT GATEWAY UTAMA --}}
+                    <li class="list-group-item bg-light fw-bold text-muted border-top border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
+                        Payment Gateway Terintegrasi
+                    </li>
+                    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="DOKU_JOKUL" data-label="Doku (Rekomendasi)">
+                        <img src="{{ asset('public/assets/doku.png') }}" class="me-3 border rounded p-1 bg-white" style="width: 40px; height: 40px; object-fit: contain;">
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">DOKU (Rekomendasi Sancaka)</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">VA, QRIS, E-Wallet, CC</div>
+                        </div>
+                    </li>
+                    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="MIDTRANS" data-label="Midtrans">
+                        <img src="{{ asset('public/assets/midtrans.png') }}" class="me-3 border rounded p-1 bg-white" style="width: 40px; height: 40px; object-fit: contain;">
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">Midtrans</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">VA, QRIS, E-Wallet (Otomatis)</div>
+                        </div>
+                    </li>
+                    <li class="list-group-item list-group-item-action d-flex align-items-center" data-value="DANA" data-label="DANA (Web Checkout)">
+                        <img src="{{ asset('public/assets/dana.webp') }}" class="me-3 border rounded p-1 bg-white" style="width: 40px; height: 40px; object-fit: contain;">
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">DANA (Checkout Gapura)</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">Diarahkan ke web/aplikasi DANA</div>
+                        </div>
+                    </li>
+
+                    {{-- 5. OPSI TRIPAY (DIMUAT DINAMIS MELALUI API) --}}
+                    <li class="list-group-item bg-light fw-bold text-muted border-top border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
+                        Saluran Pembayaran Lainnya (Tripay)
+                    </li>
+                    <div id="dynamicPaymentChannels">
+                        <div class="p-4 text-center text-muted">
+                            <div class="spinner-border spinner-border-sm text-danger mb-2" role="status"></div>
+                            <br><small>Menarik API Saluran Pembayaran...</small>
+                        </div>
+                    </div>
+
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
