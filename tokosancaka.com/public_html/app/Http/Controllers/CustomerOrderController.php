@@ -1530,7 +1530,7 @@ TEXT;
     /**
      * EKSEKUTOR DANA BINDING (AUTO DEBIT) UNTUK PESANAN PUBLIK
      */
-    private function createPaymentDanaBindingPublic(Pesanan $pesanan, int $amount, User $user)
+    private function createPaymentDanaBindingPublic(Pesanan $pesanan, int $amount, \App\Models\User $user)
     {
         try {
             $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
@@ -1550,7 +1550,7 @@ TEXT;
             $timestamp    = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
             $amountValue  = number_format((float)$amount, 2, '.', '');
 
-            // Payload untuk DANA Auto-Debit
+            // PERBAIKAN: Melengkapi struktur payload standar DANA (Memasukkan data Buyer/Pelanggan)
             $bodyArray = [
                 "partnerReferenceNo" => $cleanInvoice,
                 "merchantId"         => $merchantIdConf,
@@ -1566,6 +1566,12 @@ TEXT;
                     "order" => [
                         "orderTitle"        => substr("Pay " . $cleanInvoice, 0, 64),
                         "merchantTransType" => "01",
+                        // 👇 DATA BUYER DITAMBAHKAN DI SINI
+                        "buyer" => [
+                            "externalUserId"   => "USER_" . ($user->id_pengguna ?? '0'),
+                            "externalUserType" => "MERCHANT_USER",
+                            "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap ?? 'Pelanggan'), 0, 64),
+                        ],
                         "goods" => [
                             [
                                 "name"            => "Pengiriman Paket " . $pesanan->nomor_invoice,
@@ -1585,7 +1591,7 @@ TEXT;
             $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
 
             $danaSignature = app(\App\Services\DanaSignatureService::class);
-            // Gunakan token binding user
+            // Gunakan token binding user untuk otorisasinya
             $signature    = $danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp, $user->dana_access_token);
 
             $headers = [
@@ -1608,7 +1614,7 @@ TEXT;
             // Jika berhasil ditarik saldonya secara auto-debit
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                  // DANA Auto-debit sukses.
-                 // Redirect langsung ke URL Sukses kita (seolah-olah URL pembayaran langsung selesai)
+                 // Kembalikan URL yang mengarah ke halaman sukses kita sendiri
                  return route('pesanan.public.success', ['invoice' => $pesanan->nomor_invoice, 'status' => 'paid']);
             }
 
