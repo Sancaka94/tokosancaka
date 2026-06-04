@@ -555,7 +555,7 @@
             <div class="modal-body p-0">
                 <ul id="paymentOptionsList" class="list-group list-group-flush" style="cursor: pointer;">
 
-
+                    @auth
                     {{-- 1. OPSI INTERNAL: SALDO SANCAKA (Hanya jika Login) --}}
                     <li class="list-group-item bg-light fw-bold text-muted border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
                         Dompet Sancaka
@@ -654,6 +654,35 @@
                     </div>
 
                 </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Input PIN M-Banking Style --}}
+<div class="modal fade" id="pinModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold mx-auto text-dark">Masukkan PIN Anda</h5>
+                <button type="button" class="btn-close position-absolute end-0 me-3" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center pt-2 pb-4">
+                <p class="text-muted small mb-4">Verifikasi transaksi ini menggunakan 6 digit PIN Sancaka Anda.</p>
+
+                <div class="d-flex justify-content-center gap-2 mb-3">
+                    <input type="password" class="form-control text-center pin-digit" maxlength="1" style="width: 45px; height: 50px; font-size: 24px; font-weight: bold; border-radius: 0.5rem;" autocomplete="off" inputmode="numeric">
+                    <input type="password" class="form-control text-center pin-digit" maxlength="1" style="width: 45px; height: 50px; font-size: 24px; font-weight: bold; border-radius: 0.5rem;" autocomplete="off" inputmode="numeric">
+                    <input type="password" class="form-control text-center pin-digit" maxlength="1" style="width: 45px; height: 50px; font-size: 24px; font-weight: bold; border-radius: 0.5rem;" autocomplete="off" inputmode="numeric">
+                    <input type="password" class="form-control text-center pin-digit" maxlength="1" style="width: 45px; height: 50px; font-size: 24px; font-weight: bold; border-radius: 0.5rem;" autocomplete="off" inputmode="numeric">
+                    <input type="password" class="form-control text-center pin-digit" maxlength="1" style="width: 45px; height: 50px; font-size: 24px; font-weight: bold; border-radius: 0.5rem;" autocomplete="off" inputmode="numeric">
+                    <input type="password" class="form-control text-center pin-digit" maxlength="1" style="width: 45px; height: 50px; font-size: 24px; font-weight: bold; border-radius: 0.5rem;" autocomplete="off" inputmode="numeric">
+                </div>
+
+                <input type="hidden" id="full_pin_value">
+                <div id="pin_error_msg" class="text-danger small fw-bold mb-3 d-none"><i class="fas fa-exclamation-circle me-1"></i> PIN Salah!</div>
+
+                <button type="button" id="btnVerifyPin" class="btn btn-danger w-100 rounded-pill py-2 fw-bold" style="background-color: var(--primary-color);">Verifikasi & Bayar</button>
             </div>
         </div>
     </div>
@@ -1161,10 +1190,144 @@ $(document).ready(function () {
         paymentModal.hide();
     });
 
-    $('.cod-payment-option').hide();
-    $('#confirmBtn').on('click', function(e) { e.preventDefault(); const $this = $(this); unmaskDataForSubmit(); if (!$('#orderForm')[0].checkValidity()) { $('#orderForm')[0].reportValidity(); Swal.fire('Peringatan', 'Harap lengkapi semua field yang wajib diisi.', 'warning'); return; } Swal.fire({ title: 'Konfirmasi Pesanan', text: "Apakah semua data sudah benar?", icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Buat Pesanan', cancelButtonText: 'Batal' }).then((result) => { if (result.isConfirmed) { $this.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Memproses...'); $('#orderForm').submit(); } }); });
-    $('#cekOngkirWaBtn').on('click', () => { unmaskDataForSubmit(); window.open(`https://wa.me/6285745808809?text=${encodeURIComponent(`Halo, saya mau tanya ongkir:\n\n*Dari:* ${$('#sender_address').val()}, ${$('#sender_village').val()}\n*Ke:* ${$('#receiver_address').val()}, ${$('#receiver_village').val()}\n*Berat:* ${$('#weight').val()} gr\n\nTerima kasih.`)}`, '_blank'); });
-    $(document).on('click', e => { if (!$(e.target).closest('.input-group').length && !$(e.target).closest('.ui-autocomplete').length) { $('.search-results-container').addClass('d-none'); } });
+   $('.cod-payment-option').hide();
+
+    // ============================================
+    // LOGIKA SUBMIT PESANAN & INTERSEPSI PIN
+    // ============================================
+    $('#confirmBtn').on('click', function(e) {
+        e.preventDefault();
+        const $this = $(this);
+        unmaskDataForSubmit();
+
+        if (!$('#orderForm')[0].checkValidity()) {
+            $('#orderForm')[0].reportValidity();
+            Swal.fire('Peringatan', 'Harap lengkapi semua field yang wajib diisi.', 'warning');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Konfirmasi Pesanan',
+            text: "Apakah semua data sudah benar?",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Buat Pesanan',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const paymentMethodVal = $('#payment_method').val().toUpperCase();
+
+                // CEK JIKA METODE BUTUH PIN (Potong Saldo / DANA Auto Debit)
+                if (paymentMethodVal === 'POTONG SALDO' || paymentMethodVal === 'DANA_BINDING') {
+                    // Munculkan Modal PIN
+                    const pinModal = new bootstrap.Modal(document.getElementById('pinModal'));
+                    $('#pin_error_msg').addClass('d-none');
+                    $('.pin-digit').val('');
+                    $('#full_pin_value').val('');
+
+                    pinModal.show();
+
+                    // Fokus ke kotak pertama setelah modal tampil
+                    setTimeout(() => { $('.pin-digit').first().focus(); }, 500);
+                } else {
+                    // JIKA TIDAK BUTUH PIN, LANGSUNG SUBMIT NORMAL
+                    $this.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Memproses...');
+                    $('#orderForm').submit();
+                }
+            }
+        });
+    });
+
+    // ============================================
+    // LOGIKA KOTAK PIN (AUTO-FOCUS & AUTO-DELETE)
+    // ============================================
+    $('.pin-digit').on('input', function(e) {
+        // Hanya izinkan angka
+        this.value = this.value.replace(/[^0-9]/g, '');
+
+        // Auto pindah ke kotak selanjutnya
+        if ($(this).val().length === 1) {
+            $(this).next('.pin-digit').focus();
+        }
+
+        // Kumpulkan nilai PIN
+        let pin = '';
+        $('.pin-digit').each(function() { pin += $(this).val(); });
+        $('#full_pin_value').val(pin);
+
+        // Auto Submit jika sudah genap 6 digit
+        if (pin.length === 6) {
+            $('#btnVerifyPin').click();
+        }
+    });
+
+    // Auto hapus mundur jika tekan backspace
+    $('.pin-digit').on('keydown', function(e) {
+        if (e.key === 'Backspace' && $(this).val() === '') {
+            $(this).prev('.pin-digit').focus();
+        }
+    });
+
+    // ============================================
+    // LOGIKA AJAX VERIFIKASI PIN
+    // ============================================
+    $('#btnVerifyPin').on('click', function() {
+        const pin = $('#full_pin_value').val();
+
+        if (pin.length < 6) {
+            $('#pin_error_msg').text('PIN harus 6 angka.').removeClass('d-none');
+            return;
+        }
+
+        const $btn = $(this);
+        $btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin me-2"></i> Memeriksa...');
+
+        $.ajax({
+            url: "{{ route('verify.pin') }}", // API Verifikasi PIN
+            type: "POST",
+            data: { pin: pin },
+            success: function(res) {
+                if (res.success) {
+                    // PIN BENAR!
+                    $('#pinModal').modal('hide');
+                    Swal.fire({
+                        title: 'PIN Terverifikasi!',
+                        text: 'Memproses pembayaran Anda...',
+                        icon: 'success',
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        // Submit Form Utama
+                        $('#confirmBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Memproses...');
+                        document.getElementById('orderForm').submit();
+                    });
+                } else {
+                    // PIN SALAH
+                    $('#pin_error_msg').text(res.message).removeClass('d-none');
+                    $('.pin-digit').val('').first().focus();
+                    $('#full_pin_value').val('');
+                    $btn.prop('disabled', false).html('Verifikasi & Bayar');
+                }
+            },
+            error: function() {
+                $('#pin_error_msg').text('Terjadi kesalahan koneksi server.').removeClass('d-none');
+                $btn.prop('disabled', false).html('Verifikasi & Bayar');
+            }
+        });
+    });
+
+    // ============================================
+    // EVENT LAINNYA
+    // ============================================
+    $('#cekOngkirWaBtn').on('click', () => {
+        unmaskDataForSubmit();
+        window.open(`https://wa.me/6285745808809?text=${encodeURIComponent(`Halo, saya mau tanya ongkir:\n\n*Dari:* ${$('#sender_address').val()}, ${$('#sender_village').val()}\n*Ke:* ${$('#receiver_address').val()}, ${$('#receiver_village').val()}\n*Berat:* ${$('#weight').val()} gr\n\nTerima kasih.`)}`, '_blank');
+    });
+
+    $(document).on('click', e => {
+        if (!$(e.target).closest('.input-group').length && !$(e.target).closest('.ui-autocomplete').length) {
+            $('.search-results-container').addClass('d-none');
+        }
+    });
 });
 </script>
-@endpush

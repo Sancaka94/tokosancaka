@@ -366,70 +366,84 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
 
             $paymentUrl = null;
 
-            // 5. Proses Pembayaran
-            if ($validatedData['payment_method'] === 'Potong Saldo') {
-                throw new Exception('Metode pembayaran (Potong Saldo) tidak valid untuk form publik.');
+          // 5. Proses Pembayaran
+            $paymentMethodRaw = strtoupper($validatedData['payment_method']);
+
+            if ($paymentMethodRaw === 'POTONG SALDO') {
+                if (!\Illuminate\Support\Facades\Auth::check()) throw new Exception('Silakan login untuk menggunakan Saldo.');
+
+                // Gunakan Pessimistic Locking agar saldo tidak minus jika di-klik 2x
+                $user = \App\Models\User::where('id_pengguna', \Illuminate\Support\Facades\Auth::id())->lockForUpdate()->first();
+                $totalTagihan = ($cod_value > 0) ? $cod_value : $total_paid_ongkir;
+
+                if ($user->saldo < $totalTagihan) {
+                    throw new Exception('Saldo Sancaka Anda tidak mencukupi.');
+                }
+
+                // Potong saldo
+                $user->saldo -= $totalTagihan;
+                $user->save();
+
+                // Ubah payment method menjadi 'cash' sementar agar KiriminAja memprosesnya seperti COD/Cash
+                $validatedData['payment_method'] = 'cash';
+                $pesanan->payment_method = 'Potong Saldo';
             }
-            elseif (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'cash'])) {
-                // Biarkan lolos, akan diproses di Langkah 6 (KiriminAja)
+            elseif (in_array($paymentMethodRaw, ['COD', 'CODBARANG', 'CASH'])) {
+                // Biarkan lolos, diproses KiriminAja
             }
             else {
-                // Siapkan data pelanggan publik untuk Payment Gateway
                 $customerData = [
                     'name'  => $validatedData['receiver_name'],
                     'email' => $request->input('customer_email', 'guest' . time() . '@tokosancaka.com'),
                     'phone' => $validatedData['receiver_phone']
                 ];
 
-                $paymentMethodRaw = strtoupper($validatedData['payment_method']);
                 $paymentGateway = 'tripay'; // Default
-
-                // Mapping Payment Gateway
-                if ($paymentMethodRaw === 'DOKU_JOKUL') {
-                    $paymentGateway = 'doku';
-                } elseif ($paymentMethodRaw === 'MIDTRANS') {
-                    $paymentGateway = 'midtrans';
-                } elseif (in_array($paymentMethodRaw, ['DANA', 'NETWORK_PAY_PG_DANA', 'DANA_BINDING'])) {
-                    $paymentGateway = 'dana_direct';
-                } elseif ($paymentMethodRaw === 'PAYPAL') {
-                    $paymentGateway = 'paypal';
-                }
+                if ($paymentMethodRaw === 'DOKU_JOKUL') $paymentGateway = 'doku';
+                elseif ($paymentMethodRaw === 'MIDTRANS') $paymentGateway = 'midtrans';
+                elseif ($paymentMethodRaw === 'PAYPAL') $paymentGateway = 'paypal';
+                elseif ($paymentMethodRaw === 'DANA_BINDING') $paymentGateway = 'dana_binding';
+                elseif (in_array($paymentMethodRaw, ['DANA', 'NETWORK_PAY_PG_DANA'])) $paymentGateway = 'dana_direct';
 
                 $orderItemsPayload = $this->_prepareOrderItemsPayload($shipping_cost, $insurance_cost, $validatedData['ansuransi']);
 
-                // ===============================================
-                // EKSEKUSI BERDASARKAN PAYMENT GATEWAY
-                // ===============================================
-                if ($paymentGateway === 'doku') {
-                    Log::info('Memulai DOKU (Public) untuk ' . $pesanan->nomor_invoice);
+                // EKSEKUSI GATEWAY
+                if ($paymentGateway === 'dana_binding') {
+                    if (!\Illuminate\Support\Facades\Auth::check()) throw new Exception('Silakan login untuk menggunakan DANA Auto-Debit.');
+                    $user = \Illuminate\Support\Facades\Auth::user();
+                    if (empty($user->dana_access_token)) throw new Exception('Akses token DANA tidak ditemukan. Silakan hubungkan ulang akun DANA Anda.');
+
+                    Log::info('Memulai DANA BINDING (Auto Debit) untuk ' . $pesanan->nomor_invoice);
+                    // Gunakan fungsi createPaymentDanaBindingPublic yang menarik dana langsung dari token
+                    $paymentUrl = $this->createPaymentDanaBindingPublic($pesanan, $total_paid_ongkir, $user);
+                    if (empty($paymentUrl)) throw new Exception('Gagal melakukan penarikan DANA Auto-Debit.');
+                    $pesanan->payment_url = $paymentUrl;
+                }
+                elseif ($paymentGateway === 'doku') {
                     $dokuService = new DokuJokulService();
                     $paymentUrl = $dokuService->createPayment($pesanan->nomor_invoice, $total_paid_ongkir, $customerData, $orderItemsPayload);
                     if (empty($paymentUrl)) throw new Exception('Gagal membuat transaksi pembayaran DOKU.');
                     $pesanan->payment_url = $paymentUrl;
                 }
                 elseif ($paymentGateway === 'midtrans') {
-                    Log::info('Memulai MIDTRANS (Public) untuk ' . $pesanan->nomor_invoice);
                     $paymentUrl = $this->createPaymentMidtransSnapPublic($pesanan, $total_paid_ongkir, $customerData);
                     if (empty($paymentUrl)) throw new Exception('Gagal membuat transaksi pembayaran Midtrans.');
                     $pesanan->payment_url = $paymentUrl;
                 }
                 elseif ($paymentGateway === 'dana_direct') {
-                    Log::info('Memulai DANA (Public) untuk ' . $pesanan->nomor_invoice);
                     $paymentUrl = $this->createPaymentDanaPublic($pesanan, $total_paid_ongkir, $customerData);
                     if (empty($paymentUrl)) throw new Exception('Gagal membuat transaksi pembayaran DANA.');
                     $pesanan->payment_url = $paymentUrl;
                 }
                 elseif ($paymentGateway === 'paypal') {
-                    Log::info('Memulai PAYPAL (Public) untuk ' . $pesanan->nomor_invoice);
                     $paymentUrl = $this->createPaymentPayPalPublic($pesanan, $total_paid_ongkir);
                     if (empty($paymentUrl)) throw new Exception('Gagal membuat transaksi pembayaran PayPal.');
                     $pesanan->payment_url = $paymentUrl;
                 }
                 else {
-                    Log::info('Memulai TRIPAY (Public) untuk ' . $pesanan->nomor_invoice);
                     $tripayResponse = $this->_createTripayTransactionInternal($validatedData, $pesanan, $total_paid_ongkir, $orderItemsPayload);
                     if (empty($tripayResponse['success'])) {
-                        throw new Exception('Gagal membuat transaksi pembayaran Tripay. ' . ($tripayResponse['message'] ?? ''));
+                        throw new Exception('Gagal transaksi Tripay. ' . ($tripayResponse['message'] ?? ''));
                     }
                     $pesanan->payment_url = $tripayResponse['data']['checkout_url'] ?? null;
                 }
@@ -1442,6 +1456,33 @@ TEXT;
             Log::error('Exception PayPal (Public): ' . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Endpoint API untuk memverifikasi PIN Pengguna (M-Banking Style)
+     */
+    public function verifyPin(Request $request)
+    {
+        $request->validate([
+            'pin' => 'required|string|min:6|max:6'
+        ]);
+
+        if (!\Illuminate\Support\Facades\Auth::check()) {
+            return response()->json(['success' => false, 'message' => 'Silakan login terlebih dahulu.']);
+        }
+
+        $user = \Illuminate\Support\Facades\Auth::user();
+
+        if (empty($user->pin)) {
+            return response()->json(['success' => false, 'message' => 'PIN keamanan belum diatur di profil Anda.']);
+        }
+
+        // Cek PIN menggunakan Hash Laravel
+        if (\Illuminate\Support\Facades\Hash::check($request->pin, $user->pin)) {
+            return response()->json(['success' => true]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'PIN yang Anda masukkan salah!']);
     }
 
 }
