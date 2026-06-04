@@ -711,636 +711,596 @@
 {{-- SweetAlert untuk notifikasi --}}
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+@push('scripts')
+{{-- SweetAlert untuk notifikasi --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+{{--
+  PERBAIKAN: Kita pastikan jQuery UI dimuat menggunakan script dinamis
+  AGAR selalu dieksekusi setelah jQuery bawaan Laravel/Layouts selesai dimuat.
+--}}
 <script>
-$(document).ready(function () {
-    // ============================================
-    // LOGIKA STEP-BY-STEP FORM
-    // ============================================
-    function validateStep(stepCardId) {
-        let isValid = true;
-        $(`#${stepCardId} [required]`).each(function() {
-            if ($(this).is(':visible') && !$(this).val()) {
-                isValid = false;
-                $(this).addClass('is-invalid');
-            } else {
+    // Fungsi untuk memuat script secara berurutan
+    function loadScript(url, callback) {
+        var script = document.createElement("script");
+        script.type = "text/javascript";
+        script.src = url;
+        script.onload = callback;
+        document.head.appendChild(script);
+    }
+
+    // Tunggu sampai seluruh halaman dan jQuery bawaan selesai dimuat
+    window.onload = function() {
+        // Cek apakah jQuery sudah ada dari layouts.app
+        if (window.jQuery) {
+            console.log("jQuery terdeteksi, memuat jQuery UI...");
+            // Load jQuery UI
+            loadScript("https://code.jquery.com/ui/1.13.2/jquery-ui.min.js", function() {
+                console.log("jQuery UI berhasil dimuat!");
+                // Panggil fungsi utama kita setelah jQuery UI siap
+                initSancakaScripts();
+            });
+        } else {
+            console.error("jQuery tidak terdeteksi! Pastikan layout utama memuat jQuery.");
+        }
+    };
+
+    // Pindahkan $(document).ready() kamu ke dalam fungsi ini
+    function initSancakaScripts() {
+        // ============================================
+        // LOGIKA STEP-BY-STEP FORM
+        // ============================================
+        function validateStep(stepCardId) {
+            let isValid = true;
+            $(`#${stepCardId} [required]`).each(function() {
+                if ($(this).is(':visible') && !$(this).val()) {
+                    isValid = false;
+                    $(this).addClass('is-invalid');
+                } else {
+                    $(this).removeClass('is-invalid');
+                }
+            });
+            return isValid;
+        }
+
+        $('form [required]').on('input', function() {
+            if ($(this).val()) {
                 $(this).removeClass('is-invalid');
             }
         });
-        return isValid;
-    }
 
-    $('form [required]').on('input', function() {
-        if ($(this).val()) {
-            $(this).removeClass('is-invalid');
-        }
-    });
+        $('#nextToPenerima').on('click', function() {
+            if (validateStep('card-pengirim')) {
+                $('#step-indicator-2').addClass('active');
+                $('#card-penerima').removeClass('d-none');
+                document.getElementById('card-penerima').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                Swal.fire('Data Tidak Lengkap', 'Harap isi semua informasi pengirim yang wajib diisi.', 'warning');
+            }
+        });
 
-    $('#nextToPenerima').on('click', function() {
-        if (validateStep('card-pengirim')) {
-            $('#step-indicator-2').addClass('active');
-            $('#card-penerima').removeClass('d-none');
-            document.getElementById('card-penerima').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } else {
-            Swal.fire('Data Tidak Lengkap', 'Harap isi semua informasi pengirim yang wajib diisi.', 'warning');
-        }
-    });
+        $('#nextToPaket').on('click', function() {
+            if (validateStep('card-penerima')) {
+                $('#step-indicator-3').addClass('active');
+                $('#card-paket').removeClass('d-none');
+                document.getElementById('card-paket').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                Swal.fire('Data Tidak Lengkap', 'Harap isi semua informasi penerima yang wajib diisi.', 'warning');
+            }
+        });
 
-    $('#nextToPaket').on('click', function() {
-        if (validateStep('card-penerima')) {
-            $('#step-indicator-3').addClass('active');
-            $('#card-paket').removeClass('d-none');
-            document.getElementById('card-paket').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } else {
-            Swal.fire('Data Tidak Lengkap', 'Harap isi semua informasi penerima yang wajib diisi.', 'warning');
-        }
-    });
+        // ============================================
+        // LOGIKA INTI: Pencarian, Modal, Submit
+        // ============================================
+        $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') } });
 
-    // ============================================
-    // LOGIKA INTI: Pencarian, Modal, Submit
-    // ============================================
-    $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') } });
+        @if ($errors->any())
+            let errorHtml = '<ul class="list-unstyled text-start mb-0" style="padding-left: 1rem;">';
+            @foreach ($errors->all() as $error)
+                errorHtml += '<li class="mb-1"><i class="fas fa-exclamation-circle me-2 text-danger"></i>{{ $error }}</li>';
+            @endforeach
+            errorHtml += '</ul>';
+            Swal.fire({ title: 'Data Tidak Valid!', html: errorHtml, icon: 'error', confirmButtonColor: '#dc2626' });
+        @endif
+        @if(session('success'))
+            Swal.fire({ title: 'Berhasil!', text: "{{ session('success') }}", icon: 'success', confirmButtonColor: '#16a34a' });
+        @endif
+        @if(session('error'))
+            Swal.fire({ title: 'Gagal!', text: @json(session('error')), icon: 'error', confirmButtonColor: '#dc2626' });
+        @endif
 
-    // Tampilkan error validasi dari server
-    @if ($errors->any())
-        let errorHtml = '<ul class="list-unstyled text-start mb-0" style="padding-left: 1rem;">';
-        @foreach ($errors->all() as $error)
-            errorHtml += '<li class="mb-1"><i class="fas fa-exclamation-circle me-2 text-danger"></i>{{ $error }}</li>';
-        @endforeach
-        errorHtml += '</ul>';
-        Swal.fire({ title: 'Data Tidak Valid!', html: errorHtml, icon: 'error', confirmButtonColor: '#dc2626' });
-    @endif
-    @if(session('success'))
-        Swal.fire({ title: 'Berhasil!', text: "{{ session('success') }}", icon: 'success', confirmButtonColor: '#16a34a' });
-    @endif
-    @if(session('error'))
-        Swal.fire({ title: 'Gagal!', text: @json(session('error')), icon: 'error', confirmButtonColor: '#dc2626' });
-    @endif
+        const ongkirModal = new bootstrap.Modal(document.getElementById('ongkirModal'));
+        const paymentModal = new bootstrap.Modal(document.getElementById('paymentMethodModal'));
 
-    // Inisialisasi Modal
-    const ongkirModal = new bootstrap.Modal(document.getElementById('ongkirModal'));
-    const paymentModal = new bootstrap.Modal(document.getElementById('paymentMethodModal'));
+        let searchTimeout = null;
+        const debounce = (func, delay) => (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
+        function formatRupiah(angka) { return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); }
 
-    // Helper
-    let searchTimeout = null;
-    const debounce = (func, delay) => (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
-    function formatRupiah(angka) { return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); }
+        function maskData(type, value) { if (!value) return '***'; if (type === 'name') { const parts = value.split(' '); return parts.length > 1 ? parts[0] + ' ' + parts.slice(1).map(p => p.replace(/./g, '*')).join(' ') : (value.length > 2 ? value.substring(0, 2) + '***' : value); } if (type === 'phone') { const num = value.replace(/\D/g, ''); return num.length > 8 ? num.substring(0, 3) + '****' + num.substring(num.length - 4) : num.substring(0, 3) + '****'; } if (type === 'address') { const parts = value.split(' '); return parts.length > 2 ? parts.slice(0, 2).join(' ') + ' **** **** ****' : value; } return '***'; }
+        function clearHiddenAddress(prefix) { $(`#${prefix}_province, #${prefix}_regency, #${prefix}_district, #${prefix}_village, #${prefix}_postal_code, #${prefix}_district_id, #${prefix}_subdistrict_id, #${prefix}_lat, #${prefix}_lng`).val(''); }
 
-    function maskData(type, value) { if (!value) return '***'; if (type === 'name') { const parts = value.split(' '); return parts.length > 1 ? parts[0] + ' ' + parts.slice(1).map(p => p.replace(/./g, '*')).join(' ') : (value.length > 2 ? value.substring(0, 2) + '***' : value); } if (type === 'phone') { const num = value.replace(/\D/g, ''); return num.length > 8 ? num.substring(0, 3) + '****' + num.substring(num.length - 4) : num.substring(0, 3) + '****'; } if (type === 'address') { const parts = value.split(' '); return parts.length > 2 ? parts.slice(0, 2).join(' ') + ' **** **** ****' : value; } return '***'; }
-    // [PERBAIKAN] Pastikan lat/lng juga di-clear
-    function clearHiddenAddress(prefix) { $(`#${prefix}_province, #${prefix}_regency, #${prefix}_district, #${prefix}_village, #${prefix}_postal_code, #${prefix}_district_id, #${prefix}_subdistrict_id, #${prefix}_lat, #${prefix}_lng`).val(''); }
+        function fillContactForm(prefix, data) {
+            $(`#${prefix}_name`).val(data.nama).trigger('blur');
+            $(`#${prefix}_phone`).val(data.no_hp).trigger('blur');
+            $(`#${prefix}_address`).val(data.alamat || '').trigger('blur');
+            $(`#${prefix}_id`).val(data.id);
+            clearHiddenAddress(prefix);
 
-    // --- FUNGSI MENGISI FORM ---
-    function fillContactForm(prefix, data) {
-        // Hapus sistem masking (***) agar nama yang masuk sesuai aslinya
-        $(`#${prefix}_name`).val(data.nama).trigger('blur');
-        $(`#${prefix}_phone`).val(data.no_hp).trigger('blur');
-        $(`#${prefix}_address`).val(data.alamat || '').trigger('blur');
-        $(`#${prefix}_id`).val(data.id);
-        clearHiddenAddress(prefix);
+            const addressSearchInput = $(`#${prefix}_address_search`);
 
-        const addressSearchInput = $(`#${prefix}_address_search`);
+            if (data.village && data.district) {
+                const addressQuery = `${data.village}, ${data.district}`;
+                addressSearchInput.val(`Mencari: ${addressQuery}...`).prop('disabled', true).removeClass('is-invalid is-valid');
 
-        if (data.village && data.district) {
-            const addressQuery = `${data.village}, ${data.district}`;
-            addressSearchInput.val(`Mencari: ${addressQuery}...`).prop('disabled', true).removeClass('is-invalid is-valid');
+                $.get("{{ route('api.address.search') }}", { search: addressQuery }).done(function(results) {
+                    if (results && results.length > 0) {
+                        const item = results[0];
+                        const parts = item.full_address.split(',').map(s => s.trim());
+                        $(`#${prefix}_village`).val(parts[0] || data.village).trigger('change');
+                        $(`#${prefix}_district`).val(parts[1] || data.district).trigger('change');
+                        $(`#${prefix}_regency`).val(parts[2] || data.regency).trigger('change');
+                        $(`#${prefix}_province`).val(parts[3] || data.province).trigger('change');
+                        $(`#${prefix}_postal_code`).val(parts[4] || data.postal_code).trigger('change');
+                        $(`#${prefix}_district_id`).val(item.district_id).trigger('change');
+                        $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id).trigger('change');
+                        $(`#${prefix}_lat`).val(item.lat || '');
+                        $(`#${prefix}_lng`).val(item.lon || '');
 
-            $.get("{{ route('api.address.search') }}", { search: addressQuery }).done(function(results) {
-                if (results && results.length > 0) {
-                    const item = results[0];
-                    const parts = item.full_address.split(',').map(s => s.trim());
-                    $(`#${prefix}_village`).val(parts[0] || data.village).trigger('change');
-                    $(`#${prefix}_district`).val(parts[1] || data.district).trigger('change');
-                    $(`#${prefix}_regency`).val(parts[2] || data.regency).trigger('change');
-                    $(`#${prefix}_province`).val(parts[3] || data.province).trigger('change');
-                    $(`#${prefix}_postal_code`).val(parts[4] || data.postal_code).trigger('change');
-                    $(`#${prefix}_district_id`).val(item.district_id).trigger('change');
-                    $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id).trigger('change');
-                    $(`#${prefix}_lat`).val(item.lat || '');
-                    $(`#${prefix}_lng`).val(item.lon || '');
-
-                    addressSearchInput.val('Alamat Ditemukan (Otomatis Diisi)').addClass('is-valid').removeClass('is-invalid');
-                    setTimeout(() => addressSearchInput.removeClass('is-valid'), 2500);
-                } else {
+                        addressSearchInput.val('Alamat Ditemukan (Otomatis Diisi)').addClass('is-valid').removeClass('is-invalid');
+                        setTimeout(() => addressSearchInput.removeClass('is-valid'), 2500);
+                    } else {
+                        addressSearchInput.val('').addClass('is-invalid').removeClass('is-valid');
+                        Swal.fire({ title: 'Alamat Tidak Ditemukan', text: `Detail alamat untuk "${addressQuery}" tidak ditemukan. Anda wajib mencari alamat secara manual.`, icon: 'warning' }).then(() => addressSearchInput.focus());
+                    }
+                }).fail(() => {
                     addressSearchInput.val('').addClass('is-invalid').removeClass('is-valid');
-                    Swal.fire({ title: 'Alamat Tidak Ditemukan', text: `Detail alamat untuk "${addressQuery}" tidak ditemukan. Anda wajib mencari alamat secara manual.`, icon: 'warning' }).then(() => addressSearchInput.focus());
-                }
-            }).fail(() => {
-                addressSearchInput.val('').addClass('is-invalid').removeClass('is-valid');
-            }).always(() => addressSearchInput.prop('disabled', false));
-        } else {
-            addressSearchInput.val('').addClass('is-invalid');
+                }).always(() => addressSearchInput.prop('disabled', false));
+            } else {
+                addressSearchInput.val('').addClass('is-invalid');
+            }
         }
-    }
 
-    // --- FUNGSI SETUP AUTOCOMPLETE PENCARIAN ---
-    function setupContactSearch(prefix) {
-        // Gunakan .each() agar _renderItem nempel ke Nama DAN Nomor HP
-        $(`#${prefix}_name, #${prefix}_phone`).each(function() {
-            $(this).autocomplete({
-                source: function(request, response) {
-                    $.ajax({
-                        url: "{{ route('api.search.kontak') }}", // Pastikan route ini benar
-                        dataType: "json",
-                        data: { term: request.term },
-                        success: function(data) {
-                            if (!data || !data.length) {
-                                response([{ label: 'Tidak ada data', disabled: true }]);
-                                return;
-                            }
-                            response($.map(data, function(item) {
-                                return {
-                                    label: item.nama,
-                                    value: item.nama, // Text yang masuk ke input box
-                                    data: item
-                                };
+        // --- MENGGUNAKAN AUTOCOMPLETE JQUERY UI ---
+        function setupContactSearch(prefix) {
+            $(`#${prefix}_name, #${prefix}_phone`).each(function() {
+                $(this).autocomplete({
+                    source: function(request, response) {
+                        $.ajax({
+                            url: "{{ route('api.search.kontak') }}",
+                            dataType: "json",
+                            data: { term: request.term },
+                            success: function(data) {
+                                if (!data || !data.length) {
+                                    response([{ label: 'Tidak ada data', disabled: true }]);
+                                    return;
+                                }
+                                response($.map(data, function(item) {
+                                    return {
+                                        label: item.nama,
+                                        value: item.nama,
+                                        data: item
+                                    };
+                                }));
+                            },
+                            error: function() { response([{ label: 'Gagal mengambil data', disabled: true }]); }
+                        });
+                    },
+                    minLength: 2,
+                    select: function(event, ui) {
+                        if (ui.item.disabled) return false;
+                        event.preventDefault();
+                        fillContactForm(prefix, ui.item.data);
+                    }
+                }).autocomplete("instance")._renderItem = function(ul, item) {
+                    if (item.disabled) {
+                        return $("<li class='ui-state-disabled p-2 text-muted text-center'></li>").text(item.label).appendTo(ul);
+                    }
+                    return $("<li>").append(`
+                        <div class="ui-menu-item-wrapper">
+                            <div class="fw-bold text-dark">${item.data.nama}</div>
+                            <small class="text-muted"><i class="fas fa-phone me-1"></i>${item.data.no_hp}</small>
+                        </div>
+                    `).appendTo(ul);
+                };
+            });
+        }
+
+        setupContactSearch('sender');
+        setupContactSearch('receiver');
+
+        function unmaskDataForSubmit() {
+            ['sender', 'receiver'].forEach(p => {
+                $(`#${p}_name, #${p}_phone, #${p}_address`).each(function() {
+                    if ($(this).attr('data-real-value')) $(this).val($(this).attr('data-real-value'));
+                });
+            });
+        }
+
+        function setupAddressSearch(prefix) {
+            const s = $(`#${prefix}_address_search`), r = $(`#${prefix}_address_results`);
+            s.on('input', debounce(() => {
+                s.removeClass('is-valid is-invalid');
+                const q = s.val();
+                if (q.length < 3) return r.addClass('d-none');
+
+                $.get("{{ route('api.address.search') }}", { search: q }).done(d => {
+                    r.html('').removeClass('d-none');
+                    if (d && d.length > 0) {
+                        d.forEach(i => r.append($(`<div class="search-result-item"><div class="font-weight-bold">${i.full_address}</div></div>`).on('click', () => {
+                            s.val(i.full_address);
+                            const p = i.full_address.split(',').map(t => t.trim());
+                            $(`#${prefix}_village`).val(p[0] || '').trigger('change');
+                            $(`#${prefix}_district`).val(p[1] || '').trigger('change');
+                            $(`#${prefix}_regency`).val(p[2] || '').trigger('change');
+                            $(`#${prefix}_province`).val(p[3] || '').trigger('change');
+                            $(`#${prefix}_postal_code`).val(p[4] || '').trigger('change');
+                            $(`#${prefix}_district_id`).val(i.district_id).trigger('change');
+                            $(`#${prefix}_subdistrict_id`).val(i.subdistrict_id).trigger('change');
+                            $(`#${prefix}_lat`).val(i.lat || '');
+                            $(`#${prefix}_lng`).val(i.lon || '');
+                            r.addClass('d-none');
+                        })));
+                    } else {
+                        r.html('<div class="p-3 text-muted">Alamat tidak ditemukan.</div>');
+                    }
+                }).fail(() => r.html('<div class="p-3 text-danger">Gagal memuat data.</div>'));
+            }, 400));
+        }
+        setupAddressSearch('sender');
+        setupAddressSearch('receiver');
+
+        function runCekOngkir() {
+            let formData = $('#orderForm').serializeArray();
+            formData.forEach((item, index) => { let realVal = $(`#${item.name.replace(/\[/g, '\\[').replace(/\]/g, '\\]')}`).attr('data-real-value'); if (realVal) formData[index].value = realVal; });
+
+            let tempForm = $('<form>').append($.map(formData, item => $('<input>').attr({type: 'hidden', name: item.name, value: item.value})));
+            tempForm.append($('<input>').attr({type: 'hidden', name: 'sender_lat', value: $('#sender_lat').val()}));
+            tempForm.append($('<input>').attr({type: 'hidden', name: 'sender_lng', value: $('#sender_lng').val()}));
+            tempForm.append($('<input>').attr({type: 'hidden', name: 'receiver_lat', value: $('#receiver_lat').val()}));
+            tempForm.append($('<input>').attr({type: 'hidden', name: 'receiver_lng', value: $('#receiver_lng').val()}));
+
+            const required = { 'sender_district_id': 'Alamat Pengirim', 'receiver_district_id': 'Alamat Penerima', 'item_price': 'Harga Barang', 'weight': 'Berat' };
+            let missing = Object.keys(required).filter(s => !tempForm.find(`[name="${s.replace('#','')}"]`).val());
+            if (missing.length > 0) { Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => required[s]).join(', '), 'warning'); return; }
+
+            $('#ongkirResultsContainer').html(`<div class="text-center p-5"><div class="spinner-border text-danger"></div><p class="mt-2 text-muted">Memuat semua tarif...</p></div>`);
+            ongkirModal.show();
+
+            const serviceType = $('#service_type').val();
+
+            $.ajax({
+                url: "{{ route('kirimaja.cekongkir') }}",
+                type: "GET",
+                data: tempForm.serialize(),
+                success: function(res) {
+                    let allResults = [];
+                    if (typeof res !== 'object' || res === null) {
+                        $('#ongkirResultsContainer').html('<div class="alert alert-danger text-center">Format respons tidak valid.</div>');
+                        return;
+                    }
+                    const hasData = (res.result && Array.isArray(res.result)) || (res.results && Array.isArray(res.results));
+                    if (!hasData || (res.status === false && !hasData)) {
+                        let errorMessage = res.message || res.text || 'Layanan pengiriman tidak ditemukan untuk rute atau jenis layanan ini.';
+                        $('#ongkirResultsContainer').html(`<div class="alert alert-warning text-center">${errorMessage}</div>`);
+                        return;
+                    }
+                    if (res.result && Array.isArray(res.result)) {
+                        const fromResult = res.result.flatMap(provider => {
+                            let providerNameForLogo = provider.name;
+                            if (providerNameForLogo === 'grab_express') providerNameForLogo = 'grab';
+
+                            return provider.costs.map(cost => ({
+                                ...cost,
+                                service: providerNameForLogo,
+                                service_name: `${provider.name.toUpperCase()}`,
+                                service_type_label: `${cost.service_type}`,
+                                cost: cost.price.total_price,
+                                price: cost.price,
+                                etd: cost.estimation || '-',
+                                setting: cost.setting || {},
+                                insurance: cost.price.insurance_fee || 0,
+                                cod: cost.cod_available ?? false,
+                                is_instant: true
                             }));
-                        },
-                        error: function() { response([{ label: 'Gagal mengambil data', disabled: true }]); }
+                        });
+                        allResults.push(...fromResult);
+                    }
+
+                    if (res.results && Array.isArray(res.results)) {
+                        const fromResults = res.results.map(service => ({ ...service, cost: service.cost, price: { base_price: service.cost, total_price: service.cost }, insurance: service.insurance || 0, cod: service.cod, service_name: `${service.service.toUpperCase()}`, service_type_label: `${service.service_type}`, is_instant: false}));
+                        allResults.push(...fromResults);
+                    }
+
+                    allResults.sort((a, b) => a.cost - b.cost);
+                    const b = $('#ongkirResultsContainer').empty();
+
+                    if (allResults.length === 0) {
+                         $('#ongkirResultsContainer').html(`<div class="alert alert-warning text-center">Tidak ada layanan yang tersedia untuk filter ini.</div>`);
+                         return;
+                    }
+
+                    const headerHtml = `<div class="ongkir-header-row d-none d-lg-flex"><div class="ongkir-item-col col-service">Layanan</div><div class="ongkir-item-col col-etd">Estimasi</div><div class="ongkir-item-col col-cod">COD</div><div class="ongkir-item-col col-pickup">Opsi Penjemputan</div><div class="ongkir-item-col col-discount">Diskon</div><div class="ongkir-item-col col-price">Tarif</div><div class="ongkir-item-col col-action"></div></div>`;
+                    b.append(headerHtml);
+
+                    allResults.forEach(i => {
+                        const logoName = (i.service || "").toLowerCase().replace(/\s+/g, '');
+                        let logoUrl = '';
+                        if (logoName === 'gosend') {
+                            logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png';
+                        } else if (logoName === 'grab') {
+                            logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png';
+                        } else if (logoName) {
+                            logoUrl = `{{ asset('public/storage/logo-ekspedisi/') }}/${logoName}.png`;
+                        }
+
+                        const safeService = (i.service || '').toString().replace(/-/g, ' ');
+                        const safeServiceTypeLabel = (i.service_type_label || '').toString().replace(/-/g, ' ');
+                        const useInsurance = $('#ansuransi').val() === 'iya';
+                        const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
+                        const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
+                        const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${codFee}`;
+
+                        const hasDiscount = i.price?.base_price && i.price.base_price > i.cost;
+                        const basePriceFmt = hasDiscount ? formatRupiah(i.price.base_price) : '';
+
+                        const insuranceFee = i.insurance || 0;
+                        let feeDetailsHtml = '';
+                        if (useInsurance && insuranceFee > 0) { feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFee)}</small></div>`; }
+                        if (i.cod && codFee > 0) { feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`; }
+
+                        let etdHtml = '';
+                        if (i.etd) {
+                            const etdText = i.etd.toString();
+                            if (i.is_instant) {
+                                etdHtml = `<span>${etdText}</span>`;
+                            } else {
+                                etdHtml = `<span>${etdText} Hari</span>`;
+                            }
+                        }
+
+                        const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}">Kirim Paket</button>`;
+
+                        const itemHtml = `
+                        <div class="ongkir-item-card">
+                            <div class="ongkir-item-col col-service">
+                                <img src="${logoUrl}" class="ongkir-logo" onerror="this.style.display='none'">
+                                <div class="service-info">
+                                    <span class="service-name">${i.service_name}</span>
+                                    <span class="service-type">${i.service_type_label}</span>
+                                </div>
+                            </div>
+                            <div class="ongkir-item-col col-etd">
+                                <span class="col-label">Estimasi</span>
+                                ${etdHtml}
+                            </div>
+                            <div class="ongkir-item-col col-cod">
+                                <span class="col-label">COD</span>
+                                <span>${i.cod ? 'Tersedia' : '-'}</span>
+                            </div>
+                            <div class="ongkir-item-col col-price">
+                                <span class="col-label">Tarif</span>
+                                <div class="price-value">
+                                    <span class="final-price">${formatRupiah(i.cost)}</span>
+                                    ${hasDiscount ? `<span class="base-price text-decoration-line-through">${basePriceFmt}</span>` : ''}
+                                </div>
+                                <div class="price-details">${feeDetailsHtml}</div>
+                            </div>
+                            <div class="ongkir-item-col col-action">
+                                ${buttonHtml}
+                            </div>
+                        </div>`;
+                        b.append(itemHtml);
                     });
                 },
-                minLength: 2,
-                select: function(event, ui) {
-                    if (ui.item.disabled) return false;
-                    event.preventDefault();
-                    fillContactForm(prefix, ui.item.data);
+                error: function(jqXHR, textStatus, errorThrown) {
+                    let errorMsg = 'Gagal mengambil data ongkir. Silakan periksa koneksi Anda dan coba lagi.';
+                    if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
+                        errorMsg = jqXHR.responseJSON.message;
+                    }
+                    $('#ongkirResultsContainer').html(`<div class="alert alert-danger text-center">${errorMsg}</div>`);
                 }
-            }).autocomplete("instance")._renderItem = function(ul, item) {
-                if (item.disabled) {
-                    return $("<li class='ui-state-disabled p-2 text-muted text-center'></li>").text(item.label).appendTo(ul);
-                }
-                // Desain Dropdown yang Elegan
-                return $("<li>").append(`
-                    <div class="ui-menu-item-wrapper">
-                        <div class="fw-bold text-dark">${item.data.nama}</div>
-                        <small class="text-muted"><i class="fas fa-phone me-1"></i>${item.data.no_hp}</small>
-                    </div>
-                `).appendTo(ul);
-            };
+            });
+        }
+
+        const fieldsThatAffectShipping = '#sender_district_id, #receiver_district_id, #item_price, #weight, #length, #width, #height, #ansuransi, #service_type';
+        $(document).on('change', fieldsThatAffectShipping, function() {
+            $('#expedition').val('');
+            $('#selected_expedition_display').val('Data berubah, klik untuk cek ulang ongkir').removeClass('is-valid');
+            $('.cod-payment-option').hide();
         });
-    }
 
-    setupContactSearch('sender');
-    setupContactSearch('receiver');
+        $('#selected_expedition_display').on('click', runCekOngkir);
 
-    function unmaskDataForSubmit() {
-        ['sender', 'receiver'].forEach(p => {
-            $(`#${p}_name, #${p}_phone, #${p}_address`).each(function() {
-                if ($(this).attr('data-real-value')) $(this).val($(this).attr('data-real-value'));
+        $(document).on('click', '.select-ongkir-btn', function() {
+            const expeditionValue = $(this).data('value');
+            $('#expedition').val(expeditionValue);
+            $('#selected_expedition_display').val($(this).data('display')).addClass('is-valid');
+            if ($(this).data('cod-supported')) {
+                $('.cod-payment-option').show();
+            } else {
+                if (['COD', 'CODBARANG'].includes($('#payment_method').val())) {
+                    $('#payment_method').val('');
+                    $('#selectedPaymentName').text('Pilih Pembayaran...');
+                    $('#selectedPaymentLogo').addClass('d-none').attr('src', '');
+                    $('#defaultPaymentIcon').removeClass('d-none');
+                }
+                $('.cod-payment-option').hide();
+            }
+            ongkirModal.hide();
+        });
+
+        let isPaymentApiLoaded = false;
+        function loadTripayChannels() {
+            if (isPaymentApiLoaded) return;
+            const container = $('#dynamicPaymentChannels');
+            $.ajax({
+                url: "{{ route('pesanan.public.get_channels') }}",
+                type: "GET",
+                success: function(res) {
+                    if (res.success && res.data && res.data.length > 0) {
+                        container.empty();
+                        res.data.forEach(ch => {
+                            if (ch.active) {
+                                const li = $(`
+                                    <li class="list-group-item list-group-item-action d-flex align-items-center"
+                                        data-value="${ch.code}"
+                                        data-label="${ch.name}">
+                                        <img src="${ch.icon_url}" class="me-3 border rounded p-1 bg-white"
+                                             style="width: 40px; height: 40px; object-fit: contain;"
+                                             onerror="this.src='https://placehold.co/40x40?text=IMG'">
+                                        <div>
+                                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">${ch.name}</div>
+                                            <div class="text-muted" style="font-size: 0.75rem;">${ch.group_name || 'Pembayaran Online'}</div>
+                                        </div>
+                                    </li>
+                                `);
+                                container.append(li);
+                            }
+                        });
+                        isPaymentApiLoaded = true;
+                    } else {
+                        container.html('<div class="p-3 text-center text-muted small">Saluran pembayaran Tripay tidak tersedia.</div>');
+                    }
+                },
+                error: function(err) {
+                    console.error("Tripay API Error:", err);
+                    container.html('<div class="p-3 text-center text-danger small"><i class="fas fa-exclamation-triangle me-1"></i> Gagal terhubung ke API Pembayaran.</div>');
+                }
+            });
+        }
+
+        $('#paymentMethodButton').on('click', function() {
+            paymentModal.show();
+            loadTripayChannels();
+        });
+
+        $('#paymentOptionsList').on('click', '.list-group-item-action', function() {
+            if (!$(this).data('value')) return;
+            const value = $(this).data('value');
+            const label = $(this).data('label');
+            const imgSrc = $(this).find('img').attr('src');
+            $('#payment_method').val(value);
+            $('#selectedPaymentName').text(label);
+            $('#defaultPaymentIcon').addClass('d-none');
+            $('#selectedPaymentLogo').attr('src', imgSrc).removeClass('d-none');
+            $('#paymentOptionsList .list-group-item-action').removeClass('active');
+            $(this).addClass('active');
+            paymentModal.hide();
+        });
+
+        $('.cod-payment-option').hide();
+
+        // ============================================
+        // LOGIKA SUBMIT PESANAN & INTERSEPSI PIN
+        // ============================================
+        $('#confirmBtn').on('click', function(e) {
+            e.preventDefault();
+            const $this = $(this);
+            unmaskDataForSubmit();
+
+            if (!$('#orderForm')[0].checkValidity()) {
+                $('#orderForm')[0].reportValidity();
+                Swal.fire('Peringatan', 'Harap lengkapi semua field yang wajib diisi.', 'warning');
+                return;
+            }
+
+            Swal.fire({
+                title: 'Konfirmasi Pesanan',
+                text: "Apakah semua data sudah benar?",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Buat Pesanan',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const paymentMethodVal = $('#payment_method').val().toUpperCase();
+
+                    if (paymentMethodVal === 'POTONG SALDO' || paymentMethodVal === 'DANA_BINDING') {
+                        const pinModal = new bootstrap.Modal(document.getElementById('pinModal'));
+                        $('#pin_error_msg').addClass('d-none');
+                        $('.pin-digit').val('');
+                        $('#full_pin_value').val('');
+
+                        pinModal.show();
+                        setTimeout(() => { $('.pin-digit').first().focus(); }, 500);
+                    } else {
+                        $this.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Memproses...');
+                        $('#orderForm').submit();
+                    }
+                }
             });
         });
-    }
 
-    // ✅✅✅ [FUNGSI DIPERBAIKI] Bug 1: Menyimpan Lat/Lng dari Autocomplete ✅✅✅
-    function setupAddressSearch(prefix) {
-        const s = $(`#${prefix}_address_search`), r = $(`#${prefix}_address_results`);
-        s.on('input', debounce(() => {
-            s.removeClass('is-valid is-invalid');
-            const q = s.val();
-            if (q.length < 3) return r.addClass('d-none');
+        $('.pin-digit').on('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+            if ($(this).val().length === 1) {
+                $(this).next('.pin-digit').focus();
+            }
+            let pin = '';
+            $('.pin-digit').each(function() { pin += $(this).val(); });
+            $('#full_pin_value').val(pin);
+            if (pin.length === 6) {
+                $('#btnVerifyPin').click();
+            }
+        });
 
-            $.get("{{ route('api.address.search') }}", { search: q }).done(d => {
-                r.html('').removeClass('d-none');
-                if (d && d.length > 0) {
-                    d.forEach(i => r.append($(`<div class="search-result-item"><div class="font-weight-bold">${i.full_address}</div></div>`).on('click', () => {
-                        s.val(i.full_address);
-                        const p = i.full_address.split(',').map(t => t.trim());
-                        $(`#${prefix}_village`).val(p[0] || '').trigger('change');
-                        $(`#${prefix}_district`).val(p[1] || '').trigger('change');
-                        $(`#${prefix}_regency`).val(p[2] || '').trigger('change');
-                        $(`#${prefix}_province`).val(p[3] || '').trigger('change');
-                        $(`#${prefix}_postal_code`).val(p[4] || '').trigger('change');
-                        $(`#${prefix}_district_id`).val(i.district_id).trigger('change');
-                        $(`#${prefix}_subdistrict_id`).val(i.subdistrict_id).trigger('change');
+        $('.pin-digit').on('keydown', function(e) {
+            if (e.key === 'Backspace' && $(this).val() === '') {
+                $(this).prev('.pin-digit').focus();
+            }
+        });
 
-                        // ✅ PERBAIKAN (Bug 1): Simpan Lat/Lng dari pencarian
-                        $(`#${prefix}_lat`).val(i.lat || '');
-                        $(`#${prefix}_lng`).val(i.lon || ''); // API KiriminAja pakai 'lon'
+        $('#btnVerifyPin').on('click', function() {
+            const pin = $('#full_pin_value').val();
+            if (pin.length < 6) {
+                $('#pin_error_msg').text('PIN harus 6 angka.').removeClass('d-none');
+                return;
+            }
 
-                        r.addClass('d-none');
-                    })));
-                } else {
-                    r.html('<div class="p-3 text-muted">Alamat tidak ditemukan.</div>');
-                }
-            }).fail(() => r.html('<div class="p-3 text-danger">Gagal memuat data.</div>'));
-        }, 400));
-    }
-    setupAddressSearch('sender');
-    setupAddressSearch('receiver');
+            const $btn = $(this);
+            $btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin me-2"></i> Memeriksa...');
 
-    // ✅✅✅ [FUNGSI DIPERBAIKI] Bug 1 & 3: Memperbaiki Logo & ETD ✅✅✅
-    function runCekOngkir() {
-        let formData = $('#orderForm').serializeArray();
-        formData.forEach((item, index) => { let realVal = $(`#${item.name.replace(/\[/g, '\\[').replace(/\]/g, '\\]')}`).attr('data-real-value'); if (realVal) formData[index].value = realVal; });
-
-        let tempForm = $('<form>').append($.map(formData, item => $('<input>').attr({type: 'hidden', name: item.name, value: item.value})));
-
-        // ✅ PERBAIKAN (Bug 1): Pastikan Lat/Lng terkirim
-        tempForm.append($('<input>').attr({type: 'hidden', name: 'sender_lat', value: $('#sender_lat').val()}));
-        tempForm.append($('<input>').attr({type: 'hidden', name: 'sender_lng', value: $('#sender_lng').val()}));
-        tempForm.append($('<input>').attr({type: 'hidden', name: 'receiver_lat', value: $('#receiver_lat').val()}));
-        tempForm.append($('<input>').attr({type: 'hidden', name: 'receiver_lng', value: $('#receiver_lng').val()}));
-
-        const required = { 'sender_district_id': 'Alamat Pengirim', 'receiver_district_id': 'Alamat Penerima', 'item_price': 'Harga Barang', 'weight': 'Berat' };
-        let missing = Object.keys(required).filter(s => !tempForm.find(`[name="${s.replace('#','')}"]`).val());
-        if (missing.length > 0) { Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => required[s]).join(', '), 'warning'); return; }
-
-        $('#ongkirResultsContainer').html(`<div class="text-center p-5"><div class="spinner-border text-danger"></div><p class="mt-2 text-muted">Memuat semua tarif...</p></div>`);
-        ongkirModal.show();
-
-        const serviceType = $('#service_type').val();
-
-        $.ajax({
-            url: "{{ route('kirimaja.cekongkir') }}",
-            type: "GET",
-            data: tempForm.serialize(),
-            success: function(res) {
-                let allResults = [];
-                if (typeof res !== 'object' || res === null) {
-                    $('#ongkirResultsContainer').html('<div class="alert alert-danger text-center">Format respons tidak valid.</div>');
-                    return;
-                }
-
-                // [PERBAIKAN] Cek juga 'status: false'
-                const hasData = (res.result && Array.isArray(res.result)) || (res.results && Array.isArray(res.results));
-                if (!hasData || (res.status === false && !hasData)) {
-                    let errorMessage = res.message || res.text || 'Layanan pengiriman tidak ditemukan untuk rute atau jenis layanan ini.';
-                    $('#ongkirResultsContainer').html(`<div class="alert alert-warning text-center">${errorMessage}</div>`);
-                    return;
-                }
-
-                // ✅ PERBAIKAN (Bug 3): Logika Logo Instant
-                if (res.result && Array.isArray(res.result)) {
-                    const fromResult = res.result.flatMap(provider => {
-                        let providerNameForLogo = provider.name; // 'gosend' or 'grab_express'
-                        if (providerNameForLogo === 'grab_express') {
-                            providerNameForLogo = 'grab'; // Ganti untuk nama file logo
-                        }
-
-                        return provider.costs.map(cost => ({
-                            ...cost,
-                            service: providerNameForLogo, // Untuk LOGO ('gosend' atau 'grab')
-                            service_name: `${provider.name.toUpperCase()}`, // Untuk TAMPILAN
-                            service_type_label: `${cost.service_type}`,
-                            cost: cost.price.total_price,
-                            price: cost.price,
-                            etd: cost.estimation || '-',
-                            setting: cost.setting || {},
-                            insurance: cost.price.insurance_fee || 0,
-                            cod: cost.cod_available ?? false,
-                            is_instant: true // ✅ PERBAIKAN (Bug 3): Flag untuk ETD
-                        }));
-                    });
-                    allResults.push(...fromResult);
-                }
-
-                if (res.results && Array.isArray(res.results)) {
-                    const fromResults = res.results.map(service => ({ ...service, cost: service.cost, price: { base_price: service.cost, total_price: service.cost }, insurance: service.insurance || 0, cod: service.cod, service_name: `${service.service.toUpperCase()}`, service_type_label: `${service.service_type}`, is_instant: false}));
-                    allResults.push(...fromResults);
-                }
-
-                allResults.sort((a, b) => a.cost - b.cost);
-                const b = $('#ongkirResultsContainer').empty();
-
-                if (allResults.length === 0) {
-                     $('#ongkirResultsContainer').html(`<div class="alert alert-warning text-center">Tidak ada layanan yang tersedia untuk filter ini.</div>`);
-                     return;
-                }
-
-                // Hapus header, sesuai desain
-                const headerHtml = `<div class="ongkir-header-row d-none d-lg-flex"><div class="ongkir-item-col col-service">Layanan</div><div class="ongkir-item-col col-etd">Estimasi</div><div class="ongkir-item-col col-cod">COD</div><div class="ongkir-item-col col-pickup">Opsi Penjemputan</div><div class="ongkir-item-col col-discount">Diskon</div><div class="ongkir-item-col col-price">Tarif</div><div class="ongkir-item-col col-action"></div></div>`;
-                b.append(headerHtml);
-
-                allResults.forEach(i => {
-                    // [PERBAIKAN] Pastikan 'i.service' ada sebelum .toLowerCase()
-                    const logoName = (i.service || "").toLowerCase().replace(/\s+/g, '');
-                    let logoUrl = '';
-
-                    // ✅ PERBAIKAN (Bug 3): Logika URL Logo Eksternal
-                    if (logoName === 'gosend') {
-                        logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png';
-                    } else if (logoName === 'grab') {
-                        logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png';
-                    } else if (logoName) {
-                        logoUrl = `{{ asset('public/storage/logo-ekspedisi/') }}/${logoName}.png`;
+            $.ajax({
+                url: "{{ route('verify.pin') }}",
+                type: "POST",
+                data: { pin: pin },
+                success: function(res) {
+                    if (res.success) {
+                        $('#pinModal').modal('hide');
+                        Swal.fire({
+                            title: 'PIN Terverifikasi!',
+                            text: 'Memproses pembayaran Anda...',
+                            icon: 'success',
+                            showConfirmButton: false,
+                            timer: 1500
+                        }).then(() => {
+                            $('#confirmBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Memproses...');
+                            document.getElementById('orderForm').submit();
+                        });
+                    } else {
+                        $('#pin_error_msg').text(res.message).removeClass('d-none');
+                        $('.pin-digit').val('').first().focus();
+                        $('#full_pin_value').val('');
+                        $btn.prop('disabled', false).html('Verifikasi & Bayar');
                     }
-
-                    const safeService = (i.service || '').toString().replace(/-/g, ' ');
-                    const safeServiceTypeLabel = (i.service_type_label || '').toString().replace(/-/g, ' ');
-                    const useInsurance = $('#ansuransi').val() === 'iya';
-                    const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
-                    // [PERBAIKAN] Pastikan 'setting' ada
-                    const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
-                    const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${codFee}`;
-
-                    const hasDiscount = i.price?.base_price && i.price.base_price > i.cost;
-                    const basePriceFmt = hasDiscount ? formatRupiah(i.price.base_price) : '';
-
-                    const insuranceFee = i.insurance || 0;
-                    let feeDetailsHtml = '';
-                    if (useInsurance && insuranceFee > 0) { feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFee)}</small></div>`; }
-                    if (i.cod && codFee > 0) { feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`; }
-
-                    // ✅ PERBAIKAN (Bug 3): Logika ETD (Hari vs Jam)
-                    let etdHtml = '';
-                    if (i.etd) {
-                        const etdText = i.etd.toString();
-                        if (i.is_instant) {
-                            etdHtml = `<span>${etdText}</span>`; // Instant (cth: 1-2 hours)
-                        } else {
-                            etdHtml = `<span>${etdText} Hari</span>`; // Express/Cargo (cth: 1-2)
-                        }
-                    }
-
-                    const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}">Kirim Paket</button>`;
-
-                    // Gunakan variabel logoUrl dan etdHtml yang baru
-                    const itemHtml = `
-                    <div class="ongkir-item-card">
-                        <div class="ongkir-item-col col-service">
-                            <img src="${logoUrl}" class="ongkir-logo" onerror="this.style.display='none'">
-                            <div class="service-info">
-                                <span class="service-name">${i.service_name}</span>
-                                <span class="service-type">${i.service_type_label}</span>
-                            </div>
-                        </div>
-                        <div class="ongkir-item-col col-etd">
-                            <span class="col-label">Estimasi</span>
-                            ${etdHtml}
-                        </div>
-                        <div class="ongkir-item-col col-cod">
-                            <span class="col-label">COD</span>
-                            <span>${i.cod ? 'Tersedia' : '-'}</span>
-                        </div>
-                        <div class="ongkir-item-col col-price">
-                            <span class="col-label">Tarif</span>
-                            <div class="price-value">
-                                <span class="final-price">${formatRupiah(i.cost)}</span>
-                                ${hasDiscount ? `<span class="base-price text-decoration-line-through">${basePriceFmt}</span>` : ''}
-                            </div>
-                            <div class="price-details">${feeDetailsHtml}</div>
-                        </div>
-                        <div class="ongkir-item-col col-action">
-                            ${buttonHtml}
-                        </div>
-                    </div>`;
-                    b.append(itemHtml);
-                });
-            },
-            error: function(jqXHR, textStatus, errorThrown) {
-                let errorMsg = 'Gagal mengambil data ongkir. Silakan periksa koneksi Anda dan coba lagi.';
-                if (jqXHR.responseJSON && jqXHR.responseJSON.message) {
-                    errorMsg = jqXHR.responseJSON.message;
-                }
-                $('#ongkirResultsContainer').html(`<div class="alert alert-danger text-center">${errorMsg}</div>`);
-            }
-        });
-    }
-
-    // --- Event Listener (dari kode Anda, sudah OK) ---
-    const fieldsThatAffectShipping = '#sender_district_id, #receiver_district_id, #item_price, #weight, #length, #width, #height, #ansuransi, #service_type';
-    $(document).on('change', fieldsThatAffectShipping, function() {
-        $('#expedition').val('');
-        $('#selected_expedition_display').val('Data berubah, klik untuk cek ulang ongkir').removeClass('is-valid');
-        $('.cod-payment-option').hide();
-    });
-
-    $('#selected_expedition_display').on('click', runCekOngkir);
-
-    $(document).on('click', '.select-ongkir-btn', function() {
-        const expeditionValue = $(this).data('value');
-        $('#expedition').val(expeditionValue);
-        $('#selected_expedition_display').val($(this).data('display')).addClass('is-valid');
-        if ($(this).data('cod-supported')) {
-            $('.cod-payment-option').show();
-        } else {
-            if (['COD', 'CODBARANG'].includes($('#payment_method').val())) {
-                $('#payment_method').val('');
-                $('#selectedPaymentName').text('Pilih Pembayaran...');
-                $('#selectedPaymentLogo').addClass('d-none').attr('src', '');
-                $('#defaultPaymentIcon').removeClass('d-none');
-            }
-            $('.cod-payment-option').hide();
-        }
-        ongkirModal.hide();
-    });
-
-    // ============================================
-    // LOGIKA PEMBAYARAN DINAMIS (TRIPAY API) & STATIS
-    // ============================================
-    let isPaymentApiLoaded = false;
-
-    function loadTripayChannels() {
-        if (isPaymentApiLoaded) return;
-
-        const container = $('#dynamicPaymentChannels');
-
-        // Panggil endpoint backend kamu (Tripay channels)
-        // Controller ini harus mengirim JSON dengan menyesuaikan Sandbox / Production dari DB
-        $.ajax({
-            url: "{{ route('customer.pesanan.get_channels') }}", // Sesuaikan dengan route API kamu
-            type: "GET",
-            success: function(res) {
-                if (res.success && res.data && res.data.length > 0) {
-                    container.empty(); // Bersihkan spinner
-
-                    res.data.forEach(ch => {
-                        if (ch.active) {
-                            const li = $(`
-                                <li class="list-group-item list-group-item-action d-flex align-items-center"
-                                    data-value="${ch.code}"
-                                    data-label="${ch.name}">
-                                    <img src="${ch.icon_url}" class="me-3 border rounded p-1 bg-white"
-                                         style="width: 40px; height: 40px; object-fit: contain;"
-                                         onerror="this.src='https://placehold.co/40x40?text=IMG'">
-                                    <div>
-                                        <div class="fw-bold text-dark" style="font-size: 0.95rem;">${ch.name}</div>
-                                        <div class="text-muted" style="font-size: 0.75rem;">${ch.group_name || 'Pembayaran Online'}</div>
-                                    </div>
-                                </li>
-                            `);
-                            container.append(li);
-                        }
-                    });
-                    isPaymentApiLoaded = true;
-                } else {
-                    container.html('<div class="p-3 text-center text-muted small">Saluran pembayaran Tripay tidak tersedia.</div>');
-                }
-            },
-            error: function(err) {
-                console.error("Tripay API Error:", err);
-                container.html('<div class="p-3 text-center text-danger small"><i class="fas fa-exclamation-triangle me-1"></i> Gagal terhubung ke API Pembayaran.</div>');
-            }
-        });
-    }
-
-    // Tampilkan Modal & Panggil API
-    $('#paymentMethodButton').on('click', function() {
-        paymentModal.show();
-        loadTripayChannels();
-    });
-
-    // EVENT DELEGATION untuk merespons klik item pembayaran (baik statis maupun dinamis dari AJAX)
-    $('#paymentOptionsList').on('click', '.list-group-item-action', function() {
-        // Cegah eksekusi jika diklik pada elemen tanpa data-value (contoh: Box Hubungkan DANA)
-        if (!$(this).data('value')) return;
-
-        const value = $(this).data('value');
-        const label = $(this).data('label');
-        const imgSrc = $(this).find('img').attr('src');
-
-        $('#payment_method').val(value);
-        $('#selectedPaymentName').text(label);
-
-        $('#defaultPaymentIcon').addClass('d-none');
-        $('#selectedPaymentLogo').attr('src', imgSrc).removeClass('d-none');
-
-        // Reset visual aktif dari semua list item
-        $('#paymentOptionsList .list-group-item-action').removeClass('active');
-
-        // Aktifkan visual untuk item yang diklik (menggunakan kelas active Bootstrap)
-        $(this).addClass('active');
-
-        paymentModal.hide();
-    });
-
-   $('.cod-payment-option').hide();
-
-    // ============================================
-    // LOGIKA SUBMIT PESANAN & INTERSEPSI PIN
-    // ============================================
-    $('#confirmBtn').on('click', function(e) {
-        e.preventDefault();
-        const $this = $(this);
-        unmaskDataForSubmit();
-
-        if (!$('#orderForm')[0].checkValidity()) {
-            $('#orderForm')[0].reportValidity();
-            Swal.fire('Peringatan', 'Harap lengkapi semua field yang wajib diisi.', 'warning');
-            return;
-        }
-
-        Swal.fire({
-            title: 'Konfirmasi Pesanan',
-            text: "Apakah semua data sudah benar?",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Ya, Buat Pesanan',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const paymentMethodVal = $('#payment_method').val().toUpperCase();
-
-                // CEK JIKA METODE BUTUH PIN (Potong Saldo / DANA Auto Debit)
-                if (paymentMethodVal === 'POTONG SALDO' || paymentMethodVal === 'DANA_BINDING') {
-                    // Munculkan Modal PIN
-                    const pinModal = new bootstrap.Modal(document.getElementById('pinModal'));
-                    $('#pin_error_msg').addClass('d-none');
-                    $('.pin-digit').val('');
-                    $('#full_pin_value').val('');
-
-                    pinModal.show();
-
-                    // Fokus ke kotak pertama setelah modal tampil
-                    setTimeout(() => { $('.pin-digit').first().focus(); }, 500);
-                } else {
-                    // JIKA TIDAK BUTUH PIN, LANGSUNG SUBMIT NORMAL
-                    $this.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Memproses...');
-                    $('#orderForm').submit();
-                }
-            }
-        });
-    });
-
-    // ============================================
-    // LOGIKA KOTAK PIN (AUTO-FOCUS & AUTO-DELETE)
-    // ============================================
-    $('.pin-digit').on('input', function(e) {
-        // Hanya izinkan angka
-        this.value = this.value.replace(/[^0-9]/g, '');
-
-        // Auto pindah ke kotak selanjutnya
-        if ($(this).val().length === 1) {
-            $(this).next('.pin-digit').focus();
-        }
-
-        // Kumpulkan nilai PIN
-        let pin = '';
-        $('.pin-digit').each(function() { pin += $(this).val(); });
-        $('#full_pin_value').val(pin);
-
-        // Auto Submit jika sudah genap 6 digit
-        if (pin.length === 6) {
-            $('#btnVerifyPin').click();
-        }
-    });
-
-    // Auto hapus mundur jika tekan backspace
-    $('.pin-digit').on('keydown', function(e) {
-        if (e.key === 'Backspace' && $(this).val() === '') {
-            $(this).prev('.pin-digit').focus();
-        }
-    });
-
-    // ============================================
-    // LOGIKA AJAX VERIFIKASI PIN
-    // ============================================
-    $('#btnVerifyPin').on('click', function() {
-        const pin = $('#full_pin_value').val();
-
-        if (pin.length < 6) {
-            $('#pin_error_msg').text('PIN harus 6 angka.').removeClass('d-none');
-            return;
-        }
-
-        const $btn = $(this);
-        $btn.prop('disabled', true).html('<i class="fas fa-circle-notch fa-spin me-2"></i> Memeriksa...');
-
-        $.ajax({
-            url: "{{ route('verify.pin') }}", // API Verifikasi PIN
-            type: "POST",
-            data: { pin: pin },
-            success: function(res) {
-                if (res.success) {
-                    // PIN BENAR!
-                    $('#pinModal').modal('hide');
-                    Swal.fire({
-                        title: 'PIN Terverifikasi!',
-                        text: 'Memproses pembayaran Anda...',
-                        icon: 'success',
-                        showConfirmButton: false,
-                        timer: 1500
-                    }).then(() => {
-                        // Submit Form Utama
-                        $('#confirmBtn').prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Memproses...');
-                        document.getElementById('orderForm').submit();
-                    });
-                } else {
-                    // PIN SALAH
-                    $('#pin_error_msg').text(res.message).removeClass('d-none');
-                    $('.pin-digit').val('').first().focus();
-                    $('#full_pin_value').val('');
+                },
+                error: function() {
+                    $('#pin_error_msg').text('Terjadi kesalahan koneksi server.').removeClass('d-none');
                     $btn.prop('disabled', false).html('Verifikasi & Bayar');
                 }
-            },
-            error: function() {
-                $('#pin_error_msg').text('Terjadi kesalahan koneksi server.').removeClass('d-none');
-                $btn.prop('disabled', false).html('Verifikasi & Bayar');
+            });
+        });
+
+        $('#cekOngkirWaBtn').on('click', () => {
+            unmaskDataForSubmit();
+            window.open(`https://wa.me/6285745808809?text=${encodeURIComponent(`Halo, saya mau tanya ongkir:\n\n*Dari:* ${$('#sender_address').val()}, ${$('#sender_village').val()}\n*Ke:* ${$('#receiver_address').val()}, ${$('#receiver_village').val()}\n*Berat:* ${$('#weight').val()} gr\n\nTerima kasih.`)}`, '_blank');
+        });
+
+        $(document).on('click', e => {
+            if (!$(e.target).closest('.input-group').length && !$(e.target).closest('.ui-autocomplete').length) {
+                $('.search-results-container').addClass('d-none');
             }
         });
-    });
-
-    // ============================================
-    // EVENT LAINNYA
-    // ============================================
-    $('#cekOngkirWaBtn').on('click', () => {
-        unmaskDataForSubmit();
-        window.open(`https://wa.me/6285745808809?text=${encodeURIComponent(`Halo, saya mau tanya ongkir:\n\n*Dari:* ${$('#sender_address').val()}, ${$('#sender_village').val()}\n*Ke:* ${$('#receiver_address').val()}, ${$('#receiver_village').val()}\n*Berat:* ${$('#weight').val()} gr\n\nTerima kasih.`)}`, '_blank');
-    });
-
-    $(document).on('click', e => {
-        if (!$(e.target).closest('.input-group').length && !$(e.target).closest('.ui-autocomplete').length) {
-            $('.search-results-container').addClass('d-none');
-        }
-    });
-});
+    } // Akhir fungsi initSancakaScripts
 </script>
+@endpush
