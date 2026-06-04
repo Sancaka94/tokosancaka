@@ -749,8 +749,8 @@ class CheckoutController extends Controller
             DB::commit();
             session()->forget('cart');
 
-            // --- A1. JIKA METODE MIDTRANS (AUTO REDIRECT KE PAYMENT GATEWAY) ---
-            if (isset($paymentGateway) && $paymentGateway === 'midtrans' && !empty($order->payment_url)) {
+            // --- A1. JIKA METODE MIDTRANS ATAU PAYPAL (AUTO REDIRECT KE PAYMENT GATEWAY) ---
+            if (isset($paymentGateway) && in_array($paymentGateway, ['midtrans', 'paypal']) && !empty($order->payment_url)) {
                 return redirect()->away($order->payment_url);
             }
 
