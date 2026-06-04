@@ -177,10 +177,7 @@ class PayPalGatewayController extends Controller
         }
     }
 
-    /**
-     * 3. Capture Order (POST /v2/checkout/orders/{id}/capture)
-     */
-    public function captureOrder($orderId)
+   public function captureOrder($orderId)
     {
         $accessToken = $this->getAccessToken();
         if (!$accessToken) return $this->unauthorizedResponse();
@@ -192,7 +189,9 @@ class PayPalGatewayController extends Controller
                 'Authorization'     => "Bearer {$accessToken}",
                 'Content-Type'      => 'application/json',
                 'PayPal-Request-Id' => $requestId,
-            ])->post("{$this->baseUrl}/v2/checkout/orders/{$orderId}/capture");
+            ])
+            ->withBody('{}', 'application/json') // <--- SOLUSI: Paksa kirim JSON kosong {}
+            ->post("{$this->baseUrl}/v2/checkout/orders/{$orderId}/capture");
 
             if ($response->successful()) {
                 return response()->json([
@@ -209,9 +208,6 @@ class PayPalGatewayController extends Controller
         }
     }
 
-    /**
-     * 4. Authorize Order (POST /v2/checkout/orders/{id}/authorize)
-     */
     public function authorizeOrder($orderId)
     {
         $accessToken = $this->getAccessToken();
@@ -224,7 +220,9 @@ class PayPalGatewayController extends Controller
                 'Authorization'     => "Bearer {$accessToken}",
                 'Content-Type'      => 'application/json',
                 'PayPal-Request-Id' => $requestId,
-            ])->post("{$this->baseUrl}/v2/checkout/orders/{$orderId}/authorize");
+            ])
+            ->withBody('{}', 'application/json') // <--- SOLUSI: Paksa kirim JSON kosong {}
+            ->post("{$this->baseUrl}/v2/checkout/orders/{$orderId}/authorize");
 
             if ($response->successful()) {
                 return response()->json([
