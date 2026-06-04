@@ -52,8 +52,13 @@ use App\Http\Controllers\PpobIakController;
 use App\Http\Controllers\Admin\ApiSettingsController;
 use App\Http\Controllers\Api\MidtransNotificationController;
 use App\Http\Controllers\PaymentRedirectController;
+use App\Http\Controllers\Webhook\PayPalWebhookController;
 
 
+
+
+// Rute Webhook PayPal
+Route::post('/webhook/paypal', [PayPalWebhookController::class, 'handleWebhook']);
 
 /*
 |--------------------------------------------------------------------------

@@ -58,6 +58,8 @@ class VerifyCsrfToken extends Middleware
 
             '/api/midtrans/*',
 
+            '/api/webhook/paypal',
+
             '/api/mobile/dana/notify',
             '/api/mobile/dana/callback',
             '/api/mobile/dana/*',

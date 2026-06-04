@@ -28,6 +28,9 @@ class ApiSettingsController extends Controller
         // LOG LOG
         $lalamoveMode     = Api::getValue('LALAMOVE_MODE', 'global', 'sandbox');
 
+        // --- TAMBAHAN PAYPAL ---
+        $paypalMode       = Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
+
         // 2. Siapkan Struktur Data Lengkap (Active Mode + Data per Environment)
 
         $kiriminaja = [
@@ -164,8 +167,23 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        // Tambahkan variabel $dana, $midtrans, dan $lalamove ke compact
-        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove'));
+        // --- TAMBAHAN ARRAY PAYPAL ---
+        $paypal = [
+            'mode' => $paypalMode,
+            'sandbox' => [
+                'client_id' => Api::getValue('PAYPAL_CLIENT_ID', 'sandbox'),
+                'secret'    => Api::getValue('PAYPAL_SECRET', 'sandbox'),
+                'webhook_id'=> Api::getValue('PAYPAL_WEBHOOK_ID', 'sandbox'),
+            ],
+            'production' => [
+                'client_id' => Api::getValue('PAYPAL_CLIENT_ID', 'production'),
+                'secret'    => Api::getValue('PAYPAL_SECRET', 'production'),
+                'webhook_id'=> Api::getValue('PAYPAL_WEBHOOK_ID', 'production'),
+            ]
+        ];
+
+        // Tambahkan variabel $dana, $midtrans, $lalamove, dan $paypal ke compact
+        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal'));
     }
 
     public function update(Request $request)
@@ -295,6 +313,20 @@ class ApiSettingsController extends Controller
 
                 Api::setValue('LALAMOVE_API_KEY', $request->lalamove_api_key, 'lalamove', $env);
                 Api::setValue('LALAMOVE_API_SECRET', $request->lalamove_api_secret, 'lalamove', $env);
+            
+            // --- TAMBAHAN UPDATE PAYPAL ---
+            } elseif ($type === 'paypal') {
+                $env = $request->paypal_mode; // 'sandbox' atau 'production'
+                
+                Api::setValue('PAYPAL_MODE', $env, 'paypal', 'global');
+                
+                Api::setValue('PAYPAL_CLIENT_ID', $request->paypal_client_id, 'paypal', $env);
+                Api::setValue('PAYPAL_SECRET', $request->paypal_secret, 'paypal', $env);
+                
+                // Webhook optional tapi sangat direkomendasikan
+                if ($request->has('paypal_webhook_id')) {
+                    Api::setValue('PAYPAL_WEBHOOK_ID', $request->paypal_webhook_id, 'paypal', $env);
+                }
             }
 
             return back()->with('success', 'Konfigurasi ' . strtoupper($type) . ' berhasil diperbarui untuk mode ' . strtoupper($request->input("{$type}_mode") ?? 'GLOBAL') . '.');
@@ -318,6 +350,7 @@ class ApiSettingsController extends Controller
                 $targetDana         = '0'; // 0 = Sandbox DANA
                 $targetMidtrans     = 'sandbox'; // --- TAMBAHAN MIDTRANS ---
                 $targetLalamove     = 'sandbox'; // --- TAMBAHAN LALAMOVE ---
+                $targetPaypal       = 'sandbox'; // --- TAMBAHAN PAYPAL ---
                 $label              = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
                 $targetKA           = 'production';
@@ -328,6 +361,7 @@ class ApiSettingsController extends Controller
                 $targetDana         = '1'; // 1 = Production DANA
                 $targetMidtrans     = 'production'; // --- TAMBAHAN MIDTRANS ---
                 $targetLalamove     = 'production'; // --- TAMBAHAN LALAMOVE ---
+                $targetPaypal       = 'production'; // --- TAMBAHAN PAYPAL ---
                 $label              = 'PRODUCTION (LIVE)';
             }
 
@@ -346,6 +380,9 @@ class ApiSettingsController extends Controller
             // --- TAMBAHAN TOGGLE LALAMOVE ---
             // LOG LOG
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
+
+            // --- TAMBAHAN TOGGLE PAYPAL ---
+            Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
 
             event(new SystemModeUpdated($targetKA));
 
@@ -370,6 +407,7 @@ class ApiSettingsController extends Controller
                 $targetDana         = '1'; // Production DANA
                 $targetMidtrans     = 'production'; // --- TAMBAHAN MIDTRANS ---
                 $targetLalamove     = 'production'; // --- TAMBAHAN LALAMOVE ---
+                $targetPaypal       = 'production'; // --- TAMBAHAN PAYPAL ---
                 $label              = 'PRODUCTION (LIVE)';
             } else {
                 $targetKA           = 'staging';
@@ -380,6 +418,7 @@ class ApiSettingsController extends Controller
                 $targetDana         = '0'; // Sandbox DANA
                 $targetMidtrans     = 'sandbox'; // --- TAMBAHAN MIDTRANS ---
                 $targetLalamove     = 'sandbox'; // --- TAMBAHAN LALAMOVE ---
+                $targetPaypal       = 'sandbox'; // --- TAMBAHAN PAYPAL ---
                 $label              = 'SANDBOX / MAINTENANCE';
             }
 
@@ -398,6 +437,9 @@ class ApiSettingsController extends Controller
             // --- TAMBAHAN TOGGLE API LALAMOVE ---
             // LOG LOG
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
+            
+            // --- TAMBAHAN TOGGLE API PAYPAL ---
+            Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
 
             event(new SystemModeUpdated($targetKA));
 

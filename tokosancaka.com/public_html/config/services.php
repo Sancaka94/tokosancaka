@@ -112,4 +112,19 @@ return [
         'postpaid_base_url' => env('IAK_POSTPAID_BASE_URL', 'https://testpostpaid.mobilepulsa.net'),
     ],
 
+    // --- Konfigurasi PAYPAL ---
+    'paypal' => [
+        'mode'    => env('PAYPAL_MODE', 'sandbox'),
+        'sandbox' => [
+            'client_id'  => env('PAYPAL_SANDBOX_CLIENT_ID'),
+            'secret'     => env('PAYPAL_SANDBOX_SECRET'),
+            'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
+        ],
+        'production' => [
+            'client_id'  => env('PAYPAL_LIVE_CLIENT_ID'),
+            'secret'     => env('PAYPAL_LIVE_SECRET'),
+            'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
+        ],
+    ],
+
 ];
