@@ -1159,10 +1159,11 @@
         }
 
         // PENAMBAHAN: Fungsi terpisah agar mudah dipanggil untuk mengecek limit 10rb
-        function applyGatewayMinimumLimit() {
-            let itemPrice = parseInt($('#item_price').val()) || 0;
-            let shippingCost = parseInt($('#selected_shipping_cost').val()) || 0;
-            let totalTransaksi = itemPrice + shippingCost;
+       function applyGatewayMinimumLimit() {
+            // Hanya ambil dari tarif ongkir yang dipilih (sudah termasuk fee asuransi/COD jika ada)
+            let totalTransaksi = parseInt($('#selected_shipping_cost').val()) || 0;
+
+            // Cek apakah belum milih ekspedisi (0) atau ongkir di bawah 10rb
             let isBelowLimit = totalTransaksi < 10000;
 
             if (isBelowLimit) {
