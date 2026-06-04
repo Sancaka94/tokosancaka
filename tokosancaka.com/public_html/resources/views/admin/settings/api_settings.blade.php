@@ -82,19 +82,19 @@
                 
                 {{-- 1. TAB KIRIMINAJA --}}
                 <div x-show="activeTab === 'kiriminaja'" x-transition.opacity>
-                    <div class="p-6 border-b border-zinc-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
+                    <div class="p-6 border-b border-zinc-200">
+                        <div class="flex items-center gap-4 mb-1">
                             <h3 class="text-lg font-bold text-zinc-900">KiriminAja</h3>
-                            <p class="text-sm text-zinc-500">Konfigurasi token layanan logistik kurir.</p>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs font-medium text-zinc-500">SANDBOX</span>
-                            <div class="relative inline-block w-10 align-middle select-none transition duration-200">
-                                <input type="checkbox" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': kaData.mode === 'production', 'border-zinc-300': kaData.mode === 'staging'}" @click="kaData.mode = (kaData.mode === 'production' ? 'staging' : 'production')" :checked="kaData.mode === 'production'"/>
-                                <label class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sandbox</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': kaData.mode === 'production', 'border-zinc-300': kaData.mode === 'staging'}" @click="kaData.mode = (kaData.mode === 'production' ? 'staging' : 'production')" :checked="kaData.mode === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
                             </div>
-                            <span class="text-xs font-medium text-zinc-900">PRODUCTION</span>
                         </div>
+                        <p class="text-sm text-zinc-500">Konfigurasi token layanan logistik kurir.</p>
                     </div>
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
                         @csrf @method('PUT')
@@ -121,19 +121,19 @@
 
                 {{-- 2. TAB TRIPAY --}}
                 <div x-show="activeTab === 'tripay'" style="display:none;" x-transition.opacity>
-                    <div class="p-6 border-b border-zinc-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
+                    <div class="p-6 border-b border-zinc-200">
+                        <div class="flex items-center gap-4 mb-1">
                             <h3 class="text-lg font-bold text-zinc-900">Tripay Payment</h3>
-                            <p class="text-sm text-zinc-500">Virtual Account & Retail Payment Gateway.</p>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs font-medium text-zinc-500">SANDBOX</span>
-                            <div class="relative inline-block w-10 align-middle select-none transition duration-200">
-                                <input type="checkbox" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': tpData.mode === 'production', 'border-zinc-300': tpData.mode === 'sandbox'}" @click="tpData.mode = (tpData.mode === 'production' ? 'sandbox' : 'production')" :checked="tpData.mode === 'production'"/>
-                                <label class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sandbox</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': tpData.mode === 'production', 'border-zinc-300': tpData.mode === 'sandbox'}" @click="tpData.mode = (tpData.mode === 'production' ? 'sandbox' : 'production')" :checked="tpData.mode === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
                             </div>
-                            <span class="text-xs font-medium text-zinc-900">PRODUCTION</span>
                         </div>
+                        <p class="text-sm text-zinc-500">Virtual Account & Retail Payment Gateway.</p>
                     </div>
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
                         @csrf @method('PUT')
@@ -162,19 +162,19 @@
 
                 {{-- 3. TAB DOKU --}}
                 <div x-show="activeTab === 'doku'" style="display:none;" x-transition.opacity>
-                    <div class="p-6 border-b border-zinc-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
+                    <div class="p-6 border-b border-zinc-200">
+                        <div class="flex items-center gap-4 mb-1">
                             <h3 class="text-lg font-bold text-zinc-900">DOKU</h3>
-                            <p class="text-sm text-zinc-500">Konfigurasi Direct API Payment DOKU.</p>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs font-medium text-zinc-500">SANDBOX</span>
-                            <div class="relative inline-block w-10 align-middle select-none transition duration-200">
-                                <input type="checkbox" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': dokuData.env === 'production', 'border-zinc-300': dokuData.env === 'sandbox'}" @click="dokuData.env = (dokuData.env === 'production' ? 'sandbox' : 'production')" :checked="dokuData.env === 'production'"/>
-                                <label class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sandbox</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': dokuData.env === 'production', 'border-zinc-300': dokuData.env === 'sandbox'}" @click="dokuData.env = (dokuData.env === 'production' ? 'sandbox' : 'production')" :checked="dokuData.env === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
                             </div>
-                            <span class="text-xs font-medium text-zinc-900">PRODUCTION</span>
                         </div>
+                        <p class="text-sm text-zinc-500">Konfigurasi Direct API Payment DOKU.</p>
                     </div>
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
                         @csrf @method('PUT')
@@ -213,19 +213,19 @@
 
                 {{-- 4. TAB IAK (PPOB) --}}
                 <div x-show="activeTab === 'iak'" style="display:none;" x-transition.opacity>
-                    <div class="p-6 border-b border-zinc-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
+                    <div class="p-6 border-b border-zinc-200">
+                        <div class="flex items-center gap-4 mb-1">
                             <h3 class="text-lg font-bold text-zinc-900">IAK PPOB</h3>
-                            <p class="text-sm text-zinc-500">Gateway produk digital Pulsa, Kuota, dan PPOB.</p>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs font-medium text-zinc-500">DEVELOPMENT</span>
-                            <div class="relative inline-block w-10 align-middle select-none transition duration-200">
-                                <input type="checkbox" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': iakData.mode === 'production', 'border-zinc-300': iakData.mode === 'development'}" @click="iakData.mode = (iakData.mode === 'production' ? 'development' : 'production')" :checked="iakData.mode === 'production'"/>
-                                <label class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Development</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': iakData.mode === 'production', 'border-zinc-300': iakData.mode === 'development'}" @click="iakData.mode = (iakData.mode === 'production' ? 'development' : 'production')" :checked="iakData.mode === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
                             </div>
-                            <span class="text-xs font-medium text-zinc-900">PRODUCTION</span>
                         </div>
+                        <p class="text-sm text-zinc-500">Gateway produk digital Pulsa, Kuota, dan PPOB.</p>
                     </div>
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
                         @csrf @method('PUT')
@@ -258,19 +258,19 @@
 
                 {{-- 5. TAB DARMAWISATA --}}
                 <div x-show="activeTab === 'dharmawisata'" style="display:none;" x-transition.opacity>
-                    <div class="p-6 border-b border-zinc-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
+                    <div class="p-6 border-b border-zinc-200">
+                        <div class="flex items-center gap-4 mb-1">
                             <h3 class="text-lg font-bold text-zinc-900">Darmawisata</h3>
-                            <p class="text-sm text-zinc-500">API B2B Tiket Pesawat & Travel.</p>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs font-medium text-zinc-500">DEVELOPMENT</span>
-                            <div class="relative inline-block w-10 align-middle select-none transition duration-200">
-                                <input type="checkbox" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': dwData.mode === 'production', 'border-zinc-300': dwData.mode === 'development'}" @click="dwData.mode = (dwData.mode === 'production' ? 'development' : 'production')" :checked="dwData.mode === 'production'"/>
-                                <label class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Development</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': dwData.mode === 'production', 'border-zinc-300': dwData.mode === 'development'}" @click="dwData.mode = (dwData.mode === 'production' ? 'development' : 'production')" :checked="dwData.mode === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
                             </div>
-                            <span class="text-xs font-medium text-zinc-900">PRODUCTION</span>
                         </div>
+                        <p class="text-sm text-zinc-500">API B2B Tiket Pesawat & Travel.</p>
                     </div>
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
                         @csrf @method('PUT')
@@ -312,7 +312,7 @@
                 {{-- 6. TAB FONNTE --}}
                 <div x-show="activeTab === 'fonnte'" style="display:none;" x-transition.opacity>
                     <div class="p-6 border-b border-zinc-200">
-                        <h3 class="text-lg font-bold text-zinc-900">Fonnte WhatsApp</h3>
+                        <h3 class="text-lg font-bold text-zinc-900 mb-1">Fonnte WhatsApp</h3>
                         <p class="text-sm text-zinc-500">Notifikasi otomatis pesan WhatsApp (Berlaku Global).</p>
                     </div>
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
@@ -320,7 +320,7 @@
                         <input type="hidden" name="type" value="fonnte">
                         <div>
                             <label class="block text-xs font-medium text-zinc-700 uppercase">Global API Token</label>
-                            <input type="text" name="fonnte_api_key" value="{{ $fonnte['api_key'] }}" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" required>
+                            <input type="text" name="fonnte_api_key" value="{{ $fonnte['api_key'] ?? '' }}" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" required>
                         </div>
                         <div class="flex justify-end pt-4">
                             <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded hover:bg-black text-sm font-medium transition-colors">Simpan Pengaturan</button>
@@ -330,19 +330,19 @@
 
                 {{-- 7. TAB DANA --}}
                 <div x-show="activeTab === 'dana'" style="display:none;" x-transition.opacity>
-                    <div class="p-6 border-b border-zinc-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
+                    <div class="p-6 border-b border-zinc-200">
+                        <div class="flex items-center gap-4 mb-1">
                             <h3 class="text-lg font-bold text-zinc-900">DANA Enterprise</h3>
-                            <p class="text-sm text-zinc-500">Integrasi API SNAP BI untuk E-Wallet DANA.</p>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs font-medium text-zinc-500">SANDBOX</span>
-                            <div class="relative inline-block w-10 align-middle select-none transition duration-200">
-                                <input type="checkbox" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': danaData.mode === 'production', 'border-zinc-300': danaData.mode === 'sandbox'}" @click="danaData.mode = (danaData.mode === 'production' ? 'sandbox' : 'production')" :checked="danaData.mode === 'production'"/>
-                                <label class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sandbox</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': danaData.mode === 'production', 'border-zinc-300': danaData.mode === 'sandbox'}" @click="danaData.mode = (danaData.mode === 'production' ? 'sandbox' : 'production')" :checked="danaData.mode === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
                             </div>
-                            <span class="text-xs font-medium text-zinc-900">PRODUCTION</span>
                         </div>
+                        <p class="text-sm text-zinc-500">Integrasi API SNAP BI untuk E-Wallet DANA.</p>
                     </div>
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
                         @csrf @method('PUT')
@@ -379,19 +379,19 @@
 
                 {{-- 8. TAB MIDTRANS --}}
                 <div x-show="activeTab === 'midtrans'" style="display:none;" x-transition.opacity>
-                    <div class="p-6 border-b border-zinc-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
+                    <div class="p-6 border-b border-zinc-200">
+                        <div class="flex items-center gap-4 mb-1">
                             <h3 class="text-lg font-bold text-zinc-900">Midtrans SNAP</h3>
-                            <p class="text-sm text-zinc-500">Konfigurasi Gateway Multi-Payment Midtrans.</p>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs font-medium text-zinc-500">SANDBOX</span>
-                            <div class="relative inline-block w-10 align-middle select-none transition duration-200">
-                                <input type="checkbox" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': midtransData.mode === 'production', 'border-zinc-300': midtransData.mode === 'sandbox'}" @click="midtransData.mode = (midtransData.mode === 'production' ? 'sandbox' : 'production')" :checked="midtransData.mode === 'production'"/>
-                                <label class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sandbox</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': midtransData.mode === 'production', 'border-zinc-300': midtransData.mode === 'sandbox'}" @click="midtransData.mode = (midtransData.mode === 'production' ? 'sandbox' : 'production')" :checked="midtransData.mode === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
                             </div>
-                            <span class="text-xs font-medium text-zinc-900">PRODUCTION</span>
                         </div>
+                        <p class="text-sm text-zinc-500">Konfigurasi Gateway Multi-Payment Midtrans.</p>
                     </div>
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
                         @csrf @method('PUT')
@@ -435,19 +435,19 @@
 
                 {{-- 9. TAB LALAMOVE --}}
                 <div x-show="activeTab === 'lalamove'" style="display:none;" x-transition.opacity>
-                    <div class="p-6 border-b border-zinc-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
+                    <div class="p-6 border-b border-zinc-200">
+                        <div class="flex items-center gap-4 mb-1">
                             <h3 class="text-lg font-bold text-zinc-900">Lalamove</h3>
-                            <p class="text-sm text-zinc-500">Integrasi kurir pengiriman instan on-demand.</p>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs font-medium text-zinc-500">SANDBOX</span>
-                            <div class="relative inline-block w-10 align-middle select-none transition duration-200">
-                                <input type="checkbox" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': lalamoveData.mode === 'production', 'border-zinc-300': lalamoveData.mode === 'sandbox'}" @click="lalamoveData.mode = (lalamoveData.mode === 'production' ? 'sandbox' : 'production')" :checked="lalamoveData.mode === 'production'"/>
-                                <label class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sandbox</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': lalamoveData.mode === 'production', 'border-zinc-300': lalamoveData.mode === 'sandbox'}" @click="lalamoveData.mode = (lalamoveData.mode === 'production' ? 'sandbox' : 'production')" :checked="lalamoveData.mode === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
                             </div>
-                            <span class="text-xs font-medium text-zinc-900">PRODUCTION</span>
                         </div>
+                        <p class="text-sm text-zinc-500">Integrasi kurir pengiriman instan on-demand.</p>
                     </div>
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
                         @csrf @method('PUT')
@@ -472,19 +472,20 @@
 
                 {{-- 10. TAB PAYPAL --}}
                 <div x-show="activeTab === 'paypal'" style="display:none;" x-transition.opacity>
-                    <div class="p-6 border-b border-zinc-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
+                    <div class="p-6 border-b border-zinc-200">
+                        <div class="flex items-center gap-4 mb-1">
                             <h3 class="text-lg font-bold text-zinc-900">PayPal REST API</h3>
-                            <p class="text-sm text-zinc-500">Menerima pembayaran Global (USD) & Kartu Kredit.</p>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs font-medium text-zinc-500">SANDBOX</span>
-                            <div class="relative inline-block w-10 align-middle select-none transition duration-200">
-                                <input type="checkbox" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': paypalData.mode === 'production', 'border-zinc-300': paypalData.mode === 'sandbox'}" @click="paypalData.mode = (paypalData.mode === 'production' ? 'sandbox' : 'production')" :checked="paypalData.mode === 'production'"/>
-                                <label class="toggle-label block overflow-hidden h-5 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                            {{-- Toggle Button pindah ke samping judul --}}
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sandbox</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': paypalData.mode === 'production', 'border-zinc-300': paypalData.mode === 'sandbox'}" @click="paypalData.mode = (paypalData.mode === 'production' ? 'sandbox' : 'production')" :checked="paypalData.mode === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
                             </div>
-                            <span class="text-xs font-medium text-zinc-900">PRODUCTION</span>
                         </div>
+                        <p class="text-sm text-zinc-500">Menerima pembayaran Global (USD) & Kartu Kredit.</p>
                     </div>
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
                         @csrf @method('PUT')
@@ -500,10 +501,19 @@
                             <label class="block text-xs font-medium text-zinc-700 uppercase">Client ID</label>
                             <input type="text" name="paypal_client_id" x-model="paypalData[paypalData.mode].client_id" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" required>
                         </div>
-                        <div>
-                            <label class="block text-xs font-medium text-zinc-700 uppercase">Secret Key</label>
-                            <input type="password" name="paypal_secret" x-model="paypalData[paypalData.mode].secret" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" required>
+                        
+                        {{-- Field Secret 1 & Secret 2 ditambahkan di sini --}}
+                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">Secret Key 1</label>
+                                <input type="password" name="paypal_secret_1" x-model="paypalData[paypalData.mode].secret_1" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">Secret Key 2</label>
+                                <input type="password" name="paypal_secret_2" x-model="paypalData[paypalData.mode].secret_2" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono">
+                            </div>
                         </div>
+
                         <div>
                             <label class="block text-xs font-medium text-zinc-700 uppercase">Webhook ID</label>
                             <input type="text" name="paypal_webhook_id" x-model="paypalData[paypalData.mode].webhook_id" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" placeholder="Masukkan ID Webhook PayPal">
@@ -527,18 +537,18 @@
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('apiSettings', () => ({
-            activeTab: 'kiriminaja', // Default tab yang aktif saat pertama kali dibuka
+            activeTab: 'paypal', // Saya set default tab ke paypal sementara agar kamu mudah cek tampilannya
 
             // Sinkronisasi data JSON dari Controller PHP
-            kaData: @json($kiriminaja),
-            tpData: @json($tripay),
-            dokuData: @json($doku),
-            iakData: @json($iak),
-            dwData: @json($dharmawisata),
-            danaData: @json($dana),
-            midtransData: @json($midtrans),
-            lalamoveData: @json($lalamove),
-            paypalData: @json($paypal),
+            kaData: @json($kiriminaja ?? ['mode' => 'sandbox']),
+            tpData: @json($tripay ?? ['mode' => 'sandbox']),
+            dokuData: @json($doku ?? ['env' => 'sandbox']),
+            iakData: @json($iak ?? ['mode' => 'development']),
+            dwData: @json($dharmawisata ?? ['mode' => 'development']),
+            danaData: @json($dana ?? ['mode' => 'sandbox']),
+            midtransData: @json($midtrans ?? ['mode' => 'sandbox']),
+            lalamoveData: @json($lalamove ?? ['mode' => 'sandbox']),
+            paypalData: @json($paypal ?? ['mode' => 'sandbox']),
         }))
     })
 </script>
