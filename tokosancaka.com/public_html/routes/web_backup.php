@@ -469,8 +469,6 @@ Route::get('/pesanan/public/success', [CustomerOrderController::class, 'success'
 
 Route::get('/{resi}/cetak_thermal', [AdminPesananController::class, 'cetakResiThermal'])->name('cetak_thermal');
 
-
-
 // Routes that anyone can access (e.g., login page, registration)
 
 require __DIR__.'/web/auth.php';
