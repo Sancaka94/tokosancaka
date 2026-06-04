@@ -1527,5 +1527,99 @@ TEXT;
         return response()->json(['success' => false, 'message' => 'PIN yang Anda masukkan salah!']);
     }
 
+    /**
+     * EKSEKUTOR DANA BINDING (AUTO DEBIT) UNTUK PESANAN PUBLIK
+     */
+    private function createPaymentDanaBindingPublic(Pesanan $pesanan, int $amount, User $user)
+    {
+        try {
+            $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
+            $isProduction = ($danaMode == '1');
+
+            if ($isProduction) {
+                $merchantIdConf = \App\Models\Api::getValue('dana_prod_merchant_id', 'production');
+                $partnerIdConf  = \App\Models\Api::getValue('dana_prod_client_id', 'production');
+                $baseUrl        = 'https://api.saas.dana.id';
+            } else {
+                $merchantIdConf = \App\Models\Api::getValue('dana_sandbox_merchant_id', 'sandbox');
+                $partnerIdConf  = \App\Models\Api::getValue('dana_sandbox_client_id', 'sandbox');
+                $baseUrl        = 'https://api.sandbox.dana.id';
+            }
+
+            $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $pesanan->nomor_invoice);
+            $timestamp    = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
+            $amountValue  = number_format((float)$amount, 2, '.', '');
+
+            // Payload untuk DANA Auto-Debit
+            $bodyArray = [
+                "partnerReferenceNo" => $cleanInvoice,
+                "merchantId"         => $merchantIdConf,
+                "amount"             => ["value" => $amountValue, "currency" => "IDR"],
+                "payOption"          => "BALANCE", // Minta DANA memotong dari Saldo DANA user
+                "additionalInfo"     => [
+                    "mcc" => "5732",
+                    "envInfo" => [
+                        "sourcePlatform"    => "IPG",
+                        "terminalType"      => "SYSTEM",
+                        "orderTerminalType" => "WEB"
+                    ],
+                    "order" => [
+                        "orderTitle"        => substr("Pay " . $cleanInvoice, 0, 64),
+                        "merchantTransType" => "01",
+                        "goods" => [
+                            [
+                                "name"            => "Pengiriman Paket " . $pesanan->nomor_invoice,
+                                "merchantGoodsId" => substr("ITEM" . $cleanInvoice, 0, 64),
+                                "description"     => "Layanan Pengiriman",
+                                "category"        => "LOGISTICS",
+                                "price"           => ["value" => $amountValue, "currency" => "IDR"],
+                                "unit"            => "pcs",
+                                "quantity"        => "1"
+                            ]
+                        ]
+                    ]
+                ]
+            ];
+
+            $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $relativePath = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+
+            $danaSignature = app(\App\Services\DanaSignatureService::class);
+            // Gunakan token binding user
+            $signature    = $danaSignature->generateSignature('POST', $relativePath, $jsonBody, $timestamp, $user->dana_access_token);
+
+            $headers = [
+                'Authorization'  => 'Bearer ' . $user->dana_access_token,
+                'X-PARTNER-ID'   => $partnerIdConf,
+                'X-EXTERNAL-ID'  => \Illuminate\Support\Str::random(32),
+                'X-TIMESTAMP'    => $timestamp,
+                'X-SIGNATURE'    => $signature,
+                'Content-Type'   => 'application/json',
+                'CHANNEL-ID'     => '95221',
+                'ORIGIN'         => url('/'),
+            ];
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post($baseUrl . $relativePath);
+
+            $result = $response->json();
+
+            // Jika berhasil ditarik saldonya secara auto-debit
+            if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
+                 // DANA Auto-debit sukses.
+                 // Redirect langsung ke URL Sukses kita (seolah-olah URL pembayaran langsung selesai)
+                 return route('pesanan.public.success', ['invoice' => $pesanan->nomor_invoice, 'status' => 'paid']);
+            }
+
+            Log::error('DANA_BINDING_FAIL (Public)', ['Result' => $result]);
+            return null;
+
+        } catch (\Exception $e) {
+            Log::error('DANA_BINDING_EXCEPTION (Public)', ['Error' => $e->getMessage()]);
+            return null;
+        }
+    }
+
 }
 
