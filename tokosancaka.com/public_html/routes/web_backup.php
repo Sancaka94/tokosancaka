@@ -459,6 +459,14 @@ Route::get('/pondok', [PondokController::class, 'index'])->name('pondok.index');
 
 Route::get('/api/cari-alamat', [CustomerOrderController::class, 'searchAddressApi'])->name('api.address.search');
 
+// ==========================================
+// RUTE PESANAN PUBLIK (TANPA LOGIN)
+// ==========================================
+Route::get('/pesanan/public/create', [CustomerOrderController::class, 'create'])->name('pesanan.public.create');
+Route::post('/pesanan/public/store', [CustomerOrderController::class, 'store'])->name('pesanan.public.store');
+Route::get('/pesanan/public/channels', [CustomerOrderController::class, 'getTripayChannels'])->name('pesanan.public.get_channels');
+Route::get('/pesanan/public/success', [CustomerOrderController::class, 'success'])->name('pesanan.public.success');
+
 Route::get('/{resi}/cetak_thermal', [AdminPesananController::class, 'cetakResiThermal'])->name('cetak_thermal');
 
 
