@@ -555,7 +555,8 @@
             <div class="modal-body p-0">
                 <ul id="paymentOptionsList" class="list-group list-group-flush" style="cursor: pointer;">
 
-                    {{-- 1. OPSI INTERNAL: SALDO SANCAKA --}}
+                    @auth
+                    {{-- 1. OPSI INTERNAL: SALDO SANCAKA (Hanya jika Login) --}}
                     <li class="list-group-item bg-light fw-bold text-muted border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
                         Dompet Sancaka
                     </li>
@@ -566,6 +567,7 @@
                             <div class="text-muted" style="font-size: 0.75rem;">Tersedia: Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</div>
                         </div>
                     </li>
+                    @endauth
 
                     {{-- 2. OPSI INTERNAL: COD --}}
                     <li class="list-group-item bg-light fw-bold text-muted border-top border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
@@ -580,7 +582,8 @@
                         <div class="fw-bold text-dark" style="font-size: 0.95rem;">COD Barang + Ongkir</div>
                     </li>
 
-                    {{-- 3. OPSI DANA AUTO-DEBIT (BINDING) --}}
+                    @auth
+                    {{-- 3. OPSI DANA AUTO-DEBIT / BINDING (Hanya jika Login) --}}
                     <li class="list-group-item bg-light fw-bold text-muted border-top border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
                         E-Wallet Auto Debit
                     </li>
@@ -611,8 +614,9 @@
                             <a href="{{ url('/dana/start-binding') }}" class="btn btn-sm btn-primary" style="font-size: 0.75rem;">Hubungkan</a>
                         </li>
                     @endif
+                    @endauth
 
-                    {{-- 4. OPSI PAYMENT GATEWAY UTAMA --}}
+                    {{-- 4. OPSI PAYMENT GATEWAY UTAMA (DOKU, MIDTRANS, DANA WEB) --}}
                     <li class="list-group-item bg-light fw-bold text-muted border-top border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
                         Payment Gateway Terintegrasi
                     </li>
@@ -1078,8 +1082,85 @@ $(document).ready(function () {
         ongkirModal.hide();
     });
 
-    $('#paymentMethodButton').on('click', () => paymentModal.show());
-    $('#paymentOptionsList .list-group-item').on('click', function() { $('#payment_method').val($(this).data('value')); $('#selectedPaymentName').text($(this).data('label')); $('#defaultPaymentIcon').addClass('d-none'); $('#selectedPaymentLogo').attr('src', $(this).find('img').attr('src')).removeClass('d-none'); $('#paymentOptionsList .list-group-item').removeClass('active'); $(this).addClass('active'); paymentModal.hide(); });
+    // ============================================
+    // LOGIKA PEMBAYARAN DINAMIS (TRIPAY API) & STATIS
+    // ============================================
+    let isPaymentApiLoaded = false;
+
+    function loadTripayChannels() {
+        if (isPaymentApiLoaded) return;
+        
+        const container = $('#dynamicPaymentChannels');
+        
+        // Panggil endpoint backend kamu (Tripay channels)
+        // Controller ini harus mengirim JSON dengan menyesuaikan Sandbox / Production dari DB
+        $.ajax({
+            url: "{{ route('customer.pesanan.get_channels') }}", // Sesuaikan dengan route API kamu
+            type: "GET",
+            success: function(res) {
+                if (res.success && res.data && res.data.length > 0) {
+                    container.empty(); // Bersihkan spinner
+                    
+                    res.data.forEach(ch => {
+                        if (ch.active) {
+                            const li = $(`
+                                <li class="list-group-item list-group-item-action d-flex align-items-center" 
+                                    data-value="${ch.code}" 
+                                    data-label="${ch.name}">
+                                    <img src="${ch.icon_url}" class="me-3 border rounded p-1 bg-white" 
+                                         style="width: 40px; height: 40px; object-fit: contain;" 
+                                         onerror="this.src='https://placehold.co/40x40?text=IMG'">
+                                    <div>
+                                        <div class="fw-bold text-dark" style="font-size: 0.95rem;">${ch.name}</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">${ch.group_name || 'Pembayaran Online'}</div>
+                                    </div>
+                                </li>
+                            `);
+                            container.append(li);
+                        }
+                    });
+                    isPaymentApiLoaded = true;
+                } else {
+                    container.html('<div class="p-3 text-center text-muted small">Saluran pembayaran Tripay tidak tersedia.</div>');
+                }
+            },
+            error: function(err) {
+                console.error("Tripay API Error:", err);
+                container.html('<div class="p-3 text-center text-danger small"><i class="fas fa-exclamation-triangle me-1"></i> Gagal terhubung ke API Pembayaran.</div>');
+            }
+        });
+    }
+
+    // Tampilkan Modal & Panggil API
+    $('#paymentMethodButton').on('click', function() {
+        paymentModal.show();
+        loadTripayChannels();
+    });
+
+    // EVENT DELEGATION untuk merespons klik item pembayaran (baik statis maupun dinamis dari AJAX)
+    $('#paymentOptionsList').on('click', '.list-group-item-action', function() {
+        // Cegah eksekusi jika diklik pada elemen tanpa data-value (contoh: Box Hubungkan DANA)
+        if (!$(this).data('value')) return;
+
+        const value = $(this).data('value');
+        const label = $(this).data('label');
+        const imgSrc = $(this).find('img').attr('src');
+
+        $('#payment_method').val(value);
+        $('#selectedPaymentName').text(label);
+        
+        $('#defaultPaymentIcon').addClass('d-none');
+        $('#selectedPaymentLogo').attr('src', imgSrc).removeClass('d-none');
+
+        // Reset visual aktif dari semua list item
+        $('#paymentOptionsList .list-group-item-action').removeClass('active');
+        
+        // Aktifkan visual untuk item yang diklik (menggunakan kelas active Bootstrap)
+        $(this).addClass('active');
+
+        paymentModal.hide();
+    });
+
     $('.cod-payment-option').hide();
     $('#confirmBtn').on('click', function(e) { e.preventDefault(); const $this = $(this); unmaskDataForSubmit(); if (!$('#orderForm')[0].checkValidity()) { $('#orderForm')[0].reportValidity(); Swal.fire('Peringatan', 'Harap lengkapi semua field yang wajib diisi.', 'warning'); return; } Swal.fire({ title: 'Konfirmasi Pesanan', text: "Apakah semua data sudah benar?", icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Buat Pesanan', cancelButtonText: 'Batal' }).then((result) => { if (result.isConfirmed) { $this.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Memproses...'); $('#orderForm').submit(); } }); });
     $('#cekOngkirWaBtn').on('click', () => { unmaskDataForSubmit(); window.open(`https://wa.me/6285745808809?text=${encodeURIComponent(`Halo, saya mau tanya ongkir:\n\n*Dari:* ${$('#sender_address').val()}, ${$('#sender_village').val()}\n*Ke:* ${$('#receiver_address').val()}, ${$('#receiver_village').val()}\n*Berat:* ${$('#weight').val()} gr\n\nTerima kasih.`)}`, '_blank'); });
