@@ -315,17 +315,19 @@
         flex-direction: column;
         justify-content: center;
     }
+
     .ongkir-item-col .col-label { display: none; } /* Sembunyikan label di desktop */
-    .col-service { flex: 0 0 24%; flex-direction: row; align-items: center; }
+    .col-service { flex: 0 0 35%; flex-direction: row; align-items: center; }
     .ongkir-logo { width: 60px; height: auto; object-fit: contain; margin-right: 15px; }
     .service-info { display: flex; flex-direction: column; }
     .service-name { font-weight: 600; font-size: 0.95rem; color: var(--text-color); }
     .service-type { font-size: 0.8rem; color: var(--secondary-color); }
-    .col-etd, .col-cod { flex: 0 0 12%; text-align: center; }
-    .col-price { flex: 0 0 16%; text-align: right; }
+    .col-etd { flex: 0 0 15%; text-align: center; }
+    .col-cod { flex: 0 0 10%; text-align: center; }
+    .col-price { flex: 0 0 20%; text-align: right; padding-right: 15px; }
     .price-value .final-price { font-weight: 700; font-size: 1rem; color: var(--success-color); }
     .price-details { font-size: 0.8rem; color: var(--secondary-color); margin-top: 2px; }
-    .col-action { flex: 0 0 12%; text-align: right; }
+    .col-action { flex: 0 0 20%; text-align: right; }
     .btn-kirim { background-color: var(--primary-color); color: #fff; border-radius: 999px; font-weight: 600; font-size: 0.8rem; padding: 0.4rem 1rem; border: none; }
     .btn-kirim:hover { background-color: var(--primary-color-darker); color: #fff; }
 
@@ -988,7 +990,7 @@
                          return;
                     }
 
-                    const headerHtml = `<div class="ongkir-header-row d-none d-lg-flex"><div class="ongkir-item-col col-service">Layanan</div><div class="ongkir-item-col col-etd">Estimasi</div><div class="ongkir-item-col col-cod">COD</div><div class="ongkir-item-col col-pickup">Opsi Penjemputan</div><div class="ongkir-item-col col-discount">Diskon</div><div class="ongkir-item-col col-price">Tarif</div><div class="ongkir-item-col col-action"></div></div>`;
+                    const headerHtml = `<div class="ongkir-header-row d-none d-lg-flex"><div class="ongkir-item-col col-service">Layanan</div><div class="ongkir-item-col col-etd">Estimasi</div><div class="ongkir-item-col col-cod">COD</div><div class="ongkir-item-col col-price">Tarif</div><div class="ongkir-item-col col-action"></div></div>`;
                     b.append(headerHtml);
 
                     allResults.forEach(i => {
