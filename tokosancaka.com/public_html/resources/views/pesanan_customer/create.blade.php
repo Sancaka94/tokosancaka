@@ -1146,13 +1146,8 @@ $('#item_price').on('input', function() {
             $('#expedition').val(expeditionValue);
             $('#selected_expedition_display').val($(this).data('display')).addClass('is-valid');
 
-            // PENAMBAHAN: Menyimpan cost tarif saat dipilih untuk kalkulasi limit PG nanti
+            // Menyimpan cost tarif saat dipilih untuk kalkulasi limit PG nanti
             $('#selected_shipping_cost').val($(this).data('shipping-cost'));
-
-            $('#selected_shipping_cost').val($(this).data('shipping-cost'));
-
-            // Panggil update monitor agar ongkir tampil
-            updateTotalSummary();
 
             if ($(this).data('cod-supported')) {
                 $('.cod-payment-option').show();
@@ -1165,6 +1160,9 @@ $('#item_price').on('input', function() {
                 }
                 $('.cod-payment-option').hide();
             }
+
+            // PENAMBAHAN: Taruh updateTotalSummary di sini (paling bawah)
+            updateTotalSummary();
             ongkirModal.hide();
         });
 
@@ -1291,6 +1289,9 @@ function executePaymentSelection(element) {
     $('#paymentOptionsList .list-group-item-action').removeClass('active');
     element.addClass('active');
     $('#paymentMethodModal').modal('hide');
+
+    // PENAMBAHAN: Panggil fungsi update agar monitor total langsung berubah
+    updateTotalSummary();
 }
 
         // Logika Klik Opsi Pembayaran
