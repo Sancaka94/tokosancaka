@@ -802,29 +802,39 @@
         function formatRupiah(angka) { return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); }
 
         // PENAMBAHAN: Fungsi Update Monitor Total
-// PENAMBAHAN: Fungsi Update Monitor Total (Dinamis Berdasarkan Metode Pembayaran)
-function updateTotalSummary() {
-    let itemPrice = parseInt($('#item_price').val()) || 0;
-    let shippingCost = parseInt($('#selected_shipping_cost').val()) || 0;
-    let paymentMethod = $('#payment_method').val();
+        function updateTotalSummary() {
+            // Hilangkan semua karakter non-angka sebelum diparse
+            let rawItemPrice = $('#item_price').val() || "0";
+            let itemPrice = parseInt(rawItemPrice.replace(/\D/g, '')) || 0;
 
-    // Default: Total Tagihan HANYA Tarif Ongkir
-    let total = shippingCost;
+            let baseShippingCost = parseInt($('#selected_shipping_cost').val()) || 0;
+            let codFee = parseInt($('#selected_cod_fee').val()) || 0;
+            let paymentMethod = $('#payment_method').val();
 
-    // Jika metode pembayarannya "COD Barang + Ongkir", barulah Harga Barang ikut ditambahkan ke Total
-    if (paymentMethod === 'CODBARANG') {
-        total = itemPrice + shippingCost;
-    }
+            // Default: Tampilan Tarif & Total murni hanya Ongkir Dasar
+            let finalShippingCost = baseShippingCost;
+            let total = baseShippingCost;
 
-    $('#summary_item_price').text(formatRupiah(itemPrice));
-    $('#summary_shipping_cost').text(formatRupiah(shippingCost));
-    $('#summary_total_cost').text(formatRupiah(total));
-}
+            // Jika memilih metode COD/CODBARANG, barulah tambahkan biaya COD
+            if (paymentMethod === 'COD' || paymentMethod === 'CODBARANG') {
+                finalShippingCost = parseInt(baseShippingCost) + parseInt(codFee);
+                total = finalShippingCost;
+            }
 
-// Update monitor secara real-time saat user mengetik harga barang
-$('#item_price').on('input', function() {
-    updateTotalSummary();
-});
+            // Jika memilih CODBARANG, tambahkan Harga Barang ke Total
+            if (paymentMethod === 'CODBARANG') {
+                total = parseInt(itemPrice) + parseInt(finalShippingCost);
+            }
+
+            $('#summary_item_price').text(formatRupiah(itemPrice));
+            $('#summary_shipping_cost').text(formatRupiah(finalShippingCost));
+            $('#summary_total_cost').text(formatRupiah(total));
+        }
+
+            // Update monitor secara real-time saat user mengetik harga barang
+            $('#item_price').on('input', function() {
+                updateTotalSummary();
+            });
 
         function maskData(type, value) { if (!value) return '***'; if (type === 'name') { const parts = value.split(' '); return parts.length > 1 ? parts[0] + ' ' + parts.slice(1).map(p => p.replace(/./g, '*')).join(' ') : (value.length > 2 ? value.substring(0, 2) + '***' : value); } if (type === 'phone') { const num = value.replace(/\D/g, ''); return num.length > 8 ? num.substring(0, 3) + '****' + num.substring(num.length - 4) : num.substring(0, 3) + '****'; } if (type === 'address') { const parts = value.split(' '); return parts.length > 2 ? parts.slice(0, 2).join(' ') + ' **** **** ****' : value; } return '***'; }
         function clearHiddenAddress(prefix) { $(`#${prefix}_province, #${prefix}_regency, #${prefix}_district, #${prefix}_village, #${prefix}_postal_code, #${prefix}_district_id, #${prefix}_subdistrict_id, #${prefix}_lat, #${prefix}_lng`).val(''); }
