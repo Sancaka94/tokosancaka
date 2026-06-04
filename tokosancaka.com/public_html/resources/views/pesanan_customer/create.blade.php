@@ -495,6 +495,25 @@
                                 <input type="hidden" id="selected_shipping_cost" value="0">
                             </div>
 
+                            {{-- TAMBAHAN: Kotak Monitor Total Pembayaran --}}
+                            <div class="col-12 my-2">
+                                <div class="p-3 rounded" style="background-color: #f8f9fa; border: 1px dashed #ced4da;">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="text-muted" style="font-size: 0.85rem;">Harga Barang</span>
+                                        <span id="summary_item_price" class="fw-bold text-secondary" style="font-size: 0.85rem;">Rp 0</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="text-muted" style="font-size: 0.85rem;">Tarif Ongkir</span>
+                                        <span id="summary_shipping_cost" class="fw-bold text-secondary" style="font-size: 0.85rem;">Rp 0</span>
+                                    </div>
+                                    <hr class="my-2" style="border-color: #ced4da;">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold text-dark">Total Pembayaran</span>
+                                        <span id="summary_total_cost" class="fw-bold text-danger" style="font-size: 1.15rem;">Rp 0</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="col-12"><label for="paymentMethodButton" class="form-label">Metode Pembayaran</label><div id="paymentMethodButton" class="form-control d-flex justify-content-between align-items-center" style="cursor: pointer;"><div class="d-flex align-items-center"><i id="defaultPaymentIcon" class="fas fa-credit-card fa-lg me-3 text-muted"></i><img id="selectedPaymentLogo" src="" alt="Logo" class="me-2 d-none" style="width:50px; height:25px; object-fit:contain;"><span id="selectedPaymentName">Pilih Pembayaran...</span></div><i class="fas fa-chevron-down text-muted"></i></div><input type="hidden" name="payment_method" id="payment_method" required></div>
                             <div class="d-grid gap-2 mt-4"><button type="button" id="confirmBtn" class="btn btn-primary btn-lg"><i class="fas fa-paper-plane me-2"></i>Buat Pesanan Sekarang</button><button type="button" id="cekOngkirWaBtn" class="btn btn-outline-success"><i class="fab fa-whatsapp me-2"></i>Tanya Ongkir via WA</button></div>
                         </div>
@@ -781,6 +800,22 @@
         let searchTimeout = null;
         const debounce = (func, delay) => (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
         function formatRupiah(angka) { return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); }
+
+        // PENAMBAHAN: Fungsi Update Monitor Total
+function updateTotalSummary() {
+    let itemPrice = parseInt($('#item_price').val()) || 0;
+    let shippingCost = parseInt($('#selected_shipping_cost').val()) || 0;
+    let total = itemPrice + shippingCost;
+
+    $('#summary_item_price').text(formatRupiah(itemPrice));
+    $('#summary_shipping_cost').text(formatRupiah(shippingCost));
+    $('#summary_total_cost').text(formatRupiah(total));
+}
+
+// Update monitor secara real-time saat user mengetik harga barang
+$('#item_price').on('input', function() {
+    updateTotalSummary();
+});
 
         function maskData(type, value) { if (!value) return '***'; if (type === 'name') { const parts = value.split(' '); return parts.length > 1 ? parts[0] + ' ' + parts.slice(1).map(p => p.replace(/./g, '*')).join(' ') : (value.length > 2 ? value.substring(0, 2) + '***' : value); } if (type === 'phone') { const num = value.replace(/\D/g, ''); return num.length > 8 ? num.substring(0, 3) + '****' + num.substring(num.length - 4) : num.substring(0, 3) + '****'; } if (type === 'address') { const parts = value.split(' '); return parts.length > 2 ? parts.slice(0, 2).join(' ') + ' **** **** ****' : value; } return '***'; }
         function clearHiddenAddress(prefix) { $(`#${prefix}_province, #${prefix}_regency, #${prefix}_district, #${prefix}_village, #${prefix}_postal_code, #${prefix}_district_id, #${prefix}_subdistrict_id, #${prefix}_lat, #${prefix}_lng`).val(''); }
@@ -1090,6 +1125,9 @@
             $('#selectedPaymentName').text('Pilih Pembayaran...');
             $('#selectedPaymentLogo').addClass('d-none').attr('src', '');
             $('#defaultPaymentIcon').removeClass('d-none');
+
+            // Panggil update monitor
+            updateTotalSummary();
         });
 
         $('#selected_expedition_display').on('click', runCekOngkir);
@@ -1101,6 +1139,11 @@
 
             // PENAMBAHAN: Menyimpan cost tarif saat dipilih untuk kalkulasi limit PG nanti
             $('#selected_shipping_cost').val($(this).data('shipping-cost'));
+
+            $('#selected_shipping_cost').val($(this).data('shipping-cost'));
+
+            // Panggil update monitor agar ongkir tampil
+            updateTotalSummary();
 
             if ($(this).data('cod-supported')) {
                 $('.cod-payment-option').show();
