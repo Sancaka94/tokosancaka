@@ -77,37 +77,57 @@ class PayPalWebhookController extends Controller
 
         try {
             switch ($eventType) {
+                case 'CHECKOUT.ORDER.APPROVED':
+                    // LOG LOG: Buyer sudah klik bayar, saatnya sistem Sancaka menarik dana (Capture)
+                    $orderId = $resource['id'];
+                    Log::info("LOG LOG: PayPal Order Approved (ID: $orderId). Melakukan Auto-Capture dana...");
+
+                    // Panggil layanan PayPal untuk mencairkan uang ke akun Sancaka
+                    $paypalService = app(\App\Http\Controllers\Api\PayPalGatewayController::class);
+                    $captureResponse = $paypalService->captureOrder($orderId);
+                    $captureResult = $captureResponse->getData(true);
+
+                    // Jika penarikan dana berhasil
+                    if (isset($captureResult['success']) && $captureResult['success'] === true) {
+                        Log::info("LOG LOG: Capture sukses! Dana berhasil masuk ke PayPal.");
+                        
+                        // Ambil nomor invoice (berada di dalam array purchase_units untuk event ini)
+                        $invoiceNumber = $resource['purchase_units'][0]['custom_id'] ?? null;
+                        
+                        if ($invoiceNumber) {
+                            Log::info("LOG LOG: Webhook PAYPAL Lunas! Meneruskan invoice $invoiceNumber ke CheckoutController");
+                            app(CheckoutController::class)->processOrderCallback($invoiceNumber, 'PAID', $captureResult);
+                        } else {
+                            Log::error("PayPal Webhook Auto-Capture: custom_id (Nomor Invoice) tidak ditemukan.");
+                        }
+                    } else {
+                        Log::error("LOG LOG: Gagal melakukan Auto-Capture pada Order $orderId", $captureResult);
+                    }
+                    break;
+
                 case 'PAYMENT.CAPTURE.COMPLETED':
-                    // LOG LOG: Pembayaran berhasil ditarik
+                    // Jika dana ditarik lewat jalur lain (misal dari frontend saat user di-redirect balik)
                     $captureId = $resource['id'];
                     $amount = $resource['amount']['value'] ?? 0;
-                    
-                    // AMBIL NOMOR INVOICE (Sesuai yang kita set di createOrder -> custom_id)
                     $invoiceNumber = $resource['custom_id'] ?? null;
                     
                     Log::info("PayPal Payment Berhasil: Capture ID $captureId sebesar USD $amount");
 
                     if ($invoiceNumber) {
-                        Log::info("LOG LOG: Webhook PAYPAL Lunas! Meneruskan invoice $invoiceNumber ke CheckoutController");
-                        
-                        // ✨ EKSEKUSI MESIN UTAMA ✨
-                        // Menggunakan app() agar Laravel otomatis meng-inject dependency (DanaSignatureService) ke CheckoutController
+                        // Mesin CheckoutController punya pelindung anti double-booking. 
+                        // Jadi aman meski terpanggil 2 kali.
                         app(CheckoutController::class)->processOrderCallback($invoiceNumber, 'PAID', $resource);
-                    } else {
-                        Log::error("PayPal Webhook Gagal Proses: custom_id (Nomor Invoice) tidak ditemukan pada payload webhook.");
                     }
                     break;
 
                 case 'PAYMENT.CAPTURE.DENIED':
                 case 'PAYMENT.CAPTURE.PENDING':
                     Log::info("PayPal Payment $eventType: " . $resource['id']);
-                    // Bisa ditambahkan update status PENDING ke tabel order di sini
                     break;
 
                 case 'PAYMENT.CAPTURE.REFUNDED':
                 case 'PAYMENT.CAPTURE.REVERSED':
                     Log::info("PayPal Payment di-Refund: " . $resource['id']);
-                    // Bisa ditambahkan update status REFUNDED ke tabel order di sini
                     break;
 
                 default:
