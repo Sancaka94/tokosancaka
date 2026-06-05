@@ -456,6 +456,12 @@
 
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DOKU_JOKUL" data-label="REKOMENDASI SANCAKA"><img src="https://tokosancaka.com/public/assets/doku.png" class="w-8 h-8 mr-4">Rekomendasi Sancaka Express Via VA, QRIS Dan E-Wallet</li>
 
+                {{-- OPSI PAYPAL (TAMBAHAN BARU) --}}
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="PAYPAL" data-label="PayPal / Credit Card">
+                    <img src="https://tokosancaka.com/public/assets/paypal.png" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=PP'" class="w-8 h-8 mr-4 object-contain">
+                    PayPal (Otomatis konversi ke USD)
+                </li>
+                
                 {{--
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="MIDTRANS" data-label="Midtrans">
                     <img src="https://tokosancaka.com/public/assets/midtrans.png" onerror="this.src='https://midtrans.com/assets/img/midtrans-dark.svg'" class="w-8 h-8 mr-4 object-contain">

@@ -1463,3 +1463,6 @@ Route::post('/pesanan/verify-pin', [CustomerOrderController::class, 'verifyPin']
 
 Route::get('/pesanan/paypal/return/{invoice}', [CustomerOrderController::class, 'capturePaypalReturn'])
     ->name('paypal.capture.return.public');
+
+Route::get('/customer/pesanan/paypal/return/{invoice}', [\App\Http\Controllers\Customer\PesananController::class, 'capturePaypalReturn'])
+    ->name('paypal.capture.return.customer');

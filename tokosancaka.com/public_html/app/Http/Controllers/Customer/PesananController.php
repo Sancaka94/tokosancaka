@@ -417,28 +417,24 @@ class PesananController extends Controller
             }
             else {
                 // --- BLOK PEMBAYARAN ONLINE (MIDTRANS, TRIPAY, atau DOKU JOKUL) ---
-
                 $paymentGateway = 'tripay'; // Default
                 $paymentMethod  = strtoupper($validatedData['payment_method']);
 
-                if ($paymentMethod === 'DOKU') {
+                if ($paymentMethod === 'DOKU' || $paymentMethod === 'DOKU_JOKUL') {
                     $paymentGateway = 'doku';
                 } elseif ($paymentMethod === 'MIDTRANS') {
                     $paymentGateway = 'midtrans';
+                } elseif ($paymentMethod === 'PAYPAL') {
+                    $paymentGateway = 'paypal'; // <-- TAMBAHAN PAYPAL
                 }
                 
                 // ==========================================================
                 // 1. PROSES VIA MIDTRANS SNAP (TAMPILAN ASLI)
                 // ==========================================================
                 if ($paymentGateway === 'midtrans') {
-                    
-                    // Pastikan nominal harga final sudah tersimpan di objek model sebelum dilempar
                     $order->price = $total_paid_ongkir;
-                    
-                    // Langsung panggil eksekutor snap yang terpisah
                     return $this->createPaymentMidtransSnap($order);
                 }
-
                 // ==========================================================
                 // 2. PROSES VIA DOKU JOKUL
                 // ==========================================================
@@ -456,12 +452,24 @@ class PesananController extends Controller
                     if (empty($paymentUrl)) {
                         throw new Exception('Gagal membuat transaksi pembayaran DOKU.');
                     }
-
                     $order->payment_url = $paymentUrl;
                 } 
-
                 // ==========================================================
-                // 3. PROSES VIA TRIPAY
+                // 3. PROSES VIA PAYPAL (TAMBAHAN BARU)
+                // ==========================================================
+                elseif ($paymentGateway === 'paypal') {
+                    Log::info('Memulai proses PAYPAL untuk ' . $order->nomor_invoice);
+                    
+                    // Kita memanggil fungsi baru di bawah
+                    $paymentUrl = $this->createPaymentPayPalPublic($order, $total_paid_ongkir);
+                    
+                    if (empty($paymentUrl)) {
+                        throw new Exception('Gagal membuat link pembayaran PayPal.');
+                    }
+                    $order->payment_url = $paymentUrl;
+                }
+                // ==========================================================
+                // 4. PROSES VIA TRIPAY
                 // ==========================================================
                 else {
                     Log::info('Memulai proses TRIPAY untuk ' . $order->nomor_invoice);
@@ -1923,6 +1931,86 @@ public function cetakThermal($resi)
         } catch (\Exception $e) {
             Log::error('LOG LOG: Exception Midtrans Snap (Pesanan): ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan sistem saat menghubungi Midtrans.');
+        }
+    }
+
+    /**
+     * =========================================================================
+     * EKSEKUTOR PAYPAL UNTUK PESANAN CUSTOMER (DINAMIS)
+     * =========================================================================
+     */
+    private function createPaymentPayPalPublic(Pesanan $pesanan, int $amount)
+    {
+        try {
+            $paypalService = app(\App\Http\Controllers\Api\PayPalGatewayController::class);
+            $rate = (float) \App\Models\Api::getValue('PAYPAL_USD_RATE', 'global', 16000);
+            $usdAmount = round($amount / $rate, 2);
+
+            $items = [[
+                'name' => 'Kirim Paket ' . $pesanan->nomor_invoice,
+                'quantity' => '1',
+                'unit_amount' => [
+                    'currency_code' => 'USD',
+                    'value' => number_format($usdAmount, 2, '.', '')
+                ]
+            ]];
+
+            $response = $paypalService->createOrder(
+                $items,
+                $usdAmount,
+                $pesanan->nomor_invoice,
+                'CAPTURE',
+                route('paypal.capture.return.customer', ['invoice' => $pesanan->nomor_invoice]), // Ganti route name khusus customer
+                route('customer.pesanan.create') // URL Cancel
+            );
+
+            $result = $response->getData(true);
+
+            if (isset($result['success']) && $result['success'] === true && !empty($result['approve_url'])) {
+                return $result['approve_url'];
+            }
+
+            \Illuminate\Support\Facades\Log::error('PayPal Create Order Error (Customer)', $result);
+            return null;
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Exception PayPal (Customer): ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * =========================================================================
+     * TANGKAP RETURN PAYPAL (CUSTOMER)
+     * =========================================================================
+     */
+    public function capturePaypalReturn(Request $request, $invoice)
+    {
+        $token = $request->query('token');
+
+        if (!$token) {
+            return redirect()->route('customer.pesanan.create')->with('error', 'Sesi PayPal tidak valid.');
+        }
+
+        try {
+            $paypalService = app(\App\Http\Controllers\Api\PayPalGatewayController::class);
+            $response = $paypalService->captureOrder($token);
+            $result = $response->getData(true);
+
+            if (isset($result['success']) && $result['success'] === true && $result['status'] === 'COMPLETED') {
+                
+                // Panggil prosesor callback agar sistem otomatis hit API KiriminAja, 
+                // mengirim notif WA, dan mengupdate keuangan/saldo.
+                self::processCallback($invoice, 'PAID', $result);
+                
+                return redirect()->route('customer.pesanan.index')
+                    ->with('success', 'Pembayaran via PayPal Berhasil! Pesanan sedang diproses dan kurir telah dijadwalkan.');
+            }
+
+            return redirect()->route('customer.pesanan.create')->with('error', 'Dana belum berhasil ditarik oleh PayPal.');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("PayPal Capture Error (Customer): " . $e->getMessage());
+            return redirect()->route('customer.pesanan.create')->with('error', 'Terjadi kesalahan saat memverifikasi PayPal.');
         }
     }
 
