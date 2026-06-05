@@ -1455,7 +1455,11 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 Route::get('/dana/debug-status/{orderId}', [\App\Http\Controllers\DanaWebhookController::class, 'debugDanaStatus']);
 
-// Redirect saat pembayaran sukses dari PayPal
+
+//----------------------------- Redirect saat pembayaran sukses dari PayPal ------------------------------------------
 Route::get('/checkout/paypal/return/{invoice}', [App\Http\Controllers\CheckoutController::class, 'capturePaypalReturn'])->name('paypal.capture.return');
 
 Route::post('/pesanan/verify-pin', [CustomerOrderController::class, 'verifyPin'])->name('verify.pin');
+
+Route::get('/pesanan/paypal/return/{invoice}', [CustomerOrderController::class, 'capturePaypalReturn'])
+    ->name('paypal.capture.return.public');
