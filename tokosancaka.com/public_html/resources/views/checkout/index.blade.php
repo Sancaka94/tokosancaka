@@ -400,9 +400,9 @@
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
                     data-value="PAYPAL"
                     data-label="PayPal / Credit Card"
-                    data-img="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg">
+                    data-img="https://tokosancaka.com/public/assets/paypal.png">
                     
-                    <img src="https://www.paypalobjects.com/webstatic/mktg/logo/pp_cc_mark_37x23.jpg" 
+                    <img src="https://tokosancaka.com/public/assets/paypal.png" 
                          alt="PayPal" 
                          class="h-8 object-contain mr-4"
                          onerror="this.src='https://placehold.co/32x32/EFEFEF/AAAAAA?text=PP'">
@@ -415,7 +415,7 @@
                 
 
                 {{-- OPSI MIDTRANS --}}
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
+                {{--<li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
                     data-value="MIDTRANS"
                     data-label="Midtrans"
                     data-img="https://tokosancaka.com/public/assets/midtrans.png">
@@ -429,7 +429,9 @@
                         <span class="text-sm font-bold text-gray-900">Midtrans</span>
                         <span class="text-xs text-gray-500">Virtual Account, QRIS, E-Wallet (Otomatis)</span>
                     </div>
-                </li>
+                </li> 
+                
+                --}}
             
 
                 {{-- OPSI DANA (DIRECT DEBIT) --}}
