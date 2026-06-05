@@ -1501,86 +1501,52 @@ TEXT;
         }
     }
 
-   /**
-     * EKSEKUTOR PAYPAL UNTUK PESANAN PUBLIK (DINAMIS DARI DATABASE)
+ /**
+     * EKSEKUTOR PAYPAL UNTUK PESANAN PUBLIK (Menggunakan Gateway Sentral)
      */
     private function createPaymentPayPalPublic(Pesanan $pesanan, int $amount)
     {
         try {
-            // 1. Ambil Mode dan Kredensial dari Database
-            $mode = \App\Models\Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
-            $isProduction = ($mode === 'production');
+            // 1. Panggil Gateway Controller yang sudah terbukti berhasil dan presisi
+            $paypalService = app(\App\Http\Controllers\Api\PayPalGatewayController::class);
 
-            $clientId = \App\Models\Api::getValue('PAYPAL_CLIENT_ID', $mode);
-            $secret   = \App\Models\Api::getValue('PAYPAL_SECRET', $mode);
-            
-            // Ambil kurs dinamis (Default Rp 16.000 jika kosong di database)
+            // 2. Ambil kurs dari Database (Default: Rp 16.000 jika belum diatur)
             $rate = (float) \App\Models\Api::getValue('PAYPAL_USD_RATE', 'global', 16000);
-
-            if (empty($clientId) || empty($secret)) {
-                throw new \Exception("Kredensial PayPal untuk mode {$mode} belum dikonfigurasi.");
-            }
-
-            $baseUrl = $isProduction 
-                ? 'https://api-m.paypal.com' 
-                : 'https://api-m.sandbox.paypal.com';
-
-            // 2. Request Access Token ke PayPal
-            $authResponse = \Illuminate\Support\Facades\Http::withBasicAuth($clientId, $secret)
-                ->asForm()
-                ->post("{$baseUrl}/v1/oauth2/token", [
-                    'grant_type' => 'client_credentials'
-                ]);
-
-            if (!$authResponse->successful()) {
-                \Illuminate\Support\Facades\Log::error('PayPal Auth Error', $authResponse->json());
-                throw new \Exception('Gagal mendapatkan akses token dari PayPal.');
-            }
-
-            $accessToken = $authResponse->json()['access_token'];
-
-            // 3. Konversi Harga ke USD
             $usdAmount = round($amount / $rate, 2);
 
-            // 4. Siapkan Payload Order
-            $payload = [
-                'intent' => 'CAPTURE',
-                'purchase_units' => [
-                    [
-                        'reference_id' => $pesanan->nomor_invoice, // Gunakan reference_id agar unik
-                        'description'  => 'Pesanan ' . $pesanan->nomor_invoice,
-                        'amount'       => [
-                            'currency_code' => 'USD',
-                            'value'         => number_format($usdAmount, 2, '.', '')
-                        ]
-                    ]
-                ],
-                'application_context' => [
-                    'return_url' => route('paypal.capture.return', ['invoice' => $pesanan->nomor_invoice]),
-                    'cancel_url' => route('pesanan.public.create')
+            // 3. Format Item
+            $items = [[
+                'name' => 'Kirim Paket ' . $pesanan->nomor_invoice,
+                'quantity' => '1',
+                'unit_amount' => [
+                    'currency_code' => 'USD',
+                    'value' => number_format($usdAmount, 2, '.', '')
                 ]
-            ];
+            ]];
 
-            // 5. Tembak API Buat Order
-            $orderResponse = \Illuminate\Support\Facades\Http::withToken($accessToken)
-                ->post("{$baseUrl}/v2/checkout/orders", $payload);
+            // 4. Eksekusi Create Order
+            // Pastikan URL return mengarah ke fungsi capturePaypalReturn
+            $response = $paypalService->createOrder(
+                $items,
+                $usdAmount,
+                $pesanan->nomor_invoice, // custom_id (Penting untuk Webhook)
+                'CAPTURE',
+                route('paypal.capture.return.public', ['invoice' => $pesanan->nomor_invoice]), // Ganti dengan nama route return Anda untuk publik
+                route('pesanan.public.create') // URL Cancel
+            );
 
-            $result = $orderResponse->json();
+            $result = $response->getData(true);
 
-            if ($orderResponse->successful() && isset($result['id'])) {
-                // Cari URL Approve untuk diarahkan ke frontend (Halaman Login PayPal)
-                foreach ($result['links'] as $link) {
-                    if ($link['rel'] === 'approve') {
-                        return $link['href'];
-                    }
-                }
+            // Jika sukses, kembalikan link persetujuan pembayaran PayPal
+            if (isset($result['success']) && $result['success'] === true && !empty($result['approve_url'])) {
+                return $result['approve_url'];
             }
 
             \Illuminate\Support\Facades\Log::error('PayPal Create Order Error (Public)', $result);
             return null;
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Exception PayPal (Public): ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('LOG LOG: Exception PayPal (Public): ' . $e->getMessage());
             return null;
         }
     }
