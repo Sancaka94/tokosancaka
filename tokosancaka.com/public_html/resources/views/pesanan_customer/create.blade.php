@@ -631,13 +631,25 @@
                             <div class="text-muted" style="font-size: 0.75rem;">VA, QRIS, E-Wallet, CC</div>
                         </div>
                     </li>
-                    <li class="list-group-item list-group-item-action d-flex align-items-center gateway-option" data-value="MIDTRANS" data-label="Midtrans">
+
+                    {{-- OPSI PAYPAL (GLOBAL PAYMENT) --}}
+                    <li class="list-group-item list-group-item-action d-flex align-items-center gateway-option" data-value="PAYPAL" data-label="PayPal / Credit Card">
+                        <img src="https://tokosancaka.com/public/assets/paypal.png" class="me-3 border rounded p-1 bg-white" style="width: 40px; height: 40px; object-fit: contain;" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=PP'">
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">PayPal / Kartu Kredit</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">Pembayaran Global (Otomatis konversi USD)</div>
+                        </div>
+                    </li>
+
+                    {{--<li class="list-group-item list-group-item-action d-flex align-items-center gateway-option" data-value="MIDTRANS" data-label="Midtrans">
                         <img src="{{ asset('public/assets/midtrans.png') }}" class="me-3 border rounded p-1 bg-white" style="width: 40px; height: 40px; object-fit: contain;">
                         <div>
                             <div class="fw-bold text-dark" style="font-size: 0.95rem;">Midtrans</div>
                             <div class="text-muted" style="font-size: 0.75rem;">VA, QRIS, E-Wallet (Otomatis)</div>
                         </div>
                     </li>
+                    --}}
+
                     <li class="list-group-item list-group-item-action d-flex align-items-center gateway-option" data-value="DANA" data-label="DANA (Web Checkout)">
                         <img src="{{ asset('public/assets/dana.webp') }}" class="me-3 border rounded p-1 bg-white" style="width: 40px; height: 40px; object-fit: contain;">
                         <div>
