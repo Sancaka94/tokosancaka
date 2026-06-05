@@ -311,6 +311,8 @@ class TopUpController extends Controller
 
                 if (strtoupper($validated['payment_method']) === 'DOKU_JOKUL') {
                     $paymentGateway = 'doku';
+                } elseif (strtoupper($validated['payment_method']) === 'PAYPAL') {
+                    $paymentGateway = 'paypal'; // <-- TAMBAHAN PAYPAL
                 }
 
                 $customerData = [
@@ -329,14 +331,9 @@ class TopUpController extends Controller
                     ];
                     $successRedirectUrl = route('customer.topup.show', ['topup' => $invoiceNumber]);
 
-                    // ==========================================================
-                    // --- TAMBAHAN KODE: Mengambil SAC ID dari database ---
-                    // ==========================================================
+                    // ... logika SAC ID DOKU ...
                     $additionalInfo = [];
-                    // Cari data store berdasarkan user_id (id_pengguna)
                     $store = \App\Models\Store::where('user_id', $user->id_pengguna)->first();
-
-                    // Jika toko ditemukan dan memiliki doku_sac_id, masukkan ke parameter
                     if ($store && !empty($store->doku_sac_id)) {
                         $additionalInfo = [
                             'account' => [
@@ -344,21 +341,34 @@ class TopUpController extends Controller
                             ]
                         ];
                     }
-                    // ==========================================================
 
                     $paymentUrl = $DokuJokulService->createPayment(
                         $invoiceNumber,
                         $amount,
                         $customerData,
                         $lineItems,
-                        $additionalInfo, // <-- PARAMETER DIKIRIM KE SERVICE
-                        $successRedirectUrl // redirectUrl
+                        $additionalInfo,
+                        $successRedirectUrl
                     );
 
                     $redirectUrl = $paymentUrl;
 
                     if (empty($paymentUrl)) {
                         throw new Exception('Gagal membuat transaksi DOKU.');
+                    }
+
+                } elseif ($paymentGateway === 'paypal') {
+                    // ==========================================================
+                    // --- PROSES VIA PAYPAL (BARU) ---
+                    // ==========================================================
+                    Log::info('Memulai Top Up PayPal untuk ' . $invoiceNumber);
+                    
+                    // Panggil fungsi eksekutor PayPal TopUp yang dibuat di bawah
+                    $paymentUrl = $this->createPaymentPayPalTopUp($transaction, $amount);
+                    $redirectUrl = $paymentUrl;
+
+                    if (empty($paymentUrl)) {
+                        throw new Exception('Gagal membuat link pembayaran PayPal.');
                     }
 
                 } else {
@@ -3537,6 +3547,86 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         } catch (\Exception $e) {
             Log::error('LOG LOG: [API EXPO DELETE HISTORY] Error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Sistem Error saat menghapus data.'], 500);
+        }
+    }
+
+    /**
+     * =========================================================================
+     * EKSEKUTOR PAYPAL UNTUK TOP UP (DINAMIS)
+     * =========================================================================
+     */
+    private function createPaymentPayPalTopUp(Transaction $transaction, int $amount)
+    {
+        try {
+            $paypalService = app(\App\Http\Controllers\Api\PayPalGatewayController::class);
+            $rate = (float) \App\Models\Api::getValue('PAYPAL_USD_RATE', 'global', 16000);
+            $usdAmount = round($amount / $rate, 2);
+
+            $items = [[
+                'name' => 'Top Up Saldo Sancaka ' . $transaction->reference_id,
+                'quantity' => '1',
+                'unit_amount' => [
+                    'currency_code' => 'USD',
+                    'value' => number_format($usdAmount, 2, '.', '')
+                ]
+            ]];
+
+            $response = $paypalService->createOrder(
+                $items,
+                $usdAmount,
+                $transaction->reference_id, // custom_id (Penting untuk Webhook)
+                'CAPTURE',
+                route('paypal.capture.return.topup', ['invoice' => $transaction->reference_id]), // Route Return Khusus Topup
+                route('customer.topup.create') // Route Cancel
+            );
+
+            $result = $response->getData(true);
+
+            if (isset($result['success']) && $result['success'] === true && !empty($result['approve_url'])) {
+                return $result['approve_url'];
+            }
+
+            \Illuminate\Support\Facades\Log::error('PayPal Create Order Error (TopUp)', $result);
+            return null;
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Exception PayPal (TopUp): ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * =========================================================================
+     * TANGKAP RETURN PAYPAL (TOP UP)
+     * =========================================================================
+     */
+    public function capturePaypalReturn(Request $request, $invoice)
+    {
+        $token = $request->query('token');
+
+        if (!$token) {
+            return redirect()->route('customer.topup.create')->with('error', 'Sesi PayPal tidak valid.');
+        }
+
+        try {
+            $paypalService = app(\App\Http\Controllers\Api\PayPalGatewayController::class);
+            $response = $paypalService->captureOrder($token);
+            $result = $response->getData(true);
+
+            if (isset($result['success']) && $result['success'] === true && $result['status'] === 'COMPLETED') {
+                
+                // Panggil prosesor utama top up untuk menambah saldo & catat mutasi DB
+                self::processTopUp($invoice, 'PAID', $result);
+                
+                return redirect()->route('customer.topup.index')
+                    ->with('success', 'Top Up via PayPal Berhasil! Saldo Anda telah bertambah.');
+            }
+
+            return redirect()->route('customer.topup.create')->with('error', 'Dana belum berhasil ditarik oleh PayPal.');
+            
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("PayPal Capture Error (TopUp): " . $e->getMessage());
+            return redirect()->route('customer.topup.create')->with('error', 'Terjadi kesalahan saat memverifikasi PayPal.');
         }
     }
 
