@@ -48,15 +48,14 @@
     notificationModal.url = $event.detail.url;
     notificationModal.open = true;
 ">
-
+    
     {{-- Slider --}}
-    <div x-data="{ activeSlide: 0, slides: {{ json_encode($slides ?? []) }} }" x-init="if (slides.length > 1) { setInterval(() => { activeSlide = (activeSlide + 1) % slides.length }, 5000) }" id="customer-slider" class="relative w-full max-w-7xl mx-auto rounded-lg shadow-lg overflow-hidden">
+    {{-- <div x-data="{ activeSlide: 0, slides: {{ json_encode($slides ?? []) }} }" x-init="if (slides.length > 1) { setInterval(() => { activeSlide = (activeSlide + 1) % slides.length }, 5000) }" id="customer-slider" class="relative w-full max-w-7xl mx-auto rounded-lg shadow-lg overflow-hidden">
         <div class="relative w-full overflow-hidden">
             <div class="flex transition-transform duration-700 ease-in-out" :style="`transform: translateX(-${activeSlide * 100}%);`">
                 <template x-for="(slide, index) in slides" :key="index">
                     <div class="w-full flex-shrink-0 flex justify-center relative">
                         <div class="absolute inset-0 blur-lg scale-110 opacity-30" :style="`background-image:url('${slide.img}'); background-size:cover; background-position:center;`" aria-hidden="true"></div>
-                        {{-- Optimasi: Tambahkan loading="lazy" dan decoding="async" --}}
                         <img :src="slide.img" :alt="slide.alt ?? 'Informasi'" class="relative max-w-full h-auto z-10" loading="lazy" decoding="async">
                     </div>
                 </template>
@@ -76,6 +75,8 @@
             </div>
         </template>
     </div>
+    
+    
 
    {{-- ======================================================= --}}
     {{-- KARTU STATISTIK (DIBUNGKUS 1 DIV UNTUK EFEK TOGGLE)     --}}
