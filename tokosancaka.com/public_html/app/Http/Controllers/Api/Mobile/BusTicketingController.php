@@ -258,27 +258,24 @@ class BusTicketingController extends BaseController
     public function busSeatMap(Request $request)
     {
         Log::info("\n========== [BUS SEAT MAP - START] ==========");
-        Log::info("Payload Request Mobile: ", $request->all());
-
+        
         $validator = Validator::make($request->all(), [
-            'bus'                 => 'nullable|string', // UBAH: dari required menjadi nullable
             'originTerminal'      => 'required|string',
             'destinationTerminal' => 'required|string',
-            'directCode'          => 'nullable|string', // UBAH: dari required menjadi nullable
             'departDate'          => 'required|string',
         ]);
 
         if ($validator->fails()) {
-            Log::warning("Bus Seat Map Validasi Gagal: ", $validator->errors()->toArray());
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
         $payload = [
-            'bus'                 => $request->bus ?? '', // Tambahkan fallback ?? ''
+            'bus'                 => $request->bus ?? '',
             'originTerminal'      => $request->originTerminal,
             'destinationTerminal' => $request->destinationTerminal,
-            'directCode'          => $request->directCode ?? '', // Tambahkan fallback ?? ''
-            'departDate'          => date('Y-m-d\T00:00:00', strtotime($request->departDate)),
+            'directCode'          => $request->directCode ?? '',
+            // PERBAIKAN: Ambil jam secara utuh dari mobile
+            'departDate'          => date('Y-m-d\TH:i:s', strtotime($request->departDate)),
             'paxAdult'            => (int) ($request->paxAdult ?? 1),
             'paxChild'            => (int) ($request->paxChild ?? 0),
             'paxInfant'           => (int) ($request->paxInfant ?? 0),
