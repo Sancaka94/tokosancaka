@@ -167,6 +167,13 @@ class BusTicketingController extends BaseController
 
             // PERBAIKAN: Bersihkan array choosedSeat dari tipe data "null"
             $cleanSeats = [];
+            if (is_array($request->choosedSeat)) {
+                foreach ($request->choosedSeat as $seat) {
+                    if (!empty($seat)) {
+                        $cleanSeats[] = (string) $seat;
+                    }
+                }
+            }
             $totalPaxCount = count($formattedPassengers);
             
             if (is_array($request->choosedSeat)) {
@@ -180,25 +187,28 @@ class BusTicketingController extends BaseController
                 $cleanSeats = array_fill(0, $totalPaxCount, "");
             }
 
-            $payload = [
-                'bus'                 => $request->bus,
-                'originTerminal'      => $request->originTerminal,
-                'destinationTerminal' => $request->destinationTerminal,
-                'choosedSeat'         => $cleanSeats, // <-- PERBAIKAN: Array kursi yang sudah bersih dari null
-                'directCode'          => $request->directCode,
-                'subClassFare'        => $request->subClassFare ?? '',
-                'locationID'          => (string) $request->locationID,
-                // PERBAIKAN: Ambil jam secara utuh dari mobile
-                'departDate'          => date('Y-m-d\TH:i:s', strtotime($request->departDate)),
-                'paxAdult'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 0)->count(),
-                'paxChild'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 1)->count(),
-                'paxInfant'           => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 2)->count(),
-                'passengers'          => $formattedPassengers,
-                'departID'            => (int) ($request->departID ?? 0),
-                'arrivalID'           => (int) ($request->arrivalID ?? 0),
-                'userID'              => $this->darmawisataUserId,
-                'accessToken'         => $request->accessToken
-            ];
+          $payload = [
+    'bus'                 => $request->bus,
+    'originTerminal'      => $request->originTerminal,
+    'destinationTerminal' => $request->destinationTerminal,
+    'choosedSeat'         => $cleanSeats, 
+    'directCode'          => $request->directCode,
+    'subClassFare'        => !empty($request->subClassFare) ? $request->subClassFare : 'EK', // <-- CEGAH NULL
+    'locationID'          => (string) $request->locationID,
+    'departDate'          => date('Y-m-d\TH:i:s', strtotime($request->departDate)),
+    'paxAdult'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 0)->count(),
+    'paxChild'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 1)->count(),
+    'paxInfant'           => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 2)->count(),
+    'passengers'          => array_map(function($pax) {
+                                // Koreksi relasi parent agar tidak hardcode 1 untuk orang dewasa
+                                $pax['parent'] = ($pax['paxType'] == 2) ? 1 : 0;
+                                return $pax;
+                             }, $formattedPassengers),
+    'departID'            => (int) ($request->departID ?? 0),
+    'arrivalID'           => (int) ($request->arrivalID ?? 0),
+    'userID'              => $this->darmawisataUserId,
+    'accessToken'         => $request->accessToken
+];
 
             Log::info("Payload to Darmawisata [Bus/Booking] FIXED: ", $payload);
 
@@ -302,7 +312,7 @@ class BusTicketingController extends BaseController
         Log::info("Payload to Darmawisata [Bus/SeatMap]: ", $payload);
         return $this->forwardRequest('Bus/SeatMap', $payload);
     }
-    
+
 
     
     public function busBookingList(Request $request)
