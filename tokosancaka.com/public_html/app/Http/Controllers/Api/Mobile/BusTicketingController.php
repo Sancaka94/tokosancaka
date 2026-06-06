@@ -159,7 +159,7 @@ class BusTicketingController extends BaseController
                     'identityType' => 'KTP',
                     'address'      => 'Sesuai KTP', // <-- PERBAIKAN: Jangan pakai "-"
                     'email'        => $index === 0 ? ($request->contactEmail ?? 'noemail@domain.com') : 'noemail@domain.com',
-                    'birthDate'    => '1990-01-01T00:00:00',
+                    'birthDate'    => (!empty($pax['birthDate']) ? date('Y-m-d', strtotime($pax['birthDate'])) : '1990-01-01') . 'T00:00:00',
                     'parent'       => 1,
                     'paxType'      => $paxTypeInt
                 ];
