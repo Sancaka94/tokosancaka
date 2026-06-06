@@ -159,11 +159,15 @@ class BusTicketingController extends BaseController
         }
 
         $payload = [
-            'bus'                 => $schedule->bus,
+            // KEMBALIKAN KE "All PO" ATAU SESUAI PENCARIAN AWAL
+            'bus'                 => $request->bus ?? 'All PO', 
             'originTerminal'      => $schedule->origin_terminal,
             'destinationTerminal' => $schedule->destination_terminal,
             'directCode'          => $schedule->direct_code,
-            'departDate'          => date('Y-m-d\TH:i:s', strtotime($schedule->depart_date)),
+            
+            // PAKSA KE FORMAT T00:00:00 TANPA JAM ASLI
+            'departDate'          => date('Y-m-d\T00:00:00', strtotime($schedule->depart_date)),
+            
             'paxAdult'            => (int) ($request->paxAdult ?? 1),
             'paxChild'            => (int) ($request->paxChild ?? 0),
             'paxInfant'           => (int) ($request->paxInfant ?? 0),
@@ -274,16 +278,18 @@ class BusTicketingController extends BaseController
                 }
             }
 
-            // INI DIA KUNCI KESUKSESANNYA
-            $payload = [
-                'bus'                 => $schedule->bus,
+           $payload = [
+                // KEMBALIKAN KE "All PO"
+                'bus'                 => $request->bus ?? 'All PO',
                 'originTerminal'      => $schedule->origin_terminal,
                 'destinationTerminal' => $schedule->destination_terminal,
                 'directCode'          => $schedule->direct_code,
                 'subClassFare'        => $schedule->sub_class_fare,
                 'locationID'          => (string) $schedule->location_id,
-                // PERBAIKAN: Format tanggal dengan "P" agar menjadi YYYY-MM-DDTHH:mm:ss+07:00
-                'departDate'          => date('Y-m-d\TH:i:sP', strtotime($schedule->depart_date)),
+                
+                // PAKSA KE FORMAT T00:00:00 TANPA JAM ASLI
+                'departDate'          => date('Y-m-d\T00:00:00', strtotime($schedule->depart_date)),
+                
                 'paxAdult'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 0)->count(),
                 'paxChild'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 1)->count(),
                 'paxInfant'           => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 2)->count(),
@@ -294,7 +300,6 @@ class BusTicketingController extends BaseController
                 'accessToken'         => $request->accessToken
             ];
 
-            // PERBAIKAN: Jika array kursi terisi, baru masukkan ke payload (mencegah dikirim [""])
             if (!empty($cleanSeats)) {
                 $payload['choosedSeat'] = $cleanSeats;
             }
