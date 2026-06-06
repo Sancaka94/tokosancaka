@@ -140,15 +140,13 @@ class BusTicketingController extends BaseController
 
             Log::info("Bus Order DRAFT berhasil dibuat. Local ID: " . $orderId);
 
-          // STEP B: RAKIT PAYLOAD DARMAWISATA
+         // STEP B: RAKIT PAYLOAD DARMAWISATA
             $formattedPassengers = [];
             foreach ($request->passengers as $index => $pax) {
-                // Pecah nama menjadi first dan last name
-                $nameParts = explode(' ', $pax['name'] ?? '-');
+                $nameParts = explode(' ', $pax['name'] ?? 'Hamba Allah');
                 $firstName = $nameParts[0];
                 $lastName = count($nameParts) > 1 ? implode(' ', array_slice($nameParts, 1)) : $firstName;
 
-                // Konversi tipe penumpang ke integer (0 = Adult, 1 = Child, 2 = Infant)
                 $paxTypeStr = strtolower($pax['type'] ?? 'adult');
                 $paxTypeInt = ($paxTypeStr == 'child') ? 1 : (($paxTypeStr == 'infant') ? 2 : 0);
 
@@ -157,36 +155,52 @@ class BusTicketingController extends BaseController
                     'firstName'    => $firstName,
                     'lastName'     => $lastName,
                     'identity'     => $pax['IDNumber'] ?? '',
-                    'phone'        => $index === 0 ? ($request->contactPhone ?? '080000000000') : '080000000000', // Darmawisata biasanya wajib ada nomor HP
+                    'phone'        => $index === 0 ? ($request->contactPhone ?? '080000000000') : '080000000000',
                     'identityType' => 'KTP',
-                    'address'      => '-', 
+                    'address'      => 'Sesuai KTP', // <-- PERBAIKAN: Jangan pakai "-"
                     'email'        => $index === 0 ? ($request->contactEmail ?? 'noemail@domain.com') : 'noemail@domain.com',
-                    'birthDate'    => '1990-01-01T00:00:00', // Hardcode aman jika form tidak meminta tanggal lahir
+                    'birthDate'    => '1990-01-01T00:00:00',
                     'parent'       => 1,
                     'paxType'      => $paxTypeInt
                 ];
+            }
+
+            // PERBAIKAN: Bersihkan array choosedSeat dari tipe data "null"
+            $cleanSeats = [];
+            $totalPaxCount = count($formattedPassengers);
+            
+            if (is_array($request->choosedSeat)) {
+                foreach ($request->choosedSeat as $seat) {
+                    // Jika null/kosong, jadikan string kosong
+                    $cleanSeats[] = $seat ? (string) $seat : "";
+                }
+            }
+            // Jika array benar-benar kosong, isi string kosong sejumlah penumpang
+            if (empty($cleanSeats)) {
+                $cleanSeats = array_fill(0, $totalPaxCount, "");
             }
 
             $payload = [
                 'bus'                 => $request->bus,
                 'originTerminal'      => $request->originTerminal,
                 'destinationTerminal' => $request->destinationTerminal,
-                'choosedSeat'         => $request->choosedSeat ?? [],
+                'choosedSeat'         => $cleanSeats, // <-- PERBAIKAN: Array kursi yang sudah bersih dari null
                 'directCode'          => $request->directCode,
                 'subClassFare'        => $request->subClassFare ?? '',
-                'locationID'          => $request->locationID,
-                'departDate'          => date('Y-m-d\T00:00:00', strtotime($request->departDate)),
+                'locationID'          => (string) $request->locationID,
+                // PERBAIKAN: Ambil jam secara utuh dari mobile
+                'departDate'          => date('Y-m-d\TH:i:s', strtotime($request->departDate)),
                 'paxAdult'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 0)->count(),
                 'paxChild'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 1)->count(),
                 'paxInfant'           => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 2)->count(),
-                'passengers'          => $formattedPassengers, // <--- PAYLOAD BARU YANG SUDAH SESUAI DOKUMENTASI
-                'departID'            => (int) $request->departID,
-                'arrivalID'           => (int) $request->arrivalID,
+                'passengers'          => $formattedPassengers,
+                'departID'            => (int) ($request->departID ?? 0),
+                'arrivalID'           => (int) ($request->arrivalID ?? 0),
                 'userID'              => $this->darmawisataUserId,
                 'accessToken'         => $request->accessToken
             ];
 
-            Log::info("Payload to Darmawisata [Bus/Booking]: ", $payload);
+            Log::info("Payload to Darmawisata [Bus/Booking] FIXED: ", $payload);
 
             // STEP C: TEMBAK API
             $response = $this->forwardRequest('Bus/Booking', $payload);
