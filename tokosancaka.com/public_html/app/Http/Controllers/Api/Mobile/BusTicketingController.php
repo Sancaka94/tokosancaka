@@ -18,6 +18,10 @@ class BusTicketingController extends BaseController
     {
         Log::info("\n========== [BUS LIST - START] ==========");
         $payload = ['userID' => $this->darmawisataUserId, 'accessToken' => $request->accessToken];
+        Log::info("=== FINAL PAYLOAD TO DARMAWISATA ===", $payload);
+        Log::info("=== PAYLOAD AS JSON ===", ['json' => json_encode($payload, JSON_PRETTY_PRINT)]);
+
+
         return $this->forwardRequest('Bus/List', $payload);
     }
 
@@ -32,6 +36,10 @@ class BusTicketingController extends BaseController
             'userID' => $this->darmawisataUserId,
             'accessToken' => $request->accessToken
         ];
+
+        Log::info("=== FINAL PAYLOAD TO DARMAWISATA ===", $payload);
+        Log::info("=== PAYLOAD AS JSON ===", ['json' => json_encode($payload, JSON_PRETTY_PRINT)]);
+
         return $this->forwardRequest('Bus/Route', $payload);
     }
 
@@ -71,6 +79,9 @@ class BusTicketingController extends BaseController
         Log::info("Payload to Darmawisata [Bus/Schedule]: ", $payload);
         
         $endpoint = 'Bus/Schedule'; 
+        Log::info("=== FINAL PAYLOAD TO DARMAWISATA ===", $payload);
+        Log::info("=== PAYLOAD AS JSON ===", ['json' => json_encode($payload, JSON_PRETTY_PRINT)]);
+
         $response = $this->forwardRequest($endpoint, $payload);
 
         // ===============================================================
@@ -178,6 +189,9 @@ class BusTicketingController extends BaseController
         ];
 
         Log::info("Payload to Darmawisata [Bus/SeatMap]: ", $payload);
+        Log::info("=== FINAL PAYLOAD TO DARMAWISATA ===", $payload);
+        Log::info("=== PAYLOAD AS JSON ===", ['json' => json_encode($payload, JSON_PRETTY_PRINT)]);
+
         return $this->forwardRequest('Bus/SeatMap', $payload);
     }
 
@@ -360,6 +374,9 @@ public function busBooking(Request $request)
         // ============================================================
         // STEP E: TEMBAK API
         // ============================================================
+        Log::info("=== FINAL PAYLOAD TO DARMAWISATA ===", $payload);
+        Log::info("=== PAYLOAD AS JSON ===", ['json' => json_encode($payload, JSON_PRETTY_PRINT)]);
+
         $response = $this->forwardRequest('Bus/Booking', $payload);
         $json     = json_decode($response->getContent(), true);
 
@@ -429,6 +446,11 @@ public function busBooking(Request $request)
         ];
 
         Log::info("Payload to Darmawisata [Bus/BookingList]: ", $payload);
+
+        Log::info("=== FINAL PAYLOAD TO DARMAWISATA ===", $payload);
+        Log::info("=== PAYLOAD AS JSON ===", ['json' => json_encode($payload, JSON_PRETTY_PRINT)]);
+
+
         return $this->forwardRequest('Bus/BookingList', $payload);
     }
 
@@ -453,6 +475,9 @@ public function busBooking(Request $request)
         ];
 
         Log::info("Payload to Darmawisata [Bus/BookingDetail]: ", $payload);
+
+        Log::info("=== FINAL PAYLOAD TO DARMAWISATA ===", $payload);
+        Log::info("=== PAYLOAD AS JSON ===", ['json' => json_encode($payload, JSON_PRETTY_PRINT)]);
 
         // 1. Tembak API Darmawisata
         $response = $this->forwardRequest('Bus/BookingDetail', $payload);
@@ -504,6 +529,9 @@ public function busBooking(Request $request)
         ];
 
         Log::info("Payload to Darmawisata [Bus/Terminal]: ", $payload);
+        Log::info("=== FINAL PAYLOAD TO DARMAWISATA ===", $payload);
+        Log::info("=== PAYLOAD AS JSON ===", ['json' => json_encode($payload, JSON_PRETTY_PRINT)]);
+
         return $this->forwardRequest('Bus/Terminal', $payload);
     }
 
@@ -517,6 +545,9 @@ public function busBooking(Request $request)
         ];
 
         Log::info("Payload to Darmawisata [Bus/TerminalSearch]: ", $payload);
+        Log::info("=== FINAL PAYLOAD TO DARMAWISATA ===", $payload);
+        Log::info("=== PAYLOAD AS JSON ===", ['json' => json_encode($payload, JSON_PRETTY_PRINT)]);
+
         return $this->forwardRequest('Bus/TerminalSearch', $payload);
     }
 
@@ -556,6 +587,9 @@ public function busBooking(Request $request)
             ];
 
             Log::info("Payload to Darmawisata [Bus/Issued]: ", $payload);
+            Log::info("=== FINAL PAYLOAD TO DARMAWISATA ===", $payload);
+            Log::info("=== PAYLOAD AS JSON ===", ['json' => json_encode($payload, JSON_PRETTY_PRINT)]);
+
 
             // 5. Tembak endpoint Bus/Issued
             $response = $this->forwardRequest('Bus/Issued', $payload);
