@@ -293,7 +293,7 @@ class BusTicketingController extends BaseController
             'paxAdult'            => (int) ($request->paxAdult ?? 1),
             'paxChild'            => (int) ($request->paxChild ?? 0),
             'paxInfant'           => (int) ($request->paxInfant ?? 0),
-            'subClassFare'        => $request->subClassFare ?? '',
+            'subClassFare'        => $request->subClassFare ?? 'EK',
             'userID'              => $this->darmawisataUserId,
             'accessToken'         => $request->accessToken
         ];
