@@ -35,16 +35,17 @@ class BusTicketingController extends BaseController
         return $this->forwardRequest('Bus/Route', $payload);
     }
 
-    public function busSchedule(Request $request)
+   public function busSchedule(Request $request)
     {
         Log::info("\n========== [BUS SCHEDULE - START] ==========");
         Log::info("Payload Request Mobile: ", $request->all());
 
+        // SUDAH DIPERBAIKI MENJADI NULLABLE
         $validator = Validator::make($request->all(), [
-            'bus'                 => 'required|string',
+            'bus'                 => 'nullable|string', 
             'originTerminal'      => 'required|string',
             'destinationTerminal' => 'required|string',
-            'directCode'          => 'required|string',
+            'directCode'          => 'nullable|string', 
             'departDate'          => 'required|string',
         ]);
 
@@ -53,11 +54,12 @@ class BusTicketingController extends BaseController
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
+        // SUDAH DITAMBAHKAN FALLBACK ?? '' 
         $payload = [
-            'bus'                 => $request->bus,
+            'bus'                 => $request->bus ?? '', 
             'originTerminal'      => $request->originTerminal,
             'destinationTerminal' => $request->destinationTerminal,
-            'directCode'          => $request->directCode,
+            'directCode'          => $request->directCode ?? '', 
             'departDate'          => date('Y-m-d\T00:00:00', strtotime($request->departDate)),
             'paxAdult'            => (int) ($request->paxAdult ?? 1),
             'paxChild'            => (int) ($request->paxChild ?? 0),
@@ -69,9 +71,6 @@ class BusTicketingController extends BaseController
 
         Log::info("Payload to Darmawisata [Bus/Schedule]: ", $payload);
         
-        // Catatan: Di gambar, nama API-nya adalah "POST Bus/SeatMap" dengan deskripsi "request API for bus schedule".
-        // Saya menggunakan 'Bus/Schedule' di sini mengikuti pola penamaan method,
-        // namun jika Darmawisata menolak, Anda bisa mengubahnya menjadi 'Bus/SeatMap'.
         $endpoint = 'Bus/Schedule'; 
         return $this->forwardRequest($endpoint, $payload);
     }
@@ -265,7 +264,7 @@ class BusTicketingController extends BaseController
         Log::info("Payload to Darmawisata [Bus/SeatMap]: ", $payload);
         return $this->forwardRequest('Bus/SeatMap', $payload);
     }
-    
+
     
     public function busBookingList(Request $request)
     {
