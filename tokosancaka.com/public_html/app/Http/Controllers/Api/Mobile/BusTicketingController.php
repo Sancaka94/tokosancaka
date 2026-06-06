@@ -109,6 +109,7 @@ class BusTicketingController extends BaseController
                             'depart_id'            => $sched['departLocation'][0]['departID'] ?? 0,
                             'arrival_id'           => $sched['arrivalLocation'][0]['arrivalID'] ?? 0,
                             'sub_class_fare'       => $sched['classes'][0]['classFare'] ?? 'EK',
+                            'is_allow_choose_seat' => ($sched['isAllowChooseSeat'] ?? true) ? 1 : 0,
                             'updated_at'           => now(),
                         ]);
                     } else {
@@ -242,27 +243,26 @@ class BusTicketingController extends BaseController
                 return $id;
             });
 
-            // STEP B: RAKIT PAYLOAD DARMAWISATA
-            $formattedPassengers = [];
+           $formattedPassengers = [];
             foreach ($request->passengers as $index => $pax) {
+                // Gunakan nama lengkap langsung jika API mungkin lebih suka itu
                 $nameParts = explode(' ', $pax['name'] ?? 'Hamba Allah');
                 $firstName = $nameParts[0];
-                $lastName = count($nameParts) > 1 ? implode(' ', array_slice($nameParts, 1)) : $firstName;
+                $lastName = count($nameParts) > 1 ? implode(' ', array_slice($nameParts, 1)) : '.'; // Beri titik jika tidak ada last name
 
                 $paxTypeStr = strtolower($pax['type'] ?? 'adult');
                 $paxTypeInt = ($paxTypeStr == 'child') ? 1 : (($paxTypeStr == 'infant') ? 2 : 0);
 
                 $formattedPassengers[] = [
                     'title'        => $pax['title'] ?? 'Mr',
-                    'firstName'    => $firstName,
-                    'lastName'     => $lastName,
+                    'firstName'    => $pax['name'], // KIRIM NAMA LENGKAP DI SINI
+                    'lastName'     => '.',          // ISI DENGAN TITIK
                     'identity'     => $pax['IDNumber'] ?? '',
-                    'phone'        => $index === 0 ? ($request->contactPhone ?? '080000000000') : '080000000000',
+                    'phone'        => $index === 0 ? ($request->contactPhone ?? '085745808809') : '08819435180',
                     'identityType' => 'KTP',
                     'address'      => $pax['address'] ?? 'Sesuai KTP', 
-                    'email'        => $index === 0 ? ($request->contactEmail ?? 'noemail@domain.com') : 'noemail@domain.com',
-                    // PERBAIKAN: Penambahan "P" pada date untuk memunculkan format +07:00
-                    'birthDate'    => (!empty($pax['birthDate']) ? date('Y-m-d\T00:00:00P', strtotime($pax['birthDate'])) : '1990-01-01T00:00:00+07:00'),
+                    'email'        => $index === 0 ? ($request->contactEmail ?? 'tokosancaka@gmail.com') : 'salafy94@gmail.com',
+                    'birthDate'    => (!empty($pax['birthDate']) ? date('Y-m-d\T00:00:00', strtotime($pax['birthDate'])) : '1990-01-01T00:00:00'),
                     'parent'       => ($paxTypeInt == 2) ? 1 : 0, 
                     'paxType'      => $paxTypeInt
                 ];
@@ -278,21 +278,18 @@ class BusTicketingController extends BaseController
                 }
             }
 
-           $payload = [
-                // KEMBALIKAN KE "All PO"
-                'bus'                 => $request->bus ?? 'All PO',
+           // Di dalam busBooking Controller:
+            $payload = [
+                'bus'                 => $request->bus ?? 'All PO', 
                 'originTerminal'      => $schedule->origin_terminal,
                 'destinationTerminal' => $schedule->destination_terminal,
                 'directCode'          => $schedule->direct_code,
                 'subClassFare'        => $schedule->sub_class_fare,
                 'locationID'          => (string) $schedule->location_id,
-                
-                // PAKSA KE FORMAT T00:00:00 TANPA JAM ASLI
                 'departDate'          => date('Y-m-d\T00:00:00', strtotime($schedule->depart_date)),
-                
-                'paxAdult'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 0)->count(),
-                'paxChild'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 1)->count(),
-                'paxInfant'           => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 2)->count(),
+                'paxAdult'            => (int) $paxAdult,
+                'paxChild'            => (int) $paxChild,
+                'paxInfant'           => (int) $paxInfant,
                 'passengers'          => $formattedPassengers,
                 'departID'            => (int) $schedule->depart_id,
                 'arrivalID'           => (int) $schedule->arrival_id,
@@ -300,10 +297,12 @@ class BusTicketingController extends BaseController
                 'accessToken'         => $request->accessToken
             ];
 
-            if (!empty($cleanSeats)) {
+            // HANYA masukkan choosedSeat jika memang operator mengizinkan
+            $isAllowChooseSeat = (bool) $schedule->is_allow_choose_seat;
+            if ($isAllowChooseSeat && !empty($cleanSeats)) {
                 $payload['choosedSeat'] = $cleanSeats;
             }
-            
+
 
             Log::info("Payload to Darmawisata [Bus/Booking] FIXED: ", $payload);
 
