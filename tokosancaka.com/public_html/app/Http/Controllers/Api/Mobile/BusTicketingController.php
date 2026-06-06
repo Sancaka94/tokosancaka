@@ -40,7 +40,6 @@ class BusTicketingController extends BaseController
         Log::info("\n========== [BUS SCHEDULE - START] ==========");
         Log::info("Payload Request Mobile: ", $request->all());
 
-        // SUDAH DIPERBAIKI MENJADI NULLABLE
         $validator = Validator::make($request->all(), [
             'bus'                 => 'nullable|string', 
             'originTerminal'      => 'required|string',
@@ -54,7 +53,6 @@ class BusTicketingController extends BaseController
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
-        // SUDAH DITAMBAHKAN FALLBACK ?? '' 
         $payload = [
             'bus'                 => $request->bus ?? '', 
             'originTerminal'      => $request->originTerminal,
@@ -72,22 +70,92 @@ class BusTicketingController extends BaseController
         Log::info("Payload to Darmawisata [Bus/Schedule]: ", $payload);
         
         $endpoint = 'Bus/Schedule'; 
-        return $this->forwardRequest($endpoint, $payload);
+        $response = $this->forwardRequest($endpoint, $payload);
+
+        // ===============================================================
+        // TAMBAHAN: CACHING JADWAL KE DATABASE (SEBAGAI SOURCE OF TRUTH)
+        // ===============================================================
+        try {
+            $json = json_decode($response->getContent(), true);
+            if (isset($json['status']) && $json['status'] === 'SUCCESS' && !empty($json['schedules'])) {
+                Log::info("Menyimpan " . count($json['schedules']) . " jadwal ke database (bus_schedule_caches) untuk referensi Booking...");
+                
+                foreach ($json['schedules'] as $sched) {
+                    DB::table('bus_schedule_caches')->updateOrInsert(
+                        ['direct_code' => $sched['directCode']],
+                        [
+                            'bus'                  => $sched['operatorName'] ?? $json['bus'] ?? 'All PO',
+                            'origin_terminal'      => $json['originTerminal'] ?? '',
+                            'destination_terminal' => $json['destinationTerminal'] ?? '',
+                            // Ambil departTime asli yang ada jam keberangkatannya
+                            'depart_date'          => isset($sched['departLocation'][0]['departTime']) 
+                                                        ? date('Y-m-d H:i:s', strtotime($sched['departLocation'][0]['departTime'])) 
+                                                        : date('Y-m-d H:i:s', strtotime($json['departDate'])),
+                            'location_id'          => $sched['locationID'] ?? '',
+                            'depart_id'            => $sched['departLocation'][0]['departID'] ?? 0,
+                            'arrival_id'           => $sched['arrivalLocation'][0]['arrivalID'] ?? 0,
+                            'sub_class_fare'       => $sched['classes'][0]['classFare'] ?? 'EK',
+                            'updated_at'           => now(),
+                        ]
+                    );
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error("Gagal caching jadwal bus: " . $e->getMessage());
+        }
+
+        return $response;
     }
+
+
+    public function busSeatMap(Request $request)
+    {
+        Log::info("\n========== [BUS SEAT MAP - START] ==========");
+        
+        // Mobile cukup ngirim directCode saja, sisanya kita ambil dari Database Sancaka
+        $validator = Validator::make($request->all(), [
+            'directCode' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        }
+
+        // AMBIL DATA BERSIH DARI DATABASE LOKAL
+        $schedule = DB::table('bus_schedule_caches')->where('direct_code', $request->directCode)->first();
+
+        if (!$schedule) {
+            return response()->json(['status' => 'FAILED', 'respMessage' => 'Sesi pencarian kadaluarsa. Silakan cari ulang jadwal bus.'], 404);
+        }
+
+        $payload = [
+            'bus'                 => $schedule->bus,
+            'originTerminal'      => $schedule->origin_terminal,
+            'destinationTerminal' => $schedule->destination_terminal,
+            'directCode'          => $schedule->direct_code,
+            'departDate'          => date('Y-m-d\TH:i:s', strtotime($schedule->depart_date)),
+            'paxAdult'            => (int) ($request->paxAdult ?? 1),
+            'paxChild'            => (int) ($request->paxChild ?? 0),
+            'paxInfant'           => (int) ($request->paxInfant ?? 0),
+            'subClassFare'        => $schedule->sub_class_fare,
+            'userID'              => $this->darmawisataUserId,
+            'accessToken'         => $request->accessToken
+        ];
+
+        Log::info("Payload to Darmawisata [Bus/SeatMap]: ", $payload);
+        return $this->forwardRequest('Bus/SeatMap', $payload);
+    }
+
 
     public function busBooking(Request $request)
     {
         Log::info("\n========== [BUS BOOKING - START] ==========");
         Log::info("Payload Request Mobile: ", $request->all());
 
+        // Validasi kita turunkan standarnya ke Mobile, yang penting ada directCode dan data penumpang
         $validator = Validator::make($request->all(), [
-            'bus'                 => 'required|string',
-            'originTerminal'      => 'required|string',
-            'destinationTerminal' => 'required|string',
-            'directCode'          => 'required|string',
-            'locationID'          => 'required|string',
-            'departDate'          => 'required|string',
-            'passengers'          => 'required|array'
+            'directCode' => 'required|string',
+            'passengers' => 'required|array'
         ]);
 
         if ($validator->fails()) {
@@ -96,9 +164,21 @@ class BusTicketingController extends BaseController
         }
 
         try {
+            // ========================================================
+            // STEP 0: AMBIL PAYLOAD UTAMA DARI DATABASE (BUKAN DARI HP)
+            // ========================================================
+            $schedule = DB::table('bus_schedule_caches')->where('direct_code', $request->directCode)->first();
+
+            if (!$schedule) {
+                Log::warning("Direct Code tidak ditemukan di database cache: " . $request->directCode);
+                return response()->json(['status' => 'FAILED', 'respMessage' => 'Sesi pemesanan habis atau jadwal tidak valid. Silakan kembali ke pencarian.'], 404);
+            }
+
+            Log::info("Berhasil mengambil data jadwal dari database. Mengabaikan payload kotor dari HP.");
+
             // STEP A: SIMPAN DATABASE STATUS DRAFT
             Log::info("Proses simpan DRAFT ke database lokal...");
-            $orderId = DB::transaction(function () use ($request) {
+            $orderId = DB::transaction(function () use ($request, $schedule) {
                 $paxAdult = 0; $paxChild = 0; $paxInfant = 0;
                 foreach ($request->passengers as $pax) {
                     $type = $pax['type'] ?? 'Adult';
@@ -110,13 +190,13 @@ class BusTicketingController extends BaseController
                 $id = DB::table('bus_orders')->insertGetId([
                     'user_id'              => $request->user()->id_pengguna ?? null,
                     'dw_access_token'      => $request->accessToken,
-                    'bus_name'             => $request->bus,
-                    'origin_terminal'      => $request->originTerminal,
-                    'destination_terminal' => $request->destinationTerminal,
-                    'direct_code'          => $request->directCode,
-                    'location_id'          => $request->locationID,
-                    'depart_date'          => date('Y-m-d H:i:s', strtotime($request->departDate)),
-                    'sub_class_fare'       => $request->subClassFare ?? '',
+                    'bus_name'             => $schedule->bus, 
+                    'origin_terminal'      => $schedule->origin_terminal, 
+                    'destination_terminal' => $schedule->destination_terminal, 
+                    'direct_code'          => $schedule->direct_code,
+                    'location_id'          => $schedule->location_id, 
+                    'depart_date'          => $schedule->depart_date, 
+                    'sub_class_fare'       => $schedule->sub_class_fare, 
                     'pax_adult'            => $paxAdult,
                     'pax_child'            => $paxChild,
                     'pax_infant'           => $paxInfant,
@@ -140,7 +220,7 @@ class BusTicketingController extends BaseController
 
             Log::info("Bus Order DRAFT berhasil dibuat. Local ID: " . $orderId);
 
-         // STEP B: RAKIT PAYLOAD DARMAWISATA
+            // STEP B: RAKIT PAYLOAD DARMAWISATA
             $formattedPassengers = [];
             foreach ($request->passengers as $index => $pax) {
                 $nameParts = explode(' ', $pax['name'] ?? 'Hamba Allah');
@@ -157,15 +237,15 @@ class BusTicketingController extends BaseController
                     'identity'     => $pax['IDNumber'] ?? '',
                     'phone'        => $index === 0 ? ($request->contactPhone ?? '080000000000') : '080000000000',
                     'identityType' => 'KTP',
-                    'address'      => 'Sesuai KTP', // <-- PERBAIKAN: Jangan pakai "-"
+                    'address'      => 'Sesuai KTP', 
                     'email'        => $index === 0 ? ($request->contactEmail ?? 'noemail@domain.com') : 'noemail@domain.com',
                     'birthDate'    => (!empty($pax['birthDate']) ? date('Y-m-d', strtotime($pax['birthDate'])) : '1990-01-01') . 'T00:00:00',
-                    'parent'       => 1,
+                    'parent'       => ($paxTypeInt == 2) ? 1 : 0, 
                     'paxType'      => $paxTypeInt
                 ];
             }
 
-            // PERBAIKAN: Bersihkan array choosedSeat dari tipe data "null"
+            // Bersihkan data kursi dari Mobile jika ada null/empty string
             $cleanSeats = [];
             if (is_array($request->choosedSeat)) {
                 foreach ($request->choosedSeat as $seat) {
@@ -174,41 +254,27 @@ class BusTicketingController extends BaseController
                     }
                 }
             }
-            $totalPaxCount = count($formattedPassengers);
-            
-            if (is_array($request->choosedSeat)) {
-                foreach ($request->choosedSeat as $seat) {
-                    // Jika null/kosong, jadikan string kosong
-                    $cleanSeats[] = $seat ? (string) $seat : "";
-                }
-            }
-            // Jika array benar-benar kosong, isi string kosong sejumlah penumpang
-            if (empty($cleanSeats)) {
-                $cleanSeats = array_fill(0, $totalPaxCount, "");
-            }
 
-          $payload = [
-    'bus'                 => $request->bus,
-    'originTerminal'      => $request->originTerminal,
-    'destinationTerminal' => $request->destinationTerminal,
-    'choosedSeat'         => $cleanSeats, 
-    'directCode'          => $request->directCode,
-    'subClassFare'        => !empty($request->subClassFare) ? $request->subClassFare : 'EK', // <-- CEGAH NULL
-    'locationID'          => (string) $request->locationID,
-    'departDate'          => date('Y-m-d\TH:i:s', strtotime($request->departDate)),
-    'paxAdult'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 0)->count(),
-    'paxChild'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 1)->count(),
-    'paxInfant'           => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 2)->count(),
-    'passengers'          => array_map(function($pax) {
-                                // Koreksi relasi parent agar tidak hardcode 1 untuk orang dewasa
-                                $pax['parent'] = ($pax['paxType'] == 2) ? 1 : 0;
-                                return $pax;
-                             }, $formattedPassengers),
-    'departID'            => (int) ($request->departID ?? 0),
-    'arrivalID'           => (int) ($request->arrivalID ?? 0),
-    'userID'              => $this->darmawisataUserId,
-    'accessToken'         => $request->accessToken
-];
+            // INI DIA KUNCI KESUKSESANNYA:
+            // Semua field krusial ditarik langsung dari variabel $schedule (Database)
+            $payload = [
+                'bus'                 => $schedule->bus,
+                'originTerminal'      => $schedule->origin_terminal,
+                'destinationTerminal' => $schedule->destination_terminal,
+                'choosedSeat'         => $cleanSeats,
+                'directCode'          => $schedule->direct_code,
+                'subClassFare'        => $schedule->sub_class_fare,
+                'locationID'          => (string) $schedule->location_id,
+                'departDate'          => date('Y-m-d\TH:i:s', strtotime($schedule->depart_date)),
+                'paxAdult'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 0)->count(),
+                'paxChild'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 1)->count(),
+                'paxInfant'           => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 2)->count(),
+                'passengers'          => $formattedPassengers,
+                'departID'            => (int) $schedule->depart_id,
+                'arrivalID'           => (int) $schedule->arrival_id,
+                'userID'              => $this->darmawisataUserId,
+                'accessToken'         => $request->accessToken
+            ];
 
             Log::info("Payload to Darmawisata [Bus/Booking] FIXED: ", $payload);
 
@@ -220,12 +286,6 @@ class BusTicketingController extends BaseController
 
             // STEP D: UPDATE DATABASE LOKAL
             if (isset($json['status']) && $json['status'] === 'SUCCESS') {
-                // Response Bus memiliki field berbeda dengan Kereta:
-                // - operatorName  : nama detail operator bus (PO)
-                // - bookingTime   : waktu saat booking dilakukan
-                // - departPlace   : tempat keberangkatan (berbeda dari origin terminal)
-                // - departTime    : waktu keberangkatan detail (berbeda dari departDate)
-                // - issuedTimeLimit : batas waktu issued (sama seperti kereta, ini kunci auto-cancel)
                 $issuedTimeLimit = isset($json['issuedTimeLimit'])
                     ? date('Y-m-d H:i:s', strtotime($json['issuedTimeLimit']))
                     : null;
@@ -244,8 +304,7 @@ class BusTicketingController extends BaseController
                     'updated_at'    => now()
                 ]);
 
-                // Log time_limit secara eksplisit agar auto-cancel / cron job bisa memantau
-                Log::info("Bus Order UPDATE ke HOLD sukses. PNR: " . ($json['bookingCode'] ?? '-') . " | Time Limit: " . ($issuedTimeLimit ?? 'TIDAK ADA (PO langsung issued)'));
+                Log::info("Bus Order UPDATE ke HOLD sukses. PNR: " . ($json['bookingCode'] ?? '-') . " | Time Limit: " . ($issuedTimeLimit ?? 'TIDAK ADA'));
                 return response()->json($json);
             } else {
                 $message = $json['respMessage'] ?? 'Operator menolak penerbitan tiket bus.';
@@ -255,18 +314,10 @@ class BusTicketingController extends BaseController
                         'status' => 'CANCELLED',
                         'updated_at' => now()
                     ]);
-                    Log::warning("Bus Issued Gagal: Time limit habis atau tiket batal. Status diubah ke CANCELLED.");
+                    Log::warning("Bus Issued Gagal: Time limit habis atau tiket batal.");
                     return response()->json([
                         'status' => 'FAILED',
                         'message' => 'Tiket telah dibatalkan otomatis oleh sistem. Silakan pesan ulang.'
-                    ]);
-                }
-
-                if (str_contains(strtolower($message), 'insufficient balance')) {
-                    Log::error("FATAL: Gagal Issued Bus karena Saldo H2H Pusat Darmawisata Habis!");
-                    return response()->json([
-                        'status' => 'FAILED',
-                        'message' => 'Tiket gagal diterbitkan: Saldo deposit pusat tidak cukup. Hubungi admin.'
                     ]);
                 }
 
@@ -277,40 +328,6 @@ class BusTicketingController extends BaseController
             Log::error("FATAL ERROR [Bus Booking]: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
             return response()->json(['status' => 'FAILED', 'message' => 'System Error: ' . $e->getMessage()], 500);
         }
-    }
-
-    public function busSeatMap(Request $request)
-    {
-        Log::info("\n========== [BUS SEAT MAP - START] ==========");
-        
-        $validator = Validator::make($request->all(), [
-            'originTerminal'      => 'required|string',
-            'destinationTerminal' => 'required|string',
-            'departDate'          => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
-        }
-
-        $payload = [
-            'bus'                 => $request->bus ?? '',
-            'originTerminal'      => $request->originTerminal,
-            'destinationTerminal' => $request->destinationTerminal,
-            'directCode'          => $request->directCode ?? '',
-            // PERBAIKAN: Ambil jam secara utuh dari mobile
-            'departDate'          => date('Y-m-d\TH:i:s', strtotime($request->departDate)),
-            'paxAdult'            => (int) ($request->paxAdult ?? 1),
-            'paxChild'            => (int) ($request->paxChild ?? 0),
-            'paxInfant'           => (int) ($request->paxInfant ?? 0),
-            'subClassFare'        => $request->subClassFare ?? 'EK',
-            'userID'              => $this->darmawisataUserId,
-            'accessToken'         => $request->accessToken
-        ];
-
-
-        Log::info("Payload to Darmawisata [Bus/SeatMap]: ", $payload);
-        return $this->forwardRequest('Bus/SeatMap', $payload);
     }
 
 
