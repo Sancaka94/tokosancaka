@@ -298,6 +298,7 @@ class BusTicketingController extends BaseController
             'accessToken'         => $request->accessToken
         ];
 
+        
         Log::info("Payload to Darmawisata [Bus/SeatMap]: ", $payload);
         return $this->forwardRequest('Bus/SeatMap', $payload);
     }
