@@ -236,10 +236,10 @@ class BusTicketingController extends BaseController
         Log::info("Payload Request Mobile: ", $request->all());
 
         $validator = Validator::make($request->all(), [
-            'bus'                 => 'required|string',
+            'bus'                 => 'nullable|string', // UBAH: dari required menjadi nullable
             'originTerminal'      => 'required|string',
             'destinationTerminal' => 'required|string',
-            'directCode'          => 'required|string',
+            'directCode'          => 'nullable|string', // UBAH: dari required menjadi nullable
             'departDate'          => 'required|string',
         ]);
 
@@ -249,10 +249,10 @@ class BusTicketingController extends BaseController
         }
 
         $payload = [
-            'bus'                 => $request->bus,
+            'bus'                 => $request->bus ?? '', // Tambahkan fallback ?? ''
             'originTerminal'      => $request->originTerminal,
             'destinationTerminal' => $request->destinationTerminal,
-            'directCode'          => $request->directCode,
+            'directCode'          => $request->directCode ?? '', // Tambahkan fallback ?? ''
             'departDate'          => date('Y-m-d\T00:00:00', strtotime($request->departDate)),
             'paxAdult'            => (int) ($request->paxAdult ?? 1),
             'paxChild'            => (int) ($request->paxChild ?? 0),
