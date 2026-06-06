@@ -393,17 +393,17 @@
 
     // Script Copy Resi beserta Log aslinya
     function copyResi(text, id) {
-        console.log('LOG LOG: Fungsi copyResi dipanggil. Text:', text, 'ID:', id);
+        // console.log('LOG LOG: Fungsi copyResi dipanggil. Text:', text, 'ID:', id);
 
         let iconId = 'icon-copy-' + id;
 
         navigator.clipboard.writeText(text).then(function() {
-            console.log('LOG LOG: Text berhasil dicopy ke clipboard.');
+            // console.log('LOG LOG: Text berhasil dicopy ke clipboard.');
 
             let iconElement = document.getElementById(iconId);
             iconElement.className = 'fas fa-check text-green-500';
 
-            console.log('LOG LOG: Mulai mengirim fetch (AJAX) ke server untuk ID:', id);
+            // console.log('LOG LOG: Mulai mengirim fetch (AJAX) ke server untuk ID:', id);
 
             fetch(`/admin/spx_scans/${id}/mark-copied`, {
                 method: 'POST',
@@ -413,17 +413,17 @@
                 }
             })
             .then(response => {
-                console.log('LOG LOG: Menerima response HTTP dari server:', response.status, response.statusText);
+                // console.log('LOG LOG: Menerima response HTTP dari server:', response.status, response.statusText);
                 return response.json();
             })
             .then(data => {
-                console.log('LOG LOG: Data JSON yang diterima dari server:', data);
+                // console.log('LOG LOG: Data JSON yang diterima dari server:', data);
                 if(data.success) {
-                    console.log('LOG LOG: Update berhasil! Mengubah status di HTML.');
+                    // console.log('LOG LOG: Update berhasil! Mengubah status di HTML.');
                     // Update tampilan status menjadi Done hijau di dalam modal
                     document.getElementById('status-copas-' + id).innerHTML = '<span class="text-green-600 font-semibold"><i class="fas fa-check-double"></i> DONE</span>';
                 } else {
-                    console.log('LOG LOG: Server membalas success = false. Pesan error:', data.message);
+                    // console.log('LOG LOG: Server membalas success = false. Pesan error:', data.message);
                 }
             })
             .catch(error => {
@@ -441,7 +441,7 @@
 
     // [BARU] Script Copied ALL
     function markAllCopied(btn) {
-        console.log('LOG LOG: Fungsi markAllCopied dipanggil.');
+        // console.log('LOG LOG: Fungsi markAllCopied dipanggil.');
 
         // Konfirmasi sebelum eksekusi
         if(!confirm('Anda yakin ingin menandai SEMUA paket yang belum dicopy menjadi "Selesai/Copied"?\n\nResi yang ter-update juga akan otomatis disalin ke clipboard Anda.')) {
@@ -461,7 +461,7 @@
         })
         .then(response => response.json())
         .then(data => {
-            console.log('LOG LOG: Response markAllCopied:', data);
+            // console.log('LOG LOG: Response markAllCopied:', data);
             if(data.success) {
                 if(data.count > 0) {
                     // Menyalin SEMUA resi ke clipboard sekaligus

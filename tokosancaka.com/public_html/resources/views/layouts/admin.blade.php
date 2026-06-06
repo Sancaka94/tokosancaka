@@ -175,7 +175,7 @@
                     if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
                         Notification.requestPermission().then(permission => {
                             if (permission === 'granted') {
-                                console.log('Izin notifikasi browser diberikan.');
+                                // console.log('Izin notifikasi browser diberikan.');
                                 new Notification('Terima Kasih!', {
                                     body: 'Anda akan menerima notifikasi di sini.',
                                     icon: 'https://tokosancaka.com/storage/uploads/sancaka.png'
@@ -415,14 +415,14 @@
                     });
 
                     window.EchoInitialized = true;
-                    console.log("Laravel Echo initialized for admin.");
+                    // console.log("Laravel Echo initialized for admin.");
 
                     // Listener untuk 'AdminNotificationEvent' (Sudah ada)
                     window.Echo.private('admin-notifications')
-                        .on('pusher:subscription_succeeded', () => console.log("Subscribed to 'admin-notifications' channel!"))
+                        .on('pusher:subscription_succeeded', () => // console.log("Subscribed to 'admin-notifications' channel!"))
                         .on('pusher:subscription_error', (status) => console.error("Subscription to 'admin-notifications' failed. Status:", status))
                         .listen('AdminNotificationEvent', (e) => {
-                            console.log('Notifikasi (AdminEvent) diterima:', e);
+                            // console.log('Notifikasi (AdminEvent) diterima:', e);
                             showBrowserNotification(e.title, e.message, e.url);
                             Swal.fire({
                                 title: e.title || 'Notifikasi Baru',
@@ -445,11 +445,11 @@
                     // Listener untuk Notifikasi Umum (Database)
                     const userId = {{ auth()->id() }};
                     window.Echo.private(`App.Models.User.${userId}`)
-                        .on('pusher:subscription_succeeded', () => console.log(`Subscribed to 'App.Models.User.${userId}' channel!`))
+                        .on('pusher:subscription_succeeded', () => // console.log(`Subscribed to 'App.Models.User.${userId}' channel!`))
                         .on('pusher:subscription_error', (status) => console.error(`Subscription to 'App.Models.User.${userId}' failed. Status:`, status))
                         .notification((notification) => {
 
-                            console.log('NOTIFIKASI BARU DITERIMA (dari NotifikasiUmum):', notification);
+                            // console.log('NOTIFIKASI BARU DITERIMA (dari NotifikasiUmum):', notification);
 
                             const data = notification.data ? notification.data : notification;
 

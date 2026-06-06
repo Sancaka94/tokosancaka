@@ -23,10 +23,10 @@
                     clearInterval(checkSystemEcho);
                     
                     // Baru jalanin perintahnya
-                    console.log('Echo System Banner Connected');
+                    // console.log('Echo System Banner Connected');
                     window.Echo.channel('global-system-channel')
                         .listen('SystemModeUpdated', (e) => {
-                            console.log('System Mode Updated:', e.mode);
+                            // console.log('System Mode Updated:', e.mode);
                             if (e.mode === 'staging') {
                                 this.show = true;
                             } else {

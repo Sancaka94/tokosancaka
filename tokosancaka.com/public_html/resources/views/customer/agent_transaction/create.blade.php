@@ -661,7 +661,7 @@
 
             // --- DEBUGGER: TAMPILKAN STRUKTUR JSON DI CONSOLE ---
             console.group("DEBUG INQUIRY RESPONSE");
-            console.log("Raw JSON:", data);
+            // console.log("Raw JSON:", data);
             console.groupEnd();
 
             // --- SMART FINDER FUNCTION ---
@@ -727,7 +727,7 @@
                 let finalSku = (foundSku && foundSku !== 'pln') ? foundSku : sku;
                 
                 // Debugging Log untuk memastikan
-                console.log(`%c[SKU FOUND] API: ${foundSku} | FINAL: ${finalSku}`, "color: green; font-weight: bold");
+                // console.log(`%c[SKU FOUND] API: ${foundSku} | FINAL: ${finalSku}`, "color: green; font-weight: bold");
 
                 let inputSku = document.getElementById('pay_sku_pasca_final');
                 if(inputSku) inputSku.value = finalSku;

@@ -124,8 +124,8 @@
             // 4. Simpan ke Database (VERSI FULL LOGGING)
             async saveVariants() {
                 // LOG 1: Cek Data Sebelum Dikirim
-                console.log("🔥 LOG 1 [START]: Memulai proses simpan...");
-                console.log("🔥 LOG 2 [DATA]: Data Varian yang akan dikirim:", JSON.parse(JSON.stringify(this.variants)));
+                // console.log("🔥 LOG 1 [START]: Memulai proses simpan...");
+                // console.log("🔥 LOG 2 [DATA]: Data Varian yang akan dikirim:", JSON.parse(JSON.stringify(this.variants)));
 
                 // Validasi Sederhana
                 if (this.variants.length > 0) {
@@ -143,7 +143,7 @@
                 try {
                     // Cek URL Target
                     let url = `/products/${this.activeProductId}/variants`;
-                    console.log("🔥 LOG 3 [URL]: Menembak ke ->", url);
+                    // console.log("🔥 LOG 3 [URL]: Menembak ke ->", url);
 
                     let response = await fetch(url, {
                         method: 'POST',
@@ -157,7 +157,7 @@
                         })
                     });
 
-                    console.log("🔥 LOG 4 [STATUS]: HTTP Status Code ->", response.status);
+                    // console.log("🔥 LOG 4 [STATUS]: HTTP Status Code ->", response.status);
 
                     // JIKA ERROR (Bukan 200 OK)
                     if (!response.ok) {
@@ -173,7 +173,7 @@
 
                     // JIKA SUKSES
                     let result = await response.json();
-                    console.log("✅ LOG 6 [RESPONSE]:", result);
+                    // console.log("✅ LOG 6 [RESPONSE]:", result);
 
                     if (result.success) {
                         alert('Berhasil! Varian dan Stok telah diperbarui.');

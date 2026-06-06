@@ -412,7 +412,7 @@
         // Jika tidak ada SAC ID, hentikan semua proses otomatis.
         var hasSacId = "{{ $store->doku_sac_id ?? '' }}";
         if (!hasSacId) {
-            console.log('Auto-Refresh: SAC ID tidak ditemukan. Membatalkan proses.');
+            // console.log('Auto-Refresh: SAC ID tidak ditemukan. Membatalkan proses.');
             return;
         }
 
@@ -425,7 +425,7 @@
 
                 var btnStatus = document.getElementById('btn-auto-status');
                 if (btnStatus) {
-                    console.log('Auto-Refresh: Status belum Active, mencoba cek ke API (Percobaan 1)...');
+                    // console.log('Auto-Refresh: Status belum Active, mencoba cek ke API (Percobaan 1)...');
 
                     // PENTING: Tandai bahwa kita sudah mencoba cek status
                     sessionStorage.setItem('doku_status_auto_checked', 'true');
@@ -439,7 +439,7 @@
                     }, 1000);
                 }
             } else {
-                console.log('Auto-Refresh: Status masih Pending, tapi sistem sudah mencoba cek otomatis sebelumnya. Stop Loop untuk keamanan.');
+                // console.log('Auto-Refresh: Status masih Pending, tapi sistem sudah mencoba cek otomatis sebelumnya. Stop Loop untuk keamanan.');
             }
 
         @else
@@ -455,7 +455,7 @@
                 var btnSaldo = document.getElementById('btn-auto-saldo');
                 // Cek apakah tombol ada (berarti user punya akses saldo)
                 if (btnSaldo) {
-                    console.log('Auto-Refresh: Status Active, menyinkronkan saldo satu kali...');
+                    // console.log('Auto-Refresh: Status Active, menyinkronkan saldo satu kali...');
 
                     // Tandai sudah refresh agar tidak reload terus menerus
                     sessionStorage.setItem(sessionKey, 'true');
@@ -465,7 +465,7 @@
                     }, 500);
                 }
             } else {
-                console.log('Auto-Refresh: Saldo sudah disinkronkan di sesi ini. Tidak perlu refresh lagi.');
+                // console.log('Auto-Refresh: Saldo sudah disinkronkan di sesi ini. Tidak perlu refresh lagi.');
             }
         @endif
     });

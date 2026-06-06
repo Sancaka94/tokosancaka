@@ -192,7 +192,7 @@
                 // Kembalikan teks tombol
                 btn.innerHTML = originalText;
             }).catch(err => {
-                console.log(err);
+                // console.log(err);
                 alert("Gagal membuat gambar. Silakan coba lagi.");
                 btn.innerHTML = originalText;
             });

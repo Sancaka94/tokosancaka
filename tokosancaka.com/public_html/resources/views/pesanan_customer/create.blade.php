@@ -727,10 +727,10 @@
     window.onload = function() {
         // Cek apakah jQuery sudah ada dari layouts.app
         if (window.jQuery) {
-            console.log("jQuery terdeteksi, memuat jQuery UI...");
+            // console.log("jQuery terdeteksi, memuat jQuery UI...");
             // Load jQuery UI
             loadScript("https://code.jquery.com/ui/1.13.2/jquery-ui.min.js", function() {
-                console.log("jQuery UI berhasil dimuat!");
+                // console.log("jQuery UI berhasil dimuat!");
                 // Panggil fungsi utama kita setelah jQuery UI siap
                 initSancakaScripts();
             });

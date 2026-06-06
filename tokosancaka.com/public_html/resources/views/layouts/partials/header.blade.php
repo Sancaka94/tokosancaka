@@ -93,7 +93,7 @@
                         }
                         // SKENARIO 2: Response HTML tapi Sukses 200 OK (Fallback return back())
                         else if (response.ok) {
-                            console.log('Response HTML (Redirect sukses), reloading page...');
+                            // console.log('Response HTML (Redirect sukses), reloading page...');
                             window.location.reload();
                         }
                         // SKENARIO 3: Error Server (500, 404, dll)

@@ -188,7 +188,7 @@
         // 6. [REAL-TIME] Listener Echo untuk Notifikasi BARU
         window.Echo.private(`App.Models.User.${userId}`)
             .notification((notification) => {
-                console.log('NOTIFIKASI BARU DITERIMA:', notification);
+                // console.log('NOTIFIKASI BARU DITERIMA:', notification);
                 
                 const data = notification.data ? notification.data : notification;
 
@@ -208,7 +208,7 @@
         window.Echo.private(`customer-saldo.${userId}`)
             .listen('.SaldoUpdated', (data) => {
                 
-                console.log('EVENT SALDO DITERIMA:', data);
+                // console.log('EVENT SALDO DITERIMA:', data);
 
                 // Periksa apakah data 'new_saldo' ada di dalam event
                 if (data.new_saldo !== undefined) {

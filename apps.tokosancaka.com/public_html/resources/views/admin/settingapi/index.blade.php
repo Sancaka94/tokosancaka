@@ -145,7 +145,7 @@ function toggleDanaMode(isChecked) {
     })
     .then(function (response) {
         if(response.data.success) {
-            console.log(response.data.message); 
+            // console.log(response.data.message); 
         }
     })
     .catch(function (error) {

@@ -258,15 +258,24 @@ public function busBooking(Request $request)
                 'updated_at'           => now(),
             ]);
 
-            foreach ($request->passengers as $pax) {
+            // Di dalam fungsi busBooking, bagian insert passengers
+            foreach ($request->passengers as $index => $pax) {
                 $paxTypeStr = strtolower($pax['type'] ?? 'adult');
                 $paxTypeInt = ($paxTypeStr === 'child') ? 1 : (($paxTypeStr === 'infant') ? 2 : 0);
+                
+                // Siapkan data detail
+                $alamatVal = !empty($pax['address']) ? $pax['address'] : 'Sesuai KTP';
+                $birthDate = !empty($pax['birthDate']) ? date('Y-m-d', strtotime($pax['birthDate'])) : null;
+                $seatVal   = (!empty($cleanSeats) && isset($cleanSeats[$index])) ? $cleanSeats[$index] : 'SA';
 
                 DB::table('bus_passengers')->insert([
                     'bus_order_id' => $id,
                     'name'         => $pax['name']     ?? '-',
                     'id_number'    => $pax['IDNumber'] ?? null,
                     'pax_type'     => $paxTypeInt,
+                    'address'      => $alamatVal, // <-- Simpan Alamat
+                    'birth_date'   => $birthDate, // <-- Simpan Tgl Lahir
+                    'seat'         => $seatVal,   // <-- Simpan Kursi
                     'created_at'   => now(),
                     'updated_at'   => now(),
                 ]);
@@ -629,43 +638,59 @@ public function busBooking(Request $request)
         }
     }
 
-    public function busHistory(Request $request)
+   public function busHistory(Request $request)
     {
         Log::info("\n========== [BUS HISTORY - START] ==========");
 
         try {
             $user = $request->user();
-
-            // Ambil data riwayat dari database lokal berdasarkan user yang login
             $orders = DB::table('bus_orders')
                 ->where('user_id', $user->id_pengguna ?? $user->id)
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            // Format data agar sesuai persis dengan interface BookingItem di React Native
             $formattedData = $orders->map(function ($order) {
+                
+                // INI KUNCINYA: Tarik data dari bus_passengers!
+                $passengers = DB::table('bus_passengers')
+                    ->where('bus_order_id', $order->id)
+                    ->get()
+                    ->map(function($pax) {
+                        return [
+                            'id'        => $pax->id,
+                            'name'      => $pax->name,
+                            'idNumber'  => $pax->id_number,
+                            'paxType'   => $pax->pax_type,
+                            'address'   => $pax->address ?? 'Sesuai KTP',
+                            'birthDate' => $pax->birth_date ?? '-',
+                            'seat'      => $pax->seat ?? 'SA',
+                            'ticketNo'  => $pax->ticket_no ?? '-'
+                        ];
+                    });
+
                 return [
                     'id'            => $order->id,
                     'bookingCode'   => $order->booking_code ?? 'PROSES',
                     'busName'       => $order->bus_name,
-                    'operatorName'  => $order->operator_name ?? null,  // Nama PO Bus (dari response Booking)
+                    'operatorName'  => $order->operator_name ?? null,  
                     'subClassFare'  => $order->sub_class_fare,
-                    'bookingDate'   => $order->created_at,             // Darmawisata butuh format tanggal order
-                    'bookingTime'   => $order->booking_time ?? null,   // Waktu booking (dari response Booking)
+                    'bookingDate'   => $order->created_at,             
+                    'bookingTime'   => $order->booking_time ?? null,   
                     'origin'        => $order->origin_terminal,
                     'destination'   => $order->destination_terminal,
                     'departDate'    => $order->depart_date,
-                    'departPlace'   => $order->depart_place ?? null,   // Tempat berangkat detail (dari response Booking)
-                    'departTime'    => $order->depart_time ?? null,    // Waktu berangkat detail (dari response Booking)
+                    'departPlace'   => $order->depart_place ?? null,   
+                    'departTime'    => $order->depart_time ?? null,    
                     'paxAdult'      => $order->pax_adult ?? 0,
                     'paxChild'      => $order->pax_child ?? 0,
                     'paxInfant'     => $order->pax_infant ?? 0,
-                    'status'        => $order->status,                 // DRAFT, HOLD, ISSUED, CANCELLED
+                    'status'        => $order->status,                 
                     'totalFare'     => (float) $order->total_fare,
                     'ticketPrice'   => (float) $order->ticket_price,
                     'paymentMethod' => $order->payment_method ?? 'SALDO',
                     'paymentUrl'    => $order->payment_url ?? null,
-                    'timeLimit'     => $order->time_limit,             // issuedTimeLimit dari Darmawisata (kunci auto-cancel)
+                    'timeLimit'     => $order->time_limit,
+                    'passengers'    => $passengers // <-- MASUKKAN ARRAY PENUMPANG KE RESPONSE
                 ];
             });
 

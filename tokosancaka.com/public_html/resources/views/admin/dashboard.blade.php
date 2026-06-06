@@ -1100,7 +1100,7 @@
                 });
             
             window.isDashboardEchoInitialized = true;
-            console.log("Dashboard Realtime Initialized");
+            // console.log("Dashboard Realtime Initialized");
         }
     });
 

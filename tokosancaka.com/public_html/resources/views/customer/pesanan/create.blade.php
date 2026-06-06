@@ -846,7 +846,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function selectAddress(prefix, item) {
     // 1. Debugging: Cek di Console browser apa isi data sebenarnya
-    console.log("Data Alamat Diterima:", item);
+    // console.log("Data Alamat Diterima:", item);
 
     const searchInput = document.getElementById(`${prefix}_address_search`);
     const resultsContainer = document.getElementById(`${prefix}_address_results`);

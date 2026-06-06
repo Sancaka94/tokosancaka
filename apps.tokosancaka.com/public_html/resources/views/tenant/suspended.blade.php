@@ -232,7 +232,7 @@
     }
 
     function startPolling() {
-        console.log("Mulai cek status...");
+        // console.log("Mulai cek status...");
         let checkInterval = setInterval(async () => {
             try {
                 let response = await fetch('/tenant/check-status');
@@ -255,7 +255,7 @@
                     }
                 }
             } catch (err) {
-                console.log("Server belum merespon status aktif...");
+                // console.log("Server belum merespon status aktif...");
             }
         }, 3000);
     }

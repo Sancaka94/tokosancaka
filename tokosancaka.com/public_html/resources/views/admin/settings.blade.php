@@ -884,7 +884,7 @@ showEditUserModal(user) {
 saveUserChanges() {
     // Di sini Anda akan mengirim data this.selectedUser ke backend menggunakan AJAX (misalnya Axios)
     // Contoh sederhana:
-    console.log('Menyimpan perubahan untuk pengguna:', this.selectedUser);
+    // console.log('Menyimpan perubahan untuk pengguna:', this.selectedUser);
     alert('Perubahan disimpan! (Simulasi)');
     this.closeModal(); // Tutup modal setelah menyimpan
 },
@@ -1139,9 +1139,9 @@ async toggleFreeze(user) {
     
     document.addEventListener('alpine:init', () => {
     console.info('%c[INFO] Data dari Laravel dimuat:', 'color: green; font-weight: bold;');
-    console.log('Daftar Pengguna:', @json($penggunaList ?? []));
-    console.log('Roles:', @json($roles ?? []));
-    console.log('Statuses:', @json($statuses ?? []));
+    // console.log('Daftar Pengguna:', @json($penggunaList ?? []));
+    // console.log('Roles:', @json($roles ?? []));
+    // console.log('Statuses:', @json($statuses ?? []));
 });
 </script>
 @endpush

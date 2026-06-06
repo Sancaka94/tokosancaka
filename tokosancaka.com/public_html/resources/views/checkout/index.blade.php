@@ -842,13 +842,13 @@ document.addEventListener('DOMContentLoaded', function () {
 // dan mengisinya ke input 'latitude' dan 'longitude' di atas.
 window.addEventListener('load', function() {
     if ('geolocation' in navigator) {
-        console.log('Mencoba mengambil lokasi GPS...');
+        // console.log('Mencoba mengambil lokasi GPS...');
         navigator.geolocation.getCurrentPosition(
             function(position) {
                 // Sukses dapat lokasi
                 document.getElementById('latitude').value = position.coords.latitude;
                 document.getElementById('longitude').value = position.coords.longitude;
-                console.log('Lokasi GPS didapat:', position.coords.latitude, position.coords.longitude);
+                // console.log('Lokasi GPS didapat:', position.coords.latitude, position.coords.longitude);
             },
             function(error) {
                 // Gagal dapat lokasi

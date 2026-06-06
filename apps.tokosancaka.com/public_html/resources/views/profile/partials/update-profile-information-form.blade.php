@@ -241,7 +241,7 @@
             },
 
             selectAddress(item) {
-                console.log("Dipilih:", item);
+                // console.log("Dipilih:", item);
 
                 // FIX: Ambil dari full_address sesuai log console
                 // Format: "Ketanggi, Ngawi, Ngawi, Jawa Timur, 63211"

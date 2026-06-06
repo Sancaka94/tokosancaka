@@ -30,11 +30,11 @@
             forceTLS: true              // <-- Wajib TRUE karena website Anda HTTPS
         });
 
-        console.log("🚀 Sancaka Realtime: Connected to Pusher.com (Singapore Cloud)");
+        // console.log("🚀 Sancaka Realtime: Connected to Pusher.com (Singapore Cloud)");
 
         // Debugging: Cek koneksi
         window.Echo.connector.pusher.connection.bind('connected', () => {
-            console.log("✅ KONEKSI SUKSES! Siap menerima scan.");
+            // console.log("✅ KONEKSI SUKSES! Siap menerima scan.");
         });
         window.Echo.connector.pusher.connection.bind('failed', () => {
             console.error("❌ Koneksi Gagal.");

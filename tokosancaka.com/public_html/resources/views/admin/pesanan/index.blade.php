@@ -894,14 +894,14 @@
         const checkAllHeader = document.getElementById('checkAllHeader');
 
         function toggleSelectAllHeader(source) {
-            console.log("-> Checkbox Header diklik. Status:", source.checked);
+            // console.log("-> Checkbox Header diklik. Status:", source.checked);
             const checkboxes = document.querySelectorAll('.row-checkbox');
             checkboxes.forEach(cb => cb.checked = source.checked);
             updateBulkActionUI();
         }
 
         function toggleSelectAll() {
-            console.log("-> Tombol 'Pilih Semua' diklik.");
+            // console.log("-> Tombol 'Pilih Semua' diklik.");
             const checkboxes = document.querySelectorAll('.row-checkbox');
             const allChecked = Array.from(checkboxes).every(cb => cb.checked);
 

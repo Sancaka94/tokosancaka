@@ -514,7 +514,7 @@ const createServiceCard = (service) => {
 
                 // --- [PERBAIKAN LOGIKA INSTANT] ---
 if (data.instant && data.instant.length > 0) {
-    console.log("Memproses data Instant..."); // <-- LOG 7
+    // console.log("Memproses data Instant..."); // <-- LOG 7
     instantServices = data.instant.map(service => {
         if (!service) { return null; }
         service.numeric_price = getPrice(service);

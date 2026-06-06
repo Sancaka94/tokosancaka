@@ -804,7 +804,7 @@ applyStrictInsurance(true);
         const customerSelect = document.getElementById('customer_id');
 
         function debugLog(line, msg) {
-            console.log(`create:${line} - ${msg}`);
+            // console.log(`create:${line} - ${msg}`);
         }
 
         // Assign the function to the outer-scoped variable so other parts of the script can call it

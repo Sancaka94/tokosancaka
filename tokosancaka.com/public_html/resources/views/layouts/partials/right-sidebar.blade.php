@@ -380,7 +380,7 @@
 
 <script>
     function openSpxGlobalModal() {
-        console.log('LOG LOG: Membuka Modal Global SPX dari Floating Button');
+        // console.log('LOG LOG: Membuka Modal Global SPX dari Floating Button');
         const modal = document.getElementById('spxGlobalModal');
         modal.style.display = 'flex';
         modal.classList.remove('hidden');
@@ -391,7 +391,7 @@
     }
 
     function closeSpxGlobalModal() {
-        console.log('LOG LOG: Menutup Modal Global SPX');
+        // console.log('LOG LOG: Menutup Modal Global SPX');
         const modal = document.getElementById('spxGlobalModal');
         modal.style.display = 'none';
         modal.classList.add('hidden');
@@ -408,7 +408,7 @@
 
     // Fetch data resi yang belum dicopy dari server
     function fetchSpxGlobalData() {
-        console.log('LOG LOG: Mengambil data SPX via AJAX');
+        // console.log('LOG LOG: Mengambil data SPX via AJAX');
         const tbody = document.getElementById('spx-global-tbody');
 
         tbody.innerHTML = `<tr><td colspan="3" class="px-6 py-12 text-center text-gray-400"><i class="fas fa-circle-notch fa-spin fa-3x mb-3 text-blue-500"></i><br><span class="font-medium">Memuat data resi...</span></td></tr>`;
@@ -421,7 +421,7 @@
         })
         .then(response => response.json())
         .then(data => {
-            console.log('LOG LOG: Data SPX berhasil diambil', data);
+            // console.log('LOG LOG: Data SPX berhasil diambil', data);
 
             // Update nilai di Header Modal
             if(data.summary) {
@@ -483,12 +483,12 @@
 
     // Script Copy Resi dari Global Modal
     function copyResiGlobal(text, id) {
-        console.log('LOG LOG: copyResiGlobal dipanggil. Text:', text, 'ID:', id);
+        // console.log('LOG LOG: copyResiGlobal dipanggil. Text:', text, 'ID:', id);
         let iconId = 'global-icon-copy-' + id;
         let btnElement = document.getElementById(iconId).parentElement;
 
         navigator.clipboard.writeText(text).then(function() {
-            console.log('LOG LOG: Text berhasil dicopy ke clipboard dari modal global.');
+            // console.log('LOG LOG: Text berhasil dicopy ke clipboard dari modal global.');
             let iconElement = document.getElementById(iconId);
 
             // Animasi tombol saat berhasil di-copy
@@ -506,7 +506,7 @@
             .then(response => response.json())
             .then(data => {
                 if(data.success) {
-                    console.log('LOG LOG: Update berhasil di global modal!');
+                    // console.log('LOG LOG: Update berhasil di global modal!');
                     document.getElementById('global-status-copas-' + id).innerHTML = '<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold border border-emerald-200 shadow-sm"><i class="fas fa-check-double"></i> DONE</span>';
 
                     // Update live counter di Header Modal saat berhasil dicopy

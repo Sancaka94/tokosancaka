@@ -18,12 +18,12 @@ function posSystem() {
                 if (typeof window.Echo !== 'undefined') {
                     // BERHASIL: Echo sudah ada, matikan pengecekan & jalankan listener
                     clearInterval(checkEcho);
-                    console.log("✅ Echo ditemukan. Mengaktifkan Listener...");
+                    // console.log("✅ Echo ditemukan. Mengaktifkan Listener...");
                     this.listenForRemoteScan();
                 } else {
                     // BELUM ADA: Tunggu lagi...
                     checkCount++;
-                    console.log(`⏳ Menunggu Library Echo... (${checkCount})`);
+                    // console.log(`⏳ Menunggu Library Echo... (${checkCount})`);
 
                     // Jika sudah 20x (10 detik) masih gagal, baru menyerah
                     if(checkCount > 20) {
@@ -44,7 +44,7 @@ function posSystem() {
 
             window.Echo.channel('pos-channel')
                 .listen('.scanned', (e) => {
-                    console.log("🔔 Sinyal Masuk:", e);
+                    // console.log("🔔 Sinyal Masuk:", e);
 
                     // Anti Spam Check
                     const now = Date.now();
@@ -275,7 +275,7 @@ function posSystem() {
                 }
 
                 const onScanSuccess = (decodedText, decodedResult) => {
-                    console.log(`Scan Sukses: ${decodedText}`);
+                    // console.log(`Scan Sukses: ${decodedText}`);
 
                     // 1. Matikan kamera & Tutup Modal
                     this.stopScanner();
@@ -311,7 +311,7 @@ function posSystem() {
                     this.scannerObj.clear();
                     this.scannerModalOpen = false;
                 }).catch(err => {
-                    console.log("Stop error:", err);
+                    // console.log("Stop error:", err);
                     this.scannerModalOpen = false; // Paksa tutup meski error stop
                 });
             } else {
@@ -351,7 +351,7 @@ function posSystem() {
                     // 3. LOGIKA QTY (Pastikan Angka)
                     let incomingQty = qtyOverride ? parseFloat(qtyOverride) : 1;
 
-                    console.log(`LOG POS: Barang ${p.name} | Qty: ${incomingQty}`);
+                    // console.log(`LOG POS: Barang ${p.name} | Qty: ${incomingQty}`);
 
                     // 4. LOGIKA GAMBAR (PENTING!)
                     // Prioritas 1: Gambar dari Pusher (imageOverride) karena URL-nya sudah lengkap dari server
@@ -447,7 +447,7 @@ function posSystem() {
 
             if (audio) {
                 audio.currentTime = 0; // Reset durasi agar bisa diputar berulang cepat
-                audio.play().catch(e => console.log('Browser memblokir autoplay audio', e));
+                audio.play().catch(e => // console.log('Browser memblokir autoplay audio', e));
             }
         },
 
@@ -530,7 +530,7 @@ function posSystem() {
 
         // 2. ISI FORM OTOMATIS (AUTOFILL)
         fillCustomerData(data) {
-            console.log("LOG: Mengisi data pelanggan...", data);
+            // console.log("LOG: Mengisi data pelanggan...", data);
 
             this.selectedCustomerId = data.id; // Penting untuk relasi DB
             this.customerName = data.name;
@@ -548,7 +548,7 @@ function posSystem() {
             if (data.assigned_coupon && data.assigned_coupon !== null && data.assigned_coupon !== "") {
                 // Isi form dengan kupon dia
                 this.couponCode = data.assigned_coupon;
-                console.log("LOG: Auto-apply kupon member: " + data.assigned_coupon);
+                // console.log("LOG: Auto-apply kupon member: " + data.assigned_coupon);
 
                 // Validasi ke server otomatis
                 setTimeout(() => { this.checkCoupon(); }, 300);
@@ -690,7 +690,7 @@ function posSystem() {
                 this.latitude = position.coords.latitude;
                 this.longitude = position.coords.longitude;
                 this.isGettingLocation = false;
-                console.log(`LOG: Lokasi dapat! (Akurasi: ${position.coords.accuracy} meter)`);
+                // console.log(`LOG: Lokasi dapat! (Akurasi: ${position.coords.accuracy} meter)`);
             };
 
             // 2. Definisi Callback Error (Hanya dipanggil jika semua cara gagal)
@@ -711,7 +711,7 @@ function posSystem() {
             };
 
             // 3. EKSEKUSI: Coba High Accuracy Dulu (Default HP)
-            console.log("LOG: Mencoba GPS Akurasi Tinggi...");
+            // console.log("LOG: Mencoba GPS Akurasi Tinggi...");
 
             navigator.geolocation.getCurrentPosition(
                 onGeoSuccess,
@@ -799,7 +799,7 @@ function posSystem() {
                 if (result.status === 'success' || result.status === true) {
                     // [FIX] Pastikan mapping data-nya benar
                     this.searchResults = result.data || result;
-                    console.log("Data ditemukan:", this.searchResults);
+                    // console.log("Data ditemukan:", this.searchResults);
                 } else {
                     this.searchResults = [];
                 }
@@ -902,7 +902,7 @@ function posSystem() {
                      this.isCourierListOpen = true;
                      this.selectedCourier = null; // Reset pilihan lama
                     // Log kecil untuk memastikan instruksi simpan terkirim
-                    if(this.saveCustomer) console.log("✅ Perintah simpan data pelanggan dikirim ke server.");
+                    if(this.saveCustomer) // console.log("✅ Perintah simpan data pelanggan dikirim ke server.");
                 } else {
                     alert('Gagal cek ongkir: ' + result.message);
                 }
@@ -1180,8 +1180,8 @@ function posSystem() {
         },
 
         async checkout() {
-            console.log("LOG: Memulai proses Checkout...");
-            console.log("LOG: Metode Pembayaran: " + this.paymentMethod);
+            // console.log("LOG: Memulai proses Checkout...");
+            // console.log("LOG: Metode Pembayaran: " + this.paymentMethod);
 
             // ============================================================
             // 1. VALIDASI INPUT (SEMUA LOGIC LAMA TETAP ADA)
@@ -1233,12 +1233,12 @@ function posSystem() {
                 if (!this.affiliatePin || this.affiliatePin.length < 4) { alert('❌ Masukkan PIN Keamanan!'); return; }
             }
             else if (this.paymentMethod === 'dana') {
-                console.log("LOG: Persiapan pengalihan ke DANA Gateway...");
+                // console.log("LOG: Persiapan pengalihan ke DANA Gateway...");
             }
 
             // [TAMBAHKAN INI DI BAWAHNYA]
             else if (this.paymentMethod === 'dana_sdk') {
-                console.log("LOG: Menggunakan DANA SDK (Widget).");
+                // console.log("LOG: Menggunakan DANA SDK (Widget).");
                 // Tidak butuh validasi khusus, lanjut ke submit
             }
 
@@ -1258,7 +1258,7 @@ function posSystem() {
             // 2. PERSIAPAN DATA (FORM DATA) - TETAP LENGKAP
             // ============================================================
             this.isProcessing = true;
-            console.log("LOG: Mengirim data ke Server Sancaka...");
+            // console.log("LOG: Mengirim data ke Server Sancaka...");
 
             let formData = new FormData();
             formData.append('items', JSON.stringify(this.cart));
@@ -1331,7 +1331,7 @@ function posSystem() {
 
                 // A. JIKA SUKSES (Status 200/201 dan logic 'success')
                 if (response.ok && result.status === 'success') {
-                    console.log("LOG: Response Sukses:", result);
+                    // console.log("LOG: Response Sukses:", result);
 
                     // 1. Cek jika harus bayar online (DANA/Tripay/Doku via Redirect)
                     if (result.payment_url) {

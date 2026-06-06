@@ -295,7 +295,7 @@
                                                 height: 40,
                                                 displayValue: true
                                             });
-                                        } catch(e) { console.log('Barcode error', e); }
+                                        } catch(e) { // console.log('Barcode error', e); }
                                     });
                                 }
                             }
