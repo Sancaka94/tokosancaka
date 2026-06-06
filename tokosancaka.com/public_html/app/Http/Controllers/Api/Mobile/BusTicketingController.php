@@ -140,7 +140,33 @@ class BusTicketingController extends BaseController
 
             Log::info("Bus Order DRAFT berhasil dibuat. Local ID: " . $orderId);
 
-            // STEP B: RAKIT PAYLOAD DARMAWISATA
+          // STEP B: RAKIT PAYLOAD DARMAWISATA
+            $formattedPassengers = [];
+            foreach ($request->passengers as $index => $pax) {
+                // Pecah nama menjadi first dan last name
+                $nameParts = explode(' ', $pax['name'] ?? '-');
+                $firstName = $nameParts[0];
+                $lastName = count($nameParts) > 1 ? implode(' ', array_slice($nameParts, 1)) : $firstName;
+
+                // Konversi tipe penumpang ke integer (0 = Adult, 1 = Child, 2 = Infant)
+                $paxTypeStr = strtolower($pax['type'] ?? 'adult');
+                $paxTypeInt = ($paxTypeStr == 'child') ? 1 : (($paxTypeStr == 'infant') ? 2 : 0);
+
+                $formattedPassengers[] = [
+                    'title'        => $pax['title'] ?? 'Mr',
+                    'firstName'    => $firstName,
+                    'lastName'     => $lastName,
+                    'identity'     => $pax['IDNumber'] ?? '',
+                    'phone'        => $index === 0 ? ($request->contactPhone ?? '080000000000') : '080000000000', // Darmawisata biasanya wajib ada nomor HP
+                    'identityType' => 'KTP',
+                    'address'      => '-', 
+                    'email'        => $index === 0 ? ($request->contactEmail ?? 'noemail@domain.com') : 'noemail@domain.com',
+                    'birthDate'    => '1990-01-01T00:00:00', // Hardcode aman jika form tidak meminta tanggal lahir
+                    'parent'       => 1,
+                    'paxType'      => $paxTypeInt
+                ];
+            }
+
             $payload = [
                 'bus'                 => $request->bus,
                 'originTerminal'      => $request->originTerminal,
@@ -153,9 +179,9 @@ class BusTicketingController extends BaseController
                 'paxAdult'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 0)->count(),
                 'paxChild'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 1)->count(),
                 'paxInfant'           => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 2)->count(),
-                'passengers'          => $request->passengers,
-                'departID'            => $request->departID ?? 0,
-                'arrivalID'           => $request->arrivalID ?? 0,
+                'passengers'          => $formattedPassengers, // <--- PAYLOAD BARU YANG SUDAH SESUAI DOKUMENTASI
+                'departID'            => (int) ($request->departID ?? 0), // Wajib ditarik dari mobile, jangan 0 jika ada datanya
+                'arrivalID'           => (int) ($request->arrivalID ?? 0),
                 'userID'              => $this->darmawisataUserId,
                 'accessToken'         => $request->accessToken
             ];
@@ -369,53 +395,59 @@ class BusTicketingController extends BaseController
         return $this->forwardRequest('Bus/TerminalSearch', $payload);
     }
 
-   public function busIssued(Request $request)
-{
-    Log::info("\n========== [BUS ISSUED - START] ==========");
-    Log::info("Payload Request Mobile: ", $request->all());
+  public function busIssued(Request $request)
+    {
+        Log::info("\n========== [BUS ISSUED - START] ==========");
+        Log::info("Payload Request Mobile: ", $request->all());
 
-    // 1. Validasi Input
-    $validator = Validator::make($request->all(), [
-        'bookingCode' => 'required|string',
-        'bookingDate' => 'required|string',
-        'accessToken' => 'required|string',
-    ]);
-
-    if ($validator->fails()) {
-        Log::warning("Bus Issued Validasi Gagal: ", $validator->errors()->toArray());
-        return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
-    }
-
-    // 2. Siapkan Payload Sesuai Dokumentasi
-    // Catatan: bookingDate harus diformat ISO 8601 yang valid
-    $payload = [
-        'userID'      => $this->darmawisataUserId,
-        'accessToken' => $request->accessToken,
-        'bookingCode' => $request->bookingCode,
-        'bookingDate' => date('Y-m-d\TH:i:s', strtotime($request->bookingDate)), 
-    ];
-
-    Log::info("Payload to Darmawisata [Bus/Issued]: ", $payload);
-
-    // 3. Kirim ke API Darmawisata
-    $response = $this->forwardRequest('Bus/Issued', $payload);
-    $json = json_decode($response->getContent(), true);
-
-    Log::info("Response Darmawisata [Bus/Issued]: ", $json ?? ['error' => 'No JSON Response']);
-
-    // 4. Update Database Lokal jika Sukses
-    if (isset($json['status']) && $json['status'] === 'SUCCESS') {
-        DB::table('bus_orders')->where('booking_code', $request->bookingCode)->update([
-            'status'     => 'ISSUED',
-            'updated_at' => now()
+        // 1. Validasi Input HANYA butuh bookingCode dari Mobile
+        $validator = Validator::make($request->all(), [
+            'bookingCode' => 'required|string',
         ]);
-        Log::info("Bus Order PNR {$request->bookingCode} berhasil di-ISSUED.");
-        return response()->json($json);
-    } else {
-        Log::warning("Gagal Issued Bus PNR {$request->bookingCode}. Alasan: " . ($json['respMessage'] ?? 'Unknown'));
-        return response()->json($json, $response->getStatusCode());
+
+        if ($validator->fails()) {
+            Log::warning("Bus Issued Validasi Gagal: ", $validator->errors()->toArray());
+            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        }
+
+        // 2. AMBIL DATA DARI DATABASE (Tarik tanggal booking dan access token asli)
+        $order = DB::table('bus_orders')->where('booking_code', $request->bookingCode)->first();
+
+        if (!$order) {
+            return response()->json(['status' => 'FAILED', 'message' => 'Data Booking tidak ditemukan di database.'], 404);
+        }
+
+        // 3. Siapkan Payload Sesuai Dokumentasi Menggunakan Data Database
+        $payload = [
+            'userID'      => $this->darmawisataUserId,
+            // Gunakan token dari DB (dw_access_token) atau dari request jika kamu ingin selalu update
+            'accessToken' => $order->dw_access_token ?? $request->accessToken,
+            'bookingCode' => $order->booking_code,
+            // Format ulang booking_time dari DB ke format ISO yang diminta Darmawisata
+            'bookingDate' => date('Y-m-d\TH:i:s', strtotime($order->booking_time)), 
+        ];
+
+        Log::info("Payload to Darmawisata [Bus/Issued]: ", $payload);
+
+        // 4. Kirim ke API Darmawisata
+        $response = $this->forwardRequest('Bus/Issued', $payload);
+        $json = json_decode($response->getContent(), true);
+
+        Log::info("Response Darmawisata [Bus/Issued]: ", $json ?? ['error' => 'No JSON Response']);
+
+        // 5. Update Database Lokal jika Sukses
+        if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+            DB::table('bus_orders')->where('booking_code', $request->bookingCode)->update([
+                'status'     => 'ISSUED',
+                'updated_at' => now()
+            ]);
+            Log::info("Bus Order PNR {$request->bookingCode} berhasil di-ISSUED.");
+            return response()->json($json);
+        } else {
+            Log::warning("Gagal Issued Bus PNR {$request->bookingCode}. Alasan: " . ($json['respMessage'] ?? 'Unknown'));
+            return response()->json($json, $response->getStatusCode());
+        }
     }
-}
 
     public function busHistory(Request $request)
     {
