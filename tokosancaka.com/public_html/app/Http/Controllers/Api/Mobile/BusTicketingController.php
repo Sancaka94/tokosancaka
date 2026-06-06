@@ -180,8 +180,8 @@ class BusTicketingController extends BaseController
                 'paxChild'            => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 1)->count(),
                 'paxInfant'           => DB::table('bus_passengers')->where('bus_order_id', $orderId)->where('pax_type', 2)->count(),
                 'passengers'          => $formattedPassengers, // <--- PAYLOAD BARU YANG SUDAH SESUAI DOKUMENTASI
-                'departID'            => (int) ($request->departID ?? 0), // Wajib ditarik dari mobile, jangan 0 jika ada datanya
-                'arrivalID'           => (int) ($request->arrivalID ?? 0),
+                'departID'            => (int) $request->departID,
+                'arrivalID'           => (int) $request->arrivalID,
                 'userID'              => $this->darmawisataUserId,
                 'accessToken'         => $request->accessToken
             ];
