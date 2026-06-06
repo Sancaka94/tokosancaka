@@ -395,12 +395,12 @@ class BusTicketingController extends BaseController
         return $this->forwardRequest('Bus/TerminalSearch', $payload);
     }
 
-  public function busIssued(Request $request)
+ public function busIssued(Request $request)
     {
         Log::info("\n========== [BUS ISSUED - START] ==========");
         Log::info("Payload Request Mobile: ", $request->all());
 
-        // 1. Validasi Input HANYA butuh bookingCode dari Mobile
+        // 1. Mobile cukup kirim bookingCode saja (Sangat ringkas & aman)
         $validator = Validator::make($request->all(), [
             'bookingCode' => 'required|string',
         ]);
@@ -410,42 +410,63 @@ class BusTicketingController extends BaseController
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
-        // 2. AMBIL DATA DARI DATABASE (Tarik tanggal booking dan access token asli)
-        $order = DB::table('bus_orders')->where('booking_code', $request->bookingCode)->first();
+        try {
+            // 2. Ambil seluruh data dari Database berdasarkan bookingCode
+            $order = DB::table('bus_orders')->where('booking_code', $request->bookingCode)->first();
 
-        if (!$order) {
-            return response()->json(['status' => 'FAILED', 'message' => 'Data Booking tidak ditemukan di database.'], 404);
-        }
+            if (!$order) {
+                return response()->json(['status' => 'FAILED', 'message' => 'Data Booking tidak ditemukan di database lokal.'], 404);
+            }
 
-        // 3. Siapkan Payload Sesuai Dokumentasi Menggunakan Data Database
-        $payload = [
-            'userID'      => $this->darmawisataUserId,
-            // Gunakan token dari DB (dw_access_token) atau dari request jika kamu ingin selalu update
-            'accessToken' => $order->dw_access_token ?? $request->accessToken,
-            'bookingCode' => $order->booking_code,
-            // Format ulang booking_time dari DB ke format ISO yang diminta Darmawisata
-            'bookingDate' => date('Y-m-d\TH:i:s', strtotime($order->booking_time)), 
-        ];
+            // 3. Format booking_time dari DB menjadi standar ISO 8601 Darmawisata (Contoh: 2026-06-06T11:48:59)
+            // Jangan pakai T00:00:00, harus waktu real saat booking terjadi
+            $bookingDateFormatted = date('Y-m-d\TH:i:s', strtotime($order->booking_time));
 
-        Log::info("Payload to Darmawisata [Bus/Issued]: ", $payload);
+            // 4. Susun Payload persis seperti dokumentasi Darmawisata
+            $payload = [
+                'bookingCode' => $order->booking_code,
+                'bookingDate' => $bookingDateFormatted,
+                'userID'      => $this->darmawisataUserId,
+                'accessToken' => $order->dw_access_token 
+            ];
 
-        // 4. Kirim ke API Darmawisata
-        $response = $this->forwardRequest('Bus/Issued', $payload);
-        $json = json_decode($response->getContent(), true);
+            Log::info("Payload to Darmawisata [Bus/Issued]: ", $payload);
 
-        Log::info("Response Darmawisata [Bus/Issued]: ", $json ?? ['error' => 'No JSON Response']);
+            // 5. Tembak endpoint Bus/Issued
+            $response = $this->forwardRequest('Bus/Issued', $payload);
+            $json = json_decode($response->getContent(), true);
 
-        // 5. Update Database Lokal jika Sukses
-        if (isset($json['status']) && $json['status'] === 'SUCCESS') {
-            DB::table('bus_orders')->where('booking_code', $request->bookingCode)->update([
-                'status'     => 'ISSUED',
-                'updated_at' => now()
-            ]);
-            Log::info("Bus Order PNR {$request->bookingCode} berhasil di-ISSUED.");
-            return response()->json($json);
-        } else {
-            Log::warning("Gagal Issued Bus PNR {$request->bookingCode}. Alasan: " . ($json['respMessage'] ?? 'Unknown'));
-            return response()->json($json, $response->getStatusCode());
+            Log::info("Response Darmawisata [Bus/Issued]: ", $json ?? ['error' => 'No JSON Response']);
+
+            // 6. Evaluasi Hasil & Update DB
+            if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+                
+                // Jika sukses, ubah status di DB jadi ISSUED
+                DB::table('bus_orders')->where('booking_code', $request->bookingCode)->update([
+                    'status'     => 'ISSUED',
+                    'updated_at' => now()
+                ]);
+                
+                Log::info("Bus Order PNR {$request->bookingCode} BERHASIL DI-ISSUED.");
+                
+                // Lempar response sukses ke React Native (reffNumber penting untuk tiket)
+                return response()->json([
+                    'status' => 'SUCCESS',
+                    'reffNumber' => $json['reffNumber'] ?? $request->bookingCode,
+                    'message' => 'Tiket berhasil diterbitkan'
+                ]);
+
+            } else {
+                Log::warning("Gagal Issued Bus PNR {$request->bookingCode}. Alasan: " . ($json['respMessage'] ?? 'Unknown'));
+                return response()->json([
+                    'status' => 'FAILED',
+                    'respMessage' => $json['respMessage'] ?? 'Operator menolak penerbitan tiket.'
+                ], 400);
+            }
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Bus Issued]: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return response()->json(['status' => 'FAILED', 'message' => 'System Error: ' . $e->getMessage()], 500);
         }
     }
 
