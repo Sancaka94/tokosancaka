@@ -181,14 +181,14 @@ class BusTicketingController extends BaseController
         return $this->forwardRequest('Bus/SeatMap', $payload);
     }
 
-
-   public function busBooking(Request $request)
+public function busBooking(Request $request)
 {
     Log::info("\n========== [BUS BOOKING - START] ==========");
 
     $validator = Validator::make($request->all(), [
-        'directCode' => 'required|string',
-        'passengers' => 'required|array'
+        'directCode'  => 'required|string',
+        'passengers'  => 'required|array',
+        'accessToken' => 'required|string',
     ]);
 
     if ($validator->fails()) {
@@ -208,7 +208,7 @@ class BusTicketingController extends BaseController
         }
 
         // ============================================================
-        // HITUNG PAX DI LUAR CLOSURE agar bisa dipakai di mana saja
+        // HITUNG PAX
         // ============================================================
         $paxAdult  = 0;
         $paxChild  = 0;
@@ -216,13 +216,13 @@ class BusTicketingController extends BaseController
 
         foreach ($request->passengers as $pax) {
             $type = strtolower($pax['type'] ?? 'adult');
-            if ($type === 'adult')       $paxAdult++;
-            elseif ($type === 'child')   $paxChild++;
-            elseif ($type === 'infant')  $paxInfant++;
+            if ($type === 'adult')      $paxAdult++;
+            elseif ($type === 'child')  $paxChild++;
+            elseif ($type === 'infant') $paxInfant++;
         }
 
         // ============================================================
-        // STEP A: SIMPAN DATABASE STATUS DRAFT (satu transaction saja)
+        // STEP A: SIMPAN DATABASE STATUS DRAFT
         // ============================================================
         $orderId = DB::transaction(function () use ($request, $schedule, $paxAdult, $paxChild, $paxInfant) {
 
@@ -258,26 +258,38 @@ class BusTicketingController extends BaseController
                 ]);
             }
 
-            return $id; // <-- wajib di-return agar $orderId terisi
+            return $id;
         });
 
         // ============================================================
-        // STEP B: FORMAT PASSENGERS UNTUK PAYLOAD API
+        // STEP B: FORMAT PASSENGERS
         // ============================================================
         $formattedPassengers = [];
         foreach ($request->passengers as $index => $pax) {
             $paxTypeStr = strtolower($pax['type'] ?? 'adult');
             $paxTypeInt = ($paxTypeStr === 'child') ? 1 : (($paxTypeStr === 'infant') ? 2 : 0);
 
+            // Pisah firstName & lastName dengan benar
+            $fullName   = trim($pax['name'] ?? 'Hamba Allah');
+            $nameParts  = explode(' ', $fullName);
+            $firstName  = $nameParts[0];
+            $lastName   = count($nameParts) > 1
+                            ? implode(' ', array_slice($nameParts, 1))
+                            : $firstName; // jika nama 1 kata, duplikat ke lastName
+
             $formattedPassengers[] = [
-                'title'        => $pax['title']    ?? 'Mr',
-                'firstName'    => $pax['name']     ?? 'Hamba Allah',
-                'lastName'     => '.',
+                'title'        => strtoupper($pax['title'] ?? 'MR'), // API pakai uppercase
+                'firstName'    => $firstName,
+                'lastName'     => $lastName,
                 'identity'     => $pax['IDNumber'] ?? '',
-                'phone'        => $index === 0 ? ($request->contactPhone ?? '085745808809') : '08819435180',
+                'phone'        => $index === 0
+                                    ? ($request->contactPhone ?? '')
+                                    : ($request->contactPhone ?? ''),
                 'identityType' => 'KTP',
-                'address'      => $pax['address']  ?? 'Sesuai KTP',
-                'email'        => $index === 0 ? ($request->contactEmail ?? 'tokosancaka@gmail.com') : 'salafy94@gmail.com',
+                'address'      => $pax['address'] ?? 'Sesuai KTP',
+                'email'        => $index === 0
+                                    ? ($request->contactEmail ?? '')
+                                    : ($request->contactEmail ?? ''),
                 'birthDate'    => !empty($pax['birthDate'])
                                     ? date('Y-m-d\T00:00:00', strtotime($pax['birthDate']))
                                     : '1990-01-01T00:00:00',
@@ -299,26 +311,45 @@ class BusTicketingController extends BaseController
         }
 
         // ============================================================
-        // STEP D: BUILD PAYLOAD
+        // STEP D: BUILD PAYLOAD — sesuai dokumentasi Darmawisata
         // ============================================================
+
+        // ✅ FIX 1: subClassFare = directCode (sesuai dokumentasi!)
+        $directCode   = $schedule->direct_code;
+        $subClassFare = $directCode; // bukan $schedule->sub_class_fare
+
+        // ✅ FIX 2: departDate selalu T00:00:00
+        $departDate = date('Y-m-d\T00:00:00', strtotime($schedule->depart_date));
+
+        // ✅ FIX 3: userID harus string, tidak boleh null
+        $userId = (string) ($this->darmawisataUserId ?? '');
+        if (empty($userId)) {
+            Log::error("FATAL: darmawisataUserId kosong! Cek konfigurasi.");
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Konfigurasi user API tidak valid.'
+            ], 500);
+        }
+
         $payload = [
-            'bus'                 => $request->bus ?? 'All PO',
+            'bus'                 => $schedule->bus ?? 'All PO',
             'originTerminal'      => $schedule->origin_terminal,
             'destinationTerminal' => $schedule->destination_terminal,
-            'directCode'          => $schedule->direct_code,
-            'subClassFare'        => $schedule->sub_class_fare,
+            'directCode'          => $directCode,
+            'subClassFare'        => $subClassFare,   // ✅ sama dengan directCode
             'locationID'          => (string) $schedule->location_id,
-            'departDate'          => date('Y-m-d\T00:00:00', strtotime($schedule->depart_date)),
+            'departDate'          => $departDate,     // ✅ selalu T00:00:00
             'paxAdult'            => (int) $paxAdult,
             'paxChild'            => (int) $paxChild,
             'paxInfant'           => (int) $paxInfant,
             'passengers'          => $formattedPassengers,
             'departID'            => (int) $schedule->depart_id,
             'arrivalID'           => (int) $schedule->arrival_id,
-            'userID'              => $this->darmawisataUserId,
+            'userID'              => $userId,         // ✅ string, tidak null
             'accessToken'         => $request->accessToken,
         ];
 
+        // Hanya tambah choosedSeat jika diizinkan dan ada isinya
         $isAllowChooseSeat = (bool) $schedule->is_allow_choose_seat;
         if ($isAllowChooseSeat && !empty($cleanSeats)) {
             $payload['choosedSeat'] = $cleanSeats;
@@ -335,17 +366,18 @@ class BusTicketingController extends BaseController
         Log::info("Response Darmawisata [Bus/Booking]: ", $json ?? ['error' => 'No JSON Response']);
 
         // ============================================================
-        // STEP F: UPDATE DATABASE LOKAL
+        // STEP F: UPDATE DATABASE
         // ============================================================
         if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+
             $issuedTimeLimit = isset($json['issuedTimeLimit'])
                 ? date('Y-m-d H:i:s', strtotime($json['issuedTimeLimit']))
                 : null;
 
             DB::table('bus_orders')->where('id', $orderId)->update([
-                'booking_code'  => $json['bookingCode']   ?? '',
-                'operator_name' => $json['operatorName']  ?? null,
-                'depart_place'  => $json['departPlace']   ?? null,
+                'booking_code'  => $json['bookingCode']  ?? '',
+                'operator_name' => $json['operatorName'] ?? null,
+                'depart_place'  => $json['departPlace']  ?? null,
                 'depart_time'   => isset($json['departTime'])
                                     ? date('Y-m-d H:i:s', strtotime($json['departTime']))
                                     : null,
@@ -353,16 +385,16 @@ class BusTicketingController extends BaseController
                                     ? date('Y-m-d H:i:s', strtotime($json['bookingTime']))
                                     : null,
                 'time_limit'    => $issuedTimeLimit,
-                'ticket_price'  => $json['ticketPrice']     ?? 0,
-                'admin_fee'     => $json['memberDiscount']  ?? 0,
-                'total_fare'    => $json['salesPrice']      ?? 0,
+                'ticket_price'  => $json['ticketPrice']    ?? 0,
+                'admin_fee'     => $json['memberDiscount'] ?? 0,
+                'total_fare'    => $json['salesPrice']     ?? 0,
                 'status'        => 'HOLD',
                 'updated_at'    => now(),
             ]);
 
             return response()->json($json);
+
         } else {
-            // Rollback order ke status FAILED agar tidak menggantung sebagai DRAFT
             DB::table('bus_orders')->where('id', $orderId)->update([
                 'status'     => 'FAILED',
                 'updated_at' => now(),
@@ -370,7 +402,7 @@ class BusTicketingController extends BaseController
 
             return response()->json([
                 'status'  => 'FAILED',
-                'message' => 'Gagal Booking: ' . ($json['respMessage'] ?? 'Unknown'),
+                'message' => 'Gagal Booking: ' . ($json['respMessage'] ?? $json['message'] ?? 'Unknown error'),
             ]);
         }
 
