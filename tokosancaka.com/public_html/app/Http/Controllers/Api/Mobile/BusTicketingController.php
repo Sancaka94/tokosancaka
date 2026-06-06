@@ -172,7 +172,7 @@ class BusTicketingController extends BaseController
 
         $payload = [
             // KEMBALIKAN KE "All PO" ATAU SESUAI PENCARIAN AWAL
-            'bus'                 => $request->bus ?? 'All PO', 
+            'bus'                 => 'All PO', 
             'originTerminal'      => $schedule->origin_terminal,
             'destinationTerminal' => $schedule->destination_terminal,
             'directCode'          => $schedule->direct_code,
@@ -346,7 +346,7 @@ public function busBooking(Request $request)
         }
 
         $payload = [
-            'bus'                 => $schedule->bus ?? 'All PO',
+            'bus'                 => 'All PO',
             'originTerminal'      => $schedule->origin_terminal,
             'destinationTerminal' => $schedule->destination_terminal,
             'directCode'          => $directCode,
