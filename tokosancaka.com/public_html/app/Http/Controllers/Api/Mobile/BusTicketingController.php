@@ -303,6 +303,7 @@ class BusTicketingController extends BaseController
             if (!empty($cleanSeats)) {
                 $payload['choosedSeat'] = $cleanSeats;
             }
+            
 
             Log::info("Payload to Darmawisata [Bus/Booking] FIXED: ", $payload);
 
