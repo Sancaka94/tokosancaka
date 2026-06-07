@@ -144,16 +144,16 @@
         $(document).on('click', '.btn-payload', function() {
             let kodeBooking = $(this).data('kode');
             let btn = $(this);
-            let row = btn.closest('tr');
 
             Swal.fire({
                 title: 'Panggil Ekspedisi?',
+                text: "Sistem akan panggil ekspedisi.",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Ya, Kirim Sekarang!'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Mohon Tunggu...');
 
                     $.ajax({
                         url: "{{ route('admin.rsud.payload_kiriminaja') }}",
@@ -161,20 +161,25 @@
                         data: { kode_booking: kodeBooking },
                         success: function(response) {
                             if(response.success) {
-                                Swal.fire('Berhasil!', 'Resi: ' + response.resi, 'success');
-                                let resiDisplay = (response.resi && response.resi !== 'null') ? response.resi : 'Menunggu Resi...';
-        
-                                $('.resi-text-' + kodeBooking).removeClass('text-muted').addClass('fw-bold text-success').text(resiDisplay);
-                                $('.status-apotek-' + kodeBooking).removeClass('bg-info').addClass('bg-success').text('Diserahkan ke Kurir');
-                                $('.action-area-' + kodeBooking).html('<button class="btn btn-sm btn-secondary" disabled><i class="fas fa-clock"></i> Menunggu Resi</button>');
+                                // KODENYA ADA DI SINI BRAY!
+                                Swal.fire({
+                                    title: 'Berhasil!',
+                                    text: response.message,
+                                    icon: 'success',
+                                    confirmButtonText: 'OK'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        location.reload(); // <--- INI YANG MEMBUAT HALAMAN REFRESH!
+                                    }
+                                });
                             } else {
-                                Swal.fire('Gagal!', response.message, 'error');
+                                Swal.fire('Payload Gagal!', response.message, 'error');
                                 btn.prop('disabled', false).html('<i class="fas fa-truck-fast"></i> Panggil Kurir');
                             }
                         },
-
                         error: function(xhr) {
-                            Swal.fire('Error!', xhr.responseJSON.message, 'error');
+                            let msg = xhr.responseJSON ? xhr.responseJSON.message : 'Terjadi kesalahan.';
+                            Swal.fire('Error!', msg, 'error');
                             btn.prop('disabled', false).html('<i class="fas fa-truck-fast"></i> Panggil Kurir');
                         }
                     });
