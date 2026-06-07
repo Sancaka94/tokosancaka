@@ -286,7 +286,7 @@ class TrackingController extends Controller
             }
         }
 
-        // Tambahkan di dalam fungsi trackPackage, setelah pengecekan $pesanan utama
+       // Blok pencarian RSUD
         if (!$pesanan) {
             // 1. Sanitasi input: jika ada prefix SCK-, buang agar sesuai format di DB
             $cleanedResi = str_replace('SCK-', '', $resi);
@@ -329,6 +329,29 @@ class TrackingController extends Controller
                         ];
                     }
                 }
+
+                // =========================================================
+                // 🔥 KODE TAMBAHAN: INJECT STATUS RACIK RSUD KE TIMELINE 🔥
+                // =========================================================
+                
+                // Tambahkan Status Apotek Saat Ini
+                $result['histories'][] = (object)[
+                    'status' => 'Status Apotek: ' . $rsudOrder->status_racik,
+                    'lokasi' => 'Apotek RSUD',
+                    'keterangan' => 'Proses penyiapan obat internal.',
+                    'created_at' => $rsudOrder->updated_at ?? $rsudOrder->created_at
+                ];
+
+                // Tambahkan Status Pesanan Pertama Kali Dibuat
+                $result['histories'][] = (object)[
+                    'status' => 'Booking Obat Dibuat',
+                    'lokasi' => 'Sistem RSUD',
+                    'keterangan' => 'Pesanan masuk ke sistem dan menunggu pembayaran/verifikasi.',
+                    'created_at' => $rsudOrder->created_at
+                ];
+
+                // Urutkan histori berdasarkan waktu (yang paling baru di atas)
+                $result['histories'] = collect($result['histories'])->sortByDesc('created_at')->values()->all();
             }
         }
 
