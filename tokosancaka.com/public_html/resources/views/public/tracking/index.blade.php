@@ -176,6 +176,7 @@ if (!function_exists('maskText')) {
                     </form>
                 </div>
             </div>
+            
 
             {{-- HASIL PELACAKAN --}}
             @if (isset($result))
