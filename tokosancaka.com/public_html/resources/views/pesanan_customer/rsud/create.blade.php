@@ -1020,31 +1020,52 @@
                             $(`#${prefix}_lng`).val(i.lon || '');
                             r.addClass('d-none');
 
-                            // =======================================================
-                            // TRIGGER OTOMATIS: PINDAH KE STEP 3 HANYA SETELAH DIKLIK
+                           // =======================================================
+                            // TRIGGER OTOMATIS: DARI STEP 3 -> CEK ONGKIR -> AUTO-POS -> BUKA PEMBAYARAN
                             // =======================================================
                             if (prefix === 'receiver' && isAutoRMFlow) {
-                                isAutoRMFlow = false; // Matikan penanda agar tidak looping
+                                isAutoRMFlow = false; 
 
-                                // 1. Langsung pindah Step 3 (Instan!)
+                                // 1. Langsung pindah Step 3 (Detail Paket)
                                 $('#nextToPaket').click();
 
-                                // 2. Isi Detail Barang
-                                $('#item_description').val('OBAT').removeClass('is-invalid').addClass('is-valid');
-                                $('#item_type').val('7').trigger('change').removeClass('is-invalid').addClass('is-valid');
-                                $('#weight').val('1000').removeClass('is-invalid').addClass('is-valid');
-                                $('#length').val('10');
-                                $('#width').val('10');  
-                                $('#height').val('10'); 
+                                // 2. Auto-Fill Detail Barang
+                                $('#item_description').val('OBAT').addClass('is-valid');
+                                $('#item_type').val('7').trigger('change').addClass('is-valid');
+                                $('#weight').val('1000').addClass('is-valid');
+                                $('#length').val('10'); $('#width').val('10'); $('#height').val('10');
                                 if (!$('#item_price').val()) {
-                                    $('#item_price').val('1000').trigger('input').removeClass('is-invalid').addClass('is-valid'); 
+                                    $('#item_price').val('50000').trigger('input').addClass('is-valid');
                                 }
                                 updateTotalSummary();
 
-                                // 3. Jeda sangat singkat (300ms) murni hanya untuk merender animasi UI, lalu sikat Cek Ongkir!
+                                // 3. Eksekusi Berantai
                                 setTimeout(() => {
-                                    $('#selected_expedition_display').click(); 
-                                }, 300);
+                                    // Klik tombol "Pilih Ekspedisi"
+                                    $('#selected_expedition_display').click();
+
+                                    // Pantau kapan modal ongkir selesai memuat POS Indonesia
+                                    let checkPosInterval = setInterval(() => {
+                                        let posBtn = $('.select-ongkir-btn').filter(function() {
+                                            return $(this).data('display').toUpperCase().includes('POS');
+                                        }).first();
+
+                                        if (posBtn.length > 0) {
+                                            clearInterval(checkPosInterval); // Hentikan pengintai
+                                            
+                                            // Klik tombol "Kirim Paket" (POS)
+                                            posBtn.click();
+                                            
+                                            // Jeda 500ms setelah modal tertutup, lalu buka Modal Pembayaran
+                                            setTimeout(() => {
+                                                $('#paymentMethodButton').click(); 
+                                                
+                                                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+                                                Toast.fire({ icon: 'success', title: 'Ekspedisi & Pembayaran Siap!' });
+                                            }, 500);
+                                        }
+                                    }, 300); // Cek setiap 300ms apakah tombol POS sudah muncul di modal
+                                }, 800);
                             }
                             // =======================================================
 
