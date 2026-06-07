@@ -7,6 +7,7 @@ use App\Models\Pesanan;
 use App\Models\SpxScan;
 use App\Models\Order;
 use App\Models\ScannedPackage;
+use App\Models\RsudOrderObat;
 use App\Models\ScanHistory;
 use App\Models\ReturnOrder; // <--- WAJIB TAMBAHKAN IMPORT INI
 use App\Services\KiriminAjaService;
@@ -282,6 +283,52 @@ class TrackingController extends Controller
                         ];
                     }),
                 ];
+            }
+        }
+
+        // Tambahkan di dalam fungsi trackPackage, setelah pengecekan $pesanan utama
+        if (!$pesanan) {
+            // 1. Sanitasi input: jika ada prefix SCK-, buang agar sesuai format di DB
+            $cleanedResi = str_replace('SCK-', '', $resi);
+            $rsudOrder = \App\Models\RsudOrderObat::where('kode_booking', $cleanedResi)->first();
+
+            if ($rsudOrder) {
+                $kiriminAja = new \App\Services\KiriminAjaService();
+                $trackingData = null;
+
+                // Jika sudah ada resi, baru kita tracking ke API KiriminAja
+                if (!empty($rsudOrder->resi)) {
+                    $serviceType = $rsudOrder->service_type ?? 'regular';
+                    $trackingData = $kiriminAja->track($serviceType, $rsudOrder->resi);
+                }
+
+                // Mapping Data untuk View
+                $result = [
+                    'is_pesanan' => true,
+                    'resi' => $rsudOrder->resi ?? 'Belum ada resi',
+                    'resi_aktual' => $rsudOrder->resi,
+                    'pengirim' => $rsudOrder->sender_name,
+                    'alamat_pengirim' => $rsudOrder->sender_address,
+                    'no_pengirim' => $rsudOrder->sender_phone,
+                    'penerima' => $rsudOrder->receiver_name,
+                    'alamat_penerima' => $rsudOrder->receiver_address,
+                    'no_penerima' => $rsudOrder->receiver_phone,
+                    'status' => ($rsudOrder->resi) ? ($trackingData['text'] ?? 'Diserahkan ke Kurir') : 'Status: ' . $rsudOrder->status_racik,
+                    'tanggal_dibuat' => $rsudOrder->created_at,
+                    'histories' => [],
+                ];
+
+                // Jika ada histori dari API KiriminAja, masukkan ke array
+                if ($trackingData && isset($trackingData['histories'])) {
+                    foreach ($trackingData['histories'] as $h) {
+                        $result['histories'][] = (object)[
+                            'status' => $h['status'],
+                            'lokasi' => 'Ekspedisi',
+                            'keterangan' => $h['status'],
+                            'created_at' => \Carbon\Carbon::parse($h['created_at'])
+                        ];
+                    }
+                }
             }
         }
 
