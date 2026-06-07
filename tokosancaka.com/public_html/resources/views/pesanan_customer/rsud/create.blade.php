@@ -1626,6 +1626,15 @@ function executePaymentSelection(element) {
             });
         });
 
+        // Tambahkan ini di bawah blok fungsi pencarian RM yang baru saja kita buat
+        $('#nomor_rm').on('keypress', function(e) {
+            // 13 adalah kode tombol "Enter" yang biasanya dikirim otomatis oleh scanner barcode
+            if (e.which === 13) {
+                e.preventDefault(); // Mencegah form submit (refresh halaman)
+                $('#btnCekRM').click(); // Memaksa tombol "Cari Data" diklik secara otomatis
+            }
+        });
+
     } // Akhir fungsi initSancakaScripts
 </script>
 @endpush
