@@ -297,8 +297,24 @@ class KirimAjaController extends Controller
                     DB::table($tableName)->where('id', $orderMarketplace->id)->update($updateMpData);
                 }
 
-                if (!$foundInMainDB) {
-                    $this->updatePercetakanDB($orderId, $awb, $statusGeneral);
+                $rsudOrder = \App\Models\RsudOrderObat::where('kode_booking', str_replace('SCK-', '', $orderId))->first();
+
+                if ($rsudOrder) {
+                    $foundInMainDB = true;
+                    
+                    // Update Resi jika dikirim
+                    if ($awb) {
+                        $rsudOrder->resi = $awb;
+                    }
+                    
+                    // Update Status berdasarkan method webhook
+                    // Contoh: Jika status dari KA adalah 'shipped_packages', kita ubah status_racik
+                    if ($statusPesananIndo) {
+                        $rsudOrder->status_racik = $statusPesananIndo;
+                    }
+                    
+                    $rsudOrder->save();
+                    Log::info("[WEBHOOK-KA] ✅ Updated RSUD Order: $orderId | Status: " . ($rsudOrder->status_racik));
                 }
 
 
