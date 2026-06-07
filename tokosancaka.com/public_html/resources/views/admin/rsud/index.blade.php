@@ -162,15 +162,17 @@
                         success: function(response) {
                             if(response.success) {
                                 Swal.fire('Berhasil!', 'Resi: ' + response.resi, 'success');
-                                row.find('.resi-cell').html(`<span class="fw-bold text-success">${response.resi}</span>`);
-                                row.find('.status-cell').html('<span class="badge bg-success">Diserahkan ke Kurir</span>');
-                                row.find('.action-cell').html('<button class="btn btn-sm btn-secondary" disabled><i class="fas fa-check"></i> Selesai</button>');
+                                let resiDisplay = (response.resi && response.resi !== 'null') ? response.resi : 'Menunggu Resi...';
+        
+                                $('.resi-text-' + kodeBooking).removeClass('text-muted').addClass('fw-bold text-success').text(resiDisplay);
+                                $('.status-apotek-' + kodeBooking).removeClass('bg-info').addClass('bg-success').text('Diserahkan ke Kurir');
+                                $('.action-area-' + kodeBooking).html('<button class="btn btn-sm btn-secondary" disabled><i class="fas fa-clock"></i> Menunggu Resi</button>');
                             } else {
                                 Swal.fire('Gagal!', response.message, 'error');
                                 btn.prop('disabled', false).html('<i class="fas fa-truck-fast"></i> Panggil Kurir');
                             }
                         },
-                        
+
                         error: function(xhr) {
                             Swal.fire('Error!', xhr.responseJSON.message, 'error');
                             btn.prop('disabled', false).html('<i class="fas fa-truck-fast"></i> Panggil Kurir');

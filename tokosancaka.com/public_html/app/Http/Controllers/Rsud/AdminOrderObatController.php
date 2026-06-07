@@ -145,33 +145,22 @@ class AdminOrderObatController extends Controller
                 $response = $kirimaja->createExpressOrder($payload);
             }
 
-            if (($response['status'] ?? false) === true) {
+           if (($response['status'] ?? false) === true) {
+                // TANGKAP PICKUP NUMBER SEBAGAI REFERENSI AWAL
+                $pickupNumber = $response['pickup_number'] ?? 'Sedang diproses';
+                
+                // Cek jika API kebetulan sudah ngasih AWB (jarang tapi mungkin)
+                $resi = $response['result']['awb_no'] ?? ($response['results'][0]['awb'] ?? null);
 
-            \Log::info('RESPON KIRIMINAJA:', $response);
-            
-                $resi = null;
-
-                if (!empty($response['results']) && is_array($response['results'])) {
-                    $resi = $response['results'][0]['awb'] ?? null;
-                } elseif (!empty($response['result']) && is_array($response['result'])) {
-                    $resi = $response['result']['awb_no'] ?? $response['result']['awb'] ?? null;
-                }
-
-                // Jika masih null, kita paksa ambil dari response manapun yang mengandung 'awb'
-                if (!$resi) {
-                    $jsonString = json_encode($response);
-                    preg_match('/"awb":"([^"]+)"/', $jsonString, $matches);
-                    $resi = $matches[1] ?? null;
-                }
-
-                $order->resi = $resi;
+                // Update database
+                $order->resi = $resi; 
                 $order->status_racik = 'Diserahkan ke Kurir';
                 $order->save();
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Berhasil Kirim ke Ekspedisi!',
-                    'resi' => $resi // Pastikan ini tidak null lagi
+                    'message' => $resi ? 'Berhasil! Resi: ' . $resi : 'Permintaan Pickup Dibuat (ID: ' . $pickupNumber . '). Resi akan muncul otomatis saat kurir datang.',
+                    'resi' => $resi ?? 'Menunggu Resi (Pickup: ' . $pickupNumber . ')'
                 ]);
             }
 
