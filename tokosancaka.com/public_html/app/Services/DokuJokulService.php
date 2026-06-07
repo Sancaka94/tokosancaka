@@ -612,6 +612,8 @@ class DokuJokulService
 
         try {
             Log::info('DOKU OVO Request', ['url' => $url, 'body' => $body]);
+            Log::info('DEBUG DOKU OVO: Menggunakan Client ID -> ' . $this->clientId);
+            Log::info('DEBUG DOKU OVO: Menggunakan Secret Key (Prefix) -> ' . substr($this->secretKey, 0, 5) . '...');
 
             // Timeout diperpanjang hingga 75s karena DOKU menginstruksikan tunggu 70s untuk OVO
             $response = Http::timeout(75) 
