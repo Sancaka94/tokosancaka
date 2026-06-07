@@ -509,6 +509,7 @@
                 });
             }
         });
+        
 
         // Tambahkan di dalam $(document).ready(function() { ... });
         $('input[name="payment_method"]').on('change', function() {
