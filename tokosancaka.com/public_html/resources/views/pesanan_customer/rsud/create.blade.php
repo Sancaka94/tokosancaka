@@ -777,6 +777,7 @@
 
      let isPinVerified = false;
      let pendingPaymentSelection = null;
+     let isAutoRMFlow = false;
         // ============================================
         // LOGIKA STEP-BY-STEP FORM
         // ============================================
@@ -997,8 +998,7 @@
 
                 $.get("{{ route('api.address.search') }}", { search: q }).done(d => {
                     r.html('').removeClass('d-none');
-                    if (d && d.length > 0) {
-
+                   if (d && d.length > 0) {
                         d.forEach(i => r.append($(`
                             <div class="search-result-item d-flex justify-content-between align-items-center">
                                 <div class="font-weight-bold flex-grow-1 pe-3">${i.full_address}</div>
@@ -1007,8 +1007,7 @@
                                 </button>
                             </div>
                         `).on('click', () => {
-
-                        s.val(i.full_address);
+                            s.val(i.full_address);
                             const p = i.full_address.split(',').map(t => t.trim());
                             $(`#${prefix}_village`).val(p[0] || '').trigger('change');
                             $(`#${prefix}_district`).val(p[1] || '').trigger('change');
@@ -1020,6 +1019,35 @@
                             $(`#${prefix}_lat`).val(i.lat || '');
                             $(`#${prefix}_lng`).val(i.lon || '');
                             r.addClass('d-none');
+
+                            // =======================================================
+                            // TRIGGER OTOMATIS: PINDAH KE STEP 3 HANYA SETELAH DIKLIK
+                            // =======================================================
+                            if (prefix === 'receiver' && isAutoRMFlow) {
+                                isAutoRMFlow = false; // Matikan penanda agar tidak looping
+
+                                // 1. Langsung pindah Step 3 (Instan!)
+                                $('#nextToPaket').click();
+
+                                // 2. Isi Detail Barang
+                                $('#item_description').val('OBAT').removeClass('is-invalid').addClass('is-valid');
+                                $('#item_type').val('7').trigger('change').removeClass('is-invalid').addClass('is-valid');
+                                $('#weight').val('1000').removeClass('is-invalid').addClass('is-valid');
+                                $('#length').val('10');
+                                $('#width').val('10');  
+                                $('#height').val('10'); 
+                                if (!$('#item_price').val()) {
+                                    $('#item_price').val('1000').trigger('input').removeClass('is-invalid').addClass('is-valid'); 
+                                }
+                                updateTotalSummary();
+
+                                // 3. Jeda sangat singkat (300ms) murni hanya untuk merender animasi UI, lalu sikat Cek Ongkir!
+                                setTimeout(() => {
+                                    $('#selected_expedition_display').click(); 
+                                }, 300);
+                            }
+                            // =======================================================
+
                         })));
                     } else {
                         r.html('<div class="p-3 text-muted">Alamat tidak ditemukan.</div>');
@@ -1606,13 +1634,11 @@ function executePaymentSelection(element) {
         // Diberi jeda 500ms agar rendering UI selesai dulu sebelum animasi jalan
         setTimeout(autoFillRSUD, 500);
 
-        // =========================================================
+       // =========================================================
         // LOGIKA PENCARIAN & AUTOFILL BERDASARKAN NOMOR RM
         // =========================================================
         $('#btnCekRM').on('click', function() {
             let rawInput = $('#nomor_rm').val().trim();
-            
-            // Ekstrak hanya angkanya saja (mencegah error jika pasien iseng mengetik huruf)
             let numericRm = rawInput.replace(/[^0-9]/g, '');
 
             if(!numericRm) {
@@ -1620,77 +1646,44 @@ function executePaymentSelection(element) {
                 return;
             }
 
-            // GABUNGKAN OTOMATIS DENGAN PREFIX "RM-" UNTUK DATABASE
             let rm = 'RM-' + numericRm;
-
             let $btn = $(this);
             let originalText = $btn.html();
             $btn.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
             $('#rm_status_text').text('Mencari data pasien...');
 
             $.ajax({
-                url: `/rsud/api/cek-rm/${rm}`, // URL akan mengirim 'RM-123456'
+                url: `/rsud/api/cek-rm/${rm}`,
                 type: 'GET',
                 success: function(res) {
                     if(res.status && res.data) {
-                        // 1. AUTOFILL DATA PENERIMA
                         $('#receiver_name').val(res.data.nama_lengkap).removeClass('is-invalid').addClass('is-valid');
                         $('#receiver_phone').val(res.data.no_hp).removeClass('is-invalid').addClass('is-valid');
                         $('#receiver_address').val(res.data.alamat).removeClass('is-invalid').addClass('is-valid');
-                        
                         $('#rm_status_text').html('<span class="text-success fw-bold"><i class="fas fa-check-circle"></i> Data Pasien Berhasil Ditemukan!</span>');
                         
-                        // 2. Trigger logika pencarian alamat KiriminAja secara otomatis
+                        // AKTIFKAN PENANDA OTOMATISASI
+                        isAutoRMFlow = true;
+
                         if(res.data.kelurahan && res.data.kecamatan) {
                             let addressQuery = `${res.data.kelurahan}, ${res.data.kecamatan}`;
                             $('#receiver_address_search').val(addressQuery).trigger('input');
                             
                             Swal.fire({
-                                title: 'Berhasil!',
-                                text: 'Data pasien ditemukan. Titik koordinat ekspedisi sedang disesuaikan otomatis.',
-                                icon: 'success',
-                                timer: 2000,
+                                title: 'Pilih Alamat',
+                                text: 'Silakan klik tombol "Pilih" pada alamat ekspedisi di bawah untuk melanjutkan ke pengiriman.',
+                                icon: 'info',
+                                timer: 3000,
                                 showConfirmButton: false
                             });
                         } else {
                             Swal.fire('Berhasil!', 'Data pasien ditemukan, tetapi Anda harus mencari alamat secara manual untuk ekspedisi.', 'info');
                         }
-
-                        // =========================================================
-                        // PERBAIKAN PENEMPATAN: OTOMATISASI STEP 3 DI DALAM SUCCESS
-                        // =========================================================
-                        setTimeout(() => {
-                            // 1. Pindah ke Step 3 (Detail Paket)
-                            $('#nextToPaket').click();
-
-                            // 2. Auto-Fill Deskripsi, Jenis, Berat, dan Dimensi Obat
-                            $('#item_description').val('OBAT').removeClass('is-invalid').addClass('is-valid');
-                            $('#item_type').val('7').trigger('change').removeClass('is-invalid').addClass('is-valid'); // 7 = Lain-lain
-                            $('#weight').val('1000').removeClass('is-invalid').addClass('is-valid'); // 1000 Gram
-                            $('#length').val('10'); // Panjang 10cm
-                            $('#width').val('10');  // Lebar 10cm
-                            $('#height').val('10'); // Tinggi 10cm
-                            
-                            // Opsional: Isi harga barang default agar validasi API Ongkir tidak error
-                            if (!$('#item_price').val()) {
-                                $('#item_price').val('50000').trigger('input').removeClass('is-invalid').addClass('is-valid'); 
-                            }
-
-                            // 3. Update monitor total pembayaran
-                            updateTotalSummary();
-
-                            // 4. Otomatis Klik Form "Pilih Ekspedisi" untuk memicu API
-                            setTimeout(() => {
-                                $('#selected_expedition_display').click(); 
-                            }, 800); // Jeda 0.8 detik agar animasi scroll selesai
-
-                        }, 2500); // Dieksekusi 2.5 detik setelah alert "Data Pasien Ditemukan" muncul
-                        // =========================================================
                     }
                 },
                 error: function(err) {
                     $('#rm_status_text').html('<span class="text-danger fw-bold"><i class="fas fa-times-circle"></i> RM tidak ditemukan.</span>');
-                    Swal.fire('Tidak Ditemukan', 'Nomor RM (' + numericRm + ') tidak terdaftar di sistem. Silakan periksa kembali.', 'error');
+                    Swal.fire('Tidak Ditemukan', 'Nomor RM (' + numericRm + ') tidak terdaftar di sistem.', 'error');
                 },
                 complete: function() {
                     $btn.html(originalText).prop('disabled', false);
