@@ -722,4 +722,95 @@ public function busBooking(Request $request)
         }
     }
 
+    // =========================================================================
+    // TAMBAHKAN KEDUA FUNGSI HAPUS DI BAWAH SINI
+    // =========================================================================
+
+    public function destroy($id)
+    {
+        Log::info("\n========== [BUS DELETE HISTORY - START] ==========");
+        
+        // Validasi ganda di backend: Pastikan hanya User ID 4
+        if (auth()->id() != 4) {
+            Log::warning("Unauthorized delete attempt on history ID {$id} by User ID " . auth()->id());
+            return response()->json([
+                'status' => 'ERROR',
+                'message' => 'Anda tidak memiliki izin untuk menghapus data ini.'
+            ], 403);
+        }
+
+        try {
+            $history = DB::table('bus_orders')->where('id', $id)->first();
+            
+            if (!$history) {
+                Log::warning("Data history ID {$id} tidak ditemukan untuk dihapus.");
+                return response()->json([
+                    'status' => 'ERROR',
+                    'message' => 'Data tidak ditemukan.'
+                ], 404);
+            }
+
+            // Hapus data (passengers akan terhapus jika ada cascade di DB, jika tidak hapus manual)
+            DB::table('bus_passengers')->where('bus_order_id', $id)->delete();
+            DB::table('bus_orders')->where('id', $id)->delete();
+
+            Log::info("Data history ID {$id} berhasil dihapus.");
+            return response()->json([
+                'status' => 'SUCCESS',
+                'message' => 'Data berhasil dihapus.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Bus Delete]: " . $e->getMessage());
+            return response()->json([
+                'status' => 'ERROR',
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        Log::info("\n========== [BUS BULK DELETE HISTORY - START] ==========");
+        
+        // Validasi ganda di backend: Pastikan hanya User ID 4
+        if (auth()->id() != 4) {
+            Log::warning("Unauthorized bulk delete attempt by User ID " . auth()->id());
+            return response()->json([
+                'status' => 'ERROR',
+                'message' => 'Anda tidak memiliki izin untuk melakukan aksi ini.'
+            ], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'ids'   => 'required|array',
+            'ids.*' => 'integer'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        }
+
+        try {
+            Log::info("Mencoba menghapus bulk IDs: ", $request->ids);
+            
+            // Hapus data penumpang terkait terlebih dahulu, lalu hapus ordernya
+            DB::table('bus_passengers')->whereIn('bus_order_id', $request->ids)->delete();
+            DB::table('bus_orders')->whereIn('id', $request->ids)->delete();
+
+            Log::info(count($request->ids) . " data history berhasil dihapus secara bulk.");
+            return response()->json([
+                'status' => 'SUCCESS',
+                'message' => count($request->ids) . ' data berhasil dihapus.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Bus Bulk Delete]: " . $e->getMessage());
+            return response()->json([
+                'status' => 'ERROR',
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
 }

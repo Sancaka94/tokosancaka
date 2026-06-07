@@ -576,4 +576,116 @@ class DokuJokulService
 
         return $this->sendRequest('POST', $path, $body);
     }
+
+    // ========================================================================
+    // FITUR BARU: E-WALLET (OVO & LINKAJA) DAN DIGITAL BANKING (JENIUS PAY)
+    // ========================================================================
+
+    /**
+     * Generate OVO Push Payment
+     * Catatan: API OVO tidak menggunakan header signature standar, melainkan checksum di body.
+     */
+    public function createOvoPayment($invoiceNumber, $amount, $ovoId)
+    {
+        $endpoint = '/ovo-emoney/v1/payment';
+        $url = $this->baseUrlCheckout . $endpoint;
+
+        $amountInt = (int) $amount;
+
+        // Generate CheckSum khusus OVO (amount + clientId + invoiceNumber + ovoId + secretKey)
+        $stringToHash = $amountInt . $this->clientId . $invoiceNumber . $ovoId . $this->secretKey;
+        $checksum = hash('sha256', $stringToHash);
+
+        $body = [
+            'client' => ['id' => $this->clientId],
+            'order' => [
+                'invoice_number' => $invoiceNumber,
+                'amount' => $amountInt
+            ],
+            'ovo_info' => [
+                'ovo_id' => $ovoId
+            ],
+            'security' => [
+                'check_sum' => $checksum
+            ]
+        ];
+
+        try {
+            Log::info('DOKU OVO Request', ['url' => $url, 'body' => $body]);
+
+            // Timeout diperpanjang hingga 75s karena DOKU menginstruksikan tunggu 70s untuk OVO
+            $response = Http::timeout(75) 
+                ->withBody(json_encode($body), 'application/json')
+                ->post($url);
+
+            $responseData = $response->json();
+            Log::info('DOKU OVO Response', $responseData ?? ['raw' => $response->body()]);
+
+            if ($response->successful() && isset($responseData['ovo_payment']['status'])) {
+                return ['success' => true, 'data' => $responseData];
+            } else {
+                return [
+                    'success' => false, 
+                    'message' => $responseData['ovo_payment']['response_code'] ?? 'OVO Payment Failed'
+                ];
+            }
+        } catch (Exception $e) {
+            Log::error('DOKU OVO Exception', ['error' => $e->getMessage()]);
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Generate LinkAja Payment
+     * Menggunakan protokol standard DOKU Jokul, sehingga dapat menggunakan sendRequest helper.
+     */
+    public function createLinkAjaPayment($invoiceNumber, $amount, $customerData, $lineItems, $callbackUrl)
+    {
+        $endpoint = '/linkaja-emoney/v2/ServiceRequestPayment';
+
+        $body = [
+            'order' => [
+                'invoice_number' => $invoiceNumber,
+                'amount' => (int) $amount,
+                'callback_url' => $callbackUrl,
+                'line_items' => $lineItems
+            ],
+            'customer' => [
+                'name' => $customerData['name'] ?? 'Customer Sancaka',
+                'email' => $customerData['email'] ?? 'customer@example.com',
+                'phone' => $customerData['phone'] ?? '081111111111'
+            ]
+        ];
+
+        return $this->sendRequest('POST', $endpoint, $body);
+    }
+
+    /**
+     * Generate Jenius Pay
+     * Menggunakan protokol standard DOKU Jokul, sehingga dapat menggunakan sendRequest helper.
+     */
+    public function createJeniusPayment($invoiceNumber, $amount, $cashTag, $customerData, $lineItems, $redirectUrl)
+    {
+        $endpoint = '/jenius-digital-banking/v2/ServiceRequestPayment';
+
+        // Dokumentasi mensyaratkan order.amount dikirim sebagai string
+        $body = [
+            'order' => [
+                'invoice_number' => $invoiceNumber,
+                'amount' => (string) $amount,
+                'line_items' => $lineItems
+            ],
+            'customer' => [
+                'name' => $customerData['name'] ?? 'Customer Sancaka',
+                'email' => $customerData['email'] ?? 'customer@example.com',
+                'phone' => $customerData['phone'] ?? '081111111111'
+            ],
+            'redirect_url' => $redirectUrl,
+            'jenius_info' => [
+                'cash_tag' => $cashTag
+            ]
+        ];
+
+        return $this->sendRequest('POST', $endpoint, $body);
+    }
 }
