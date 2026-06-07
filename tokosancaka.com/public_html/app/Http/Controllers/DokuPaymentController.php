@@ -16,6 +16,9 @@ use Doku\Snap\Models\Order as DokuOrder;
 use Doku\Snap\Models\Item as DokuItem;
 use Doku\Snap\Models\AdditionalInfo;
 
+// Import DokuJokulService untuk Direct API (OVO, LinkAja, Jenius Pay)
+use App\Services\DokuJokulService;
+
 // Import Controller Anda untuk Dispatcher Webhook
 use App\Http\Controllers\CustomerOrderController; // Untuk 'INV-'
 use App\Http\Controllers\Customer\TopUpController; // Untuk 'TOPUP-'
@@ -72,10 +75,10 @@ class DokuPaymentController extends Controller
                 $config['merchant_public_key'],           // Argument #2 ($publicKey) <-- SUDAH DIPERBAIKI (tidak null lagi)
                 $config['doku_public_key'],             // Argument #3 ($dokuPublicKey)
                 $config['client_id'],                   // Argument #4 ($clientId)
-                '',                                   // Argument #5 ($issuer)
+                '',                                     // Argument #5 ($issuer)
                 $config['is_production'],               // Argument #6 ($isProduction)
                 $config['secret_key'],                  // Argument #7 ($secretKey)
-                '',                                   // Argument #8 ($authCode)
+                '',                                     // Argument #8 ($authCode)
                 $config['merchant_private_key_passphrase'] // Argument #9 ($passphrase)
             );
 
@@ -197,6 +200,74 @@ class DokuPaymentController extends Controller
         }
     }
 
+    /**
+     * ========================================================================
+     * FITUR BARU: DIRECT API (OVO, LINKAJA, JENIUS PAY)
+     * ========================================================================
+     */
+
+    /**
+     * Method #2.1: GENERATE OVO PAYMENT
+     * Menghasilkan proses push payment ke nomor OVO pelanggan
+     */
+    public function generateOvoPayment($orderData, $ovoId)
+    {
+        $dokuService = new DokuJokulService();
+        return $dokuService->createOvoPayment(
+            $orderData->invoice_number,
+            $orderData->amount,
+            $ovoId
+        );
+    }
+
+    /**
+     * Method #2.2: GENERATE LINKAJA PAYMENT
+     * Menghasilkan URL Redirect untuk pelanggan menyelesaikan pembayaran di LinkAja
+     */
+    public function generateLinkAjaPayment($orderData, $customerData, $lineItems, $callbackUrl)
+    {
+        $dokuService = new DokuJokulService();
+        
+        // Memastikan data customer dalam bentuk array agar sesuai dengan DokuJokulService
+        $customerArray = [
+            'name' => $customerData->name ?? 'Customer Sancaka',
+            'email' => $customerData->email ?? 'customer@example.com',
+            'phone' => $customerData->phone ?? '081111111111'
+        ];
+
+        return $dokuService->createLinkAjaPayment(
+            $orderData->invoice_number,
+            $orderData->amount,
+            $customerArray,
+            $lineItems,
+            $callbackUrl
+        );
+    }
+
+    /**
+     * Method #2.3: GENERATE JENIUS PAY PAYMENT
+     * Menghasilkan proses tagihan ke Cashtag Jenius pelanggan
+     */
+    public function generateJeniusPayment($orderData, $customerData, $cashTag, $lineItems, $redirectUrl)
+    {
+        $dokuService = new DokuJokulService();
+
+        // Memastikan data customer dalam bentuk array agar sesuai dengan DokuJokulService
+        $customerArray = [
+            'name' => $customerData->name ?? 'Customer Sancaka',
+            'email' => $customerData->email ?? 'customer@example.com',
+            'phone' => $customerData->phone ?? '081111111111'
+        ];
+
+        return $dokuService->createJeniusPayment(
+            $orderData->invoice_number,
+            $orderData->amount,
+            $cashTag,
+            $customerArray,
+            $lineItems,
+            $redirectUrl
+        );
+    }
 
     /**
      * Method #3: MENERIMA WEBHOOK (Callback / Notification)

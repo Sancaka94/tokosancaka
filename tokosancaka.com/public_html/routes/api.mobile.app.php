@@ -533,6 +533,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // Endpoint History Lokal (dari Database)
             Route::get('/history',          [BusTicketingController::class, 'busHistory']);
+
+            Route::delete('/history/{id}',  [BusTicketingController::class, 'destroy']);
+            Route::post('/history/bulk',    [BusTicketingController::class, 'bulkDestroy']);
+
         });
 
           // ==========================================
