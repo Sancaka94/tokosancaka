@@ -379,7 +379,7 @@
         </div>
     </div>
 
-    <form id="orderForm" action="{{ route('pesanan.public.store') }}" method="POST">
+    <form id="orderForm" action="{{ route('pesanan.store') }}" method="POST">
         @csrf
         <div class="row g-4 g-lg-5">
             {{-- Kolom Kiri: Informasi Pengirim & Penerima --}}
