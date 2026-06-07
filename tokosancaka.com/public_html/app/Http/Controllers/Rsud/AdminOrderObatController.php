@@ -146,14 +146,32 @@ class AdminOrderObatController extends Controller
             }
 
             if (($response['status'] ?? false) === true) {
-                $order->resi = $response['result']['awb_no'] ?? ($response['results'][0]['awb'] ?? null);
+                // SINI KITA TANGKAP RESI DENGAN LEBIH CERDAS
+                // Cek apakah ada 'results' (biasanya untuk Express/Cargo)
+                // Cek apakah ada 'result' (biasanya untuk Instant)
+                $resi = null;
+
+                if (!empty($response['results']) && is_array($response['results'])) {
+                    $resi = $response['results'][0]['awb'] ?? null;
+                } elseif (!empty($response['result']) && is_array($response['result'])) {
+                    $resi = $response['result']['awb_no'] ?? $response['result']['awb'] ?? null;
+                }
+
+                // Jika masih null, kita paksa ambil dari response manapun yang mengandung 'awb'
+                if (!$resi) {
+                    $jsonString = json_encode($response);
+                    preg_match('/"awb":"([^"]+)"/', $jsonString, $matches);
+                    $resi = $matches[1] ?? null;
+                }
+
+                $order->resi = $resi;
                 $order->status_racik = 'Diserahkan ke Kurir';
                 $order->save();
 
                 return response()->json([
                     'success' => true,
                     'message' => 'Berhasil payload ke Ekspedisi!',
-                    'resi' => $order->resi
+                    'resi' => $resi // Pastikan ini tidak null lagi
                 ]);
             }
 
