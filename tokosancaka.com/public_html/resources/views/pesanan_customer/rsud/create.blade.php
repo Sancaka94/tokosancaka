@@ -418,6 +418,26 @@
                         </div>
                         <div class="card-body p-3 p-md-4">
                             <div class="row g-3">
+
+                                {{-- ========================================== --}}
+                                {{-- TAMBAHAN: BLOK INPUT NOMOR RM (REKAM MEDIS) --}}
+                                {{-- ========================================== --}}
+                                <div class="col-12 mb-2">
+                                    <div class="p-3 bg-light border border-primary rounded">
+                                        <label for="nomor_rm" class="form-label fw-bold text-primary">
+                                            <i class="fas fa-id-card me-2"></i>Masukkan Nomor Rekam Medis (RM)
+                                        </label>
+                                        <div class="input-group">
+                                            <input type="text" id="nomor_rm" class="form-control form-control-lg border-primary" placeholder="Contoh: RM-123456" autocomplete="off">
+                                            <button type="button" class="btn btn-primary px-4" id="btnCekRM">
+                                                <i class="fas fa-search me-2"></i>Cari Data
+                                            </button>
+                                        </div>
+                                        <small class="text-muted mt-2 d-block" id="rm_status_text">Sistem akan otomatis mengisi data diri Anda berdasarkan Nomor RM.</small>
+                                    </div>
+                                </div>
+                                {{-- ========================================== --}}
+                                
                                 <div class="col-md-6">
                                     <label for="receiver_name" class="form-label">Nama Penerima</label>
                                     <div class="input-group"><span class="input-group-text"><i class="fas fa-user-friends"></i></span><input type="text" name="receiver_name" id="receiver_name" class="form-control" placeholder="Cari nama atau no. HP" required></div>
