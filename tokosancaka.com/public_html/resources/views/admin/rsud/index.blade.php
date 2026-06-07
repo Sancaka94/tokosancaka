@@ -31,7 +31,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($orders as $order)
+                               @foreach($orders as $order)
                                 <tr>
                                     <td class="fw-bold text-primary">{{ $order->kode_booking }}</td>
                                     <td>{{ $order->created_at->format('d M Y H:i') }}</td>
@@ -47,23 +47,26 @@
                                             <span class="badge bg-warning text-dark"><i class="fas fa-clock"></i> Belum Lunas</span>
                                         @endif
                                     </td>
-                                    <td>
+
+                                    <td class="status-cell">
                                         @if($order->status_racik == 'Menunggu Diramu')
-                                            <span class="badge bg-danger status-apotek-{{ $order->kode_booking }}">Menunggu Diramu</span>
+                                            <span class="badge bg-danger">Menunggu Diramu</span>
                                         @elseif($order->status_racik == 'Selesai Diramu')
-                                            <span class="badge bg-info status-apotek-{{ $order->kode_booking }}">Selesai Diramu</span>
+                                            <span class="badge bg-info">Selesai Diramu</span>
                                         @else
-                                            <span class="badge bg-success status-apotek-{{ $order->kode_booking }}">{{ $order->status_racik }}</span>
+                                            <span class="badge bg-success">{{ $order->status_racik }}</span>
                                         @endif
                                     </td>
-                                    <td>
+
+                                    <td class="resi-cell">
                                         @if($order->resi)
-                                            <span class="fw-bold text-success resi-text-{{ $order->kode_booking }}">{{ $order->resi }}</span>
+                                            <span class="fw-bold text-success">{{ $order->resi }}</span>
                                         @else
-                                            <span class="text-muted resi-text-{{ $order->kode_booking }}">-</span>
+                                            <span class="text-muted">-</span>
                                         @endif
                                     </td>
-                                    <td class="text-center action-area-{{ $order->kode_booking }}">
+
+                                    <td class="text-center action-cell" data-kode="{{ $order->kode_booking }}">
                                         @if($order->status_racik == 'Menunggu Diramu')
                                             <button class="btn btn-sm btn-info text-white btn-racik" data-kode="{{ $order->kode_booking }}">
                                                 <i class="fas fa-mortar-pestle"></i> Selesai Diracik
@@ -103,47 +106,34 @@
 <script>
     $(document).ready(function() {
         $('#rsudTable').DataTable();
-        
-        $.ajaxSetup({
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            }
-        });
+        $.ajaxSetup({ headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') } });
 
         $(document).on('click', '.btn-racik', function() {
             let kodeBooking = $(this).data('kode');
             let btn = $(this);
+            let row = btn.closest('tr');
 
             Swal.fire({
                 title: 'Konfirmasi Obat',
-                text: "Apakah obat untuk kode " + kodeBooking + " sudah selesai diramu dan siap dikirim?",
+                text: "Apakah obat untuk kode " + kodeBooking + " sudah siap?",
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#0dcaf0',
-                cancelButtonColor: '#6c757d',
                 confirmButtonText: 'Ya, Sudah Siap!'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Proses...');
+                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
 
                     $.ajax({
                         url: "{{ route('admin.rsud.update_racik') }}",
                         type: "POST",
                         data: { kode_booking: kodeBooking },
                         success: function(response) {
-                            if(response.success) {
-                                Swal.fire('Berhasil!', response.message, 'success');
-                                $('.status-apotek-' + kodeBooking).removeClass('bg-danger').addClass('bg-info').text('Selesai Diramu');
-                                
-                                let newBtn = `<button class="btn btn-sm btn-success btn-payload" data-kode="${kodeBooking}"><i class="fas fa-truck-fast"></i> Panggil Kurir</button>`;
-                                $('.action-area-' + kodeBooking).html(newBtn);
-                            } else {
-                                Swal.fire('Gagal!', response.message, 'error');
-                                btn.prop('disabled', false).html('<i class="fas fa-mortar-pestle"></i> Selesai Diracik');
-                            }
+                            Swal.fire('Berhasil!', response.message, 'success');
+                            row.find('.status-cell').html('<span class="badge bg-info">Selesai Diramu</span>');
+                            row.find('.action-cell').html(`<button class="btn btn-sm btn-success btn-payload" data-kode="${kodeBooking}"><i class="fas fa-truck-fast"></i> Panggil Kurir</button>`);
                         },
-                        error: function(xhr) {
-                            Swal.fire('Error!', 'Terjadi kesalahan sistem.', 'error');
+                        error: function() {
+                            Swal.fire('Error!', 'Gagal update status.', 'error');
                             btn.prop('disabled', false).html('<i class="fas fa-mortar-pestle"></i> Selesai Diracik');
                         }
                     });
@@ -154,18 +144,16 @@
         $(document).on('click', '.btn-payload', function() {
             let kodeBooking = $(this).data('kode');
             let btn = $(this);
+            let row = btn.closest('tr');
 
             Swal.fire({
                 title: 'Panggil Ekspedisi?',
-                text: "Sistem akan menembak API KiriminAja untuk mendapatkan Resi pesanan ini.",
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonColor: '#198754',
-                cancelButtonColor: '#6c757d',
                 confirmButtonText: 'Ya, Payload Sekarang!'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Payload API...');
+                    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
 
                     $.ajax({
                         url: "{{ route('admin.rsud.payload_kiriminaja') }}",
@@ -173,18 +161,17 @@
                         data: { kode_booking: kodeBooking },
                         success: function(response) {
                             if(response.success) {
-                                Swal.fire('Berhasil!', 'Resi didapatkan: ' + response.resi, 'success');
-                                $('.resi-text-' + kodeBooking).removeClass('text-muted').addClass('fw-bold text-success').text(response.resi);
-                                $('.status-apotek-' + kodeBooking).removeClass('bg-info').addClass('bg-success').text('Diserahkan ke Kurir');
-                                $('.action-area-' + kodeBooking).html('<button class="btn btn-sm btn-secondary" disabled><i class="fas fa-check"></i> Selesai diproses</button>');
+                                Swal.fire('Berhasil!', 'Resi: ' + response.resi, 'success');
+                                row.find('.resi-cell').html(`<span class="fw-bold text-success">${response.resi}</span>`);
+                                row.find('.status-cell').html('<span class="badge bg-success">Diserahkan ke Kurir</span>');
+                                row.find('.action-cell').html('<button class="btn btn-sm btn-secondary" disabled><i class="fas fa-check"></i> Selesai</button>');
                             } else {
-                                Swal.fire('Payload Gagal!', response.message, 'error');
+                                Swal.fire('Gagal!', response.message, 'error');
                                 btn.prop('disabled', false).html('<i class="fas fa-truck-fast"></i> Panggil Kurir');
                             }
                         },
                         error: function(xhr) {
-                            let msg = xhr.responseJSON ? xhr.responseJSON.message : 'Terjadi kesalahan server.';
-                            Swal.fire('Error!', msg, 'error');
+                            Swal.fire('Error!', xhr.responseJSON.message, 'error');
                             btn.prop('disabled', false).html('<i class="fas fa-truck-fast"></i> Panggil Kurir');
                         }
                     });
