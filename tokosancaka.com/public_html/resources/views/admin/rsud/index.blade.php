@@ -150,7 +150,7 @@
                 title: 'Panggil Ekspedisi?',
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: 'Ya, Payload Sekarang!'
+                confirmButtonText: 'Ya, Kirim Sekarang!'
             }).then((result) => {
                 if (result.isConfirmed) {
                     btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
