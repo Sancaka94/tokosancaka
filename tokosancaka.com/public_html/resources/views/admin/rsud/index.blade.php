@@ -170,6 +170,7 @@
                                 btn.prop('disabled', false).html('<i class="fas fa-truck-fast"></i> Panggil Kurir');
                             }
                         },
+                        
                         error: function(xhr) {
                             Swal.fire('Error!', xhr.responseJSON.message, 'error');
                             btn.prop('disabled', false).html('<i class="fas fa-truck-fast"></i> Panggil Kurir');
