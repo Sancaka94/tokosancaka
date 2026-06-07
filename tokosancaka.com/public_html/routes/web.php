@@ -12,6 +12,8 @@ use App\Http\Middleware\RoleMiddleware;
 use App\Services\KiriminAjaService;
 use App\Models\Post;
 use App\Http\Controllers\Api\Mobile\AuthController;
+use App\Http\Controllers\Rsud\AdminOrderObatController;
+
 
 use App\Http\Controllers\Customer\TopupDanaController;
 
@@ -1497,3 +1499,10 @@ Route::prefix('rsud')->group(function () {
     Route::get('/api/cek-rm/{rm}', [BookingObatRsudController::class, 'cekDataRM'])->name('api.rsud.cek_rm');
 
  });
+
+
+Route::prefix('admin/rsud-order')->name('admin.rsud.')->middleware(['auth'])->group(function () {
+    Route::get('/', [AdminOrderObatController::class, 'index'])->name('index');
+    Route::post('/update-racik', [AdminOrderObatController::class, 'updateStatusRacik'])->name('update_racik');
+    Route::post('/payload-kiriminaja', [AdminOrderObatController::class, 'adminPayloadKiriminAja'])->name('payload_kiriminaja');
+});

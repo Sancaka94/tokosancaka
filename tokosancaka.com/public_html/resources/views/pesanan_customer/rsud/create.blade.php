@@ -441,7 +441,7 @@
                                             <i class="fas fa-id-card me-2"></i>Masukkan Nomor Rekam Medis (RM)
                                         </label>
                                         <div class="input-group">
-                                            <input type="text" id="nomor_rm" class="form-control form-control-lg border-primary" placeholder="Contoh: 123456" autocomplete="off">
+                                            <input type="text" id="nomor_rm" class="form-control form-control-lg border-primary" placeholder="Masukan Nomor RM Disini Contoh: 123456" autocomplete="off">
                                             <button type="button" class="btn btn-primary px-4" id="btnCekRM">
                                                 <i class="fas fa-search me-2"></i>Cari Data
                                             </button>
