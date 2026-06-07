@@ -1636,6 +1636,37 @@ function executePaymentSelection(element) {
                         } else {
                             Swal.fire('Berhasil!', 'Data pasien ditemukan, tetapi Anda harus mencari alamat secara manual untuk ekspedisi.', 'info');
                         }
+
+                        // =========================================================
+                        // PERBAIKAN PENEMPATAN: OTOMATISASI STEP 3 DI DALAM SUCCESS
+                        // =========================================================
+                        setTimeout(() => {
+                            // 1. Pindah ke Step 3 (Detail Paket)
+                            $('#nextToPaket').click();
+
+                            // 2. Auto-Fill Deskripsi, Jenis, Berat, dan Dimensi Obat
+                            $('#item_description').val('OBAT').removeClass('is-invalid').addClass('is-valid');
+                            $('#item_type').val('7').trigger('change').removeClass('is-invalid').addClass('is-valid'); // 7 = Lain-lain
+                            $('#weight').val('1000').removeClass('is-invalid').addClass('is-valid'); // 1000 Gram
+                            $('#length').val('10'); // Panjang 10cm
+                            $('#width').val('10');  // Lebar 10cm
+                            $('#height').val('10'); // Tinggi 10cm
+                            
+                            // Opsional: Isi harga barang default agar validasi API Ongkir tidak error
+                            if (!$('#item_price').val()) {
+                                $('#item_price').val('50000').trigger('input').removeClass('is-invalid').addClass('is-valid'); 
+                            }
+
+                            // 3. Update monitor total pembayaran
+                            updateTotalSummary();
+
+                            // 4. Otomatis Klik Form "Pilih Ekspedisi" untuk memicu API
+                            setTimeout(() => {
+                                $('#selected_expedition_display').click(); 
+                            }, 800); // Jeda 0.8 detik agar animasi scroll selesai
+
+                        }, 2500); // Dieksekusi 2.5 detik setelah alert "Data Pasien Ditemukan" muncul
+                        // =========================================================
                     }
                 },
                 error: function(err) {
@@ -1648,12 +1679,40 @@ function executePaymentSelection(element) {
             });
         });
 
-        // Tambahkan ini di bawah blok fungsi pencarian RM yang baru saja kita buat
-        $('#nomor_rm').on('keypress', function(e) {
-            // 13 adalah kode tombol "Enter" yang biasanya dikirim otomatis oleh scanner barcode
-            if (e.which === 13) {
-                e.preventDefault(); // Mencegah form submit (refresh halaman)
-                $('#btnCekRM').click(); // Memaksa tombol "Cari Data" diklik secara otomatis
+        // =========================================================
+        // TAMBAHAN: AUTO-SELECT EKSPEDISI POS INDONESIA
+        // =========================================================
+        $(document).ajaxComplete(function(event, xhr, settings) {
+            // Memastikan kita hanya mencegat request API cekongkir
+            if (settings.url.includes("cekongkir")) {
+                
+                setTimeout(() => {
+                    // Cari tombol yang memiliki teks "POS" atau "POS INDONESIA" di atribut data-display
+                    let posButton = $('.select-ongkir-btn').filter(function() {
+                        let textName = $(this).data('display') ? $(this).data('display').toUpperCase() : '';
+                        return textName.includes('POS INDONESIA') || textName.includes('POSAJA') || textName.includes('POS');
+                    }).first(); // Ambil layanan pertama yang ditemukan (misal: Reguler)
+
+                    if (posButton.length > 0) {
+                        // Jika ditemukan, eksekusi klik otomatis
+                        posButton.click(); 
+                        
+                        // Beri notifikasi visual bahwa otomasi berhasil
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: true,
+                        });
+                        Toast.fire({
+                            icon: 'success',
+                            title: 'Ekspedisi POS INDONESIA Otomatis Dipilih!'
+                        });
+                    } else {
+                        console.log("LOG: Layanan POS Indonesia tidak ditemukan untuk rute ini.");
+                    }
+                }, 1000); // Beri jeda 1 detik agar elemen DOM dalam modal dirender sempurna
             }
         });
 
