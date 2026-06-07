@@ -618,18 +618,18 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
         }
     } */
 
-        public function store(Request $request, KiriminAjaService $kirimaja)
+       public function store(Request $request)
     {
-        DB::beginTransaction();
+        \Illuminate\Support\Facades\DB::beginTransaction();
         try {
             $validatedData = $this->_validateOrderRequest($request);
 
-            do { 
-                $kodeBooking = 'RSUD-' . date('Ymd') . '-'. strtoupper(Str::random(6)); 
-            } while (RsudOrderObat::where('kode_booking', $kodeBooking)->exists());
+            do {
+                $kodeBooking = 'RSUD-' . date('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6));
+            } while (\App\Models\RsudOrderObat::where('kode_booking', $kodeBooking)->exists());
 
             $calculation = $this->_calculateTotalPaid($validatedData);
-            
+
             $total_paid_ongkir = $calculation['total_paid_ongkir'];
             $cod_value = $calculation['cod_value'];
             $shipping_cost = $calculation['shipping_cost'];
@@ -639,7 +639,7 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
 
             $paymentMethodRaw = strtoupper($validatedData['payment_method']);
 
-            $orderObat = RsudOrderObat::create([
+            $orderObat = \App\Models\RsudOrderObat::create([
                 'kode_booking' => $kodeBooking,
                 'nomor_rm' => $request->input('nomor_rm'),
                 'sender_name' => $validatedData['sender_name'],
@@ -671,21 +671,19 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             if (!in_array($paymentMethodRaw, ['COD', 'CODBARANG', 'CASH'])) {
                 if ($paymentMethodRaw === 'POTONG SALDO') {
                     if (!\Illuminate\Support\Facades\Auth::check()) {
-                        throw new Exception('Silakan login untuk menggunakan Saldo.');
+                        throw new \Exception('Silakan login untuk menggunakan Saldo.');
                     }
-
                     $user = \App\Models\User::where('id_pengguna', \Illuminate\Support\Facades\Auth::id())->lockForUpdate()->first();
-
                     if ($user->saldo < $total_price) {
-                        throw new Exception('Saldo Sancaka Anda tidak mencukupi.');
+                        throw new \Exception('Saldo Sancaka Anda tidak mencukupi.');
                     }
-
                     $user->saldo -= $total_price;
                     $user->save();
-
+                    
                     $validatedData['payment_method'] = 'cash';
                     $orderObat->payment_method = 'Potong Saldo';
                     $orderObat->payment_status = 'Lunas';
+                    $orderObat->save();
                 } else {
                     $customerData = [
                         'name'  => $validatedData['receiver_name'],
@@ -703,72 +701,42 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                     $orderItemsPayload = $this->_prepareOrderItemsPayload($shipping_cost, $insurance_cost, $validatedData['ansuransi']);
 
                     if ($paymentGateway === 'dana_binding') {
-                        if (!\Illuminate\Support\Facades\Auth::check()) {
-                            throw new Exception('Silakan login untuk menggunakan DANA Auto-Debit.');
-                        }
+                        if (!\Illuminate\Support\Facades\Auth::check()) throw new \Exception('Silakan login untuk menggunakan DANA Auto-Debit.');
                         $user = \Illuminate\Support\Facades\Auth::user();
-                        if (empty($user->dana_access_token)) {
-                            throw new Exception('Akses token DANA tidak ditemukan. Silakan hubungkan ulang akun DANA Anda.');
-                        }
-
+                        if (empty($user->dana_access_token)) throw new \Exception('Akses token DANA tidak ditemukan.');
                         $paymentUrl = $this->createPaymentDanaBindingPublic($orderObat, $total_paid_ongkir, $user);
-                        if (empty($paymentUrl)) {
-                            throw new Exception('Gagal melakukan penarikan DANA Auto-Debit.');
-                        }
-                        $orderObat->payment_url = $paymentUrl;
+                        if (empty($paymentUrl)) throw new \Exception('Gagal melakukan penarikan DANA Auto-Debit.');
                     } elseif ($paymentGateway === 'doku') {
-                        $dokuService = new DokuJokulService();
+                        $dokuService = new \App\Services\DokuJokulService();
                         $paymentUrl = $dokuService->createPayment($orderObat->kode_booking, $total_paid_ongkir, $customerData, $orderItemsPayload);
-                        if (empty($paymentUrl)) {
-                            throw new Exception('Gagal membuat transaksi pembayaran DOKU.');
-                        }
-                        $orderObat->payment_url = $paymentUrl;
+                        if (empty($paymentUrl)) throw new \Exception('Gagal membuat transaksi pembayaran DOKU.');
                     } elseif ($paymentGateway === 'midtrans') {
                         $paymentUrl = $this->createPaymentMidtransSnapPublic($orderObat, $total_paid_ongkir, $customerData);
-                        if (empty($paymentUrl)) {
-                            throw new Exception('Gagal membuat transaksi pembayaran Midtrans.');
-                        }
-                        $orderObat->payment_url = $paymentUrl;
+                        if (empty($paymentUrl)) throw new \Exception('Gagal membuat transaksi pembayaran Midtrans.');
                     } elseif ($paymentGateway === 'dana_direct') {
                         $paymentUrl = $this->createPaymentDanaPublic($orderObat, $total_paid_ongkir, $customerData);
-                        if (empty($paymentUrl)) {
-                            throw new Exception('Gagal membuat transaksi pembayaran DANA.');
-                        }
-                        $orderObat->payment_url = $paymentUrl;
+                        if (empty($paymentUrl)) throw new \Exception('Gagal membuat transaksi pembayaran DANA.');
                     } elseif ($paymentGateway === 'paypal') {
                         $paymentUrl = $this->createPaymentPayPalPublic($orderObat, $total_paid_ongkir);
-                        if (empty($paymentUrl)) {
-                            throw new Exception('Gagal membuat transaksi pembayaran PayPal.');
-                        }
-                        $orderObat->payment_url = $paymentUrl;
+                        if (empty($paymentUrl)) throw new \Exception('Gagal membuat transaksi pembayaran PayPal.');
                     } else {
                         $tripayResponse = $this->_createTripayTransactionInternal($validatedData, $orderObat, $total_paid_ongkir, $orderItemsPayload);
-                        if (empty($tripayResponse['success'])) {
-                            throw new Exception('Gagal transaksi Tripay. ' . ($tripayResponse['message'] ?? ''));
-                        }
-                        $orderObat->payment_url = $tripayResponse['data']['checkout_url'] ?? null;
-                        $paymentUrl = $orderObat->payment_url;
+                        if (empty($tripayResponse['success'])) throw new \Exception('Gagal transaksi Tripay. ' . ($tripayResponse['message'] ?? ''));
+                        $paymentUrl = $tripayResponse['data']['checkout_url'] ?? null;
                     }
+                    $orderObat->payment_url = $paymentUrl;
+                    $orderObat->save();
                 }
-                $orderObat->save();
             }
 
-            DB::commit();
+            \Illuminate\Support\Facades\DB::commit();
 
-            $this->_sendWhatsappNotification(
-                $orderObat, 
-                $validatedData, 
-                $shipping_cost,
-                $insurance_cost, 
-                $cod_fee,
-                $total_price, 
-                $request
-            );
+            $this->_sendWhatsappNotification($orderObat, $validatedData, $shipping_cost, $insurance_cost, $cod_fee, $total_price, $request);
 
             try {
-                $admins = User::where('role', 'admin')->get();
+                $admins = \App\Models\User::where('role', 'admin')->get();
                 if ($admins->isNotEmpty()) {
-                    $adminUrl = route('admin.pesanan.index');
+                    $adminUrl = route('admin.rsud.index');
                     $dataNotifAdmin = [
                         'tipe'        => 'Pesanan',
                         'judul'       => 'Pesanan Publik RSUD Baru!',
@@ -776,25 +744,20 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                         'url'         => $adminUrl,
                         'icon'        => 'fas fa-globe-asia',
                     ];
-                    Notification::send($admins, new NotifikasiUmum($dataNotifAdmin));
+                    \Illuminate\Support\Facades\Notification::send($admins, new \App\Notifications\NotifikasiUmum($dataNotifAdmin));
                 }
-            } catch (Exception $e) {
-                Log::error('Gagal broadcast NotifikasiUmum (Public): ' . $e->getMessage());
-            }
+            } catch (\Exception $e) {}
 
             if ($paymentUrl) {
                 return redirect()->away($paymentUrl);
             }
-
             return redirect()->route('pesanan.public.success')->with('order', $orderObat);
 
-        } catch (ValidationException $e) {
-            DB::rollBack();
-            Log::warning('Validasi gagal saat membuat pesanan (Public):', $e->errors());
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
             return redirect()->back()->withErrors($e->errors())->withInput();
-        } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Order Creation Failed (Public): '. $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
             return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
         }
     }
@@ -1243,143 +1206,53 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
         return $phone;
     }
 
-    /**
-     * =========================================================================
-     * FUNGSI BARU: _sendWhatsappNotification (Disalin dari CustomerController)
-     * =========================================================================
-     */
-    private function _sendWhatsappNotification(
-        Pesanan $pesanan, array $validatedData, int $shipping_cost,
-        int $ansuransi_fee, int $cod_fee, int $total_paid,
-        Request $request
-    ) {
-        // Ambil nomor display (belum disanitasi) dari request
-        $displaySenderPhone = $request->input('sender_phone') ?? $validatedData['sender_phone_original'] ?? $pesanan->sender_phone;
-        $displayReceiverPhone = $request->input('receiver_phone') ?? $validatedData['receiver_phone_original'] ?? $pesanan->receiver_phone;
+   private function _sendWhatsappNotification(\App\Models\RsudOrderObat $order, array $validatedData, int $shipping_cost, int $ansuransi_fee, int $cod_fee, int $total_paid, Request $request)
+    {
+        $displaySenderPhone = $request->input('sender_phone') ?? $validatedData['sender_phone_original'] ?? $order->sender_phone;
+        $displayReceiverPhone = $request->input('receiver_phone') ?? $validatedData['receiver_phone_original'] ?? $order->receiver_phone;
 
-        // Detail Paket
-        $detailPaket = "*Detail Paket:*\n";
-        $detailPaket .= "Deskripsi: " . ($pesanan->item_description ?? '-') . "\n";
-        $detailPaket .= "Berat: " . ($pesanan->weight ?? 0) . " Gram\n";
-        if ($pesanan->length && $pesanan->width && $pesanan->height) {
-            $detailPaket .= "Dimensi: {$pesanan->length}x{$pesanan->width}x{$pesanan->height} cm\n";
-        }
-        $expeditionParts = explode('-', $pesanan->expedition ?? '');
+        $detailPaket = "*Detail Paket:*\nDeskripsi: " . ($order->item_description ?? '-') . "\nBerat: " . ($order->weight ?? 0) . " Gram\n";
+        $expeditionParts = explode('-', $order->expedition ?? '');
         $exp_vendor = $expeditionParts[1] ?? '';
         $exp_service_type = $expeditionParts[2] ?? '';
         $service_display = trim(ucwords(strtolower(str_replace('_', ' ', $exp_vendor))) . ' ' . ucwords(strtolower(str_replace('_', ' ', $exp_service_type))));
-        $detailPaket .= "Ekspedisi: " . ($service_display ?: '-') . "\n";
-        $detailPaket .= "Layanan: " . ucwords($pesanan->service_type ?? '-');
+        
+        $detailPaket .= "Ekspedisi: " . ($service_display ?: '-') . "\nLayanan: " . ucwords($order->service_type ?? '-') . "\nResi: Menunggu Resi";
 
-        if ($pesanan->resi) {
-            $detailPaket .= "\nResi: *" . $pesanan->resi . "*";
-        } else {
-            $detailPaket .= "\nResi: Menunggu Resi";
-        }
-
-        // Rincian Biaya
         $rincianBiaya = "*Rincian Biaya:*\n- Ongkir: Rp " . number_format($shipping_cost, 0, ',', '.');
-        $itemPrice = $validatedData['item_price'] ?? $pesanan->item_price ?? 0;
-        $use_insurance = $ansuransi_fee > 0;
-        $is_cod_payment = in_array($pesanan->payment_method, ['COD', 'CODBARANG']);
+        if ($order->item_price > 0) $rincianBiaya .= "\n- Nilai Barang: Rp " . number_format($order->item_price, 0, ',', '.');
+        if ($ansuransi_fee > 0) $rincianBiaya .= "\n- Asuransi: Rp " . number_format($ansuransi_fee, 0, ',', '.');
+        if ($cod_fee > 0) $rincianBiaya .= "\n- Biaya COD: Rp " . number_format($cod_fee, 0, ',', '.');
 
-        if ($use_insurance || $is_cod_payment || !$is_cod_payment) {
-             if ($itemPrice > 0) {
-                 $rincianBiaya .= "\n- Nilai Barang: Rp " . number_format($itemPrice, 0, ',', '.');
-             }
-        }
-        if ($use_insurance) {
-            $rincianBiaya .= "\n- Asuransi: Rp " . number_format($ansuransi_fee, 0, ',', '.');
-        }
-        if ($cod_fee > 0) {
-            $rincianBiaya .= "\n- Biaya COD: Rp " . number_format($cod_fee, 0, ',', '.');
-        }
+        $statusBayar = "⏳ Menunggu Pembayaran";
+        if (in_array($order->payment_method, ['COD', 'CODBARANG'])) $statusBayar = "⏳ Bayar di Tempat (COD)";
+        elseif ($order->payment_status == 'Lunas') $statusBayar = "✅ Lunas";
 
-        // Status Bayar
-        $statusBayar = "⏳ Menunggu Pembayaran"; // Default
-        if (in_array($pesanan->payment_method, ['COD', 'CODBARANG'])) {
-            $statusBayar = "⏳ Bayar di Tempat (COD)";
-        } elseif ($pesanan->payment_method === 'cash') { // Ditambahkan 'cash'
-            $statusBayar = "✅ Lunas via Tunai";
-        } elseif (in_array($pesanan->status, ['Menunggu Pickup', 'Diproses', 'Terkirim', 'Selesai', 'Pembayaran Lunas (Gagal Auto-Resi)', 'Pembayaran Lunas (Error Kirim API)'])) {
-            $statusBayar = "✅ Lunas";
-        } elseif (in_array($pesanan->status, ['Gagal Bayar', 'Kadaluarsa'])) {
-            $statusBayar = "❌ Pembayaran Gagal/Kadaluarsa";
-        }
+        $messageTemplate = "*Terimakasih Ya Kak Atas Orderannya 🙏*\n\nBerikut adalah Nomor Order ID / Nomor Invoice Kakak:\n*{NOMOR_INVOICE}*\n\n📦 Dari: *{SENDER_NAME}* ( {SENDER_PHONE} )\n➡️ Ke: *{RECEIVER_NAME}* ( {RECEIVER_PHONE} )\n\n----------------------------------------\n{DETAIL_PAKET}\n----------------------------------------\n{RINCIAN_BIAYA}\n----------------------------------------\n*Total Bayar: Rp {TOTAL_BAYAR}*\nStatus Pembayaran: {STATUS_BAYAR}\n----------------------------------------\n\nSemoga Paket Kakak aman dan selamat sampai tujuan. ✅\n\nCek status pesanan/resi dengan klik link berikut:\nhttps://tokosancaka.com/tracking/search?resi={LINK_RESI}\n\n*Manajemen Sancaka*";
 
-        // Template Pesan
-        $messageTemplate = <<<TEXT
-*Terimakasih Ya Kak Atas Orderannya 🙏*
-
-Berikut adalah Nomor Order ID / Nomor Invoice Kakak:
-*{NOMOR_INVOICE}*
-
-📦 Dari: *{SENDER_NAME}* ( {SENDER_PHONE} )
-➡️ Ke: *{RECEIVER_NAME}* ( {RECEIVER_PHONE} )
-
-----------------------------------------
-{DETAIL_PAKET}
-----------------------------------------
-{RINCIAN_BIAYA}
-----------------------------------------
-*Total Bayar: Rp {TOTAL_BAYAR}*
-Status Pembayaran: {STATUS_BAYAR}
-----------------------------------------
-
-Semoga Paket Kakak aman dan selamat sampai tujuan. ✅
-
-Cek status pesanan/resi dengan klik link berikut:
-https://tokosancaka.com/tracking/search?resi={LINK_RESI}
-
-*Manajemen Sancaka*
-TEXT;
-
-        // Proses Template
-        $linkResi = $pesanan->resi ?? $pesanan->nomor_invoice;
         $message = str_replace(
-            [
-                '{NOMOR_INVOICE}', '{SENDER_NAME}', '{SENDER_PHONE}', '{RECEIVER_NAME}', '{RECEIVER_PHONE}',
-                '{DETAIL_PAKET}', '{RINCIAN_BIAYA}', '{TOTAL_BAYAR}', '{STATUS_BAYAR}', '{LINK_RESI}'
-            ],
-            [
-                $pesanan->nomor_invoice,
-                $pesanan->sender_name, $displaySenderPhone,
-                $pesanan->receiver_name, $displayReceiverPhone,
-                $detailPaket, $rincianBiaya,
-                number_format($total_paid, 0, ',', '.'),
-                $statusBayar, $linkResi
-            ],
+            ['{NOMOR_INVOICE}', '{SENDER_NAME}', '{SENDER_PHONE}', '{RECEIVER_NAME}', '{RECEIVER_PHONE}', '{DETAIL_PAKET}', '{RINCIAN_BIAYA}', '{TOTAL_BAYAR}', '{STATUS_BAYAR}', '{LINK_RESI}'],
+            [$order->kode_booking, $order->sender_name, $displaySenderPhone, $order->receiver_name, $displayReceiverPhone, $detailPaket, $rincianBiaya, number_format($total_paid, 0, ',', '.'), $statusBayar, $order->kode_booking],
             $messageTemplate
         );
 
-        // Sanitasi nomor untuk Fonnte
-        $senderWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($pesanan->sender_phone));
-        $receiverWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($pesanan->receiver_phone));
+        $senderWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($order->sender_phone));
+        $receiverWa = preg_replace('/^0/', '62', $this->_sanitizePhoneNumber($order->receiver_phone));
 
-        // Kirim Pesan
         try {
             if ($senderWa) \App\Services\FonnteService::sendMessage($senderWa, $message);
             if ($receiverWa) \App\Services\FonnteService::sendMessage($receiverWa, $message);
-            Log::info("Notifikasi WA Terkirim (Public) untuk Invoice: " . $pesanan->nomor_invoice);
-        } catch (Exception $e) {
-            Log::error('Fonnte Service (Public) sendMessage failed: ' . $e->getMessage(), ['invoice' => $pesanan->nomor_invoice]);
-        }
+        } catch (\Exception $e) {}
     }
 
 
-    public function success()
+   public function success()
     {
         $order = session('order');
-        if (!$order) {
-            // Jika tidak ada session, redirect ke form create
-            return redirect()->route('pesanan.public.create')->with('info', 'Silakan buat pesanan baru.');
-        }
-        // Pastikan $order adalah model, bukan array
+        if (!$order) return redirect()->route('pesanan.public.create')->with('info', 'Silakan buat pesanan baru.');
         if (is_array($order)) {
-            $order = Pesanan::find($order['id_pesanan']); // Sesuaikan dengan primary key
-            if (!$order) {
-                 return redirect()->route('pesanan.public.create')->with('info', 'Pesanan tidak ditemukan.');
-            }
+            $order = \App\Models\RsudOrderObat::find($order['id']);
+            if (!$order) return redirect()->route('pesanan.public.create')->with('info', 'Pesanan tidak ditemukan.');
         }
         return view('pesanan_customer.rsud.success', ['order' => $order]);
     }
