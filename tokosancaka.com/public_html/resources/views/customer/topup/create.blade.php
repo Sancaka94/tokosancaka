@@ -245,7 +245,7 @@
                                 <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="OVO" class="peer sr-only">
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_ovo_purple.svg" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm">
+                                        <img src="https://cdn-activation.oss-ap-southeast-5.aliyuncs.com/common/logo/e-money/ovo.png" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm">
                                         <span class="text-sm font-bold text-gray-800">OVO</span>
                                         <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Push Payment</span>
                                         <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transition-all">
@@ -257,7 +257,7 @@
                                 <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="LINKAJA" class="peer sr-only">
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/5/52/LinkAja_logo.svg" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm">
+                                        <img src="https://cdn-activation.oss-ap-southeast-5.aliyuncs.com/common/logo/e-money/linkaja.png" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm">
                                         <span class="text-sm font-bold text-gray-800">LinkAja</span>
                                         <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">E-Money</span>
                                         <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transition-all">
@@ -269,7 +269,7 @@
                                 <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="JENIUS_PAY" class="peer sr-only">
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
-                                        <img src="https://upload.wikimedia.org/wikipedia/id/3/36/Jenius_Logo.png" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm">
+                                        <img src="https://tokosancaka.com/public/assets/jeniuspay.png" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm">
                                         <span class="text-sm font-bold text-gray-800">Jenius Pay</span>
                                         <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Cashtag</span>
                                         <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transition-all">
