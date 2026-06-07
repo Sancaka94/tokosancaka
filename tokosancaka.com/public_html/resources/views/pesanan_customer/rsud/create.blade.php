@@ -177,8 +177,21 @@
         color: var(--primary-color) !important;
         border: none;
     }
-    .search-result-item:hover, .ui-menu-item-wrapper.ui-state-active {
+   .search-result-item {
+        padding: 12px 15px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer !important; /* Paksa jadi jari */
+        transition: all 0.2s ease-in-out;
+    }
+    
+    /* TAMBAHKAN INI: Agar saat text di-hover, kursor tetap jari */
+    .search-result-item * {
+        cursor: pointer !important; 
+    }
+
+    .search-result-item:hover {
         background-color: rgba(var(--primary-rgb), 0.08);
+        border-left: 3px solid var(--primary-color); /* Tambahan visual indikator */
     }
 
     .btn {
@@ -985,8 +998,17 @@
                 $.get("{{ route('api.address.search') }}", { search: q }).done(d => {
                     r.html('').removeClass('d-none');
                     if (d && d.length > 0) {
-                        d.forEach(i => r.append($(`<div class="search-result-item"><div class="font-weight-bold">${i.full_address}</div></div>`).on('click', () => {
-                            s.val(i.full_address);
+
+                        d.forEach(i => r.append($(`
+                            <div class="search-result-item d-flex justify-content-between align-items-center">
+                                <div class="font-weight-bold flex-grow-1 pe-3">${i.full_address}</div>
+                                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm" style="white-space: nowrap;">
+                                    <i class="fas fa-check me-1"></i> Pilih
+                                </button>
+                            </div>
+                        `).on('click', () => {
+
+                        s.val(i.full_address);
                             const p = i.full_address.split(',').map(t => t.trim());
                             $(`#${prefix}_village`).val(p[0] || '').trigger('change');
                             $(`#${prefix}_district`).val(p[1] || '').trigger('change');
