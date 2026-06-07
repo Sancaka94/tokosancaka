@@ -362,7 +362,7 @@ class TrackingController extends Controller
         return redirect()->route('tracking.index')->with('error', "Nomor resi '{$resi}' tidak ditemukan.");
     }
 
-    /**
+  /**
      * [CETAK THERMAL ADMIN]
      */
     public function cetakThermal($resi)
@@ -471,6 +471,60 @@ class TrackingController extends Controller
                     ];
                 }
             } catch (\Exception $e) {}
+        }
+
+        // ==========================================================
+        // 🔥 TAMBAHAN LOGIK UNTUK RSUD AGAR TIDAK 404 SAAT DICETAK 🔥
+        // ==========================================================
+        if (!$pesanan) {
+            $cleanedResi = str_replace('SCK-', '', $resi); // Bersihkan prefix jika ada
+            
+            $rsudOrder = \App\Models\RsudOrderObat::where('kode_booking', $cleanedResi)
+                ->orWhere('resi', $resi)
+                ->first();
+
+            if ($rsudOrder) {
+                // Konversi format RsudOrderObat agar sesuai dengan property object Pesanan
+                $pesanan = (object)[
+                    'resi' => $rsudOrder->resi ?? $rsudOrder->kode_booking,
+                    'nomor_invoice' => $rsudOrder->kode_booking,
+                    'status' => $rsudOrder->status_racik,
+                    'sender_name' => $rsudOrder->sender_name ?? 'Sancaka Express',
+                    'sender_phone' => $rsudOrder->sender_phone ?? '-',
+                    'sender_address' => $rsudOrder->sender_address ?? '-',
+                    'sender_village' => '',
+                    'sender_district' => '',
+                    'sender_regency' => '',
+                    'sender_province' => '',
+                    'sender_postal_code' => '',
+                    'receiver_name' => $rsudOrder->receiver_name ?? 'Pasien RSUD',
+                    'receiver_phone' => $rsudOrder->receiver_phone ?? '-',
+                    'receiver_address' => $rsudOrder->receiver_address ?? '-',
+                    'receiver_village' => '',
+                    'receiver_district' => '',
+                    'receiver_regency' => '',
+                    'receiver_province' => '',
+                    'receiver_postal_code' => '',
+                    'weight' => $rsudOrder->weight ?? 1000,
+                    'item_price' => $rsudOrder->item_price ?? 0,
+                    'shipping_cost' => $rsudOrder->shipping_cost ?? 0,
+                    'ongkir' => $rsudOrder->shipping_cost ?? 0,
+                    'insurance_cost' => 0,
+                    
+                    // Cek jika ada flag COD
+                    'total_cod' => in_array(strtoupper($rsudOrder->payment_method), ['COD', 'CODBARANG']) ? $rsudOrder->total_price : 0,
+                    'cod_amount' => in_array(strtoupper($rsudOrder->payment_method), ['COD', 'CODBARANG']) ? $rsudOrder->total_price : 0,
+                    
+                    'item_description' => $rsudOrder->item_description ?? 'Pengiriman Obat RSUD',
+                    'length' => 10, 'width' => 10, 'height' => 10,
+                    'expedition' => 'Sancaka Express', // Atau ambil dari $rsudOrder->expedition jika ada
+                    'service_type' => $rsudOrder->service_type ?? 'REG',
+                    'payment_method' => $rsudOrder->payment_method ?? 'Transfer',
+                    'created_at' => $rsudOrder->created_at,
+                    'resi_aktual' => $rsudOrder->resi,
+                    'jasa_ekspedisi_aktual' => 'Sancaka Express',
+                ];
+            }
         }
 
         if (!$pesanan) {
