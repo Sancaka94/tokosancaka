@@ -428,7 +428,7 @@
                                             <i class="fas fa-id-card me-2"></i>Masukkan Nomor Rekam Medis (RM)
                                         </label>
                                         <div class="input-group">
-                                            <input type="text" id="nomor_rm" class="form-control form-control-lg border-primary" placeholder="Contoh: RM-123456" autocomplete="off">
+                                            <input type="text" id="nomor_rm" class="form-control form-control-lg border-primary" placeholder="Contoh: 123456" autocomplete="off">
                                             <button type="button" class="btn btn-primary px-4" id="btnCekRM">
                                                 <i class="fas fa-search me-2"></i>Cari Data
                                             </button>
@@ -1569,11 +1569,18 @@ function executePaymentSelection(element) {
         // LOGIKA PENCARIAN & AUTOFILL BERDASARKAN NOMOR RM
         // =========================================================
         $('#btnCekRM').on('click', function() {
-            let rm = $('#nomor_rm').val();
-            if(!rm) {
-                Swal.fire('Oops!', 'Silakan masukkan Nomor RM terlebih dahulu.', 'warning');
+            let rawInput = $('#nomor_rm').val().trim();
+            
+            // Ekstrak hanya angkanya saja (mencegah error jika pasien iseng mengetik huruf)
+            let numericRm = rawInput.replace(/[^0-9]/g, '');
+
+            if(!numericRm) {
+                Swal.fire('Oops!', 'Silakan masukkan angka Nomor RM terlebih dahulu.', 'warning');
                 return;
             }
+
+            // GABUNGKAN OTOMATIS DENGAN PREFIX "RM-" UNTUK DATABASE
+            let rm = 'RM-' + numericRm;
 
             let $btn = $(this);
             let originalText = $btn.html();
@@ -1581,7 +1588,7 @@ function executePaymentSelection(element) {
             $('#rm_status_text').text('Mencari data pasien...');
 
             $.ajax({
-                url: `/rsud/api/cek-rm/${rm}`, // <--- Pastikan format URL ini sesuai dengan route Anda
+                url: `/rsud/api/cek-rm/${rm}`, // URL akan mengirim 'RM-123456'
                 type: 'GET',
                 success: function(res) {
                     if(res.status && res.data) {
@@ -1611,7 +1618,7 @@ function executePaymentSelection(element) {
                 },
                 error: function(err) {
                     $('#rm_status_text').html('<span class="text-danger fw-bold"><i class="fas fa-times-circle"></i> RM tidak ditemukan.</span>');
-                    Swal.fire('Tidak Ditemukan', 'Nomor RM tidak terdaftar di sistem. Silakan periksa kembali.', 'error');
+                    Swal.fire('Tidak Ditemukan', 'Nomor RM (' + numericRm + ') tidak terdaftar di sistem. Silakan periksa kembali.', 'error');
                 },
                 complete: function() {
                     $btn.html(originalText).prop('disabled', false);
