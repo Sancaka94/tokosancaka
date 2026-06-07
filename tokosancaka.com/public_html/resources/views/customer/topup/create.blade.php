@@ -103,6 +103,17 @@
                         </div>
                     </div>
 
+                    <div id="dynamic-payment-fields" class="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200 hidden">
+                        <div id="ovo-field" class="hidden">
+                            <label class="block text-sm font-bold mb-2">Nomor OVO (No. HP):</label>
+                            <input type="text" name="ovo_id" class="w-full p-3 border rounded-lg" placeholder="0812xxxxxx">
+                        </div>
+                        <div id="jenius-field" class="hidden">
+                            <label class="block text-sm font-bold mb-2">Cashtag Jenius:</label>
+                            <input type="text" name="jenius_cashtag" class="w-full p-3 border rounded-lg" placeholder="$cashtag">
+                        </div>
+                    </div>
+
                     {{-- 2. PILIH METODE PEMBAYARAN (GRID VIEW) --}}
                     <div class="space-y-8 mt-6">
 
@@ -224,6 +235,42 @@
                                         <span class="text-sm font-bold text-gray-800">PayPal / CC</span>
                                         <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Auto Konversi USD</span>
                                         <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="OVO" class="peer sr-only">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/e/eb/Logo_ovo_purple.svg" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm">
+                                        <span class="text-sm font-bold text-gray-800">OVO</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Push Payment</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="LINKAJA" class="peer sr-only">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/5/52/LinkAja_logo.svg" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm">
+                                        <span class="text-sm font-bold text-gray-800">LinkAja</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">E-Money</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="JENIUS_PAY" class="peer sr-only">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <img src="https://upload.wikimedia.org/wikipedia/id/3/36/Jenius_Logo.png" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm">
+                                        <span class="text-sm font-bold text-gray-800">Jenius Pay</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Cashtag</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transition-all">
                                             <i class="fas fa-check-circle text-xl"></i>
                                         </div>
                                     </div>
@@ -460,6 +507,22 @@
                         $iconArea.html('<span class="text-red-500 text-sm font-medium py-2 px-2"><i class="fas fa-exclamation-triangle mr-2"></i>Gagal memuat integrasi DANA.</span>');
                     }
                 });
+            }
+        });
+
+        // Tambahkan di dalam $(document).ready(function() { ... });
+        $('input[name="payment_method"]').on('change', function() {
+            let method = $(this).val();
+            $('#dynamic-payment-fields').removeClass('hidden');
+            $('#ovo-field').addClass('hidden');
+            $('#jenius-field').addClass('hidden');
+
+            if (method === 'OVO') {
+                $('#ovo-field').removeClass('hidden');
+            } else if (method === 'JENIUS_PAY') {
+                $('#jenius-field').removeClass('hidden');
+            } else {
+                $('#dynamic-payment-fields').addClass('hidden');
             }
         });
 

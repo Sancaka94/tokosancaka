@@ -285,6 +285,81 @@ class TopUpController extends Controller
             }
             // ==========================================================
 
+            // ==========================================================
+            // --- FITUR BARU: OVO, LINKAJA, & JENIUS PAY (DOKU DIRECT API) ---
+            // ==========================================================
+            elseif (in_array(strtoupper($validated['payment_method']), ['OVO', 'LINKAJA', 'JENIUS_PAY'])) {
+
+                Log::info('LOG LOG: Memulai Top Up ' . strtoupper($validated['payment_method']) . ' untuk ' . $invoiceNumber);
+
+                $transaction = Transaction::create([
+                    'user_id'        => $user->id_pengguna,
+                    'reference_id'   => $invoiceNumber,
+                    'amount'         => $amount,
+                    'type'           => 'topup',
+                    'status'         => 'pending',
+                    'payment_method' => strtoupper($validated['payment_method']),
+                    'description'    => 'Top up saldo via ' . strtoupper($validated['payment_method']) . ' (DOKU)',
+                ]);
+
+                DB::commit();
+
+                // Persiapan Data Umum
+                $customerData = [
+                    'name'  => $user->nama_lengkap,
+                    'email' => $user->email,
+                    'phone' => $user->no_wa
+                ];
+                $lineItems = [
+                    ['name' => 'Top Up Saldo', 'price' => $amount, 'quantity' => 1]
+                ];
+                $redirectUrl = route('customer.topup.show', ['topup' => $invoiceNumber]);
+
+                // --- 1. PROSES OVO ---
+                if (strtoupper($validated['payment_method']) === 'OVO') {
+                    // Ambil dari input form 'ovo_id', jika kosong fallback ke nomor WA user
+                    $ovoId = $request->ovo_id ?? preg_replace('/[^0-9]/', '', $user->no_wa);
+                    
+                    $response = $dokuJokulService->createOvoPayment($invoiceNumber, $amount, $ovoId);
+                    
+                    if ($response['success']) {
+                        return redirect()->route('customer.topup.show', ['topup' => $invoiceNumber])
+                            ->with('success', '⏳ Silakan buka aplikasi OVO Anda sekarang untuk menyelesaikan pembayaran.');
+                    } else {
+                        throw new Exception('DOKU OVO Gagal: ' . $response['message']);
+                    }
+                }
+
+                // --- 2. PROSES LINKAJA ---
+                elseif (strtoupper($validated['payment_method']) === 'LINKAJA') {
+                    $response = $dokuJokulService->createLinkAjaPayment($invoiceNumber, $amount, $customerData, $lineItems, $redirectUrl);
+                    
+                    if ($response['success'] && isset($response['data']['emoney_payment']['redirect_url_http'])) {
+                        $transaction->payment_url = $response['data']['emoney_payment']['redirect_url_http'];
+                        $transaction->save();
+                        return redirect()->away($transaction->payment_url);
+                    } else {
+                        throw new Exception('DOKU LinkAja Gagal: ' . ($response['message'] ?? 'Unknown Error'));
+                    }
+                }
+
+                // --- 3. PROSES JENIUS PAY ---
+                elseif (strtoupper($validated['payment_method']) === 'JENIUS_PAY') {
+                    // Ambil dari input form 'jenius_cashtag', jika kosong fallback ke $namalengkap
+                    $cashTag = $request->jenius_cashtag ?? '$' . strtolower(str_replace(' ', '', $user->nama_lengkap));
+                    
+                    $response = $dokuJokulService->createJeniusPayment($invoiceNumber, $amount, $cashTag, $customerData, $lineItems, $redirectUrl);
+                    
+                    if ($response['success']) {
+                        return redirect()->route('customer.topup.show', ['topup' => $invoiceNumber])
+                            ->with('success', '⏳ Tagihan telah dikirim! Silakan buka aplikasi Jenius Anda untuk menyelesaikan pembayaran.');
+                    } else {
+                        throw new Exception('DOKU Jenius Pay Gagal: ' . ($response['message'] ?? 'Unknown Error'));
+                    }
+                }
+            }
+            // ==========================================================
+
             // 3. Logika DOKU & TRIPAY
             else {
 
