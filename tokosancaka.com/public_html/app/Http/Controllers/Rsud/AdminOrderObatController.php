@@ -170,7 +170,7 @@ class AdminOrderObatController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Berhasil payload ke Ekspedisi!',
+                    'message' => 'Berhasil Kirim ke Ekspedisi!',
                     'resi' => $resi // Pastikan ini tidak null lagi
                 ]);
             }
