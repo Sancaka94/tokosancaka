@@ -38,13 +38,7 @@ class AdminOrderObatController extends Controller
         }
     }
 
-    /**
-     * PAYLOAD KE KIRIMIN AJA — hanya boleh jika:
-     * 1. Payment status = Lunas (atau COD/cash)
-     * 2. Status racik = Selesai Diramu
-     * 3. Belum punya resi
-     */
-    public function adminPayloadKiriminAja(Request $request, KiriminAjaService $kirimaja)
+  public function adminPayloadKiriminAja(Request $request, KiriminAjaService $kirimaja)
     {
         $request->validate([
             'kode_booking' => 'required|exists:rsud_order_obat,kode_booking',
@@ -52,167 +46,124 @@ class AdminOrderObatController extends Controller
 
         $order = RsudOrderObat::where('kode_booking', $request->kode_booking)->firstOrFail();
 
-        // === GUARD: Cek status pembayaran ===
         $sudahLunas = in_array($order->payment_status, ['Lunas', 'Lunas / COD'])
-                   || in_array(strtoupper($order->payment_method), ['COD', 'CODBARANG', 'CASH', 'POTONG SALDO']);
+                      || in_array(strtoupper($order->payment_method), ['COD', 'CODBARANG', 'CASH', 'POTONG SALDO']);
 
         if (!$sudahLunas) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal: Pasien belum melunasi pembayaran (Status: ' . $order->payment_status . ').',
-            ]);
+            return response()->json(['success' => false, 'message' => 'Gagal: Pembayaran belum lunas.']);
         }
 
-        // === GUARD: Obat harus sudah selesai diramu ===
         if ($order->status_racik !== 'Selesai Diramu') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal: Obat belum selesai diramu (Status: ' . $order->status_racik . ').',
-            ]);
+            return response()->json(['success' => false, 'message' => 'Gagal: Obat belum diracik.']);
         }
 
-        // === GUARD: Jangan payload 2 kali ===
         if (!empty($order->resi)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Pesanan ini sudah memiliki resi: ' . $order->resi,
-            ]);
+            return response()->json(['success' => false, 'message' => 'Pesanan sudah memiliki resi.']);
         }
 
         try {
-            // Parse expedition string: serviceType-courier-serviceCode-cost-insuranceFee-codFee
+            $apiBookingCode = str_replace('RSUD-', 'SCK-RSUD-', $order->kode_booking);
+
             $expeditionParts = explode('-', $order->expedition ?? '');
             $serviceGroup    = $expeditionParts[0] ?? 'regular';
             $courier         = $expeditionParts[1] ?? 'pos';
             $service_type    = $expeditionParts[2] ?? 'reguler';
 
-            // Ambil koordinat dari request (jika admin mau override) atau dari DB
-            $senderLat  = $request->input('sender_lat',  $order->sender_lat  ?? '-7.4422788');
-            $senderLng  = $request->input('sender_lng',  $order->sender_lng  ?? '111.3869462');
-            $receiverLat = $request->input('receiver_lat', $order->receiver_lat ?? null);
-            $receiverLng = $request->input('receiver_lng', $order->receiver_lng ?? null);
+            $now = \Carbon\Carbon::now('Asia/Jakarta');
+            $scheduleTime = ($now->hour >= 16) 
+                ? $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s') 
+                : $now->addHour()->format('Y-m-d H:i:s');
 
             if (in_array($serviceGroup, ['instant', 'sameday'])) {
-                // ---- INSTANT / SAMEDAY ----
-                if (empty($receiverLat) || empty($receiverLng)) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Koordinat penerima tidak tersedia untuk layanan Instant/Sameday.',
-                    ]);
-                }
-
-                $payload  = [
-                    'service'      => $courier,
+                $payload = [
+                    'service' => $courier,
                     'service_type' => $service_type,
-                    'vehicle'      => 'motor',
-                    'order_prefix' => $order->kode_booking,
-                    'packages'     => [[
-                        'destination_name'     => $order->receiver_name,
-                        'destination_phone'    => $order->receiver_phone,
-                        'destination_address'  => $order->receiver_address,
-                        'destination_lat'      => (float) $receiverLat,
-                        'destination_long'     => (float) $receiverLng,
-                        'origin_name'          => $order->sender_name,
-                        'origin_phone'         => $order->sender_phone,
-                        'origin_address'       => $order->sender_address,
-                        'origin_lat'           => (float) $senderLat,
-                        'origin_long'          => (float) $senderLng,
-                        'shipping_price'       => (int) $order->shipping_cost,
+                    'vehicle' => 'motor',
+                    'order_prefix' => $apiBookingCode,
+                    'schedule' => $scheduleTime,
+                    'packages' => [[
+                        'destination_name' => $order->receiver_name,
+                        'destination_phone' => $order->receiver_phone,
+                        'destination_address' => $order->receiver_address,
+                        'destination_lat' => (float) ($request->input('receiver_lat') ?? $order->receiver_lat ?? -7.3275223),
+                        'destination_long' => (float) ($request->input('receiver_lng') ?? $order->receiver_lng ?? 112.6867899),
+                        'origin_name' => $order->sender_name,
+                        'origin_phone' => $order->sender_phone,
+                        'origin_address' => $order->sender_address,
+                        'origin_lat' => (float) ($request->input('sender_lat') ?? $order->sender_lat ?? -7.4422788),
+                        'origin_long' => (float) ($request->input('sender_long') ?? $order->sender_lng ?? 111.3869462),
+                        'shipping_price' => (int) $order->shipping_cost,
                         'item' => [
-                            'name'        => $order->item_description,
-                            'description' => 'Obat RSUD ' . $order->kode_booking,
-                            'price'       => (int) $order->item_price,
-                            'weight'      => (int) $order->weight,
-                        ],
-                    ]],
+                            'name' => $order->item_description,
+                            'description' => 'Obat RSUD ' . $apiBookingCode,
+                            'price' => (int) $order->item_price,
+                            'weight' => (int) $order->weight,
+                        ]
+                    ]]
                 ];
                 $response = $kirimaja->createInstantOrder($payload);
-
             } else {
-                // ---- REGULAR / EXPRESS / CARGO ----
                 $scheduleResponse = $kirimaja->getSchedules();
-                $scheduleClock    = $scheduleResponse['clock'] ?? now()->format('Y-m-d H:i:s');
+                $scheduleClock = $scheduleResponse['clock'] ?? $scheduleTime;
 
                 $category = ($order->service_type === 'cargo') ? 'trucking' : 'regular';
 
-                $weightInput    = (int) ($order->weight  ?? 1000);
-                $lengthInput    = (int) ($order->length  ?? 10);
-                $widthInput     = (int) ($order->width   ?? 10);
-                $heightInput    = (int) ($order->height  ?? 10);
-
-                // Cek apakah COD
-                $codValue = 0;
-                if (in_array(strtoupper($order->payment_method), ['COD', 'CODBARANG'])) {
-                    $codValue = (int) $order->total_price;
-                }
-
-                $payload  = [
-                    'address'        => $order->sender_address,
-                    'phone'          => $order->sender_phone,
-                    'name'           => $order->sender_name,
-                    'kecamatan_id'   => (int) $order->sender_district_id,
-                    'kelurahan_id'   => (int) $order->sender_subdistrict_id,
-                    'zipcode'        => $order->sender_postal_code ?? '63218',
-                    'schedule'       => $scheduleClock,
-                    'platform_name'  => 'tokosancaka.com',
-                    'category'       => $category,
-                    'latitude'       => $senderLat  ? (float) $senderLat  : null,
-                    'longitude'      => $senderLng  ? (float) $senderLng  : null,
-                    'packages'       => [[
-                        'order_id'                  => $order->kode_booking,
-                        'item_name'                 => $order->item_description,
-                        'package_type_id'           => (int) ($order->item_type ?? 9),
-                        'destination_name'          => $order->receiver_name,
-                        'destination_phone'         => $order->receiver_phone,
-                        'destination_address'       => $order->receiver_address,
-                        'destination_kecamatan_id'  => (int) $order->receiver_district_id,
-                        'destination_kelurahan_id'  => (int) $order->receiver_subdistrict_id,
-                        'destination_zipcode'       => $order->receiver_postal_code ?? '00000',
-                        'weight'                    => $weightInput,
-                        'width'                     => $widthInput,
-                        'height'                    => $heightInput,
-                        'length'                    => $lengthInput,
-                        'item_value'                => (int) $order->item_price,
-                        'insurance_amount'          => (int) $order->insurance_cost,
-                        'cod'                       => $codValue,
-                        'service'                   => $courier,
-                        'service_type'              => $service_type,
-                        'shipping_cost'             => (int) $order->shipping_cost,
-                    ]],
+                $payload = [
+                    'address' => $order->sender_address,
+                    'phone' => $order->sender_phone,
+                    'name' => $order->sender_name,
+                    'kecamatan_id' => (int) $order->sender_district_id,
+                    'kelurahan_id' => (int) $order->sender_subdistrict_id,
+                    'zipcode' => $order->sender_postal_code ?? '63218',
+                    'schedule' => $scheduleClock,
+                    'platform_name' => 'tokosancaka.com',
+                    'category' => $category,
+                    'latitude' => (float) ($order->sender_lat ?? -7.4422788),
+                    'longitude' => (float) ($order->sender_lng ?? 111.3869462),
+                    'packages' => [[
+                        'order_id' => $apiBookingCode,
+                        'item_name' => $order->item_description,
+                        'package_type_id' => (int) ($order->item_type ?? 9),
+                        'destination_name' => $order->receiver_name,
+                        'destination_phone' => $order->receiver_phone,
+                        'destination_address' => $order->receiver_address,
+                        'destination_kecamatan_id' => (int) $order->receiver_district_id,
+                        'destination_kelurahan_id' => (int) $order->receiver_subdistrict_id,
+                        'destination_zipcode' => $order->receiver_postal_code ?? '60222',
+                        'weight' => (int) $order->weight,
+                        'width' => (int) ($order->width ?? 10),
+                        'height' => (int) ($order->height ?? 10),
+                        'length' => (int) ($order->length ?? 10),
+                        'item_value' => (int) $order->item_price,
+                        'insurance_amount' => (int) $order->insurance_cost,
+                        'cod' => in_array(strtoupper($order->payment_method), ['COD', 'CODBARANG']) ? (int) $order->total_price : 0,
+                        'service' => $courier,
+                        'service_type' => $service_type,
+                        'shipping_cost' => (int) $order->shipping_cost
+                    ]]
                 ];
                 $response = $kirimaja->createExpressOrder($payload);
             }
 
-            Log::info('RSUD Payload KiriminAja:', [
-                'kode_booking' => $order->kode_booking,
-                'response'     => $response,
-            ]);
-
             if (($response['status'] ?? false) === true) {
-                $resi              = $response['result']['awb_no']
-                                  ?? ($response['results'][0]['awb'] ?? null);
-                $order->resi       = $resi;
+                $order->resi = $response['result']['awb_no'] ?? ($response['results'][0]['awb'] ?? null);
                 $order->status_racik = 'Diserahkan ke Kurir';
                 $order->save();
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Berhasil payload ke Ekspedisi! Resi: ' . $resi,
-                    'resi'    => $resi,
+                    'message' => 'Berhasil payload ke Ekspedisi!',
+                    'resi' => $order->resi
                 ]);
             }
 
-            $errorText = $response['text']
-                      ?? ($response['errors'][0]['text'] ?? 'Gagal membuat order ekspedisi.');
-
-            return response()->json(['success' => false, 'message' => 'API Error: ' . $errorText]);
-
-        } catch (Exception $e) {
-            Log::error('RSUD adminPayloadKiriminAja Exception: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Exception: ' . $e->getMessage(),
-            ], 500);
+                'message' => 'API Error: ' . ($response['text'] ?? 'Gagal membuat order.')
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json(['success' => false, 'message' => 'System Error: ' . $e->getMessage()], 500);
         }
     }
 
