@@ -1035,7 +1035,7 @@
                                 $('#weight').val('1000').addClass('is-valid');
                                 $('#length').val('10'); $('#width').val('10'); $('#height').val('10');
                                 if (!$('#item_price').val()) {
-                                    $('#item_price').val('50000').trigger('input').addClass('is-valid');
+                                    $('#item_price').val('1000').trigger('input').addClass('is-valid');
                                 }
                                 updateTotalSummary();
 
