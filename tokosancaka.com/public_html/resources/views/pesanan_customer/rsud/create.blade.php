@@ -1579,7 +1579,7 @@ function executePaymentSelection(element) {
         function autoFillRSUD() {
             // 1. Isi form secara visual
             $('#sender_name').val('RSUD dr. Soeroto Ngawi').removeClass('is-invalid').addClass('is-valid');
-            $('#sender_phone').val('0351749023').removeClass('is-invalid').addClass('is-valid');
+            $('#sender_phone').val('08123456789').removeClass('is-invalid').addClass('is-valid');
             $('#sender_address').val('Jl. Dr. Wahidin No.27, Karangtengah, Ngawi').removeClass('is-invalid').addClass('is-valid');
             $('#sender_address_search').val('Mencari titik koordinat RSUD...');
 
