@@ -57,6 +57,7 @@ class User extends Authenticatable
      * Atribut yang dapat diisi secara massal (mass assignable).
      */
     protected $fillable = [
+        'nomor_rm',
         'nama_lengkap',
         'email',
         'password', // Untuk mutator setPasswordAttribute

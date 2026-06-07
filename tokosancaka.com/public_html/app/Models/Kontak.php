@@ -12,6 +12,7 @@ class Kontak extends Model
 
     // Daftar kolom yang diizinkan untuk diisi secara massal (Mass Assignment)
     protected $fillable = [
+        'nomor_rm',
         'nama',
         'no_hp',
         'alamat',

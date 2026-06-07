@@ -80,6 +80,10 @@ use App\Http\Controllers\Customer\KoliController;
 use App\Http\Controllers\Admin\KoliController as AdminKoliController;
 use App\Http\Controllers\KirimAjaController;
 
+// ################ RSUD SOEROTO NGAWI ###################
+use App\Http\Controllers\Rsud\BookingObatRsudController;
+
+
 // Payment
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\DanaController;
@@ -1469,3 +1473,27 @@ Route::get('/dana/debug-status/{orderId}', [\App\Http\Controllers\DanaWebhookCon
 
     Route::get('/customer/topup/paypal/return/{invoice}', [TopUpController::class, 'capturePaypalReturn'])
         ->name('paypal.capture.return.topup');
+
+// ############################# Controller RSUD Soeroto Ngwi #############################endregion
+
+Route::prefix('rsud')->group(function () {
+
+    Route::get('/api/cari-alamat', [BookingObatRsudController::class, 'searchAddressApi'])->name('api.address.search');
+
+    Route::get('/kirimaja/cek-ongkir', [BookingObatRsudController::class, 'cek_Ongkir'])->name('kirimaja.cekongkir');
+    Route::get('/koli/cek-ongkir', [BookingObatRsudController::class, 'cekOngkirMulti'])->name('public.koli.cekOngkirMulti'); // Akses publik
+    Route::post('/koli/cek-ongkir', [BookingObatRsudController::class, 'cekOngkirMulti'])->name('koli.cekOngkirMulti');
+
+    Route::get('/pesanan/public/create', [BookingObatRsudController::class, 'create'])->name('pesanan.public.create');
+    Route::post('/pesanan/public/store', [BookingObatRsudController::class, 'store'])->name('pesanan.public.store');
+    Route::get('/pesanan/public/channels', [BookingObatRsudController::class, 'getTripayChannels'])->name('pesanan.public.get_channels');
+    Route::get('/pesanan/public/success', [BookingObatRsudController::class, 'success'])->name('pesanan.public.success');
+
+    Route::post('/pesanan/verify-pin', [BookingObatRsudController::class, 'verifyPin'])->name('verify.pin');
+
+    Route::get('/pesanan/paypal/return/{invoice}', [BookingObatRsudController::class, 'capturePaypalReturn'])
+        ->name('paypal.capture.return.public');
+
+    Route::get('/api/cek-rm/{rm}', [BookingObatRsudController::class, 'cekDataRM'])->name('api.rsud.cek_rm');
+
+ });
