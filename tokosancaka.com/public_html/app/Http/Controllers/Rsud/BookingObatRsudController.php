@@ -618,149 +618,264 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
         }
     } */
 
-       public function store(Request $request)
-    {
-        \Illuminate\Support\Facades\DB::beginTransaction();
-        try {
-            $validatedData = $this->_validateOrderRequest($request);
+      public function store(Request $request)
+{
+    \Illuminate\Support\Facades\DB::beginTransaction();
+    try {
+        // 1. Validasi
+        $validatedData = $this->_validateOrderRequest($request);
 
-            do {
-                $kodeBooking = 'RSUD-' . date('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6));
-            } while (\App\Models\RsudOrderObat::where('kode_booking', $kodeBooking)->exists());
+        // 2. Generate Kode Booking unik
+        do {
+            $kodeBooking = 'RSUD-' . date('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(6));
+        } while (\App\Models\RsudOrderObat::where('kode_booking', $kodeBooking)->exists());
 
-            $calculation = $this->_calculateTotalPaid($validatedData);
+        // 3. Kalkulasi biaya dari string expedition
+        $calculation       = $this->_calculateTotalPaid($validatedData);
+        $total_paid_ongkir = $calculation['total_paid_ongkir'];
+        $cod_value         = $calculation['cod_value'];
+        $shipping_cost     = $calculation['shipping_cost'];
+        $insurance_cost    = ($validatedData['ansuransi'] == 'iya') ? $calculation['ansuransi_fee'] : 0;
+        $cod_fee           = $calculation['cod_fee'];
+        $total_price       = ($cod_value > 0) ? $cod_value : $total_paid_ongkir;
 
-            $total_paid_ongkir = $calculation['total_paid_ongkir'];
-            $cod_value = $calculation['cod_value'];
-            $shipping_cost = $calculation['shipping_cost'];
-            $insurance_cost = ($validatedData['ansuransi'] == 'iya') ? $calculation['ansuransi_fee'] : 0;
-            $cod_fee = $calculation['cod_fee'];
-            $total_price = ($cod_value > 0) ? $cod_value : $total_paid_ongkir;
+        $paymentMethodRaw = strtoupper(trim($validatedData['payment_method']));
 
-            $paymentMethodRaw = strtoupper($validatedData['payment_method']);
+        // 4. Simpan ke tabel rsud_order_obat (TAHAN DULU, BELUM KE KIRIMIN AJA)
+        $orderObat = \App\Models\RsudOrderObat::create([
+            // Identitas
+            'kode_booking'            => $kodeBooking,
+            'nomor_rm'                => $request->input('nomor_rm'),
 
-            $orderObat = \App\Models\RsudOrderObat::create([
-                'kode_booking' => $kodeBooking,
-                'nomor_rm' => $request->input('nomor_rm'),
-                'sender_name' => $validatedData['sender_name'],
-                'sender_phone' => $validatedData['sender_phone'],
-                'sender_address' => $validatedData['sender_address'],
-                'sender_district_id' => $validatedData['sender_district_id'],
-                'sender_subdistrict_id' => $validatedData['sender_subdistrict_id'],
-                'receiver_name' => $validatedData['receiver_name'],
-                'receiver_phone' => $validatedData['receiver_phone'],
-                'receiver_address' => $validatedData['receiver_address'],
-                'receiver_district_id' => $validatedData['receiver_district_id'],
-                'receiver_subdistrict_id' => $validatedData['receiver_subdistrict_id'],
-                'item_description' => $validatedData['item_description'],
-                'weight' => $validatedData['weight'],
-                'item_price' => $validatedData['item_price'],
-                'shipping_cost' => $shipping_cost,
-                'insurance_cost' => $insurance_cost,
-                'cod_fee' => $cod_fee,
-                'total_price' => $total_price,
-                'expedition' => $validatedData['expedition'],
-                'service_type' => $validatedData['service_type'],
-                'payment_method' => $validatedData['payment_method'],
-                'payment_status' => in_array($paymentMethodRaw, ['COD', 'CODBARANG', 'CASH']) ? 'Lunas / COD' : 'Menunggu Pembayaran',
-                'status_racik' => 'Menunggu Diramu',
-            ]);
+            // Pengirim
+            'sender_name'             => $validatedData['sender_name'],
+            'sender_phone'            => $validatedData['sender_phone'],
+            'sender_address'          => $validatedData['sender_address'],
+            'sender_province'         => $validatedData['sender_province']    ?? null,
+            'sender_regency'          => $validatedData['sender_regency']     ?? null,
+            'sender_district'         => $validatedData['sender_district']    ?? null,
+            'sender_village'          => $validatedData['sender_village']     ?? null,
+            'sender_postal_code'      => $validatedData['sender_postal_code'] ?? null,
+            'sender_district_id'      => $validatedData['sender_district_id'],
+            'sender_subdistrict_id'   => $validatedData['sender_subdistrict_id'],
+            'sender_lat'              => $request->input('sender_lat'),
+            'sender_lng'              => $request->input('sender_lng'),
 
-            $paymentUrl = null;
+            // Penerima
+            'receiver_name'           => $validatedData['receiver_name'],
+            'receiver_phone'          => $validatedData['receiver_phone'],
+            'receiver_address'        => $validatedData['receiver_address'],
+            'receiver_province'       => $validatedData['receiver_province']    ?? null,
+            'receiver_regency'        => $validatedData['receiver_regency']     ?? null,
+            'receiver_district'       => $validatedData['receiver_district']    ?? null,
+            'receiver_village'        => $validatedData['receiver_village']     ?? null,
+            'receiver_postal_code'    => $validatedData['receiver_postal_code'] ?? null,
+            'receiver_district_id'    => $validatedData['receiver_district_id'],
+            'receiver_subdistrict_id' => $validatedData['receiver_subdistrict_id'],
+            'receiver_lat'            => $request->input('receiver_lat'),
+            'receiver_lng'            => $request->input('receiver_lng'),
 
-            if (!in_array($paymentMethodRaw, ['COD', 'CODBARANG', 'CASH'])) {
-                if ($paymentMethodRaw === 'POTONG SALDO') {
+            // Detail Paket
+            'item_description'        => $validatedData['item_description'],
+            'item_type'               => $validatedData['item_type'],
+            'weight'                  => $validatedData['weight'],
+            'length'                  => $request->input('length'),
+            'width'                   => $request->input('width'),
+            'height'                  => $request->input('height'),
+            'item_price'              => $validatedData['item_price'],
+
+            // Biaya
+            'shipping_cost'           => $shipping_cost,
+            'insurance_cost'          => $insurance_cost,
+            'cod_fee'                 => $cod_fee,
+            'total_price'             => $total_price,
+
+            // Ekspedisi
+            'expedition'              => $validatedData['expedition'],
+            'service_type'            => $validatedData['service_type'],
+
+            // Pembayaran — default belum lunas kecuali COD/cash
+            'payment_method'          => $validatedData['payment_method'],
+            'payment_status'          => in_array($paymentMethodRaw, ['COD', 'CODBARANG', 'CASH'])
+                                         ? 'Lunas / COD'
+                                         : 'Menunggu Pembayaran',
+
+            // Status apotek
+            'status_racik'            => 'Menunggu Diramu',
+        ]);
+
+        // 5. Proses pembayaran (payment gateway / potong saldo)
+        $paymentUrl = null;
+
+        if (!in_array($paymentMethodRaw, ['COD', 'CODBARANG', 'CASH'])) {
+
+            if ($paymentMethodRaw === 'POTONG SALDO') {
+                // -------------------------------------------------------
+                if (!\Illuminate\Support\Facades\Auth::check()) {
+                    throw new \Exception('Silakan login untuk menggunakan Saldo.');
+                }
+                $user = \App\Models\User::where('id_pengguna', \Illuminate\Support\Facades\Auth::id())
+                                        ->lockForUpdate()->first();
+                if ($user->saldo < $total_price) {
+                    throw new \Exception('Saldo Sancaka Anda tidak mencukupi.');
+                }
+                $user->saldo -= $total_price;
+                $user->save();
+
+                $orderObat->payment_method = 'Potong Saldo';
+                $orderObat->payment_status = 'Lunas';
+                $orderObat->save();
+
+            } else {
+                // -------------------------------------------------------
+                // Payment gateway: Tripay, DOKU, Midtrans, DANA, PayPal
+                $customerData = [
+                    'name'  => $validatedData['receiver_name'],
+                    'email' => $request->input('customer_email', 'guest' . time() . '@tokosancaka.com'),
+                    'phone' => $validatedData['receiver_phone'],
+                ];
+
+                // Tentukan gateway
+                $paymentGateway = 'tripay'; // default
+                if ($paymentMethodRaw === 'DOKU_JOKUL')                            $paymentGateway = 'doku';
+                elseif ($paymentMethodRaw === 'MIDTRANS')                           $paymentGateway = 'midtrans';
+                elseif ($paymentMethodRaw === 'PAYPAL')                             $paymentGateway = 'paypal';
+                elseif ($paymentMethodRaw === 'DANA_BINDING')                       $paymentGateway = 'dana_binding';
+                elseif (in_array($paymentMethodRaw, ['DANA', 'NETWORK_PAY_PG_DANA'])) $paymentGateway = 'dana_direct';
+
+                $orderItemsPayload = $this->_prepareOrderItemsPayload(
+                    $shipping_cost, $insurance_cost, $validatedData['ansuransi']
+                );
+
+                // -------------------------------------------------------
+                // PENTING: Semua gateway di bawah ini memakai
+                //   $orderObat->kode_booking  sebagai invoice reference
+                //   $total_paid_ongkir        sebagai jumlah tagihan
+                // -------------------------------------------------------
+
+                if ($paymentGateway === 'dana_binding') {
                     if (!\Illuminate\Support\Facades\Auth::check()) {
-                        throw new \Exception('Silakan login untuk menggunakan Saldo.');
+                        throw new \Exception('Silakan login untuk DANA Auto-Debit.');
                     }
-                    $user = \App\Models\User::where('id_pengguna', \Illuminate\Support\Facades\Auth::id())->lockForUpdate()->first();
-                    if ($user->saldo < $total_price) {
-                        throw new \Exception('Saldo Sancaka Anda tidak mencukupi.');
+                    $user = \Illuminate\Support\Facades\Auth::user();
+                    if (empty($user->dana_access_token)) {
+                        throw new \Exception('Token DANA tidak ditemukan. Hubungkan ulang akun DANA Anda.');
                     }
-                    $user->saldo -= $total_price;
-                    $user->save();
-                    
-                    $validatedData['payment_method'] = 'cash';
-                    $orderObat->payment_method = 'Potong Saldo';
-                    $orderObat->payment_status = 'Lunas';
-                    $orderObat->save();
+                    // Buat objek anonim agar kompatibel dengan helper yang butuh ->nomor_invoice
+                    $fakeOrder = $this->_wrapAsInvoiceObject($orderObat);
+                    $paymentUrl = $this->createPaymentDanaBindingPublic($fakeOrder, $total_paid_ongkir, $user);
+                    if (empty($paymentUrl)) throw new \Exception('Gagal DANA Auto-Debit.');
+
+                } elseif ($paymentGateway === 'doku') {
+                    $dokuService = new \App\Services\DokuJokulService();
+                    $paymentUrl  = $dokuService->createPayment(
+                        $orderObat->kode_booking, $total_paid_ongkir, $customerData, $orderItemsPayload
+                    );
+                    if (empty($paymentUrl)) throw new \Exception('Gagal DOKU.');
+
+                } elseif ($paymentGateway === 'midtrans') {
+                    $fakeOrder  = $this->_wrapAsInvoiceObject($orderObat);
+                    $paymentUrl = $this->createPaymentMidtransSnapPublic($fakeOrder, $total_paid_ongkir, $customerData);
+                    if (empty($paymentUrl)) throw new \Exception('Gagal Midtrans.');
+
+                } elseif ($paymentGateway === 'dana_direct') {
+                    $fakeOrder  = $this->_wrapAsInvoiceObject($orderObat);
+                    $paymentUrl = $this->createPaymentDanaPublic($fakeOrder, $total_paid_ongkir, $customerData);
+                    if (empty($paymentUrl)) throw new \Exception('Gagal DANA.');
+
+                } elseif ($paymentGateway === 'paypal') {
+                    $fakeOrder  = $this->_wrapAsInvoiceObject($orderObat);
+                    $paymentUrl = $this->createPaymentPayPalPublic($fakeOrder, $total_paid_ongkir);
+                    if (empty($paymentUrl)) throw new \Exception('Gagal PayPal.');
+
                 } else {
-                    $customerData = [
-                        'name'  => $validatedData['receiver_name'],
-                        'email' => $request->input('customer_email', 'guest' . time() . '@tokosancaka.com'),
-                        'phone' => $validatedData['receiver_phone']
-                    ];
-
-                    $paymentGateway = 'tripay';
-                    if ($paymentMethodRaw === 'DOKU_JOKUL') $paymentGateway = 'doku';
-                    elseif ($paymentMethodRaw === 'MIDTRANS') $paymentGateway = 'midtrans';
-                    elseif ($paymentMethodRaw === 'PAYPAL') $paymentGateway = 'paypal';
-                    elseif ($paymentMethodRaw === 'DANA_BINDING') $paymentGateway = 'dana_binding';
-                    elseif (in_array($paymentMethodRaw, ['DANA', 'NETWORK_PAY_PG_DANA'])) $paymentGateway = 'dana_direct';
-
-                    $orderItemsPayload = $this->_prepareOrderItemsPayload($shipping_cost, $insurance_cost, $validatedData['ansuransi']);
-
-                    if ($paymentGateway === 'dana_binding') {
-                        if (!\Illuminate\Support\Facades\Auth::check()) throw new \Exception('Silakan login untuk menggunakan DANA Auto-Debit.');
-                        $user = \Illuminate\Support\Facades\Auth::user();
-                        if (empty($user->dana_access_token)) throw new \Exception('Akses token DANA tidak ditemukan.');
-                        $paymentUrl = $this->createPaymentDanaBindingPublic($orderObat, $total_paid_ongkir, $user);
-                        if (empty($paymentUrl)) throw new \Exception('Gagal melakukan penarikan DANA Auto-Debit.');
-                    } elseif ($paymentGateway === 'doku') {
-                        $dokuService = new \App\Services\DokuJokulService();
-                        $paymentUrl = $dokuService->createPayment($orderObat->kode_booking, $total_paid_ongkir, $customerData, $orderItemsPayload);
-                        if (empty($paymentUrl)) throw new \Exception('Gagal membuat transaksi pembayaran DOKU.');
-                    } elseif ($paymentGateway === 'midtrans') {
-                        $paymentUrl = $this->createPaymentMidtransSnapPublic($orderObat, $total_paid_ongkir, $customerData);
-                        if (empty($paymentUrl)) throw new \Exception('Gagal membuat transaksi pembayaran Midtrans.');
-                    } elseif ($paymentGateway === 'dana_direct') {
-                        $paymentUrl = $this->createPaymentDanaPublic($orderObat, $total_paid_ongkir, $customerData);
-                        if (empty($paymentUrl)) throw new \Exception('Gagal membuat transaksi pembayaran DANA.');
-                    } elseif ($paymentGateway === 'paypal') {
-                        $paymentUrl = $this->createPaymentPayPalPublic($orderObat, $total_paid_ongkir);
-                        if (empty($paymentUrl)) throw new \Exception('Gagal membuat transaksi pembayaran PayPal.');
-                    } else {
-                        $tripayResponse = $this->_createTripayTransactionInternal($validatedData, $orderObat, $total_paid_ongkir, $orderItemsPayload);
-                        if (empty($tripayResponse['success'])) throw new \Exception('Gagal transaksi Tripay. ' . ($tripayResponse['message'] ?? ''));
-                        $paymentUrl = $tripayResponse['data']['checkout_url'] ?? null;
+                    // Default: Tripay
+                    // _createTripayTransactionInternal() butuh array $data dengan key 'payment_method' dll
+                    // dan object dengan property ->nomor_invoice
+                    $fakeOrder    = $this->_wrapAsInvoiceObject($orderObat);
+                    $tripayResult = $this->_createTripayTransactionInternal(
+                        $validatedData, $fakeOrder, $total_paid_ongkir, $orderItemsPayload
+                    );
+                    if (empty($tripayResult['success'])) {
+                        throw new \Exception('Gagal Tripay: ' . ($tripayResult['message'] ?? ''));
                     }
-                    $orderObat->payment_url = $paymentUrl;
-                    $orderObat->save();
+                    $paymentUrl = $tripayResult['data']['checkout_url'] ?? null;
                 }
+
+                $orderObat->payment_url = $paymentUrl;
+                $orderObat->save();
             }
-
-            \Illuminate\Support\Facades\DB::commit();
-
-            $this->_sendWhatsappNotification($orderObat, $validatedData, $shipping_cost, $insurance_cost, $cod_fee, $total_price, $request);
-
-            try {
-                $admins = \App\Models\User::where('role', 'admin')->get();
-                if ($admins->isNotEmpty()) {
-                    $adminUrl = route('admin.rsud.index');
-                    $dataNotifAdmin = [
-                        'tipe'        => 'Pesanan',
-                        'judul'       => 'Pesanan Publik RSUD Baru!',
-                        'pesan_utama' => ($validatedData['sender_name'] ?? 'Pelanggan publik') . ' membuat pesanan ' . $orderObat->kode_booking,
-                        'url'         => $adminUrl,
-                        'icon'        => 'fas fa-globe-asia',
-                    ];
-                    \Illuminate\Support\Facades\Notification::send($admins, new \App\Notifications\NotifikasiUmum($dataNotifAdmin));
-                }
-            } catch (\Exception $e) {}
-
-            if ($paymentUrl) {
-                return redirect()->away($paymentUrl);
-            }
-            return redirect()->route('pesanan.public.success')->with('order', $orderObat);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
-            return redirect()->back()->withErrors($e->errors())->withInput();
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
-            return redirect()->back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage())->withInput();
         }
+
+        \Illuminate\Support\Facades\DB::commit();
+
+        // 6. Kirim notifikasi WhatsApp (setelah commit agar tidak rollback)
+        $this->_sendWhatsappNotification(
+            $orderObat, $validatedData,
+            $shipping_cost, $insurance_cost, $cod_fee, $total_price,
+            $request
+        );
+
+        // 7. Notifikasi ke admin via database notification
+        try {
+            $admins = \App\Models\User::where('role', 'admin')->get();
+            if ($admins->isNotEmpty()) {
+                \Illuminate\Support\Facades\Notification::send($admins, new \App\Notifications\NotifikasiUmum([
+                    'tipe'        => 'Pesanan',
+                    'judul'       => 'Booking Obat RSUD Baru!',
+                    'pesan_utama' => ($validatedData['receiver_name'] ?? 'Pasien') . ' - ' . $kodeBooking,
+                    'url'         => route('admin.rsud.index'),
+                    'icon'        => 'fas fa-pills',
+                ]));
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Notif admin RSUD gagal: ' . $e->getMessage());
+        }
+
+        // 8. Redirect
+        if ($paymentUrl) {
+            return redirect()->away($paymentUrl);
+        }
+
+        return redirect()
+            ->route('pesanan.public.success')
+            ->with('order', $orderObat);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        \Illuminate\Support\Facades\DB::rollBack();
+        return redirect()->back()->withErrors($e->errors())->withInput();
+
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\DB::rollBack();
+        \Illuminate\Support\Facades\Log::error('RSUD Store Error: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString(),
+        ]);
+        return redirect()->back()
+            ->with('error', 'Terjadi kesalahan: ' . $e->getMessage())
+            ->withInput();
     }
+}
+
+/**
+ * Helper: Bungkus $orderObat agar punya property ->nomor_invoice
+ * yang dibutuhkan oleh helper payment gateway lama (Tripay, Midtrans, dll).
+ * Ini solusi tanpa harus refactor semua helper gateway.
+ */
+private function _wrapAsInvoiceObject(\App\Models\RsudOrderObat $orderObat): object
+{
+    // Clone sebagai stdClass dengan properti tambahan
+    $fake                  = new \stdClass();
+    $fake->nomor_invoice   = $orderObat->kode_booking; // alias agar kompatibel
+    $fake->kode_booking    = $orderObat->kode_booking;
+    $fake->id              = $orderObat->id;
+    $fake->sender_name     = $orderObat->sender_name;
+    $fake->sender_phone    = $orderObat->sender_phone;
+    $fake->receiver_name   = $orderObat->receiver_name;
+    $fake->receiver_phone  = $orderObat->receiver_phone;
+    $fake->total_price     = $orderObat->total_price;
+    return $fake;
+}
+
 
     /**
      * =========================================================================

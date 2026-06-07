@@ -1498,6 +1498,10 @@ Route::prefix('rsud')->group(function () {
 
     Route::get('/api/cek-rm/{rm}', [BookingObatRsudController::class, 'cekDataRM'])->name('api.rsud.cek_rm');
 
+     Route::get('/api/kontak/search',
+        [BookingObatRsudController::class, 'searchKontak'])
+        ->name('api.search.kontak');
+
  });
 
 
