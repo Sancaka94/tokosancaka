@@ -1528,17 +1528,35 @@ function executePaymentSelection(element) {
         // EFEK DEMO: AUTO-FILL PENGIRIM RSUD SOEROTO & ENTER OTOMATIS
         // =========================================================
         function autoFillRSUD() {
-            // 1. Isi form secara visual dan langsung KUNCI (Readonly) agar data tetap terkirim
-            $('#sender_name').val('RSUD dr. Soeroto Ngawi').removeClass('is-invalid').addClass('is-valid').prop('readonly', true);
-            $('#sender_phone').val('0351749023').removeClass('is-invalid').addClass('is-valid').prop('readonly', true);
-            $('#sender_address').val('Jl. Dr. Wahidin No.27, Karangtengah, Ngawi').removeClass('is-invalid').addClass('is-valid').prop('readonly', true);
-            
-            // Kunci juga checkbox "Simpan ke buku alamat" karena RSUD tidak perlu disimpan pasien
-            $('#save_sender').prop('disabled', true);
+            // 1. Isi form secara visual
+            $('#sender_name').val('RSUD dr. Soeroto Ngawi').removeClass('is-invalid').addClass('is-valid');
+            $('#sender_phone').val('0351749023').removeClass('is-invalid').addClass('is-valid');
+            $('#sender_address').val('Jl. Dr. Wahidin No.27, Karangtengah, Ngawi').removeClass('is-invalid').addClass('is-valid');
+            $('#sender_address_search').val('Mencari titik koordinat RSUD...');
 
-            // 2. Efek simulasi mengetik di pencarian alamat
-            let searchBox = $('#sender_address_search');
-            searchBox.val('Mencari titik koordinat RSUD...').prop('disabled', true);
+            // =========================================================
+            // 2. KUNCI TOTAL FORM PENGIRIM (Visual & Interaksi Dimatikan)
+            // =========================================================
+            // Jadikan semua input "readonly" (agar bisa disubmit), lalu ubah warna
+            // jadi abu-abu dan matikan interaksi kursor dengan 'pointer-events: none'
+            $('#card-pengirim .form-control').prop('readonly', true).css({
+                'background-color': '#e9ecef', // Warna abu-abu ala bootstrap disabled
+                'pointer-events': 'none',      // Blokir total klik/kursor jari maupun teks
+                'color': '#495057'             // Gelapkan warna teks
+            });
+            
+            // Ubah juga icon di sebelah kiri input agar ikut abu-abu dan menyatu
+            $('#card-pengirim .input-group-text').css({
+                'background-color': '#e9ecef',
+                'color': '#6c757d'
+            });
+            
+            // Kunci spesifik checkbox dan kolom pencarian dengan atribut 'disabled' penuh
+            // (Karena 2 field ini memang tidak dikirim ke Controller Laravel Anda)
+            $('#save_sender').prop('disabled', true);
+            $('#sender_address_search').prop('disabled', true);
+
+            // =========================================================
 
             // 3. Tembak API Alamat untuk mendapatkan ID Ekspedisi KiriminAja
             $.get("{{ route('api.address.search') }}", { search: 'Karangtengah, Ngawi' })
@@ -1559,14 +1577,14 @@ function executePaymentSelection(element) {
                     $('#sender_lat').val(item.lat || '');
                     $('#sender_lng').val(item.lon || '');
 
-                    // Ganti teks pencarian dan biarkan tetap DISABLED (Terkunci)
-                    searchBox.val('📍 Titik RSUD Ditemukan & Terkunci').addClass('is-valid');
+                    // Ubah teks pencarian saat data ditemukan (Tetap dibiarkan terkunci)
+                    $('#sender_address_search').val('📍 Titik RSUD Ditemukan & Terkunci').addClass('is-valid');
                     
                     // 4. ENTER OTOMATIS! (Klik tombol Lanjutkan ke Penerima)
                     setTimeout(() => {
                         $('#nextToPenerima').click();
                         
-                        // Opsional: Berikan notifikasi kecil
+                        // Notifikasi kecil
                         const Toast = Swal.mixin({
                             toast: true,
                             position: 'top-end',
@@ -1582,7 +1600,6 @@ function executePaymentSelection(element) {
                     }, 1000); // Jeda 1 detik agar audiens sempat melihat form terisi
                 }
             });
-            // CATATAN: Blok .always() sengaja dihapus agar form pencarian tidak terbuka kembali (tetap terkunci)
         }
 
         // Panggil fungsi ini tepat setelah halaman selesai dimuat
