@@ -914,7 +914,7 @@ private function _wrapAsInvoiceObject(\App\Models\RsudOrderObat $orderObat): obj
             'customer_email' => $customerEmail,
             'customer_phone' => $data['receiver_phone'],
             'order_items'    => $orderItems,
-            'return_url'     => route('pesanan.public.success'),
+            'return_url'     => route('rsud.booking.success'),
             'expired_time'   => time() + (24 * 60 * 60), // Expired diset 24 Jam agar aman
             'signature'      => hash_hmac('sha256', $merchantCode . $pesanan->nomor_invoice . (int)$total, $privateKey),
         ];
@@ -1187,7 +1187,7 @@ private function _wrapAsInvoiceObject(\App\Models\RsudOrderObat $orderObat): obj
                     'phone'      => $customerData['phone'],
                 ],
                 'callbacks' => [
-                    'finish' => route('pesanan.public.success') // Arahkan ke sukses publik
+                    'finish' => route('rsud.booking.success') // Arahkan ke sukses publik
                 ]
             ];
 
@@ -1556,7 +1556,7 @@ private function _wrapAsInvoiceObject(\App\Models\RsudOrderObat $orderObat): obj
                 }
 
                 // Skenario 2: Instant Success (Auto-Debit Berhasil Seketika)
-                return route('pesanan.public.success', ['invoice' => $pesanan->nomor_invoice, 'status' => 'paid']);
+                return route('rsud.booking.success', ['invoice' => $pesanan->nomor_invoice, 'status' => 'paid']);
             }
 
             Log::error('DANA_BINDING_FAIL (Public)', ['Result' => $result]);
