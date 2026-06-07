@@ -1524,20 +1524,23 @@ function executePaymentSelection(element) {
             }
         });
 
-        // =========================================================
+       // =========================================================
         // EFEK DEMO: AUTO-FILL PENGIRIM RSUD SOEROTO & ENTER OTOMATIS
         // =========================================================
         function autoFillRSUD() {
-            // 1. Isi form secara visual agar audiens melihatnya terisi
-            $('#sender_name').val('RSUD dr. Soeroto Ngawi').removeClass('is-invalid').addClass('is-valid');
-            $('#sender_phone').val('0351749023').removeClass('is-invalid').addClass('is-valid');
-            $('#sender_address').val('Jl. Dr. Wahidin No.27, Karangtengah, Ngawi').removeClass('is-invalid').addClass('is-valid');
+            // 1. Isi form secara visual dan langsung KUNCI (Readonly) agar data tetap terkirim
+            $('#sender_name').val('RSUD dr. Soeroto Ngawi').removeClass('is-invalid').addClass('is-valid').prop('readonly', true);
+            $('#sender_phone').val('0351749023').removeClass('is-invalid').addClass('is-valid').prop('readonly', true);
+            $('#sender_address').val('Jl. Dr. Wahidin No.27, Karangtengah, Ngawi').removeClass('is-invalid').addClass('is-valid').prop('readonly', true);
+            
+            // Kunci juga checkbox "Simpan ke buku alamat" karena RSUD tidak perlu disimpan pasien
+            $('#save_sender').prop('disabled', true);
 
             // 2. Efek simulasi mengetik di pencarian alamat
             let searchBox = $('#sender_address_search');
             searchBox.val('Mencari titik koordinat RSUD...').prop('disabled', true);
 
-            // 3. Tembak API Alamat untuk mendapatkan ID Ekspedisi KiriminAja (agar tidak error saat checkout)
+            // 3. Tembak API Alamat untuk mendapatkan ID Ekspedisi KiriminAja
             $.get("{{ route('api.address.search') }}", { search: 'Karangtengah, Ngawi' })
             .done(function(results) {
                 if (results && results.length > 0) {
@@ -1556,13 +1559,14 @@ function executePaymentSelection(element) {
                     $('#sender_lat').val(item.lat || '');
                     $('#sender_lng').val(item.lon || '');
 
+                    // Ganti teks pencarian dan biarkan tetap DISABLED (Terkunci)
                     searchBox.val('📍 Titik RSUD Ditemukan & Terkunci').addClass('is-valid');
                     
                     // 4. ENTER OTOMATIS! (Klik tombol Lanjutkan ke Penerima)
                     setTimeout(() => {
                         $('#nextToPenerima').click();
                         
-                        // Opsional: Berikan notifikasi kecil agar presentasi makin keren
+                        // Opsional: Berikan notifikasi kecil
                         const Toast = Swal.mixin({
                             toast: true,
                             position: 'top-end',
@@ -1572,15 +1576,13 @@ function executePaymentSelection(element) {
                         });
                         Toast.fire({
                             icon: 'success',
-                            title: 'Data RSUD Otomatis Terhubung'
+                            title: 'Data Pengirim Terkunci & Diteruskan'
                         });
 
                     }, 1000); // Jeda 1 detik agar audiens sempat melihat form terisi
                 }
-            })
-            .always(function() {
-                searchBox.prop('disabled', false);
             });
+            // CATATAN: Blok .always() sengaja dihapus agar form pencarian tidak terbuka kembali (tetap terkunci)
         }
 
         // Panggil fungsi ini tepat setelah halaman selesai dimuat
