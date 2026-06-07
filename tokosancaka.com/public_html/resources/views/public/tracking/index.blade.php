@@ -118,7 +118,8 @@
 if (!function_exists('getTrackingStatusIcon')) {
     function getTrackingStatusIcon($status) {
         $status = strtolower($status ?? '');
-        if (str_contains($status, 'dibuat')) return 'fas fa-box';
+        if (str_contains($status, 'dibuat') || str_contains($status, 'booking')) return 'fas fa-box';
+        if (str_contains($status, 'apotek') || str_contains($status, 'racik') || str_contains($status, 'ramu')) return 'fas fa-mortar-pestle'; // Ikon Apotek
         if (str_contains($status, 'pickup') || str_contains($status, 'jemput')) return 'fas fa-truck-pickup';
         if (str_contains($status, 'tiba') || str_contains($status, 'hub') || str_contains($status, 'origin') || str_contains($status, 'manifest')) return 'fas fa-warehouse';
         if (str_contains($status, 'perjalanan') || str_contains($status, 'kirim') || str_contains($status, 'transit') || str_contains($status, 'shipment')) return 'fas fa-truck-moving';
@@ -135,12 +136,10 @@ if (!function_exists('maskText')) {
         $text = trim($text);
         $length = strlen($text);
 
-        // Jika teks terlalu pendek (misal nama cuma 3 huruf)
         if ($length <= 4) {
             return substr($text, 0, 1) . str_repeat('*', $length - 1);
         }
         
-        // Jika teks lebih pendek dari jumlah karakter yang mau ditampilkan
         if ($length <= ($keepFirst + $keepLast)) {
             $keepFirst = 1;
             $keepLast = 1;
@@ -153,20 +152,9 @@ if (!function_exists('maskText')) {
         return $start . $masked . $end;
     }
 }
-
-if (!function_exists('getTrackingStatusIcon')) {
-    function getTrackingStatusIcon($status) {
-        $status = strtolower($status ?? '');
-        if (str_contains($status, 'dibuat')) return 'fas fa-box';
-        // ... (kode fungsi icon Anda tetap sama) ...
-        if (str_contains($status, 'gagal') || str_contains($status, 'retur')) return 'fas fa-exclamation-triangle';
-        return 'fas fa-circle-info';
-    }
-}
 @endphp
 
 @section('content')
-
 
 <div class="container main-content-padding">
     <div class="row justify-content-center">
@@ -186,8 +174,6 @@ if (!function_exists('getTrackingStatusIcon')) {
                             </button>
                         </div>
                     </form>
-
-
                 </div>
             </div>
 
@@ -198,11 +184,10 @@ if (!function_exists('getTrackingStatusIcon')) {
                 {{-- BLOK 1: TAMPILAN DATA DARI API (KIRIMINAJA) --}}
                 {{-- ========================================== --}}
                 @if (isset($result['summary'], $result['detail']))
+                {{-- KODE VIEW INI SAMA DENGAN MILIK ANDA SEBELUMNYA --}}
                 <div class="card tracking-card">
-                    {{-- HEADER: HANYA RESI & TOMBOL CETAK --}}
                     <div class="card-header tracking-card-header p-3">
                         <div class="row align-items-center gy-2">
-                            {{-- Bagian Kiri: Label Resi --}}
                             <div class="col-12 col-md-auto me-auto">
                                 <div class="d-flex align-items-center flex-wrap gap-2">
                                     <span class="fw-bold text-nowrap">Hasil untuk Resi:</span>
@@ -216,13 +201,9 @@ if (!function_exists('getTrackingStatusIcon')) {
                                     </span>
                                 </div>
                             </div>
-
-                            {{-- Bagian Kanan: Tombol Cetak SAJA (Layanan dipindah) --}}
                             <div class="col-12 col-md-auto">
                                 @if ($result['is_pesanan'] ?? false)
-                                    <a href="{{ route('cetak_thermal', $result['summary']['awb'] ?? $result['resi']) }}"
-                                       target="_blank"
-                                       class="btn btn-sm btn-outline-secondary text-nowrap bg-green-50">
+                                    <a href="{{ route('cetak_thermal', $result['summary']['awb'] ?? $result['resi']) }}" target="_blank" class="btn btn-sm btn-outline-secondary text-nowrap bg-green-50">
                                         <i class="fas fa-print me-1"></i> Cetak Resi
                                     </a>
                                 @endif
@@ -230,9 +211,7 @@ if (!function_exists('getTrackingStatusIcon')) {
                         </div>
                     </div>
 
-                    {{-- BODY CARD --}}
                     <div class="card-body p-4 p-md-5">
-                        {{-- Info Pengirim/Penerima --}}
                         <div class="row mb-4">
                             <div class="col-md-6 mb-3">
                                 <h6 class="fw-bold text-muted mb-2">PENGIRIM</h6>
@@ -247,7 +226,6 @@ if (!function_exists('getTrackingStatusIcon')) {
                         </div>
                         <hr>
 
-                        {{-- Status Terakhir Alert --}}
                         <div class="alert alert-info text-center my-4 shadow-sm border-0">
                             <h5 class="mb-1 fw-bold">Status Terakhir:</h5>
                             <p class="mb-0 fs-5"><strong>{{ $result['status'] ?? 'Dalam Proses' }}</strong></p>
@@ -257,14 +235,12 @@ if (!function_exists('getTrackingStatusIcon')) {
                         </div>
                         <hr class="my-4">
 
-                        {{-- 🔥 POSISI BARU: LAYANAN (DIPINDAH KE SINI) 🔥 --}}
                         <div class="mb-4">
                             <span class="badge bg-info text-dark p-2 fs-6 text-wrap text-start" style="line-height: 1.5;">
                                 <i class="fas fa-truck me-2"></i>Layanan: {{ $result['summary']['service'] ?? '-' }} ({{ $result['summary']['courier'] ?? 'Sancaka' }})
                             </span>
                         </div>
 
-                        {{-- Timeline --}}
                         <h5 class="fw-bold mb-4">Riwayat Perjalanan Paket</h5>
                         <ul class="timeline" id="tracking-timeline-kiriminaja">
                             @if (!empty($result['histories']))
@@ -274,11 +250,9 @@ if (!function_exists('getTrackingStatusIcon')) {
                                         <i class="{{ getTrackingStatusIcon($history->status ?? '') }}"></i>
                                     </div>
                                     <p class="fw-bold mb-0">{{ $history->status ?? '-' }}</p>
-
                                     @if(!empty($history->lokasi))
                                         <p class="mb-1 small text-muted">{{ $history->lokasi }}</p>
                                     @endif
-
                                     <small class="text-muted">
                                         {{ is_a($history->created_at, 'Carbon\Carbon') ? $history->created_at->format('d M Y, H:i') . ' WIB' : $history->created_at }}
                                     </small>
@@ -295,7 +269,7 @@ if (!function_exists('getTrackingStatusIcon')) {
                 </div>
 
                 {{-- ========================================== --}}
-                {{-- BLOK 2: TAMPILAN DATA INTERNAL (MANUAL)    --}}
+                {{-- BLOK 2: TAMPILAN DATA INTERNAL (MANUAL & RSUD) --}}
                 {{-- ========================================== --}}
                 @elseif (isset($result['resi']))
                 <div class="card tracking-card">
@@ -316,9 +290,7 @@ if (!function_exists('getTrackingStatusIcon')) {
                             </div>
                             <div class="col-12 col-md-auto">
                                 @if ($result['is_pesanan'] ?? false)
-                                    <a href="{{ route('cetak_thermal', $result['resi']) }}"
-                                       target="_blank"
-                                       class="btn btn-sm btn-outline-secondary text-nowrap">
+                                    <a href="{{ route('cetak_thermal', $result['resi']) }}" target="_blank" class="btn btn-sm btn-outline-secondary text-nowrap">
                                         <i class="fas fa-print me-1"></i> Cetak Resi
                                     </a>
                                 @endif
@@ -349,7 +321,6 @@ if (!function_exists('getTrackingStatusIcon')) {
                         </div>
                         <hr class="my-4">
 
-                        {{-- 🔥 POSISI BARU: LAYANAN INTERNAL (DIPINDAH KE SINI JUGA) 🔥 --}}
                         @if(!empty($result['jasa_ekspedisi_aktual']))
                         <div class="mb-4">
                             <span class="badge bg-info text-dark p-2 fs-6 text-wrap text-start" style="line-height: 1.5;">
@@ -367,7 +338,6 @@ if (!function_exists('getTrackingStatusIcon')) {
                                         <i class="{{ getTrackingStatusIcon($history->status ?? '') }}"></i>
                                     </div>
                                     <p class="fw-bold mb-0">{{ $history->status ?? '-' }}</p>
-                                    {{-- KODE BARU (Benar: HTML dirender) --}}
                                     <p class="mb-1 small text-muted">
                                         {{ $history->lokasi ?? '' }}
                                         {!! isset($history->keterangan) ? '- ' . $history->keterangan : '' !!}
@@ -398,7 +368,6 @@ if (!function_exists('getTrackingStatusIcon')) {
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-body text-center p-5">
                 <div class="mb-4">
-                    {{-- Ikon Animasi --}}
                     <div class="mx-auto d-flex align-items-center justify-content-center bg-danger bg-opacity-10 rounded-circle" style="width: 80px; height: 80px;">
                         <i class="fas fa-search-minus text-danger fa-3x"></i>
                     </div>
@@ -420,11 +389,9 @@ if (!function_exists('getTrackingStatusIcon')) {
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Animasi Timeline
         const items = document.querySelectorAll('.timeline-item');
         items.forEach((item, index) => { item.style.animationDelay = `${index * 0.1}s`; });
 
-        // Logic Trigger Modal Error
         @if (session('error'))
             var errorModalEl = document.getElementById('errorModal');
             if (errorModalEl) {
@@ -434,24 +401,14 @@ if (!function_exists('getTrackingStatusIcon')) {
         @endif
     });
 
-    // Fungsi untuk Copy Resi
     function copyResi(text, element) {
-        // Gunakan API Clipboard bawaan browser
         navigator.clipboard.writeText(text).then(function() {
-            // Ambil elemen ikon di dalam span yang diklik
             const icon = element.querySelector('i');
-            
-            // Simpan class awal (ikon copy)
             const originalClass = icon.className;
-            
-            // Ubah ikon menjadi centang (sukses)
             icon.className = 'fas fa-check fa-fw text-warning';
-            
-            // Kembalikan ikon ke semula setelah 2 detik
             setTimeout(function() {
                 icon.className = originalClass;
             }, 2000);
-            
         }).catch(function(err) {
             console.error('Gagal menyalin teks: ', err);
             alert('Gagal menyalin resi.');
