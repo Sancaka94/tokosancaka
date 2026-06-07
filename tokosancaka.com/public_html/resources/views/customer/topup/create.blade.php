@@ -103,16 +103,7 @@
                         </div>
                     </div>
 
-                    <div id="dynamic-payment-fields" class="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200 hidden">
-                        <div id="ovo-field" class="hidden">
-                            <label class="block text-sm font-bold mb-2">Nomor OVO (No. HP):</label>
-                            <input type="text" name="ovo_id" class="w-full p-3 border rounded-lg" placeholder="0812xxxxxx">
-                        </div>
-                        <div id="jenius-field" class="hidden">
-                            <label class="block text-sm font-bold mb-2">Cashtag Jenius:</label>
-                            <input type="text" name="jenius_cashtag" class="w-full p-3 border rounded-lg" placeholder="$cashtag">
-                        </div>
-                    </div>
+                
 
                     {{-- 2. PILIH METODE PEMBAYARAN (GRID VIEW) --}}
                     <div class="space-y-8 mt-6">
@@ -146,6 +137,17 @@
                                 </a>
                             </div>
                         @endif
+
+                            <div id="dynamic-payment-fields" class="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200 hidden">
+                        <div id="ovo-field" class="hidden">
+                            <label class="block text-sm font-bold mb-2">Nomor OVO (No. HP):</label>
+                            <input type="text" name="ovo_id" class="w-full p-3 border rounded-lg" placeholder="0812xxxxxx">
+                        </div>
+                        <div id="jenius-field" class="hidden">
+                            <label class="block text-sm font-bold mb-2">Cashtag Jenius:</label>
+                            <input type="text" name="jenius_cashtag" class="w-full p-3 border rounded-lg" placeholder="$cashtag">
+                        </div>
+                    </div>
 
                         {{-- GROUP 1: MANUAL & GATEWAY LAIN --}}
                         <div>
@@ -509,7 +511,7 @@
                 });
             }
         });
-        
+
 
         // Tambahkan di dalam $(document).ready(function() { ... });
         $('input[name="payment_method"]').on('change', function() {
