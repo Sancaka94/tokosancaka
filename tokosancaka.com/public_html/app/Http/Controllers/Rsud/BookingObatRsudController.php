@@ -837,9 +837,8 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             return redirect()->away($paymentUrl);
         }
 
-        return redirect()
-            ->route('pesanan.public.success')
-            ->with('order', $orderObat);
+        return redirect()->route('rsud.booking.success')->with('order', $orderObat);
+
 
     } catch (\Illuminate\Validation\ValidationException $e) {
         \Illuminate\Support\Facades\DB::rollBack();

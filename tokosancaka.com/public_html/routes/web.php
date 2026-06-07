@@ -1478,31 +1478,49 @@ Route::get('/dana/debug-status/{orderId}', [\App\Http\Controllers\DanaWebhookCon
 
 // ############################# Controller RSUD Soeroto Ngwi #############################endregion
 
-Route::prefix('rsud')->group(function () {
+Route::prefix('rsud')->name('rsud.')->group(function () {
 
-    Route::get('/api/cari-alamat', [BookingObatRsudController::class, 'searchAddressApi'])->name('api.address.search');
+    // Pencarian alamat ekspedisi (autocomplete)
+    Route::get('/api/cari-alamat', [BookingObatRsudController::class, 'searchAddressApi'])
+         ->name('api.address.search');
 
-    Route::get('/kirimaja/cek-ongkir', [BookingObatRsudController::class, 'cek_Ongkir'])->name('kirimaja.cekongkir');
-    Route::get('/koli/cek-ongkir', [BookingObatRsudController::class, 'cekOngkirMulti'])->name('public.koli.cekOngkirMulti'); // Akses publik
-    Route::post('/koli/cek-ongkir', [BookingObatRsudController::class, 'cekOngkirMulti'])->name('koli.cekOngkirMulti');
+    // Cek ongkir
+    Route::post('/cek-ongkir', [BookingObatRsudController::class, 'cek_Ongkir'])
+         ->name('cek.ongkir');
 
-    Route::get('/pesanan/public/create', [BookingObatRsudController::class, 'create'])->name('pesanan.public.create');
-    Route::post('/pesanan/public/store', [BookingObatRsudController::class, 'store'])->name('pesanan.public.store');
-    Route::get('/pesanan/public/channels', [BookingObatRsudController::class, 'getTripayChannels'])->name('pesanan.public.get_channels');
-    Route::get('/pesanan/public/success', [BookingObatRsudController::class, 'success'])->name('pesanan.public.success');
+    // Pencarian kontak untuk autocomplete nama/HP (FIX BUG #4)
+    Route::get('/api/kontak/search', [BookingObatRsudController::class, 'searchKontak'])
+         ->name('api.search.kontak');  // <-- dipanggil di blade sebagai route('rsud.api.search.kontak')
+                                       //     ATAU tetap bisa pakai name('api.search.kontak') jika prefix tidak di-chain ke name
 
-    Route::post('/pesanan/verify-pin', [BookingObatRsudController::class, 'verifyPin'])->name('verify.pin');
+    // Form booking
+    Route::get('/pesanan/buat', [BookingObatRsudController::class, 'create'])
+         ->name('pesanan.create');     // rsud.pesanan.create
 
+    // Submit booking
+    Route::post('/pesanan/simpan', [BookingObatRsudController::class, 'store'])
+         ->name('pesanan.store');      // rsud.pesanan.store
+
+    // Halaman sukses / kode booking — NAMA BERBEDA dari route umum
+    Route::get('/pesanan/sukses', [BookingObatRsudController::class, 'success'])
+         ->name('booking.success');    // rsud.booking.success  ← ini yang dipakai di store()
+
+    // Channel pembayaran Tripay
+    Route::get('/pesanan/channels', [BookingObatRsudController::class, 'getTripayChannels'])
+         ->name('pesanan.channels');
+
+    // Verifikasi PIN saldo
+    Route::post('/pesanan/verify-pin', [BookingObatRsudController::class, 'verifyPin'])
+         ->name('pesanan.verify.pin');
+
+    // Cek data pasien berdasarkan Nomor RM
+    Route::get('/api/cek-rm/{rm}', [BookingObatRsudController::class, 'cekDataRM'])
+         ->name('api.cek.rm');         // rsud.api.cek.rm
+
+    // Return URL PayPal
     Route::get('/pesanan/paypal/return/{invoice}', [BookingObatRsudController::class, 'capturePaypalReturn'])
-        ->name('paypal.capture.return.public');
-
-    Route::get('/api/cek-rm/{rm}', [BookingObatRsudController::class, 'cekDataRM'])->name('api.rsud.cek_rm');
-
-     Route::get('/api/kontak/search',
-        [BookingObatRsudController::class, 'searchKontak'])
-        ->name('api.search.kontak');
-
- });
+         ->name('pesanan.paypal.return');
+});
 
 
 Route::prefix('admin/rsud-order')->name('admin.rsud.')->middleware(['auth'])->group(function () {

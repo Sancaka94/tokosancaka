@@ -216,56 +216,61 @@ class AdminOrderObatController extends Controller
         }
     }
 
-    /**
-     * Callback dari payment gateway (Tripay, DOKU, dll).
-     * Dipanggil oleh CheckoutController::TripayCallback()
-     * ketika merchant_ref diawali "RSUD-".
-     */
-    public static function processCallback(string $merchantRef, string $status, array $callbackData): void
-    {
-        $order = RsudOrderObat::where('kode_booking', $merchantRef)->first();
-
-        if (!$order) {
-            Log::warning('RSUD processCallback: kode_booking tidak ditemukan.', ['ref' => $merchantRef]);
-            return;
-        }
-
-        // Idempoten: jangan proses 2 kali
-        if ($order->payment_status === 'Lunas') {
-            Log::info('RSUD processCallback: sudah Lunas, skip.', ['ref' => $merchantRef]);
-            return;
-        }
-
-        if ($status === 'PAID') {
-            $order->payment_status = 'Lunas';
-            $order->save();
-
-            Log::info("RSUD Pembayaran Lunas: {$merchantRef}. Menunggu apoteker racik obat.");
-
-            // Notifikasi ke admin bahwa pembayaran sudah masuk
-            try {
-                $admins = \App\Models\User::where('role', 'admin')->get();
-                if ($admins->isNotEmpty()) {
-                    \Illuminate\Support\Facades\Notification::send(
-                        $admins,
-                        new \App\Notifications\NotifikasiUmum([
-                            'tipe'        => 'Pembayaran',
-                            'judul'       => 'Booking Obat RSUD Lunas!',
-                            'pesan_utama' => $merchantRef . ' - ' . $order->receiver_name . ' sudah membayar.',
-                            'url'         => route('admin.rsud.index'),
-                            'icon'        => 'fas fa-check-circle',
-                        ])
-                    );
-                }
-            } catch (\Exception $e) {
-                Log::warning('RSUD notif admin callback gagal: ' . $e->getMessage());
-            }
-
-        } elseif (in_array($status, ['EXPIRED', 'FAILED', 'UNPAID'])) {
-            $order->payment_status = ($status === 'EXPIRED') ? 'Kadaluarsa' : 'Gagal Bayar';
-            $order->save();
-
-            Log::info("RSUD Pembayaran {$status}: {$merchantRef}.");
-        }
+   public static function processCallback(string $merchantRef, string $status, array $callbackData): void
+{
+    $order = \App\Models\RsudOrderObat::where('kode_booking', $merchantRef)->first();
+ 
+    if (!$order) {
+        \Illuminate\Support\Facades\Log::warning(
+            'RSUD processCallback: kode_booking tidak ditemukan.',
+            ['ref' => $merchantRef]
+        );
+        return;
     }
+ 
+    // Idempoten — jangan proses 2 kali
+    if ($order->payment_status === 'Lunas') {
+        \Illuminate\Support\Facades\Log::info(
+            'RSUD processCallback: sudah Lunas, skip.',
+            ['ref' => $merchantRef]
+        );
+        return;
+    }
+ 
+    if ($status === 'PAID') {
+        // Set Lunas — JANGAN payload KiriminAja di sini
+        // KiriminAja dipanggil MANUAL oleh admin via adminPayloadKiriminAja()
+        $order->payment_status = 'Lunas';
+        $order->save();
+ 
+        \Illuminate\Support\Facades\Log::info(
+            "RSUD Pembayaran Lunas via Gateway: {$merchantRef}. Menunggu admin racik obat."
+        );
+ 
+        // Notifikasi admin: pembayaran masuk, obat siap diracik
+        try {
+            $admins = \App\Models\User::where('role', 'admin')->get();
+            if ($admins->isNotEmpty()) {
+                \Illuminate\Support\Facades\Notification::send(
+                    $admins,
+                    new \App\Notifications\NotifikasiUmum([
+                        'tipe'        => 'Pembayaran',
+                        'judul'       => '💊 Booking Obat RSUD Lunas!',
+                        'pesan_utama' => $merchantRef . ' — ' . $order->receiver_name . ' sudah membayar. Siap diracik.',
+                        'url'         => route('admin.rsud.index'),
+                        'icon'        => 'fas fa-pills',
+                    ])
+                );
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('RSUD notif admin callback gagal: ' . $e->getMessage());
+        }
+ 
+    } elseif (in_array($status, ['EXPIRED', 'FAILED', 'UNPAID'])) {
+        $order->payment_status = ($status === 'EXPIRED') ? 'Kadaluarsa' : 'Gagal Bayar';
+        $order->save();
+ 
+        \Illuminate\Support\Facades\Log::info("RSUD Pembayaran {$status}: {$merchantRef}.");
+    }
+}
 }
