@@ -1564,7 +1564,61 @@ function executePaymentSelection(element) {
         // Panggil fungsi ini tepat setelah halaman selesai dimuat
         // Diberi jeda 500ms agar rendering UI selesai dulu sebelum animasi jalan
         setTimeout(autoFillRSUD, 500);
-        
+
+        // =========================================================
+        // LOGIKA PENCARIAN & AUTOFILL BERDASARKAN NOMOR RM
+        // =========================================================
+        $('#btnCekRM').on('click', function() {
+            let rm = $('#nomor_rm').val();
+            if(!rm) {
+                Swal.fire('Oops!', 'Silakan masukkan Nomor RM terlebih dahulu.', 'warning');
+                return;
+            }
+
+            let $btn = $(this);
+            let originalText = $btn.html();
+            $btn.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+            $('#rm_status_text').text('Mencari data pasien...');
+
+            $.ajax({
+                url: `/rsud/api/cek-rm/${rm}`, // <--- Pastikan format URL ini sesuai dengan route Anda
+                type: 'GET',
+                success: function(res) {
+                    if(res.status && res.data) {
+                        // 1. AUTOFILL DATA PENERIMA
+                        $('#receiver_name').val(res.data.nama_lengkap).removeClass('is-invalid').addClass('is-valid');
+                        $('#receiver_phone').val(res.data.no_hp).removeClass('is-invalid').addClass('is-valid');
+                        $('#receiver_address').val(res.data.alamat).removeClass('is-invalid').addClass('is-valid');
+                        
+                        $('#rm_status_text').html('<span class="text-success fw-bold"><i class="fas fa-check-circle"></i> Data Pasien Berhasil Ditemukan!</span>');
+                        
+                        // 2. Trigger logika pencarian alamat KiriminAja secara otomatis
+                        if(res.data.kelurahan && res.data.kecamatan) {
+                            let addressQuery = `${res.data.kelurahan}, ${res.data.kecamatan}`;
+                            $('#receiver_address_search').val(addressQuery).trigger('input');
+                            
+                            Swal.fire({
+                                title: 'Berhasil!',
+                                text: 'Data pasien ditemukan. Titik koordinat ekspedisi sedang disesuaikan otomatis.',
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire('Berhasil!', 'Data pasien ditemukan, tetapi Anda harus mencari alamat secara manual untuk ekspedisi.', 'info');
+                        }
+                    }
+                },
+                error: function(err) {
+                    $('#rm_status_text').html('<span class="text-danger fw-bold"><i class="fas fa-times-circle"></i> RM tidak ditemukan.</span>');
+                    Swal.fire('Tidak Ditemukan', 'Nomor RM tidak terdaftar di sistem. Silakan periksa kembali.', 'error');
+                },
+                complete: function() {
+                    $btn.html(originalText).prop('disabled', false);
+                }
+            });
+        });
+
     } // Akhir fungsi initSancakaScripts
 </script>
 @endpush
