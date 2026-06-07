@@ -146,9 +146,9 @@ class AdminOrderObatController extends Controller
             }
 
             if (($response['status'] ?? false) === true) {
-                // SINI KITA TANGKAP RESI DENGAN LEBIH CERDAS
-                // Cek apakah ada 'results' (biasanya untuk Express/Cargo)
-                // Cek apakah ada 'result' (biasanya untuk Instant)
+
+            \Log::info('RESPON KIRIMINAJA:', $response);
+            
                 $resi = null;
 
                 if (!empty($response['results']) && is_array($response['results'])) {
