@@ -242,7 +242,7 @@
                                     </div>
                                 </label>
 
-                                <label class="relative cursor-pointer group">
+                              {{--  <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="OVO" class="peer sr-only">
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
                                         <img src="https://cdn-activation.oss-ap-southeast-5.aliyuncs.com/common/logo/e-money/ovo.png" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm">
@@ -277,6 +277,7 @@
                                         </div>
                                     </div>
                                 </label>
+                                --}}
 
                                 {{-- MIDTRANS --}}
                                 {{-- <label class="relative cursor-pointer group">
