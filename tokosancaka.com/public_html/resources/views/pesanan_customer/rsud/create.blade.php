@@ -437,7 +437,7 @@
                                     </div>
                                 </div>
                                 {{-- ========================================== --}}
-                                
+
                                 <div class="col-md-6">
                                     <label for="receiver_name" class="form-label">Nama Penerima</label>
                                     <div class="input-group"><span class="input-group-text"><i class="fas fa-user-friends"></i></span><input type="text" name="receiver_name" id="receiver_name" class="form-control" placeholder="Cari nama atau no. HP" required></div>
@@ -762,7 +762,7 @@
     // Pindahkan $(document).ready() kamu ke dalam fungsi ini
     function initSancakaScripts() {
 
-       let isPinVerified = false;
+     let isPinVerified = false;
      let pendingPaymentSelection = null;
         // ============================================
         // LOGIKA STEP-BY-STEP FORM
@@ -805,6 +805,8 @@
                 Swal.fire('Data Tidak Lengkap', 'Harap isi semua informasi penerima yang wajib diisi.', 'warning');
             }
         });
+
+
 
         // ============================================
         // LOGIKA INTI: Pencarian, Modal, Submit
@@ -1499,6 +1501,70 @@ function executePaymentSelection(element) {
                 $('.search-results-container').addClass('d-none');
             }
         });
+
+        // =========================================================
+        // EFEK DEMO: AUTO-FILL PENGIRIM RSUD SOEROTO & ENTER OTOMATIS
+        // =========================================================
+        function autoFillRSUD() {
+            // 1. Isi form secara visual agar audiens melihatnya terisi
+            $('#sender_name').val('RSUD dr. Soeroto Ngawi').removeClass('is-invalid').addClass('is-valid');
+            $('#sender_phone').val('0351749023').removeClass('is-invalid').addClass('is-valid');
+            $('#sender_address').val('Jl. Dr. Wahidin No.27, Karangtengah, Ngawi').removeClass('is-invalid').addClass('is-valid');
+
+            // 2. Efek simulasi mengetik di pencarian alamat
+            let searchBox = $('#sender_address_search');
+            searchBox.val('Mencari titik koordinat RSUD...').prop('disabled', true);
+
+            // 3. Tembak API Alamat untuk mendapatkan ID Ekspedisi KiriminAja (agar tidak error saat checkout)
+            $.get("{{ route('api.address.search') }}", { search: 'Karangtengah, Ngawi' })
+            .done(function(results) {
+                if (results && results.length > 0) {
+                    // Ambil hasil paling akurat
+                    let item = results[0];
+                    let parts = item.full_address.split(',').map(s => s.trim());
+                    
+                    // Set hidden input untuk KiriminAja
+                    $('#sender_village').val(parts[0] || 'Karangtengah').trigger('change');
+                    $('#sender_district').val(parts[1] || 'Ngawi').trigger('change');
+                    $('#sender_regency').val(parts[2] || 'Ngawi').trigger('change');
+                    $('#sender_province').val(parts[3] || 'Jawa Timur').trigger('change');
+                    $('#sender_postal_code').val(parts[4] || '63218').trigger('change');
+                    $('#sender_district_id').val(item.district_id).trigger('change');
+                    $('#sender_subdistrict_id').val(item.subdistrict_id).trigger('change');
+                    $('#sender_lat').val(item.lat || '');
+                    $('#sender_lng').val(item.lon || '');
+
+                    searchBox.val('📍 Titik RSUD Ditemukan & Terkunci').addClass('is-valid');
+                    
+                    // 4. ENTER OTOMATIS! (Klik tombol Lanjutkan ke Penerima)
+                    setTimeout(() => {
+                        $('#nextToPenerima').click();
+                        
+                        // Opsional: Berikan notifikasi kecil agar presentasi makin keren
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: true,
+                        });
+                        Toast.fire({
+                            icon: 'success',
+                            title: 'Data RSUD Otomatis Terhubung'
+                        });
+
+                    }, 1000); // Jeda 1 detik agar audiens sempat melihat form terisi
+                }
+            })
+            .always(function() {
+                searchBox.prop('disabled', false);
+            });
+        }
+
+        // Panggil fungsi ini tepat setelah halaman selesai dimuat
+        // Diberi jeda 500ms agar rendering UI selesai dulu sebelum animasi jalan
+        setTimeout(autoFillRSUD, 500);
+        
     } // Akhir fungsi initSancakaScripts
 </script>
 @endpush
