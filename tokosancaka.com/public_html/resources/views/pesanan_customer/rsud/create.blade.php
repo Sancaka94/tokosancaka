@@ -64,7 +64,7 @@
 
     /* PERBAIKAN: Konten tidak tertutup header */
     .main-content-container {
-        padding-top: 2rem; /* Disesuaikan agar ada ruang dari header */
+        padding-top: 2rem !important;
         padding-bottom: 2rem;
     }
 
