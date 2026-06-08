@@ -64,7 +64,7 @@
 
     /* PERBAIKAN: Konten tidak tertutup header */
     .main-content-container {
-        padding-top: 8rem; /* Disesuaikan agar ada ruang dari header */
+        padding-top: 2rem; /* Disesuaikan agar ada ruang dari header */
         padding-bottom: 2rem;
     }
 
@@ -183,10 +183,10 @@
         cursor: pointer !important; /* Paksa jadi jari */
         transition: all 0.2s ease-in-out;
     }
-    
+
     /* TAMBAHKAN INI: Agar saat text di-hover, kursor tetap jari */
     .search-result-item * {
-        cursor: pointer !important; 
+        cursor: pointer !important;
     }
 
     .search-result-item:hover {
@@ -1024,7 +1024,7 @@
                             // TRIGGER OTOMATIS: DARI STEP 3 -> CEK ONGKIR -> AUTO-POS -> BUKA PEMBAYARAN
                             // =======================================================
                             if (prefix === 'receiver' && isAutoRMFlow) {
-                                isAutoRMFlow = false; 
+                                isAutoRMFlow = false;
 
                                 // 1. Langsung pindah Step 3 (Detail Paket)
                                 $('#nextToPaket').click();
@@ -1052,14 +1052,14 @@
 
                                         if (posBtn.length > 0) {
                                             clearInterval(checkPosInterval); // Hentikan pengintai
-                                            
+
                                             // Klik tombol "Kirim Paket" (POS)
                                             posBtn.click();
-                                            
+
                                             // Jeda 500ms setelah modal tertutup, lalu buka Modal Pembayaran
                                             setTimeout(() => {
-                                                $('#paymentMethodButton').click(); 
-                                                
+                                                $('#paymentMethodButton').click();
+
                                                 const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
                                                 Toast.fire({ icon: 'success', title: 'Ekspedisi & Pembayaran Siap!' });
                                             }, 500);
@@ -1593,13 +1593,13 @@ function executePaymentSelection(element) {
                 'pointer-events': 'none',      // Blokir total klik/kursor jari maupun teks
                 'color': '#495057'             // Gelapkan warna teks
             });
-            
+
             // Ubah juga icon di sebelah kiri input agar ikut abu-abu dan menyatu
             $('#card-pengirim .input-group-text').css({
                 'background-color': '#e9ecef',
                 'color': '#6c757d'
             });
-            
+
             // Kunci spesifik checkbox dan kolom pencarian dengan atribut 'disabled' penuh
             // (Karena 2 field ini memang tidak dikirim ke Controller Laravel Anda)
             $('#save_sender').prop('disabled', true);
@@ -1614,7 +1614,7 @@ function executePaymentSelection(element) {
                     // Ambil hasil paling akurat
                     let item = results[0];
                     let parts = item.full_address.split(',').map(s => s.trim());
-                    
+
                     // Set hidden input untuk KiriminAja
                     $('#sender_village').val(parts[0] || 'Karangtengah').trigger('change');
                     $('#sender_district').val(parts[1] || 'Ngawi').trigger('change');
@@ -1628,11 +1628,11 @@ function executePaymentSelection(element) {
 
                     // Ubah teks pencarian saat data ditemukan (Tetap dibiarkan terkunci)
                     $('#sender_address_search').val('📍 Titik RSUD Ditemukan & Terkunci').addClass('is-valid');
-                    
+
                     // 4. ENTER OTOMATIS! (Klik tombol Lanjutkan ke Penerima)
                     setTimeout(() => {
                         $('#nextToPenerima').click();
-                        
+
                         // Notifikasi kecil
                         const Toast = Swal.mixin({
                             toast: true,
@@ -1682,14 +1682,14 @@ function executePaymentSelection(element) {
                         $('#receiver_phone').val(res.data.no_hp).removeClass('is-invalid').addClass('is-valid');
                         $('#receiver_address').val(res.data.alamat).removeClass('is-invalid').addClass('is-valid');
                         $('#rm_status_text').html('<span class="text-success fw-bold"><i class="fas fa-check-circle"></i> Data Pasien Berhasil Ditemukan!</span>');
-                        
+
                         // AKTIFKAN PENANDA OTOMATISASI
                         isAutoRMFlow = true;
 
                         if(res.data.kelurahan && res.data.kecamatan) {
                             let addressQuery = `${res.data.kelurahan}, ${res.data.kecamatan}`;
                             $('#receiver_address_search').val(addressQuery).trigger('input');
-                            
+
                             Swal.fire({
                                 title: 'Pilih Alamat',
                                 text: 'Silakan klik tombol "Pilih" pada alamat ekspedisi di bawah untuk melanjutkan ke pengiriman.',
@@ -1718,7 +1718,7 @@ function executePaymentSelection(element) {
         $(document).ajaxComplete(function(event, xhr, settings) {
             // Memastikan kita hanya mencegat request API cekongkir
             if (settings.url.includes("cekongkir")) {
-                
+
                 setTimeout(() => {
                     // Cari tombol yang memiliki teks "POS" atau "POS INDONESIA" di atribut data-display
                     let posButton = $('.select-ongkir-btn').filter(function() {
@@ -1728,8 +1728,8 @@ function executePaymentSelection(element) {
 
                     if (posButton.length > 0) {
                         // Jika ditemukan, eksekusi klik otomatis
-                        posButton.click(); 
-                        
+                        posButton.click();
+
                         // Beri notifikasi visual bahwa otomasi berhasil
                         const Toast = Swal.mixin({
                             toast: true,
