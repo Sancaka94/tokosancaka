@@ -1528,3 +1528,6 @@ Route::prefix('admin/rsud-order')->name('admin.rsud.')->middleware(['auth'])->gr
     Route::post('/update-racik', [AdminOrderObatController::class, 'updateStatusRacik'])->name('update_racik');
     Route::post('/payload-kiriminaja', [AdminOrderObatController::class, 'adminPayloadKiriminAja'])->name('payload_kiriminaja');
 });
+
+Route::get('/admin/rsud/order/{kode_booking}', [AdminOrderObatController::class, 'show'])->name('admin.rsud.show');
+Route::delete('/admin/rsud/order/{kode_booking}', [AdminOrderObatController::class, 'destroy'])->name('admin.rsud.destroy');
