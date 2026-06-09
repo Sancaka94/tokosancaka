@@ -62,7 +62,7 @@ class AdminOrderObatController extends Controller
         }
 
         try {
-            $apiBookingCode = str_replace('RSUD-', 'SCK-RSUD-', $order->kode_booking);
+            $apiBookingCode = str_replace('RSUD-', 'SCK-', $order->kode_booking);
 
             $expeditionParts = explode('-', $order->expedition ?? '');
             $serviceGroup    = $expeditionParts[0] ?? 'regular';
@@ -70,8 +70,8 @@ class AdminOrderObatController extends Controller
             $service_type    = $expeditionParts[2] ?? 'reguler';
 
             $now = \Carbon\Carbon::now('Asia/Jakarta');
-            $scheduleTime = ($now->hour >= 16) 
-                ? $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s') 
+            $scheduleTime = ($now->hour >= 16)
+                ? $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s')
                 : $now->addHour()->format('Y-m-d H:i:s');
 
             if (in_array($serviceGroup, ['instant', 'sameday'])) {
@@ -148,12 +148,12 @@ class AdminOrderObatController extends Controller
            if (($response['status'] ?? false) === true) {
                 // TANGKAP PICKUP NUMBER SEBAGAI REFERENSI AWAL
                 $pickupNumber = $response['pickup_number'] ?? 'Sedang diproses';
-                
+
                 // Cek jika API kebetulan sudah ngasih AWB (jarang tapi mungkin)
                 $resi = $response['result']['awb_no'] ?? ($response['results'][0]['awb'] ?? null);
 
                 // Update database
-                $order->resi = $resi; 
+                $order->resi = $resi;
                 $order->status_racik = 'Diserahkan ke Kurir';
                 $order->save();
 
@@ -177,7 +177,7 @@ class AdminOrderObatController extends Controller
    public static function processCallback(string $merchantRef, string $status, array $callbackData): void
 {
     $order = \App\Models\RsudOrderObat::where('kode_booking', $merchantRef)->first();
- 
+
     if (!$order) {
         \Illuminate\Support\Facades\Log::warning(
             'RSUD processCallback: kode_booking tidak ditemukan.',
@@ -185,7 +185,7 @@ class AdminOrderObatController extends Controller
         );
         return;
     }
- 
+
     // Idempoten — jangan proses 2 kali
     if ($order->payment_status === 'Lunas') {
         \Illuminate\Support\Facades\Log::info(
@@ -194,17 +194,17 @@ class AdminOrderObatController extends Controller
         );
         return;
     }
- 
+
     if ($status === 'PAID') {
         // Set Lunas — JANGAN payload KiriminAja di sini
         // KiriminAja dipanggil MANUAL oleh admin via adminPayloadKiriminAja()
         $order->payment_status = 'Lunas';
         $order->save();
- 
+
         \Illuminate\Support\Facades\Log::info(
             "RSUD Pembayaran Lunas via Gateway: {$merchantRef}. Menunggu admin racik obat."
         );
- 
+
         // Notifikasi admin: pembayaran masuk, obat siap diracik
         try {
             $admins = \App\Models\User::where('role', 'admin')->get();
@@ -223,11 +223,11 @@ class AdminOrderObatController extends Controller
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::warning('RSUD notif admin callback gagal: ' . $e->getMessage());
         }
- 
+
     } elseif (in_array($status, ['EXPIRED', 'FAILED', 'UNPAID'])) {
         $order->payment_status = ($status === 'EXPIRED') ? 'Kadaluarsa' : 'Gagal Bayar';
         $order->save();
- 
+
         \Illuminate\Support\Facades\Log::info("RSUD Pembayaran {$status}: {$merchantRef}.");
     }
 }
