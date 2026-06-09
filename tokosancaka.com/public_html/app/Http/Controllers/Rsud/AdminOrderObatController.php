@@ -11,37 +11,31 @@ use Exception;
 
 class AdminOrderObatController extends Controller
 {
-    // =========================================================
-    // 👇👇👇 PASTE KODENYA DI SINI MENGGANTIKAN INDEX YANG LAMA
-    // =========================================================
     public function index()
-    {
-        // 1. Ambil data utama untuk tabel
-        $orders = \App\Models\RsudOrderObat::orderBy('created_at', 'desc')->get();
+{
+    // Ambil data untuk tabel
+    $orders = \App\Models\RsudOrderObat::orderBy('created_at', 'desc')->get();
 
-        // 2. Hitung statistik untuk Monitor Cards
-        $countMenunggu = \App\Models\RsudOrderObat::where('status_racik', 'Menunggu Diramu')->count();
+    // 1. Antrean Baru (Hanya yang baru masuk)
+    $countMenunggu = \App\Models\RsudOrderObat::where('status_racik', 'Menunggu Diramu')->count();
 
-        $countSelesaiRamuan = \App\Models\RsudOrderObat::where('status_racik', 'Selesai Diramu')
-                                ->whereNull('resi') // Jika belum dikirim
-                                ->count();
+    // 2. Selesai Diramu (Siap panggil kurir)
+    $countSelesaiRamuan = \App\Models\RsudOrderObat::where('status_racik', 'Selesai Diramu')->count();
 
-        $countMenungguBayar = \App\Models\RsudOrderObat::where('payment_status', 'Menunggu Pembayaran')->count();
+    // 3. Tagihan Belum Lunas (Mencari semua status KECUALI yang Lunas)
+    $countMenungguBayar = \App\Models\RsudOrderObat::whereNotIn('payment_status', ['Lunas', 'Lunas / COD'])->count();
 
-        $countDikirim = \App\Models\RsudOrderObat::whereNotNull('resi')->count();
+    // 4. Resi Sedang Dikirim (Sudah di-generate resinya)
+    $countDikirim = \App\Models\RsudOrderObat::whereNotNull('resi')->count();
 
-        // 3. Kirim semua variabel ke file Blade
-        return view('admin.rsud.index', compact(
-            'orders',
-            'countMenunggu',
-            'countSelesaiRamuan',
-            'countMenungguBayar',
-            'countDikirim'
-        ));
-    }
-    // =========================================================
-    // 👆👆👆 BATAS KODE BARU
-    // =========================================================
+    return view('admin.rsud.index', compact(
+        'orders',
+        'countMenunggu',
+        'countSelesaiRamuan',
+        'countMenungguBayar',
+        'countDikirim'
+    ));
+}
 
 
     /**
