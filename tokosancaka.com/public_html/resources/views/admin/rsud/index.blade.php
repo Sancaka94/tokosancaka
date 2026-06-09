@@ -253,30 +253,51 @@
                                         @endif
                                     </td>
 
-                                    {{-- 8. AKSI (TOMBOL RSUD UTUH) --}}
-                                    <td class="text-center action-cell sticky-col d-none d-md-table-cell toggle-target-{{ $index }}" data-kode="{{ $order->kode_booking }}">
+                                   <td class="text-center action-cell sticky-col d-none d-md-table-cell toggle-target-{{ $index }}" data-kode="{{ $order->kode_booking }}">
                                         <span class="mobile-label d-md-none border-bottom pb-1 mb-3 text-center">⚙️ Tindakan / Aksi</span>
 
-                                        <div class="d-flex justify-content-center w-100">
-                                            @if($order->status_racik == 'Menunggu Diramu')
-                                                <button class="btn btn-sm btn-info text-white btn-racik shadow-sm w-100 w-md-auto" data-kode="{{ $order->kode_booking }}">
-                                                    <i class="fas fa-mortar-pestle me-1"></i> Selesai Diracik
-                                                </button>
-                                            @elseif($order->status_racik == 'Selesai Diramu' && empty($order->resi))
-                                                @if($order->payment_status == 'Lunas' || $order->payment_status == 'Lunas / COD')
-                                                    <button class="btn btn-sm btn-success btn-payload shadow-sm w-100 w-md-auto" data-kode="{{ $order->kode_booking }}">
-                                                        <i class="fas fa-truck-fast me-1"></i> Panggil Kurir
+                                        <div class="d-flex flex-column align-items-center w-100 gap-2"> <div class="w-100">
+                                                @if($order->status_racik == 'Menunggu Diramu')
+                                                    <button class="btn btn-sm btn-info text-white btn-racik shadow-sm w-100 w-md-auto" data-kode="{{ $order->kode_booking }}">
+                                                        <i class="fas fa-mortar-pestle me-1"></i> Selesai Diracik
                                                     </button>
-                                                @else
-                                                    <div class="bg-danger text-white rounded px-2 py-1 small fw-bold shadow-sm">
-                                                        <i class="fas fa-exclamation-triangle me-1"></i> Menunggu Pelunasan
-                                                    </div>
+                                                @elseif($order->status_racik == 'Selesai Diramu' && empty($order->resi))
+                                                    @if($order->payment_status == 'Lunas' || $order->payment_status == 'Lunas / COD')
+                                                        <button class="btn btn-sm btn-success btn-payload shadow-sm w-100 w-md-auto" data-kode="{{ $order->kode_booking }}">
+                                                            <i class="fas fa-truck-fast me-1"></i> Panggil Kurir
+                                                        </button>
+                                                    @else
+                                                        <div class="bg-danger text-white rounded px-2 py-1 small fw-bold shadow-sm">
+                                                            <i class="fas fa-exclamation-triangle me-1"></i> Menunggu Pelunasan
+                                                        </div>
+                                                    @endif
+                                                @elseif(!empty($order->resi))
+                                                    <button class="btn btn-sm btn-secondary w-100 w-md-auto" disabled>
+                                                        <i class="fas fa-check-double me-1"></i> Selesai Diproses
+                                                    </button>
                                                 @endif
-                                            @elseif(!empty($order->resi))
-                                                <button class="btn btn-sm btn-secondary w-100 w-md-auto" disabled>
-                                                    <i class="fas fa-check-double me-1"></i> Selesai Diproses
-                                                </button>
-                                            @endif
+                                            </div>
+
+                                            <div class="d-flex justify-content-center w-100 gap-2 pt-2 border-top border-light">
+                                                <a href="{{ route('admin.rsud.show', $order->kode_booking) }}" class="btn btn-sm btn-outline-primary shadow-sm px-3" title="Detail">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+
+                                                @if(!empty($order->resi))
+                                                    <a href="https://tokosancaka.com/tracking/search?resi={{ $order->resi }}" target="_blank" class="btn btn-sm btn-outline-success shadow-sm px-3" title="Lacak Resi">
+                                                        <i class="fas fa-truck"></i>
+                                                    </a>
+                                                @endif
+
+                                                <form action="{{ route('admin.rsud.destroy', $order->kode_booking) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus pesanan ini secara permanen?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger shadow-sm px-3" title="Hapus">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+
                                         </div>
                                     </td>
                                 </tr>
