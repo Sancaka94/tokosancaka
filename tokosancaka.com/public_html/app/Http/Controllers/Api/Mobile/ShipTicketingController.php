@@ -93,8 +93,8 @@ class ShipTicketingController extends BaseController
         Log::info("Payload to Darmawisata [Ship/Schedule]: ", $payload);
         $response = $this->forwardRequest('Ship/Schedule', $payload);
 
-        // Log opsional (bisa di-comment jika response terlalu panjang)
-        // Log::info("Response Darmawisata [Ship/Schedule]: " . $response->getContent());
+        Log opsional (bisa di-comment jika response terlalu panjang)
+        Log::info("Response Darmawisata [Ship/Schedule]: " . $response->getContent());
 
         return $response;
     }
@@ -137,8 +137,8 @@ class ShipTicketingController extends BaseController
         Log::info("Payload to Darmawisata [Ship/Availability]: ", $payload);
         $response = $this->forwardRequest('Ship/Availability', $payload);
 
-        // Log opsional (bisa di-comment jika response terlalu panjang)
-        // Log::info("Response Darmawisata [Ship/Availability]: " . $response->getContent());
+        Log opsional (bisa di-comment jika response terlalu panjang)
+        Log::info("Response Darmawisata [Ship/Availability]: " . $response->getContent());
 
         return $response;
     }
@@ -194,8 +194,8 @@ class ShipTicketingController extends BaseController
         Log::info("Payload to Darmawisata [Ship/GetRoom]: ", $payload);
         $response = $this->forwardRequest('Ship/GetRoom', $payload);
 
-        // Log opsional (bisa di-comment jika response terlalu panjang)
-        // Log::info("Response Darmawisata [Ship/GetRoom]: " . $response->getContent());
+        Log opsional (bisa di-comment jika response terlalu panjang)
+        Log::info("Response Darmawisata [Ship/GetRoom]: " . $response->getContent());
 
         return $response;
     }
@@ -299,7 +299,7 @@ class ShipTicketingController extends BaseController
                 "destinationPort" => $request->destinationPort,
                 "destinationCall" => $request->destinationCall,
                 "shipNumber"      => $request->shipNumber,
-                "departDate"      => date('Y-m-d\TH:i:s', strtotime($request->departDate)), // Format to ISO 8601
+                "departDate"      => date('c', strtotime($request->departDate)),
                 "paxDetails"      => $dwPaxDetails,
                 "userID"          => $this->darmawisataUserId,
                 "accessToken"     => $request->accessToken
@@ -436,8 +436,8 @@ class ShipTicketingController extends BaseController
         Log::info("Payload to Darmawisata [Ship/BookingList]: ", $payload);
         $response = $this->forwardRequest('Ship/BookingList', $payload);
 
-        // Log opsional (bisa di-comment jika response terlalu panjang)
-        // Log::info("Response Darmawisata [Ship/BookingList]: " . $response->getContent());
+        Log opsional (bisa di-comment jika response terlalu panjang)
+        Log::info("Response Darmawisata [Ship/BookingList]: " . $response->getContent());
 
         return $response;
     }
