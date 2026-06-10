@@ -82,12 +82,12 @@ class ShipTicketingController extends BaseController
         }
 
         $payload = [
-            'originPort'      => $request->originPort,
-            'destinationPort' => $request->destinationPort,
-            'departStartDate' => date('Y-m-d\TH:i:s', strtotime($request->departStartDate)), // Format sesuai contoh payload Darmawisata
-            'departEndDate'   => date('Y-m-d\TH:i:s', strtotime($request->departEndDate)),   // Format sesuai contoh payload Darmawisata
-            'userID'          => $this->darmawisataUserId,
-            'accessToken'     => $request->accessToken,
+            'originPort'       => $request->originPort,
+            'destination Port' => $request->destinationPort, // <-- WAJIB PAKAI SPASI DI TENGAH
+            'departStartDate'  => date('c', strtotime($request->departStartDate)), // <-- PASTIKAN PAKAI date('c')
+            'departEndDate'    => date('c', strtotime($request->departEndDate)),   // <-- PASTIKAN PAKAI date('c')
+            'userID'           => $this->darmawisataUserId,
+            'accessToken'      => $request->accessToken,
         ];
 
         Log::info("Payload to Darmawisata [Ship/Schedule]: ", $payload);
