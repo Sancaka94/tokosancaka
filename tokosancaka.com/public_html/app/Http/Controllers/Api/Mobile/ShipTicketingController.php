@@ -83,7 +83,7 @@ class ShipTicketingController extends BaseController
 
         $payload = [
             'originPort'       => $request->originPort,
-            'destination Port' => $request->destinationPort, // <-- WAJIB PAKAI SPASI DI TENGAH
+            'destinationPort'  => $request->destinationPort, // <-- WAJIB PAKAI SPASI DI TENGAH
             'departStartDate'  => date('c', strtotime($request->departStartDate)), // <-- PASTIKAN PAKAI date('c')
             'departEndDate'    => date('c', strtotime($request->departEndDate)),   // <-- PASTIKAN PAKAI date('c')
             'userID'           => $this->darmawisataUserId,
