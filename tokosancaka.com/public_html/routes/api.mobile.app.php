@@ -25,6 +25,7 @@ use App\Http\Controllers\Customer\TopUpController;
 use App\Http\Controllers\Api\Mobile\TrainTicketingController;
 use App\Http\Controllers\Api\Mobile\BusTicketingController;
 use App\Http\Controllers\Api\Mobile\ShipTicketingController;
+use App\Http\Controllers\Api\Mobile\ShipDluTicketingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -599,5 +600,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
             });
 
         }); // END MODULE TICKETING
+        
 
     });
