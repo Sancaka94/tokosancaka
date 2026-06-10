@@ -361,13 +361,14 @@
             </div>
         </div>
 
-        {{-- FORM UNTUK HAPUS MASSAL --}}
-        <form id="bulkDeleteForm" action="{{ route('admin.pesanan.bulk_destroy') }}" method="POST">
+       {{-- FORM UNTUK HAPUS MASSAL (Tersembunyi) --}}
+        <form id="bulkDeleteForm" action="{{ route('admin.pesanan.bulk_destroy') }}" method="POST" class="hidden">
             @csrf
             @method('DELETE')
+        </form>
 
-            {{-- TABEL DATA --}}
-            <div class="table-container">
+        {{-- TABEL DATA --}}
+        <div class="table-container">
                 <table class="w-full divide-y divide-gray-200">
                     <thead class="bg-red-100">
                         <tr>
@@ -426,7 +427,7 @@
                             @if($isResiReady)
                                 <div class="bg-red-200 border border-red-500 text-gray-800 font-bold mt-1 p-2 rounded flex items-center justify-between whitespace-nowrap">
                                     <span>RESI: <span id="resiNumber-{{$index}}">{{ $resiValue }}</span></span>
-                                    <button onclick="copyResiNumber('resiNumber-{{$index}}')" class="text-gray-700 hover:text-gray-900 ml-3" title="Copy">
+                                    <button type="button" onclick="event.preventDefault(); event.stopPropagation(); copyResiNumber('resiNumber-{{$index}}')" class="text-gray-700 hover:text-gray-900 ml-3" title="Copy">
                                         <i class="fas fa-copy"></i>
                                     </button>
                                 </div>
@@ -627,7 +628,7 @@
                     </tbody>
                 </table>
             </div>
-        </form>
+        
 
         {{-- Pagination --}}
         @if ($orders->hasPages())
@@ -983,25 +984,53 @@
             }
         }
 
-        // Submit Form
-        function submitBulkDelete() {
-            const btn = document.getElementById('btnConfirmDelete');
-            // Karena kita tidak pakai modal lagi, kita cari tombol "Hapus Terpilih" yang di atas tabel
-            const btnAtas = document.querySelector('button[onclick="showBulkDeleteModal()"]');
-
-            if(btnAtas) {
-                btnAtas.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
-                btnAtas.classList.add('opacity-70', 'cursor-wait');
-                btnAtas.disabled = true;
-            }
-
-            const form = document.getElementById('bulkDeleteForm');
-            if(form) {
-                form.submit();
-            } else {
-                alert("Gagal menghapus: Form tidak ditemukan.");
-            }
+     // ========================================================
+// FUNGSI HAPUS SATUAN (BARU)
+// ========================================================
+function hapusPesanan(url) {
+    if(confirm('Yakin hapus pesanan ini?')) {
+        const form = document.getElementById('singleDeleteForm');
+        if(form) {
+            form.action = url;
+            form.submit();
         }
+    }
+}
+
+// ========================================================
+// FUNGSI SUBMIT HAPUS MASSAL (UPDATED)
+// ========================================================
+function submitBulkDelete() {
+    const btnAtas = document.querySelector('button[onclick="showBulkDeleteModal()"]');
+    const form = document.getElementById('bulkDeleteForm');
+    const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+
+    if(form) {
+        // 1. Ubah tampilan tombol jadi loading
+        if(btnAtas) {
+            btnAtas.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
+            btnAtas.classList.add('opacity-70', 'cursor-wait');
+            btnAtas.disabled = true;
+        }
+
+        // 2. Bersihkan input lama (jaga-jaga)
+        form.querySelectorAll('input[name="selected_ids[]"]').forEach(el => el.remove());
+
+        // 3. Masukkan id pesanan dari checkbox ke dalam form tersembunyi
+        checkedBoxes.forEach(cb => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'selected_ids[]';
+            input.value = cb.value;
+            form.appendChild(input);
+        });
+
+        // 4. Kirim form
+        form.submit();
+    } else {
+        alert("Gagal menghapus: Form tidak ditemukan.");
+    }
+}
 
 
         document.addEventListener('DOMContentLoaded', function() {
