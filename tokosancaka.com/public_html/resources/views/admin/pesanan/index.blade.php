@@ -364,9 +364,10 @@
         <form id="bulkDeleteForm" action="{{ route('admin.pesanan.bulk_destroy') }}" method="POST">
             @csrf
             @method('DELETE')
+        </form>
 
-            {{-- TABEL DATA --}}
-            <div class="table-container">
+        {{-- TABEL DATA --}}
+        <div class="table-container">
                 <table class="w-full divide-y divide-gray-200">
                     <thead class="bg-red-100">
                         <tr>
@@ -391,7 +392,7 @@
                             <td class="px-4 py-4 align-top border-b-0 pb-0 md:pb-4 md:border-b bg-gray-50 md:bg-transparent">
                                 <div class="flex items-center md:block">
                                     <span class="md:hidden font-bold text-gray-400 text-xs mr-2">PILIH:</span>
-                                    <input type="checkbox" name="selected_ids[]" value="{{ $order->nomor_invoice }}" data-invoice="{{ $order->nomor_invoice }}" data-resi="{{ $order->resi ?? 'Belum ada resi' }}" onchange="updateBulkActionUI()" class="row-checkbox w-4 h-4 text-red-600 bg-white border-gray-300 rounded focus:ring-red-500 cursor-pointer shadow-sm">
+                                    <input type="checkbox" form="bulkDeleteForm" name="selected_ids[]" value="{{ $order->nomor_invoice }}" data-invoice="{{ $order->nomor_invoice }}" data-resi="{{ $order->resi ?? 'Belum ada resi' }}" onchange="updateBulkActionUI()" class="row-checkbox w-4 h-4 text-red-600 bg-white border-gray-300 rounded focus:ring-red-500 cursor-pointer shadow-sm">
                                 </div>
                             </td>
 
@@ -425,7 +426,7 @@
                             @if($isResiReady)
                                 <div class="bg-red-200 border border-red-500 text-gray-800 font-bold mt-1 p-2 rounded flex items-center justify-between whitespace-nowrap">
                                     <span>RESI: <span id="resiNumber-{{$index}}">{{ $resiValue }}</span></span>
-                                    <button onclick="copyResiNumber('resiNumber-{{$index}}')" class="text-gray-700 hover:text-gray-900 ml-3" title="Copy">
+                                    <button type="button" onclick="copyResiNumber('resiNumber-{{$index}}')" class="text-gray-700 hover:text-gray-900 ml-3" title="Copy">
                                         <i class="fas fa-copy"></i>
                                     </button>
                                 </div>
