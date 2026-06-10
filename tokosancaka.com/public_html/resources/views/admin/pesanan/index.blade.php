@@ -985,52 +985,52 @@
         }
 
      // ========================================================
-// FUNGSI HAPUS SATUAN (BARU)
-// ========================================================
-function hapusPesanan(url) {
-    if(confirm('Yakin hapus pesanan ini?')) {
-        const form = document.getElementById('singleDeleteForm');
-        if(form) {
-            form.action = url;
-            form.submit();
-        }
-    }
-}
-
-// ========================================================
-// FUNGSI SUBMIT HAPUS MASSAL (UPDATED)
-// ========================================================
-function submitBulkDelete() {
-    const btnAtas = document.querySelector('button[onclick="showBulkDeleteModal()"]');
-    const form = document.getElementById('bulkDeleteForm');
-    const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
-
-    if(form) {
-        // 1. Ubah tampilan tombol jadi loading
-        if(btnAtas) {
-            btnAtas.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
-            btnAtas.classList.add('opacity-70', 'cursor-wait');
-            btnAtas.disabled = true;
+        // FUNGSI HAPUS SATUAN (BARU)
+        // ========================================================
+        function hapusPesanan(url) {
+            if(confirm('Yakin hapus pesanan ini?')) {
+                const form = document.getElementById('singleDeleteForm');
+                if(form) {
+                    form.action = url;
+                    form.submit();
+                }
+            }
         }
 
-        // 2. Bersihkan input lama (jaga-jaga)
-        form.querySelectorAll('input[name="selected_ids[]"]').forEach(el => el.remove());
+        // ========================================================
+        // FUNGSI SUBMIT HAPUS MASSAL (UPDATED)
+        // ========================================================
+        function submitBulkDelete() {
+            const btnAtas = document.querySelector('button[onclick="showBulkDeleteModal()"]');
+            const form = document.getElementById('bulkDeleteForm');
+            const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
 
-        // 3. Masukkan id pesanan dari checkbox ke dalam form tersembunyi
-        checkedBoxes.forEach(cb => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'selected_ids[]';
-            input.value = cb.value;
-            form.appendChild(input);
-        });
+            if(form) {
+                // 1. Ubah tampilan tombol jadi loading
+                if(btnAtas) {
+                    btnAtas.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menghapus...';
+                    btnAtas.classList.add('opacity-70', 'cursor-wait');
+                    btnAtas.disabled = true;
+                }
 
-        // 4. Kirim form
-        form.submit();
-    } else {
-        alert("Gagal menghapus: Form tidak ditemukan.");
-    }
-}
+                // 2. Bersihkan input lama (jaga-jaga)
+                form.querySelectorAll('input[name="selected_ids[]"]').forEach(el => el.remove());
+
+                // 3. Masukkan id pesanan dari checkbox ke dalam form tersembunyi
+                checkedBoxes.forEach(cb => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'selected_ids[]';
+                    input.value = cb.value;
+                    form.appendChild(input);
+                });
+
+                // 4. Kirim form
+                form.submit();
+            } else {
+                alert("Gagal menghapus: Form tidak ditemukan.");
+            }
+        }
 
 
         document.addEventListener('DOMContentLoaded', function() {
