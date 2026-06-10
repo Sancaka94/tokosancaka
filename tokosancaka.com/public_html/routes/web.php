@@ -1527,4 +1527,9 @@ Route::prefix('admin/rsud-order')->name('admin.rsud.')->middleware(['auth'])->gr
     Route::get('/', [AdminOrderObatController::class, 'index'])->name('index');
     Route::post('/update-racik', [AdminOrderObatController::class, 'updateStatusRacik'])->name('update_racik');
     Route::post('/payload-kiriminaja', [AdminOrderObatController::class, 'adminPayloadKiriminAja'])->name('payload_kiriminaja');
-});
+
+    Route::get('/{kode_booking}', [AdminOrderObatController::class, 'show'])->name('show');
+    Route::delete('/{kode_booking}', [AdminOrderObatController::class, 'destroy'])->name('destroy');
+
+    });
+

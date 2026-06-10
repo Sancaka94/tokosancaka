@@ -29,6 +29,7 @@
                 background-color: white;
                 z-index: 10;
                 border-left: 1px solid #e5e7eb;
+                box-shadow: -4px 0 6px -1px rgba(0, 0, 0, 0.05);
             }
             thead th.sticky-col {
                 background-color: #fee2e2; /* Red-100 agar match header */
@@ -602,14 +603,9 @@
                                     </a>
                                 @endif
 
-                                {{-- Hapus --}}
-                                <form action="{{ route('admin.pesanan.destroy', ['resi' => $order->resi ?? $order->nomor_invoice]) }}" method="POST" onsubmit="return confirm('Yakin hapus pesanan ini?');" class="inline-block">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-gray-500 hover:text-red-600 transform hover:scale-110 transition" title="Hapus">
-                                        <i class="fas fa-trash-alt fa-lg"></i>
-                                    </button>
-                                </form>
+                                <button type="button" onclick="hapusPesanan('{{ route('admin.pesanan.destroy', ['resi' => $order->resi ?? $order->nomor_invoice]) }}')" class="text-gray-500 hover:text-red-600 transform hover:scale-110 transition" title="Hapus">
+                                    <i class="fas fa-trash-alt fa-lg"></i>
+                                </button>
 
                                 {{-- Cancel Order Trigger Button --}}
                                 @if(in_array($order->status_pesanan, ['Menunggu Pickup', 'Pesanan Dibuat']) && !empty($order->resi) && !Str::startsWith($order->resi, 'REF-') && !Str::contains($order->resi, 'MOCK'))
@@ -752,6 +748,11 @@
 
     @include('layouts.partials.modals.export', ['excel_route' => route('admin.pesanan.export.excel'), 'pdf_route' => route('admin.pesanan.export.pdf')])
 
+    <form id="singleDeleteForm" method="POST" class="hidden">
+        @csrf
+        @method('DELETE')
+    </form>
+
 </div>
 @endsection
 
@@ -807,7 +808,7 @@
                     target.style.animation = "fadeIn 0.5s";
                 } else {
                     target.classList.add('hidden');
-                    target.classList.remove('block');
+                    // target.classList.remove('block');
                 }
             });
 
