@@ -685,7 +685,27 @@ class ShipTicketingController extends BaseController
 
             } else {
                 $message = $json['respMessage'] ?? 'Darmawisata menolak penerbitan tiket kapal.';
+
+                // =========================================================
+                // PENANGKAL TIKET SUDAH ISSUED TAPI LOKAL NYANGKUT
+                // =========================================================
+                if (str_contains(strtolower($message), "ticketed can't be issued") || str_contains(strtolower($message), 'already issued')) {
+                    DB::table('ship_orders')->where('id', $order->id)->update([
+                        'status'         => 'ISSUED',
+                        'booking_status' => 'Ticketed',
+                        'updated_at'     => now()
+                    ]);
+                    
+                    return response()->json([
+                        'status'          => 'SUCCESS',
+                        'respMessage'     => 'Sinkronisasi berhasil! Tiket ini sebelumnya sudah sukses diterbitkan.',
+                        'bookingStatus'   => 'Ticketed'
+                    ]);
+                }
+                // =========================================================
+
                 Log::warning("Ship Issued Gagal Darmawisata. Booking Number: " . ($order->booking_number ?? 'N/A') . " | Message: " . $message);
+
 
                 if (str_contains(strtolower($message), 'insufficient balance')) {
                     Log::error("FATAL: Gagal Issued Kapal karena Saldo H2H Pusat Darmawisata Habis!");
