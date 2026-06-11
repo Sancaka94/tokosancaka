@@ -298,7 +298,65 @@ class ShipTicketingController extends BaseController
                 return $id;
             });
 
-            Log::info("Ship Order DRAFT berhasil dibuat. Local ID: " . $orderId);
+          Log::info("Ship Order DRAFT berhasil dibuat. Local ID: " . $orderId);
+
+            // =========================================================================
+            // INJECT PRE-FLIGHT REQUEST (SCHEDULE -> AVAILABILITY -> GET ROOM)
+            // Memancing session API Darmawisata sesuai urutan wajib di flowchart
+            // =========================================================================
+            
+            // Siapkan summary PAX untuk parameter Availability & GetRoom
+            $paxSummary = [];
+            if ($paxAdult > 0) $paxSummary[] = ["paxType" => 0, "paxGender" => 0, "paxTotal" => $paxAdult];
+            if ($paxChild > 0) $paxSummary[] = ["paxType" => 1, "paxGender" => 0, "paxTotal" => $paxChild];
+            if ($paxInfant > 0) $paxSummary[] = ["paxType" => 2, "paxGender" => 0, "paxTotal" => $paxInfant];
+
+            // 1. Pre-flight Ship/Schedule
+            $schedulePayload = [
+                'originPort'      => (string) $request->originPort,
+                'destinationPort' => (string) $request->destinationPort,
+                'departStartDate' => date('c', strtotime($request->departDate)),
+                'departEndDate'   => date('c', strtotime($request->departDate)),
+                'userID'          => $this->darmawisataUserId,
+                'accessToken'     => $request->accessToken,
+            ];
+            $this->forwardRequest('Ship/Schedule', $schedulePayload);
+
+            // 2. Pre-flight Ship/Availability
+            $availabilityPayload = [
+                "originPort"      => (string) $request->originPort,
+                "originCall"      => (int) $request->originCall,
+                "destinationPort" => (string) $request->destinationPort,
+                "destinationCall" => (int) $request->destinationCall,
+                "shipNumber"      => (string) $request->shipNumber,
+                "departDate"      => date('Y-m-d\TH:i:s', strtotime($request->departDate)),
+                "subClass"        => (string) $request->subClass,
+                "pax"             => $paxSummary,
+                "userID"          => $this->darmawisataUserId,
+                "accessToken"     => $request->accessToken
+            ];
+            $this->forwardRequest('Ship/Availability', $availabilityPayload);
+
+            // 3. Pre-flight Ship/GetRoom
+            $getRoomPayload = [
+                "originPort"         => (string) $request->originPort,
+                "originCall"         => (int) $request->originCall,
+                "destinationPort"    => (string) $request->destinationPort,
+                "destinationCall"    => (int) $request->destinationCall,
+                "shipNumber"         => (string) $request->shipNumber,
+                "departDate"         => date('Y-m-d\TH:i:s', strtotime($request->departDate)),
+                "subClass"           => (string) $request->subClass,
+                "pax"                => $paxSummary,
+                "ticketBuyerName"    => $request->contactName ?? 'Guest',
+                "ticketBuyerEmail"   => $request->contactEmail ?? 'guest@email.com',
+                "ticketBuyerAddress" => '-',
+                "ticketBuyerPhone"   => $request->contactPhone ?? '080000000000',
+                "family"             => false,
+                "userID"             => $this->darmawisataUserId,
+                "accessToken"        => $request->accessToken
+            ];
+            $this->forwardRequest('Ship/GetRoom', $getRoomPayload);
+            // =========================================================================
 
             // STEP B: RAKIT PAYLOAD DARMAWISATA (Sesuai dokumentasi baku)
             $dwPayload = [
