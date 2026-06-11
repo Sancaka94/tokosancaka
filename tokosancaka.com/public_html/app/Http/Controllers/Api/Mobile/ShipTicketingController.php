@@ -227,7 +227,7 @@ class ShipTicketingController extends BaseController
 
         try {
             // PERBAIKAN 2: Generate numCode secara otomatis di Backend
-            $numCode = 'SHP' . date('YmdHis') . rand(100, 999);
+            // $numCode = 'SHP' . date('YmdHis') . rand(100, 999);
 
             // STEP A: SIMPAN DATABASE STATUS DRAFT
             Log::info("Proses simpan DRAFT ke database lokal untuk kapal...");
@@ -337,7 +337,7 @@ class ShipTicketingController extends BaseController
             ];
             $this->forwardRequest('Ship/Availability', $availabilityPayload);
 
-            // 3. Pre-flight Ship/GetRoom
+           // 3. Pre-flight Ship/GetRoom
             $getRoomPayload = [
                 "originPort"         => (string) $request->originPort,
                 "originCall"         => (int) $request->originCall,
@@ -355,12 +355,22 @@ class ShipTicketingController extends BaseController
                 "userID"             => $this->darmawisataUserId,
                 "accessToken"        => $request->accessToken
             ];
-            $this->forwardRequest('Ship/GetRoom', $getRoomPayload);
+            
+            // TANGKAP RESPONS GET ROOM
+            $getRoomResponse = $this->forwardRequest('Ship/GetRoom', $getRoomPayload);
+            $getRoomData = json_decode($getRoomResponse->getContent(), true);
+
+            // EKSTRAK numCode DARI DARMAWISATA (jika tidak ada, fallback ke manual)
+            $dwNumCode = $getRoomData['numCode'] ?? ('SHP' . date('YmdHis') . rand(100, 999));
+
+            // UPDATE numCode DI DATABASE LOKAL YANG TADI DIBUAT
+            DB::table('ship_orders')->where('id', $orderId)->update(['num_code' => $dwNumCode]);
+
             // =========================================================================
 
             // STEP B: RAKIT PAYLOAD DARMAWISATA (Sesuai dokumentasi baku)
             $dwPayload = [
-                "numCode"         => $numCode,
+                "numCode"         => $dwNumCode, // <-- GUNAKAN numCode DARI DARMAWISATA DI SINI
                 "originPort"      => (string) $request->originPort,
                 "originCall"      => (int) $request->originCall,
                 "destinationPort" => (string) $request->destinationPort,
