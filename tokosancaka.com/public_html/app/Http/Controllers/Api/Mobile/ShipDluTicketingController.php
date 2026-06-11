@@ -169,11 +169,13 @@ class ShipDluTicketingController extends BaseController
             'listPax'         => 'nullable|array',
             'listVehicle'     => 'nullable|array',
             'bookerData'      => 'required|array',
+            'bookerData.name' => 'required|string',
+            'bookerData.phone'=> 'required|string',
             'numCode'         => 'required|string',
+            'listRoom'        => 'nullable|array',
             'shipID'          => 'required|string',
             'accessToken'     => 'required|string',
             'totalAmount'     => 'required|numeric',
-            // Tambahan wajib pre-flight
             'fares'           => 'required|array',
             'isVehicle'       => 'required|boolean',
             'vehicleType'     => 'nullable|string',
@@ -218,26 +220,11 @@ class ShipDluTicketingController extends BaseController
             });
 
             // =========================================================================
-            // INJECT PRE-FLIGHT REQUEST DLU (SCHEDULE -> SELECT SCHEDULE -> PRICE)
+            // INJECT PRE-FLIGHT REQUEST DLU (SELECT SCHEDULE -> PRICE)
+            // (Schedule dilewati karena sering error format jika diulang 1 hari)
             // =========================================================================
-            $departDateIso = date('Y-m-d\T00:00:00P', strtotime($request->departDate));
-
-            // 1. Pre-flight Schedule
-            $schedulePayload = [
-                'ticketType'      => $request->isVehicle ? 'Kendaraan' : 'Penumpang',
-                'paxClass'        => 'Ekonomi',
-                'vehicleType'     => $request->isVehicle ? $request->vehicleType : "",
-                'roomClass'       => "",
-                'originPort'      => $request->originPort,
-                'destinationPort' => $request->destinationPort,
-                'departStartDate' => $departDateIso,
-                'departEndDate'   => date('Y-m-d\T23:59:59P', strtotime($request->departDate)),
-                'userID'          => $this->darmawisataUserId,
-                'accessToken'     => $request->accessToken
-            ];
-            $this->forwardRequest('ShipDlu/Schedule', $schedulePayload);
-
-            // 2. Pre-flight SelectDLUSchedule
+            
+            // 1. Pre-flight SelectDLUSchedule
             $selectPayload = [
                 'originPort'      => $request->originPort,
                 'destinationPort' => $request->destinationPort,
@@ -248,16 +235,65 @@ class ShipDluTicketingController extends BaseController
                 'userID'          => $this->darmawisataUserId,
                 'accessToken'     => $request->accessToken
             ];
-            $this->forwardRequest('ShipDlu/SelectDLUSchedule', $selectPayload);
+            $selectRes = $this->forwardRequest('ShipDlu/SelectDLUSchedule', $selectPayload);
+            $selectData = json_decode($selectRes->getContent(), true);
 
-            // 3. Pre-flight Price
+            // AUTO-CORRECTION: Darmawisata DLU (Memisahkan listRoom vs listPax)
+            $finalListPax = $request->listPax ?? [];
+            $finalListRoom = $request->listRoom ?? [];
+            
+            // Jika Darmawisata membalas butuh KAMAR (listRoom), kita pindahkan data penumpang ke dalam paxes kamar
+            if (isset($selectData['listRoom']) && is_array($selectData['listRoom']) && count($selectData['listRoom']) > 0) {
+                $finalListRoom = $selectData['listRoom'];
+                $paxIndex = 0;
+                foreach ($finalListRoom as &$room) {
+                    if (isset($room['paxes']) && is_array($room['paxes'])) {
+                        foreach ($room['paxes'] as &$paxSlot) {
+                            if (isset($finalListPax[$paxIndex])) {
+                                $paxSlot['name']   = $finalListPax[$paxIndex]['name'];
+                                $paxSlot['id']     = $finalListPax[$paxIndex]['id'];
+                                $paxSlot['gender'] = $finalListPax[$paxIndex]['gender'];
+                                $paxSlot['dob']    = $finalListPax[$paxIndex]['dob'];
+                                $paxSlot['city']   = $finalListPax[$paxIndex]['city'] ?? '-';
+                                $paxSlot['note']   = $finalListPax[$paxIndex]['note'] ?? '-';
+                                $paxIndex++;
+                            } else {
+                                // Jika kapasitas kamar sisa, isi dengan data kosong
+                                $paxSlot['name']   = "Extra Pax";
+                                $paxSlot['id']     = "0000000000000000";
+                                $paxSlot['gender'] = "M";
+                                $paxSlot['dob']    = "1990-01-01T00:00:00";
+                                $paxSlot['city']   = "-";
+                                $paxSlot['note']   = "-";
+                            }
+                        }
+                    }
+                }
+                $finalListPax = []; // Wajib dikosongkan agar tidak "Unwanted Book"
+
+            // Jika butuh listPax (Kelas Ekonomi biasa)
+            } elseif (isset($selectData['listPax']) && is_array($selectData['listPax']) && count($selectData['listPax']) > 0) {
+                $templatePax = $selectData['listPax'];
+                foreach($templatePax as $idx => &$tpax) {
+                    if (isset($finalListPax[$idx])) {
+                        $tpax['name']   = $finalListPax[$idx]['name'];
+                        $tpax['id']     = $finalListPax[$idx]['id'];
+                        $tpax['gender'] = $finalListPax[$idx]['gender'];
+                        $tpax['dob']    = $finalListPax[$idx]['dob'];
+                    }
+                }
+                $finalListPax = $templatePax;
+                $finalListRoom = [];
+            }
+
+            // 2. Pre-flight Price
             $pricePayload = [
                 'originPort'      => $request->originPort,
                 'destinationPort' => $request->destinationPort,
                 'shipNumber'      => $request->shipNumber,
-                'listPax'         => $request->listPax ?? [],
+                'listPax'         => $finalListPax,
                 'listVehicle'     => $request->listVehicle ?? [],
-                'listRoom'        => $request->listRoom ?? [],
+                'listRoom'        => $finalListRoom,
                 'departDate'      => date('c', strtotime($request->departDate)),
                 'fares'           => $request->fares,
                 'shipID'          => $request->shipID,
@@ -273,11 +309,11 @@ class ShipDluTicketingController extends BaseController
                 'destinationPort' => $request->destinationPort,
                 'shipNumber'      => $request->shipNumber,
                 'departDate'      => date('c', strtotime($request->departDate)), 
-                'listPax'         => $request->listPax ?? [],
+                'listPax'         => $finalListPax,
                 'listVehicle'     => $request->listVehicle ?? [],
                 'bookerData'      => $request->bookerData,
                 'numCode'         => $request->numCode,
-                'listRoom'        => $request->listRoom ?? [],
+                'listRoom'        => $finalListRoom,
                 'shipID'          => $request->shipID,
                 'userID'          => $this->darmawisataUserId,
                 'accessToken'     => $request->accessToken,
@@ -328,7 +364,6 @@ class ShipDluTicketingController extends BaseController
             } else {
                 $message = $json['respMessage'] ?? 'Kapal DLU menolak penerbitan tiket.';
 
-                // TANGKAL TIKET SUDAH ISSUED
                 if (str_contains(strtolower($message), "ticketed can't be issued") || str_contains(strtolower($message), 'already issued')) {
                     DB::table('ship_dlu_orders')->where('id', $orderId)->update(['status' => 'ISSUED', 'updated_at' => now()]);
                     return response()->json([
