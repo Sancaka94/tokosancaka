@@ -395,13 +395,13 @@ class ShipTicketingController extends BaseController
             // STEP D: UPDATE DATABASE LOKAL
             if (isset($json['status']) && $json['status'] === 'SUCCESS') {
                 DB::table('ship_orders')->where('id', $orderId)->update([
-                    'booking_number'         => $json['bookingNumber'] ?? null,
-                    'issued_date_time_limit' => isset($json['issuedDateTimeLimit']) ? date('Y-m-d H:i:s', strtotime($json['issuedDateTimeLimit'])) : null,
+                    'booking_number'         => $bookingNumber,
+                    'issued_date_time_limit' => $issuedDateTimeLimit ? date('Y-m-d H:i:s', strtotime($issuedDateTimeLimit)) : null,
+                    'booking_date_time'      => $bookingDateTime ? date('Y-m-d H:i:s', strtotime($bookingDateTime)) : null,
                     'sales_price'            => $json['salesPrice'] ?? 0,
                     'member_discount'        => $json['memberDiscount'] ?? 0,
                     'ship_markup'            => $json['shipMarkup'] ?? 0,
                     'ticket_price'           => $json['ticketPrice'] ?? 0,
-                    'booking_date_time'      => isset($json['bookingDateTime']) ? date('Y-m-d H:i:s', strtotime($json['bookingDateTime'])) : null,
                     'ship_name'              => $json['shipName'] ?? null,
                     'arrival_date'           => isset($json['arrivalDate']) ? date('Y-m-d H:i:s', strtotime($json['arrivalDate'])) : null,
                     'origin_name'            => $json['originName'] ?? null,
@@ -439,6 +439,8 @@ class ShipTicketingController extends BaseController
                         }
                     }
                 }
+
+                $json['order_id'] = $orderId;
 
                 return response()->json($json);
 
@@ -546,6 +548,11 @@ class ShipTicketingController extends BaseController
 
             // 2. LOGIKA BACKUP & FALLBACK
             if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+
+            // Tambahkan 3 baris ini untuk menangkal typo dari API pusat
+            $bookingDateTime = $json['bookingDateTime'] ?? $json['booking DateTime'] ?? null;
+            $issuedDateTimeLimit = $json['issuedDateTimeLimit'] ?? $json['issued DateTimeLimit'] ?? null;
+            $bookingNumber = $json['bookingNumber'] ?? $json['bokingNumber'] ?? null;
                 // A. Jika API Darmawisata SUKSES, simpan/update payload utuh ke Database
                 // Asumsi ada tabel `ship_booking_details` dengan kolom `booking_number`, `num_code`, `booking_date`, `payload`, `created_at`, `updated_at`
                 DB::table('ship_booking_details')->updateOrInsert(
