@@ -155,7 +155,7 @@ class ShipDluTicketingController extends BaseController
         return $this->forwardRequest('ShipDlu/GetEticket', $payload);
     }
 
-    public function shipDluIssued(Request $request)
+   public function shipDluIssued(Request $request)
     {
         Log::info("\n========== [SHIP DLU ISSUED - START] ==========");
         Log::info("Payload Request Mobile: ", $request->all());
@@ -169,13 +169,14 @@ class ShipDluTicketingController extends BaseController
             'listPax'         => 'nullable|array',
             'listVehicle'     => 'nullable|array',
             'bookerData'      => 'required|array',
-            'bookerData.name' => 'required|string',
-            'bookerData.phone'=> 'required|string',
             'numCode'         => 'required|string',
-            'listRoom'        => 'nullable|array',
             'shipID'          => 'required|string',
             'accessToken'     => 'required|string',
-            'totalAmount'     => 'required|numeric' // Terima tagihan total agen dari frontend
+            'totalAmount'     => 'required|numeric',
+            // Tambahan wajib pre-flight
+            'fares'           => 'required|array',
+            'isVehicle'       => 'required|boolean',
+            'vehicleType'     => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -186,8 +187,6 @@ class ShipDluTicketingController extends BaseController
         $orderId = null;
         try {
             // STEP A: SIMPAN DRAFT LOKAL
-            Log::info("Proses simpan PENDING_ISSUED DLU ke database lokal...");
-
             $user = $request->user();
             $totalAmountAgent = (float) $request->totalAmount;
 
@@ -199,11 +198,6 @@ class ShipDluTicketingController extends BaseController
             }
 
             $orderId = DB::transaction(function () use ($request, $user) {
-                $bookerDataJson = json_encode($request->bookerData);
-                $listPaxJson = json_encode($request->listPax ?? []);
-                $listVehicleJson = json_encode($request->listVehicle ?? []);
-                $listRoomJson = json_encode($request->listRoom ?? []);
-
                 return DB::table('ship_dlu_orders')->insertGetId([
                     'user_id'           => $user->id_pengguna ?? $user->id,
                     'dw_access_token'   => $request->accessToken,
@@ -211,10 +205,10 @@ class ShipDluTicketingController extends BaseController
                     'destination_port'  => $request->destinationPort,
                     'ship_number'       => $request->shipNumber,
                     'depart_date'       => date('Y-m-d H:i:s', strtotime($request->departDate)),
-                    'booker_data'       => $bookerDataJson,
-                    'list_pax'          => $listPaxJson,
-                    'list_vehicle'      => $listVehicleJson,
-                    'list_room'         => $listRoomJson,
+                    'booker_data'       => json_encode($request->bookerData),
+                    'list_pax'          => json_encode($request->listPax ?? []),
+                    'list_vehicle'      => json_encode($request->listVehicle ?? []),
+                    'list_room'         => json_encode($request->listRoom ?? []),
                     'num_code'          => $request->numCode,
                     'ship_id'           => $request->shipID,
                     'status'            => 'PENDING_ISSUED', 
@@ -223,12 +217,62 @@ class ShipDluTicketingController extends BaseController
                 ]);
             });
 
-            // STEP B: RAKIT PAYLOAD DARMAWISATA
+            // =========================================================================
+            // INJECT PRE-FLIGHT REQUEST DLU (SCHEDULE -> SELECT SCHEDULE -> PRICE)
+            // =========================================================================
+            $departDateIso = date('Y-m-d\T00:00:00P', strtotime($request->departDate));
+
+            // 1. Pre-flight Schedule
+            $schedulePayload = [
+                'ticketType'      => $request->isVehicle ? 'Kendaraan' : 'Penumpang',
+                'paxClass'        => 'Ekonomi',
+                'vehicleType'     => $request->isVehicle ? $request->vehicleType : "",
+                'roomClass'       => "",
+                'originPort'      => $request->originPort,
+                'destinationPort' => $request->destinationPort,
+                'departStartDate' => $departDateIso,
+                'departEndDate'   => date('Y-m-d\T23:59:59P', strtotime($request->departDate)),
+                'userID'          => $this->darmawisataUserId,
+                'accessToken'     => $request->accessToken
+            ];
+            $this->forwardRequest('ShipDlu/Schedule', $schedulePayload);
+
+            // 2. Pre-flight SelectDLUSchedule
+            $selectPayload = [
+                'originPort'      => $request->originPort,
+                'destinationPort' => $request->destinationPort,
+                'shipNumber'      => $request->shipNumber,
+                'departDate'      => date('c', strtotime($request->departDate)),
+                'fares'           => $request->fares,
+                'shipID'          => $request->shipID,
+                'userID'          => $this->darmawisataUserId,
+                'accessToken'     => $request->accessToken
+            ];
+            $this->forwardRequest('ShipDlu/SelectDLUSchedule', $selectPayload);
+
+            // 3. Pre-flight Price
+            $pricePayload = [
+                'originPort'      => $request->originPort,
+                'destinationPort' => $request->destinationPort,
+                'shipNumber'      => $request->shipNumber,
+                'listPax'         => $request->listPax ?? [],
+                'listVehicle'     => $request->listVehicle ?? [],
+                'listRoom'        => $request->listRoom ?? [],
+                'departDate'      => date('c', strtotime($request->departDate)),
+                'fares'           => $request->fares,
+                'shipID'          => $request->shipID,
+                'userID'          => $this->darmawisataUserId,
+                'accessToken'     => $request->accessToken
+            ];
+            $this->forwardRequest('ShipDlu/Price', $pricePayload);
+            // =========================================================================
+
+            // STEP B: RAKIT PAYLOAD FINAL DARMAWISATA (ISSUED)
             $dwPayload = [
                 'originPort'      => $request->originPort,
                 'destinationPort' => $request->destinationPort,
                 'shipNumber'      => $request->shipNumber,
-                'departDate'      => date('c', strtotime($request->departDate)), // ISO 8601
+                'departDate'      => date('c', strtotime($request->departDate)), 
                 'listPax'         => $request->listPax ?? [],
                 'listVehicle'     => $request->listVehicle ?? [],
                 'bookerData'      => $request->bookerData,
@@ -240,29 +284,21 @@ class ShipDluTicketingController extends BaseController
             ];
 
             Log::info("Payload to Darmawisata [ShipDlu/Issued]: ", $dwPayload);
-
-            // STEP C: TEMBAK API DARMAWISATA
             $response = $this->forwardRequest('ShipDlu/Issued', $dwPayload);
             $json = json_decode($response->getContent(), true);
-
             Log::info("Response Darmawisata [ShipDlu/Issued]: ", $json ?? ['error' => 'No JSON Response']);
 
-            // ==============================================================
-            // LOGIKA PROCESSED & TYPO DARI PUSAT (Mirip dengan tiket PELNI)
-            // ==============================================================
+            // STEP C: UPDATE DATABASE LOKAL
             $isSuccess = isset($json['status']) && $json['status'] === 'SUCCESS';
             $isProcessed = isset($json['respMessage']) && str_contains(strtolower($json['respMessage']), 'processed');
 
             if ($isSuccess || $isProcessed) {
-                // Harga dari pusat, atau fallback pakai yang sudah dihitung frontend
                 $totalPrice = (float) ($json['ticketPrice'] ?? $json['salesPrice'] ?? $totalAmountAgent);
 
                 DB::transaction(function () use ($user, $totalPrice, $orderId, $json, $isProcessed) {
-                    // Potong saldo
                     DB::table('Pengguna')->where('id_pengguna', $user->id_pengguna)->decrement('saldo', $totalPrice);
                     DB::table('Pengguna')->where('id_pengguna', 4)->decrement('balance_iak', $totalPrice);
 
-                    // Amankan Typo JSON dari API
                     $bookingDateTime = $json['bookingDateTime'] ?? $json['booking DateTime'] ?? null;
                     $issuedDateTimeLimit = $json['issuedDateTimeLimit'] ?? $json['issued DateTimeLimit'] ?? null;
                     $bookingNumber = $json['bookingNumber'] ?? $json['bokingNumber'] ?? null;
@@ -290,33 +326,20 @@ class ShipDluTicketingController extends BaseController
                 ]);
 
             } else {
-                // API GAGAL
                 $message = $json['respMessage'] ?? 'Kapal DLU menolak penerbitan tiket.';
 
                 // TANGKAL TIKET SUDAH ISSUED
                 if (str_contains(strtolower($message), "ticketed can't be issued") || str_contains(strtolower($message), 'already issued')) {
-                    DB::table('ship_dlu_orders')->where('id', $orderId)->update([
-                        'status'         => 'ISSUED',
-                        'updated_at'     => now()
-                    ]);
-                    
+                    DB::table('ship_dlu_orders')->where('id', $orderId)->update(['status' => 'ISSUED', 'updated_at' => now()]);
                     return response()->json([
-                        'status'          => 'SUCCESS',
-                        'message'         => 'Sinkronisasi berhasil! Tiket DLU ini sebelumnya sudah sukses diterbitkan.',
-                        'data'            => $json
+                        'status'  => 'SUCCESS',
+                        'message' => 'Sinkronisasi berhasil! Tiket DLU ini sebelumnya sudah sukses diterbitkan.',
+                        'data'    => $json
                     ]);
                 }
 
                 if ($orderId) {
                     DB::table('ship_dlu_orders')->where('id', $orderId)->update(['status' => 'FAILED', 'updated_at' => now()]);
-                }
-
-                if (str_contains(strtolower($message), 'insufficient balance')) {
-                    Log::error("FATAL: Gagal Issued Kapal DLU karena Saldo H2H Pusat Darmawisata Habis!");
-                    return response()->json([
-                        'status' => 'FAILED',
-                        'message' => 'Tiket gagal diterbitkan: Saldo deposit pusat tidak cukup. Hubungi admin.'
-                    ]);
                 }
 
                 return response()->json(['status' => 'FAILED', 'message' => 'Gagal Issued Kapal DLU: ' . $message]);
