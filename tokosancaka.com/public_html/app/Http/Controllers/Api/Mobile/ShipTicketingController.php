@@ -298,7 +298,7 @@ class ShipTicketingController extends BaseController
                 return $id;
             });
 
-          Log::info("Ship Order DRAFT berhasil dibuat. Local ID: " . $orderId);
+         Log::info("Ship Order DRAFT berhasil dibuat. Local ID: " . $orderId);
 
             // =========================================================================
             // INJECT PRE-FLIGHT REQUEST (SCHEDULE -> AVAILABILITY -> GET ROOM)
@@ -337,7 +337,7 @@ class ShipTicketingController extends BaseController
             ];
             $this->forwardRequest('Ship/Availability', $availabilityPayload);
 
-          // 3. Pre-flight Ship/GetRoom
+            // 3. Pre-flight Ship/GetRoom
             $getRoomPayload = [
                 "originPort"         => (string) $request->originPort,
                 "originCall"         => (int) $request->originCall,
@@ -358,10 +358,7 @@ class ShipTicketingController extends BaseController
             
             // TANGKAP RESPONS GET ROOM
             $getRoomResponse = $this->forwardRequest('Ship/GetRoom', $getRoomPayload);
-            
-            // Log respons GetRoom (opsional, untuk memastikan)
             Log::info("Response Pre-flight GetRoom: " . $getRoomResponse->getContent());
-            
             $getRoomData = json_decode($getRoomResponse->getContent(), true);
 
             // EKSTRAK numCode DARI DARMAWISATA (Gunakan $numCode lokal sebagai fallback jika gagal)
@@ -374,7 +371,7 @@ class ShipTicketingController extends BaseController
 
             // STEP B: RAKIT PAYLOAD DARMAWISATA (Sesuai dokumentasi baku)
             $dwPayload = [
-                "numCode"         => $dwNumCode, // <-- PERHATIKAN BARIS INI, WAJIB MENGGUNAKAN $dwNumCode
+                "numCode"         => $dwNumCode, // <-- WAJIB MENGGUNAKAN $dwNumCode
                 "originPort"      => (string) $request->originPort,
                 "originCall"      => (int) $request->originCall,
                 "destinationPort" => (string) $request->destinationPort,
