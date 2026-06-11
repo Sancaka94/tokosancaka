@@ -413,10 +413,9 @@ class ShipDluTicketingController extends BaseController
         return $this->forwardRequest('ShipDlu/RoomClasses', $payload);
     }
 
-    public function shipDluHistory(Request $request)
+   public function shipDluHistory(Request $request)
     {
         Log::info("\n========== [SHIP DLU HISTORY - START] ==========");
-
         try {
             $user = $request->user();
 
@@ -426,39 +425,66 @@ class ShipDluTicketingController extends BaseController
                 ->get();
 
             $formattedData = $orders->map(function ($order) {
+                // Tentukan nama kapal fallback jika ship_name kosong
+                $shipName = $order->ship_number;
+                if ($shipName == '22917') $shipName = 'KM. Dharma Kencana 7';
+                if ($shipName == '22955') $shipName = 'KM. Dharma Kartika 2';
+
                 return [
                     'id'            => $order->id,
-                    // Penyesuaian agar numCode bisa tertangkap untuk detail PDF
                     'bookingNumber' => $order->booking_number ?? $order->num_code ?? 'PROSES',
                     'numCode'       => $order->num_code ?? '',
-                    'shipName'      => $order->ship_number ?? null,
-                    'subClass'      => $order->ship_markup ?? null,
-                    'bookingDate'   => $order->booking_time ?? $order->created_at,
-                    'bookingTime'   => $order->booking_time ?? null,
-                    'origin'        => $order->origin_port ?? null,
-                    'destination'   => $order->destination_port ?? null,
+                    'shipName'      => $shipName,
                     'departDate'    => $order->depart_date ?? null,
-                    'departTime'    => $order->depart_time ?? null,
                     'status'        => $order->status,
-                    // Penyesuaian Harga dari backend
                     'totalFare'     => (float) ($order->sales_price ?? $order->ticket_price ?? 0),
-                    'ticketPrice'   => (float) ($order->ticket_price ?? 0),
-                    'paymentMethod' => $order->payment_method ?? 'SALDO',
+                    'paymentMethod' => 'SALDO',
                     'timeLimit'     => $order->issued_time_limit ?? null,
+                    // Tarik data JSON dari database
+                    'bookerData'    => json_decode($order->booker_data, true),
+                    'listPax'       => json_decode($order->list_pax, true),
+                    'listRoom'      => json_decode($order->list_room, true),
+                    'listVehicle'   => json_decode($order->list_vehicle, true),
+                    'origin'        => $order->origin_port,
+                    'destination'   => $order->destination_port,
                 ];
             });
 
-            return response()->json([
-                'status' => 'SUCCESS',
-                'data'   => $formattedData
-            ], 200);
+            return response()->json(['status' => 'SUCCESS', 'data' => $formattedData], 200);
 
         } catch (\Exception $e) {
             Log::error("FATAL ERROR [Ship DLU History]: " . $e->getMessage());
-            return response()->json([
-                'status'  => 'FAILED',
-                'message' => 'Sistem Error saat memuat riwayat.'
-            ], 500);
+            return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error saat memuat riwayat.'], 500);
+        }
+    }
+
+    public function destroyHistory(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            $userId = $user->id_pengguna ?? $user->id;
+
+            $deleted = DB::table('ship_dlu_orders')->where('id', $id)->where('user_id', $userId)->delete();
+            if (!$deleted) return response()->json(['status' => 'FAILED', 'message' => 'Data tidak ditemukan.'], 404);
+
+            return response()->json(['status' => 'SUCCESS', 'message' => 'Data tiket DLU berhasil dihapus.']);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error.'], 500);
+        }
+    }
+
+    public function bulkDestroyHistory(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $userId = $user->id_pengguna ?? $user->id;
+            
+            if (empty($request->ids)) return response()->json(['status' => 'FAILED', 'message' => 'ID kosong.'], 422);
+
+            $deleted = DB::table('ship_dlu_orders')->whereIn('id', $request->ids)->where('user_id', $userId)->delete();
+            return response()->json(['status' => 'SUCCESS', 'message' => "{$deleted} data tiket DLU berhasil dihapus."]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error.'], 500);
         }
     }
 

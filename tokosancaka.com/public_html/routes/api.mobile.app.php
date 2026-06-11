@@ -582,6 +582,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
             // Riwayat Lokal
             Route::get('/history',            [ShipDluTicketingController::class, 'shipDluHistory']);
+
+            Route::delete('/history/{id}',    [ShipDluTicketingController::class, 'destroyHistory']);
+            Route::post('/history/bulk',      [ShipDluTicketingController::class, 'bulkDestroyHistory']);
         });
 
             // Hotel
