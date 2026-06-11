@@ -315,8 +315,8 @@ class ShipTicketingController extends BaseController
             $schedulePayload = [
                 'originPort'      => (string) $request->originPort,
                 'destinationPort' => (string) $request->destinationPort,
-                'departStartDate' => date('c', strtotime($request->departDate)),
-                'departEndDate'   => date('c', strtotime($request->departDate)),
+                'departStartDate' => date('Y-m-d\T00:00:00', strtotime($request->departDate)),
+                'departEndDate'   => date('Y-m-d\T23:59:59', strtotime($request->departDate)),
                 'userID'          => $this->darmawisataUserId,
                 'accessToken'     => $request->accessToken,
             ];
@@ -621,8 +621,8 @@ class ShipTicketingController extends BaseController
             // ==========================================
             // VALIDASI Data Penting untuk Darmawisata
             // ==========================================
-            if (empty($order->num_code) || empty($order->booking_number) || empty($order->booking_date_time) || empty($order->dw_access_token)) {
-                Log::error('LOG LOG: [SHIP ISSUED] Gagal: Data booking tidak lengkap di database untuk order ID: ' . $order->id);
+            if (empty($order->num_code) || empty($order->booking_date_time) || empty($order->dw_access_token)) {
+            Log::error('LOG LOG: [SHIP ISSUED] Gagal: Data booking tidak lengkap di database untuk order ID: ' . $order->id);
                 return response()->json([
                     'status' => 'FAILED',
                     'message' => 'Data pemesanan kapal tidak lengkap. Pesanan ini kemungkinan gagal saat proses Booking.'
