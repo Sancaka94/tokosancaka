@@ -227,7 +227,7 @@ class ShipTicketingController extends BaseController
 
         try {
             // PERBAIKAN 2: Generate numCode secara otomatis di Backend
-            // $numCode = 'SHP' . date('YmdHis') . rand(100, 999);
+            $numCode = 'SHP' . date('YmdHis') . rand(100, 999);
 
             // STEP A: SIMPAN DATABASE STATUS DRAFT
             Log::info("Proses simpan DRAFT ke database lokal untuk kapal...");
