@@ -521,11 +521,17 @@ class ShipTicketingController extends BaseController
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
-        try {
+       try {
+            // FILTER PENTING: Cegah numCode / PROSES masuk sebagai bookingNumber
+            $bNumber = $request->bookingNumber;
+            if ($bNumber === $request->numCode || $bNumber === 'PROSES') {
+                $bNumber = "";
+            }
+
             $payload = [
                 'numCode'       => $request->numCode,
-                'bookingDate'   => date('c', strtotime($request->bookingDate)), // PERBAIKAN 2: Gunakan date('c') agar formatnya standar ISO 8601 (+07:00)
-                'bookingNumber' => $request->bookingNumber ?? "", // Berikan string kosong jika null agar API pusat tidak bingung
+                'bookingDate'   => date('c', strtotime($request->bookingDate)), // Format to ISO 8601
+                'bookingNumber' => $bNumber, // <-- Gunakan variabel hasil filter
                 'userID'        => $this->darmawisataUserId,
                 'accessToken'   => $request->accessToken
             ];
@@ -541,14 +547,15 @@ class ShipTicketingController extends BaseController
             // 2. LOGIKA BACKUP & FALLBACK
             if (isset($json['status']) && $json['status'] === 'SUCCESS') {
 
-                // Tangkal typo dari API pusat
                 $bookingDateTime = $json['bookingDateTime'] ?? $json['booking DateTime'] ?? null;
                 $issuedDateTimeLimit = $json['issuedDateTimeLimit'] ?? $json['issued DateTimeLimit'] ?? null;
-                $bookingNumber = $json['bookingNumber'] ?? $json['bokingNumber'] ?? $request->bookingNumber;
+                
+                // Gunakan bookingNumber dari Darmawisata (kalau null, simpan string kosong)
+                $bookingNumber = $json['bookingNumber'] ?? $json['bokingNumber'] ?? $bNumber;
 
-                // PERBAIKAN 3: Gunakan num_code sebagai acuan utama pencarian database
+                // A. Jika API Darmawisata SUKSES, simpan/update payload utuh ke Database
                 DB::table('ship_booking_details')->updateOrInsert(
-                    ['num_code' => $request->numCode], 
+                    ['num_code' => $request->numCode], // <-- Cari pakai numCode agar konsisten
                     [
                         'booking_number' => $bookingNumber,
                         'booking_date'   => date('Y-m-d H:i:s', strtotime($request->bookingDate)), 
@@ -561,9 +568,10 @@ class ShipTicketingController extends BaseController
                 return $response; 
 
             } else {
+                // B. Jika API Darmawisata GAGAL (Token expired, timeout, dll)
                 Log::warning("Darmawisata API Gagal mengambil detail tiket kapal. Alasan: " . ($json['respMessage'] ?? 'Unknown'));
 
-                // Cari backup menggunakan numCode
+                // Cek apakah kita punya backup data ini di database
                 $backup = DB::table('ship_booking_details')->where('num_code', $request->numCode)->first();
 
                 if ($backup && $backup->payload) {
@@ -573,7 +581,7 @@ class ShipTicketingController extends BaseController
                 }
 
                 Log::error("Backup tidak ditemukan untuk numCode: {$request->numCode}");
-                return $response;
+                return $response; 
             }
         } catch (\Exception $e) {
             Log::error("FATAL ERROR [Ship Booking Detail]: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
