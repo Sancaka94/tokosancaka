@@ -200,27 +200,23 @@ class ShipTicketingController extends BaseController
         return $response;
     }
 
-    public function shipBooking(Request $request)
+   public function shipBooking(Request $request)
     {
         Log::info("\n========== [SHIP BOOKING - START] ==========");
         Log::info("Payload Request Mobile: ", $request->all());
 
+        // PERBAIKAN 1: Sesuaikan validasi dengan payload dari Mobile App
         $validator = Validator::make($request->all(), [
-            'numCode'         => 'required|string',
             'originPort'      => 'required|string',
             'originCall'      => 'required|integer',
             'destinationPort' => 'required|string',
             'destinationCall' => 'required|integer',
             'shipNumber'      => 'required|string',
             'departDate'      => 'required|string',
-            'paxDetails'      => 'required|array',
-            'paxDetails.*.firstName' => 'required|string',
-            'paxDetails.*.lastName'  => 'required|string',
-            'paxDetails.*.birthDate' => 'required|string',
-            'paxDetails.*.ID'        => 'required|string',
-            'paxDetails.*.phone'     => 'required|string',
-            'paxDetails.*.paxType'   => 'required|integer',
-            'paxDetails.*.paxGender' => 'required|integer',
+            'passengers'      => 'required|array',
+            'passengers.*.name' => 'required|string',
+            'passengers.*.birthDate' => 'required|string',
+            'passengers.*.IDNumber'  => 'required|string',
             'accessToken'     => 'required|string',
         ]);
 
@@ -230,21 +226,47 @@ class ShipTicketingController extends BaseController
         }
 
         try {
+            // PERBAIKAN 2: Generate numCode secara otomatis di Backend
+            $numCode = 'SHP' . date('YmdHis') . rand(100, 999);
+
             // STEP A: SIMPAN DATABASE STATUS DRAFT
             Log::info("Proses simpan DRAFT ke database lokal untuk kapal...");
-            $orderId = DB::transaction(function () use ($request) {
-                // Count pax types for initial order record
-                $paxAdult = 0; $paxChild = 0; $paxInfant = 0;
-                foreach ($request->paxDetails as $pax) {
-                    if ($pax['paxType'] == 0) $paxAdult++;      // Adult
-                    elseif ($pax['paxType'] == 1) $paxChild++;  // Child
-                    elseif ($pax['paxType'] == 2) $paxInfant++; // Infant
+            
+            // PERBAIKAN 3: Mapping data 'passengers' dari Frontend ke format 'paxDetails' Darmawisata
+            $paxAdult = 0; $paxChild = 0; $paxInfant = 0;
+            $dwPaxDetails = [];
+
+            foreach ($request->passengers as $pax) {
+                // Konversi Tipe Penumpang ke format Angka Darmawisata
+                if ($pax['type'] === 'Adult') {
+                    $paxType = 0; $paxAdult++;
+                } elseif ($pax['type'] === 'Child') {
+                    $paxType = 1; $paxChild++;
+                } else {
+                    $paxType = 2; $paxInfant++;
                 }
 
+                // Pecah Nama gabungan menjadi First Name dan Last Name
+                $nameParts = explode(' ', trim($pax['name']));
+                $firstName = $nameParts[0];
+                $lastName = count($nameParts) > 1 ? implode(' ', array_slice($nameParts, 1)) : $firstName;
+
+                $dwPaxDetails[] = [
+                    "firstName" => $firstName,
+                    "lastName"  => $lastName,
+                    "birthDate" => date('c', strtotime($pax['birthDate'])),
+                    "ID"        => $pax['IDNumber'],
+                    "phone"     => $request->contactPhone ?? '080000000000', // API butuh nomor HP per pax
+                    "paxType"   => $paxType,
+                    "paxGender" => 0, // Default 0 (Male) karena frontend tidak menanyakan gender
+                ];
+            }
+
+            $orderId = DB::transaction(function () use ($request, $numCode, $paxAdult, $paxChild, $paxInfant, $dwPaxDetails) {
                 $id = DB::table('ship_orders')->insertGetId([
-                    'user_id'            => $request->user()->id_pengguna ?? null, // Assuming user is authenticated
+                    'user_id'            => $request->user()->id_pengguna ?? null,
                     'dw_access_token'    => $request->accessToken,
-                    'num_code'           => $request->numCode,
+                    'num_code'           => $numCode,
                     'origin_port'        => $request->originPort,
                     'origin_call'        => $request->originCall,
                     'destination_port'   => $request->destinationPort,
@@ -259,16 +281,16 @@ class ShipTicketingController extends BaseController
                     'updated_at'         => now(),
                 ]);
 
-                foreach ($request->paxDetails as $pax) {
+                foreach ($dwPaxDetails as $dwPax) {
                     DB::table('ship_passengers')->insert([
                         'ship_order_id'  => $id,
-                        'first_name'     => $pax['firstName'],
-                        'last_name'      => $pax['lastName'],
-                        'birth_date'     => date('Y-m-d H:i:s', strtotime($pax['birthDate'])),
-                        'id_number'      => $pax['ID'],
-                        'phone'          => $pax['phone'],
-                        'pax_type'       => $pax['paxType'],
-                        'pax_gender'     => $pax['paxGender'],
+                        'first_name'     => $dwPax['firstName'],
+                        'last_name'      => $dwPax['lastName'],
+                        'birth_date'     => date('Y-m-d H:i:s', strtotime($dwPax['birthDate'])),
+                        'id_number'      => $dwPax['ID'],
+                        'phone'          => $dwPax['phone'],
+                        'pax_type'       => $dwPax['paxType'],
+                        'pax_gender'     => $dwPax['paxGender'],
                         'created_at'     => now(),
                         'updated_at'     => now(),
                     ]);
@@ -278,27 +300,14 @@ class ShipTicketingController extends BaseController
 
             Log::info("Ship Order DRAFT berhasil dibuat. Local ID: " . $orderId);
 
-            // STEP B: RAKIT PAYLOAD DARMAWISATA
-            $dwPaxDetails = [];
-            foreach ($request->paxDetails as $pax) {
-                $dwPaxDetails[] = [
-                    "firstName" => $pax['firstName'],
-                    "lastName"  => $pax['lastName'],
-                    "birthDate" => date('Y-m-d\TH:i:s', strtotime($pax['birthDate'])), // Format to ISO 8601
-                    "ID"        => $pax['ID'],
-                    "phone"     => $pax['phone'],
-                    "paxType"   => $pax['paxType'],
-                    "paxGender" => $pax['paxGender'],
-                ];
-            }
-
+            // STEP B: RAKIT PAYLOAD DARMAWISATA (Sesuai dokumentasi baku)
             $dwPayload = [
-                "numCode"         => $request->numCode,
-                "originPort"      => $request->originPort,
-                "originCall"      => $request->originCall,
-                "destinationPort" => $request->destinationPort,
-                "destinationCall" => $request->destinationCall,
-                "shipNumber"      => $request->shipNumber,
+                "numCode"         => $numCode,
+                "originPort"      => (string) $request->originPort,
+                "originCall"      => (int) $request->originCall,
+                "destinationPort" => (string) $request->destinationPort,
+                "destinationCall" => (int) $request->destinationCall,
+                "shipNumber"      => (string) $request->shipNumber,
                 "departDate"      => date('c', strtotime($request->departDate)),
                 "paxDetails"      => $dwPaxDetails,
                 "userID"          => $this->darmawisataUserId,
@@ -306,8 +315,6 @@ class ShipTicketingController extends BaseController
             ];
 
             Log::info("Payload to Darmawisata [Ship/Booking]: ", $dwPayload);
-
-            // No silent re-hit for Ship/Booking as it wasn't specified like in Train/Booking
 
             // STEP C: TEMBAK API
             $response = $this->forwardRequest('Ship/Booking', $dwPayload);
@@ -334,14 +341,10 @@ class ShipTicketingController extends BaseController
                 ]);
                 Log::info("Ship Order UPDATE ke HOLD sukses. Booking Number: " . ($json['bookingNumber'] ?? 'N/A'));
 
-                // Update passenger details with deck, cabin, bed, ticket number, etc.
                 if (isset($json['paxBookingDetails']) && is_array($json['paxBookingDetails'])) {
                     $localPassengers = DB::table('ship_passengers')->where('ship_order_id', $orderId)->get();
                     foreach ($json['paxBookingDetails'] as $dwPax) {
-                        // Try to match Darmawisata passenger with local passenger using combination of names and birthdate
-                        // This might need a more robust matching if names are not unique. For now, assume a simple match by name.
                         $matchedPax = $localPassengers->first(function($lp) use ($dwPax) {
-                            // Matching by full name (first + last) and birthdate for better accuracy
                             $localFullName = strtolower($lp->first_name . ' ' . $lp->last_name);
                             $dwPaxFullName = strtolower($dwPax['paxName'] ?? '');
                             $localBirthDate = date('Y-m-d', strtotime($lp->birth_date));
@@ -372,8 +375,6 @@ class ShipTicketingController extends BaseController
             } else {
                 $message = $json['respMessage'] ?? 'Kapal menolak pemesanan.';
 
-                // Check for specific error messages if needed, similar to train
-                // Example: insufficient balance, time limit expired, etc.
                 if (str_contains(strtolower($message), 'insufficient balance')) {
                     Log::error("FATAL: Gagal Booking Kapal karena Saldo H2H Pusat Darmawisata Habis!");
                     return response()->json([
@@ -382,10 +383,9 @@ class ShipTicketingController extends BaseController
                     ]);
                 }
 
-                // If booking failed, update local order status to FAILED
                 DB::table('ship_orders')->where('id', $orderId)->update([
                     'status' => 'FAILED',
-                    'dw_response_message' => $message, // Store Darmawisata's response message
+                    'dw_response_message' => $message,
                     'updated_at' => now()
                 ]);
                 Log::warning("Ship Booking Gagal. Local Order ID: {$orderId}. Message: {$message}");
@@ -395,8 +395,6 @@ class ShipTicketingController extends BaseController
 
         } catch (\Exception $e) {
             Log::error("FATAL ERROR [Ship Booking]: " . $e->getMessage() . "\nTrace: " . $e->getTraceAsString());
-            // If a fatal error occurs before Darmawisata API call, or during database update
-            // ensure the local order is marked as FAILED if it was created
             if (isset($orderId)) {
                 DB::table('ship_orders')->where('id', $orderId)->update([
                     'status' => 'FAILED',
