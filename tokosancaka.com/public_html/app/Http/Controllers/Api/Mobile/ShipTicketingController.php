@@ -747,11 +747,13 @@ class ShipTicketingController extends BaseController
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            // Format data agar sesuai dengan interface yang digunakan di mobile
+          // Format data agar sesuai dengan interface yang digunakan di mobile
             $formattedData = $orders->map(function ($order) {
                 return [
                     'id'            => $order->id,
-                    'bookingNumber' => $order->booking_number ?? 'PROSES',
+                    // FIX 1: Gunakan num_code jika booking_number kosong
+                    'bookingNumber' => $order->booking_number ?? $order->num_code ?? 'PROSES',
+                    'numCode'       => $order->num_code ?? '', // Tambahan untuk dilempar ke detail
                     'shipName'      => $order->ship_name ?? $order->ship_number ?? null,
                     'subClass'      => $order->sub_class ?? $order->sub_class_fare ?? null,
                     'bookingDate'   => $order->booking_date_time ?? $order->created_at,
@@ -764,7 +766,8 @@ class ShipTicketingController extends BaseController
                     'paxChild'      => $order->pax_child ?? 0,
                     'paxInfant'     => $order->pax_infant ?? 0,
                     'status'        => $order->status,
-                    'totalFare'     => (float) ($order->total_fare ?? 0),
+                    // FIX 2: Arahkan ke sales_price atau ticket_price agar harga tidak 0
+                    'totalFare'     => (float) ($order->sales_price ?? $order->ticket_price ?? 0),
                     'ticketPrice'   => (float) ($order->ticket_price ?? 0),
                     'paymentMethod' => $order->payment_method ?? 'SALDO',
                     'paymentUrl'    => $order->payment_url ?? null,
