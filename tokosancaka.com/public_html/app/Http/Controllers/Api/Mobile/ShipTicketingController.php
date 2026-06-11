@@ -798,4 +798,110 @@ class ShipTicketingController extends BaseController
             ], 500);
         }
     }
+
+    /**
+     * Hapus satu data riwayat tiket kapal
+     */
+    public function destroyHistory(Request $request, $id)
+    {
+        Log::info("\n========== [SHIP HISTORY DESTROY - START] ==========");
+        try {
+            $user = $request->user();
+            $userId = $user->id_pengguna ?? $user->id;
+
+            // Pastikan tiket tersebut benar-benar milik user yang sedang login
+            $order = DB::table('ship_orders')
+                ->where('id', $id)
+                ->where('user_id', $userId)
+                ->first();
+
+            if (!$order) {
+                return response()->json([
+                    'status' => 'FAILED',
+                    'message' => 'Data tiket tidak ditemukan atau Anda tidak memiliki akses.'
+                ], 404);
+            }
+
+            // Hapus data penumpang yang berelasi dengan pesanan ini terlebih dahulu
+            DB::table('ship_passengers')->where('ship_order_id', $id)->delete();
+            
+            // Hapus data utama (pesanan kapal)
+            DB::table('ship_orders')->where('id', $id)->delete();
+
+            Log::info("Tiket Kapal ID: {$id} berhasil dihapus oleh User ID: {$userId}");
+
+            return response()->json([
+                'status' => 'SUCCESS',
+                'message' => 'Data tiket berhasil dihapus.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Ship History Destroy]: " . $e->getMessage());
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Sistem Error saat menghapus data riwayat.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Hapus massal (Bulk Destroy) riwayat tiket kapal
+     */
+    public function bulkDestroyHistory(Request $request)
+    {
+        Log::info("\n========== [SHIP HISTORY BULK DESTROY - START] ==========");
+        
+        $validator = Validator::make($request->all(), [
+            'ids'   => 'required|array',
+            'ids.*' => 'integer'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'FAILED', 
+                'message' => 'Format ID yang dikirim tidak valid.'
+            ], 422);
+        }
+
+        try {
+            $user = $request->user();
+            $userId = $user->id_pengguna ?? $user->id;
+            $ids = $request->ids;
+
+            // Cari ID pesanan yang benar-benar ada dan milik user yang login (Keamanan)
+            $validIds = DB::table('ship_orders')
+                ->whereIn('id', $ids)
+                ->where('user_id', $userId)
+                ->pluck('id')
+                ->toArray();
+
+            if (empty($validIds)) {
+                 return response()->json([
+                    'status'  => 'FAILED',
+                    'message' => 'Tidak ada data valid yang bisa dihapus.'
+                ], 404);
+            }
+
+            // Hapus data penumpang dari semua ID pesanan yang tervalidasi
+            DB::table('ship_passengers')->whereIn('ship_order_id', $validIds)->delete();
+
+            // Hapus data pesanan dari tabel utama
+            DB::table('ship_orders')->whereIn('id', $validIds)->delete();
+
+            $count = count($validIds);
+            Log::info("Sebanyak {$count} tiket kapal berhasil dihapus masal oleh User ID: {$userId}");
+
+            return response()->json([
+                'status'  => 'SUCCESS',
+                'message' => "{$count} data tiket berhasil dihapus."
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Ship History Bulk Destroy]: " . $e->getMessage());
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Sistem Error saat menghapus data massal.'
+            ], 500);
+        }
+    }
 }

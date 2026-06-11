@@ -558,6 +558,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/booking-list',   [ShipTicketingController::class, 'shipBookingList']);
             Route::post('/booking-detail', [ShipTicketingController::class, 'shipBookingDetail']);
             Route::get('/history',         [ShipTicketingController::class, 'shipHistory']);
+
+            Route::delete('/history/{id}', [ShipTicketingController::class, 'destroyHistory']);
+            Route::post('/history/bulk',   [ShipTicketingController::class, 'bulkDestroyHistory']);
         });
 
         // ==========================================
