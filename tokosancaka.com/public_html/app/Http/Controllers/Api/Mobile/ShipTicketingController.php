@@ -389,6 +389,7 @@ class ShipTicketingController extends BaseController
             $json = json_decode($response->getContent(), true);
 
             Log::info("Response Darmawisata [Ship/Booking]: ", $json ?? ['error' => 'No JSON Response']);
+            
 
             // STEP D: UPDATE DATABASE LOKAL
             if (isset($json['status']) && $json['status'] === 'SUCCESS') {
