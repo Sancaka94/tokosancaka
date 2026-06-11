@@ -337,7 +337,7 @@ class ShipTicketingController extends BaseController
             ];
             $this->forwardRequest('Ship/Availability', $availabilityPayload);
 
-           // 3. Pre-flight Ship/GetRoom
+          // 3. Pre-flight Ship/GetRoom
             $getRoomPayload = [
                 "originPort"         => (string) $request->originPort,
                 "originCall"         => (int) $request->originCall,
@@ -358,19 +358,23 @@ class ShipTicketingController extends BaseController
             
             // TANGKAP RESPONS GET ROOM
             $getRoomResponse = $this->forwardRequest('Ship/GetRoom', $getRoomPayload);
+            
+            // Log respons GetRoom (opsional, untuk memastikan)
+            Log::info("Response Pre-flight GetRoom: " . $getRoomResponse->getContent());
+            
             $getRoomData = json_decode($getRoomResponse->getContent(), true);
 
-            // EKSTRAK numCode DARI DARMAWISATA (jika tidak ada, fallback ke manual)
-            $dwNumCode = $getRoomData['numCode'] ?? ('SHP' . date('YmdHis') . rand(100, 999));
+            // EKSTRAK numCode DARI DARMAWISATA (Gunakan $numCode lokal sebagai fallback jika gagal)
+            $dwNumCode = $getRoomData['numCode'] ?? $numCode;
 
-            // UPDATE numCode DI DATABASE LOKAL YANG TADI DIBUAT
+            // UPDATE numCode DI DATABASE LOKAL YANG TADI DIBUAT DENGAN STATUS DRAFT
             DB::table('ship_orders')->where('id', $orderId)->update(['num_code' => $dwNumCode]);
 
             // =========================================================================
 
             // STEP B: RAKIT PAYLOAD DARMAWISATA (Sesuai dokumentasi baku)
             $dwPayload = [
-                "numCode"         => $dwNumCode, // <-- GUNAKAN numCode DARI DARMAWISATA DI SINI
+                "numCode"         => $dwNumCode, // <-- PERHATIKAN BARIS INI, WAJIB MENGGUNAKAN $dwNumCode
                 "originPort"      => (string) $request->originPort,
                 "originCall"      => (int) $request->originCall,
                 "destinationPort" => (string) $request->destinationPort,
@@ -389,7 +393,7 @@ class ShipTicketingController extends BaseController
             $json = json_decode($response->getContent(), true);
 
             Log::info("Response Darmawisata [Ship/Booking]: ", $json ?? ['error' => 'No JSON Response']);
-            
+
 
             // STEP D: UPDATE DATABASE LOKAL
             if (isset($json['status']) && $json['status'] === 'SUCCESS') {
