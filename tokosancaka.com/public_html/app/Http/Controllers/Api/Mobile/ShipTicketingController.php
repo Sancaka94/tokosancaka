@@ -205,7 +205,6 @@ class ShipTicketingController extends BaseController
         Log::info("\n========== [SHIP BOOKING - START] ==========");
         Log::info("Payload Request Mobile: ", $request->all());
 
-        // PASTIKAN BLOK VALIDASI INI SUDAH TERGANTI SEPERTI INI:
         $validator = Validator::make($request->all(), [
             'originPort'      => 'required|string',
             'originCall'      => 'required|integer',
@@ -226,18 +225,14 @@ class ShipTicketingController extends BaseController
         }
 
         try {
-            // PERBAIKAN 2: Generate numCode secara otomatis di Backend
             $numCode = 'SHP' . date('YmdHis') . rand(100, 999);
 
-            // STEP A: SIMPAN DATABASE STATUS DRAFT
             Log::info("Proses simpan DRAFT ke database lokal untuk kapal...");
             
-            // PERBAIKAN 3: Mapping data 'passengers' dari Frontend ke format 'paxDetails' Darmawisata
             $paxAdult = 0; $paxChild = 0; $paxInfant = 0;
             $dwPaxDetails = [];
 
             foreach ($request->passengers as $pax) {
-                // Konversi Tipe Penumpang ke format Angka Darmawisata
                 if ($pax['type'] === 'Adult') {
                     $paxType = 0; $paxAdult++;
                 } elseif ($pax['type'] === 'Child') {
@@ -246,7 +241,6 @@ class ShipTicketingController extends BaseController
                     $paxType = 2; $paxInfant++;
                 }
 
-                // Pecah Nama gabungan menjadi First Name dan Last Name
                 $nameParts = explode(' ', trim($pax['name']));
                 $firstName = $nameParts[0];
                 $lastName = count($nameParts) > 1 ? implode(' ', array_slice($nameParts, 1)) : $firstName;
@@ -256,9 +250,9 @@ class ShipTicketingController extends BaseController
                     "lastName"  => $lastName,
                     "birthDate" => date('c', strtotime($pax['birthDate'])),
                     "ID"        => $pax['IDNumber'],
-                    "phone"     => $request->contactPhone ?? '080000000000', // API butuh nomor HP per pax
+                    "phone"     => $request->contactPhone ?? '080000000000',
                     "paxType"   => $paxType,
-                    "paxGender" => 0, // Default 0 (Male) karena frontend tidak menanyakan gender
+                    "paxGender" => 0,
                 ];
             }
 
@@ -298,25 +292,23 @@ class ShipTicketingController extends BaseController
                 return $id;
             });
 
-         Log::info("Ship Order DRAFT berhasil dibuat. Local ID: " . $orderId);
+            Log::info("Ship Order DRAFT berhasil dibuat. Local ID: " . $orderId);
 
             // =========================================================================
             // INJECT PRE-FLIGHT REQUEST (SCHEDULE -> AVAILABILITY -> GET ROOM)
-            // Memancing session API Darmawisata sesuai urutan wajib di flowchart
             // =========================================================================
-            
-            // Siapkan summary PAX untuk parameter Availability & GetRoom
             $paxSummary = [];
             if ($paxAdult > 0) $paxSummary[] = ["paxType" => 0, "paxGender" => 0, "paxTotal" => $paxAdult];
             if ($paxChild > 0) $paxSummary[] = ["paxType" => 1, "paxGender" => 0, "paxTotal" => $paxChild];
             if ($paxInfant > 0) $paxSummary[] = ["paxType" => 2, "paxGender" => 0, "paxTotal" => $paxInfant];
 
             // 1. Pre-flight Ship/Schedule
+            // PERBAIKAN: Menambahkan P di format waktu agar memunculkan +07:00
             $schedulePayload = [
                 'originPort'      => (string) $request->originPort,
                 'destinationPort' => (string) $request->destinationPort,
-                'departStartDate' => date('Y-m-d\T00:00:00', strtotime($request->departDate)),
-                'departEndDate'   => date('Y-m-d\T23:59:59', strtotime($request->departDate)),
+                'departStartDate' => date('Y-m-d\T00:00:00P', strtotime($request->departDate)), 
+                'departEndDate'   => date('Y-m-d\T23:59:59P', strtotime($request->departDate)), 
                 'userID'          => $this->darmawisataUserId,
                 'accessToken'     => $request->accessToken,
             ];
@@ -356,22 +348,18 @@ class ShipTicketingController extends BaseController
                 "accessToken"        => $request->accessToken
             ];
             
-            // TANGKAP RESPONS GET ROOM
             $getRoomResponse = $this->forwardRequest('Ship/GetRoom', $getRoomPayload);
-            Log::info("Response Pre-flight GetRoom: " . $getRoomResponse->getContent());
             $getRoomData = json_decode($getRoomResponse->getContent(), true);
 
-            // EKSTRAK numCode DARI DARMAWISATA (Gunakan $numCode lokal sebagai fallback jika gagal)
             $dwNumCode = $getRoomData['numCode'] ?? $numCode;
 
-            // UPDATE numCode DI DATABASE LOKAL YANG TADI DIBUAT DENGAN STATUS DRAFT
             DB::table('ship_orders')->where('id', $orderId)->update(['num_code' => $dwNumCode]);
 
             // =========================================================================
 
-            // STEP B: RAKIT PAYLOAD DARMAWISATA (Sesuai dokumentasi baku)
+            // STEP B: RAKIT PAYLOAD DARMAWISATA
             $dwPayload = [
-                "numCode"         => $dwNumCode, // <-- WAJIB MENGGUNAKAN $dwNumCode
+                "numCode"         => $dwNumCode,
                 "originPort"      => (string) $request->originPort,
                 "originCall"      => (int) $request->originCall,
                 "destinationPort" => (string) $request->destinationPort,
@@ -385,15 +373,19 @@ class ShipTicketingController extends BaseController
 
             Log::info("Payload to Darmawisata [Ship/Booking]: ", $dwPayload);
 
-            // STEP C: TEMBAK API
             $response = $this->forwardRequest('Ship/Booking', $dwPayload);
             $json = json_decode($response->getContent(), true);
 
             Log::info("Response Darmawisata [Ship/Booking]: ", $json ?? ['error' => 'No JSON Response']);
 
-
             // STEP D: UPDATE DATABASE LOKAL
             if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+                
+                // PERBAIKAN: VARIABEL DIMASUKKAN KE SINI (Kamar yang benar!)
+                $bookingDateTime = $json['bookingDateTime'] ?? $json['booking DateTime'] ?? null;
+                $issuedDateTimeLimit = $json['issuedDateTimeLimit'] ?? $json['issued DateTimeLimit'] ?? null;
+                $bookingNumber = $json['bookingNumber'] ?? $json['bokingNumber'] ?? null;
+
                 DB::table('ship_orders')->where('id', $orderId)->update([
                     'booking_number'         => $bookingNumber,
                     'issued_date_time_limit' => $issuedDateTimeLimit ? date('Y-m-d H:i:s', strtotime($issuedDateTimeLimit)) : null,
@@ -409,7 +401,7 @@ class ShipTicketingController extends BaseController
                     'status'                 => 'HOLD',
                     'updated_at'             => now()
                 ]);
-                Log::info("Ship Order UPDATE ke HOLD sukses. Booking Number: " . ($json['bookingNumber'] ?? 'N/A'));
+                Log::info("Ship Order UPDATE ke HOLD sukses. Booking Number: " . ($bookingNumber ?? 'N/A'));
 
                 if (isset($json['paxBookingDetails']) && is_array($json['paxBookingDetails'])) {
                     $localPassengers = DB::table('ship_passengers')->where('ship_order_id', $orderId)->get();
