@@ -205,7 +205,7 @@ class ShipTicketingController extends BaseController
         Log::info("\n========== [SHIP BOOKING - START] ==========");
         Log::info("Payload Request Mobile: ", $request->all());
 
-        // PERBAIKAN 1: Sesuaikan validasi dengan payload dari Mobile App
+        // PASTIKAN BLOK VALIDASI INI SUDAH TERGANTI SEPERTI INI:
         $validator = Validator::make($request->all(), [
             'originPort'      => 'required|string',
             'originCall'      => 'required|integer',
