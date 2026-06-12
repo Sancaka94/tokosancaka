@@ -376,15 +376,15 @@
     <div class="stepper">
         <div class="step active" id="step-indicator-1">
             <div class="step-icon">1</div>
-            <div class="step-text">Pengirim</div>
+            <div class="step-text">Data Pengirim</div>
         </div>
         <div class="step" id="step-indicator-2">
             <div class="step-icon">2</div>
-            <div class="step-text">Penerima</div>
+            <div class="step-text">Data Penerima</div>
         </div>
         <div class="step" id="step-indicator-3">
             <div class="step-icon">3</div>
-            <div class="step-text">Detail & Bayar</div>
+            <div class="step-text">Detail Paket & Bayar</div>
         </div>
     </div>
 
