@@ -1830,14 +1830,28 @@ TEXT;
         if (empty($apiKey)) return ['status' => false, 'results' => []];
 
         try {
-            // PERBAIKAN: Tarik nama armada asli dari API Deliveree dan simpan di Cache (selama 24 jam) agar Sancaka tidak lemot
-            $vehicleMap = \Illuminate\Support\Facades\Cache::remember('deliveree_vehicles_' . $mode, 60 * 24, function() use ($baseUrl, $apiKey) {
-                $resp = Http::withHeaders(['Authorization' => $apiKey, 'Accept-Language' => 'id'])->get($baseUrl . '/vehicle_types');
+            // PERBAIKAN: Masukkan pickup_location ke dalam API Vehicle Types. 
+            // Cache disesuaikan dengan koordinat spesifik agar akurat per daerah.
+            $cacheKey = 'deliveree_vehicles_' . md5($senderLat . $senderLng) . '_' . $mode;
+            
+            $vehicleMap = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 24, function() use ($baseUrl, $apiKey, $senderLat, $senderLng) {
+                $resp = Http::withHeaders([
+                    'Authorization' => $apiKey, 
+                    'Accept-Language' => 'id'
+                ])->get($baseUrl . '/vehicle_types', [
+                    'pickup_location' => [
+                        'latitude' => (float)$senderLat,
+                        'longitude' => (float)$senderLng
+                    ]
+                ]);
+
                 $map = [];
                 if ($resp->successful()) {
                     foreach ($resp->json('data') ?? [] as $v) {
                         $map[$v['id']] = $v['name'];
                     }
+                } else {
+                    Log::error('LOG LOG: Gagal Tarik Vehicle Types', ['res' => $resp->json()]);
                 }
                 return $map;
             });
@@ -1863,8 +1877,6 @@ TEXT;
 
                 foreach ($data as $quote) {
                     $vId = $quote['vehicle_type_id'];
-                    
-                    // PERBAIKAN: Cocokkan ID harga dengan nama asli dari Cache
                     $vName = $vehicleMap[$vId] ?? 'Armada Tipe ' . $vId;
 
                     $results[] = [
