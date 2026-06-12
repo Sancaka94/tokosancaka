@@ -523,7 +523,23 @@
                                 </select>
                             </div>
                             
-                            <div class="col-12"><label for="ansuransi" class="form-label">Asuransi</label><div class="input-group"><span class="input-group-text"><i class="fas fa-shield-alt"></i></span><select name="ansuransi" id="ansuransi" class="form-select" required><option value="tidak" selected>Tidak Pakai Asuransi</option><option value="iya">Ya, Pakai Asuransi</option></select></div></div>
+                           <div class="col-12">
+                                <label for="ansuransi" class="form-label">Asuransi</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-shield-alt"></i></span>
+                                    <select name="ansuransi" id="ansuransi" class="form-select" required>
+                                        <option value="tidak" selected>Tidak Pakai Asuransi</option>
+                                        <option value="iya">Ya, Pakai Asuransi</option>
+                                    </select>
+                                </div>
+                                <!-- TAMBAHAN: Checkbox TOS Asuransi (Disembunyikan default) -->
+                                <div id="tos_asuransi_container" class="form-check mt-2 d-none">
+                                    <input class="form-check-input" type="checkbox" id="tos_asuransi" name="tos_asuransi">
+                                    <label class="form-check-label small text-muted" for="tos_asuransi">
+                                        Saya setuju dengan <a href="https://www.delivereetech.com/id/en/goods-insurance-bp/" target="_blank" class="text-success fw-bold text-decoration-none">Kebijakan Asuransi Barang</a>.
+                                    </label>
+                                </div>
+                            </div>
                             <div class="col-12"><hr class="my-3"></div>
 
                             {{-- START KODE BARU: OPSI EXTRA DELIVEREE --}}
@@ -539,18 +555,15 @@
                                     </select>
 
                                     <!-- Special Help -->
-                                    <div class="form-check form-switch mb-2">
+                                    <div class="form-check form-switch mb-0">
                                         <input class="form-check-input" type="checkbox" name="extra_helper" id="extra_helper" value="1">
                                         <label class="form-check-label small fw-bold" for="extra_helper">
                                             Bantuan Khusus (Extra Helper) <i class="fas fa-info-circle text-muted" title="Kenek tambahan untuk angkut barang"></i>
                                         </label>
-                                    </div>
-                                    
-                                    <!-- Link Info Asuransi (Sesuai web deliveree) -->
-                                    <div class="mt-2 text-end">
-                                        <a href="https://www.delivereetech.com/id/en/goods-insurance-bp/" target="_blank" class="text-success small text-decoration-none">
-                                            <i class="fas fa-shield-alt"></i> Info Asuransi Barang Rp 1 Miliar
-                                        </a>
+                                        <!-- TAMBAHAN: Teks Harga Helper Dinamis -->
+                                        <div id="helper_price_display" class="text-success fw-bold d-none" style="font-size: 0.75rem; margin-top: 2px;">
+                                            (Tarif menyesuaikan pilihan armada)
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -564,6 +577,18 @@
                                 <input type="hidden" id="selected_shipping_cost" value="0">
                             </div>
 
+                           {{-- PENAMBAHAN: Hidden input untuk menampung tarif ongkir yang terpilih guna keperluan kalkulasi limit minimum --}}
+                            <div class="col-12">
+                                <label for="selected_expedition_display" class="form-label">Pilih Ekspedisi</label>
+                                <input type="text" id="selected_expedition_display" class="form-control text-start fw-bold" placeholder="Lengkapi data & klik di sini untuk Cek Tarif" readonly required style="cursor:pointer; background-color: #f8f9fa;">
+                                <input type="hidden" name="expedition" id="expedition" required>
+                                
+                                <!-- Hidden Value Rincian -->
+                                <input type="hidden" id="selected_shipping_cost" value="0">
+                                <input type="hidden" id="selected_insurance_cost" value="0">
+                                <input type="hidden" id="selected_cod_fee" value="0">
+                            </div>
+
                             {{-- TAMBAHAN: Kotak Monitor Total Pembayaran --}}
                             <div class="col-12 my-2">
                                 <div class="p-3 rounded" style="background-color: #f8f9fa; border: 1px dashed #ced4da;">
@@ -571,10 +596,23 @@
                                         <span class="text-muted" style="font-size: 0.85rem;">Harga Barang</span>
                                         <span id="summary_item_price" class="fw-bold text-secondary" style="font-size: 0.85rem;">Rp 0</span>
                                     </div>
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <span class="text-muted" style="font-size: 0.85rem;">Tarif Ongkir</span>
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="text-muted" style="font-size: 0.85rem;">Tarif Ongkir Dasar</span>
                                         <span id="summary_shipping_cost" class="fw-bold text-secondary" style="font-size: 0.85rem;">Rp 0</span>
                                     </div>
+
+                                    <!-- BARIS ASURANSI (Muncul Jika Dipilih) -->
+                                    <div id="summary_insurance_row" class="justify-content-between align-items-center mb-1 d-none">
+                                        <span class="text-muted" style="font-size: 0.85rem;"><i class="fas fa-shield-alt text-success me-1"></i> Asuransi Barang</span>
+                                        <span id="summary_insurance_cost" class="fw-bold text-success" style="font-size: 0.85rem;">Rp 0</span>
+                                    </div>
+
+                                    <!-- BARIS HELPER (Muncul Jika Dipilih) -->
+                                    <div id="summary_helper_row" class="justify-content-between align-items-center mb-2 d-none">
+                                        <span class="text-muted" style="font-size: 0.85rem;"><i class="fas fa-user-friends text-success me-1"></i> Bantuan Khusus (Helper)</span>
+                                        <span id="summary_helper_cost" class="fw-bold text-success" style="font-size: 0.85rem;">(Menunggu Cek Tarif)</span>
+                                    </div>
+
                                     <hr class="my-2" style="border-color: #ced4da;">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <span class="fw-bold text-dark">Total Pembayaran</span>
@@ -886,33 +924,58 @@
         const debounce = (func, delay) => (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
         function formatRupiah(angka) { return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); }
 
-        // PENAMBAHAN: Fungsi Update Monitor Total
+       // PENAMBAHAN: Fungsi Update Monitor Total
         function updateTotalSummary() {
-            // Hilangkan semua karakter non-angka sebelum diparse
             let rawItemPrice = $('#item_price').val() || "0";
             let itemPrice = parseInt(rawItemPrice.replace(/\D/g, '')) || 0;
 
             let baseShippingCost = parseInt($('#selected_shipping_cost').val()) || 0;
+            let insuranceCost = parseInt($('#selected_insurance_cost').val()) || 0;
             let codFee = parseInt($('#selected_cod_fee').val()) || 0;
+            
             let paymentMethod = $('#payment_method').val();
 
-            // Default: Tampilan Tarif & Total murni hanya Ongkir Dasar
-            let finalShippingCost = baseShippingCost;
-            let total = baseShippingCost;
+            // Kalkulasi Total
+            let finalShippingCost = baseShippingCost + insuranceCost;
+            let total = finalShippingCost;
 
-            // Jika memilih metode COD/CODBARANG, barulah tambahkan biaya COD
             if (paymentMethod === 'COD' || paymentMethod === 'CODBARANG') {
-                finalShippingCost = parseInt(baseShippingCost) + parseInt(codFee);
+                finalShippingCost = baseShippingCost + insuranceCost + codFee;
                 total = finalShippingCost;
             }
 
-            // Jika memilih CODBARANG, tambahkan Harga Barang ke Total
             if (paymentMethod === 'CODBARANG') {
-                total = parseInt(itemPrice) + parseInt(finalShippingCost);
+                total = itemPrice + finalShippingCost;
             }
 
             $('#summary_item_price').text(formatRupiah(itemPrice));
-            $('#summary_shipping_cost').text(formatRupiah(finalShippingCost));
+            $('#summary_shipping_cost').text(formatRupiah(baseShippingCost));
+
+            // Logika Tampil/Sembunyi Asuransi
+            if ($('#ansuransi').val() === 'iya') {
+                $('#summary_insurance_row').removeClass('d-none').addClass('d-flex');
+                if (baseShippingCost === 0) {
+                    $('#summary_insurance_cost').text('(Menunggu Cek Tarif)').removeClass('text-success').addClass('text-muted');
+                } else {
+                    $('#summary_insurance_cost').text(insuranceCost > 0 ? formatRupiah(insuranceCost) : 'Gratis').removeClass('text-muted').addClass('text-success');
+                }
+            } else {
+                $('#summary_insurance_row').addClass('d-none').removeClass('d-flex');
+            }
+
+            // Logika Tampil/Sembunyi Extra Helper Deliveree
+            if ($('#extra_helper').is(':checked') && $('#vendor_filter').val() === 'deliveree') {
+                $('#summary_helper_row').removeClass('d-none').addClass('d-flex');
+                if (baseShippingCost === 0) {
+                    $('#summary_helper_cost').text('(Menunggu Cek Tarif)').removeClass('text-success').addClass('text-muted');
+                } else {
+                    // Karena Deliveree otomatis menjumlahkan harga helper ke dalam total_fees API mereka, kita informasikan ini:
+                    $('#summary_helper_cost').text('Sudah Termasuk Ongkir Dasar').removeClass('text-muted').addClass('text-success');
+                }
+            } else {
+                $('#summary_helper_row').addClass('d-none').removeClass('d-flex');
+            }
+
             $('#summary_total_cost').text(formatRupiah(total));
         }
 
@@ -1124,12 +1187,13 @@
                             <h4 class="text-success fw-bold mb-2">${formatRupiah(i.cost)}</h4>
                             <div class="text-muted small"><i class="fas fa-clock me-1"></i> Estimasi: ${etdHtml}</div>
                         </div>
-                        <div class="card-footer bg-transparent border-0 text-center pb-3">
+                       <div class="card-footer bg-transparent border-0 text-center pb-3">
                             <button type="button" class="btn btn-success w-100 select-ongkir-btn rounded-pill fw-bold"
                                 data-value="${payloadValue}"
                                 data-display="Deliveree - ${displayServiceType}"
                                 data-cod-supported="${i.cod}"
-                                data-shipping-cost="${baseOngkirCost}"
+                                data-shipping-cost="${parseInt(i.cost || 0)}" 
+                                data-insurance-cost="${insuranceFeeValue}"
                                 data-cod-fee="${actualCodFee}">
                                 <i class="fas fa-check-circle me-1"></i> Pilih Armada
                             </button>
@@ -1284,7 +1348,7 @@
                                 }
                             }
 
-                            const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}" data-shipping-cost="${baseOngkirCost}" data-cod-fee="${actualCodFee}">Kirim Paket</button>`;
+                            const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}" data-shipping-cost="${parseInt(i.cost || 0)}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">Kirim Paket</button>`;
 
                             const itemHtml = `
                             <div class="ongkir-item-card">
@@ -1333,13 +1397,14 @@
         }
 
         const fieldsThatAffectShipping = '#sender_district_id, #receiver_district_id, #item_price, #weight, #length, #width, #height, #ansuransi, #service_type, #vendor_filter';
-        $(document).on('change', fieldsThatAffectShipping, function() {
+      $(document).on('change', fieldsThatAffectShipping, function() {
             $('#expedition').val('');
             $('#selected_expedition_display').val('Data berubah, klik untuk cek ulang ongkir').removeClass('is-valid');
             $('.cod-payment-option').hide();
 
-            // Reset cost ongkir dan reset payment gateway jika harga berubah
+            // Reset cost ongkir, asuransi, dan reset payment gateway jika harga berubah
             $('#selected_shipping_cost').val('0');
+            $('#selected_insurance_cost').val('0'); // <--- TAMBAHKAN INI
 
             $('#payment_method').val('');
             $('#selectedPaymentName').text('Pilih Pembayaran...');
@@ -1351,7 +1416,7 @@
                 $('#deliveree_extra_section').removeClass('d-none');
             } else {
                 $('#deliveree_extra_section').addClass('d-none');
-                $('#extra_helper').prop('checked', false); // Reset checkbox
+                $('#extra_helper').prop('checked', false); 
             }
             // END KODE BARU
 
@@ -1368,6 +1433,7 @@
 
             // Tangkap nilai yang sudah terpisah murni
             $('#selected_shipping_cost').val($(this).data('shipping-cost'));
+            $('#selected_insurance_cost').val($(this).data('insurance-cost'));
             $('#selected_cod_fee').val($(this).data('cod-fee'));
 
             if ($(this).data('cod-supported')) {
