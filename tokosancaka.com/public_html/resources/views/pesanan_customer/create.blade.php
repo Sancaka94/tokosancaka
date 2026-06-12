@@ -1066,6 +1066,8 @@
                             logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png';
                         } else if (logoName === 'grab') {
                             logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png';
+                        } else if (logoName === 'deliveree') { // <--- TAMBAHAN DELIVEREE
+                            logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/deliveree.png'; 
                         } else if (logoName) {
                             logoUrl = `{{ asset('public/storage/logo-ekspedisi/') }}/${logoName}.png`;
                         }
