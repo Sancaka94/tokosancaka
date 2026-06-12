@@ -1006,6 +1006,38 @@
         function maskData(type, value) { if (!value) return '***'; if (type === 'name') { const parts = value.split(' '); return parts.length > 1 ? parts[0] + ' ' + parts.slice(1).map(p => p.replace(/./g, '*')).join(' ') : (value.length > 2 ? value.substring(0, 2) + '***' : value); } if (type === 'phone') { const num = value.replace(/\D/g, ''); return num.length > 8 ? num.substring(0, 3) + '****' + num.substring(num.length - 4) : num.substring(0, 3) + '****'; } if (type === 'address') { const parts = value.split(' '); return parts.length > 2 ? parts.slice(0, 2).join(' ') + ' **** **** ****' : value; } return '***'; }
         function clearHiddenAddress(prefix) { $(`#${prefix}_province, #${prefix}_regency, #${prefix}_district, #${prefix}_village, #${prefix}_postal_code, #${prefix}_district_id, #${prefix}_subdistrict_id, #${prefix}_lat, #${prefix}_lng`).val(''); }
 
+        // START FUNGSI CERDAS GEOCODE FALLBACK
+        function fallbackGeocode(prefix, kelurahan, kecamatan, kabupaten) {
+            let queries = [];
+            if (kelurahan && kecamatan && kabupaten) queries.push(`${kelurahan}, ${kecamatan}, ${kabupaten}`);
+            if (kecamatan && kabupaten) queries.push(`${kecamatan}, ${kabupaten}`);
+            if (kabupaten) queries.push(`${kabupaten}`);
+
+            function attemptGeo(index) {
+                if (index >= queries.length) {
+                    console.warn(`LOG LOG: Geocode Frontend Gagal Total untuk ${prefix}`);
+                    return;
+                }
+                let q = queries[index];
+                $.ajax({
+                    url: 'https://nominatim.openstreetmap.org/search',
+                    data: { q: q, format: 'json', limit: 1, countrycodes: 'id' },
+                    success: function(res) {
+                        if (res && res.length > 0) {
+                            console.log(`LOG LOG: Geocode Frontend Sukses [${q}] -> Lat: ${res[0].lat}, Lng: ${res[0].lon}`);
+                            $(`#${prefix}_lat`).val(res[0].lat);
+                            $(`#${prefix}_lng`).val(res[0].lon);
+                        } else {
+                            attemptGeo(index + 1);
+                        }
+                    },
+                    error: function() { attemptGeo(index + 1); }
+                });
+            }
+            if(queries.length > 0) attemptGeo(0);
+        }
+        // END FUNGSI CERDAS
+
         function fillContactForm(prefix, data) {
             $(`#${prefix}_name`).val(maskData('name', data.nama)).trigger('blur').attr('data-real-value', data.nama);
             $(`#${prefix}_phone`).val(maskData('phone', data.no_hp)).trigger('blur').attr('data-real-value', data.no_hp);
@@ -1030,8 +1062,15 @@
                         $(`#${prefix}_postal_code`).val(parts[4] || data.postal_code).trigger('change');
                         $(`#${prefix}_district_id`).val(item.district_id).trigger('change');
                         $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id).trigger('change');
-                        $(`#${prefix}_lat`).val(item.lat || '');
-                        $(`#${prefix}_lng`).val(item.lon || '');
+                        
+                        let lat = parseFloat(item.lat);
+                        let lon = parseFloat(item.lon);
+                        if (!lat || !lon || lat === 0 || lon === 0) {
+                            fallbackGeocode(prefix, parts[0] || data.village, parts[1] || data.district, parts[2] || data.regency);
+                        } else {
+                            $(`#${prefix}_lat`).val(lat);
+                            $(`#${prefix}_lng`).val(lon);
+                        }
 
                         addressSearchInput.val('Alamat Ditemukan (Privasi Terjaga)').addClass('is-valid').removeClass('is-invalid');
                         setTimeout(() => addressSearchInput.removeClass('is-valid'), 2500);
@@ -1121,8 +1160,15 @@
                             $(`#${prefix}_postal_code`).val(p[4] || '').trigger('change');
                             $(`#${prefix}_district_id`).val(i.district_id).trigger('change');
                             $(`#${prefix}_subdistrict_id`).val(i.subdistrict_id).trigger('change');
-                            $(`#${prefix}_lat`).val(i.lat || '');
-                            $(`#${prefix}_lng`).val(i.lon || '');
+                            
+                            let lat = parseFloat(i.lat);
+                            let lon = parseFloat(i.lon);
+                            if (!lat || !lon || lat === 0 || lon === 0) {
+                                fallbackGeocode(prefix, p[0], p[1], p[2]);
+                            } else {
+                                $(`#${prefix}_lat`).val(lat);
+                                $(`#${prefix}_lng`).val(lon);
+                            }
                             r.addClass('d-none');
                         })));
                     } else {
@@ -1210,10 +1256,6 @@
             formData.forEach((item, index) => { let realVal = $(`#${item.name.replace(/\[/g, '\\[').replace(/\]/g, '\\]')}`).attr('data-real-value'); if (realVal) formData[index].value = realVal; });
 
             let tempForm = $('<form>').append($.map(formData, item => $('<input>').attr({type: 'hidden', name: item.name, value: item.value})));
-            tempForm.append($('<input>').attr({type: 'hidden', name: 'sender_lat', value: $('#sender_lat').val()}));
-            tempForm.append($('<input>').attr({type: 'hidden', name: 'sender_lng', value: $('#sender_lng').val()}));
-            tempForm.append($('<input>').attr({type: 'hidden', name: 'receiver_lat', value: $('#receiver_lat').val()}));
-            tempForm.append($('<input>').attr({type: 'hidden', name: 'receiver_lng', value: $('#receiver_lng').val()}));
 
             const required = { 'sender_district_id': 'Alamat Pengirim', 'receiver_district_id': 'Alamat Penerima', 'item_price': 'Harga Barang', 'weight': 'Berat' };
             let missing = Object.keys(required).filter(s => !tempForm.find(`[name="${s.replace('#','')}"]`).val());
