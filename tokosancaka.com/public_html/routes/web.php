@@ -85,6 +85,9 @@ use App\Http\Controllers\KirimAjaController;
 // ################ RSUD SOEROTO NGAWI ###################
 use App\Http\Controllers\Rsud\BookingObatRsudController;
 
+// ################ Deliveree ############################endregion
+use App\Http\Controllers\DelivereeApiController;
+
 
 // Payment
 use App\Http\Controllers\PaymentController;
@@ -1533,3 +1536,15 @@ Route::prefix('admin/rsud-order')->name('admin.rsud.')->middleware(['auth'])->gr
 
     });
 
+
+// Grup Rute Deliveree
+Route::prefix('deliveree')->group(function () {
+    Route::get('/vehicle-types', [DelivereeApiController::class, 'getVehicleTypes']);
+    Route::get('/vehicle-types/{id}/extra-services', [DelivereeApiController::class, 'getExtraServices']);
+    Route::post('/quote', [DelivereeApiController::class, 'getQuote']);
+    Route::post('/create', [DelivereeApiController::class, 'createDelivery']);
+    Route::get('/list', [DelivereeApiController::class, 'getDeliveriesList']);
+    Route::get('/details/{id}', [DelivereeApiController::class, 'getDeliveryDetails']);
+    Route::post('/cancel/{id}', [DelivereeApiController::class, 'cancelDelivery']);
+    Route::post('/profile', [DelivereeApiController::class, 'getUserProfile']);
+});

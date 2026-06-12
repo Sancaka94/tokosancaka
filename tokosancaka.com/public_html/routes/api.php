@@ -53,9 +53,11 @@ use App\Http\Controllers\Admin\ApiSettingsController;
 use App\Http\Controllers\Api\MidtransNotificationController;
 use App\Http\Controllers\PaymentRedirectController;
 use App\Http\Controllers\Webhook\PayPalWebhookController;
+use App\Http\Controllers\Api\DelivereeWebhookController;
 
 
-
+// Pastikan endpoint ini sama persis dengan yang Anda isi di "Webhook URL" dasbor Deliveree
+Route::post('/webhook/deliveree', [DelivereeWebhookController::class, 'handleWebhook']);
 
 // Rute Webhook PayPal
 Route::post('/webhook/paypal', [PayPalWebhookController::class, 'handleWebhook']);

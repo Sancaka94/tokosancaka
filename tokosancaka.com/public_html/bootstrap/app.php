@@ -45,6 +45,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/admin/dana/*',  // Mengecualikan rute Transfer & Inquiry Bank yang baru kita buat
             'api/*',             // (OPSIONAL TAPI SANGAT DISARANKAN) Mengecualikan SEMUA rute yang berawalan api/ agar kamu tidak pusing lagi ke depannya
             'api/webhook/paypal',
+            'webhook/deliveree',
 
             ]);
 

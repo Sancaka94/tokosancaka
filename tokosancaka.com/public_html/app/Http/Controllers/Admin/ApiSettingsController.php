@@ -19,19 +19,12 @@ class ApiSettingsController extends Controller
         $iakMode          = Api::getValue('IAK_MODE', 'global', 'development');
         $dharmawisataMode = Api::getValue('DHARMAWISATA_MODE', 'global', 'development');
         $danaProductionMode = Api::getValue('dana_production_mode', 'global', '0');
-        $danaMode = $danaProductionMode == '1' ? 'production' : 'sandbox';
-        
-        // --- TAMBAHAN MIDTRANS ---
+        $danaMode           = $danaProductionMode == '1' ? 'production' : 'sandbox';
         $midtransMode     = Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
-
-        // --- TAMBAHAN LALAMOVE ---
-        // LOG LOG
         $lalamoveMode     = Api::getValue('LALAMOVE_MODE', 'global', 'sandbox');
-
-        // --- TAMBAHAN PAYPAL ---
         $paypalMode       = Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
+        $delivereeMode    = Api::getValue('DELIVEREE_MODE', 'global', 'sandbox');
 
-        // 2. Siapkan Struktur Data Lengkap (Active Mode + Data per Environment)
         $kiriminaja = [
             'mode' => $kaMode,
             'staging' => [
@@ -183,7 +176,24 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal'));
+        // --- TAMBAHAN ARRAY DELIVEREE ---
+        $deliveree = [
+            'mode' => $delivereeMode,
+            'sandbox' => [
+                'company_id'  => Api::getValue('DELIVEREE_COMPANY_ID', 'sandbox'),
+                'api_key'     => Api::getValue('DELIVEREE_API_KEY', 'sandbox'),
+                'webhook_url' => Api::getValue('DELIVEREE_WEBHOOK_URL', 'sandbox'),
+                'base_url'    => Api::getValue('DELIVEREE_BASE_URL', 'sandbox'), // BARU
+            ],
+            'production' => [
+                'company_id'  => Api::getValue('DELIVEREE_COMPANY_ID', 'production'),
+                'api_key'     => Api::getValue('DELIVEREE_API_KEY', 'production'),
+                'webhook_url' => Api::getValue('DELIVEREE_WEBHOOK_URL', 'production'),
+                'base_url'    => Api::getValue('DELIVEREE_BASE_URL', 'production'), // BARU
+            ]
+        ];
+
+        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree'));
     }
 
     public function update(Request $request)
@@ -287,7 +297,6 @@ class ApiSettingsController extends Controller
                 Api::setValue('LALAMOVE_API_KEY', $request->lalamove_api_key, 'lalamove', $env);
                 Api::setValue('LALAMOVE_API_SECRET', $request->lalamove_api_secret, 'lalamove', $env);
             
-            // --- TAMBAHAN UPDATE PAYPAL ---
             } elseif ($type === 'paypal') {
                 $env = $request->paypal_mode;
                 
@@ -298,6 +307,26 @@ class ApiSettingsController extends Controller
                 
                 if ($request->has('paypal_webhook_id')) {
                     Api::setValue('PAYPAL_WEBHOOK_ID', $request->paypal_webhook_id, 'paypal', $env);
+                }
+
+            // --- TAMBAHAN UPDATE DELIVEREE ---
+            } elseif ($type === 'deliveree') {
+                $env = $request->deliveree_mode;
+                Api::setValue('DELIVEREE_MODE', $env, 'deliveree', 'global');
+                Api::setValue('DELIVEREE_COMPANY_ID', $request->deliveree_company_id, 'deliveree', $env);
+                Api::setValue('DELIVEREE_API_KEY', $request->deliveree_api_key, 'deliveree', $env);
+                
+                // Set Base URL dinamis. Jika form dikosongkan, gunakan default v10 dari dokumentasi.
+                $baseUrl = $request->deliveree_base_url;
+                if (empty($baseUrl)) {
+                    $baseUrl = ($env === 'production') 
+                        ? 'https://api.deliveree.com/public_api/v10' 
+                        : 'https://api.sandbox.deliveree.com/public_api/v10';
+                }
+                Api::setValue('DELIVEREE_BASE_URL', $baseUrl, 'deliveree', $env);
+
+                if ($request->has('deliveree_webhook_url')) {
+                    Api::setValue('DELIVEREE_WEBHOOK_URL', $request->deliveree_webhook_url, 'deliveree', $env);
                 }
             }
 
@@ -323,6 +352,7 @@ class ApiSettingsController extends Controller
                 $targetMidtrans     = 'sandbox';
                 $targetLalamove     = 'sandbox';
                 $targetPaypal       = 'sandbox';
+                $targetDeliveree    = 'sandbox'; // TAMBAHAN DELIVEREE
                 $label              = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
                 $targetKA           = 'production';
@@ -334,6 +364,7 @@ class ApiSettingsController extends Controller
                 $targetMidtrans     = 'production';
                 $targetLalamove     = 'production';
                 $targetPaypal       = 'production';
+                $targetDeliveree    = 'production'; // TAMBAHAN DELIVEREE
                 $label              = 'PRODUCTION (LIVE)';
             }
 
@@ -344,6 +375,7 @@ class ApiSettingsController extends Controller
             Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global');
             Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
             Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
+            Api::setValue('DELIVEREE_MODE', $targetDeliveree, 'deliveree', 'global'); // TAMBAHAN DELIVEREE
             
             // LOG LOG
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
@@ -373,6 +405,7 @@ class ApiSettingsController extends Controller
                 $targetMidtrans     = 'production';
                 $targetLalamove     = 'production';
                 $targetPaypal       = 'production';
+                $targetDeliveree    = 'production'; // TAMBAHAN DELIVEREE
                 $label              = 'PRODUCTION (LIVE)';
             } else {
                 $targetKA           = 'staging';
@@ -384,6 +417,7 @@ class ApiSettingsController extends Controller
                 $targetMidtrans     = 'sandbox';
                 $targetLalamove     = 'sandbox';
                 $targetPaypal       = 'sandbox';
+                $targetDeliveree    = 'sandbox'; // TAMBAHAN DELIVEREE
                 $label              = 'SANDBOX / MAINTENANCE';
             }
 
@@ -394,6 +428,7 @@ class ApiSettingsController extends Controller
             Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global');
             Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
             Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
+            Api::setValue('DELIVEREE_MODE', $targetDeliveree, 'deliveree', 'global'); // TAMBAHAN DELIVEREE
             
             // LOG LOG
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
