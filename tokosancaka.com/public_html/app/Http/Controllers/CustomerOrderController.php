@@ -1804,11 +1804,9 @@ TEXT;
     {
         Log::info('LOG LOG: Start Deliveree Pricing', ['s_lat' => $senderLat, 'r_lat' => $receiverLat]);
 
-        // PERBAIKAN: Gunakan alamat simple (Desa, Kecamatan, Kabupaten) untuk Geocoding agar Peta tidak bingung
         if (empty($senderLat) || empty($senderLng)) {
             $queryGeocode = !empty($senderSimple) ? $senderSimple : $senderAddress;
             Log::info("LOG LOG: Mencoba Geocode Pengirim Deliveree: {$queryGeocode}");
-            
             $geo = $this->geocode($queryGeocode);
             if ($geo) { $senderLat = $geo['lat']; $senderLng = $geo['lng']; }
         }
@@ -1816,12 +1814,10 @@ TEXT;
         if (empty($receiverLat) || empty($receiverLng)) {
             $queryGeocode = !empty($receiverSimple) ? $receiverSimple : $receiverAddress;
             Log::info("LOG LOG: Mencoba Geocode Penerima Deliveree: {$queryGeocode}");
-            
             $geo = $this->geocode($queryGeocode);
             if ($geo) { $receiverLat = $geo['lat']; $receiverLng = $geo['lng']; }
         }
 
-        // Jika setelah geocode simple masih gagal, baru kita hentikan
         if (empty($senderLat) || empty($senderLng) || empty($receiverLat) || empty($receiverLng)) {
             Log::warning('LOG LOG: Deliveree Pricing Dibatalkan - Koordinat Lat/Lng gagal didapatkan oleh peta.');
             return ['status' => false, 'results' => []];
@@ -1831,10 +1827,7 @@ TEXT;
         $baseUrl = \App\Models\Api::getValue('DELIVEREE_BASE_URL', $mode, 'https://api.sandbox.deliveree.com/public_api/v10');
         $apiKey = \App\Models\Api::getValue('DELIVEREE_API_KEY', $mode);
 
-        if (empty($apiKey)) {
-            Log::warning('LOG LOG: API Key Deliveree kosong di Database.');
-            return ['status' => false, 'results' => []];
-        }
+        if (empty($apiKey)) return ['status' => false, 'results' => []];
 
         try {
             $response = Http::withHeaders([
@@ -1843,12 +1836,10 @@ TEXT;
             ])->post($baseUrl . '/deliveries/get_quote', [
                 'time_type' => 'now',
                 'locations' => [
-                    // Kita tetap menggunakan $senderAddress (lengkap) untuk diserahkan ke Deliveree API
                     ['address' => $senderAddress ?? 'Titik Jemput', 'latitude' => (float)$senderLat, 'longitude' => (float)$senderLng],
                     ['address' => $receiverAddress ?? 'Titik Antar', 'latitude' => (float)$receiverLat, 'longitude' => (float)$receiverLng]
                 ],
                 'packs' => [
-                    // Catatan: Deliveree menggunakan hitungan Kg, jadi (Gram / 1000)
                     ['dimensions' => [50, 50, 50], 'weight' => (float)($weight / 1000), 'quantity' => 1]
                 ]
             ]);
@@ -1856,16 +1847,37 @@ TEXT;
             if ($response->successful()) {
                 $data = $response->json('data');
                 $results = [];
-                
                 Log::info('LOG LOG: Deliveree API Success menemukan '. count($data) .' layanan.');
 
+                // Kamus Pemetaan Armada Dasar Deliveree
+                $vehicleNames = [
+                    1 => 'Van',
+                    21 => 'Motor',
+                    27 => 'Closed Van',
+                    82 => 'Pickup / L300',
+                    130 => 'Mobil MPV / Ekonomi',
+                ];
+
                 foreach ($data as $quote) {
+                    $vId = $quote['vehicle_type_id'];
+                    $vName = $vehicleNames[$vId] ?? 'Armada Tipe ' . $vId;
+
                     $results[] = [
-                        'service' => 'deliveree',
-                        'service_name' => 'Deliveree ' . ($quote['vehicle_type_name'] ?? 'Vehicle ' . $quote['vehicle_type_id']),
+                        // Mengisi logo dan tulisan kapital "DELIVEREE"
+                        'service' => 'deliveree', 
+                        
+                        // PERBAIKAN: Mengisi tulisan "undefined" dengan jenis mobil yang terbaca
+                        'service_type' => $vName, 
+                        
                         'cost' => $quote['total_fees'],
-                        'etd' => 'Instant',
-                        'vehicle_type_id' => $quote['vehicle_type_id']
+                        
+                        // PERBAIKAN: JS akan otomatis nambah kata " Hari", jadi "0-1" akan jadi "0-1 Hari"
+                        'etd' => '0-1', 
+                        
+                        // Mengizinkan filter COD beroperasi
+                        'cod' => true, 
+                        
+                        'vehicle_type_id' => $vId
                     ];
                 }
                 return ['status' => true, 'results' => $results];
