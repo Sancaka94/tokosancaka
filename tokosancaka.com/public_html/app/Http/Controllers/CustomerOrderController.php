@@ -1790,23 +1790,34 @@ TEXT;
 
    /**
      * =========================================================================
-     * FUNGSI HELPER DELIVEREE (TARIK QUOTE & CREATE ORDER) - DINAMIS
+     * FUNGSI HELPER DELIVEREE (TARIK QUOTE & CREATE ORDER) - DINAMIS + LOG
      * =========================================================================
      */
     private function _getDelivereePricing($senderLat, $senderLng, $receiverLat, $receiverLng, $weight, $senderAddress, $receiverAddress)
     {
-        // PERBAIKAN 1: Lakukan Fallback Geocode otomatis jika koordinat kosong (karena user pilih Regular)
+        // LOG LOG: Cek input koordinat awal
+        Log::info('LOG LOG: Start Deliveree Pricing - Input Awal', [
+            's_lat' => $senderLat, 's_lng' => $senderLng,
+            'r_lat' => $receiverLat, 'r_lng' => $receiverLng,
+            'weight' => $weight,
+            's_address' => $senderAddress, 'r_address' => $receiverAddress
+        ]);
+
+        // Lakukan Fallback Geocode otomatis jika koordinat kosong
         if (empty($senderLat) || empty($senderLng)) {
             $geo = $this->geocode($senderAddress);
             if ($geo) { $senderLat = $geo['lat']; $senderLng = $geo['lng']; }
+            Log::info('LOG LOG: Deliveree Sender Geocode Result', ['geo' => $geo]);
         }
         if (empty($receiverLat) || empty($receiverLng)) {
             $geo = $this->geocode($receiverAddress);
             if ($geo) { $receiverLat = $geo['lat']; $receiverLng = $geo['lng']; }
+            Log::info('LOG LOG: Deliveree Receiver Geocode Result', ['geo' => $geo]);
         }
 
         // Jika setelah geocode masih kosong, hentikan
         if (empty($senderLat) || empty($senderLng) || empty($receiverLat) || empty($receiverLng)) {
+            Log::warning('LOG LOG: Deliveree Pricing Dibatalkan - Koordinat Lat/Lng masih kosong setelah di-geocode.');
             return ['status' => false, 'results' => []];
         }
 
@@ -1814,26 +1825,37 @@ TEXT;
         $baseUrl = \App\Models\Api::getValue('DELIVEREE_BASE_URL', $mode, 'https://api.sandbox.deliveree.com/public_api/v10');
         $apiKey = \App\Models\Api::getValue('DELIVEREE_API_KEY', $mode);
 
-        if (empty($apiKey)) return ['status' => false, 'results' => []];
+        if (empty($apiKey)) {
+            Log::warning('LOG LOG: Deliveree Pricing Dibatalkan - API Key Deliveree kosong di Database.');
+            return ['status' => false, 'results' => []];
+        }
 
         try {
-            $response = Http::withHeaders([
-                'Authorization' => $apiKey,
-                'Accept-Language' => 'id',
-            ])->post($baseUrl . '/deliveries/get_quote', [
+            $payload = [
                 'time_type' => 'now',
                 'locations' => [
-                    // PERBAIKAN 2: Masukkan parameter 'address' yang diwajibkan oleh Deliveree
                     ['address' => $senderAddress ?? 'Titik Jemput Sancaka', 'latitude' => (float)$senderLat, 'longitude' => (float)$senderLng],
                     ['address' => $receiverAddress ?? 'Titik Antar Sancaka', 'latitude' => (float)$receiverLat, 'longitude' => (float)$receiverLng]
                 ],
                 'packs' => [
                     ['dimensions' => [50, 50, 50], 'weight' => (float)($weight / 1000), 'quantity' => 1]
                 ]
-            ]);
+            ];
+
+            // LOG LOG: Cek payload sebelum dikirim ke API
+            Log::info('LOG LOG: Payload Request ke API Deliveree', $payload);
+
+            $response = Http::withHeaders([
+                'Authorization' => $apiKey,
+                'Accept-Language' => 'id',
+            ])->post($baseUrl . '/deliveries/get_quote', $payload);
 
             if ($response->successful()) {
                 $data = $response->json('data');
+                
+                // LOG LOG: Cek apakah API Deliveree mengembalikan data harga
+                Log::info('LOG LOG: Deliveree API Success', ['jumlah_armada_ditemukan' => count($data)]);
+
                 $results = [];
                 foreach ($data as $quote) {
                     $results[] = [
@@ -1846,12 +1868,13 @@ TEXT;
                 }
                 return ['status' => true, 'results' => $results];
             } else {
-                // LOG LOG - Pantau jika masih ada error validasi dari Deliveree
-                Log::error('LOG LOG: Deliveree Quote Failed', ['res' => $response->json()]);
+                // LOG LOG: Tangkap respon error resmi dari Deliveree (misal: 400 Bad Request, Out of range)
+                Log::error('LOG LOG: Deliveree Quote Failed (HTTP ' . $response->status() . ')', ['res' => $response->json()]);
             }
         } catch (\Exception $e) {
-            Log::error('LOG LOG: Deliveree Get Quote Error: ' . $e->getMessage());
+            Log::error('LOG LOG: Deliveree Get Quote Exception: ' . $e->getMessage());
         }
+        
         return ['status' => false, 'results' => []];
     }
 
