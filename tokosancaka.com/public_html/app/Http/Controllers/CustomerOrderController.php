@@ -1919,33 +1919,12 @@ TEXT;
         $baseUrl = \App\Models\Api::getValue('DELIVEREE_BASE_URL', $mode, 'https://api.sandbox.deliveree.com/public_api/v10');
         $apiKey = \App\Models\Api::getValue('DELIVEREE_API_KEY', $mode);
 
-        // Ekstrak ID kendaraan dari payload frontend
+        // Ekstrak ID kendaraan dari payload frontend (Contoh: regular-deliveree-Mobil XL#202-736500)
         $expeditionParts = explode('-', $data['expedition']);
         $vehicleString = $expeditionParts[2] ?? ''; 
         
         $vehicleIdParts = explode('#', $vehicleString);
         $vehicleTypeId = $vehicleIdParts[1] ?? 21; 
-
-        // ==========================================
-        // PENEMPATAN KODE BANTUAN PENGEMUDI & KENEK
-        // ==========================================
-        $extraServices = [];
-        
-        // Masukkan Bantuan Pengemudi jika diceklis
-        if (request('extra_helper_driver') && request('deliveree_helper_driver_id')) {
-            $extraServices[] = [
-                'extra_requirement_id' => (int) request('deliveree_helper_driver_id'),
-                'selected_amount' => 1
-            ];
-        }
-        // Masukkan Bantuan Tambahan (Kenek) jika diceklis
-        if (request('extra_helper_extra') && request('deliveree_helper_extra_id')) {
-            $extraServices[] = [
-                'extra_requirement_id' => (int) request('deliveree_helper_extra_id'),
-                'selected_amount' => 1
-            ];
-        }
-        // ==========================================
 
         try {
             $response = Http::withHeaders([
@@ -1955,7 +1934,7 @@ TEXT;
                 'vehicle_type_id' => (int) $vehicleTypeId,
                 'note' => 'Order: ' . $pesanan->nomor_invoice . ' - ' . $data['item_description'],
                 'time_type' => 'now',
-                'send_first_to_favorite' => (request('driver_preference') === 'favorite'),
+                'send_first_to_favorite' => (request('driver_preference') === 'favorite'), // <--- TAMBAHKAN BARIS INI JUGA
                 'job_order_number' => $pesanan->nomor_invoice,
                 'locations' => [
                     [
@@ -1980,13 +1959,19 @@ TEXT;
                         'cod_note' => 'Tagihan Pesanan ' . $pesanan->nomor_invoice
                     ]
                 ],
-                // ARRAY EXTRA SERVICE DI-INJECT KE SINI
-                'extra_services' => $extraServices 
+
+                 'extra_services' => (request('extra_helper') && request('deliveree_helper_id')) ? [
+                    [
+                        'extra_requirement_id' => (int) request('deliveree_helper_id'), // <-- DINAMIS SESUAI MOBIL
+                        'selected_amount' => 1
+                    ]
+                ] : []
             ]);
 
             if ($response->successful()) {
                 $respData = $response->json();
                 
+                // PERBAIKAN LOGIKA: Deliveree hanya return 'booking_id' tanpa object 'data'
                 $bookingId = $respData['booking_id'] ?? null;
                 
                 if (!$bookingId) {
@@ -1994,12 +1979,14 @@ TEXT;
                     return ['status' => false, 'text' => 'Respons API tidak mengandung data booking_id.'];
                 }
                 
+                // Kita kembalikan booking_id sebagai 'resi'
                 return ['status' => true, 'resi' => (string) $bookingId];
                 
             } else {
+                // PERBAIKAN SYNTAX: Ini adalah penutup if dan menangani request gagal (else)
                 Log::error('LOG LOG: Deliveree Create Order HTTP Error', ['res' => $response->body()]);
                 return ['status' => false, 'text' => 'Gagal membuat pesanan di server Deliveree.'];
-            }
+            } // Penutup blok if-else yang tadinya hilang
 
         } catch (\Exception $e) {
             Log::error('LOG LOG: Deliveree Create Order Exception: ' . $e->getMessage());
