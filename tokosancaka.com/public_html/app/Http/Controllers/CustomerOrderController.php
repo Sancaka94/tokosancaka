@@ -297,6 +297,14 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             );
         }
 
+        $delivereeOptions = $this->_getDelivereePricing(
+            $senderLat, $senderLng, $receiverLat, $receiverLng, $validated['weight']
+        );
+        if ($delivereeOptions['status']) {
+            $expressOptions['status'] = true; // Set true agar di-merge dengan benar di bawah
+            $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $delivereeOptions['results']);
+        }
+
         // --- 3. GABUNGKAN HASIL ---
         $finalResults = [
             'status' => true,
@@ -484,7 +492,7 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                 */
 
             // 6. Proses KiriminAja HANYA jika COD/Cash
-            if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'cash'])) {
+            /* if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'cash'])) {
                 $senderAddressData = $this->_getAddressData($request, 'sender');
                 $receiverAddressData = $this->_getAddressData($request, 'receiver');
 
@@ -501,6 +509,45 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                 $pesanan->status = 'Menunggu Pickup';
                 $pesanan->status_pesanan = 'Menunggu Pickup';
                 $pesanan->resi = $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+            } */
+
+            // 6. Proses Ekspedisi HANYA jika COD/Cash (Mendukung Multi-Vendor)
+            if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'cash'])) {
+                $senderAddressData = $this->_getAddressData($request, 'sender');
+                $receiverAddressData = $this->_getAddressData($request, 'receiver');
+
+                // Deteksi vendor dari payload dropdown frontend
+                $expVendor = explode('-', $validatedData['expedition'])[0] ?? '';
+
+                if (strtolower($expVendor) === 'deliveree') {
+                    // Panggil helper Deliveree
+                    $delivereeResponse = $this->_createDelivereeOrder(
+                        $validatedData, $pesanan, $senderAddressData, $receiverAddressData, $cod_value
+                    );
+
+                    if (($delivereeResponse['status'] ?? false) !== true) {
+                        throw new Exception($delivereeResponse['text'] ?? 'Gagal membuat order di Deliveree.');
+                    }
+                    
+                    $pesanan->status = 'Menunggu Pickup';
+                    $pesanan->status_pesanan = 'Menunggu Pickup';
+                    $pesanan->resi = $delivereeResponse['resi'] ?? null; // URL Tracking masuk ke Resi
+
+                } else {
+                    // Panggil _createKiriminAjaOrder (Logika lama Sancaka tetap aman)
+                    $kiriminResponse = $this->_createKiriminAjaOrder(
+                        $validatedData, $pesanan, $kirimaja, $senderAddressData, $receiverAddressData,
+                        $cod_value, $shipping_cost, $insurance_cost
+                    );
+
+                    if (($kiriminResponse['status'] ?? false) !== true) {
+                        $errorMessage = $kiriminResponse['text'] ?? ($kiriminResponse['errors'][0]['text'] ?? 'Gagal membuat order di sistem ekspedisi.');
+                        throw new Exception($errorMessage);
+                    }
+                    $pesanan->status = 'Menunggu Pickup';
+                    $pesanan->status_pesanan = 'Menunggu Pickup';
+                    $pesanan->resi = $kiriminResponse['result']['awb_no'] ?? ($kiriminResponse['results'][0]['awb'] ?? null);
+                }
             }
 
             // 7. Simpan finalisasi data
@@ -1731,6 +1778,120 @@ TEXT;
         } catch (\Exception $e) {
             Log::error('DANA_BINDING_EXCEPTION (Public)', ['Error' => $e->getMessage()]);
             return null;
+        }
+    }
+
+    // ############################# Deliveree ########################endregion
+
+    /**
+     * =========================================================================
+     * FUNGSI HELPER DELIVEREE (TARIK QUOTE & CREATE ORDER) - DINAMIS
+     * =========================================================================
+     */
+    private function _getDelivereePricing($senderLat, $senderLng, $receiverLat, $receiverLng, $weight)
+    {
+        if (empty($senderLat) || empty($senderLng) || empty($receiverLat) || empty($receiverLng)) {
+            return ['status' => false, 'results' => []];
+        }
+
+        $mode = \App\Models\Api::getValue('DELIVEREE_MODE', 'global', 'sandbox');
+        $baseUrl = \App\Models\Api::getValue('DELIVEREE_BASE_URL', $mode, 'https://api.sandbox.deliveree.com/public_api/v10');
+        $apiKey = \App\Models\Api::getValue('DELIVEREE_API_KEY', $mode);
+
+        if (empty($apiKey)) return ['status' => false, 'results' => []];
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => $apiKey,
+                'Accept-Language' => 'id',
+            ])->post($baseUrl . '/deliveries/get_quote', [
+                'time_type' => 'now',
+                'locations' => [
+                    ['latitude' => (float)$senderLat, 'longitude' => (float)$senderLng],
+                    ['latitude' => (float)$receiverLat, 'longitude' => (float)$receiverLng]
+                ],
+                'packs' => [
+                    // Deliveree menggunakan hitungan Kilogram, asumsi weight sistem Anda dalam gram
+                    ['dimensions' => [50, 50, 50], 'weight' => (float)($weight / 1000), 'quantity' => 1]
+                ]
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json('data');
+                $results = [];
+                foreach ($data as $quote) {
+                    // Format output disamakan dengan struktur KiriminAja agar Frontend tidak error
+                    $results[] = [
+                        'service' => 'deliveree',
+                        'service_name' => 'Deliveree ' . ($quote['vehicle_type_name'] ?? 'Vehicle ' . $quote['vehicle_type_id']),
+                        'cost' => $quote['total_fees'],
+                        'etd' => 'Instant',
+                        'vehicle_type_id' => $quote['vehicle_type_id'] // Disisipkan untuk Create Order nanti
+                    ];
+                }
+                return ['status' => true, 'results' => $results];
+            }
+        } catch (\Exception $e) {
+            Log::error('Deliveree Get Quote Error: ' . $e->getMessage());
+        }
+        return ['status' => false, 'results' => []];
+    }
+
+    private function _createDelivereeOrder($data, $pesanan, $senderData, $receiverData, $cod_value)
+    {
+        $mode = \App\Models\Api::getValue('DELIVEREE_MODE', 'global', 'sandbox');
+        $baseUrl = \App\Models\Api::getValue('DELIVEREE_BASE_URL', $mode, 'https://api.sandbox.deliveree.com/public_api/v10');
+        $apiKey = \App\Models\Api::getValue('DELIVEREE_API_KEY', $mode);
+
+        // Ekstrak ID Kendaraan dari format dropdown ekspedisi (Contoh value frontend: deliveree-21-instant-150000-0-0)
+        $expeditionParts = explode('-', $data['expedition']);
+        $vehicleTypeId = $expeditionParts[1] ?? 21; // Default ke 21 (Motor) jika kosong
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => $apiKey,
+                'Accept-Language' => 'id',
+            ])->post($baseUrl . '/deliveries', [
+                'vehicle_type_id' => (int) $vehicleTypeId,
+                'note' => 'Order: ' . $pesanan->nomor_invoice . ' - ' . $data['item_description'],
+                'time_type' => 'now',
+                'job_order_number' => $pesanan->nomor_invoice,
+                'locations' => [
+                    [
+                        'address' => $data['sender_address'],
+                        'latitude' => (float)$senderData['lat'],
+                        'longitude' => (float)$senderData['lng'],
+                        'recipient_name' => $data['sender_name'],
+                        'recipient_phone' => $data['sender_phone'],
+                        'note' => $data['sender_note'] ?? '',
+                        'is_payer' => false
+                    ],
+                    [
+                        'address' => $data['receiver_address'],
+                        'latitude' => (float)$receiverData['lat'],
+                        'longitude' => (float)$receiverData['lng'],
+                        'recipient_name' => $data['receiver_name'],
+                        'recipient_phone' => $data['receiver_phone'],
+                        'note' => $data['receiver_note'] ?? '',
+                        'is_payer' => true,
+                        'need_cod' => ($cod_value > 0),
+                        'cod_invoice_fees' => (float)$cod_value,
+                        'cod_note' => 'Tagihan Pesanan ' . $pesanan->nomor_invoice
+                    ]
+                ]
+            ]);
+
+            if ($response->successful()) {
+                $respData = $response->json();
+                // Deliveree mengembalikan tracking_url, kita simpan ini di kolom resi
+                return ['status' => true, 'resi' => $respData['data']['tracking_url'] ?? $respData['data']['id']];
+            }
+
+            Log::error('LOG LOG: Deliveree Create Order Failed', ['res' => $response->json()]);
+            return ['status' => false, 'text' => $response->json('message') ?? 'Gagal membuat order Deliveree'];
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: Deliveree Create Order Exception: ' . $e->getMessage());
+            return ['status' => false, 'text' => $e->getMessage()];
         }
     }
 

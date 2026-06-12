@@ -194,6 +194,23 @@
                     </div>
                 </div>
 
+                {{-- Menu Deliveree --}}
+                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                     :class="activeTab === 'deliveree' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                     @click="activeTab = 'deliveree'">
+                    <span class="text-sm font-semibold" :class="activeTab === 'deliveree' ? 'text-zinc-900' : 'text-zinc-600'">Deliveree</span>
+                    <div class="flex items-center space-x-1.5" @click.stop>
+                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="delivereeData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
+                        <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                :class="delivereeData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                @click="delivereeData.mode = (delivereeData.mode === 'production' ? 'sandbox' : 'production')">
+                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                  :class="delivereeData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                        </button>
+                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="delivereeData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                    </div>
+                </div>
+
                 {{-- Menu Fonnte --}}
                 <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
                      :class="activeTab === 'fonnte' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
@@ -583,6 +600,52 @@
                     </form>
                 </div>
 
+                {{-- 11. TAB DELIVEREE --}}
+                <div x-show="activeTab === 'deliveree'" style="display:none;" x-transition.opacity>
+                    <div class="p-6 border-b border-zinc-200">
+                        <div class="flex items-center gap-4 mb-1">
+                            <h3 class="text-lg font-bold text-zinc-900">Deliveree Logistics</h3>
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sandbox</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': delivereeData.mode === 'production', 'border-zinc-300': delivereeData.mode === 'sandbox'}" @click="delivereeData.mode = (delivereeData.mode === 'production' ? 'sandbox' : 'production')" :checked="delivereeData.mode === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-zinc-500">Konfigurasi API Deliveree v10 (Company ID, API Key, Webhook).</p>
+                    </div>
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="deliveree">
+                        <input type="hidden" name="deliveree_mode" x-model="delivereeData.mode">
+
+                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">Company ID</label>
+                                <input type="text" name="deliveree_company_id" x-model="delivereeData[delivereeData.mode].company_id" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">API Key</label>
+                                <input type="text" name="deliveree_api_key" x-model="delivereeData[delivereeData.mode].api_key" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">Webhook URL Endpoint</label>
+                                <input type="url" name="deliveree_webhook_url" x-model="delivereeData[delivereeData.mode].webhook_url" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" placeholder="https://tokosancaka.com/api/webhook/deliveree">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">Base URL (Opsional - Jika Deliveree Update API)</label>
+                                <input type="url" name="deliveree_base_url" x-model="delivereeData[delivereeData.mode].base_url" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" placeholder="Biarkan kosong untuk default v10">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-4">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded hover:bg-black text-sm font-medium transition-colors">Simpan Pengaturan</button>
+                        </div>
+                    </form>
+                </div>
+
             </div>
         </div>
 
@@ -607,6 +670,7 @@
             midtransData: @json($midtrans ?? ['mode' => 'sandbox']),
             lalamoveData: @json($lalamove ?? ['mode' => 'sandbox']),
             paypalData: @json($paypal ?? ['mode' => 'sandbox']),
+            delivereeData: @json($deliveree ?? ['mode' => 'sandbox']),
         }))
     })
 </script>
