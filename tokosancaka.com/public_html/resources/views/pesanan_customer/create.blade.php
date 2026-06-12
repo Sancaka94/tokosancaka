@@ -501,7 +501,7 @@
                                 <label for="vendor_filter" class="form-label">Vendor Ekspedisi</label>
                                 <select id="vendor_filter" class="form-select border-primary bg-light fw-bold text-dark">
                                     <option value="all" selected>Semua Kurir</option>
-                                    <option value="deliveree" class="text-success fw-bold">Khusus Deliveree</option>
+                                    <option value="deliveree" class="text-success fw-bold">Deliveree</option>
                                 </select>
                             </div>
                             
