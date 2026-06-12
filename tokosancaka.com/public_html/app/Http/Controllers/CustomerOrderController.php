@@ -529,7 +529,7 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                 $receiverAddressData = $this->_getAddressData($request, 'receiver');
 
                 // Deteksi vendor dari payload dropdown frontend
-                $expVendor = explode('-', $validatedData['expedition'])[0] ?? '';
+                $expVendor = explode('-', $validatedData['expedition'])[1] ?? '';
 
                 if (strtolower($expVendor) === 'deliveree') {
                     // Panggil helper Deliveree
