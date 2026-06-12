@@ -1881,7 +1881,8 @@ TEXT;
 
                     $results[] = [
                         'service' => 'deliveree',
-                        'service_type' => $vName,
+                        // PERBAIKAN: Sisipkan ID kendaraan di dalam string agar tidak hilang
+                        'service_type' => $vName . '#' . $vId, 
                         'cost' => $quote['total_fees'],
                         'etd' => '0-1',
                         'cod' => true,
