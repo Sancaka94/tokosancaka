@@ -172,6 +172,20 @@
         border-bottom: 1px solid #f3f4f6;
         transition: background-color 0.2s;
     }
+
+    /* Style untuk list hasil pencarian alamat KiriminAja */
+    .search-result-item {
+        padding: 10px 15px;
+        border-bottom: 1px solid #f3f4f6;
+        cursor: pointer; /* <--- INI YANG MENGUBAH KURSOR JADI TANGAN */
+        transition: background-color 0.2s;
+    }
+
+    /* Efek hover untuk list hasil pencarian alamat */
+    .search-result-item:hover, .ui-menu-item-wrapper.ui-state-active {
+        background-color: rgba(var(--primary-rgb), 0.08);
+    }
+    
     .ui-menu-item-wrapper.ui-state-active {
         background-color: rgba(220, 53, 69, 0.1) !important; /* Warna merah tipis */
         color: var(--primary-color) !important;
