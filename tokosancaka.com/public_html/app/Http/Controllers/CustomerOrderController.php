@@ -298,29 +298,20 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
         }
 
         // --- TAMBAHAN: PANGGIL LAYANAN DELIVEREE ---
-        //$senderFullAddress = $validated['sender_address'] ?? implode(', ', array_filter([$validated['sender_village'] ?? null, $validated['sender_district'] ?? null]));
-        //$receiverFullAddress = $validated['receiver_address'] ?? implode(', ', array_filter([$validated['receiver_village'] ?? null, $validated['receiver_district'] ?? null]));
+        // 1. Alamat Lengkap (Untuk dikirim ke Deliveree API & Fonnte)
+        $senderFullAddress = implode(', ', array_filter([$validated['sender_address'] ?? null, $validated['sender_village'] ?? null, $validated['sender_district'] ?? null, $validated['sender_regency'] ?? null]));
+        $receiverFullAddress = implode(', ', array_filter([$validated['receiver_address'] ?? null, $validated['receiver_village'] ?? null, $validated['receiver_district'] ?? null, $validated['receiver_regency'] ?? null]));
 
-        // --- TAMBAHAN: PANGGIL LAYANAN DELIVEREE ---
-        // PERBAIKAN: Gabungkan jalan, desa, kecamatan, dan kabupaten agar Geocoder (peta) tidak bingung
-        $senderFullAddress = implode(', ', array_filter([
-            $validated['sender_address'] ?? null,
-            $validated['sender_village'] ?? null,
-            $validated['sender_district'] ?? null,
-            $validated['sender_regency'] ?? null
-        ]));
-        
-        $receiverFullAddress = implode(', ', array_filter([
-            $validated['receiver_address'] ?? null,
-            $validated['receiver_village'] ?? null,
-            $validated['receiver_district'] ?? null,
-            $validated['receiver_regency'] ?? null
-        ]));
-        
+        // 2. Alamat Simple (HANYA untuk pencarian koordinat Peta Nominatim agar tidak error)
+        $senderSimpleAddress = implode(', ', array_filter([$validated['sender_village'] ?? null, $validated['sender_district'] ?? null, $validated['sender_regency'] ?? null]));
+        $receiverSimpleAddress = implode(', ', array_filter([$validated['receiver_village'] ?? null, $validated['receiver_district'] ?? null, $validated['receiver_regency'] ?? null]));
+
+        // Kirim keempat variabel alamat tersebut ke Helper
         $delivereeOptions = $this->_getDelivereePricing(
             $senderLat, $senderLng, $receiverLat, $receiverLng, $validated['weight'],
-            $senderFullAddress, $receiverFullAddress
+            $senderFullAddress, $receiverFullAddress, $senderSimpleAddress, $receiverSimpleAddress
         );
+        
         if ($delivereeOptions['status']) {
             $expressOptions['status'] = true; 
             $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $delivereeOptions['results']);
@@ -1809,31 +1800,30 @@ TEXT;
      * FUNGSI HELPER DELIVEREE (TARIK QUOTE & CREATE ORDER) - DINAMIS + LOG
      * =========================================================================
      */
-    private function _getDelivereePricing($senderLat, $senderLng, $receiverLat, $receiverLng, $weight, $senderAddress, $receiverAddress)
+    private function _getDelivereePricing($senderLat, $senderLng, $receiverLat, $receiverLng, $weight, $senderAddress, $receiverAddress, $senderSimple = '', $receiverSimple = '')
     {
-        // LOG LOG: Cek input koordinat awal
-        Log::info('LOG LOG: Start Deliveree Pricing - Input Awal', [
-            's_lat' => $senderLat, 's_lng' => $senderLng,
-            'r_lat' => $receiverLat, 'r_lng' => $receiverLng,
-            'weight' => $weight,
-            's_address' => $senderAddress, 'r_address' => $receiverAddress
-        ]);
+        Log::info('LOG LOG: Start Deliveree Pricing', ['s_lat' => $senderLat, 'r_lat' => $receiverLat]);
 
-        // Lakukan Fallback Geocode otomatis jika koordinat kosong
+        // PERBAIKAN: Gunakan alamat simple (Desa, Kecamatan, Kabupaten) untuk Geocoding agar Peta tidak bingung
         if (empty($senderLat) || empty($senderLng)) {
-            $geo = $this->geocode($senderAddress);
+            $queryGeocode = !empty($senderSimple) ? $senderSimple : $senderAddress;
+            Log::info("LOG LOG: Mencoba Geocode Pengirim Deliveree: {$queryGeocode}");
+            
+            $geo = $this->geocode($queryGeocode);
             if ($geo) { $senderLat = $geo['lat']; $senderLng = $geo['lng']; }
-            Log::info('LOG LOG: Deliveree Sender Geocode Result', ['geo' => $geo]);
         }
+        
         if (empty($receiverLat) || empty($receiverLng)) {
-            $geo = $this->geocode($receiverAddress);
+            $queryGeocode = !empty($receiverSimple) ? $receiverSimple : $receiverAddress;
+            Log::info("LOG LOG: Mencoba Geocode Penerima Deliveree: {$queryGeocode}");
+            
+            $geo = $this->geocode($queryGeocode);
             if ($geo) { $receiverLat = $geo['lat']; $receiverLng = $geo['lng']; }
-            Log::info('LOG LOG: Deliveree Receiver Geocode Result', ['geo' => $geo]);
         }
 
-        // Jika setelah geocode masih kosong, hentikan
+        // Jika setelah geocode simple masih gagal, baru kita hentikan
         if (empty($senderLat) || empty($senderLng) || empty($receiverLat) || empty($receiverLng)) {
-            Log::warning('LOG LOG: Deliveree Pricing Dibatalkan - Koordinat Lat/Lng masih kosong setelah di-geocode.');
+            Log::warning('LOG LOG: Deliveree Pricing Dibatalkan - Koordinat Lat/Lng gagal didapatkan oleh peta.');
             return ['status' => false, 'results' => []];
         }
 
@@ -1842,37 +1832,33 @@ TEXT;
         $apiKey = \App\Models\Api::getValue('DELIVEREE_API_KEY', $mode);
 
         if (empty($apiKey)) {
-            Log::warning('LOG LOG: Deliveree Pricing Dibatalkan - API Key Deliveree kosong di Database.');
+            Log::warning('LOG LOG: API Key Deliveree kosong di Database.');
             return ['status' => false, 'results' => []];
         }
 
         try {
-            $payload = [
-                'time_type' => 'now',
-                'locations' => [
-                    ['address' => $senderAddress ?? 'Titik Jemput Sancaka', 'latitude' => (float)$senderLat, 'longitude' => (float)$senderLng],
-                    ['address' => $receiverAddress ?? 'Titik Antar Sancaka', 'latitude' => (float)$receiverLat, 'longitude' => (float)$receiverLng]
-                ],
-                'packs' => [
-                    ['dimensions' => [50, 50, 50], 'weight' => (float)($weight / 1000), 'quantity' => 1]
-                ]
-            ];
-
-            // LOG LOG: Cek payload sebelum dikirim ke API
-            Log::info('LOG LOG: Payload Request ke API Deliveree', $payload);
-
             $response = Http::withHeaders([
                 'Authorization' => $apiKey,
                 'Accept-Language' => 'id',
-            ])->post($baseUrl . '/deliveries/get_quote', $payload);
+            ])->post($baseUrl . '/deliveries/get_quote', [
+                'time_type' => 'now',
+                'locations' => [
+                    // Kita tetap menggunakan $senderAddress (lengkap) untuk diserahkan ke Deliveree API
+                    ['address' => $senderAddress ?? 'Titik Jemput', 'latitude' => (float)$senderLat, 'longitude' => (float)$senderLng],
+                    ['address' => $receiverAddress ?? 'Titik Antar', 'latitude' => (float)$receiverLat, 'longitude' => (float)$receiverLng]
+                ],
+                'packs' => [
+                    // Catatan: Deliveree menggunakan hitungan Kg, jadi (Gram / 1000)
+                    ['dimensions' => [50, 50, 50], 'weight' => (float)($weight / 1000), 'quantity' => 1]
+                ]
+            ]);
 
             if ($response->successful()) {
                 $data = $response->json('data');
-                
-                // LOG LOG: Cek apakah API Deliveree mengembalikan data harga
-                Log::info('LOG LOG: Deliveree API Success', ['jumlah_armada_ditemukan' => count($data)]);
-
                 $results = [];
+                
+                Log::info('LOG LOG: Deliveree API Success menemukan '. count($data) .' layanan.');
+
                 foreach ($data as $quote) {
                     $results[] = [
                         'service' => 'deliveree',
@@ -1884,11 +1870,10 @@ TEXT;
                 }
                 return ['status' => true, 'results' => $results];
             } else {
-                // LOG LOG: Tangkap respon error resmi dari Deliveree (misal: 400 Bad Request, Out of range)
-                Log::error('LOG LOG: Deliveree Quote Failed (HTTP ' . $response->status() . ')', ['res' => $response->json()]);
+                Log::error('LOG LOG: Deliveree Quote Failed', ['res' => $response->json()]);
             }
         } catch (\Exception $e) {
-            Log::error('LOG LOG: Deliveree Get Quote Exception: ' . $e->getMessage());
+            Log::error('LOG LOG: Deliveree Get Quote Error: ' . $e->getMessage());
         }
         
         return ['status' => false, 'results' => []];
