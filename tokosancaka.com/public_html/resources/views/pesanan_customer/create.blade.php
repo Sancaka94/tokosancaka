@@ -578,8 +578,6 @@
                                 <input type="hidden" id="selected_shipping_cost" value="0">
                                 <input type="hidden" id="selected_insurance_cost" value="0">
                                 <input type="hidden" id="selected_cod_fee" value="0">
-                                <input type="hidden" id="selected_helper_fee" value="0"> <!-- TAMBAHAN BARU -->
-                                <input type="hidden" name="deliveree_helper_id" id="deliveree_helper_id">
                             </div>
 
                             {{-- TAMBAHAN: Kotak Monitor Total Pembayaran --}}
@@ -594,16 +592,19 @@
                                         <span id="summary_shipping_cost" class="fw-bold text-secondary" style="font-size: 0.85rem;">Rp 0</span>
                                     </div>
 
-                                    <!-- BARIS ASURANSI (Muncul Jika Dipilih) -->
                                     <div id="summary_insurance_row" class="justify-content-between align-items-center mb-1 d-none">
                                         <span class="text-muted" style="font-size: 0.85rem;"><i class="fas fa-shield-alt text-success me-1"></i> Asuransi Barang</span>
                                         <span id="summary_insurance_cost" class="fw-bold text-success" style="font-size: 0.85rem;">Rp 0</span>
                                     </div>
 
-                                    <!-- BARIS HELPER (Muncul Jika Dipilih) -->
-                                    <div id="summary_helper_row" class="justify-content-between align-items-center mb-2 d-none">
-                                        <span class="text-muted" style="font-size: 0.85rem;"><i class="fas fa-user-friends text-success me-1"></i> Bantuan Khusus (Helper)</span>
-                                        <span id="summary_helper_cost" class="fw-bold text-success" style="font-size: 0.85rem;">(Menunggu Cek Tarif)</span>
+                                    <div id="summary_helper_driver_row" class="justify-content-between align-items-center mb-1 d-none">
+                                        <span class="text-muted" style="font-size: 0.85rem;"><i class="fas fa-user text-success me-1"></i> Bantuan Pengemudi</span>
+                                        <span id="summary_helper_driver_cost" class="fw-bold text-success" style="font-size: 0.85rem;">(Menunggu Cek Tarif)</span>
+                                    </div>
+
+                                    <div id="summary_helper_extra_row" class="justify-content-between align-items-center mb-2 d-none">
+                                        <span class="text-muted" style="font-size: 0.85rem;"><i class="fas fa-user-plus text-success me-1"></i> Bantuan Tambahan</span>
+                                        <span id="summary_helper_extra_cost" class="fw-bold text-success" style="font-size: 0.85rem;">(Menunggu Cek Tarif)</span>
                                     </div>
 
                                     <hr class="my-2" style="border-color: #ced4da;">
@@ -917,24 +918,24 @@
         const debounce = (func, delay) => (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
         function formatRupiah(angka) { return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID'); }
 
-       // PENAMBAHAN: Fungsi Update Monitor Total
-        function updateTotalSummary() {
+       function updateTotalSummary() {
             let rawItemPrice = $('#item_price').val() || "0";
             let itemPrice = parseInt(rawItemPrice.replace(/\D/g, '')) || 0;
 
             let baseShippingCost = parseInt($('#selected_shipping_cost').val()) || 0;
             let insuranceCost = parseInt($('#selected_insurance_cost').val()) || 0;
             let codFee = parseInt($('#selected_cod_fee').val()) || 0;
-            let helperFee = parseInt($('#selected_helper_fee').val()) || 0; // Baca harga helper
+            let helperDriverFee = parseInt($('#selected_helper_driver_fee').val()) || 0;
+            let helperExtraFee = parseInt($('#selected_helper_extra_fee').val()) || 0;
             
             let paymentMethod = $('#payment_method').val();
 
             // Kalkulasi Total Akurat
-            let finalShippingCost = baseShippingCost + insuranceCost + helperFee;
+            let finalShippingCost = baseShippingCost + insuranceCost + helperDriverFee + helperExtraFee;
             let total = finalShippingCost;
 
             if (paymentMethod === 'COD' || paymentMethod === 'CODBARANG') {
-                finalShippingCost = baseShippingCost + insuranceCost + helperFee + codFee;
+                finalShippingCost = finalShippingCost + codFee;
                 total = finalShippingCost;
             }
 
@@ -945,33 +946,45 @@
             $('#summary_item_price').text(formatRupiah(itemPrice));
             $('#summary_shipping_cost').text(formatRupiah(baseShippingCost));
 
-            // Logika Tampil/Sembunyi Asuransi
+            // Logika Asuransi
             if ($('#ansuransi').val() === 'iya') {
                 $('#summary_insurance_row').removeClass('d-none').addClass('d-flex');
-                if (baseShippingCost === 0) {
-                    $('#summary_insurance_cost').text('(Menunggu Cek Tarif)').removeClass('text-success').addClass('text-muted');
-                } else {
-                    $('#summary_insurance_cost').text(insuranceCost > 0 ? formatRupiah(insuranceCost) : 'Gratis').removeClass('text-muted').addClass('text-success');
-                }
+                $('#tos_asuransi_container').removeClass('d-none');
+                $('#tos_asuransi').prop('required', true);
+                $('#summary_insurance_cost').text(baseShippingCost === 0 ? '(Menunggu Cek Tarif)' : (insuranceCost > 0 ? formatRupiah(insuranceCost) : 'Gratis')).toggleClass('text-muted', baseShippingCost === 0).toggleClass('text-success', baseShippingCost !== 0);
             } else {
                 $('#summary_insurance_row').addClass('d-none').removeClass('d-flex');
+                $('#tos_asuransi_container').addClass('d-none');
+                $('#tos_asuransi').prop('required', false).prop('checked', false);
             }
 
-            // Logika Tampil/Sembunyi Extra Helper Deliveree
-            if ($('#extra_helper').is(':checked') && $('#vendor_filter').val() === 'deliveree') {
-                $('#summary_helper_row').removeClass('d-none').addClass('d-flex');
-                if (baseShippingCost === 0) {
-                    $('#summary_helper_cost').text('(Menunggu Cek Tarif)').removeClass('text-success').addClass('text-muted');
-                } else {
-                    // Tampilkan Harga Helper dari API
-                    $('#summary_helper_cost').text(helperFee > 0 ? formatRupiah(helperFee) : 'Gratis').removeClass('text-muted').addClass('text-success');
-                }
+            // Logika Bantuan Pengemudi
+            if ($('#extra_helper_driver').is(':checked') && $('#vendor_filter').val() === 'deliveree') {
+                $('#summary_helper_driver_row').removeClass('d-none').addClass('d-flex');
+                $('#summary_helper_driver_cost').text(baseShippingCost === 0 ? '(Menunggu Cek Tarif)' : (helperDriverFee > 0 ? formatRupiah(helperDriverFee) : 'Gratis')).toggleClass('text-muted', baseShippingCost === 0).toggleClass('text-success', baseShippingCost !== 0);
             } else {
-                $('#summary_helper_row').addClass('d-none').removeClass('d-flex');
+                $('#summary_helper_driver_row').addClass('d-none').removeClass('d-flex');
+            }
+
+            // Logika Bantuan Tambahan (Kenek)
+            if ($('#extra_helper_extra').is(':checked') && $('#vendor_filter').val() === 'deliveree') {
+                $('#summary_helper_extra_row').removeClass('d-none').addClass('d-flex');
+                $('#summary_helper_extra_cost').text(baseShippingCost === 0 ? '(Menunggu Cek Tarif)' : (helperExtraFee > 0 ? formatRupiah(helperExtraFee) : 'Gratis')).toggleClass('text-muted', baseShippingCost === 0).toggleClass('text-success', baseShippingCost !== 0);
+            } else {
+                $('#summary_helper_extra_row').addClass('d-none').removeClass('d-flex');
             }
 
             $('#summary_total_cost').text(formatRupiah(total));
         }
+
+        // Event listener saat toggle diklik (ganti yang lama)
+        $(document).on('change', '.deliveree-extra-toggle', function() {
+            if ($('.deliveree-extra-toggle:checked').length > 0) {
+                $('#helper_price_display').removeClass('d-none');
+            } else {
+                $('#helper_price_display').addClass('d-none');
+            }
+        });
 
         // ============================================
         // LOGIKA ASURANSI TOS & HELPER PRICE
@@ -1475,48 +1488,28 @@
 
             // START LOGIKA CERDAS: Tarik Harga Helper Real-time
             let vehicleId = $(this).data('vehicle-id');
-            // PERBAIKAN: Gunakan toLowerCase() agar "DELIVEREE" tetap terbaca
             let isDeliveree = String(expeditionValue).toLowerCase().includes('deliveree');
-            let isHelperChecked = $('#extra_helper').is(':checked');
+            let isDriverChecked = $('#extra_helper_driver').is(':checked');
+            let isExtraChecked = $('#extra_helper_extra').is(':checked');
 
-            // LOG INI PASTI AKAN MUNCUL APAPUN YANG TERJADI
-            console.log("LOG LOG: Tombol Diklik -> isDeliveree:", isDeliveree, "| isHelperChecked:", isHelperChecked, "| VehicleID:", vehicleId);
-
-            if (isDeliveree && isHelperChecked && vehicleId) {
-                
-                // Munculkan tulisan loading di ringkasan pembayaran
-                $('#summary_helper_cost').text('Mengecek tarif API...').removeClass('text-success').addClass('text-muted');
-                
-                console.log("LOG LOG: Menembak API Extra Service untuk Mobil ID:", vehicleId);
+            if (isDeliveree && (isDriverChecked || isExtraChecked) && vehicleId) {
+                if(isDriverChecked) $('#summary_helper_driver_cost').text('Mengecek tarif API...').removeClass('text-success').addClass('text-muted');
+                if(isExtraChecked) $('#summary_helper_extra_cost').text('Mengecek tarif API...').removeClass('text-success').addClass('text-muted');
                 
                 $.get('/api/deliveree/extra-services/' + vehicleId, function(res) {
-                    console.log("LOG LOG: Hasil Response API:", res); 
-                    
                     if (res.data) {
-                        // Cari layanan yang namanya mengandung kata "help" ATAU "bantuan" ATAU "extra"
-                        let helperService = res.data.find(s => 
-                            s.name.toLowerCase().includes('help') || 
-                            s.name.toLowerCase().includes('bantuan') ||
-                            s.name.toLowerCase().includes('extra')
-                        );
-                        
-                        console.log("LOG LOG: Layanan Helper yang cocok:", helperService);
-                        
-                        if (helperService) {
-                            $('#selected_helper_fee').val(helperService.unit_price);
-                            $('#deliveree_helper_id').val(helperService.id); 
-                            
-                            // Update total ulang karena harga aslinya baru saja didapat
-                            updateTotalSummary(); 
-                            $('#summary_helper_cost').text(formatRupiah(helperService.unit_price)).removeClass('text-muted').addClass('text-success');
-                        } else {
-                            console.warn("LOG LOG: Layanan Helper tidak ditemukan di API untuk mobil ini!");
-                            $('#summary_helper_cost').text('Gratis (Bawaan Armada)').removeClass('text-muted').addClass('text-success');
+                        if (isDriverChecked) {
+                            let helperDriver = res.data.find(s => s.name.toLowerCase().includes('pengemudi') || s.name.toLowerCase().includes('driver'));
+                            $('#selected_helper_driver_fee').val(helperDriver ? helperDriver.unit_price : 0);
+                            $('#deliveree_helper_driver_id').val(helperDriver ? helperDriver.id : ''); 
                         }
+                        if (isExtraChecked) {
+                            let helperExtra = res.data.find(s => s.name.toLowerCase().includes('tambahan') || s.name.toLowerCase().includes('extra helper'));
+                            $('#selected_helper_extra_fee').val(helperExtra ? helperExtra.unit_price : 0);
+                            $('#deliveree_helper_extra_id').val(helperExtra ? helperExtra.id : ''); 
+                        }
+                        updateTotalSummary(); 
                     }
-                }).fail(function(err) {
-                    console.error("LOG LOG: Error memanggil API Extra Service:", err);
-                    $('#summary_helper_cost').text('Gagal cek tarif').removeClass('text-success').addClass('text-danger');
                 });
             }
             // END LOGIKA CERDAS
