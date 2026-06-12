@@ -1908,10 +1908,10 @@ TEXT;
 
         // Ekstrak ID kendaraan dari payload frontend (Contoh: regular-deliveree-Mobil XL#202-736500)
         $expeditionParts = explode('-', $data['expedition']);
-        $vehicleString = $expeditionParts[2] ?? ''; // Berisi "Mobil XL#202"
+        $vehicleString = $expeditionParts[2] ?? ''; 
         
         $vehicleIdParts = explode('#', $vehicleString);
-        $vehicleTypeId = $vehicleIdParts[1] ?? 21; // Jika tidak ada tanda #, fallback ke 21
+        $vehicleTypeId = $vehicleIdParts[1] ?? 21; 
 
         try {
             $response = Http::withHeaders([
@@ -1947,16 +1947,27 @@ TEXT;
                 ]
             ]);
 
-          if ($response->successful()) {
+            if ($response->successful()) {
                 $respData = $response->json();
-                // Ambil data dengan pengecekan aman agar tidak Undefined Index
-                $orderData = $respData['data'] ?? null;
-                if (!$orderData) {
+                
+                // PERBAIKAN LOGIKA: Deliveree hanya return 'booking_id' tanpa object 'data'
+                $bookingId = $respData['booking_id'] ?? null;
+                
+                if (!$bookingId) {
                     Log::error('LOG LOG: Deliveree Create Order - Struktur tidak sesuai', ['res' => $respData]);
-                    return ['status' => false, 'text' => 'Respons API tidak mengandung data order.'];
+                    return ['status' => false, 'text' => 'Respons API tidak mengandung data booking_id.'];
                 }
-                return ['status' => true, 'resi' => $orderData['tracking_url'] ?? ($orderData['id'] ?? 'N/A')];
-            } catch (\Exception $e) {
+                
+                // Kita kembalikan booking_id sebagai 'resi'
+                return ['status' => true, 'resi' => (string) $bookingId];
+                
+            } else {
+                // PERBAIKAN SYNTAX: Ini adalah penutup if dan menangani request gagal (else)
+                Log::error('LOG LOG: Deliveree Create Order HTTP Error', ['res' => $response->body()]);
+                return ['status' => false, 'text' => 'Gagal membuat pesanan di server Deliveree.'];
+            } // Penutup blok if-else yang tadinya hilang
+
+        } catch (\Exception $e) {
             Log::error('LOG LOG: Deliveree Create Order Exception: ' . $e->getMessage());
             return ['status' => false, 'text' => $e->getMessage()];
         }
