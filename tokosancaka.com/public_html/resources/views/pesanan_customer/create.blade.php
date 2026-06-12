@@ -578,6 +578,10 @@
                                 <input type="hidden" id="selected_shipping_cost" value="0">
                                 <input type="hidden" id="selected_insurance_cost" value="0">
                                 <input type="hidden" id="selected_cod_fee" value="0">
+                                <input type="hidden" id="selected_helper_driver_fee" value="0">
+                                <input type="hidden" id="selected_helper_extra_fee" value="0">
+                                <input type="hidden" name="deliveree_helper_driver_id" id="deliveree_helper_driver_id">
+                                <input type="hidden" name="deliveree_helper_extra_id" id="deliveree_helper_extra_id">
                             </div>
 
                             {{-- TAMBAHAN: Kotak Monitor Total Pembayaran --}}
@@ -1496,21 +1500,18 @@
                 if(isDriverChecked) $('#summary_helper_driver_cost').text('Mengecek tarif API...').removeClass('text-success').addClass('text-muted');
                 if(isExtraChecked) $('#summary_helper_extra_cost').text('Mengecek tarif API...').removeClass('text-success').addClass('text-muted');
                 
-               $.get('/api/deliveree/extra-services/' + vehicleId, function(res) {
-                    console.log("LOG LOG: Hasil Response API:", res); 
-                    
+                $.get('/api/deliveree/extra-services/' + vehicleId, function(res) {
                     if (res.data) {
-                        let helperDriver = res.data.find(s => s.name.toLowerCase().includes('pengemudi') || s.name.toLowerCase().includes('driver'));
-                        let helperExtra = res.data.find(s => s.name.toLowerCase().includes('tambahan') || s.name.toLowerCase().includes('extra helper'));
-                        
-                        // Isi data ke input hidden
-                        $('#selected_helper_driver_fee').val(helperDriver ? helperDriver.unit_price : 0);
-                        $('#deliveree_helper_driver_id').val(helperDriver ? helperDriver.id : ''); 
-                        
-                        $('#selected_helper_extra_fee').val(helperExtra ? helperExtra.unit_price : 0);
-                        $('#deliveree_helper_extra_id').val(helperExtra ? helperExtra.id : ''); 
-                        
-                        // PENTING: Panggil ini untuk update angka di tampilan
+                        if (isDriverChecked) {
+                            let helperDriver = res.data.find(s => s.name.toLowerCase().includes('pengemudi') || s.name.toLowerCase().includes('driver'));
+                            $('#selected_helper_driver_fee').val(helperDriver ? helperDriver.unit_price : 0);
+                            $('#deliveree_helper_driver_id').val(helperDriver ? helperDriver.id : ''); 
+                        }
+                        if (isExtraChecked) {
+                            let helperExtra = res.data.find(s => s.name.toLowerCase().includes('tambahan') || s.name.toLowerCase().includes('extra helper'));
+                            $('#selected_helper_extra_fee').val(helperExtra ? helperExtra.unit_price : 0);
+                            $('#deliveree_helper_extra_id').val(helperExtra ? helperExtra.id : ''); 
+                        }
                         updateTotalSummary(); 
                     }
                 });
