@@ -1445,8 +1445,8 @@
 
         $('#selected_expedition_display').on('click', runCekOngkir);
 
-        // Event listener universal untuk tombol "Pilih Armada/Kirim Paket" pada modal Ongkir/Deliveree
-       $(document).on('click', '.select-ongkir-btn', function() {
+       // Event listener universal untuk tombol "Pilih Armada/Kirim Paket" pada modal Ongkir/Deliveree
+        $(document).on('click', '.select-ongkir-btn', function() {
             const expeditionValue = $(this).data('value');
             $('#expedition').val(expeditionValue);
             $('#selected_expedition_display').val($(this).data('display')).addClass('is-valid');
@@ -1456,7 +1456,6 @@
             $('#selected_insurance_cost').val($(this).data('insurance-cost'));
             $('#selected_cod_fee').val($(this).data('cod-fee'));
             $('#selected_helper_fee').val($(this).data('deliveree-extra') || 0);
-            
 
             if ($(this).data('cod-supported')) {
                 $('.cod-payment-option').show();
@@ -1475,22 +1474,26 @@
             delivereeModal.hide();
 
             // START LOGIKA CERDAS: Tarik Harga Helper Real-time
-   // START LOGIKA CERDAS: Tarik Harga Helper Real-time
             let vehicleId = $(this).data('vehicle-id');
-            
-            if (expeditionValue.includes('deliveree') && $('#extra_helper').is(':checked') && vehicleId) {
+            // PERBAIKAN: Gunakan toLowerCase() agar "DELIVEREE" tetap terbaca
+            let isDeliveree = String(expeditionValue).toLowerCase().includes('deliveree');
+            let isHelperChecked = $('#extra_helper').is(':checked');
+
+            // LOG INI PASTI AKAN MUNCUL APAPUN YANG TERJADI
+            console.log("LOG LOG: Tombol Diklik -> isDeliveree:", isDeliveree, "| isHelperChecked:", isHelperChecked, "| VehicleID:", vehicleId);
+
+            if (isDeliveree && isHelperChecked && vehicleId) {
                 
                 // Munculkan tulisan loading di ringkasan pembayaran
                 $('#summary_helper_cost').text('Mengecek tarif API...').removeClass('text-success').addClass('text-muted');
                 
-                // KODE LOG LOG FRONTEND (Cek di Inspect Element -> Console tab)
                 console.log("LOG LOG: Menembak API Extra Service untuk Mobil ID:", vehicleId);
                 
                 $.get('/api/deliveree/extra-services/' + vehicleId, function(res) {
-                    console.log("LOG LOG: Hasil Response API:", res); // Cek isi API di Console Browser!
+                    console.log("LOG LOG: Hasil Response API:", res); 
                     
                     if (res.data) {
-                        // Cari layanan yang namanya mengandung kata "help" ATAU "bantuan"
+                        // Cari layanan yang namanya mengandung kata "help" ATAU "bantuan" ATAU "extra"
                         let helperService = res.data.find(s => 
                             s.name.toLowerCase().includes('help') || 
                             s.name.toLowerCase().includes('bantuan') ||
@@ -1517,6 +1520,7 @@
                 });
             }
             // END LOGIKA CERDAS
+        
         });
 
         let isPaymentApiLoaded = false;
