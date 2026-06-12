@@ -1861,6 +1861,7 @@ TEXT;
                 'Accept-Language' => 'id',
             ])->post($baseUrl . '/deliveries/get_quote', [
                 'time_type' => 'now',
+                'send_first_to_favorite' => (request('driver_preference') === 'favorite'), // <--- TAMBAHKAN BARIS INI
                 'locations' => [
                     ['address' => $senderAddress ?? 'Titik Jemput', 'latitude' => (float)$senderLat, 'longitude' => (float)$senderLng],
                     ['address' => $receiverAddress ?? 'Titik Antar', 'latitude' => (float)$receiverLat, 'longitude' => (float)$receiverLng]
@@ -1931,6 +1932,7 @@ TEXT;
                 'vehicle_type_id' => (int) $vehicleTypeId,
                 'note' => 'Order: ' . $pesanan->nomor_invoice . ' - ' . $data['item_description'],
                 'time_type' => 'now',
+                'send_first_to_favorite' => (request('driver_preference') === 'favorite'), // <--- TAMBAHKAN BARIS INI JUGA
                 'job_order_number' => $pesanan->nomor_invoice,
                 'locations' => [
                     [
