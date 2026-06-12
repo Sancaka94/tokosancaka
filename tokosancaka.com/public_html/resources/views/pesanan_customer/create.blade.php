@@ -554,16 +554,20 @@
                                         <option value="favorite">Hanya Pengemudi Favorit</option>
                                     </select>
 
-                                    <!-- Special Help -->
-                                    <div class="form-check form-switch mb-0">
-                                        <input class="form-check-input" type="checkbox" name="extra_helper" id="extra_helper" value="1">
-                                        <label class="form-check-label small fw-bold" for="extra_helper">
-                                            Bantuan Khusus (Extra Helper) <i class="fas fa-info-circle text-muted" title="Kenek tambahan untuk angkut barang"></i>
+                                   <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input deliveree-extra-toggle" type="checkbox" name="extra_helper_driver" id="extra_helper_driver" value="1">
+                                        <label class="form-check-label small fw-bold" for="extra_helper_driver">
+                                            Bantuan Pengemudi <i class="fas fa-info-circle text-muted" title="Sopir bantu angkut barang"></i>
+                                            <span id="helper_driver_price_text" class="text-success ms-1" style="font-size: 0.75rem;">(Pilih armada dulu)</span>
                                         </label>
-                                        <!-- TAMBAHAN: Teks Harga Helper Dinamis -->
-                                        <div id="helper_price_display" class="text-success fw-bold d-none" style="font-size: 0.75rem; margin-top: 2px;">
-                                            (Tarif menyesuaikan pilihan armada)
-                                        </div>
+                                    </div>
+
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input deliveree-extra-toggle" type="checkbox" name="extra_helper_extra" id="extra_helper_extra" value="1">
+                                        <label class="form-check-label small fw-bold" for="extra_helper_extra">
+                                            Bantuan Tambahan <i class="fas fa-info-circle text-muted" title="Kenek tambahan untuk angkut barang"></i>
+                                            <span id="helper_extra_price_text" class="text-success ms-1" style="font-size: 0.75rem;">(Pilih armada dulu)</span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
@@ -868,6 +872,17 @@
             return isValid;
         }
 
+        // Hitung real-time penambahan/pengurangan biaya Extra Helper
+        $(document).on('change', '#extra_helper_driver, #extra_helper_extra', function() {
+            let driverFee = $('#extra_helper_driver').is(':checked') ? ($('#extra_helper_driver').data('price') || 0) : 0;
+            let extraFee = $('#extra_helper_extra').is(':checked') ? ($('#extra_helper_extra').data('price') || 0) : 0;
+
+            $('#selected_helper_driver_fee').val(driverFee);
+            $('#selected_helper_extra_fee').val(extraFee);
+
+            updateTotalSummary();
+        });
+
         $('form [required]').on('input', function() {
             if ($(this).val()) {
                 $(this).removeClass('is-invalid');
@@ -981,17 +996,8 @@
             $('#summary_total_cost').text(formatRupiah(total));
         }
 
-        // Event listener saat toggle diklik (ganti yang lama)
-        $(document).on('change', '.deliveree-extra-toggle', function() {
-            if ($('.deliveree-extra-toggle:checked').length > 0) {
-                $('#helper_price_display').removeClass('d-none');
-            } else {
-                $('#helper_price_display').addClass('d-none');
-            }
-        });
-
         // ============================================
-        // LOGIKA ASURANSI TOS & HELPER PRICE
+        // LOGIKA ASURANSI TOS
         // ============================================
         // 1. Logika Tampil/Sembunyi Syarat Asuransi
         $('#ansuransi').on('change', function() {
@@ -1002,15 +1008,6 @@
                 $('#tos_asuransi_container').addClass('d-none');
                 $('#tos_asuransi').prop('required', false); // Lepas blokir
                 $('#tos_asuransi').prop('checked', false);  // Reset centang
-            }
-        });
-
-        // 2. Logika Tampil Teks Harga Bantuan Khusus (Helper)
-        $('#extra_helper').on('change', function() {
-            if ($(this).is(':checked')) {
-                $('#helper_price_display').removeClass('d-none');
-            } else {
-                $('#helper_price_display').addClass('d-none');
             }
         });
 
@@ -1433,7 +1430,9 @@
             });
         }
 
-        const fieldsThatAffectShipping = '#sender_district_id, #receiver_district_id, #item_price, #weight, #length, #width, #height, #ansuransi, #service_type, #vendor_filter, #extra_helper';
+        // PERBAIKAN: '#extra_helper' dihapus dari list agar tidak mereset ongkir tiap kali di-klik
+        const fieldsThatAffectShipping = '#sender_district_id, #receiver_district_id, #item_price, #weight, #length, #width, #height, #ansuransi, #service_type, #vendor_filter';
+        
         $(document).on('change', fieldsThatAffectShipping, function() {
             $('#expedition').val('');
             $('#selected_expedition_display').val('Data berubah, klik untuk cek ulang ongkir').removeClass('is-valid');
@@ -1441,7 +1440,7 @@
 
             // Reset cost ongkir, asuransi, dan reset payment gateway jika harga berubah
             $('#selected_shipping_cost').val('0');
-            $('#selected_insurance_cost').val('0'); // <--- TAMBAHKAN INI
+            $('#selected_insurance_cost').val('0'); 
 
             $('#payment_method').val('');
             $('#selectedPaymentName').text('Pilih Pembayaran...');
@@ -1453,7 +1452,7 @@
                 $('#deliveree_extra_section').removeClass('d-none');
             } else {
                 $('#deliveree_extra_section').addClass('d-none');
-                $('#extra_helper').prop('checked', false); 
+                $('#extra_helper_driver, #extra_helper_extra').prop('checked', false).trigger('change'); 
             }
             // END KODE BARU
 
@@ -1472,7 +1471,6 @@
             $('#selected_shipping_cost').val($(this).data('shipping-cost'));
             $('#selected_insurance_cost').val($(this).data('insurance-cost'));
             $('#selected_cod_fee').val($(this).data('cod-fee'));
-            $('#selected_helper_fee').val($(this).data('deliveree-extra') || 0);
 
             if ($(this).data('cod-supported')) {
                 $('.cod-payment-option').show();
@@ -1490,19 +1488,17 @@
             ongkirModal.hide();
             delivereeModal.hide();
 
-            // START LOGIKA CERDAS: Tarik Harga Helper Real-time
+           // START LOGIKA CERDAS: Tarik Harga Helper Real-time
             let vehicleId = $(this).data('vehicle-id');
-            // PERBAIKAN: Gunakan toLowerCase() agar "DELIVEREE" tetap terbaca
             let isDeliveree = String(expeditionValue).toLowerCase().includes('deliveree');
-            let isHelperChecked = $('#extra_helper').is(':checked');
 
-            // LOG INI PASTI AKAN MUNCUL APAPUN YANG TERJADI
-            console.log("LOG LOG: Tombol Diklik -> isDeliveree:", isDeliveree, "| isHelperChecked:", isHelperChecked, "| VehicleID:", vehicleId);
+            console.log("LOG LOG: Tombol Diklik -> isDeliveree:", isDeliveree, "| VehicleID:", vehicleId);
 
-            if (isDeliveree && isHelperChecked && vehicleId) {
+            if (isDeliveree && vehicleId) {
                 
-                // Munculkan tulisan loading di ringkasan pembayaran
-                $('#summary_helper_cost').text('Mengecek tarif API...').removeClass('text-success').addClass('text-muted');
+                // Munculkan tulisan loading di teks harga
+                $('#helper_driver_price_text').text('(Mengecek...)');
+                $('#helper_extra_price_text').text('(Mengecek...)');
                 
                 console.log("LOG LOG: Menembak API Extra Service untuk Mobil ID:", vehicleId);
                 
@@ -1510,30 +1506,41 @@
                     console.log("LOG LOG: Hasil Response API:", res); 
                     
                     if (res.data) {
-                        // Cari layanan yang namanya mengandung kata "help" ATAU "bantuan" ATAU "extra"
-                        let helperService = res.data.find(s => 
-                            s.name.toLowerCase().includes('help') || 
-                            s.name.toLowerCase().includes('bantuan') ||
-                            s.name.toLowerCase().includes('extra')
-                        );
+                        // Parsing akurat dari API Deliveree
+                        let helperDriver = res.data.find(s => s.name.toLowerCase().includes('pengemudi'));
+                        let helperExtra = res.data.find(s => s.name.toLowerCase().includes('tambahan'));
                         
-                        console.log("LOG LOG: Layanan Helper yang cocok:", helperService);
+                        console.log("LOG LOG: Layanan Helper yang cocok:", {driver: helperDriver, extra: helperExtra});
                         
-                        if (helperService) {
-                            $('#selected_helper_fee').val(helperService.unit_price);
-                            $('#deliveree_helper_id').val(helperService.id); 
-                            
-                            // Update total ulang karena harga aslinya baru saja didapat
-                            updateTotalSummary(); 
-                            $('#summary_helper_cost').text(formatRupiah(helperService.unit_price)).removeClass('text-muted').addClass('text-success');
+                        // Render Harga Bantuan Pengemudi (20rb)
+                        if (helperDriver) {
+                            $('#deliveree_helper_driver_id').val(helperDriver.id); 
+                            $('#extra_helper_driver').data('price', helperDriver.unit_price);
+                            $('#helper_driver_price_text').text('+ ' + formatRupiah(helperDriver.unit_price));
                         } else {
-                            console.warn("LOG LOG: Layanan Helper tidak ditemukan di API untuk mobil ini!");
-                            $('#summary_helper_cost').text('Gratis (Bawaan Armada)').removeClass('text-muted').addClass('text-success');
+                            $('#deliveree_helper_driver_id').val('');
+                            $('#extra_helper_driver').data('price', 0);
+                            $('#helper_driver_price_text').text('(Tidak tersedia)');
                         }
+
+                        // Render Harga Bantuan Tambahan (50rb)
+                        if (helperExtra) {
+                            $('#deliveree_helper_extra_id').val(helperExtra.id); 
+                            $('#extra_helper_extra').data('price', helperExtra.unit_price);
+                            $('#helper_extra_price_text').text('+ ' + formatRupiah(helperExtra.unit_price));
+                        } else {
+                            $('#deliveree_helper_extra_id').val('');
+                            $('#extra_helper_extra').data('price', 0);
+                            $('#helper_extra_price_text').text('(Tidak tersedia)');
+                        }
+                        
+                        // Kalkulasi ulang ke total kalau toggle ternyata nyala
+                        $('#extra_helper_driver, #extra_helper_extra').trigger('change'); 
                     }
                 }).fail(function(err) {
                     console.error("LOG LOG: Error memanggil API Extra Service:", err);
-                    $('#summary_helper_cost').text('Gagal cek tarif').removeClass('text-success').addClass('text-danger');
+                    $('#helper_driver_price_text').text('(Gagal cek)');
+                    $('#helper_extra_price_text').text('(Gagal cek)');
                 });
             }
             // END LOGIKA CERDAS

@@ -1926,6 +1926,22 @@ TEXT;
         $vehicleIdParts = explode('#', $vehicleString);
         $vehicleTypeId = $vehicleIdParts[1] ?? 21; 
 
+        // START LOGIKA BARU: Menyusun payload extra_services secara dinamis
+        $extraServicesPayload = [];
+        if (request('extra_helper_driver') && request('deliveree_helper_driver_id')) {
+            $extraServicesPayload[] = [
+                'extra_requirement_id' => (int) request('deliveree_helper_driver_id'),
+                'selected_amount' => 1
+            ];
+        }
+        if (request('extra_helper_extra') && request('deliveree_helper_extra_id')) {
+            $extraServicesPayload[] = [
+                'extra_requirement_id' => (int) request('deliveree_helper_extra_id'),
+                'selected_amount' => 1
+            ];
+        }
+        // END LOGIKA BARU
+
         try {
             $response = Http::withHeaders([
                 'Authorization' => $apiKey,
@@ -1959,13 +1975,7 @@ TEXT;
                         'cod_note' => 'Tagihan Pesanan ' . $pesanan->nomor_invoice
                     ]
                 ],
-
-                 'extra_services' => (request('extra_helper') && request('deliveree_helper_id')) ? [
-                    [
-                        'extra_requirement_id' => (int) request('deliveree_helper_id'), // <-- DINAMIS SESUAI MOBIL
-                        'selected_amount' => 1
-                    ]
-                ] : []
+                'extra_services' => $extraServicesPayload // <-- Payload dinamis yang sudah disusun di atas
             ]);
 
             if ($response->successful()) {
