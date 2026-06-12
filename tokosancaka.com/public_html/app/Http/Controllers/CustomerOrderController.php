@@ -297,10 +297,26 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             );
         }
 
-       // --- TAMBAHAN: PANGGIL LAYANAN DELIVEREE ---
-        $senderFullAddress = $validated['sender_address'] ?? implode(', ', array_filter([$validated['sender_village'] ?? null, $validated['sender_district'] ?? null]));
-        $receiverFullAddress = $validated['receiver_address'] ?? implode(', ', array_filter([$validated['receiver_village'] ?? null, $validated['receiver_district'] ?? null]));
+        // --- TAMBAHAN: PANGGIL LAYANAN DELIVEREE ---
+        //$senderFullAddress = $validated['sender_address'] ?? implode(', ', array_filter([$validated['sender_village'] ?? null, $validated['sender_district'] ?? null]));
+        //$receiverFullAddress = $validated['receiver_address'] ?? implode(', ', array_filter([$validated['receiver_village'] ?? null, $validated['receiver_district'] ?? null]));
 
+        // --- TAMBAHAN: PANGGIL LAYANAN DELIVEREE ---
+        // PERBAIKAN: Gabungkan jalan, desa, kecamatan, dan kabupaten agar Geocoder (peta) tidak bingung
+        $senderFullAddress = implode(', ', array_filter([
+            $validated['sender_address'] ?? null,
+            $validated['sender_village'] ?? null,
+            $validated['sender_district'] ?? null,
+            $validated['sender_regency'] ?? null
+        ]));
+        
+        $receiverFullAddress = implode(', ', array_filter([
+            $validated['receiver_address'] ?? null,
+            $validated['receiver_village'] ?? null,
+            $validated['receiver_district'] ?? null,
+            $validated['receiver_regency'] ?? null
+        ]));
+        
         $delivereeOptions = $this->_getDelivereePricing(
             $senderLat, $senderLng, $receiverLat, $receiverLng, $validated['weight'],
             $senderFullAddress, $receiverFullAddress
