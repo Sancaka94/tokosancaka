@@ -6,10 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Models\Api;
+use App\Models\Pesanan; // <-- SOLUSI: Import Model Pesanan ditambahkan di sini
 
 class DelivereeWebhookController extends Controller
 {
-  public function handleWebhook(Request $request)
+    public function handleWebhook(Request $request)
     {
         // 1. Log Payload untuk debugging
         Log::info('Deliveree Webhook Incoming Payload:', $request->all());
@@ -34,10 +35,14 @@ class DelivereeWebhookController extends Controller
         if ($bookingId && $status) {
             // Update pesanan Anda di sini
             $pesanan = Pesanan::where('nomor_invoice', $bookingId)->first();
+            
             if ($pesanan) {
                 $pesanan->status_pesanan = $status;
                 $pesanan->save();
                 Log::info("Deliveree Webhook - Pesanan {$bookingId} update status ke: {$status}");
+            } else {
+                // Tambahan log jika invoice dari Deliveree tidak ditemukan di database Sancaka
+                Log::warning("Deliveree Webhook - Pesanan dengan invoice {$bookingId} tidak ditemukan di database.");
             }
         }
 
