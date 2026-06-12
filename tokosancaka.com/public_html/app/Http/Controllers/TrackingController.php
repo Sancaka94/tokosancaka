@@ -14,6 +14,7 @@ use App\Services\KiriminAjaService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use App\Helpers\ShippingHelper;
 
 class TrackingController extends Controller
@@ -134,35 +135,49 @@ class TrackingController extends Controller
             }
         }
 
-        // PROSES API KIRIMINAJA (JIKA DB1 / RETUR KETEMU)
+       // PROSES API EKPEDISI (JIKA DB1 / RETUR KETEMU)
         if ($pesanan) {
-            $kiriminAja = new KiriminAjaService();
-            $orderId = $pesanan->nomor_invoice ?? $pesanan->resi;
-            $serviceType = $pesanan->service_type ?? 'regular';
+            // Ambil string nama ekspedisi untuk mendeteksi Deliveree
+            $expeditionRaw = strtolower($pesanan->expedition ?? $pesanan->jasa_ekspedisi_aktual ?? $pesanan->service_type ?? '');
 
-            if (str_contains($serviceType, '-')) {
-                $serviceType = explode('-', $serviceType)[0];
-            }
+            // ==========================================================
+            // LOGIKA CABANG 1: JIKA EKSPEDISI ADALAH DELIVEREE
+            // ==========================================================
+            if (str_contains($expeditionRaw, 'deliveree')) {
+                $result = $this->trackDeliveree($pesanan);
+            } 
+            // ==========================================================
+            // LOGIKA CABANG 2: JIKA EKSPEDISI LAINNYA (VIA KIRIMINAJA)
+            // ==========================================================
+            else {
+                $kiriminAja = new KiriminAjaService();
+                $orderId = $pesanan->nomor_invoice ?? $pesanan->resi;
+                $serviceType = $pesanan->service_type ?? 'regular';
 
-            $trackingData = $kiriminAja->track($serviceType, $orderId);
+                if (str_contains($serviceType, '-')) {
+                    $serviceType = explode('-', $serviceType)[0];
+                }
 
-            if ($trackingData && ($trackingData['status'] ?? false)) {
-                 $result = $this->normalizeKiriminAjaResponse($trackingData, $pesanan);
-            } else {
-                 $result = [
-                    'is_pesanan' => true,
-                    'resi' => $pesanan->resi,
-                    'pengirim' => $pesanan->sender_name ?? 'N/A',
-                    'alamat_pengirim' => $pesanan->sender_address ?? '-',
-                    'penerima' => $pesanan->receiver_name ?? 'N/A',
-                    'alamat_penerima' => $pesanan->receiver_address ?? '-',
-                    'no_pengirim' => $pesanan->sender_phone ?? '-',
-                    'no_penerima' => $pesanan->receiver_phone ?? '-',
-                    'status' => $pesanan->status,
-                    'tanggal_dibuat' => $pesanan->created_at,
-                    'histories' => [],
-                    'resi_aktual' => $pesanan->resi_aktual,
-                 ];
+                $trackingData = $kiriminAja->track($serviceType, $orderId);
+
+                if ($trackingData && ($trackingData['status'] ?? false)) {
+                     $result = $this->normalizeKiriminAjaResponse($trackingData, $pesanan);
+                } else {
+                     $result = [
+                        'is_pesanan' => true,
+                        'resi' => $pesanan->resi,
+                        'pengirim' => $pesanan->sender_name ?? 'N/A',
+                        'alamat_pengirim' => $pesanan->sender_address ?? '-',
+                        'penerima' => $pesanan->receiver_name ?? 'N/A',
+                        'alamat_penerima' => $pesanan->receiver_address ?? '-',
+                        'no_pengirim' => $pesanan->sender_phone ?? '-',
+                        'no_penerima' => $pesanan->receiver_phone ?? '-',
+                        'status' => $pesanan->status,
+                        'tanggal_dibuat' => $pesanan->created_at,
+                        'histories' => [],
+                        'resi_aktual' => $pesanan->resi_aktual,
+                     ];
+                }
             }
         }
 
@@ -598,5 +613,131 @@ class TrackingController extends Controller
     public function refreshTimeline()
     {
         return redirect()->back()->with('success', 'Timeline diperbarui');
+    }
+
+    /**
+     * Helper Ekstraksi Tracking Deliveree
+     */
+    private function trackDeliveree($pesanan)
+    {
+        $mode = \App\Models\Api::getValue('DELIVEREE_MODE', 'global', 'sandbox');
+        $baseUrl = \App\Models\Api::getValue('DELIVEREE_BASE_URL', $mode, 'https://api.sandbox.deliveree.com/public_api/v10');
+        $apiKey = \App\Models\Api::getValue('DELIVEREE_API_KEY', $mode);
+        
+        // Asumsi $pesanan->resi berisi ID Booking Deliveree (contoh: 82128)
+        $delivereeId = $pesanan->resi; 
+        $histories = collect([]);
+        $statusText = 'Menunggu Kurir';
+        $jasaEkspedisi = 'Deliveree';
+
+        if (!empty($delivereeId)) {
+            try {
+                $response = Http::withHeaders([
+                    'Authorization' => $apiKey,
+                    'Accept-Language' => 'id'
+                ])->get($baseUrl . '/deliveries/' . $delivereeId);
+
+                if ($response->successful()) {
+                    $data = $response->json();
+                    $statusRaw = $data['status'] ?? '';
+                    
+                    // Terjemahkan Status Deliveree
+                    $statusMap = [
+                        'locating_driver' => 'Mencari Pengemudi / Kurir',
+                        'driver_accept_booking' => 'Pengemudi Ditemukan & Menuju Lokasi Anda',
+                        'delivery_in_progress' => 'Kurir Dalam Perjalanan Mengantar Paket',
+                        'delivery_completed' => 'Pesanan Selesai / Terkirim',
+                        'canceled' => 'Pesanan Dibatalkan',
+                        'locating_driver_timeout' => 'Waktu Tunggu Habis (Kurir Tidak Ditemukan)'
+                    ];
+                    $statusText = $statusMap[$statusRaw] ?? ucfirst(str_replace('_', ' ', $statusRaw));
+
+                    // Ambil info driver & Live Tracking URL
+                    $driverName = $data['driver']['name'] ?? null;
+                    $driverPhone = $data['driver']['phone'] ?? null;
+                    $trackingUrl = $data['tracking_url'] ?? null;
+                    $vehicleName = $data['vehicle_type_info']['name'] ?? 'Armada';
+
+                    $jasaEkspedisi = 'Deliveree - ' . $vehicleName;
+
+                    $keterangan = "<b>Status Terkini:</b> " . $statusText;
+                    if ($driverName) {
+                        $keterangan .= "<br><b>Kurir:</b> $driverName ($driverPhone)";
+                    }
+                    if ($trackingUrl) {
+                        $keterangan .= "<br><a href='$trackingUrl' target='_blank' class='btn btn-sm btn-success mt-2' style='background:#00b14f; border:none;'><i class='fas fa-map-marker-alt'></i> Lacak Live Map Pengemudi</a>";
+                    }
+
+                    // Push status utama saat ini
+                    $histories->push((object)[
+                        'status' => $statusText,
+                        'lokasi' => 'Update Sistem Deliveree',
+                        'keterangan' => $keterangan,
+                        'created_at' => \Carbon\Carbon::now()->timezone('Asia/Jakarta')
+                    ]);
+
+                    // Iterasi lokasi untuk mendapatkan jam tiba / jam berangkat kurir
+                    if (!empty($data['locations']) && is_array($data['locations'])) {
+                        foreach ($data['locations'] as $loc) {
+                            if (!empty($loc['arrived_at'])) {
+                                $tipeLokasi = ($loc['is_payer'] ?? false) ? 'Tujuan' : 'Penjemputan';
+                                $histories->push((object)[
+                                    'status' => "Kurir Tiba di Titik " . $tipeLokasi,
+                                    'lokasi' => $loc['name'] ?? 'Alamat',
+                                    'keterangan' => 'Kurir telah tiba di titik lokasi.',
+                                    'created_at' => \Carbon\Carbon::parse($loc['arrived_at'])->timezone('Asia/Jakarta')
+                                ]);
+                            }
+                            if (!empty($loc['delivery_status']) && strtolower($loc['delivery_status']) === 'delivered') {
+                                $histories->push((object)[
+                                    'status' => 'Paket Diserahkan',
+                                    'lokasi' => $loc['name'] ?? 'Lokasi Tujuan',
+                                    'keterangan' => 'Diterima oleh: ' . ($loc['recipient_name'] ?? 'Penerima'),
+                                    'created_at' => \Carbon\Carbon::parse($loc['leaved_at'] ?? now())->timezone('Asia/Jakarta')
+                                ]);
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Deliveree Tracking Error: ' . $e->getMessage());
+            }
+        }
+
+        // Timeline Default: "Pesanan Dibuat"
+        if ($pesanan->created_at) {
+            $waktuDibuat = \Carbon\Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta');
+            
+            // Cek lokasi pengirim untuk tampilan
+            $lokasiAkun = strtoupper($pesanan->sender_regency ?? 'NGAWI');
+            if (!empty($pesanan->sender_district)) {
+                $lokasiAkun = strtoupper($pesanan->sender_district) . ', ' . $lokasiAkun;
+            }
+
+            $histories->push((object)[
+                'status' => 'Pesanan Dibuat Oleh TOKOSANCAKA.COM',
+                'lokasi' => $lokasiAkun,
+                'keterangan' => 'Pesanan berhasil dibuat di sistem SANCAKA EXPRESS. Menggunakan layanan Deliveree.',
+                'created_at' => $waktuDibuat,
+            ]);
+        }
+
+        $sortedHistories = $histories->sortByDesc('created_at')->values();
+
+        return [
+            'is_pesanan' => true,
+            'resi' => $pesanan->resi,
+            'resi_aktual' => $pesanan->resi_aktual ?? $pesanan->resi,
+            'pengirim' => $pesanan->sender_name ?? 'N/A',
+            'alamat_pengirim' => $pesanan->sender_address ?? 'N/A',
+            'no_pengirim' => $pesanan->sender_phone ?? 'N/A',
+            'penerima' => $pesanan->receiver_name ?? 'N/A',
+            'alamat_penerima' => $pesanan->receiver_address ?? 'N/A',
+            'no_penerima' => $pesanan->receiver_phone ?? 'N/A',
+            'status' => $statusText,
+            'tanggal_dibuat' => $pesanan->created_at,
+            'histories' => $sortedHistories,
+            'jasa_ekspedisi_aktual' => $jasaEkspedisi,
+        ];
     }
 }
