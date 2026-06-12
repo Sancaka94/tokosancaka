@@ -979,6 +979,30 @@
             $('#summary_total_cost').text(formatRupiah(total));
         }
 
+        // ============================================
+        // LOGIKA ASURANSI TOS & HELPER PRICE
+        // ============================================
+        // 1. Logika Tampil/Sembunyi Syarat Asuransi
+        $('#ansuransi').on('change', function() {
+            if ($(this).val() === 'iya') {
+                $('#tos_asuransi_container').removeClass('d-none');
+                $('#tos_asuransi').prop('required', true); // Blokir submit jika belum dicentang
+            } else {
+                $('#tos_asuransi_container').addClass('d-none');
+                $('#tos_asuransi').prop('required', false); // Lepas blokir
+                $('#tos_asuransi').prop('checked', false);  // Reset centang
+            }
+        });
+
+        // 2. Logika Tampil Teks Harga Bantuan Khusus (Helper)
+        $('#extra_helper').on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#helper_price_display').removeClass('d-none');
+            } else {
+                $('#helper_price_display').addClass('d-none');
+            }
+        });
+
         // Update monitor secara real-time saat user mengetik harga barang
         $('#item_price').on('input', function() {
             updateTotalSummary();
@@ -1396,8 +1420,8 @@
             });
         }
 
-        const fieldsThatAffectShipping = '#sender_district_id, #receiver_district_id, #item_price, #weight, #length, #width, #height, #ansuransi, #service_type, #vendor_filter';
-      $(document).on('change', fieldsThatAffectShipping, function() {
+        const fieldsThatAffectShipping = '#sender_district_id, #receiver_district_id, #item_price, #weight, #length, #width, #height, #ansuransi, #service_type, #vendor_filter, #extra_helper';
+        $(document).on('change', fieldsThatAffectShipping, function() {
             $('#expedition').val('');
             $('#selected_expedition_display').val('Data berubah, klik untuk cek ulang ongkir').removeClass('is-valid');
             $('.cod-payment-option').hide();
