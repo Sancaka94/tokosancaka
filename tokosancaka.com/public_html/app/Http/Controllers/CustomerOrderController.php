@@ -297,11 +297,16 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             );
         }
 
+       // --- TAMBAHAN: PANGGIL LAYANAN DELIVEREE ---
+        $senderFullAddress = $validated['sender_address'] ?? implode(', ', array_filter([$validated['sender_village'] ?? null, $validated['sender_district'] ?? null]));
+        $receiverFullAddress = $validated['receiver_address'] ?? implode(', ', array_filter([$validated['receiver_village'] ?? null, $validated['receiver_district'] ?? null]));
+
         $delivereeOptions = $this->_getDelivereePricing(
-            $senderLat, $senderLng, $receiverLat, $receiverLng, $validated['weight']
+            $senderLat, $senderLng, $receiverLat, $receiverLng, $validated['weight'],
+            $senderFullAddress, $receiverFullAddress
         );
         if ($delivereeOptions['status']) {
-            $expressOptions['status'] = true; // Set true agar di-merge dengan benar di bawah
+            $expressOptions['status'] = true; 
             $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $delivereeOptions['results']);
         }
 
@@ -1783,13 +1788,24 @@ TEXT;
 
     // ############################# Deliveree ########################endregion
 
-    /**
+   /**
      * =========================================================================
      * FUNGSI HELPER DELIVEREE (TARIK QUOTE & CREATE ORDER) - DINAMIS
      * =========================================================================
      */
-    private function _getDelivereePricing($senderLat, $senderLng, $receiverLat, $receiverLng, $weight)
+    private function _getDelivereePricing($senderLat, $senderLng, $receiverLat, $receiverLng, $weight, $senderAddress, $receiverAddress)
     {
+        // PERBAIKAN 1: Lakukan Fallback Geocode otomatis jika koordinat kosong (karena user pilih Regular)
+        if (empty($senderLat) || empty($senderLng)) {
+            $geo = $this->geocode($senderAddress);
+            if ($geo) { $senderLat = $geo['lat']; $senderLng = $geo['lng']; }
+        }
+        if (empty($receiverLat) || empty($receiverLng)) {
+            $geo = $this->geocode($receiverAddress);
+            if ($geo) { $receiverLat = $geo['lat']; $receiverLng = $geo['lng']; }
+        }
+
+        // Jika setelah geocode masih kosong, hentikan
         if (empty($senderLat) || empty($senderLng) || empty($receiverLat) || empty($receiverLng)) {
             return ['status' => false, 'results' => []];
         }
@@ -1807,11 +1823,11 @@ TEXT;
             ])->post($baseUrl . '/deliveries/get_quote', [
                 'time_type' => 'now',
                 'locations' => [
-                    ['latitude' => (float)$senderLat, 'longitude' => (float)$senderLng],
-                    ['latitude' => (float)$receiverLat, 'longitude' => (float)$receiverLng]
+                    // PERBAIKAN 2: Masukkan parameter 'address' yang diwajibkan oleh Deliveree
+                    ['address' => $senderAddress ?? 'Titik Jemput Sancaka', 'latitude' => (float)$senderLat, 'longitude' => (float)$senderLng],
+                    ['address' => $receiverAddress ?? 'Titik Antar Sancaka', 'latitude' => (float)$receiverLat, 'longitude' => (float)$receiverLng]
                 ],
                 'packs' => [
-                    // Deliveree menggunakan hitungan Kilogram, asumsi weight sistem Anda dalam gram
                     ['dimensions' => [50, 50, 50], 'weight' => (float)($weight / 1000), 'quantity' => 1]
                 ]
             ]);
@@ -1820,19 +1836,21 @@ TEXT;
                 $data = $response->json('data');
                 $results = [];
                 foreach ($data as $quote) {
-                    // Format output disamakan dengan struktur KiriminAja agar Frontend tidak error
                     $results[] = [
                         'service' => 'deliveree',
                         'service_name' => 'Deliveree ' . ($quote['vehicle_type_name'] ?? 'Vehicle ' . $quote['vehicle_type_id']),
                         'cost' => $quote['total_fees'],
                         'etd' => 'Instant',
-                        'vehicle_type_id' => $quote['vehicle_type_id'] // Disisipkan untuk Create Order nanti
+                        'vehicle_type_id' => $quote['vehicle_type_id']
                     ];
                 }
                 return ['status' => true, 'results' => $results];
+            } else {
+                // LOG LOG - Pantau jika masih ada error validasi dari Deliveree
+                Log::error('LOG LOG: Deliveree Quote Failed', ['res' => $response->json()]);
             }
         } catch (\Exception $e) {
-            Log::error('Deliveree Get Quote Error: ' . $e->getMessage());
+            Log::error('LOG LOG: Deliveree Get Quote Error: ' . $e->getMessage());
         }
         return ['status' => false, 'results' => []];
     }
