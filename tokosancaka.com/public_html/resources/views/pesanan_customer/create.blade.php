@@ -569,14 +569,6 @@
                             </div>
                             {{-- END KODE BARU --}}
 
-                            {{-- PENAMBAHAN: Hidden input untuk menampung tarif ongkir yang terpilih guna keperluan kalkulasi limit minimum --}}
-                            <div class="col-12">
-                                <label for="selected_expedition_display" class="form-label">Pilih Ekspedisi</label>
-                                <input type="text" id="selected_expedition_display" class="form-control text-start fw-bold" placeholder="Lengkapi data & klik di sini untuk Cek Tarif" readonly required style="cursor:pointer; background-color: #f8f9fa;">
-                                <input type="hidden" name="expedition" id="expedition" required>
-                                <input type="hidden" id="selected_shipping_cost" value="0">
-                            </div>
-
                            {{-- PENAMBAHAN: Hidden input untuk menampung tarif ongkir yang terpilih guna keperluan kalkulasi limit minimum --}}
                             <div class="col-12">
                                 <label for="selected_expedition_display" class="form-label">Pilih Ekspedisi</label>
