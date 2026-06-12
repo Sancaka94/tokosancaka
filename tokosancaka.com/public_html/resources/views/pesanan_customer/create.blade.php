@@ -1492,28 +1492,48 @@
 
             // START LOGIKA CERDAS: Tarik Harga Helper Real-time
             let vehicleId = $(this).data('vehicle-id');
+            // PERBAIKAN: Gunakan toLowerCase() agar "DELIVEREE" tetap terbaca
             let isDeliveree = String(expeditionValue).toLowerCase().includes('deliveree');
-            let isDriverChecked = $('#extra_helper_driver').is(':checked');
-            let isExtraChecked = $('#extra_helper_extra').is(':checked');
+            let isHelperChecked = $('#extra_helper').is(':checked');
 
-            if (isDeliveree && (isDriverChecked || isExtraChecked) && vehicleId) {
-                if(isDriverChecked) $('#summary_helper_driver_cost').text('Mengecek tarif API...').removeClass('text-success').addClass('text-muted');
-                if(isExtraChecked) $('#summary_helper_extra_cost').text('Mengecek tarif API...').removeClass('text-success').addClass('text-muted');
+            // LOG INI PASTI AKAN MUNCUL APAPUN YANG TERJADI
+            console.log("LOG LOG: Tombol Diklik -> isDeliveree:", isDeliveree, "| isHelperChecked:", isHelperChecked, "| VehicleID:", vehicleId);
+
+            if (isDeliveree && isHelperChecked && vehicleId) {
+                
+                // Munculkan tulisan loading di ringkasan pembayaran
+                $('#summary_helper_cost').text('Mengecek tarif API...').removeClass('text-success').addClass('text-muted');
+                
+                console.log("LOG LOG: Menembak API Extra Service untuk Mobil ID:", vehicleId);
                 
                 $.get('/api/deliveree/extra-services/' + vehicleId, function(res) {
+                    console.log("LOG LOG: Hasil Response API:", res); 
+                    
                     if (res.data) {
-                        if (isDriverChecked) {
-                            let helperDriver = res.data.find(s => s.name.toLowerCase().includes('pengemudi') || s.name.toLowerCase().includes('driver'));
-                            $('#selected_helper_driver_fee').val(helperDriver ? helperDriver.unit_price : 0);
-                            $('#deliveree_helper_driver_id').val(helperDriver ? helperDriver.id : ''); 
+                        // Cari layanan yang namanya mengandung kata "help" ATAU "bantuan" ATAU "extra"
+                        let helperService = res.data.find(s => 
+                            s.name.toLowerCase().includes('help') || 
+                            s.name.toLowerCase().includes('bantuan') ||
+                            s.name.toLowerCase().includes('extra')
+                        );
+                        
+                        console.log("LOG LOG: Layanan Helper yang cocok:", helperService);
+                        
+                        if (helperService) {
+                            $('#selected_helper_fee').val(helperService.unit_price);
+                            $('#deliveree_helper_id').val(helperService.id); 
+                            
+                            // Update total ulang karena harga aslinya baru saja didapat
+                            updateTotalSummary(); 
+                            $('#summary_helper_cost').text(formatRupiah(helperService.unit_price)).removeClass('text-muted').addClass('text-success');
+                        } else {
+                            console.warn("LOG LOG: Layanan Helper tidak ditemukan di API untuk mobil ini!");
+                            $('#summary_helper_cost').text('Gratis (Bawaan Armada)').removeClass('text-muted').addClass('text-success');
                         }
-                        if (isExtraChecked) {
-                            let helperExtra = res.data.find(s => s.name.toLowerCase().includes('tambahan') || s.name.toLowerCase().includes('extra helper'));
-                            $('#selected_helper_extra_fee').val(helperExtra ? helperExtra.unit_price : 0);
-                            $('#deliveree_helper_extra_id').val(helperExtra ? helperExtra.id : ''); 
-                        }
-                        updateTotalSummary(); 
                     }
+                }).fail(function(err) {
+                    console.error("LOG LOG: Error memanggil API Extra Service:", err);
+                    $('#summary_helper_cost').text('Gagal cek tarif').removeClass('text-success').addClass('text-danger');
                 });
             }
             // END LOGIKA CERDAS
