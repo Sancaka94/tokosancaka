@@ -1895,6 +1895,8 @@ TEXT;
                         // PERBAIKAN: Sisipkan ID kendaraan di dalam string agar tidak hilang
                         'service_type' => $vName . '#' . $vId, 
                         'cost' => $quote['total_fees'],
+                        'distance_fees' => $quote['distance_fees'] ?? $quote['total_fees'], // Tangkap Jarak Murni
+                        'extra_fees' => $quote['extra_fees'] ?? 0, // Tangkap Biaya Helper
                         'etd' => '0-1',
                         'cod' => true,
                         'vehicle_type_id' => $vId

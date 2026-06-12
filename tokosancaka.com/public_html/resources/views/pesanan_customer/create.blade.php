@@ -575,10 +575,10 @@
                                 <input type="text" id="selected_expedition_display" class="form-control text-start fw-bold" placeholder="Lengkapi data & klik di sini untuk Cek Tarif" readonly required style="cursor:pointer; background-color: #f8f9fa;">
                                 <input type="hidden" name="expedition" id="expedition" required>
                                 
-                                <!-- Hidden Value Rincian -->
                                 <input type="hidden" id="selected_shipping_cost" value="0">
                                 <input type="hidden" id="selected_insurance_cost" value="0">
                                 <input type="hidden" id="selected_cod_fee" value="0">
+                                <input type="hidden" id="selected_helper_fee" value="0"> <!-- TAMBAHAN BARU -->
                             </div>
 
                             {{-- TAMBAHAN: Kotak Monitor Total Pembayaran --}}
@@ -924,15 +924,16 @@
             let baseShippingCost = parseInt($('#selected_shipping_cost').val()) || 0;
             let insuranceCost = parseInt($('#selected_insurance_cost').val()) || 0;
             let codFee = parseInt($('#selected_cod_fee').val()) || 0;
+            let helperFee = parseInt($('#selected_helper_fee').val()) || 0; // Baca harga helper
             
             let paymentMethod = $('#payment_method').val();
 
-            // Kalkulasi Total
-            let finalShippingCost = baseShippingCost + insuranceCost;
+            // Kalkulasi Total Akurat
+            let finalShippingCost = baseShippingCost + insuranceCost + helperFee;
             let total = finalShippingCost;
 
             if (paymentMethod === 'COD' || paymentMethod === 'CODBARANG') {
-                finalShippingCost = baseShippingCost + insuranceCost + codFee;
+                finalShippingCost = baseShippingCost + insuranceCost + helperFee + codFee;
                 total = finalShippingCost;
             }
 
@@ -961,8 +962,8 @@
                 if (baseShippingCost === 0) {
                     $('#summary_helper_cost').text('(Menunggu Cek Tarif)').removeClass('text-success').addClass('text-muted');
                 } else {
-                    // Karena Deliveree otomatis menjumlahkan harga helper ke dalam total_fees API mereka, kita informasikan ini:
-                    $('#summary_helper_cost').text('Sudah Termasuk Ongkir Dasar').removeClass('text-muted').addClass('text-success');
+                    // Tampilkan Harga Helper dari API
+                    $('#summary_helper_cost').text(helperFee > 0 ? formatRupiah(helperFee) : 'Gratis').removeClass('text-muted').addClass('text-success');
                 }
             } else {
                 $('#summary_helper_row').addClass('d-none').removeClass('d-flex');
@@ -1184,10 +1185,11 @@
                 const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
                 const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
                 
-                // Kalkulasi harga Final
-                const baseOngkirCost = parseInt(i.cost || 0) + parseInt(insuranceFeeValue || 0);
+              // Kalkulasi harga Final
+                const baseOngkirCost = parseInt(i.distance_fees || i.cost || 0); // <--- PERBAIKAN: Hanya ambil ongkir murni
+                const delivereeExtraFee = parseInt(i.extra_fees || 0); // <--- PERBAIKAN: Tangkap harga Helper
                 const actualCodFee = parseInt(codFee || 0);
-
+                
                 // Variabel yang akan dikirim ke Backend Sancaka
                 const payloadValue = `${baseParams.serviceType}-${i.service_name}-${rawName}-${i.cost}-${insuranceFeeValue}-${codFee}`;
 
@@ -1203,15 +1205,15 @@
                             <h4 class="text-success fw-bold mb-2">${formatRupiah(i.cost)}</h4>
                             <div class="text-muted small"><i class="fas fa-clock me-1"></i> Estimasi: ${etdHtml}</div>
                         </div>
-                       <div class="card-footer bg-transparent border-0 text-center pb-3">
+                        <div class="card-footer bg-transparent border-0 text-center pb-3">
                             <button type="button" class="btn btn-success w-100 select-ongkir-btn rounded-pill fw-bold"
                                 data-value="${payloadValue}"
                                 data-display="Deliveree - ${displayServiceType}"
                                 data-cod-supported="${i.cod}"
-                                data-shipping-cost="${parseInt(i.cost || 0)}" 
+                                data-shipping-cost="${baseOngkirCost}" 
                                 data-insurance-cost="${insuranceFeeValue}"
-                                data-cod-fee="${actualCodFee}">
-                                <i class="fas fa-check-circle me-1"></i> Pilih Armada
+                                data-cod-fee="${actualCodFee}"
+                                data-deliveree-extra="${delivereeExtraFee}"> <i class="fas fa-check-circle me-1"></i> Pilih Armada
                             </button>
                         </div>
                     </div>
@@ -1451,6 +1453,8 @@
             $('#selected_shipping_cost').val($(this).data('shipping-cost'));
             $('#selected_insurance_cost').val($(this).data('insurance-cost'));
             $('#selected_cod_fee').val($(this).data('cod-fee'));
+            $('#selected_helper_fee').val($(this).data('deliveree-extra') || 0);
+            
 
             if ($(this).data('cod-supported')) {
                 $('.cod-payment-option').show();
