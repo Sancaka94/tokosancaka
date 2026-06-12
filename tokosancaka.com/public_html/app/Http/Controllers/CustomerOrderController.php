@@ -1830,6 +1830,18 @@ TEXT;
         if (empty($apiKey)) return ['status' => false, 'results' => []];
 
         try {
+            // PERBAIKAN: Tarik nama armada asli dari API Deliveree dan simpan di Cache (selama 24 jam) agar Sancaka tidak lemot
+            $vehicleMap = \Illuminate\Support\Facades\Cache::remember('deliveree_vehicles_' . $mode, 60 * 24, function() use ($baseUrl, $apiKey) {
+                $resp = Http::withHeaders(['Authorization' => $apiKey, 'Accept-Language' => 'id'])->get($baseUrl . '/vehicle_types');
+                $map = [];
+                if ($resp->successful()) {
+                    foreach ($resp->json('data') ?? [] as $v) {
+                        $map[$v['id']] = $v['name'];
+                    }
+                }
+                return $map;
+            });
+
             $response = Http::withHeaders([
                 'Authorization' => $apiKey,
                 'Accept-Language' => 'id',
@@ -1849,34 +1861,18 @@ TEXT;
                 $results = [];
                 Log::info('LOG LOG: Deliveree API Success menemukan '. count($data) .' layanan.');
 
-                // Kamus Pemetaan Armada Dasar Deliveree
-                $vehicleNames = [
-                    1 => 'Van',
-                    21 => 'Motor',
-                    27 => 'Closed Van',
-                    82 => 'Pickup / L300',
-                    130 => 'Mobil MPV / Ekonomi',
-                ];
-
                 foreach ($data as $quote) {
                     $vId = $quote['vehicle_type_id'];
-                    $vName = $vehicleNames[$vId] ?? 'Armada Tipe ' . $vId;
+                    
+                    // PERBAIKAN: Cocokkan ID harga dengan nama asli dari Cache
+                    $vName = $vehicleMap[$vId] ?? 'Armada Tipe ' . $vId;
 
                     $results[] = [
-                        // Mengisi logo dan tulisan kapital "DELIVEREE"
-                        'service' => 'deliveree', 
-                        
-                        // PERBAIKAN: Mengisi tulisan "undefined" dengan jenis mobil yang terbaca
-                        'service_type' => $vName, 
-                        
+                        'service' => 'deliveree',
+                        'service_type' => $vName,
                         'cost' => $quote['total_fees'],
-                        
-                        // PERBAIKAN: JS akan otomatis nambah kata " Hari", jadi "0-1" akan jadi "0-1 Hari"
-                        'etd' => '0-1', 
-                        
-                        // Mengizinkan filter COD beroperasi
-                        'cod' => true, 
-                        
+                        'etd' => '0-1',
+                        'cod' => true,
                         'vehicle_type_id' => $vId
                     ];
                 }
