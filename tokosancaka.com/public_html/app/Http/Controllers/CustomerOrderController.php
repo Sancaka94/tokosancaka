@@ -1995,19 +1995,32 @@ TEXT;
     }
 
 
-    public function getDelivereeExtraServices($vehicle_id)
- {
-     $mode = \App\Models\Api::getValue('DELIVEREE_MODE', 'global', 'sandbox');
-     $baseUrl = \App\Models\Api::getValue('DELIVEREE_BASE_URL', $mode, 'https://api.sandbox.deliveree.com/public_api/v10');
-     $apiKey = \App\Models\Api::getValue('DELIVEREE_API_KEY', $mode);
+   public function getDelivereeExtraServices($vehicle_id)
+    {
+        $mode = \App\Models\Api::getValue('DELIVEREE_MODE', 'global', 'sandbox');
+        $baseUrl = \App\Models\Api::getValue('DELIVEREE_BASE_URL', $mode, 'https://api.sandbox.deliveree.com/public_api/v10');
+        $apiKey = \App\Models\Api::getValue('DELIVEREE_API_KEY', $mode);
 
-     $response = Http::withHeaders([
-         'Authorization' => $apiKey,
-         'Accept-Language' => 'id'
-     ])->get($baseUrl . '/vehicle_types/' . $vehicle_id . '/extra_services?time_type=now');
+        $url = $baseUrl . '/vehicle_types/' . $vehicle_id . '/extra_services?time_type=now';
+        
+        // KODE LOG LOG: Mencatat ke file laravel.log
+        Log::info("LOG LOG: Request Extra Service Deliveree ke URL: " . $url);
 
-     return response()->json($response->json());
- }
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => $apiKey,
+                'Accept-Language' => 'id' // Meminta respons dalam bahasa Indonesia
+            ])->get($url);
+
+            // KODE LOG LOG: Mencatat Response API
+            Log::info("LOG LOG: Response Extra Service Deliveree:", $response->json() ?? []);
+            
+            return response()->json($response->json());
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: Exception Extra Service Deliveree: " . $e->getMessage());
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 
 
 }
