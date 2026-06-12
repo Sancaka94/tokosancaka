@@ -1865,9 +1865,19 @@ TEXT;
                     ['address' => $senderAddress ?? 'Titik Jemput', 'latitude' => (float)$senderLat, 'longitude' => (float)$senderLng],
                     ['address' => $receiverAddress ?? 'Titik Antar', 'latitude' => (float)$receiverLat, 'longitude' => (float)$receiverLng]
                 ],
+
                 'packs' => [
                     ['dimensions' => [50, 50, 50], 'weight' => (float)($weight / 1000), 'quantity' => 1]
-                ]
+                ],
+
+                'extra_services' => request('extra_helper') ? [
+                    [
+                        'extra_requirement_id' => 140, // ID 140 adalah Extra Helper sesuai dokumentasi
+                        'selected_amount' => 1
+                    ]
+                ] : []
+
+
             ]);
 
             if ($response->successful()) {
@@ -1944,7 +1954,15 @@ TEXT;
                         'cod_invoice_fees' => (float)$cod_value,
                         'cod_note' => 'Tagihan Pesanan ' . $pesanan->nomor_invoice
                     ]
-                ]
+                ],
+
+                 'extra_services' => request('extra_helper') ? [
+                        [
+                            'extra_requirement_id' => 140, 
+                            'selected_amount' => 1
+                        ]
+                    ] : []
+                    // END KODE BARU
             ]);
 
             if ($response->successful()) {
@@ -1972,7 +1990,7 @@ TEXT;
             return ['status' => false, 'text' => $e->getMessage()];
         }
     }
-    
+
 
 }
 

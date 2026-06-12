@@ -526,6 +526,36 @@
                             <div class="col-12"><label for="ansuransi" class="form-label">Asuransi</label><div class="input-group"><span class="input-group-text"><i class="fas fa-shield-alt"></i></span><select name="ansuransi" id="ansuransi" class="form-select" required><option value="tidak" selected>Tidak Pakai Asuransi</option><option value="iya">Ya, Pakai Asuransi</option></select></div></div>
                             <div class="col-12"><hr class="my-3"></div>
 
+                            {{-- START KODE BARU: OPSI EXTRA DELIVEREE --}}
+                            <div class="col-12 d-none" id="deliveree_extra_section">
+                                <div class="p-3 mt-2 rounded border border-success" style="background-color: #f4f7f6;">
+                                    <h6 class="fw-bold text-success mb-2"><i class="fas fa-star me-1"></i> Layanan Tambahan (Deliveree)</h6>
+                                    
+                                    <!-- Driver Preferences -->
+                                    <label class="form-label text-muted small mb-1">Preferensi Pengemudi</label>
+                                    <select name="driver_preference" id="driver_preference" class="form-select form-select-sm mb-3">
+                                        <option value="all" selected>Semua Pengemudi (Tercepat)</option>
+                                        <option value="favorite">Hanya Pengemudi Favorit</option>
+                                    </select>
+
+                                    <!-- Special Help -->
+                                    <div class="form-check form-switch mb-2">
+                                        <input class="form-check-input" type="checkbox" name="extra_helper" id="extra_helper" value="1">
+                                        <label class="form-check-label small fw-bold" for="extra_helper">
+                                            Bantuan Khusus (Extra Helper) <i class="fas fa-info-circle text-muted" title="Kenek tambahan untuk angkut barang"></i>
+                                        </label>
+                                    </div>
+                                    
+                                    <!-- Link Info Asuransi (Sesuai web deliveree) -->
+                                    <div class="mt-2 text-end">
+                                        <a href="https://www.delivereetech.com/id/en/goods-insurance-bp/" target="_blank" class="text-success small text-decoration-none">
+                                            <i class="fas fa-shield-alt"></i> Info Asuransi Barang Rp 1 Miliar
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {{-- END KODE BARU --}}
+
                             {{-- PENAMBAHAN: Hidden input untuk menampung tarif ongkir yang terpilih guna keperluan kalkulasi limit minimum --}}
                             <div class="col-12">
                                 <label for="selected_expedition_display" class="form-label">Pilih Ekspedisi</label>
@@ -1315,6 +1345,15 @@
             $('#selectedPaymentName').text('Pilih Pembayaran...');
             $('#selectedPaymentLogo').addClass('d-none').attr('src', '');
             $('#defaultPaymentIcon').removeClass('d-none');
+
+            // START KODE BARU: Show/Hide Extra Service Deliveree
+            if ($('#vendor_filter').val() === 'deliveree') {
+                $('#deliveree_extra_section').removeClass('d-none');
+            } else {
+                $('#deliveree_extra_section').addClass('d-none');
+                $('#extra_helper').prop('checked', false); // Reset checkbox
+            }
+            // END KODE BARU
 
             updateTotalSummary();
         });
