@@ -185,7 +185,7 @@
     .search-result-item:hover, .ui-menu-item-wrapper.ui-state-active {
         background-color: rgba(var(--primary-rgb), 0.08);
     }
-    
+
     .ui-menu-item-wrapper.ui-state-active {
         background-color: rgba(220, 53, 69, 0.1) !important; /* Warna merah tipis */
         color: var(--primary-color) !important;
@@ -1025,22 +1025,26 @@
         setupAddressSearch('sender');
         setupAddressSearch('receiver');
 
-        // Fungsi Render Modal Deliveree
+        // Fungsi Render Gambar Armada Deliveree Dinamis
         function getDelivereeVehicleImage(name) {
             const lowerName = name.toLowerCase();
+            const baseUrl = 'https://tokosancaka.com/storage/logo-ekspedisi/armada_deliveree';
             
-            // Menggunakan placeholder jika gambar asset belum tersedia di server, bisa diedit nanti URLnya
-            if (lowerName.includes('motor')) return "https://placehold.co/300x200/e2e8f0/10b981?text=Sepeda+Motor";
-            if (lowerName.includes('ekonomi') || lowerName.includes('city')) return "https://placehold.co/300x200/e2e8f0/10b981?text=Mobil+Ekonomi";
-            if (lowerName.includes('mobil xl') || lowerName.includes('suv')) return "https://placehold.co/300x200/e2e8f0/10b981?text=Mobil+XL+(SUV)";
-            if (lowerName.includes('van')) return "https://placehold.co/300x200/e2e8f0/10b981?text=Blind+Van";
-            if (lowerName.includes('pickup')) return "https://placehold.co/300x200/e2e8f0/10b981?text=Pickup+Bak";
-            if (lowerName.includes('box kecil')) return "https://placehold.co/300x200/e2e8f0/10b981?text=Box+Kecil";
-            if (lowerName.includes('engkel') || lowerName.includes('cde')) return "https://placehold.co/300x200/e2e8f0/10b981?text=Engkel+Box+(CDE)";
-            if (lowerName.includes('cdd')) return "https://placehold.co/300x200/e2e8f0/10b981?text=Double+Engkel+(CDD)";
-            if (lowerName.includes('fuso')) return "https://placehold.co/300x200/e2e8f0/10b981?text=Fuso";
-            if (lowerName.includes('tronton')) return "https://placehold.co/300x200/e2e8f0/10b981?text=Tronton";
+            // Pengecekan dari kendaraan terbesar ke terkecil
+            if (lowerName.includes('trailer')) return `${baseUrl}/Trailer.png`;
+            if (lowerName.includes('tronton')) return `${baseUrl}/TrontonB.png`;
+            if (lowerName.includes('fuso')) return `${baseUrl}/Fuso_Heavy.png`; // Mewakili Fuso Box
+            if (lowerName.includes('cdd') || lowerName.includes('double engkel')) return `${baseUrl}/CDD.png`;
+            if (lowerName.includes('engkel') || lowerName.includes('cde')) return `${baseUrl}/Engkel_Box.png`;
+            if (lowerName.includes('small box') || lowerName.includes('box kecil')) return `${baseUrl}/Small_Box.png`;
+            if (lowerName.includes('pickup')) return `${baseUrl}/Pickup.png`;
+            if (lowerName.includes('van')) return `${baseUrl}/Van.png`;
+            
+            // PENTING: Pengecekan XL/SUV harus di atas 'mobil' atau 'car' biasa
+            if (lowerName.includes('xl') || lowerName.includes('suv')) return `${baseUrl}/carxl-longer_(1).png`; 
+            if (lowerName.includes('mobil') || lowerName.includes('car') || lowerName.includes('economy') || lowerName.includes('ekonomi') || lowerName.includes('city')) return `${baseUrl}/Economy.png`;
 
+            // Default fallback jika ke depannya ada nama armada baru yang belum terdaftar
             return `https://placehold.co/300x200/e2e8f0/10b981?text=${encodeURIComponent(name)}`;
         }
 
