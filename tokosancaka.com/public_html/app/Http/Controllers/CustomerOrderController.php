@@ -1905,9 +1905,12 @@ TEXT;
         $baseUrl = \App\Models\Api::getValue('DELIVEREE_BASE_URL', $mode, 'https://api.sandbox.deliveree.com/public_api/v10');
         $apiKey = \App\Models\Api::getValue('DELIVEREE_API_KEY', $mode);
 
-        // Ekstrak ID Kendaraan dari format dropdown ekspedisi (Contoh value frontend: deliveree-21-instant-150000-0-0)
+        // Ekstrak ID kendaraan dari payload frontend (Contoh: regular-deliveree-Mobil XL#202-736500)
         $expeditionParts = explode('-', $data['expedition']);
-        $vehicleTypeId = $expeditionParts[1] ?? 21; // Default ke 21 (Motor) jika kosong
+        $vehicleString = $expeditionParts[2] ?? ''; // Berisi "Mobil XL#202"
+        
+        $vehicleIdParts = explode('#', $vehicleString);
+        $vehicleTypeId = $vehicleIdParts[1] ?? 21; // Jika tidak ada tanda #, fallback ke 21
 
         try {
             $response = Http::withHeaders([
@@ -1945,7 +1948,6 @@ TEXT;
 
             if ($response->successful()) {
                 $respData = $response->json();
-                // Deliveree mengembalikan tracking_url, kita simpan ini di kolom resi
                 return ['status' => true, 'resi' => $respData['data']['tracking_url'] ?? $respData['data']['id']];
             }
 
