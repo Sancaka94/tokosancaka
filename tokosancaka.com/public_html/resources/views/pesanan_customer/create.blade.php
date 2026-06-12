@@ -579,6 +579,7 @@
                                 <input type="hidden" id="selected_insurance_cost" value="0">
                                 <input type="hidden" id="selected_cod_fee" value="0">
                                 <input type="hidden" id="selected_helper_fee" value="0"> <!-- TAMBAHAN BARU -->
+                                <input type="hidden" name="deliveree_helper_id" id="deliveree_helper_id">
                             </div>
 
                             {{-- TAMBAHAN: Kotak Monitor Total Pembayaran --}}
@@ -1210,10 +1211,10 @@
                                 data-value="${payloadValue}"
                                 data-display="Deliveree - ${displayServiceType}"
                                 data-cod-supported="${i.cod}"
-                                data-shipping-cost="${baseOngkirCost}" 
+                                data-vehicle-id="${i.vehicle_type_id}" data-shipping-cost="${baseOngkirCost}" 
                                 data-insurance-cost="${insuranceFeeValue}"
                                 data-cod-fee="${actualCodFee}"
-                                data-deliveree-extra="${delivereeExtraFee}"> <i class="fas fa-check-circle me-1"></i> Pilih Armada
+                                data-deliveree-extra="${delivereeExtraFee}">
                             </button>
                         </div>
                     </div>
@@ -1471,6 +1472,32 @@
             updateTotalSummary();
             ongkirModal.hide();
             delivereeModal.hide();
+
+            // START LOGIKA CERDAS: Tarik Harga Helper Real-time
+    let vehicleId = $(this).data('vehicle-id');
+    
+    if (expeditionValue.includes('deliveree') && $('#extra_helper').is(':checked') && vehicleId) {
+        
+        // Munculkan tulisan loading di ringkasan pembayaran
+        $('#summary_helper_cost').text('Mengecek tarif...').removeClass('text-success').addClass('text-muted');
+        
+        $.get('/api/deliveree/extra-services/' + vehicleId, function(res) {
+            if (res.data) {
+                // Cari dari API Deliveree mana yang layanan "Help/Helper"
+                let helperService = res.data.find(s => s.name.toLowerCase().includes('help'));
+                
+                if (helperService) {
+                    $('#selected_helper_fee').val(helperService.unit_price);
+                    $('#deliveree_helper_id').val(helperService.id); // Simpan ID Helper Asli!
+                    
+                    // Update total ulang karena harga aslinya baru saja didapat
+                    updateTotalSummary(); 
+                    $('#summary_helper_cost').text(formatRupiah(helperService.unit_price)).removeClass('text-muted').addClass('text-success');
+                }
+            }
+        });
+    }
+    // END LOGIKA CERDAS
         });
 
         let isPaymentApiLoaded = false;

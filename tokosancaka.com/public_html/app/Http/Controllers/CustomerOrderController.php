@@ -1871,9 +1871,9 @@ TEXT;
                     ['dimensions' => [50, 50, 50], 'weight' => (float)($weight / 1000), 'quantity' => 1]
                 ],
 
-                'extra_services' => request('extra_helper') ? [
+                'extra_services' => (request('extra_helper') && request('deliveree_helper_id')) ? [
                     [
-                        'extra_requirement_id' => 140, // ID 140 adalah Extra Helper sesuai dokumentasi
+                        'extra_requirement_id' => (int) request('deliveree_helper_id'), // <-- DINAMIS SESUAI MOBIL
                         'selected_amount' => 1
                     ]
                 ] : []
@@ -1960,13 +1960,12 @@ TEXT;
                     ]
                 ],
 
-                 'extra_services' => request('extra_helper') ? [
-                        [
-                            'extra_requirement_id' => 140, 
-                            'selected_amount' => 1
-                        ]
-                    ] : []
-                    // END KODE BARU
+                 'extra_services' => (request('extra_helper') && request('deliveree_helper_id')) ? [
+                    [
+                        'extra_requirement_id' => (int) request('deliveree_helper_id'), // <-- DINAMIS SESUAI MOBIL
+                        'selected_amount' => 1
+                    ]
+                ] : []
             ]);
 
             if ($response->successful()) {
@@ -1994,6 +1993,21 @@ TEXT;
             return ['status' => false, 'text' => $e->getMessage()];
         }
     }
+
+
+    public function getDelivereeExtraServices($vehicle_id)
+ {
+     $mode = \App\Models\Api::getValue('DELIVEREE_MODE', 'global', 'sandbox');
+     $baseUrl = \App\Models\Api::getValue('DELIVEREE_BASE_URL', $mode, 'https://api.sandbox.deliveree.com/public_api/v10');
+     $apiKey = \App\Models\Api::getValue('DELIVEREE_API_KEY', $mode);
+
+     $response = Http::withHeaders([
+         'Authorization' => $apiKey,
+         'Accept-Language' => 'id'
+     ])->get($baseUrl . '/vehicle_types/' . $vehicle_id . '/extra_services?time_type=now');
+
+     return response()->json($response->json());
+ }
 
 
 }

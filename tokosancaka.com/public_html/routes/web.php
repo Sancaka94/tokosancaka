@@ -1548,3 +1548,5 @@ Route::prefix('deliveree')->group(function () {
     Route::post('/cancel/{id}', [DelivereeApiController::class, 'cancelDelivery']);
     Route::post('/profile', [DelivereeApiController::class, 'getUserProfile']);
 });
+
+Route::get('/api/deliveree/extra-services/{vehicle_id}', [\App\Http\Controllers\CustomerOrderController::class, 'getDelivereeExtraServices']);
