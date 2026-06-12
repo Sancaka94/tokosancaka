@@ -1947,14 +1947,16 @@ TEXT;
                 ]
             ]);
 
-            if ($response->successful()) {
+          if ($response->successful()) {
                 $respData = $response->json();
-                return ['status' => true, 'resi' => $respData['data']['tracking_url'] ?? $respData['data']['id']];
-            }
-
-            Log::error('LOG LOG: Deliveree Create Order Failed', ['res' => $response->json()]);
-            return ['status' => false, 'text' => $response->json('message') ?? 'Gagal membuat order Deliveree'];
-        } catch (\Exception $e) {
+                // Ambil data dengan pengecekan aman agar tidak Undefined Index
+                $orderData = $respData['data'] ?? null;
+                if (!$orderData) {
+                    Log::error('LOG LOG: Deliveree Create Order - Struktur tidak sesuai', ['res' => $respData]);
+                    return ['status' => false, 'text' => 'Respons API tidak mengandung data order.'];
+                }
+                return ['status' => true, 'resi' => $orderData['tracking_url'] ?? ($orderData['id'] ?? 'N/A')];
+            } catch (\Exception $e) {
             Log::error('LOG LOG: Deliveree Create Order Exception: ' . $e->getMessage());
             return ['status' => false, 'text' => $e->getMessage()];
         }
