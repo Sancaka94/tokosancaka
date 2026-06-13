@@ -1345,6 +1345,7 @@
             return `https://placehold.co/300x200/fffaf7/f27024?text=${encodeURIComponent(name)}`;
         }
 
+        
         function renderLalamoveModal(results, baseParams) {
             const container = $('#lalamoveResultsContainer').empty();
             
