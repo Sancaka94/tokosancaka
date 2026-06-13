@@ -1279,73 +1279,76 @@
         }
 
         function getLalamoveVehicleImage(name) {
+            // 👇 INI KODE UNTUK NGE-LOG NAMA ASLI KENDARAAN DARI API KE CONSOLE BROWSER 👇
+            console.log("LOG LOG LALAMOVE NAMA KENDARAAN ASLI: ", name);
+
             const lowerName = name.toLowerCase();
-            const baseUrl = 'https://tokosancaka.com/storage/logo-ekspedisi/lalamove';
+            const baseUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/lalamove';
 
             // Pengecekan dimulai dari Armada Besar hingga Kecil
             
             // 1. Wingbox
             if (lowerName.includes('wingbox') || lowerName.includes('wing box')) {
-                return `${baseUrl}/Foto%20Wingbox.png`;
+                return `${baseUrl}/wingbox.png`;
             }
             
             // 2. Fuso
-            if (lowerName.includes('fuso box')) {
-                return `${baseUrl}/truk%20fuso%20box.jpg`;
+            if (lowerName.includes('fuso bak')) {
+                return `${baseUrl}/fusobak.jpg`;
             }
-            if (lowerName.includes('fuso') || lowerName.includes('bak')) {
-                return `${baseUrl}/fuso%20truk%20bak-1.png`;
+            if (lowerName.includes('fuso')) {
+                return `${baseUrl}/fusotruck.png`;
             }
             
             // 3. Truk CDD
             if (lowerName.includes('cdd box')) {
-                return `${baseUrl}/420x300_jkt_vehicle-CDD%20box-new%202022.png`;
+                return `${baseUrl}/cddbox.png`;
             }
             if (lowerName.includes('cdd')) {
-                return `${baseUrl}/420x300_jkt_vehicle-CDD-Bak-new.png`;
+                return `${baseUrl}/cddbak.png`;
             }
 
             // 4. Truk Engkel (CDE)
             if (lowerName.includes('engkel box') || lowerName.includes('cde box')) {
-                return `${baseUrl}/420x300_jkt_vehicle-engkel%20box-new.png`;
+                return `${baseUrl}/engkelbox.png`;
             }
             if (lowerName.includes('engkel') || lowerName.includes('cde')) {
-                return `${baseUrl}/420x300_jkt_vehicle-engkel%20bak-new%202022.png`;
+                return `${baseUrl}/engkelbak.png`;
             }
 
             // 5. Mobil Pickup
             if (lowerName.includes('pickup box') || lowerName.includes('pick-up box') || lowerName.includes('pick up box')) {
-                return `${baseUrl}/420x300_jkt_vehicle-pickup%20box-new.png`;
+                return `${baseUrl}/pickupbox.png`;
             }
             if (lowerName.includes('pickup') || lowerName.includes('pick-up') || lowerName.includes('pick up')) {
-                return `${baseUrl}/420x300_jkt_vehicle-pickup%20bak-new.png`;
+                return `${baseUrl}/pickupbak.png`;
             }
 
             // 6. Mobil Van
             if (lowerName.includes('van')) {
-                return `${baseUrl}/420x300_jkt_vehicle-van-new.png`;
+                return `${baseUrl}/vannew.png`;
             }
 
             // 7. Mobil Sedan
             if (lowerName.includes('sedan')) {
-                return `${baseUrl}/420x300_jkt_vehicle-sedan-new.png`;
+                return `${baseUrl}/sedannew.png`;
             }
 
             // 8. Mobil MPV / City Car
             if (lowerName.includes('mpv') || lowerName.includes('car') || lowerName.includes('mobil')) {
-                return `${baseUrl}/420x300_jkt_vehicle-mpv-new.png`;
+                return `${baseUrl}/mpvnew.png`;
             }
 
             // 9. Motor
             if (lowerName.includes('motor') || lowerName.includes('bike') || lowerName.includes('motorcycle')) {
-                return `${baseUrl}/420x300_jkt_vehicle-bike-new.png`;
+                return `${baseUrl}/bike.png`;
             }
 
-            // Fallback (Jaga-jaga jika ada tipe baru dari Lalamove yang belum masuk aset)
+            // Fallback (Jaga-jaga jika tipe tidak dikenali)
             return `https://placehold.co/300x200/fffaf7/f27024?text=${encodeURIComponent(name)}`;
         }
 
-        
+
         function renderLalamoveModal(results, baseParams) {
             const container = $('#lalamoveResultsContainer').empty();
             
