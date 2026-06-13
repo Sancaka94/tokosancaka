@@ -331,6 +331,12 @@
         border-color: #198754 !important;
     }
 
+    .lalamove-card:hover {
+        box-shadow: 0 10px 20px rgba(242, 112, 36, 0.15) !important;
+        transform: translateY(-5px);
+        border-color: #f27024 !important;
+    }
+
     .ongkir-item-col {
         padding: 0 10px;
         display: flex;
@@ -517,10 +523,11 @@
 
                             <div class="col-md-4">
                                 <label for="vendor_filter" class="form-label">Pilihan Ekspedisi</label>
-                                <select id="vendor_filter" class="form-select border-primary bg-light fw-bold text-dark">
-                                    <option value="all" selected>Semua</option>
-                                    <option value="deliveree" class="text-success fw-bold">Deliveree</option>
-                                </select>
+                                    <select id="vendor_filter" class="form-select border-primary bg-light fw-bold text-dark">
+                                        <option value="all" selected>Semua</option>
+                                        <option value="deliveree" class="text-success fw-bold">Deliveree</option>
+                                        <option value="lalamove" class="fw-bold" style="color: #f27024;">Lalamove</option>
+                                    </select>
                             </div>
                             
                            <div class="col-12">
@@ -661,6 +668,23 @@
             <div class="modal-body" style="background-color: #f4f7f6;">
                 <div id="delivereeResultsContainer" class="row g-3">
                     {{-- Grid hasil ongkir Deliveree akan dimuat di sini --}}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL KHUSUS LALAMOVE --}}
+<div class="modal fade" id="lalamoveModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+        <div class="modal-content">
+            <div class="modal-header text-white" style="background-color: #f27024;">
+                <h5 class="modal-title fw-bold"><i class="fas fa-motorcycle me-2"></i>Pilihan Armada Lalamove</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="background-color: #fffaf7;">
+                <div id="lalamoveResultsContainer" class="row g-3">
+                    {{-- Grid hasil ongkir Lalamove akan dimuat di sini --}}
                 </div>
             </div>
         </div>
@@ -923,6 +947,7 @@
         const ongkirModal = new bootstrap.Modal(document.getElementById('ongkirModal'));
         const delivereeModal = new bootstrap.Modal(document.getElementById('delivereeModal'));
         const paymentModal = new bootstrap.Modal(document.getElementById('paymentMethodModal'));
+        const lalamoveModal = new bootstrap.Modal(document.getElementById('lalamoveModal'));
 
         let searchTimeout = null;
         const debounce = (func, delay) => (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
@@ -1251,6 +1276,71 @@
             });
         }
 
+        function getLalamoveVehicleImage(name) {
+            const lowerName = name.toLowerCase();
+            // Fallback placeholder jika Anda belum upload aset gambar Lalamove di server Sancaka
+            if (lowerName.includes('motor')) return `https://placehold.co/300x200/fffaf7/f27024?text=Motor`;
+            if (lowerName.includes('sedan') || lowerName.includes('car')) return `https://placehold.co/300x200/fffaf7/f27024?text=Mobil+Sedan`;
+            if (lowerName.includes('van')) return `https://placehold.co/300x200/fffaf7/f27024?text=Mobil+Van`;
+            if (lowerName.includes('pickup') || lowerName.includes('pick-up')) return `https://placehold.co/300x200/fffaf7/f27024?text=Pickup`;
+            return `https://placehold.co/300x200/fffaf7/f27024?text=${encodeURIComponent(name)}`;
+        }
+
+        function renderLalamoveModal(results, baseParams) {
+            const container = $('#lalamoveResultsContainer').empty();
+            if (results.length === 0) {
+                container.html(`<div class="col-12"><div class="alert alert-warning text-center shadow-sm">Armada Lalamove tidak tersedia untuk rute ini.</div></div>`);
+                return;
+            }
+
+            results.forEach(i => {
+                let rawName = i.service_type_label || '';
+                let displayServiceType = rawName;
+
+                // Memisahkan QuotationID dari nama (Format kita: MOTORCYCLE#1471722...)
+                if (displayServiceType.includes('#')) {
+                    let parts = displayServiceType.split('#');
+                    displayServiceType = parts[0].trim();
+                }
+
+                let imgUrl = getLalamoveVehicleImage(displayServiceType);
+                const useInsurance = $('#ansuransi').val() === 'iya';
+                const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
+                const codFee = 0; // Lalamove tidak mendukung COD bawaan
+                
+                const baseOngkirCost = parseInt(i.distance_fees || i.cost || 0); 
+                const actualCodFee = 0;
+                
+                // Format ID yang dikirim ke Backend persis seperti Deliveree & KiriminAja
+                const payloadValue = `${baseParams.serviceType}-${i.service_name}-${rawName}-${i.cost}-${insuranceFeeValue}-${codFee}`;
+
+                const card = `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm lalamove-card" style="border-radius:1rem; cursor: pointer; background: white; border: 1px solid #f27024;">
+                        <div class="card-body text-center p-4">
+                            <img src="${imgUrl}" style="height:100px; width:100%; object-fit:contain; margin-bottom:1rem;" alt="${displayServiceType}">
+                            <h6 class="fw-bold text-dark mb-1">LALAMOVE</h6>
+                            <span class="badge mb-3" style="background-color: #f27024;">${displayServiceType}</span>
+                            <h4 class="fw-bold mb-2" style="color: #f27024;">${formatRupiah(i.cost)}</h4>
+                            <div class="text-muted small"><i class="fas fa-bolt me-1"></i> Estimasi: Instan / Langsung</div>
+                        </div>
+                        <div class="card-footer bg-transparent border-0 text-center pb-3">
+                            <button type="button" class="btn w-100 select-ongkir-btn rounded-pill fw-bold" style="background-color: #f27024; color: white;"
+                                data-value="${payloadValue}"
+                                data-display="Lalamove - ${displayServiceType}"
+                                data-cod-supported="false"
+                                data-vehicle-id="" data-shipping-cost="${baseOngkirCost}" 
+                                data-insurance-cost="${insuranceFeeValue}"
+                                data-cod-fee="${actualCodFee}">
+                                <i class="fas fa-check-circle me-1"> Pilih Armada</i> 
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+                container.append(card);
+            });
+        }
+
         function runCekOngkir() {
             let formData = $('#orderForm').serializeArray();
             formData.forEach((item, index) => { let realVal = $(`#${item.name.replace(/\[/g, '\\[').replace(/\]/g, '\\]')}`).attr('data-real-value'); if (realVal) formData[index].value = realVal; });
@@ -1263,10 +1353,14 @@
 
             $('#ongkirResultsContainer').html(`<div class="text-center p-5"><div class="spinner-border text-danger"></div><p class="mt-2 text-muted">Memuat semua tarif...</p></div>`);
             $('#delivereeResultsContainer').html(`<div class="col-12"><div class="text-center p-5"><div class="spinner-border text-success"></div><p class="mt-2 text-muted">Mencari Armada Deliveree di sekitar lokasi...</p></div></div>`);
+            $('#lalamoveResultsContainer').html(`<div class="col-12"><div class="text-center p-5"><div class="spinner-border" style="color:#f27024;"></div><p class="mt-2 text-muted">Mencari Armada Lalamove terdekat...</p></div></div>`);
+            
             
             const vendorFilter = $('#vendor_filter').val();
             if (vendorFilter === 'deliveree') {
                 delivereeModal.show();
+            } else if (vendorFilter === 'lalamove') {
+                lalamoveModal.show();
             } else {
                 ongkirModal.show();
             }
@@ -1310,16 +1404,19 @@
                     }
 
                     allResults.sort((a, b) => a.cost - b.cost);
-                    let kiriminAjaResults = [], delivereeResults = [];
+                    let kiriminAjaResults = [], delivereeResults = [], lalamoveResults = [];
 
                     allResults.forEach(service => {
                         let logoName = (service.service || "").toLowerCase().replace(/\s+/g, '');
                         if (logoName === 'deliveree') { delivereeResults.push(service); } 
+                        else if (logoName === 'lalamove') { lalamoveResults.push(service); }
                         else { kiriminAjaResults.push(service); }
                     });
 
                     if (vendorFilter === 'deliveree') {
                         renderDelivereeModal(delivereeResults, { serviceType: serviceType });
+                    } else if (vendorFilter === 'lalamove') {
+                        renderLalamoveModal(lalamoveResults, { serviceType: serviceType });
                     } else {
                         const b = $('#ongkirResultsContainer').empty();
                         if (kiriminAjaResults.length === 0) {
@@ -1429,6 +1526,7 @@
             updateTotalSummary();
             ongkirModal.hide();
             delivereeModal.hide();
+            lalamoveModal.hide();
 
             // START LOGIKA CERDAS
             let vehicleId = $(this).data('vehicle-id');

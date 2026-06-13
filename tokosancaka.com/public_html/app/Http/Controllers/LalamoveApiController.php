@@ -76,6 +76,8 @@ class LalamoveApiController extends Controller
             return Http::withHeaders($headers)->get($url);
         } elseif ($method === 'PATCH') {
             return Http::withHeaders($headers)->patch($url, empty($data) ? [] : ['data' => $data]);
+        } elseif ($method === 'DELETE') {
+            return Http::withHeaders($headers)->delete($url, empty($data) ? [] : ['data' => $data]);
         }
 
         return null;
@@ -137,6 +139,121 @@ class LalamoveApiController extends Controller
     {
         $path = "/v3/orders/{$orderId}/drivers/{$driverId}";
         $response = $this->makeRequest('GET', $path);
+
+        return response()->json($response->json(), $response->status());
+    }
+
+    /**
+     * GET /v3/cities
+     * Mengambil informasi daftar kota, service type, dan special requests
+     */
+    public function getCityInfo()
+    {
+        $path = '/v3/cities';
+        $response = $this->makeRequest('GET', $path);
+
+        return response()->json($response->json(), $response->status());
+    }
+
+    /**
+     * GET /v3/quotations/{quotationId}
+     * Mengambil detail Quotation yang sudah pernah dibuat
+     */
+    public function getQuotationDetails($quotationId)
+    {
+        $path = "/v3/quotations/{$quotationId}";
+        $response = $this->makeRequest('GET', $path);
+
+        return response()->json($response->json(), $response->status());
+    }
+
+    /**
+     * GET /v3/orders/{orderId}
+     * Mengambil detail Order yang sedang berjalan
+     */
+    public function getOrderDetails($orderId)
+    {
+        $path = "/v3/orders/{$orderId}";
+        $response = $this->makeRequest('GET', $path);
+
+        return response()->json($response->json(), $response->status());
+    }
+
+    /**
+     * PATCH /v3/orders/{orderId}
+     * Mengedit titik drop-off pada order yang berstatus ON_GOING
+     */
+    public function editOrder(Request $request, $orderId)
+    {
+        $this->validate($request, [
+            'stops' => 'required|array|min:1',
+        ]);
+
+        $path = "/v3/orders/{$orderId}";
+        $data = $request->only(['stops']);
+
+        $response = $this->makeRequest('PATCH', $path, $data);
+
+        return response()->json($response->json(), $response->status());
+    }
+
+    /**
+     * DELETE /v3/orders/{orderId}
+     * Membatalkan pesanan (Pastikan status order sesuai dengan regulasi pembatalan)
+     */
+    public function cancelOrder($orderId)
+    {
+        $path = "/v3/orders/{$orderId}";
+        $response = $this->makeRequest('DELETE', $path);
+
+        // Lalamove merespons 204 No Content jika sukses dibatalkan
+        if ($response->status() === 204) {
+            return response()->json(['message' => 'Order successfully cancelled'], 200);
+        }
+
+        return response()->json($response->json(), $response->status());
+    }
+
+    /**
+     * DELETE /v3/orders/{orderId}/drivers/{driverId}
+     * Mengganti driver jika driver saat ini tidak responsif/bermasalah
+     */
+    public function changeDriver(Request $request, $orderId, $driverId)
+    {
+        $this->validate($request, [
+            'reason' => 'required|string|in:DRIVER_LATE,DRIVER_ASKED_CHANGE,DRIVER_UNRESPONSIVE,DRIVER_RUDE'
+        ]);
+
+        $path = "/v3/orders/{$orderId}/drivers/{$driverId}";
+        $data = $request->only(['reason']);
+
+        $response = $this->makeRequest('DELETE', $path, $data);
+
+        if ($response->status() === 204) {
+            return response()->json(['message' => 'Driver change requested successfully'], 200);
+        }
+
+        return response()->json($response->json(), $response->status());
+    }
+
+    /**
+     * POST /v3/orders/{orderId}/priority-fee
+     * Menambahkan tip (Priority Fee) untuk menarik perhatian driver
+     */
+    public function addPriorityFee(Request $request, $orderId)
+    {
+        $this->validate($request, [
+            'priorityFee' => 'required|numeric'
+        ]);
+
+        $path = "/v3/orders/{$orderId}/priority-fee";
+        
+        // Memastikan priority fee terkirim dalam format string angka sesuai standar dokumentasi Lalamove
+        $data = [
+            'priorityFee' => (string) $request->input('priorityFee')
+        ];
+
+        $response = $this->makeRequest('POST', $path, $data);
 
         return response()->json($response->json(), $response->status());
     }

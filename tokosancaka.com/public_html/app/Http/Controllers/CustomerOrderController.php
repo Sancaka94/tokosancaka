@@ -317,6 +317,17 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $delivereeOptions['results']);
         }
 
+        // --- TAMBAHAN: PANGGIL LAYANAN LALAMOVE ---
+        $lalamoveOptions = $this->_getLalamovePricing(
+            $senderLat, $senderLng, $receiverLat, $receiverLng, $senderFullAddress, $receiverFullAddress
+        );
+        
+        if ($lalamoveOptions['status']) {
+            $instantOptions['status'] = true; 
+            // Lalamove masuk ke dalam array 'result' (kategori instant/sameday)
+            $instantOptions['result'] = array_merge($instantOptions['result'] ?? [], $lalamoveOptions['results']);
+        }
+
         // --- 3. GABUNGKAN HASIL ---
         $finalResults = [
             'status' => true,
@@ -544,6 +555,20 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                     $pesanan->status = 'Menunggu Pickup';
                     $pesanan->status_pesanan = 'Menunggu Pickup';
                     $pesanan->resi = $delivereeResponse['resi'] ?? null; // URL Tracking masuk ke Resi
+
+                    } elseif (strtolower($expVendor) === 'lalamove') {
+                    // Panggil helper Lalamove
+                    $lalamoveResponse = $this->_createLalamoveOrder(
+                        $validatedData, $pesanan, $senderAddressData, $receiverAddressData, $cod_value
+                    );
+
+                    if (($lalamoveResponse['status'] ?? false) !== true) {
+                        throw new Exception($lalamoveResponse['text'] ?? 'Gagal membuat order di Lalamove.');
+                    }
+                    
+                    $pesanan->status = 'Menunggu Pickup';
+                    $pesanan->status_pesanan = 'Menunggu Pickup';
+                    $pesanan->resi = $lalamoveResponse['resi'] ?? null;
 
                 } else {
                     // Panggil _createKiriminAjaOrder (Logika lama Sancaka tetap aman)
@@ -2030,6 +2055,158 @@ TEXT;
             Log::error("LOG LOG: Exception Extra Service Deliveree: " . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * =========================================================================
+     * FUNGSI HELPER LALAMOVE (TARIK QUOTE & CREATE ORDER)
+     * =========================================================================
+     */
+
+    private function _lalamoveRequest($method, $path, $data = [])
+    {
+        $mode = \App\Models\Api::getValue('LALAMOVE_MODE', 'global', 'sandbox');
+        $apiKey = \App\Models\Api::getValue('LALAMOVE_API_KEY', $mode);
+        $apiSecret = \App\Models\Api::getValue('LALAMOVE_API_SECRET', $mode);
+        $baseUrl = ($mode === 'production') ? 'https://rest.lalamove.com' : 'https://rest.sandbox.lalamove.com';
+        $market = \App\Models\Api::getValue('LALAMOVE_MARKET', 'global', 'ID');
+
+        if (empty($apiKey) || empty($apiSecret)) {
+            Log::error('LOG LOG: Kredensial Lalamove belum diatur.');
+            return null;
+        }
+
+        $timestamp = round(microtime(true) * 1000);
+        $bodyStr = empty($data) ? '' : json_encode(['data' => $data]);
+        
+        $rawSignature = "{$timestamp}\r\n{$method}\r\n{$path}\r\n\r\n{$bodyStr}";
+        $signature = hash_hmac('sha256', $rawSignature, $apiSecret);
+        $token = "{$apiKey}:{$timestamp}:{$signature}";
+        $requestId = \Illuminate\Support\Str::uuid()->toString();
+
+        $headers = [
+            'Authorization' => "hmac {$token}",
+            'Market'        => $market,
+            'Request-ID'    => $requestId,
+            'Content-Type'  => 'application/json',
+            'Accept'        => 'application/json',
+        ];
+
+        $url = $baseUrl . $path;
+
+        if ($method === 'POST') return Http::withHeaders($headers)->post($url, empty($data) ? [] : ['data' => $data]);
+        if ($method === 'GET') return Http::withHeaders($headers)->get($url);
+
+        return null;
+    }
+
+    private function _getLalamovePricing($senderLat, $senderLng, $receiverLat, $receiverLng, $senderAddress, $receiverAddress)
+    {
+        Log::info('LOG LOG: Start Lalamove Pricing');
+
+        if (empty($senderLat) || empty($senderLng) || empty($receiverLat) || empty($receiverLng)) {
+            Log::warning('LOG LOG: Lalamove Pricing Dibatalkan - Koordinat kosong.');
+            return ['status' => false, 'results' => []];
+        }
+
+        // Lalamove menggunakan tipe kendaraan seperti MOTORCYCLE, SEDAN, VAN, dll. 
+        // Array ini bisa Anda kembangkan sesuai kebutuhan.
+        $vehicleTypes = ['MOTORCYCLE', 'SEDAN']; 
+        $results = [];
+
+        foreach ($vehicleTypes as $vehicle) {
+            $data = [
+                'serviceType' => $vehicle,
+                'language' => 'id_ID',
+                'stops' => [
+                    ['coordinates' => ['lat' => (string)$senderLat, 'lng' => (string)$senderLng], 'address' => $senderAddress],
+                    ['coordinates' => ['lat' => (string)$receiverLat, 'lng' => (string)$receiverLng], 'address' => $receiverAddress]
+                ]
+            ];
+
+            $response = $this->_lalamoveRequest('POST', '/v3/quotations', $data);
+
+            if ($response && $response->successful()) {
+                $resData = $response->json('data');
+                $results[] = [
+                    'service' => 'lalamove',
+                    // Menyisipkan ID Quotation ke dalam nama agar bisa digunakan saat proses Order
+                    'service_type' => $vehicle . '#' . $resData['quotationId'], 
+                    'cost' => $resData['priceBreakdown']['total'],
+                    'distance_fees' => $resData['priceBreakdown']['total'],
+                    'extra_fees' => 0,
+                    'etd' => 'Instant',
+                    'cod' => false 
+                ];
+            } else {
+                Log::error("LOG LOG: Gagal tarik harga Lalamove untuk $vehicle", ['res' => $response ? $response->json() : null]);
+            }
+        }
+
+        if (count($results) > 0) {
+            Log::info('LOG LOG: Lalamove API Success menemukan ' . count($results) . ' layanan.');
+            return ['status' => true, 'results' => $results];
+        }
+
+        return ['status' => false, 'results' => []];
+    }
+
+    private function _createLalamoveOrder($data, $pesanan, $senderData, $receiverData, $cod_value)
+    {
+        $expeditionParts = explode('-', $data['expedition']);
+        $vehicleString = $expeditionParts[2] ?? '';
+        $vehicleIdParts = explode('#', $vehicleString);
+        $quotationId = $vehicleIdParts[1] ?? '';
+
+        if (empty($quotationId)) return ['status' => false, 'text' => 'Quotation ID Lalamove tidak ditemukan.'];
+
+        // 1. Ambil detail quotation untuk mendapatkan Stop ID pengirim dan penerima
+        $quoteResponse = $this->_lalamoveRequest('GET', "/v3/quotations/{$quotationId}");
+        if (!$quoteResponse || !$quoteResponse->successful()) {
+            return ['status' => false, 'text' => 'Gagal membaca Quotation Lalamove. Quotation kedaluwarsa (lebih dari 5 menit).'];
+        }
+
+        $quoteData = $quoteResponse->json('data');
+        $stops = $quoteData['stops'] ?? [];
+        if (count($stops) < 2) return ['status' => false, 'text' => 'Titik lokasi Lalamove tidak valid.'];
+
+        // 2. Format nomor telepon ke standar E.164 (+62...)
+        $senderPhone = '+62' . ltrim($this->_sanitizePhoneNumber($data['sender_phone']), '0');
+        $receiverPhone = '+62' . ltrim($this->_sanitizePhoneNumber($data['receiver_phone']), '0');
+
+        // 3. Eksekusi Create Order
+        $orderPayload = [
+            'quotationId' => $quotationId,
+            'sender' => [
+                'stopId' => $stops[0]['stopId'],
+                'name' => $data['sender_name'],
+                'phone' => $senderPhone
+            ],
+            'recipients' => [
+                [
+                    'stopId' => $stops[1]['stopId'],
+                    'name' => $data['receiver_name'],
+                    'phone' => $receiverPhone,
+                    'remarks' => 'Order: ' . $pesanan->nomor_invoice . ' | ' . $data['item_description']
+                ]
+            ]
+        ];
+
+        $orderResponse = $this->_lalamoveRequest('POST', '/v3/orders', $orderPayload);
+
+        if ($orderResponse && $orderResponse->successful()) {
+            $orderData = $orderResponse->json('data');
+            Log::info("LOG LOG: Lalamove Create Order Berhasil. ID: {$orderData['orderId']}");
+            
+            return [
+                'status' => true,
+                // Menggabungkan Order ID & Sharelink untuk disimpan di tabel Resi (opsional, bisa dipisah sesuai format front-end)
+                'resi' => $orderData['orderId']
+            ];
+        }
+
+        Log::error('LOG LOG: Lalamove Create Order HTTP Error', ['res' => $orderResponse ? $orderResponse->json() : null]);
+        return ['status' => false, 'text' => 'Gagal membuat pesanan di server Lalamove.'];
     }
 
 
