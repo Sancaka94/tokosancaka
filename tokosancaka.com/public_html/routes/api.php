@@ -54,7 +54,15 @@ use App\Http\Controllers\Api\MidtransNotificationController;
 use App\Http\Controllers\PaymentRedirectController;
 use App\Http\Controllers\Webhook\PayPalWebhookController;
 use App\Http\Controllers\Api\DelivereeWebhookController;
+use App\Http\Controllers\LalamoveApiController;
 
+
+
+
+
+
+// Route untuk menerima webhook dari Lalamove
+Route::post('/webhook/lalamove', [LalamoveApiController::class, 'handleWebhook']);
 
 // Pastikan endpoint ini sama persis dengan yang Anda isi di "Webhook URL" dasbor Deliveree
 Route::post('/webhook/deliveree', [DelivereeWebhookController::class, 'handleWebhook']);
