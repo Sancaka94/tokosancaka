@@ -323,9 +323,9 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
         );
         
         if ($lalamoveOptions['status']) {
-            $instantOptions['status'] = true; 
-            // Lalamove masuk ke dalam array 'result' (kategori instant/sameday)
-            $instantOptions['result'] = array_merge($instantOptions['result'] ?? [], $lalamoveOptions['results']);
+            $expressOptions['status'] = true; 
+            // Pindahkan Lalamove ke array 'results' (sejajar dengan Deliveree)
+            $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $lalamoveOptions['results']);
         }
 
         // --- 3. GABUNGKAN HASIL ---
