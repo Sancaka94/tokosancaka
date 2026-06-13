@@ -318,9 +318,17 @@
             <div><p class="label"><strong>ORDER ID / RESI</strong></p><p class="value">{{ $pesanan->nomor_invoice }}</p></div>
             <div><p class="label"><strong>BERAT</strong></p><p class="value">{{ $pesanan->weight }} Gram</p></div>
             <div><p class="label"><strong>VOLUME (cm)</strong></p><p class="value">{{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }}</p></div>
-            <div><p class="label"><strong>LAYANAN</strong></p><p class="value">{{ strtoupper($expeditionService) }}</p></div>
+            
+            {{-- PERBAIKAN: Tambahkan class "break-all" atau "break-words" agar teks panjang Lalamove turun ke bawah --}}
+            <div>
+                <p class="label"><strong>LAYANAN</strong></p>
+                <p class="value break-all max-w-full leading-tight">{{ strtoupper($expeditionService) }}</p>
+            </div>
+            
             <div><p class="label"><strong>EKSPEDISI</strong></p><p class="value">{{ strtoupper($expeditionName) }}</p></div>
-            <div><p class="label"><strong>Pembayaran</strong></p><p class="value">{{ strtoupper($pesanan->payment_method) === 'POTONG SALDO' ? 'SALDO / CASH' : $pesanan->payment_method }}</p></div></div>
+            <div><p class="label"><strong>Pembayaran</strong></p><p class="value">{{ strtoupper($pesanan->payment_method) === 'POTONG SALDO' ? 'SALDO / CASH' : $pesanan->payment_method }}</p></div>
+        </div>
+
 
         @if($pesanan->resi_aktual)
         <div class="text-center mt-3 pt-2 border-t border-gray-700">
