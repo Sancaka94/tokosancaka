@@ -676,14 +676,16 @@
 
 {{-- MODAL KHUSUS LALAMOVE --}}
 <div class="modal fade" id="lalamoveModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+    {{-- PERBAIKAN: Hilangkan modal-lg agar lebar modal bisa menyesuaikan isi --}}
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header text-white" style="background-color: #f27024;">
                 <h5 class="modal-title fw-bold"><i class="fas fa-motorcycle me-2"></i>Pilihan Armada Lalamove</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" style="background-color: #fffaf7;">
-                <div id="lalamoveResultsContainer" class="row g-3">
+                {{-- PERBAIKAN: Tambahkan justify-content-center agar card berada di tengah --}}
+                <div id="lalamoveResultsContainer" class="row g-3 justify-content-center">
                     {{-- Grid hasil ongkir Lalamove akan dimuat di sini --}}
                 </div>
             </div>
@@ -1288,10 +1290,17 @@
 
         function renderLalamoveModal(results, baseParams) {
             const container = $('#lalamoveResultsContainer').empty();
-            if (results.length === 0) {
+            
+            // Jika tidak ada hasil, tampilkan pesan error dan HENTIKAN eksekusi
+            if (!results || results.length === 0) {
                 container.html(`<div class="col-12"><div class="alert alert-warning text-center shadow-sm">Armada Lalamove tidak tersedia untuk rute ini.</div></div>`);
                 return;
             }
+
+            // PERBAIKAN RESPONSIVITAS: 
+            // Jika hasilnya cuma 1 atau 2, kita buat lebar kolomnya agak besar (col-md-6)
+            // Jika lebih dari 2, kita buat agak kecil agar muat banyak (col-md-4)
+            let colClass = results.length <= 2 ? 'col-sm-6' : 'col-sm-6 col-md-4';
 
             results.forEach(i => {
                 let rawName = i.service_type_label || '';
@@ -1315,24 +1324,24 @@
                 const payloadValue = `${baseParams.serviceType}-${i.service_name}-${rawName}-${i.cost}-${insuranceFeeValue}-${codFee}`;
 
                 const card = `
-                <div class="col-md-6 col-lg-4">
-                    <div class="card h-100 shadow-sm lalamove-card" style="border-radius:1rem; cursor: pointer; background: white; border: 1px solid #f27024;">
-                        <div class="card-body text-center p-4">
-                            <img src="${imgUrl}" style="height:100px; width:100%; object-fit:contain; margin-bottom:1rem;" alt="${displayServiceType}">
+                <div class="${colClass} d-flex align-items-stretch">
+                    <div class="card h-100 shadow-sm lalamove-card w-100" style="border-radius:1rem; cursor: pointer; background: white; border: 1px solid #f27024;">
+                        <div class="card-body text-center p-3 p-md-4">
+                            <img src="${imgUrl}" style="height:80px; width:100%; object-fit:contain; margin-bottom:1rem;" alt="${displayServiceType}">
                             <h6 class="fw-bold text-dark mb-1">LALAMOVE</h6>
-                            <span class="badge mb-3" style="background-color: #f27024;">${displayServiceType}</span>
-                            <h4 class="fw-bold mb-2" style="color: #f27024;">${formatRupiah(i.cost)}</h4>
-                            <div class="text-muted small"><i class="fas fa-bolt me-1"></i> Estimasi: Instan / Langsung</div>
+                            <span class="badge mb-2" style="background-color: #f27024; font-size: 0.75rem;">${displayServiceType}</span>
+                            <h5 class="fw-bold mb-2" style="color: #f27024;">${formatRupiah(i.cost)}</h5>
+                            <div class="text-muted" style="font-size: 0.75rem;"><i class="fas fa-bolt me-1"></i> Estimasi: Instan</div>
                         </div>
-                        <div class="card-footer bg-transparent border-0 text-center pb-3">
-                            <button type="button" class="btn w-100 select-ongkir-btn rounded-pill fw-bold" style="background-color: #f27024; color: white;"
+                        <div class="card-footer bg-transparent border-0 text-center pb-3 pt-0">
+                            <button type="button" class="btn w-100 select-ongkir-btn rounded-pill fw-bold" style="background-color: #f27024; color: white; font-size: 0.85rem;"
                                 data-value="${payloadValue}"
                                 data-display="Lalamove - ${displayServiceType}"
                                 data-cod-supported="false"
                                 data-vehicle-id="" data-shipping-cost="${baseOngkirCost}" 
                                 data-insurance-cost="${insuranceFeeValue}"
                                 data-cod-fee="${actualCodFee}">
-                                <i class="fas fa-check-circle me-1"> Pilih Armada</i> 
+                                <i class="fas fa-check-circle me-1"></i> Pilih Armada
                             </button>
                         </div>
                     </div>
