@@ -146,6 +146,11 @@ class TrackingController extends Controller
             if (str_contains($expeditionRaw, 'deliveree')) {
                 $result = $this->trackDeliveree($pesanan);
             } 
+
+            elseif (str_contains($expeditionRaw, 'lalamove')) {
+                $result = $this->trackLalamove($pesanan);
+            }
+
             // ==========================================================
             // LOGIKA CABANG 2: JIKA EKSPEDISI LAINNYA (VIA KIRIMINAJA)
             // ==========================================================
@@ -740,4 +745,152 @@ class TrackingController extends Controller
             'jasa_ekspedisi_aktual' => $jasaEkspedisi,
         ];
     }
+
+    /**
+     * =========================================================================
+     * HELPER EKSTRAKSI TRACKING LALAMOVE
+     * =========================================================================
+     */
+    private function trackLalamove($pesanan)
+    {
+        // Asumsi $pesanan->resi menyimpan Order ID Lalamove (contoh: 3516154960524399292)
+        $orderId = $pesanan->resi; 
+        $histories = collect([]);
+        $statusText = 'Menunggu Kurir';
+        $jasaEkspedisi = 'Lalamove';
+
+        if (!empty($orderId)) {
+            try {
+                $response = $this->_lalamoveRequest('GET', "/v3/orders/{$orderId}");
+
+                if ($response && $response->successful()) {
+                    $data = $response->json('data');
+                    $statusRaw = $data['status'] ?? '';
+                    
+                    // Terjemahkan Status Lalamove
+                    $statusMap = [
+                        'ASSIGNING_DRIVER' => 'Mencari Driver / Kurir',
+                        'ON_GOING' => 'Driver Menuju Lokasi Penjemputan',
+                        'PICKED_UP' => 'Paket Telah Diambil (Dalam Perjalanan)',
+                        'COMPLETED' => 'Pesanan Selesai / Terkirim',
+                        'CANCELED' => 'Pesanan Dibatalkan',
+                        'REJECTED' => 'Ditolak oleh Driver (Mencari Ulang)',
+                        'EXPIRED' => 'Waktu Tunggu Habis (Driver Tidak Ditemukan)'
+                    ];
+                    $statusText = $statusMap[$statusRaw] ?? ucfirst(str_replace('_', ' ', $statusRaw));
+
+                    // Ekstrak URL Live Tracking
+                    $shareLink = $data['shareLink'] ?? null;
+                    
+                    $keterangan = "<b>Status Terkini:</b> " . $statusText;
+                    if ($shareLink) {
+                        $keterangan .= "<br><a href='$shareLink' target='_blank' class='btn btn-sm mt-2 fw-bold text-white' style='background:#f27024; border:none;'><i class='fas fa-map-marker-alt'></i> Lacak Live Map Lalamove</a>";
+                    }
+
+                    // Push status utama Lalamove saat ini ke Timeline
+                    $histories->push((object)[
+                        'status' => $statusText,
+                        'lokasi' => 'Sistem Lalamove',
+                        'keterangan' => $keterangan,
+                        'created_at' => \Carbon\Carbon::now()->timezone('Asia/Jakarta')
+                    ]);
+
+                    // Cek Bukti Pengiriman / Proof Of Delivery (POD)
+                    if (!empty($data['stops']) && is_array($data['stops'])) {
+                        foreach ($data['stops'] as $stop) {
+                            if (!empty($stop['POD']['status']) && $stop['POD']['status'] === 'DELIVERED') {
+                                $waktuTerkirim = !empty($stop['POD']['deliveredAt']) 
+                                    ? \Carbon\Carbon::parse($stop['POD']['deliveredAt'])->timezone('Asia/Jakarta') 
+                                    : \Carbon\Carbon::now()->timezone('Asia/Jakarta');
+
+                                $histories->push((object)[
+                                    'status' => 'Paket Diserahkan',
+                                    'lokasi' => $stop['address'] ?? 'Lokasi Tujuan',
+                                    'keterangan' => 'Paket telah berhasil dikirimkan ke penerima.',
+                                    'created_at' => $waktuTerkirim
+                                ]);
+                            }
+                        }
+                    }
+
+                } else {
+                    Log::error('Lalamove Tracking Error: ' . ($response ? $response->body() : 'No Response'));
+                }
+            } catch (\Exception $e) {
+                Log::error('Lalamove Tracking Exception: ' . $e->getMessage());
+            }
+        }
+
+        // Timeline Default: "Pesanan Dibuat"
+        if ($pesanan->created_at) {
+            $waktuDibuat = \Carbon\Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta');
+            
+            // Cek lokasi pengirim untuk tampilan
+            $lokasiAkun = strtoupper($pesanan->sender_regency ?? 'NGAWI');
+            if (!empty($pesanan->sender_district)) {
+                $lokasiAkun = strtoupper($pesanan->sender_district) . ', ' . $lokasiAkun;
+            }
+
+            $histories->push((object)[
+                'status' => 'Pesanan Dibuat Oleh TOKOSANCAKA.COM',
+                'lokasi' => $lokasiAkun,
+                'keterangan' => 'Pesanan berhasil dibuat di sistem SANCAKA EXPRESS. Menggunakan layanan Lalamove.',
+                'created_at' => $waktuDibuat,
+            ]);
+        }
+
+        $sortedHistories = $histories->sortByDesc('created_at')->values();
+
+        return [
+            'is_pesanan' => true,
+            'resi' => $pesanan->resi,
+            'resi_aktual' => $pesanan->resi_aktual ?? $pesanan->resi,
+            'pengirim' => $pesanan->sender_name ?? 'N/A',
+            'alamat_pengirim' => $pesanan->sender_address ?? 'N/A',
+            'no_pengirim' => $pesanan->sender_phone ?? 'N/A',
+            'penerima' => $pesanan->receiver_name ?? 'N/A',
+            'alamat_penerima' => $pesanan->receiver_address ?? 'N/A',
+            'no_penerima' => $pesanan->receiver_phone ?? 'N/A',
+            'status' => $statusText,
+            'tanggal_dibuat' => $pesanan->created_at,
+            'histories' => $sortedHistories,
+            'jasa_ekspedisi_aktual' => $jasaEkspedisi,
+            'logo_ekspedisi' => 'https://tokosancaka.com/public/assets/lalamove.png', // Logo Lalamove disisipkan
+        ];
+    }
+
+    /**
+     * Helper Generator HTTP Request Lalamove
+     */
+    private function _lalamoveRequest($method, $path)
+    {
+        $mode = \App\Models\Api::getValue('LALAMOVE_MODE', 'global', 'sandbox');
+        $apiKey = \App\Models\Api::getValue('LALAMOVE_API_KEY', $mode);
+        $apiSecret = \App\Models\Api::getValue('LALAMOVE_API_SECRET', $mode);
+        $baseUrl = ($mode === 'production') ? 'https://rest.lalamove.com' : 'https://rest.sandbox.lalamove.com';
+        $market = \App\Models\Api::getValue('LALAMOVE_MARKET', 'global', 'ID');
+
+        if (empty($apiKey) || empty($apiSecret)) {
+            return null;
+        }
+
+        $timestamp = round(microtime(true) * 1000);
+        $bodyStr = ''; // Method GET tidak memiliki body request
+        
+        $rawSignature = "{$timestamp}\r\n{$method}\r\n{$path}\r\n\r\n{$bodyStr}";
+        $signature = hash_hmac('sha256', $rawSignature, $apiSecret);
+        $token = "{$apiKey}:{$timestamp}:{$signature}";
+        $requestId = \Illuminate\Support\Str::uuid()->toString();
+
+        $headers = [
+            'Authorization' => "hmac {$token}",
+            'Market'        => $market,
+            'Request-ID'    => $requestId,
+            'Content-Type'  => 'application/json',
+            'Accept'        => 'application/json',
+        ];
+
+        return Http::withHeaders($headers)->get($baseUrl . $path);
+    }
+    
 }
