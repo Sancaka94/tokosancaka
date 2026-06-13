@@ -1280,11 +1280,68 @@
 
         function getLalamoveVehicleImage(name) {
             const lowerName = name.toLowerCase();
-            // Fallback placeholder jika Anda belum upload aset gambar Lalamove di server Sancaka
-            if (lowerName.includes('motor')) return `https://placehold.co/300x200/fffaf7/f27024?text=Motor`;
-            if (lowerName.includes('sedan') || lowerName.includes('car')) return `https://placehold.co/300x200/fffaf7/f27024?text=Mobil+Sedan`;
-            if (lowerName.includes('van')) return `https://placehold.co/300x200/fffaf7/f27024?text=Mobil+Van`;
-            if (lowerName.includes('pickup') || lowerName.includes('pick-up')) return `https://placehold.co/300x200/fffaf7/f27024?text=Pickup`;
+            const baseUrl = 'https://tokosancaka.com/storage/logo-ekspedisi/lalamove';
+
+            // Pengecekan dimulai dari Armada Besar hingga Kecil
+            
+            // 1. Wingbox
+            if (lowerName.includes('wingbox') || lowerName.includes('wing box')) {
+                return `${baseUrl}/Foto%20Wingbox.png`;
+            }
+            
+            // 2. Fuso
+            if (lowerName.includes('fuso box')) {
+                return `${baseUrl}/truk%20fuso%20box.jpg`;
+            }
+            if (lowerName.includes('fuso') || lowerName.includes('bak')) {
+                return `${baseUrl}/fuso%20truk%20bak-1.png`;
+            }
+            
+            // 3. Truk CDD
+            if (lowerName.includes('cdd box')) {
+                return `${baseUrl}/420x300_jkt_vehicle-CDD%20box-new%202022.png`;
+            }
+            if (lowerName.includes('cdd')) {
+                return `${baseUrl}/420x300_jkt_vehicle-CDD-Bak-new.png`;
+            }
+
+            // 4. Truk Engkel (CDE)
+            if (lowerName.includes('engkel box') || lowerName.includes('cde box')) {
+                return `${baseUrl}/420x300_jkt_vehicle-engkel%20box-new.png`;
+            }
+            if (lowerName.includes('engkel') || lowerName.includes('cde')) {
+                return `${baseUrl}/420x300_jkt_vehicle-engkel%20bak-new%202022.png`;
+            }
+
+            // 5. Mobil Pickup
+            if (lowerName.includes('pickup box') || lowerName.includes('pick-up box') || lowerName.includes('pick up box')) {
+                return `${baseUrl}/420x300_jkt_vehicle-pickup%20box-new.png`;
+            }
+            if (lowerName.includes('pickup') || lowerName.includes('pick-up') || lowerName.includes('pick up')) {
+                return `${baseUrl}/420x300_jkt_vehicle-pickup%20bak-new.png`;
+            }
+
+            // 6. Mobil Van
+            if (lowerName.includes('van')) {
+                return `${baseUrl}/420x300_jkt_vehicle-van-new.png`;
+            }
+
+            // 7. Mobil Sedan
+            if (lowerName.includes('sedan')) {
+                return `${baseUrl}/420x300_jkt_vehicle-sedan-new.png`;
+            }
+
+            // 8. Mobil MPV / City Car
+            if (lowerName.includes('mpv') || lowerName.includes('car') || lowerName.includes('mobil')) {
+                return `${baseUrl}/420x300_jkt_vehicle-mpv-new.png`;
+            }
+
+            // 9. Motor
+            if (lowerName.includes('motor') || lowerName.includes('bike') || lowerName.includes('motorcycle')) {
+                return `${baseUrl}/420x300_jkt_vehicle-bike-new.png`;
+            }
+
+            // Fallback (Jaga-jaga jika ada tipe baru dari Lalamove yang belum masuk aset)
             return `https://placehold.co/300x200/fffaf7/f27024?text=${encodeURIComponent(name)}`;
         }
 
