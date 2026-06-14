@@ -14,7 +14,7 @@ class PpobDarmawisataController extends BaseController
         parent::__construct();
     }
 
-    /**
+  /**
      * FUNGSI SMART MAPPING LOGO PPOB
      * Membaca nama/group lalu mencocokkan dengan file gambar di server Anda
      */
@@ -24,7 +24,8 @@ class PpobDarmawisataController extends BaseController
         $name  = strtoupper($productName ?? '');
         $base  = 'https://tokosancaka.com/public/storage/logo-ppob/';
 
-        // Provider Seluler
+        // Provider Seluler & Pascabayar
+        if (str_contains($name, 'HALO') || str_contains($group, 'HALO')) return $base . 'halo.png';
         if (str_contains($group, 'TELKOMSEL') || str_contains($name, 'TELKOMSEL')) return $base . 'telkomsel.png';
         if (str_contains($group, 'INDOSAT') || str_contains($name, 'INDOSAT')) return $base . 'indosat.png';
         if (str_contains($group, 'XL') || str_contains($name, 'XL')) return $base . 'xl.png';
