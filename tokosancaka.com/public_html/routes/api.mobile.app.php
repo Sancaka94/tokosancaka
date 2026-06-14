@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\Mobile\TrainTicketingController;
 use App\Http\Controllers\Api\Mobile\BusTicketingController;
 use App\Http\Controllers\Api\Mobile\ShipTicketingController;
 use App\Http\Controllers\Api\Mobile\ShipDluTicketingController;
+use App\Http\Controllers\Api\Mobile\PpobDarmawisataController;
 
 /*
 |--------------------------------------------------------------------------
@@ -606,6 +607,22 @@ Route::middleware(['auth:sanctum'])->group(function () {
             });
 
         }); // END MODULE TICKETING
+
+        Route::middleware(['auth:sanctum'])->group(function () {
+
+            // ==========================================
+            // MODULE: PPOB DARMAWISATA
+            // ==========================================
+            Route::prefix('darmawisata/ppob')->group(function () {
+                Route::post('/product-group', [PpobDarmawisataController::class, 'ppobProductGroup']);
+                Route::post('/product-list', [PpobDarmawisataController::class, 'ppobProductList']);
+                Route::post('/inquiry', [PpobDarmawisataController::class, 'ppobInquiry']);
+                Route::post('/payment', [PpobDarmawisataController::class, 'ppobPayment']);
+                Route::get('/history', [PpobDarmawisataController::class, 'ppobHistory']);
+                Route::post('/transaction-detail', [PpobDarmawisataController::class, 'ppobTransactionDetail']);
+            });
+
+        });
         
 
     });
