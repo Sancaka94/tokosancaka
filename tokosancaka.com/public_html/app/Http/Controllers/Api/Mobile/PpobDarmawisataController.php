@@ -12,26 +12,63 @@ class PpobDarmawisataController extends BaseController
     public function __construct()
     {
         parent::__construct();
-        // Tidak ada lagi query kredensial manual,
-        // Semua sudah di-handle elegan oleh BaseController!
+    }
+
+    /**
+     * FUNGSI SMART MAPPING LOGO PPOB
+     * Membaca nama/group lalu mencocokkan dengan file gambar di server Anda
+     */
+    private function getPpobLogo($groupName, $productName)
+    {
+        $group = strtoupper($groupName ?? '');
+        $name  = strtoupper($productName ?? '');
+        $base  = 'https://tokosancaka.com/public/storage/logo-ppob/';
+
+        // Provider Seluler
+        if (str_contains($group, 'TELKOMSEL') || str_contains($name, 'TELKOMSEL')) return $base . 'telkomsel.png';
+        if (str_contains($group, 'INDOSAT') || str_contains($name, 'INDOSAT')) return $base . 'indosat.png';
+        if (str_contains($group, 'XL') || str_contains($name, 'XL')) return $base . 'xl.png';
+        if (str_contains($group, 'AXIS') || str_contains($name, 'AXIS')) return $base . 'axis.png';
+        if (str_contains($group, 'TRI') || str_contains($group, 'THREE') || str_contains($name, 'THREE')) return $base . 'tri.png';
+        if (str_contains($group, 'SMARTFREN') || str_contains($name, 'SMARTFREN')) return $base . 'smartfren.png';
+        if (str_contains($group, 'BY.U') || str_contains($name, 'BY.U')) return $base . 'by.u.png';
+
+        // PLN (Dipisah antara Pascabayar & Prabayar)
+        if (str_contains($group, 'PLN') || str_contains($name, 'PLN')) {
+            if (str_contains($group, 'PASCA') || str_contains($name, 'PASCA')) return $base . 'pln%20pascabayar.png';
+            return $base . 'pln.png';
+        }
+
+        // E-Wallet & Utilitas Umum
+        if (str_contains($group, 'BPJS') || str_contains($name, 'BPJS')) return $base . 'bpjs.png';
+        if (str_contains($group, 'DANA') || str_contains($name, 'DANA')) return $base . 'dana.png';
+        if (str_contains($group, 'OVO') || str_contains($name, 'OVO')) return $base . 'ovo.png';
+        if (str_contains($group, 'GOPAY') || str_contains($group, 'GO PAY') || str_contains($name, 'GOPAY')) return $base . 'go%20pay.png';
+        if (str_contains($group, 'SHOPEE') || str_contains($name, 'SHOPEE')) return $base . 'shopee%20pay.png';
+        
+        // Game Online & TV
+        if (str_contains($group, 'FREE FIRE') || str_contains($name, 'FREE FIRE')) return $base . 'free%20fire.png';
+        if (str_contains($group, 'MOBILE LEGEND') || str_contains($name, 'MOBILE LEGEND')) return $base . 'mobile%20legends.png';
+        if (str_contains($group, 'K-VISION') || str_contains($group, 'GOL') || str_contains($name, 'K-VISION')) return $base . 'k-vision%20dan%20gol.png';
+        if (str_contains($group, 'PGN') || str_contains($name, 'GAS')) return $base . 'pertamina%20gas.png';
+
+        // Fallback jika tidak ada yang cocok (Anda bisa siapkan default.png di folder logo-ppob)
+        return $base . 'default.png'; 
     }
 
     public function ppobProductGroup(Request $request)
     {
         Log::info("\n========== [PPOB PRODUCT GROUP - START] ==========");
         
-        // Tambahan: Validator untuk memastikan frontend wajib kirim accessToken
         $validator = Validator::make($request->all(), [
-            'accessToken'  => 'required|string',
+            'accessToken' => 'required|string',
         ]);
 
         if ($validator->fails()) {
             Log::warning("PPOB Product Group Validasi Gagal: ", $validator->errors()->toArray());
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
-        
-        // Cukup ambil accessToken dari request Mobile (seperti ShipDLU)
-        // userID otomatis di-inject di BaseController::forwardRequest
+
         $payload = [
             'accessToken' => $request->accessToken
         ];
@@ -42,7 +79,6 @@ class PpobDarmawisataController extends BaseController
     public function ppobProductList(Request $request)
     {
         Log::info("\n========== [PPOB PRODUCT LIST - START] ==========");
-        Log::info("Payload Request Mobile: ", $request->all());
         
         $validator = Validator::make($request->all(), [
             'productGroup' => 'required|string',
@@ -50,7 +86,6 @@ class PpobDarmawisataController extends BaseController
         ]);
 
         if ($validator->fails()) {
-            Log::warning("PPOB Product List Validasi Gagal: ", $validator->errors()->toArray());
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
@@ -59,20 +94,15 @@ class PpobDarmawisataController extends BaseController
             'accessToken'  => $request->accessToken   
         ];
 
-        // Ambil data produk dasar dari API Darmawisata
+        // Ambil data produk dari Darmawisata
         $response = $this->forwardRequest('PPOB/Product', $payload); 
         $json = json_decode($response->getContent(), true);
 
-        // Map gambar/ikon operator dari database dw_ppob_products
+        // --- INI BAGIAN YANG DIUBAH (Auto Mapping Logo) ---
         if (isset($json['productList']) && is_array($json['productList'])) { 
-            $productCodes = array_column($json['productList'], 'code');
-            $localProducts = DB::table('dw_ppob_products')
-                ->whereIn('product_code', $productCodes)
-                ->pluck('icon_url', 'product_code');
-
             foreach ($json['productList'] as &$product) {
-                $code = $product['code'];
-                $product['iconUrl'] = $localProducts[$code] ?? 'https://tokosancaka.com/assets/images/ppob/default.png'; 
+                // Terapkan Smart Mapping ke setiap produk
+                $product['iconUrl'] = $this->getPpobLogo($product['group'] ?? '', $product['name'] ?? '');
             }
         }
 
@@ -82,7 +112,6 @@ class PpobDarmawisataController extends BaseController
     public function ppobInquiry(Request $request)
     {
         Log::info("\n========== [PPOB INQUIRY - START] ==========");
-        Log::info("Payload Request Mobile: ", $request->all());
 
         $validator = Validator::make($request->all(), [
             'productCode'    => 'required|string',
@@ -92,7 +121,6 @@ class PpobDarmawisataController extends BaseController
         ]);
 
         if ($validator->fails()) {
-            Log::warning("PPOB Inquiry Validasi Gagal: ", $validator->errors()->toArray());
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
@@ -109,7 +137,6 @@ class PpobDarmawisataController extends BaseController
     public function ppobPayment(Request $request)
     {
         Log::info("\n========== [PPOB PAYMENT - START] ==========");
-        Log::info("Payload Request Mobile: ", $request->all());
 
         $validator = Validator::make($request->all(), [
             'billingReferenceID' => 'required|string',
@@ -138,7 +165,6 @@ class PpobDarmawisataController extends BaseController
 
         try {
             $orderId = DB::transaction(function () use ($request, $userId, $totalPrice) {
-                // Potong saldo di awal
                 DB::table('Pengguna')->where('id_pengguna', $userId)->decrement('saldo', $totalPrice);
                 
                 return DB::table('dw_ppob_transactions')->insertGetId([
@@ -174,7 +200,6 @@ class PpobDarmawisataController extends BaseController
                     'data'    => $json
                 ]);
             } else {
-                // Refund Saldo
                 DB::table('Pengguna')->where('id_pengguna', $userId)->increment('saldo', $totalPrice);
                 
                 DB::table('dw_ppob_transactions')->where('id', $orderId)->update([
@@ -225,10 +250,9 @@ class PpobDarmawisataController extends BaseController
             $userId = $user->id_pengguna ?? $user->id;
 
             $query = DB::table('dw_ppob_transactions as t')
-                ->leftJoin('dw_ppob_products as p', 't.product_code', '=', 'p.product_code')
                 ->select(
-                    't.id', 't.product_code', 'p.product_name', 'p.icon_url',
-                    't.customer_id', 't.billing_reference_id', 't.sell_price', 
+                    't.id', 't.product_code', 't.customer_id', 
+                    't.billing_reference_id', 't.sell_price', 
                     't.status', 't.created_at', 't.resp_message', 't.user_id'
                 )
                 ->orderBy('t.created_at', 'desc');
@@ -239,13 +263,15 @@ class PpobDarmawisataController extends BaseController
 
             $orders = $query->get();
 
+            // --- INI BAGIAN YANG DIUBAH (Auto Mapping Logo di Riwayat) ---
             $formattedData = $orders->map(function ($order) {
                 return [
                     'id'                 => $order->id,
                     'userId'             => $order->user_id, 
                     'productCode'        => $order->product_code,
-                    'productName'        => $order->product_name ?? 'Produk PPOB',
-                    'iconUrl'            => $order->icon_url ?? 'https://tokosancaka.com/assets/images/ppob/default.png',
+                    'productName'        => $order->product_code, // Bisa di-query detailnya jika perlu
+                    // Gunakan fungsi smart mapping untuk History juga
+                    'iconUrl'            => $this->getPpobLogo($order->product_code, $order->product_code),
                     'customerID'         => $order->customer_id,
                     'billingReferenceID' => $order->billing_reference_id,
                     'sellPrice'          => (float) $order->sell_price,
