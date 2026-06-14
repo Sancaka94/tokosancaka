@@ -9,33 +9,9 @@ use Illuminate\Support\Facades\DB;
 
 class PpobDarmawisataController extends BaseController
 {
-    private $apiUserId;
-    private $apiAccessToken;
-
     public function __construct()
     {
         parent::__construct();
-        $this->loadDynamicCredentials();
-    }
-
-    /**
-     * Mengambil kredensial API secara dinamis dari database dw_api_credentials
-     */
-    private function loadDynamicCredentials()
-    {
-        Log::info("Memuat kredensial dinamis PPOB Darmawisata dari database...");
-        $cred = DB::table('dw_api_credentials')
-            ->where('provider', 'darmawisata')
-            ->where('is_active', 1)
-            ->first();
-
-        if ($cred) {
-            $this->apiUserId = $cred->user_id;
-            $this->apiAccessToken = $cred->access_token;
-            Log::info("Kredensial PPOB Darmawisata berhasil dimuat untuk User ID API: " . $this->apiUserId);
-        } else {
-            Log::error("FATAL: Kredensial API Darmawisata tidak ditemukan di database atau status tidak aktif.");
-        }
     }
 
     public function ppobInquiry(Request $request)
@@ -47,6 +23,7 @@ class PpobDarmawisataController extends BaseController
             'productCode'    => 'required|string',
             'customerID'     => 'required|string',
             'customerMSISDN' => 'nullable|string',
+            'accessToken'    => 'required|string', // Wajib dikirim dari mobile
         ]);
 
         if ($validator->fails()) {
@@ -59,8 +36,8 @@ class PpobDarmawisataController extends BaseController
             'productCode'    => $request->productCode,
             'customerID'     => $request->customerID,
             'customerMSISDN' => $request->customerMSISDN ?? "",
-            'userID'         => $this->apiUserId,       
-            'accessToken'    => $this->apiAccessToken   
+            'userID'         => $this->darmawisataUserId,       
+            'accessToken'    => $request->accessToken   
         ];
 
         Log::info("Payload to Darmawisata [PPOB/Inquiry]: ", $payload);
@@ -81,6 +58,7 @@ class PpobDarmawisataController extends BaseController
             'productCode'        => 'required|string',
             'customerID'         => 'required|string',
             'sellPrice'          => 'required|numeric',
+            'accessToken'        => 'required|string', // Wajib dikirim dari mobile
         ]);
 
         if ($validator->fails()) {
@@ -130,8 +108,8 @@ class PpobDarmawisataController extends BaseController
             // Format Request PPOB/Payment Darmawisata
             $payload = [
                 'billingReferenceID' => $request->billingReferenceID,
-                'userID'             => $this->apiUserId,       
-                'accessToken'        => $this->apiAccessToken   
+                'userID'             => $this->darmawisataUserId,       
+                'accessToken'        => $request->accessToken   
             ];
 
             Log::info("Payload to Darmawisata [PPOB/Payment]: ", $payload);
@@ -189,9 +167,20 @@ class PpobDarmawisataController extends BaseController
     public function ppobProductGroup(Request $request)
     {
         Log::info("\n========== [PPOB PRODUCT GROUP - START] ==========");
+        
+        // Cek validasi untuk amannya
+        $validator = Validator::make($request->all(), [
+            'accessToken' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            Log::warning("PPOB Product Group Validasi Gagal: ", $validator->errors()->toArray());
+            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        }
+
         $payload = [
-            'userID'      => $this->apiUserId,       
-            'accessToken' => $this->apiAccessToken   
+            'userID'      => $this->darmawisataUserId,       
+            'accessToken' => $request->accessToken   
         ];
         
         Log::info("Payload to Darmawisata [PPOB/ProductGroup]: ", $payload);
@@ -205,6 +194,7 @@ class PpobDarmawisataController extends BaseController
         
         $validator = Validator::make($request->all(), [
             'productGroup' => 'required|string',
+            'accessToken'  => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -214,8 +204,8 @@ class PpobDarmawisataController extends BaseController
 
         $payload = [
             'productGroup' => $request->productGroup,
-            'userID'       => $this->apiUserId,       
-            'accessToken'  => $this->apiAccessToken   
+            'userID'       => $this->darmawisataUserId,       
+            'accessToken'  => $request->accessToken   
         ];
 
         Log::info("Payload to Darmawisata [PPOB/Product]: ", $payload);
@@ -255,7 +245,6 @@ class PpobDarmawisataController extends BaseController
 
             Log::info("Memuat riwayat transaksi PPOB untuk User ID: {$userId}");
 
-            // Mengambil dari tabel yang sudah dibedakan
             $query = DB::table('dw_ppob_transactions as t')
                 ->leftJoin('dw_ppob_products as p', 't.product_code', '=', 'p.product_code')
                 ->select(
@@ -265,7 +254,6 @@ class PpobDarmawisataController extends BaseController
                 )
                 ->orderBy('t.created_at', 'desc');
 
-            // Filter Role: User ID 4 (Admin Utama) bisa lihat semua histori
             if ($userId != 4) {
                 $query->where('t.user_id', $userId);
             } else {
@@ -307,6 +295,7 @@ class PpobDarmawisataController extends BaseController
         $validator = Validator::make($request->all(), [
             'customerID'         => 'required|string',
             'billingReferenceID' => 'required|string',
+            'accessToken'        => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -317,8 +306,8 @@ class PpobDarmawisataController extends BaseController
         $payload = [
             'customerID'         => $request->customerID,          
             'billingReferenceID' => $request->billingReferenceID,  
-            'userID'             => $this->apiUserId,              
-            'accessToken'        => $this->apiAccessToken          
+            'userID'             => $this->darmawisataUserId,              
+            'accessToken'        => $request->accessToken          
         ];
 
         Log::info("Payload to Darmawisata [PPOB/TransactionDetail]: ", $payload);
