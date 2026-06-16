@@ -21,11 +21,27 @@ class CargoDarmaController extends BaseController
      */
     public function supplierList(Request $request)
     {
-        Log::info("\n========== [CARGO SUPPLIER LIST] ==========");
+        Log::info("\n========== [CARGO SUPPLIER LIST - START] ==========");
         $validator = Validator::make($request->all(), ['accessToken' => 'required|string']);
-        if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        
+        if ($validator->fails()) {
+            Log::warning("Validasi Gagal:", $validator->errors()->toArray());
+            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        }
 
-        return $this->forwardRequest('Cargo/Supplier', ['accessToken' => $request->accessToken]);
+        try {
+            $payload = ['accessToken' => $request->accessToken];
+            Log::info("PAYLOAD REQUEST: ", ['accessToken' => '***HIDDEN***']);
+            
+            $response = $this->forwardRequest('Cargo/Supplier', $payload);
+            
+            Log::info("RESPONSE DARMAWISATA: " . substr($response->getContent(), 0, 500) . "... [TRUNCATED]");
+            return $response;
+            
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/Supplier]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -35,14 +51,28 @@ class CargoDarmaController extends BaseController
      */
     public function pickupLocation(Request $request)
     {
+        Log::info("\n========== [CARGO PICKUP LOCATION - START] ==========");
         $validator = Validator::make($request->all(), [
             'supplierName' => 'required|string',
             'keyword'      => 'required|string',
             'accessToken'  => 'required|string',
         ]);
+        
         if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
 
-        return $this->forwardRequest('Cargo/PickupLocation', $request->only(['supplierName', 'keyword', 'accessToken']));
+        try {
+            $payload = $request->only(['supplierName', 'keyword', 'accessToken']);
+            Log::info("PAYLOAD REQUEST: ", ['supplierName' => $payload['supplierName'], 'keyword' => $payload['keyword']]);
+
+            $response = $this->forwardRequest('Cargo/PickupLocation', $payload);
+            
+            Log::info("RESPONSE DARMAWISATA: " . substr($response->getContent(), 0, 500) . "... [TRUNCATED]");
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/PickupLocation]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -52,14 +82,28 @@ class CargoDarmaController extends BaseController
      */
     public function destinationArea(Request $request)
     {
+        Log::info("\n========== [CARGO DESTINATION AREA - START] ==========");
         $validator = Validator::make($request->all(), [
             'supplierName' => 'required|string',
             'keyword'      => 'required|string',
             'accessToken'  => 'required|string',
         ]);
+        
         if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
 
-        return $this->forwardRequest('Cargo/DestinationArea', $request->only(['supplierName', 'keyword', 'accessToken']));
+        try {
+            $payload = $request->only(['supplierName', 'keyword', 'accessToken']);
+            Log::info("PAYLOAD REQUEST: ", ['supplierName' => $payload['supplierName'], 'keyword' => $payload['keyword']]);
+
+            $response = $this->forwardRequest('Cargo/DestinationArea', $payload);
+            
+            Log::info("RESPONSE DARMAWISATA: " . substr($response->getContent(), 0, 500) . "... [TRUNCATED]");
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/DestinationArea]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -69,13 +113,25 @@ class CargoDarmaController extends BaseController
      */
     public function additionalCost(Request $request)
     {
+        Log::info("\n========== [CARGO ADDITIONAL COST - START] ==========");
         $validator = Validator::make($request->all(), [
             'supplierName' => 'required|string',
             'accessToken'  => 'required|string',
         ]);
         if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
 
-        return $this->forwardRequest('Cargo/AdditionalCost', $request->only(['supplierName', 'accessToken']));
+        try {
+            $payload = $request->only(['supplierName', 'accessToken']);
+            Log::info("PAYLOAD REQUEST: ", ['supplierName' => $payload['supplierName']]);
+
+            $response = $this->forwardRequest('Cargo/AdditionalCost', $payload);
+            Log::info("RESPONSE DARMAWISATA: " . $response->getContent());
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/AdditionalCost]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -85,13 +141,25 @@ class CargoDarmaController extends BaseController
      */
     public function reference(Request $request)
     {
+        Log::info("\n========== [CARGO REFERENCE - START] ==========");
         $validator = Validator::make($request->all(), [
             'supplierName' => 'required|string',
             'accessToken'  => 'required|string',
         ]);
         if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
 
-        return $this->forwardRequest('Cargo/Reference', $request->only(['supplierName', 'accessToken']));
+        try {
+            $payload = $request->only(['supplierName', 'accessToken']);
+            Log::info("PAYLOAD REQUEST: ", ['supplierName' => $payload['supplierName']]);
+
+            $response = $this->forwardRequest('Cargo/Reference', $payload);
+            Log::info("RESPONSE DARMAWISATA: " . $response->getContent());
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/Reference]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -101,13 +169,25 @@ class CargoDarmaController extends BaseController
      */
     public function content(Request $request)
     {
+        Log::info("\n========== [CARGO CONTENT - START] ==========");
         $validator = Validator::make($request->all(), [
             'supplierName' => 'required|string',
             'accessToken'  => 'required|string',
         ]);
         if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
 
-        return $this->forwardRequest('Cargo/Content', $request->only(['supplierName', 'accessToken']));
+        try {
+            $payload = $request->only(['supplierName', 'accessToken']);
+            Log::info("PAYLOAD REQUEST: ", ['supplierName' => $payload['supplierName']]);
+
+            $response = $this->forwardRequest('Cargo/Content', $payload);
+            Log::info("RESPONSE DARMAWISATA: " . $response->getContent());
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/Content]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -117,13 +197,25 @@ class CargoDarmaController extends BaseController
      */
     public function handling(Request $request)
     {
+        Log::info("\n========== [CARGO HANDLING - START] ==========");
         $validator = Validator::make($request->all(), [
             'supplierName' => 'required|string',
             'accessToken'  => 'required|string',
         ]);
         if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
 
-        return $this->forwardRequest('Cargo/Handling', $request->only(['supplierName', 'accessToken']));
+        try {
+            $payload = $request->only(['supplierName', 'accessToken']);
+            Log::info("PAYLOAD REQUEST: ", ['supplierName' => $payload['supplierName']]);
+
+            $response = $this->forwardRequest('Cargo/Handling', $payload);
+            Log::info("RESPONSE DARMAWISATA: " . $response->getContent());
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/Handling]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -133,6 +225,7 @@ class CargoDarmaController extends BaseController
      */
     public function goods(Request $request)
     {
+        Log::info("\n========== [CARGO GOODS - START] ==========");
         $validator = Validator::make($request->all(), [
             'supplierName' => 'required|string',
             'contentID'    => 'required|string',
@@ -140,7 +233,18 @@ class CargoDarmaController extends BaseController
         ]);
         if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
 
-        return $this->forwardRequest('Cargo/Goods', $request->only(['supplierName', 'contentID', 'accessToken']));
+        try {
+            $payload = $request->only(['supplierName', 'contentID', 'accessToken']);
+            Log::info("PAYLOAD REQUEST: ", ['supplierName' => $payload['supplierName'], 'contentID' => $payload['contentID']]);
+
+            $response = $this->forwardRequest('Cargo/Goods', $payload);
+            Log::info("RESPONSE DARMAWISATA: " . $response->getContent());
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/Goods]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -150,6 +254,7 @@ class CargoDarmaController extends BaseController
      */
     public function handlingSurcharge(Request $request)
     {
+        Log::info("\n========== [CARGO HANDLING SURCHARGE - START] ==========");
         $validator = Validator::make($request->all(), [
             'supplierName' => 'required|string',
             'handlingID'   => 'required|string',
@@ -157,7 +262,18 @@ class CargoDarmaController extends BaseController
         ]);
         if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
 
-        return $this->forwardRequest('Cargo/HandlingSurcharge', $request->only(['supplierName', 'handlingID', 'accessToken']));
+        try {
+            $payload = $request->only(['supplierName', 'handlingID', 'accessToken']);
+            Log::info("PAYLOAD REQUEST: ", ['supplierName' => $payload['supplierName'], 'handlingID' => $payload['handlingID']]);
+
+            $response = $this->forwardRequest('Cargo/HandlingSurcharge', $payload);
+            Log::info("RESPONSE DARMAWISATA: " . $response->getContent());
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/HandlingSurcharge]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -167,20 +283,40 @@ class CargoDarmaController extends BaseController
      */
     public function tariff(Request $request)
     {
-        Log::info("\n========== [CARGO TARIFF] ==========");
+        Log::info("\n========== [CARGO TARIFF - START] ==========");
         $validator = Validator::make($request->all(), [
             'supplierName'      => 'required|string',
             'pickupLocationID'  => 'required|string',
             'destinationAreaID' => 'required|string',
-            'handlingID'        => 'required|string',
+            'handlingID'        => 'nullable|string',
             'pieces'            => 'required|array',
             'accessToken'       => 'required|string',
         ]);
-        if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        if ($validator->fails()) {
+            Log::warning("Validasi Tariff Gagal: ", $validator->errors()->toArray());
+            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        }
 
-        return $this->forwardRequest('Cargo/Tariff', $request->only([
-            'supplierName', 'pickupLocationID', 'destinationAreaID', 'handlingID', 'pieces', 'accessToken'
-        ]));
+        try {
+            $payload = $request->only([
+                'supplierName', 'pickupLocationID', 'destinationAreaID', 'handlingID', 'pieces', 'accessToken'
+            ]);
+            // Pastikan handlingID tidak null
+            if (!isset($payload['handlingID']) || is_null($payload['handlingID'])) {
+                $payload['handlingID'] = "";
+            }
+
+            Log::info("PAYLOAD REQUEST TARIFF: ", json_decode(json_encode($payload), true));
+
+            $response = $this->forwardRequest('Cargo/Tariff', $payload);
+            
+            Log::info("RESPONSE DARMAWISATA TARIFF: " . substr($response->getContent(), 0, 800) . "... [TRUNCATED]");
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/Tariff]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -190,6 +326,7 @@ class CargoDarmaController extends BaseController
      */
     public function priceDetail(Request $request)
     {
+        Log::info("\n========== [CARGO PRICE DETAIL - START] ==========");
         $validator = Validator::make($request->all(), [
             'supplierName'       => 'required|string',
             'pickupLocationID'   => 'required|string',
@@ -204,7 +341,18 @@ class CargoDarmaController extends BaseController
         ]);
         if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
 
-        return $this->forwardRequest('Cargo/PriceDetail', $request->all());
+        try {
+            $payload = $request->all();
+            Log::info("PAYLOAD REQUEST PRICE DETAIL: ", json_decode(json_encode($payload), true));
+
+            $response = $this->forwardRequest('Cargo/PriceDetail', $payload);
+            Log::info("RESPONSE DARMAWISATA PRICE DETAIL: " . $response->getContent());
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/PriceDetail]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -218,7 +366,6 @@ class CargoDarmaController extends BaseController
         $validator = Validator::make($request->all(), [
             'contentID'          => 'required|string',
             'goodsID'            => 'required|string',
-            'handlingID'         => 'required|string',
             'pickupName'         => 'required|string',
             'pickupAddress'      => 'required|string',
             'receiverName'       => 'required|string',
@@ -230,15 +377,26 @@ class CargoDarmaController extends BaseController
             'serviceID'          => 'required|string',
             'pieces'             => 'required|array',
             'accessToken'        => 'required|string',
-            // Field lainnya biarkan lewat jika ada, dokumen butuh sangat banyak field
         ]);
 
-        if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        if ($validator->fails()) {
+            Log::warning("Validasi Booking Gagal: ", $validator->errors()->toArray());
+            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        }
 
-        // TODO: Anda bisa menambahkan logika potong saldo Sancaka di sini sebelum hit ke Darmawisata
-        // seperti yang dilakukan di PPOB.
+        try {
+            $payload = $request->all();
+            Log::info("PAYLOAD REQUEST BOOKING: ", json_decode(json_encode($payload), true));
 
-        return $this->forwardRequest('Cargo/Booking', $request->all());
+            $response = $this->forwardRequest('Cargo/Booking', $payload);
+            
+            Log::info("RESPONSE DARMAWISATA BOOKING: " . $response->getContent());
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/Booking]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -248,6 +406,7 @@ class CargoDarmaController extends BaseController
      */
     public function bookingList(Request $request)
     {
+        Log::info("\n========== [CARGO BOOKING LIST - START] ==========");
         $validator = Validator::make($request->all(), [
             'startDate'   => 'required|date',
             'endDate'     => 'required|date',
@@ -255,7 +414,19 @@ class CargoDarmaController extends BaseController
         ]);
         if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
 
-        return $this->forwardRequest('Cargo/BookingList', $request->only(['startDate', 'endDate', 'accessToken']));
+        try {
+            $payload = $request->only(['startDate', 'endDate', 'accessToken']);
+            Log::info("PAYLOAD REQUEST BOOKING LIST: ", ['startDate' => $payload['startDate'], 'endDate' => $payload['endDate']]);
+
+            $response = $this->forwardRequest('Cargo/BookingList', $payload);
+            
+            Log::info("RESPONSE DARMAWISATA BOOKING LIST: " . substr($response->getContent(), 0, 800) . "... [TRUNCATED]");
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/BookingList]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -265,6 +436,7 @@ class CargoDarmaController extends BaseController
      */
     public function bookingDetail(Request $request)
     {
+        Log::info("\n========== [CARGO BOOKING DETAIL - START] ==========");
         $validator = Validator::make($request->all(), [
             'sttNumber'   => 'required|string',
             'orderID'     => 'required|string',
@@ -273,7 +445,18 @@ class CargoDarmaController extends BaseController
         ]);
         if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
 
-        return $this->forwardRequest('Cargo/BookingDetail', $request->only(['sttNumber', 'orderID', 'bookingDate', 'accessToken']));
+        try {
+            $payload = $request->only(['sttNumber', 'orderID', 'bookingDate', 'accessToken']);
+            Log::info("PAYLOAD REQUEST BOOKING DETAIL: ", json_decode(json_encode($payload), true));
+
+            $response = $this->forwardRequest('Cargo/BookingDetail', $payload);
+            Log::info("RESPONSE DARMAWISATA BOOKING DETAIL: " . $response->getContent());
+            return $response;
+
+        } catch (\Exception $e) {
+            Log::error("FATAL ERROR [Cargo/BookingDetail]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -291,22 +474,32 @@ class CargoDarmaController extends BaseController
             'accessToken'  => 'required|string',
         ]);
 
-        if ($validator->fails()) return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        if ($validator->fails()) {
+            Log::warning("Validasi Tracking Gagal: ", $validator->errors()->toArray());
+            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        }
 
         $user = $request->user();
         $userId = $user->id_pengguna ?? $user->id;
 
-        $payload = [
-            'supplierName' => $request->supplierName,
-            'sttNumber'    => $request->sttNumber,
-            'accessToken'  => $request->accessToken
-        ];
-
         try {
-            $response = $this->forwardRequest('Cargo/Tracking', $payload);
-            $json = json_decode($response->getContent(), true);
+            $payload = [
+                'supplierName' => $request->supplierName,
+                'sttNumber'    => $request->sttNumber,
+                'accessToken'  => $request->accessToken
+            ];
 
-            if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+            Log::info("PAYLOAD REQUEST TRACKING: ", ['supplier' => $payload['supplierName'], 'stt' => $payload['sttNumber']]);
+
+            $response = $this->forwardRequest('Cargo/Tracking', $payload);
+            $responseContent = $response->getContent();
+            
+            Log::info("RESPONSE DARMAWISATA TRACKING: " . substr($responseContent, 0, 1000) . "... [TRUNCATED]");
+            
+            $json = json_decode($responseContent, true);
+
+            // Simpan riwayat jika respons json ada status SUCCESS
+            if (is_array($json) && isset($json['status']) && $json['status'] === 'SUCCESS') {
                 $info = $json['infos'][0] ?? null;
                 $destination = $info['destination'] ?? '-';
                 
@@ -325,11 +518,11 @@ class CargoDarmaController extends BaseController
                 );
             }
 
-            return response()->json($json);
+            return response()->json($json ?? ['status' => 'FAILED', 'message' => 'Gagal membaca response provider']);
 
         } catch (\Exception $e) {
-            Log::error("Cargo Tracking Error: " . $e->getMessage());
-            return response()->json(['status' => 'FAILED', 'message' => 'System Error: ' . $e->getMessage()], 500);
+            Log::error("FATAL ERROR [Cargo/Tracking]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Internal Server Error: ' . $e->getMessage()], 500);
         }
     }
 
@@ -340,6 +533,7 @@ class CargoDarmaController extends BaseController
      */
     public function history(Request $request)
     {
+        Log::info("\n========== [CARGO GET HISTORY LOKAL - START] ==========");
         $user = $request->user();
         $userId = $user->id_pengguna ?? $user->id;
 
@@ -351,7 +545,8 @@ class CargoDarmaController extends BaseController
 
             return response()->json(['status' => 'SUCCESS', 'data' => $history]);
         } catch (\Exception $e) {
-            return response()->json(['status' => 'FAILED', 'message' => 'Gagal mengambil riwayat'], 500);
+            Log::error("FATAL ERROR [Cargo/History]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Gagal mengambil riwayat DB: ' . $e->getMessage()], 500);
         }
     }
 
@@ -362,6 +557,7 @@ class CargoDarmaController extends BaseController
      */
     public function bulkDestroyHistory(Request $request)
     {
+        Log::info("\n========== [CARGO BULK DELETE HISTORY - START] ==========");
         $user = $request->user();
         $userId = $user->id_pengguna ?? $user->id;
 
@@ -378,9 +574,11 @@ class CargoDarmaController extends BaseController
 
         try {
             DB::table('dw_cargo_histories')->whereIn('id', $request->ids)->delete();
+            Log::info("BERHASIL HAPUS " . count($request->ids) . " DATA HISTORY CARGO.");
             return response()->json(['status' => 'SUCCESS', 'message' => 'Riwayat berhasil dihapus']);
         } catch (\Exception $e) {
-            return response()->json(['status' => 'FAILED', 'message' => 'Gagal menghapus data di database.'], 500);
+            Log::error("FATAL ERROR [Cargo/BulkDelete]: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Gagal menghapus data di database: ' . $e->getMessage()], 500);
         }
     }
 }
