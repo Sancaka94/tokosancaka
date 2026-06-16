@@ -14,47 +14,47 @@ class PpobDarmawisataController extends BaseController
         parent::__construct();
     }
 
-  /**
-     * FUNGSI SMART MAPPING LOGO PPOB
-     * Membaca nama/group lalu mencocokkan dengan file gambar di server Anda
-     */
-    private function getPpobLogo($groupName, $productName)
+  private function getPpobLogo($groupName, $productName)
     {
         $group = strtoupper($groupName ?? '');
         $name  = strtoupper($productName ?? '');
         $base  = 'https://tokosancaka.com/public/storage/logo-ppob/';
+        $textToSearch = $group . ' ' . $name; // Gabungkan untuk sekali pencarian
 
-        // Provider Seluler & Pascabayar
-        if (str_contains($name, 'HALO') || str_contains($group, 'HALO')) return $base . 'halo.png';
-        if (str_contains($group, 'TELKOMSEL') || str_contains($name, 'TELKOMSEL')) return $base . 'telkomsel.png';
-        if (str_contains($group, 'INDOSAT') || str_contains($name, 'INDOSAT')) return $base . 'indosat.png';
-        if (str_contains($group, 'XL') || str_contains($name, 'XL')) return $base . 'xl.png';
-        if (str_contains($group, 'AXIS') || str_contains($name, 'AXIS')) return $base . 'axis.png';
-        if (str_contains($group, 'TRI') || str_contains($group, 'THREE') || str_contains($name, 'THREE')) return $base . 'tri.png';
-        if (str_contains($group, 'SMARTFREN') || str_contains($name, 'SMARTFREN')) return $base . 'smartfren.png';
-        if (str_contains($group, 'BY.U') || str_contains($name, 'BY.U')) return $base . 'by.u.png';
+        $mappings = [
+            'HALO' => 'halo.png',
+            'TELKOMSEL' => 'telkomsel.png',
+            'INDOSAT' => 'indosat.png',
+            'XL' => 'xl.png',
+            'AXIS' => 'axis.png',
+            'TRI' => 'tri.png',
+            'THREE' => 'tri.png',
+            'SMARTFREN' => 'smartfren.png',
+            'BY.U' => 'by.u.png',
+            'PLN PASCA' => 'pln%20pascabayar.png',
+            'PASCA PLN' => 'pln%20pascabayar.png',
+            'PLN' => 'pln.png',
+            'BPJS' => 'bpjs.png',
+            'DANA' => 'dana.png',
+            'OVO' => 'ovo.png',
+            'GOPAY' => 'go%20pay.png',
+            'GO PAY' => 'go%20pay.png',
+            'SHOPEE' => 'shopee%20pay.png',
+            'FREE FIRE' => 'free%20fire.png',
+            'MOBILE LEGEND' => 'mobile%20legends.png',
+            'K-VISION' => 'k-vision%20dan%20gol.png',
+            'GOL' => 'k-vision%20dan%20gol.png',
+            'PGN' => 'pertamina%20gas.png',
+            'GAS' => 'pertamina%20gas.png',
+        ];
 
-        // PLN (Dipisah antara Pascabayar & Prabayar)
-        if (str_contains($group, 'PLN') || str_contains($name, 'PLN')) {
-            if (str_contains($group, 'PASCA') || str_contains($name, 'PASCA')) return $base . 'pln%20pascabayar.png';
-            return $base . 'pln.png';
+        foreach ($mappings as $keyword => $filename) {
+            if (str_contains($textToSearch, $keyword)) {
+                return $base . $filename;
+            }
         }
 
-        // E-Wallet & Utilitas Umum
-        if (str_contains($group, 'BPJS') || str_contains($name, 'BPJS')) return $base . 'bpjs.png';
-        if (str_contains($group, 'DANA') || str_contains($name, 'DANA')) return $base . 'dana.png';
-        if (str_contains($group, 'OVO') || str_contains($name, 'OVO')) return $base . 'ovo.png';
-        if (str_contains($group, 'GOPAY') || str_contains($group, 'GO PAY') || str_contains($name, 'GOPAY')) return $base . 'go%20pay.png';
-        if (str_contains($group, 'SHOPEE') || str_contains($name, 'SHOPEE')) return $base . 'shopee%20pay.png';
-        
-        // Game Online & TV
-        if (str_contains($group, 'FREE FIRE') || str_contains($name, 'FREE FIRE')) return $base . 'free%20fire.png';
-        if (str_contains($group, 'MOBILE LEGEND') || str_contains($name, 'MOBILE LEGEND')) return $base . 'mobile%20legends.png';
-        if (str_contains($group, 'K-VISION') || str_contains($group, 'GOL') || str_contains($name, 'K-VISION')) return $base . 'k-vision%20dan%20gol.png';
-        if (str_contains($group, 'PGN') || str_contains($name, 'GAS')) return $base . 'pertamina%20gas.png';
-
-        // Fallback jika tidak ada yang cocok (Anda bisa siapkan default.png di folder logo-ppob)
-        return $base . 'default.png'; 
+        return $base . 'default.png';
     }
 
     public function ppobProductGroup(Request $request)
@@ -212,10 +212,19 @@ class PpobDarmawisataController extends BaseController
                 return response()->json(['status' => 'FAILED', 'message' => $json['respMessage'] ?? 'Transaksi Gagal']);
             }
 
-        } catch (\Exception $e) {
+       } catch (\Exception $e) {
             Log::error("FATAL ERROR [PPOB Payment]: " . $e->getMessage());
             if ($orderId) {
-                DB::table('dw_ppob_transactions')->where('id', $orderId)->update(['status' => 'FAILED_SYSTEM_ERROR', 'updated_at' => now()]);
+                // REFUND SALDO KARENA SYSTEM ERROR
+                DB::table('Pengguna')->where('id_pengguna', $userId)->increment('saldo', $totalPrice);
+                
+                DB::table('dw_ppob_transactions')
+                    ->where('id', $orderId)
+                    ->update([
+                        'status' => 'FAILED_SYSTEM_ERROR', 
+                        'resp_message' => 'System Error: Saldo telah dikembalikan.',
+                        'updated_at' => now()
+                    ]);
             }
             return response()->json(['status' => 'FAILED', 'message' => 'System Error: ' . $e->getMessage()], 500);
         }

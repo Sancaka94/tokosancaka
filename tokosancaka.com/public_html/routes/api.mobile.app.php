@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\Mobile\BusTicketingController;
 use App\Http\Controllers\Api\Mobile\ShipTicketingController;
 use App\Http\Controllers\Api\Mobile\ShipDluTicketingController;
 use App\Http\Controllers\Api\Mobile\PpobDarmawisataController;
+use App\Http\Controllers\Api\Mobile\PpobDarmaTopupController;
 
 /*
 |--------------------------------------------------------------------------
@@ -620,6 +621,16 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/payment', [PpobDarmawisataController::class, 'ppobPayment']);
                 Route::get('/history', [PpobDarmawisataController::class, 'ppobHistory']);
                 Route::post('/transaction-detail', [PpobDarmawisataController::class, 'ppobTransactionDetail']);
+            });
+
+            Route::prefix('darmawisata/topup')->group(function () {
+                Route::post('/product-type', [PpobDarmaTopupController::class, 'productTypeList']);
+                Route::post('/provider', [PpobDarmaTopupController::class, 'providerList']);
+                Route::post('/product', [PpobDarmaTopupController::class, 'productList']);
+                Route::post('/order', [PpobDarmaTopupController::class, 'topupOrder']);
+                Route::get('/history', [PpobDarmaTopupController::class, 'topupHistory']);
+                Route::post('/transaction-list', [PpobDarmaTopupController::class, 'transactionList']);
+                Route::post('/transaction-detail', [PpobDarmaTopupController::class, 'transactionDetail']);
             });
 
         });
