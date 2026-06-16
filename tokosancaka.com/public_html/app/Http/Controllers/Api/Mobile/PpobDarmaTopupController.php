@@ -395,5 +395,39 @@ class PpobDarmaTopupController extends BaseController
             return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error.'], 500);
         }
     }
+
+    /**
+     * =========================================================
+     * HAPUS RIWAYAT YANG DICENTANG (Hanya Admin / ID 4)
+     * =========================================================
+     */
+    public function deleteSelected(Request $request)
+    {
+        Log::info("\n========== [TOPUP DELETE SELECTED] ==========");
+        try {
+            $user = $request->user();
+            $userId = $user->id_pengguna ?? $user->id;
+            $role = strtolower($user->role ?? '');
+
+            if ($role !== 'admin' && $userId != 4) {
+                Log::warning("Akses Delete Selected ditolak untuk User ID: " . $userId);
+                return response()->json(['status' => 'FAILED', 'message' => 'Tidak memiliki akses!'], 403);
+            }
+
+            $ids = $request->ids;
+            if (!is_array($ids) || empty($ids)) {
+                return response()->json(['status' => 'FAILED', 'message' => 'Tidak ada data yang dipilih.'], 400);
+            }
+
+            // Hapus data berdasarkan array ID yang dikirim dari aplikasi
+            DB::table('dw_ppob_dharma')->whereIn('id', $ids)->delete();
+            
+            Log::info(count($ids) . " Riwayat TopUp berhasil dihapus oleh User ID: {$userId}");
+            return response()->json(['status' => 'SUCCESS', 'message' => count($ids) . ' riwayat berhasil dihapus.']);
+        } catch (\Exception $e) {
+            Log::error("Error Delete Selected TopUp: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error.'], 500);
+        }
+    }
     
 }
