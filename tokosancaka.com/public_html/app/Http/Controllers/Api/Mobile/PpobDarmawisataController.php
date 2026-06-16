@@ -454,4 +454,38 @@ class PpobDarmawisataController extends BaseController
             return response()->json(['status' => 'FAILED', 'message' => 'System Error: ' . $e->getMessage()], 500);
         }
     }
+
+    /**
+     * =========================================================
+     * HAPUS RIWAYAT TRANSAKSI SECARA MASSAL (KHUSUS ADMIN)
+     * =========================================================
+     */
+    public function bulkDestroyHistory(Request $request)
+    {
+        $user = $request->user();
+        
+        // Proteksi: Hanya user ID 4 (atau role admin) yang boleh eksekusi
+        $userId = $user->id_pengguna ?? $user->id;
+        if ($userId != 4) {
+            return response()->json(['status' => 'FAILED', 'message' => 'Anda tidak memiliki akses.'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'ids'   => 'required|array',
+            'ids.*' => 'integer'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        }
+
+        try {
+            DB::table('dw_ppob_transactions')->whereIn('id', $request->ids)->delete();
+            return response()->json(['status' => 'SUCCESS', 'message' => 'Riwayat berhasil dihapus']);
+        } catch (\Exception $e) {
+            Log::error("Bulk Delete PPOB Error: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Gagal menghapus data di database.'], 500);
+        }
+    }
+    
 }
