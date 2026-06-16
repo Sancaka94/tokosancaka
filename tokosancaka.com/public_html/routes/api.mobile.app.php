@@ -633,6 +633,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/transaction-detail', [PpobDarmaTopupController::class, 'transactionDetail']);
                 Route::delete('/history/{id}', [PpobDarmaTopupController::class, 'destroy']);
                 Route::post('/history/bulk', [PpobDarmaTopupController::class, 'bulkDestroy']);
+                Route::post('/history/delete-selected', [PpobDarmaTopupController::class, 'deleteSelected']);
             });
 
         });
