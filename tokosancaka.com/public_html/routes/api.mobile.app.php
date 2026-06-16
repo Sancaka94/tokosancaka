@@ -627,11 +627,31 @@ Route::middleware(['auth:sanctum'])->group(function () {
             });
 
             Route::prefix('darmawisata/cargo')->group(function () {
-            
+
+            // Master Data & References
+                Route::post('/supplier', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'supplierList']);
+                Route::post('/pickup-location', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'pickupLocation']);
+                Route::post('/destination-area', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'destinationArea']);
+                Route::post('/additional-cost', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'additionalCost']);
+                Route::post('/reference', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'reference']);
+                Route::post('/content', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'content']);
+                Route::post('/handling', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'handling']);
+                Route::post('/goods', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'goods']);
+                Route::post('/handling-surcharge', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'handlingSurcharge']);
+                
+                // Transaksi & Tarif
+                Route::post('/tariff', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'tariff']);
+                Route::post('/price-detail', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'priceDetail']);
+                Route::post('/booking', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'booking']);
+                Route::post('/booking-list', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'bookingList']);
+                Route::post('/booking-detail', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'bookingDetail']);
+                
+                // Tracking & History
                 Route::post('/tracking', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'tracking']);
                 Route::get('/history', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'history']);
                 Route::post('/history/bulk-delete', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'bulkDestroyHistory']);
-            });
+            
+             });
 
             Route::prefix('darmawisata/topup')->group(function () {
                 Route::post('/product-type', [PpobDarmaTopupController::class, 'productTypeList']);
