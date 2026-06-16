@@ -622,6 +622,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::get('/history', [PpobDarmawisataController::class, 'ppobHistory']);
                 Route::post('/transaction-detail', [PpobDarmawisataController::class, 'ppobTransactionDetail']);
                 Route::post('/sync-status', [PpobDarmawisataController::class, 'syncPendingTransaction']);
+                Route::post('/history/bulk-delete', [PpobDarmawisataController::class, 'bulkDestroyHistory']);
             });
 
             Route::prefix('darmawisata/topup')->group(function () {
