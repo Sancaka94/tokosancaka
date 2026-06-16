@@ -429,5 +429,50 @@ class PpobDarmaTopupController extends BaseController
             return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error.'], 500);
         }
     }
-    
+
+    /**
+     * =========================================================
+     * MENERIMA WEBHOOK DARI DOKU (TOPUP PRABAYAR DARMAWISATA)
+     * =========================================================
+     */
+    public function handleDokuCallback($data)
+    {
+        try {
+            $invoiceNumber = $data['order']['invoice_number']; // Contoh: TOPUPD-123
+            $transactionId = (int) str_replace('TOPUPD-', '', $invoiceNumber); // Ambil ID aslinya
+
+            // 1. Cari data pesanan di tabel Prabayar (dw_ppob_dharma)
+            $order = DB::table('dw_ppob_dharma')->where('id', $transactionId)->first();
+
+            if (!$order) {
+                Log::warning("DOKU Webhook TopUp Darma: Transaksi $transactionId tidak ditemukan.");
+                return response()->json(['status' => 'error', 'message' => 'Transaction not found']);
+            }
+
+            // 2. Cegah double-update jika sudah lunas
+            if ($order->status !== 'PENDING_PAYMENT') {
+                Log::info("DOKU Webhook TopUp Darma: Transaksi $transactionId sudah diproses sebelumnya.");
+                return response()->json(['status' => 'success', 'message' => 'Already processed']);
+            }
+
+            // 3. Update status menjadi PAID
+            DB::table('dw_ppob_dharma')->where('id', $transactionId)->update([
+                'status' => 'PAID_PROCESSING', // Sancaka sudah terima uang
+                'resp_message' => 'Pembayaran DOKU Sukses. Menunggu proses provider.',
+                'updated_at' => now()
+            ]);
+
+            Log::info("DOKU Webhook TopUp Darma: Status pesanan $transactionId berhasil diupdate ke PAID_PROCESSING.");
+
+            // Catatan: Kamu perlu mengeksekusi payload Order Darmawisata setelah status ini terupdate 
+            // agar pulsa/token langsung masuk ke pembeli setelah mereka bayar di DOKU.
+
+            return response()->json(['status' => 'success', 'message' => 'Webhook TopUp Darmawisata berhasil']);
+            
+        } catch (\Exception $e) {
+            Log::error("Webhook TopUp Darmawisata Error: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Sistem Error'], 500);
+        }
+    }
+
 }

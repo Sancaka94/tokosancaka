@@ -342,4 +342,55 @@ class TrackingController extends Controller
             'jasa_ekspedisi_aktual' => $pesanan->jasa_ekspedisi_aktual ?? 'Sancaka Express',
         ];
     }
+
+    /**
+     * =========================================================
+     * MENERIMA WEBHOOK DARI DOKU (TIKET PESAWAT)
+     * =========================================================
+     */
+    public function handleDokuCallback($data)
+    {
+        try {
+            $invoiceNumber = $data['order']['invoice_number']; // Contoh: FLT-12-XJ9P2
+            
+            // Ekstrak ID Order lokal (Angka di tengah)
+            // Format: FLT-{orderId}-{pnr}
+            $parts = explode('-', $invoiceNumber);
+            if (count($parts) < 2) {
+                return response()->json(['status' => 'error', 'message' => 'Format invoice tidak valid']);
+            }
+            $transactionId = (int) $parts[1];
+
+            // 1. Cari data pesanan di tabel Pesawat
+            $order = DB::table('flight_orders')->where('id', $transactionId)->first();
+
+            if (!$order) {
+                Log::warning("DOKU Webhook Pesawat: Transaksi $transactionId tidak ditemukan.");
+                return response()->json(['status' => 'error', 'message' => 'Transaction not found']);
+            }
+
+            // 2. Cegah double-update jika tiket sudah ISSUED atau dibayar
+            if ($order->status !== 'HOLD') {
+                Log::info("DOKU Webhook Pesawat: Transaksi $transactionId sudah diproses (Status: {$order->status}).");
+                return response()->json(['status' => 'success', 'message' => 'Already processed']);
+            }
+
+            // 3. Update status menjadi PAID_PROCESSING (Lunas, siap di-Issued)
+            DB::table('flight_orders')->where('id', $transactionId)->update([
+                'status' => 'PAID_PROCESSING', 
+                'updated_at' => now()
+            ]);
+
+            Log::info("DOKU Webhook Pesawat: Uang pesanan $transactionId sudah masuk Sancaka. Silakan jalankan Auto-Issued.");
+            
+            // Catatan: Setelah status menjadi PAID_PROCESSING, kamu perlu membuat script/cronjob
+            // untuk menembak endpoint Airline/Issued ke Darmawisata agar tiketnya benar-benar tercetak.
+
+            return response()->json(['status' => 'success', 'message' => 'Webhook Pesawat berhasil']);
+            
+        } catch (\Exception $e) {
+            Log::error("Webhook Pesawat Error: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Sistem Error'], 500);
+        }
+    }
 }

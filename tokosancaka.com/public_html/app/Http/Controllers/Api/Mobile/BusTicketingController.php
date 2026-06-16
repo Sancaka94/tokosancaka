@@ -813,4 +813,53 @@ public function busBooking(Request $request)
         }
     }
 
+    /**
+     * =========================================================
+     * MENERIMA WEBHOOK DARI DOKU (TIKET BUS)
+     * =========================================================
+     */
+    public function handleDokuCallback($data)
+    {
+        try {
+            $invoiceNumber = $data['order']['invoice_number']; // Contoh: BUS-21-PWT99
+            
+            // Ekstrak ID Order lokal (Angka di tengah)
+            $parts = explode('-', $invoiceNumber);
+            if (count($parts) < 2) {
+                return response()->json(['status' => 'error', 'message' => 'Format invoice tidak valid']);
+            }
+            $transactionId = (int) $parts[1];
+
+            // 1. Cari data pesanan di tabel Bus
+            $order = DB::table('bus_orders')->where('id', $transactionId)->first();
+
+            if (!$order) {
+                Log::warning("DOKU Webhook Bus: Transaksi $transactionId tidak ditemukan.");
+                return response()->json(['status' => 'error', 'message' => 'Transaction not found']);
+            }
+
+            // 2. Cegah double-update jika tiket sudah ISSUED atau dibayar
+            if ($order->status !== 'HOLD') {
+                Log::info("DOKU Webhook Bus: Transaksi $transactionId sudah diproses (Status: {$order->status}).");
+                return response()->json(['status' => 'success', 'message' => 'Already processed']);
+            }
+
+            // 3. Update status menjadi PAID_PROCESSING (Lunas, siap di-Issued)
+            DB::table('bus_orders')->where('id', $transactionId)->update([
+                'status' => 'PAID_PROCESSING', 
+                'updated_at' => now()
+            ]);
+
+            Log::info("DOKU Webhook Bus: Uang pesanan $transactionId sudah masuk Sancaka. Menunggu Issued.");
+            
+            // TODO: Jika ingin Auto-Issued, panggil fungsi API Bus/Issued di sini.
+
+            return response()->json(['status' => 'success', 'message' => 'Webhook Bus berhasil']);
+            
+        } catch (\Exception $e) {
+            Log::error("Webhook Bus Error: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Sistem Error'], 500);
+        }
+    }
+
 }

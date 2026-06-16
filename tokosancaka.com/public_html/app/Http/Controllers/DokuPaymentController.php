@@ -26,6 +26,15 @@ use App\Http\Controllers\Admin\PesananController as AdminPesananController; // U
 use App\Http\Controllers\TestOrderController;
 
 
+// #################### API DARMAWISATA #####################################
+use App\Http\Controllers\Api\Mobile\PpobDarmawisataController;
+use App\Http\Controllers\Api\Mobile\PpobDarmaTopupController;
+use App\Http\Controllers\Api\Mobile\TicketingController; // Untuk Pesawat & Hotel
+use App\Http\Controllers\Api\Mobile\TrainTicketingController; // Untuk Kereta
+use App\Http\Controllers\Api\Mobile\BusTicketingController; // Untuk Bus
+use App\Http\Controllers\Api\Mobile\ShipTicketingController; // Untuk Kapal
+use App\Http\Controllers\Api\Mobile\ShipDluTicketingController;
+
 /**
  * =========================================================================
  * DokuPaymentController (Pintu Gerbang Utama DOKU)
@@ -343,6 +352,41 @@ class DokuPaymentController extends Controller
                 // Handle pembayaran Form Publik
                 Log::info("DOKU Dispatcher: Mengirim $orderId ke AdminPesananController...");
                 return (new AdminPesananController())->handleDokuCallback($data); 
+
+            } else if (Str::startsWith($orderId, 'PPOBD-')) {
+                // Handle pembayaran Tagihan Pascabayar Darmawisata
+                Log::info("DOKU Dispatcher: Mengirim $orderId ke PpobDarmawisataController...");
+                return (new PpobDarmawisataController())->handleDokuCallback($data); 
+
+            } else if (Str::startsWith($orderId, 'TOPUPD-')) {
+                // Handle pembayaran TopUp Prabayar Darmawisata
+                Log::info("DOKU Dispatcher: Mengirim $orderId ke PpobDarmaTopupController...");
+                return (new PpobDarmaTopupController())->handleDokuCallback($data); 
+
+            } else if (Str::startsWith($orderId, 'FLT-')) {
+                // Handle pembayaran TIKET PESAWAT
+                Log::info("DOKU Dispatcher: Mengirim $orderId ke TicketingController...");
+                return (new TicketingController())->handleDokuCallback($data); 
+
+            } else if (Str::startsWith($orderId, 'KAI-')) {
+                // Handle pembayaran TIKET KERETA API (Asumsi prefix KAI-)
+                Log::info("DOKU Dispatcher: Mengirim $orderId ke TrainTicketingController...");
+                return (new TrainTicketingController())->handleDokuCallback($data); 
+
+            } else if (Str::startsWith($orderId, 'BUS-')) {
+                // Handle pembayaran TIKET BUS (Asumsi prefix BUS-)
+                Log::info("DOKU Dispatcher: Mengirim $orderId ke BusTicketingController...");
+                return (new BusTicketingController())->handleDokuCallback($data); 
+
+            } else if (Str::startsWith($orderId, 'SHP-')) {
+                // Handle pembayaran TIKET KAPAL (Asumsi prefix SHP-)
+                Log::info("DOKU Dispatcher: Mengirim $orderId ke ShipTicketingController...");
+                return (new ShipTicketingController())->handleDokuCallback($data);
+            
+            } else if (Str::startsWith($orderId, 'SHPDLU-')) {
+                // Handle pembayaran TIKET KAPAL DLU
+                Log::info("DOKU Dispatcher: Mengirim $orderId ke ShipDluTicketingController...");
+                return (new ShipDluTicketingController())->handleDokuCallback($data);
 
             } else {
                 // Tidak ada handler

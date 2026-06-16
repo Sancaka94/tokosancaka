@@ -267,7 +267,8 @@ class PpobDarmawisataController extends BaseController
                 )
                 ->orderBy('t.created_at', 'desc');
 
-            if ($userId != 4) {
+            $role = strtolower($user->role ?? '');
+            if ($role !== 'admin' && $userId != 4) {
                 $query->where('t.user_id', $userId);
             }
 
@@ -296,6 +297,51 @@ class PpobDarmawisataController extends BaseController
         } catch (\Exception $e) {
             Log::error("FATAL ERROR [PPOB History]: " . $e->getMessage());
             return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error.'], 500);
+        }
+    }
+
+    /**
+     * =========================================================
+     * MENERIMA WEBHOOK DARI DOKU (PASCABAYAR DARMAWISATA)
+     * =========================================================
+     */
+    public function handleDokuCallback($data)
+    {
+        try {
+            $invoiceNumber = $data['order']['invoice_number']; // Contoh: PPOBD-123
+            $transactionId = (int) str_replace('PPOBD-', '', $invoiceNumber); // Ambil ID aslinya
+
+            // 1. Cari data pesanan di tabel Pascabayar (dw_ppob_transactions)
+            $order = DB::table('dw_ppob_transactions')->where('id', $transactionId)->first();
+
+            if (!$order) {
+                Log::warning("DOKU Webhook PPOB Darma: Transaksi $transactionId tidak ditemukan.");
+                return response()->json(['status' => 'error', 'message' => 'Transaction not found']);
+            }
+
+            // 2. Cegah double-update jika sudah lunas
+            if ($order->status !== 'PENDING_PAYMENT') {
+                Log::info("DOKU Webhook PPOB Darma: Transaksi $transactionId sudah diproses sebelumnya.");
+                return response()->json(['status' => 'success', 'message' => 'Already processed']);
+            }
+
+            // 3. Update status menjadi SUCCESS / DIBAYAR
+            DB::table('dw_ppob_transactions')->where('id', $transactionId)->update([
+                'status' => 'PAID_PROCESSING', // Sancaka sudah terima uang, siap diteruskan ke Darmawisata
+                'resp_message' => 'Pembayaran DOKU Sukses. Menunggu proses provider.',
+                'updated_at' => now()
+            ]);
+
+            Log::info("DOKU Webhook PPOB Darma: Status pesanan $transactionId berhasil diupdate ke PAID_PROCESSING.");
+            
+            // Catatan: Di titik ini uang sudah masuk ke Sancaka. 
+            // Kamu bisa men-trigger cronjob atau hit langsung API Payment Darmawisata di sini.
+
+            return response()->json(['status' => 'success', 'message' => 'Webhook PPOB Darmawisata berhasil']);
+            
+        } catch (\Exception $e) {
+            Log::error("Webhook PPOB Darmawisata Error: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Sistem Error'], 500);
         }
     }
 }
