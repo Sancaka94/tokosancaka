@@ -524,6 +524,29 @@ class DanaWebhookController extends Controller
                     } else if (Str::startsWith($orderId, 'CVSANCAK-') || Str::startsWith($orderId, 'ORD-')) {
                         App::make(\App\Http\Controllers\CheckoutController::class)->handleDanaCallback($payloadData);
                     } 
+
+                    else if (Str::startsWith($orderId, 'PPOBD-')) {
+                        Log::info("➡️ Order $orderId didelegasikan ke PpobDarmawisataController.");
+                        App::make(\App\Http\Controllers\Api\Mobile\PpobDarmawisataController::class)->handleDokuCallback($payloadData);
+                    } else if (Str::startsWith($orderId, 'TOPUPD-')) {
+                        Log::info("➡️ Order $orderId didelegasikan ke PpobDarmaTopupController.");
+                        App::make(\App\Http\Controllers\Api\Mobile\PpobDarmaTopupController::class)->handleDokuCallback($payloadData);
+                    } else if (Str::startsWith($orderId, 'FLT-')) {
+                        Log::info("➡️ Order $orderId didelegasikan ke TicketingController.");
+                        App::make(\App\Http\Controllers\Api\Mobile\TicketingController::class)->handleDokuCallback($payloadData);
+                    } else if (Str::startsWith($orderId, 'KAI-')) {
+                        Log::info("➡️ Order $orderId didelegasikan ke TrainTicketingController.");
+                        App::make(\App\Http\Controllers\Api\Mobile\TrainTicketingController::class)->handleDokuCallback($payloadData);
+                    } else if (Str::startsWith($orderId, 'BUS-')) {
+                        Log::info("➡️ Order $orderId didelegasikan ke BusTicketingController.");
+                        App::make(\App\Http\Controllers\Api\Mobile\BusTicketingController::class)->handleDokuCallback($payloadData);
+                    } else if (Str::startsWith($orderId, 'SHPDLU-')) {
+                        Log::info("➡️ Order $orderId didelegasikan ke ShipDluTicketingController.");
+                        App::make(\App\Http\Controllers\Api\Mobile\ShipDluTicketingController::class)->handleDokuCallback($payloadData);
+                    } else if (Str::startsWith($orderId, 'SHP-')) {
+                        Log::info("➡️ Order $orderId didelegasikan ke ShipTicketingController.");
+                        App::make(\App\Http\Controllers\Api\Mobile\ShipTicketingController::class)->handleDokuCallback($payloadData);
+                    }
                     // =========================================================
                     // TAMBAHKAN BLOK INI: PENANGANAN SUCCESS DANATOPUP (TOP UP DANA)
                     // =========================================================
@@ -828,6 +851,15 @@ class DanaWebhookController extends Controller
         if (Str::startsWith($refNo, 'DANATOPUP') && !str_contains($refNo, '-')) {
             return 'DANATOPUP-' . substr($refNo, 9);
         }
+
+        if (Str::startsWith($refNo, 'PPOBD') && !str_contains($refNo, '-')) return 'PPOBD-' . substr($refNo, 5);
+        if (Str::startsWith($refNo, 'TOPUPD') && !str_contains($refNo, '-')) return 'TOPUPD-' . substr($refNo, 6);
+        if (Str::startsWith($refNo, 'FLT') && !str_contains($refNo, '-')) return 'FLT-' . substr($refNo, 3);
+        if (Str::startsWith($refNo, 'KAI') && !str_contains($refNo, '-')) return 'KAI-' . substr($refNo, 3);
+        if (Str::startsWith($refNo, 'BUS') && !str_contains($refNo, '-')) return 'BUS-' . substr($refNo, 3);
+        if (Str::startsWith($refNo, 'SHPDLU') && !str_contains($refNo, '-')) return 'SHPDLU-' . substr($refNo, 6);
+        else if (Str::startsWith($refNo, 'SHP') && !str_contains($refNo, '-')) return 'SHP-' . substr($refNo, 3);
+        
         if (preg_match('/^SCK(\d{8})([A-Z0-9]+)$/', $refNo, $matches)) {
             return 'SCK-' . $matches[1] . '-' . $matches[2];
         }
