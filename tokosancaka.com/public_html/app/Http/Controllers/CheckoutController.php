@@ -1135,6 +1135,52 @@ class CheckoutController extends Controller
                     }
                 }
 
+            // ====================================================================
+            // 6. SEMUA TRANSAKSI DARMAWISATA (PPOB, TOPUP, KAI, BUS, KAPAL)
+            // ====================================================================
+            } elseif (
+                Str::startsWith($merchantRef, 'PPOBD-') || 
+                Str::startsWith($merchantRef, 'TOPUPD-') || 
+                Str::startsWith($merchantRef, 'KAI-') || 
+                Str::startsWith($merchantRef, 'BUS-') || 
+                Str::startsWith($merchantRef, 'SHP-') || 
+                Str::startsWith($merchantRef, 'SHPDLU-')
+            ) {
+                // Hanya proses jika status dari Tripay adalah LUNAS (PAID)
+                if ($status === 'PAID') {
+                    // TRIK ADAPTER: Ubah format Tripay menyerupai format Webhook DOKU 
+                    // agar bisa menggunakan ulang fungsi handleDokuCallback yang sudah kita buat.
+                    $mockDokuData = [
+                        'order' => ['invoice_number' => $merchantRef],
+                        'transaction' => ['status' => 'SUCCESS'] // Tripay PAID = DOKU SUCCESS
+                    ];
+
+                    if (Str::startsWith($merchantRef, 'PPOBD-')) {
+                        Log::info('Routing Tripay Callback to PpobDarmawisataController', ['ref' => $merchantRef]);
+                        (new \App\Http\Controllers\Api\Mobile\PpobDarmawisataController())->handleDokuCallback($mockDokuData);
+                    
+                    } elseif (Str::startsWith($merchantRef, 'TOPUPD-')) {
+                        Log::info('Routing Tripay Callback to PpobDarmaTopupController', ['ref' => $merchantRef]);
+                        (new \App\Http\Controllers\Api\Mobile\PpobDarmaTopupController())->handleDokuCallback($mockDokuData);
+                    
+                    } elseif (Str::startsWith($merchantRef, 'KAI-')) {
+                        Log::info('Routing Tripay Callback to TrainTicketingController', ['ref' => $merchantRef]);
+                        (new \App\Http\Controllers\Api\Mobile\TrainTicketingController())->handleDokuCallback($mockDokuData);
+                    
+                    } elseif (Str::startsWith($merchantRef, 'BUS-')) {
+                        Log::info('Routing Tripay Callback to BusTicketingController', ['ref' => $merchantRef]);
+                        (new \App\Http\Controllers\Api\Mobile\BusTicketingController())->handleDokuCallback($mockDokuData);
+                    
+                    } elseif (Str::startsWith($merchantRef, 'SHP-')) {
+                        Log::info('Routing Tripay Callback to ShipTicketingController', ['ref' => $merchantRef]);
+                        (new \App\Http\Controllers\Api\Mobile\ShipTicketingController())->handleDokuCallback($mockDokuData);
+                    
+                    } elseif (Str::startsWith($merchantRef, 'SHPDLU-')) {
+                        Log::info('Routing Tripay Callback to ShipDluTicketingController', ['ref' => $merchantRef]);
+                        (new \App\Http\Controllers\Api\Mobile\ShipDluTicketingController())->handleDokuCallback($mockDokuData);
+                    }
+                }
+
             } elseif (Str::startsWith($merchantRef, 'ORD-')) {
                 Log::info('Routing callback to processOrderCallback (this controller)', ['ref' => $merchantRef]);
                 $this->processOrderCallback($merchantRef, $status, $data);
