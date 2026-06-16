@@ -15,42 +15,43 @@ class PpobDarmaTopupController extends BaseController
     }
 
     /**
-     * Get Topup Product Type List [cite: 83, 84]
+     * Get Topup Product Type List
      */
     public function productTypeList(Request $request)
     {
         Log::info("\n========== [TOPUP PRODUCT TYPE - START] ==========");
         
         $validator = Validator::make($request->all(), [
-            'accessToken' => 'required|string', // Access Token Session [cite: 102]
+            'accessToken' => 'required|string',
         ]);
 
         if ($validator->fails()) {
+            Log::warning("TopUp Product Type Validasi Gagal: ", $validator->errors()->toArray());
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
-        // userID Darmawisata biasanya di-inject dinamis di BaseController Anda, 
-        // namun kita teruskan accessToken sesi ini.
         $payload = [
             'accessToken' => $request->accessToken 
         ];
         
+        Log::info("Payload TopUp Product Type: ", $payload);
         return $this->forwardRequest('TopUp/ProductType', $payload); 
     }
 
     /**
-     * Get Topup Provider List [cite: 141, 142]
+     * Get Topup Provider List
      */
     public function providerList(Request $request)
     {
         Log::info("\n========== [TOPUP PROVIDER - START] ==========");
         
         $validator = Validator::make($request->all(), [
-            'productType' => 'required|string', [cite: 148]
+            'productType' => 'required|string',
             'accessToken' => 'required|string',
         ]);
 
         if ($validator->fails()) {
+            Log::warning("TopUp Provider Validasi Gagal: ", $validator->errors()->toArray());
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
@@ -59,22 +60,24 @@ class PpobDarmaTopupController extends BaseController
             'accessToken' => $request->accessToken   
         ];
 
+        Log::info("Payload TopUp Provider: ", $payload);
         return $this->forwardRequest('TopUp/Provider', $payload); 
     }
 
     /**
-     * Get Topup Product List [cite: 254, 255]
+     * Get Topup Product List
      */
     public function productList(Request $request)
     {
         Log::info("\n========== [TOPUP PRODUCT LIST - START] ==========");
         
         $validator = Validator::make($request->all(), [
-            'provider'    => 'required|string', [cite: 262]
+            'provider'    => 'required|string',
             'accessToken' => 'required|string',
         ]);
 
         if ($validator->fails()) {
+            Log::warning("TopUp Product List Validasi Gagal: ", $validator->errors()->toArray());
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
@@ -83,23 +86,24 @@ class PpobDarmaTopupController extends BaseController
             'accessToken' => $request->accessToken   
         ];
 
+        Log::info("Payload TopUp Product List: ", $payload);
         return $this->forwardRequest('TopUp/Product', $payload); 
     }
 
     /**
-     * Order Topup (Payment) [cite: 1, 2]
+     * Order Topup (Payment)
      */
     public function topupOrder(Request $request)
     {
         Log::info("\n========== [TOPUP ORDER - START] ==========");
 
         $validator = Validator::make($request->all(), [
-            'MSISDN'      => 'required|string', [cite: 9]
-            'productCode' => 'required|string', [cite: 12]
-            'sequence'    => 'required|integer', [cite: 14, 26]
-            'customerID'  => 'nullable|string', [cite: 15, 27]
-            'sellPrice'   => 'required|numeric', // Harga dari Frontend Sancaka
-            'accessToken' => 'required|string', [cite: 17, 29]
+            'MSISDN'      => 'required|string',
+            'productCode' => 'required|string',
+            'sequence'    => 'required|integer',
+            'customerID'  => 'nullable|string',
+            'sellPrice'   => 'required|numeric', 
+            'accessToken' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -111,8 +115,11 @@ class PpobDarmaTopupController extends BaseController
         $totalPrice = (float) $request->sellPrice;
         $userId = $user->id_pengguna ?? $user->id;
 
+        Log::info("User ID Requesting TopUp: " . $userId . " | Nominal: Rp " . $totalPrice);
+
         // Cek Saldo
         if (!$user || $user->saldo < $totalPrice) {
+            Log::warning("Saldo Sancaka tidak cukup untuk User ID: " . $userId);
             return response()->json([
                 'status' => 'FAILED', 
                 'message' => 'Saldo Sancaka tidak cukup. Butuh: Rp ' . number_format($totalPrice, 0, ',', '.')
@@ -139,7 +146,9 @@ class PpobDarmaTopupController extends BaseController
                 ]);
             });
 
-            // 2. TEMBAK API DARMAWISATA [cite: 1, 21-32]
+            Log::info("Draft Transaksi Sancaka Berhasil Dibuat. Order ID: " . $orderId);
+
+            // 2. TEMBAK API DARMAWISATA
             $payload = [
                 'MSISDN'      => $request->MSISDN,
                 'productCode' => $request->productCode,
@@ -148,19 +157,23 @@ class PpobDarmaTopupController extends BaseController
                 'accessToken' => $request->accessToken   
             ];
 
+            Log::info("Meneruskan Request Order ke Darmawisata: ", $payload);
             $response = $this->forwardRequest('TopUp/Order', $payload); 
             $json = json_decode($response->getContent(), true);
 
+            Log::info("Response Order Darmawisata: ", $json ?? []);
+
             // 3. HANDLE RESPONSE
-            if (isset($json['status']) && strtoupper($json['status']) === 'SUCCESS') { [cite: 49, 65]
+            if (isset($json['status']) && strtoupper($json['status']) === 'SUCCESS') {
                 DB::table('dw_ppob_dharma')->where('id', $orderId)->update([
                     'status'         => 'SUCCESS',
-                    'transaction_id' => $json['transactionID'] ?? null, [cite: 48, 56]
-                    'reference_id'   => $json['referenceID'] ?? null, [cite: 49, 58]
-                    'resp_message'   => $json['respMessage'] ?? 'TopUp Berhasil', [cite: 49, 66]
+                    'transaction_id' => $json['transactionID'] ?? null,
+                    'reference_id'   => $json['referenceID'] ?? null,
+                    'resp_message'   => $json['respMessage'] ?? 'TopUp Berhasil',
                     'updated_at'     => now(),
                 ]);
 
+                Log::info("TopUp SUKSES. Selesai memproses Order ID: " . $orderId);
                 return response()->json([
                     'status'  => 'SUCCESS',
                     'message' => 'TopUp Berhasil diproses!',
@@ -168,6 +181,7 @@ class PpobDarmaTopupController extends BaseController
                 ]);
             } else {
                 // REFUND SALDO JIKA DITOLAK DARMAWISATA
+                Log::warning("TopUp DITOLAK Darmawisata. Mengembalikan saldo User ID: " . $userId);
                 DB::table('Pengguna')->where('id_pengguna', $userId)->increment('saldo', $totalPrice);
                 
                 DB::table('dw_ppob_dharma')->where('id', $orderId)->update([
@@ -184,6 +198,7 @@ class PpobDarmaTopupController extends BaseController
             
             // CRITICAL: REFUND SALDO JIKA TERJADI SYSTEM ERROR/TIMEOUT
             if ($orderId) {
+                Log::info("Melakukan Auto-Refund karena System Error pada Order ID: " . $orderId);
                 DB::table('Pengguna')->where('id_pengguna', $userId)->increment('saldo', $totalPrice);
                 DB::table('dw_ppob_dharma')->where('id', $orderId)->update([
                     'status' => 'FAILED_SYSTEM_ERROR', 
@@ -203,6 +218,7 @@ class PpobDarmaTopupController extends BaseController
     public function topupHistory(Request $request)
     {
         Log::info("\n========== [TOPUP HISTORY (LOCAL) - START] ==========");
+        
         try {
             $user = $request->user();
             $userId = $user->id_pengguna ?? $user->id;
@@ -239,10 +255,11 @@ class PpobDarmaTopupController extends BaseController
                 ];
             });
 
+            Log::info("Berhasil memuat " . count($formattedData) . " data riwayat lokal.");
             return response()->json(['status' => 'SUCCESS', 'data' => $formattedData], 200);
 
         } catch (\Exception $e) {
-            Log::error("FATAL ERROR [TOPUP History]: " . $e->getMessage());
+            Log::error("FATAL ERROR [TOPUP History Local]: " . $e->getMessage());
             return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error.'], 500);
         }
     }
@@ -257,22 +274,24 @@ class PpobDarmaTopupController extends BaseController
         Log::info("\n========== [TOPUP TRANSACTION LIST (API) - START] ==========");
         
         $validator = Validator::make($request->all(), [
-            'startDate'   => 'required|date', // Format: YYYY-MM-DD
-            'endDate'     => 'required|date', // Format: YYYY-MM-DD
+            'startDate'   => 'required|date', 
+            'endDate'     => 'required|date', 
             'accessToken' => 'required|string',
         ]);
 
         if ($validator->fails()) {
+            Log::warning("TopUp Transaction List API Validasi Gagal: ", $validator->errors()->toArray());
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
-        // Format tanggal sesuai standar ISO 8601 yang diminta Darmawisata (Contoh: "2019-08-24T14:15:22Z")
+        // Format tanggal sesuai standar ISO 8601 yang diminta Darmawisata
         $payload = [
             'startDate'   => date('Y-m-d\TH:i:sP', strtotime($request->startDate)),
             'endDate'     => date('Y-m-d\TH:i:sP', strtotime($request->endDate)),
             'accessToken' => $request->accessToken
         ];
 
+        Log::info("Payload Transaction List API: ", $payload);
         return $this->forwardRequest('TopUp/TransactionList', $payload);
     }
 
@@ -286,12 +305,13 @@ class PpobDarmaTopupController extends BaseController
         Log::info("\n========== [TOPUP TRANSACTION DETAIL (API) - START] ==========");
         
         $validator = Validator::make($request->all(), [
-            'referenceID'      => 'required|string', // Billing reference ID
+            'referenceID'      => 'required|string', 
             'agentReferenceID' => 'nullable|string',
             'accessToken'      => 'required|string',
         ]);
 
         if ($validator->fails()) {
+            Log::warning("TopUp Transaction Detail API Validasi Gagal: ", $validator->errors()->toArray());
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
@@ -301,6 +321,7 @@ class PpobDarmaTopupController extends BaseController
             'accessToken'      => $request->accessToken
         ];
 
+        Log::info("Payload Transaction Detail API: ", $payload);
         return $this->forwardRequest('TopUp/TransactionDetail', $payload);
     }
 }
