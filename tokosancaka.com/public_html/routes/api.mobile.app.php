@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\Mobile\ShipTicketingController;
 use App\Http\Controllers\Api\Mobile\ShipDluTicketingController;
 use App\Http\Controllers\Api\Mobile\PpobDarmawisataController;
 use App\Http\Controllers\Api\Mobile\PpobDarmaTopupController;
+use App\Http\Controllers\Api\Mobile\CargoDarmaController;
 
 /*
 |--------------------------------------------------------------------------
@@ -623,6 +624,13 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/transaction-detail', [PpobDarmawisataController::class, 'ppobTransactionDetail']);
                 Route::post('/sync-status', [PpobDarmawisataController::class, 'syncPendingTransaction']);
                 Route::post('/history/bulk-delete', [PpobDarmawisataController::class, 'bulkDestroyHistory']);
+            });
+
+            Route::prefix('darmawisata/cargo')->group(function () {
+            
+                Route::post('/tracking', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'tracking']);
+                Route::get('/history', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'history']);
+                Route::post('/history/bulk-delete', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'bulkDestroyHistory']);
             });
 
             Route::prefix('darmawisata/topup')->group(function () {
