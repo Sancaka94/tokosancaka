@@ -337,4 +337,63 @@ class PpobDarmaTopupController extends BaseController
         Log::info("Payload Transaction Detail API: ", $payload);
         return $this->forwardRequest('TopUp/TransactionDetail', $payload);
     }
+
+    /**
+     * =========================================================
+     * HAPUS SATU RIWAYAT (Hanya Admin / ID 4)
+     * =========================================================
+     */
+    public function destroy($id, Request $request)
+    {
+        Log::info("\n========== [TOPUP DELETE SINGLE] ==========");
+        try {
+            $user = $request->user();
+            $userId = $user->id_pengguna ?? $user->id;
+            $role = strtolower($user->role ?? '');
+
+            // Validasi Otorisasi (Hanya Admin atau ID 4)
+            if ($role !== 'admin' && $userId != 4) {
+                Log::warning("Akses ditolak untuk User ID: " . $userId);
+                return response()->json(['status' => 'FAILED', 'message' => 'Tidak memiliki akses!'], 403);
+            }
+
+            DB::table('dw_ppob_dharma')->where('id', $id)->delete();
+            
+            Log::info("Riwayat TopUp ID {$id} berhasil dihapus oleh User ID: {$userId}");
+            return response()->json(['status' => 'SUCCESS', 'message' => 'Data riwayat berhasil dihapus.']);
+        } catch (\Exception $e) {
+            Log::error("Error Hapus Riwayat TopUp: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error.'], 500);
+        }
+    }
+
+    /**
+     * =========================================================
+     * HAPUS SEMUA RIWAYAT BULK (Hanya Admin / ID 4)
+     * =========================================================
+     */
+    public function bulkDestroy(Request $request)
+    {
+        Log::info("\n========== [TOPUP DELETE BULK / ALL] ==========");
+        try {
+            $user = $request->user();
+            $userId = $user->id_pengguna ?? $user->id;
+            $role = strtolower($user->role ?? '');
+
+            if ($role !== 'admin' && $userId != 4) {
+                Log::warning("Akses Bulk Delete ditolak untuk User ID: " . $userId);
+                return response()->json(['status' => 'FAILED', 'message' => 'Tidak memiliki akses!'], 403);
+            }
+
+            // Menghapus semua isi tabel riwayat
+            DB::table('dw_ppob_dharma')->delete();
+            
+            Log::info("Semua Riwayat TopUp berhasil dibersihkan (Truncate) oleh User ID: {$userId}");
+            return response()->json(['status' => 'SUCCESS', 'message' => 'Seluruh riwayat berhasil dibersihkan.']);
+        } catch (\Exception $e) {
+            Log::error("Error Bulk Delete TopUp: " . $e->getMessage());
+            return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error.'], 500);
+        }
+    }
+    
 }
