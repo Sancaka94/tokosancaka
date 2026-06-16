@@ -163,25 +163,38 @@ class PpobDarmaTopupController extends BaseController
 
             Log::info("Response Order Darmawisata: ", $json ?? []);
 
-            // 3. HANDLE RESPONSE
-            if (isset($json['status']) && strtoupper($json['status']) === 'SUCCESS') {
+           // 3. HANDLE RESPONSE
+            $apiStatus = strtoupper($json['status'] ?? '');
+            $trxStatus = strtoupper($json['transactionStatus'] ?? '');
+            $respMsg   = strtoupper($json['respMessage'] ?? '');
+
+            // CEK ANOMALI: Jangan refund jika aslinya SUCCESS atau PENDING
+            if ($apiStatus === 'SUCCESS' || $trxStatus === 'SUCCESS' || $trxStatus === 'PENDING' || str_contains($respMsg, 'PENDING')) {
+                
+                // Tentukan status akhir di database lokal Sancaka
+                $finalStatus = ($trxStatus === 'SUCCESS' || ($apiStatus === 'SUCCESS' && $trxStatus !== 'PENDING')) ? 'SUCCESS' : 'PENDING';
+
                 DB::table('dw_ppob_dharma')->where('id', $orderId)->update([
-                    'status'         => 'SUCCESS',
+                    'status'         => $finalStatus,
                     'transaction_id' => $json['transactionID'] ?? null,
                     'reference_id'   => $json['referenceID'] ?? null,
-                    'resp_message'   => $json['respMessage'] ?? 'TopUp Berhasil',
+                    // Prioritaskan additionalMessage karena Darmawisata sering menaruh Token PLN / SN di sini
+                    'resp_message'   => $json['addtionalMessage'] ?? $json['respMessage'] ?? 'Transaksi ' . $finalStatus,
                     'updated_at'     => now(),
                 ]);
 
-                Log::info("TopUp SUKSES. Selesai memproses Order ID: " . $orderId);
+                Log::info("TopUp " . $finalStatus . " (No Refund). Selesai memproses Order ID: " . $orderId);
+                
                 return response()->json([
-                    'status'  => 'SUCCESS',
-                    'message' => 'TopUp Berhasil diproses!',
+                    'status'  => 'SUCCESS', // Kirim SUCCESS ke frontend agar terbaca di riwayat
+                    'message' => $finalStatus === 'SUCCESS' ? 'TopUp Berhasil!' : 'Transaksi sedang diproses provider (Pending)',
                     'data'    => $json
                 ]);
+
             } else {
-                // REFUND SALDO JIKA DITOLAK DARMAWISATA
-                Log::warning("TopUp DITOLAK Darmawisata. Mengembalikan saldo User ID: " . $userId);
+                // REFUND SALDO: HANYA JIKA BENAR-BENAR FAILED DARI SEGALA SISI
+                Log::warning("TopUp BENAR-BENAR DITOLAK. Mengembalikan saldo User ID: " . $userId);
+                
                 DB::table('Pengguna')->where('id_pengguna', $userId)->increment('saldo', $totalPrice);
                 
                 DB::table('dw_ppob_dharma')->where('id', $orderId)->update([
