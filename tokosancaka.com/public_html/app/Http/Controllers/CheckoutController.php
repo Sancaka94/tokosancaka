@@ -2454,7 +2454,8 @@ TEXT;
                     'provinsi'    => '', // Akan diisi di JS
                     'kota'        => '',
                     'kecamatan'   => '',
-                    'kelurahan'   => ''
+                    'kelurahan'   => '',
+                    'kode_pos'    => ''
                 ];
             }, $data);
 

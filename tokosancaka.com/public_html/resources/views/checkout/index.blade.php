@@ -1004,11 +1004,10 @@ $(document).ready(function() {
         minimumInputLength: 3, // Mulai cari setelah 3 huruf
     });
 
-   $('#select2_alamat_digital').on('select2:select', function (e) {
+    $('#select2_alamat_digital').on('select2:select', function (e) {
         const data = e.params.data; 
-        console.log("LOG: Data mentah dari API:", data.raw_address);
         
-        // Memecah string: Kebraon, Karangpilang, Surabaya, Jawa Timur, 60222
+        // String dari API: "Ketanggi, Ngawi, Ngawi, Jawa Timur, 63211"
         let parts = data.raw_address.split(', ');
         
         // Asumsi urutan: [Kelurahan, Kecamatan, Kota, Provinsi, KodePos]
@@ -1016,16 +1015,15 @@ $(document).ready(function() {
         let kecamatan = parts[1] || '';
         let kota      = parts[2] || '';
         let provinsi  = parts[3] || '';
-        let kode_pos  = parts[4] || ''; // 👈 TAMBAHKAN INI
+        let kode_pos  = parts[4] || ''; 
 
-        // Masukkan ke form
+        // Masukkan ke form HTML
         $('#provinsi_penerima').val(provinsi);
         $('#kota_penerima').val(kota);
         $('#kecamatan_penerima').val(kecamatan);
         $('#kelurahan_penerima').val(kelurahan);
-        $('#kode_pos_penerima').val(kode_pos); // 👈 TAMBAHKAN INI
+        $('#kode_pos_penerima').val(kode_pos); 
 
-        console.log("LOG: Data berhasil diisi:", {kelurahan, kecamatan, kota, provinsi, kode_pos});
         document.getElementById('alamat_lengkap_penerima').focus();
     });
 });
