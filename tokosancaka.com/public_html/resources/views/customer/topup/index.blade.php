@@ -37,7 +37,7 @@
                             <td class="px-6 py-4 text-sm text-gray-600">
                                 {{ str_replace('_', ' ', $transaction->payment_method ?? '-') }}
                             </td>
-                            <td class="px-6 py-4">s
+                            <td class="px-6 py-4">
                                 <span class="px-3 py-1 text-sm font-semibold leading-tight rounded-full
                                     @if($transaction->status == 'success') bg-green-100 text-green-700 @endif
                                     @if($transaction->status == 'pending') bg-yellow-100 text-yellow-700 @endif
