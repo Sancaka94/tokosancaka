@@ -486,13 +486,13 @@
                 --}}
             
 
-                {{-- OPSI DANA (DIRECT DEBIT) --}}
                 {{-- ================================================================= --}}
                 {{-- OPSI DANA (GAPURA & BINDING) BERDASARKAN DATABASE PENGGUNA --}}
                 {{-- ================================================================= --}}
                 @php
-                    $userDanaToken = Auth::user()->dana_access_token;
-                    $userDanaBalance = Auth::user()->dana_user_balance ?? 0;
+                    $user = Auth::user();
+                    $userDanaToken = $user ? $user->dana_access_token : null;
+                    $userDanaBalance = $user ? ($user->dana_user_balance ?? 0) : 0;
                     $hasDanaBinding = !empty($userDanaToken);
                 @endphp
 
