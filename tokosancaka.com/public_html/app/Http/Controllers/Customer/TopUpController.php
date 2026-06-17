@@ -3794,15 +3794,20 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         }
     }
 
-    /**
+   /**
      * API Cancel Order DANA
      * Untuk pesanan yang statusnya masih Pending (01)
      */
     public function cancelDanaPayment($orderId)
     {
+        Log::info('LOG LOG: [DANA CANCEL] Memulai proses Cancel untuk Order ID: ' . $orderId);
+        
         try {
             $transaction = \App\Models\Transaction::where('reference_id', $orderId)->first();
-            if (!$transaction) return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan.'], 404);
+            if (!$transaction) {
+                Log::error('LOG LOG: [DANA CANCEL] Transaksi tidak ditemukan di DB lokal.');
+                return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan.'], 404);
+            }
 
             $this->applyDynamicConfig();
             $merchantId = config('services.dana.merchant_id');
@@ -3814,7 +3819,9 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 "merchantId"                 => $merchantId
             ];
             
-            $jsonBody    = json_encode($body, JSON_UNESCAPED_SLASHES);
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+            Log::info('LOG LOG: [DANA CANCEL] Request Body: ' . $jsonBody);
+
             $accessToken = $this->danaSignature->getAccessToken();
             $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
@@ -3827,22 +3834,29 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
                 'CHANNEL-ID'    => '95221'
             ];
+            
+            Log::info('LOG LOG: [DANA CANCEL] Headers Disiapkan: ', $headers);
 
             $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
+            Log::info('LOG LOG: [DANA CANCEL] Response dari DANA: ', $result ?? ['raw_body' => $response->body()]);
             
             // 2005700 = Successful Cancel
             if (($result['responseCode'] ?? '') === '2005700') {
                 $transaction->update(['status' => 'failed']); // Ubah status lokal jadi failed/batal
+                Log::info('LOG LOG: [DANA CANCEL] Berhasil dibatalkan di DANA dan Database.');
                 return response()->json(['success' => true, 'message' => 'Pesanan berhasil dibatalkan.']);
             }
 
+            Log::error('LOG LOG: [DANA CANCEL] Gagal dibatalkan. Pesan: ' . ($result['responseMessage'] ?? 'Unknown Error'));
             return response()->json(['success' => false, 'message' => $result['responseMessage'] ?? 'Gagal membatalkan pesanan.']);
+            
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
+            Log::error('LOG LOG: [DANA CANCEL] Exception Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error: Terjadi kesalahan koneksi.'], 500);
         }
     }
 
@@ -3852,29 +3866,39 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
      */
     public function refundDanaPayment($orderId)
     {
+        Log::info('LOG LOG: [DANA REFUND] Memulai proses Refund untuk Order ID: ' . $orderId);
+        
         try {
             $transaction = \App\Models\Transaction::where('reference_id', $orderId)->first();
-            if (!$transaction) return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan.'], 404);
+            if (!$transaction) {
+                Log::error('LOG LOG: [DANA REFUND] Transaksi tidak ditemukan di DB lokal.');
+                return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan.'], 404);
+            }
 
             $this->applyDynamicConfig();
             $merchantId = config('services.dana.merchant_id');
             $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $path       = '/payment-gateway/v1.0/debit/refund.htm';
             
-            // DANA mewajibkan nomor refund unik per permintaan
-            $partnerRefundNo = 'REF-' . time() . '-' . rand(1000, 9999); 
+            // Menghilangkan karakter strip (-) untuk mencegah Invalid Field Format
+            $partnerRefundNo = 'REF' . time() . rand(1000, 9999); 
+            
+            // Memastikan format nominal strict sesuai standar ISO-4217 (10000.00)
+            $refundAmountValue = number_format((float)$transaction->amount, 2, '.', '');
 
             $body = [
                 "merchantId"                 => $merchantId,
                 "originalPartnerReferenceNo" => $orderId,
                 "partnerRefundNo"            => $partnerRefundNo,
                 "refundAmount" => [
-                    "value"    => number_format((float)$transaction->amount, 2, '.', ''),
+                    "value"    => $refundAmountValue,
                     "currency" => "IDR"
                 ]
             ];
             
-            $jsonBody    = json_encode($body, JSON_UNESCAPED_SLASHES);
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+            Log::info('LOG LOG: [DANA REFUND] Request Body: ' . $jsonBody);
+
             $accessToken = $this->danaSignature->getAccessToken();
             $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
@@ -3887,27 +3911,34 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
                 'CHANNEL-ID'    => '95221'
             ];
+            
+            Log::info('LOG LOG: [DANA REFUND] Headers Disiapkan: ', $headers);
 
             $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
+            Log::info('LOG LOG: [DANA REFUND] Response dari DANA: ', $result ?? ['raw_body' => $response->body()]);
             
             // 2005800 = Successful Refund
             if (($result['responseCode'] ?? '') === '2005800') {
                 $transaction->update(['status' => 'refunded']); 
                 
-                // Opsional: Tarik kembali saldo user karena dananya di-refund ke DANA
+                // Tarik kembali saldo user karena dananya di-refund ke DANA
                 $user = \App\Models\User::find($transaction->user_id);
                 if ($user) $user->decrement('saldo', $transaction->amount);
 
+                Log::info('LOG LOG: [DANA REFUND] Berhasil di-refund! Saldo user dipotong Rp ' . $transaction->amount);
                 return response()->json(['success' => true, 'message' => 'Dana berhasil dikembalikan ke akun DANA pelanggan.']);
             }
 
+            Log::error('LOG LOG: [DANA REFUND] Gagal di-refund. Pesan: ' . ($result['responseMessage'] ?? 'Unknown Error'));
             return response()->json(['success' => false, 'message' => $result['responseMessage'] ?? 'Gagal memproses refund.']);
+            
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
+            Log::error('LOG LOG: [DANA REFUND] Exception Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error: Terjadi kesalahan koneksi.'], 500);
         }
     }
 }
