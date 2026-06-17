@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     {{-- Font Awesome (Dibutuhkan untuk ikon) --}}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
     <style>
         body { font-family: 'Inter', sans-serif; }
         .form-radio:checked {
@@ -128,6 +130,13 @@
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700">Alamat Lengkap</label>
                             <textarea name="alamat_lengkap_penerima" id="alamat_lengkap_penerima" rows="2" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm"></textarea>
+                        </div>
+                        <!-- OPSI CARI MANUAL KIRIMINAJA -->
+                        <div class="md:col-span-2 border-t border-gray-200 pt-4 mt-2">
+                            <label class="block text-sm font-medium text-gray-700">Pencarian Wilayah Otomatis (Kelurahan / Kecamatan)</label>
+                            <!-- Pastikan class select2 terpasang -->
+                            <select id="select2_alamat_digital" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm"></select>
+                            <p class="text-xs text-gray-500 mt-1"><i class="fas fa-info-circle"></i> Gunakan pencarian ini jika data wilayah dari GPS kurang akurat.</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Provinsi</label>
@@ -919,5 +928,55 @@ window.addEventListener('load', function() {
 });
 </script>
 <!-- ====================================================== -->
+
+<!-- ====================================================== -->
+<!-- === SCRIPT PENCARIAN ALAMAT KIRIMINAJA (SELECT2) === -->
+<!-- ====================================================== -->
+<!-- Load jQuery (Wajib untuk Select2) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Inisialisasi Select2
+    $('#select2_alamat_digital').select2({
+        placeholder: 'Ketik min. 3 huruf (Cth: Ngawi / Margomulyo)...',
+        allowClear: true,
+        ajax: {
+            // URL ini menembak fungsi searchAddressAjax di CheckoutController yang sudah kita buat sebelumnya
+            url: "{{ url('/checkout/search-address-ajax') }}", 
+            dataType: 'json',
+            delay: 250, // Mencegah server jebol (delay ketikan)
+            data: function (params) {
+                return {
+                    q: params.term // Teks yang diketik user
+                };
+            },
+            processResults: function (data) {
+                return {
+                    results: data.results // Mengambil data hasil format dari Controller
+                };
+            },
+            cache: true
+        },
+        minimumInputLength: 3, // Mulai cari setelah 3 huruf
+    });
+
+    // Aksi ketika user memilih wilayah dari Dropdown
+    $('#select2_alamat_digital').on('select2:select', function (e) {
+        const data = e.params.data; // Data JSON balikan API KiriminAja
+        
+        // Timpa value form GPS yang salah dengan data yang benar dari API
+        if(document.getElementById('provinsi_penerima')) document.getElementById('provinsi_penerima').value = data.provinsi || '';
+        if(document.getElementById('kota_penerima')) document.getElementById('kota_penerima').value = data.kota || '';
+        if(document.getElementById('kecamatan_penerima')) document.getElementById('kecamatan_penerima').value = data.kecamatan || '';
+        if(document.getElementById('kelurahan_penerima')) document.getElementById('kelurahan_penerima').value = data.kelurahan || '';
+        
+        // Opsional: Fokuskan kursor ke Alamat Lengkap agar user lanjut mengisi jalannya
+        document.getElementById('alamat_lengkap_penerima').focus();
+    });
+});
+</script>
+<!-- ====================================================== -->
+
 
 @endsection
