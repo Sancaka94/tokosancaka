@@ -419,6 +419,7 @@ class CheckoutController extends Controller
             'no_wa_penerima' => 'nullable|string|max:20',
             'alamat_lengkap_penerima' => 'nullable|string',
         ]);
+        
 
         $cart = session()->get('cart', []);
         $user = Auth::user();
