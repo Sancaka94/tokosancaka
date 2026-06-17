@@ -2436,16 +2436,27 @@ TEXT;
     public function searchAddressAjax(Request $request, \App\Services\KiriminAjaService $kiriminAja)
     {
         $keyword = $request->query('q');
+        
+        // Log saat pencarian dimulai
+        Log::info('AJAX KiriminAja: Mencari alamat dengan keyword: ' . $keyword);
+
         if (strlen($keyword) < 3) {
             return response()->json(['results' => []]);
         }
 
         try {
             $response = $kiriminAja->searchAddress($keyword);
+            
+            // Log raw response dari API untuk debugging struktur data
+            Log::debug('AJAX KiriminAja: Raw Response:', ['response' => $response]);
+
             $data = $response['data'] ?? [];
             
+            if (empty($data)) {
+                Log::warning('AJAX KiriminAja: API mengembalikan data kosong untuk keyword: ' . $keyword);
+            }
+
             $formatted = array_map(function($item) {
-                // Ambil data pecahan jika API menyediakannya
                 $provinsi  = $item['province_name'] ?? $item['provinsi'] ?? '';
                 $kota      = $item['city_name'] ?? $item['kabupaten'] ?? $item['kota'] ?? '';
                 $kecamatan = $item['district_name'] ?? $item['kecamatan'] ?? '';
@@ -2454,16 +2465,16 @@ TEXT;
                 $subdistrictId = $item['subdistrict_id'] ?? $item['id'] ?? '';
                 $districtId    = $item['district_id'] ?? '';
 
-                // Susun teks dari pecahan
                 $textParts = array_filter([$kelurahan, $kecamatan, $kota, $provinsi]);
                 
-                // JIKA PECAHAN KOSONG, AMBIL LANGSUNG DARI KEY "name" / "text" BAWAAN API
                 $displayText = !empty($textParts) ? implode(', ', $textParts) : ($item['name'] ?? $item['text'] ?? 'Alamat Ditemukan');
+
+                // Log per item jika Anda butuh detail struktur data yang diproses
+                // Log::debug('AJAX KiriminAja: Memproses item', ['item' => $item, 'result' => $displayText]);
 
                 return [
                     'id' => $subdistrictId, 
-                    'text' => $displayText, // Ini yang akan muncul di dropdown
-                    // Bawa data mentah ke frontend
+                    'text' => $displayText,
                     'provinsi'    => $provinsi,
                     'kota'        => $kota,
                     'kecamatan'   => $kecamatan,
@@ -2473,8 +2484,12 @@ TEXT;
             }, $data);
 
             return response()->json(['results' => $formatted]);
+
         } catch (\Exception $e) {
-            Log::error('AJAX KiriminAja Error: ' . $e->getMessage());
+            // Log Error dengan detail lengkap
+            Log::error('AJAX KiriminAja Error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json(['results' => []]);
         }
     }
