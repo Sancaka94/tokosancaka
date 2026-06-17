@@ -500,11 +500,12 @@ class CheckoutController extends Controller
                  'shipping_method'         => $request->shipping_method,
                  'payment_method'          => $request->payment_method,
                  'status'                  => (in_array($request->payment_method, ['cod', 'cash', 'CODBARANG'])) ? 'processing' : 'pending',
-                 'shipping_address'        => $user->address_detail ?? 'Alamat tidak diatur',
+                 'shipping_address'        => $request->alamat_lengkap_penerima ?? $user->address_detail ?? 'Alamat tidak diatur',
                  'customer_latitude'       => $request->latitude ?? null,
                  'customer_longitude'      => $request->longitude ?? null,
-				 'receiver_name'           => $user->nama_lengkap ?? 'Customer',
-                 'receiver_phone'          => $user->no_wa ?? '081234567890',
+                 'receiver_name'           => $request->nama_penerima ?? $user->nama_lengkap ?? 'Customer',
+                 'receiver_phone'          => $request->no_wa_penerima ?? $user->no_wa ?? '081234567890',
+                 'nik_penerima'            => $request->nik_penerima ?? null,
                  'receiver_district_id'    => $userDistrictId,        // <-- SUDAH AMAN
                  'receiver_subdistrict_id' => $userSubdistrictId,     // <-- SUDAH AMAN
                  'sender_district_id'      => $storeDistrictId,       // <-- SUDAH AMAN

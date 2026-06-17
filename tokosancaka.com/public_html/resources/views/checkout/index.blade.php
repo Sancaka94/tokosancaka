@@ -107,6 +107,52 @@
                 <!-- Kolom Kiri: Alamat, Pengiriman, Pembayaran -->
                 <div class="lg:col-span-2 space-y-8">
 
+                    @if($isDigital)
+                <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-red-600">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4">Data Penerima (Produk Digital / E-Ticket)</h2>
+                    <p class="text-sm text-gray-500 mb-4">Sistem sedang mendeteksi lokasi Anda untuk mempermudah pengisian alamat.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+                            <input type="text" name="nama_penerima" id="nama_penerima" value="{{ Auth::user()->nama_lengkap ?? '' }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Nomor WhatsApp</label>
+                            <input type="text" name="no_wa_penerima" id="no_wa_penerima" value="{{ Auth::user()->no_wa ?? '' }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700">NIK (Opsional)</label>
+                            <input type="text" name="nik_penerima" id="nik_penerima" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700">Alamat Lengkap</label>
+                            <textarea name="alamat_lengkap_penerima" id="alamat_lengkap_penerima" rows="2" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Provinsi</label>
+                            <input type="text" name="provinsi_penerima" id="provinsi_penerima" class="mt-1 block w-full border border-gray-200 rounded-md shadow-sm p-2 bg-gray-50 sm:text-sm" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Kota / Kabupaten</label>
+                            <input type="text" name="kota_penerima" id="kota_penerima" class="mt-1 block w-full border border-gray-200 rounded-md shadow-sm p-2 bg-gray-50 sm:text-sm" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Kecamatan</label>
+                            <input type="text" name="kecamatan_penerima" id="kecamatan_penerima" class="mt-1 block w-full border border-gray-200 rounded-md shadow-sm p-2 bg-gray-50 sm:text-sm" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Desa / Kelurahan</label>
+                            <input type="text" name="kelurahan_penerima" id="kelurahan_penerima" class="mt-1 block w-full border border-gray-200 rounded-md shadow-sm p-2 bg-gray-50 sm:text-sm" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Kode Pos</label>
+                            <input type="text" name="kode_pos_penerima" id="kode_pos_penerima" class="mt-1 block w-full border border-gray-200 rounded-md shadow-sm p-2 bg-gray-50 sm:text-sm" readonly>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                     <!-- Alamat Pengiriman -->
                     <div class="bg-white rounded-xl shadow-md p-6">
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Alamat Pengiriman</h2>
@@ -867,5 +913,60 @@ window.addEventListener('load', function() {
 });
 </script>
 <!-- ====================================================== -->
+
+<script>
+window.addEventListener('load', function() {
+    if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                // Sukses dapat lokasi
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                document.getElementById('latitude').value = lat;
+                document.getElementById('longitude').value = lon;
+
+                // JIKA PRODUK DIGITAL, PECAH KOORDINAT MENJADI ALAMAT (Reverse Geocoding OSM)
+                @if($isDigital)
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data && data.address) {
+                            const addr = data.address;
+                            
+                            // Pecah response menjadi bagian-bagian spesifik
+                            const kotaKab = addr.city || addr.town || addr.county || '';
+                            const kecamatan = addr.suburb || addr.municipality || '';
+                            const kelurahan = addr.village || addr.neighbourhood || addr.residential || '';
+                            const provinsi = addr.state || '';
+                            const kodePos = addr.postcode || '';
+                            const alamatLengkap = data.display_name || '';
+
+                            // Masukkan ke dalam form
+                            if(document.getElementById('kota_penerima')) document.getElementById('kota_penerima').value = kotaKab;
+                            if(document.getElementById('kecamatan_penerima')) document.getElementById('kecamatan_penerima').value = kecamatan;
+                            if(document.getElementById('kelurahan_penerima')) document.getElementById('kelurahan_penerima').value = kelurahan;
+                            if(document.getElementById('provinsi_penerima')) document.getElementById('provinsi_penerima').value = provinsi;
+                            if(document.getElementById('kode_pos_penerima')) document.getElementById('kode_pos_penerima').value = kodePos;
+                            if(document.getElementById('alamat_lengkap_penerima')) document.getElementById('alamat_lengkap_penerima').value = alamatLengkap;
+                        }
+                    })
+                    .catch(err => console.error('Gagal mendapatkan rincian alamat dari GPS:', err));
+                @endif
+            },
+            function(error) {
+                // Gagal dapat lokasi
+                console.warn('Gagal mendapatkan lokasi GPS:', error.message);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
+    } else {
+        console.warn('Geolocation tidak didukung browser ini.');
+    }
+});
+</script>
 
 @endsection
