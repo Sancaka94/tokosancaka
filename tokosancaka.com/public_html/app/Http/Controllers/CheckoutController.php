@@ -408,19 +408,17 @@ class CheckoutController extends Controller
     }
 
 
-    /**
-     * =========================================================================
-     * FUNGSI STORE (DENGAN 1 JEBAKAN LOG YANG BENAR)
-     * =========================================================================
-     */
-    public function store(Request $request, KiriminAjaService $kiriminAja)
+   public function store(Request $request, KiriminAjaService $kiriminAja)
     {
         $request->validate([
             'shipping_method' => 'required|string',
             'payment_method' => 'required|string',
-              // DITAMBAHKAN: Validasi opsional untuk GPS
+              // DITAMBAHKAN: Validasi opsional untuk GPS dan Form Digital Penerima
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
+            'nama_penerima' => 'nullable|string|max:255',
+            'no_wa_penerima' => 'nullable|string|max:20',
+            'alamat_lengkap_penerima' => 'nullable|string',
         ]);
 
         $cart = session()->get('cart', []);
@@ -429,6 +427,24 @@ class CheckoutController extends Controller
         if (empty($cart)) {
             return redirect()->route('etalase.index')->with('error', 'Terjadi kesalahan. Keranjang Anda kosong.');
         }
+
+        // =========================================================================
+        // 🔥 ATURAN KETAT: SEMUA PRODUK TIDAK BOLEH CASH KECUALI USER ID 4 (ADMIN)
+        // =========================================================================
+        $paymentMethodRaw = strtoupper(trim($request->payment_method));
+        
+        // Tentukan keyword metode pembayaran apa saja yang dianggap "Cash" di sistem Anda
+        $cashMethods = ['CASH', 'COD', 'CODBARANG'];
+
+        if (in_array($paymentMethodRaw, $cashMethods)) {
+            // Cek apakah user sedang login DAN apakah ID-nya adalah 4
+            if (!$user || $user->id_pengguna != 4) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'Mohon maaf, metode pembayaran Cash/COD hanya diperbolehkan khusus untuk akun Administrator Sancaka.');
+            }
+        }
+        // =========================================================================
 
         // Ambil status digital kembali untuk validasi store
         $isDigital = false;
