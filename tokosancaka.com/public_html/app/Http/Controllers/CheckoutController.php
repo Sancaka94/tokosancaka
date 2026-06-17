@@ -413,7 +413,6 @@ class CheckoutController extends Controller
         $request->validate([
             'shipping_method' => 'required|string',
             'payment_method' => 'required|string',
-              // DITAMBAHKAN: Validasi opsional untuk GPS dan Form Digital Penerima
             'latitude' => 'nullable|numeric|between:-90,90',
             'longitude' => 'nullable|numeric|between:-180,180',
             'nama_penerima' => 'nullable|string|max:255',
