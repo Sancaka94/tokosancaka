@@ -340,7 +340,7 @@ class CheckoutController extends Controller
                 }
             }
             $instantOptions['results'] = $parsedInstantOptions;
-        else {
+        } else {
             // ========================================================
             // JIKA PRODUK DIGITAL: BERIKAN FAKE RESPONSE AGAR BLADE AMAN
             // ========================================================
