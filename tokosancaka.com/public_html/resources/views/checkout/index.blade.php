@@ -978,5 +978,48 @@ $(document).ready(function() {
 </script>
 <!-- ====================================================== -->
 
+<script>
+$(document).ready(function() {
+    function updateCardPreview() {
+        // Jika form digital tidak ada di halaman (bukan produk digital), hentikan fungsi
+        if ($('#nama_penerima').length === 0) return;
+
+        // Ambil data dari form input
+        let nama = $('#nama_penerima').val();
+        let wa = $('#no_wa_penerima').val();
+        
+        let alamat = $('#alamat_lengkap_penerima').val();
+        let kel = $('#kelurahan_penerima').val();
+        let kec = $('#kecamatan_penerima').val();
+        let kota = $('#kota_penerima').val();
+        let prov = $('#provinsi_penerima').val();
+        let pos = $('#kode_pos_penerima').val();
+
+        // Rangkai alamat menjadi satu kalimat utuh
+        let arrAlamat = [alamat, kel, kec, kota, prov, pos].filter(Boolean); // Hapus variabel yang kosong
+        let fullAlamat = arrAlamat.join(', ');
+
+        // Tembak data ke kartu preview secara real-time
+        if(nama) $('#preview_nama').text(nama);
+        if(wa) $('#preview_wa').text(wa);
+        if(fullAlamat) $('#preview_alamat').text(fullAlamat);
+    }
+
+    // 1. Deteksi otomatis saat user mengetik manual di keyboard
+    $('#nama_penerima, #no_wa_penerima, #alamat_lengkap_penerima').on('input', function() {
+        updateCardPreview();
+    });
+
+    // 2. Deteksi otomatis saat user memilih alamat dari dropdown Select2 (KiriminAja)
+    $('#select2_alamat_digital').on('select2:select', function () {
+        setTimeout(updateCardPreview, 300); // Beri jeda 0.3 detik agar input terisi dulu oleh sistem
+    });
+
+    // 3. Pengecekan background otomatis (Karena API GPS bekerja di background dan butuh waktu beberapa detik)
+    setInterval(function() {
+        updateCardPreview();
+    }, 1500); // Mengecek dan menyamakan data setiap 1.5 detik
+});
+</script>
 
 @endsection
