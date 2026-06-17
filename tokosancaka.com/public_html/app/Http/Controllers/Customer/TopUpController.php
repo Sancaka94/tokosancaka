@@ -3707,37 +3707,35 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
     }
 
     /**
-     * API Query Payment Status (DANA)
-     * Mengacu pada dokumen Gapura Payment Gateway API
+     * API Query Payment Status (DANA) untuk AJAX SweetAlert
      */
     public function checkDanaPaymentStatus($orderId)
     {
-        Log::info('LOG LOG: Memulai pengecekan Query Payment Status DANA untuk Order ID: ' . $orderId);
-
-        // 1. Memuat konfigurasi dinamis (Sandbox/Prod)
-        $this->applyDynamicConfig();
-
-        $merchantId = config('services.dana.merchant_id');
-        $partnerId  = config('services.dana.x_partner_id');
-        
-        // Waktu harus dalam format YYYY-MM-DDTHH:mm:ss+07:00 (GMT+7 Jakarta)
-        $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-
-        // 2. Endpoint spesifik untuk Query Payment
-        $path = '/payment-gateway/v1.0/debit/status.htm';
-
-        // 3. Susun Body Request sesuai spesifikasi
-        // Catatan: serviceCode menggunakan kode transaksi original (misal 54 untuk debit H2H)
-        $body = [
-            "originalPartnerReferenceNo" => $orderId,
-            "serviceCode"                => "54", 
-            "merchantId"                 => $merchantId
-        ];
-        
-        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
-
         try {
-            // 4. Generate Token & Asymmetric Signature
+            // 1. Pastikan transaksi ada di database lokal
+            $transaction = \App\Models\Transaction::where('reference_id', $orderId)->first();
+            if (!$transaction) {
+                return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan di database.'], 404);
+            }
+
+            // 2. Memuat konfigurasi dinamis (Sandbox/Prod)
+            $this->applyDynamicConfig();
+
+            $merchantId = config('services.dana.merchant_id');
+            $partnerId  = config('services.dana.x_partner_id');
+            $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $path       = '/payment-gateway/v1.0/debit/status.htm';
+
+            // 3. Susun Body Request
+            $body = [
+                "originalPartnerReferenceNo" => $orderId,
+                "serviceCode"                => "54", 
+                "merchantId"                 => $merchantId
+            ];
+            
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+
+            // 4. Generate Signature
             $accessToken = $this->danaSignature->getAccessToken();
             $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
@@ -3749,54 +3747,50 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 'ORIGIN'        => config('services.dana.origin'),
                 'X-PARTNER-ID'  => $partnerId,
                 'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
-                'CHANNEL-ID'    => '95221' // ID Perangkat Akses API
+                'CHANNEL-ID'    => '95221'
             ];
 
-            // 6. Eksekusi Request POST
+            // 6. Eksekusi Request POST ke DANA
             $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
-            
-            Log::info('LOG LOG: Hasil Response Query Payment DANA:', $result);
-
-            // 7. Evaluasi Respon (Sesuai Tabel Response Codes List)
             $responseCode = $result['responseCode'] ?? 'UNKNOWN';
             
+            // 7. Evaluasi Respon untuk AJAX
             if ($responseCode === '2005500') {
                 $status = $result['latestTransactionStatus'] ?? null;
                 
                 if ($status === '00') {
-                    // Success, the order has been successfully in final state and paid
-                    return ['success' => true, 'status' => 'PAID', 'data' => $result];
+                    // --- PENTING: Update database lokal jika status di DANA Lunas ---
+                    if ($transaction->status !== 'success') {
+                        // Panggil prosesor utama agar saldo user otomatis ditambah
+                        self::processTopUp($orderId, 'PAID', $transaction->amount);
+                    }
+                    
+                    // Kembalikan JSON Sukses ke SweetAlert
+                    return response()->json(['success' => true, 'status' => 'PAID']);
+                    
                 } elseif (in_array($status, ['01', '02'])) {
-                    // Initiated or Paying (Proses pending)
-                    return ['success' => true, 'status' => 'PENDING', 'data' => $result];
-                } elseif ($status === '05') {
-                    // Cancelled
-                    return ['success' => false, 'status' => 'CANCELLED', 'data' => $result];
-                } elseif ($status === '07') {
-                    // Not Found
-                    return ['success' => false, 'status' => 'NOT_FOUND', 'data' => $result];
+                    // Status masih pending / belum dibayar
+                    return response()->json(['success' => true, 'status' => 'PENDING']);
+                    
+                } else {
+                    // Status gagal, expired, cancel
+                    return response()->json(['success' => false, 'message' => 'Transaksi gagal/dibatalkan di sistem DANA.']);
                 }
             }
 
-            // Jika response code selain 2005500 (misal 4045501, 5005500, dll)
-            return [
+            // Jika gagal menembak API DANA (Error Gateway)
+            return response()->json([
                 'success' => false, 
-                'status'  => 'ERROR', 
-                'message' => $result['responseMessage'] ?? 'Terjadi kesalahan gateway.',
-                'data'    => $result
-            ];
+                'message' => $result['responseMessage'] ?? 'Terjadi kesalahan dari gateway DANA.'
+            ]);
 
         } catch (\Exception $e) {
-            Log::error('LOG LOG: [Query Payment DANA] System Error: ' . $e->getMessage());
-            return [
-                'success' => false, 
-                'status'  => 'SYSTEM_ERROR', 
-                'message' => $e->getMessage()
-            ];
+            \Illuminate\Support\Facades\Log::error('DANA Cek Status AJAX Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error: Terjadi gangguan koneksi.'], 500);
         }
     }
 

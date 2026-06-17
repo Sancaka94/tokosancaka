@@ -173,13 +173,17 @@
                 type: 'GET',
                 success: function(response) {
                     
-                    // 3. Tampilkan hasil berdasarkan respon dari controller
-                    if (response.success && response.status === 'PAID') {
+                   if (response.success && response.status === 'PAID') {
                         Swal.fire({
                             icon: 'success',
-                            title: 'Pembayaran Lunas! (00)',
-                            text: 'Status di DANA sudah PAID. Saldo sudah diamankan.',
+                            title: 'Pembayaran Lunas!',
+                            text: 'Status di DANA sudah PAID. Saldo berhasil masuk ke akun Anda.',
                             footer: '<span style="color:#6b7280; font-size:12px;">Ref: ' + orderId + '</span>'
+                        }).then((result) => {
+                            // Refresh otomatis jika tombol OK diklik
+                            if (result.isConfirmed) {
+                                window.location.reload(); 
+                            }
                         });
                         
                     } else if (response.success && response.status === 'PENDING') {
