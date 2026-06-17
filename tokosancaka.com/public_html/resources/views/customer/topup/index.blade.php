@@ -237,6 +237,81 @@
                 });
         }
     </script>
+
+    <script>
+    // FUNGSI CANCEL
+    function cancelDana(orderId) {
+        Swal.fire({
+            title: 'Batalkan Pesanan?',
+            text: "Pesanan ini akan dibatalkan secara permanen di DANA.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Batalkan!',
+            cancelButtonText: 'Tutup'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+                fetch("{{ url('/dana/cancel') }}/" + orderId, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}' // Wajib untuk POST Laravel
+                    }
+                })
+                .then(res => res.json())
+                .then(response => {
+                    if(response.success) {
+                        Swal.fire('Dibatalkan!', response.message, 'success').then(() => window.location.reload());
+                    } else {
+                        Swal.fire('Gagal', response.message, 'error');
+                    }
+                }).catch(error => {
+                    Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
+                });
+            }
+        });
+    }
+
+    // FUNGSI REFUND
+    function refundDana(orderId) {
+        Swal.fire({
+            title: 'Refund Saldo?',
+            text: "Saldo pelanggan ini akan ditarik dan dikembalikan ke akun DANA mereka.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#9333ea',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Ya, Refund Sekarang',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({ title: 'Memproses Refund...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+
+                fetch("{{ url('/dana/refund') }}/" + orderId, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                })
+                .then(res => res.json())
+                .then(response => {
+                    if(response.success) {
+                        Swal.fire('Berhasil!', response.message, 'success').then(() => window.location.reload());
+                    } else {
+                        Swal.fire('Gagal', response.message, 'error');
+                    }
+                }).catch(error => {
+                    Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
+                });
+            }
+        });
+    }
+</script>
+
 @endpush
 
 @endsection
