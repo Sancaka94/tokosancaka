@@ -1016,14 +1016,16 @@ $(document).ready(function() {
         let kecamatan = parts[1] || '';
         let kota      = parts[2] || '';
         let provinsi  = parts[3] || '';
-        
+        let kode_pos  = parts[4] || ''; // 👈 TAMBAHKAN INI
+
         // Masukkan ke form
         $('#provinsi_penerima').val(provinsi);
         $('#kota_penerima').val(kota);
         $('#kecamatan_penerima').val(kecamatan);
         $('#kelurahan_penerima').val(kelurahan);
-        
-        console.log("LOG: Data berhasil diisi:", {kelurahan, kecamatan, kota, provinsi});
+        $('#kode_pos_penerima').val(kode_pos); // 👈 TAMBAHKAN INI
+
+        console.log("LOG: Data berhasil diisi:", {kelurahan, kecamatan, kota, provinsi, kode_pos});
         document.getElementById('alamat_lengkap_penerima').focus();
     });
 });
@@ -1031,46 +1033,48 @@ $(document).ready(function() {
 <!-- ====================================================== -->
 
 <script>
+// 1. DEKLARASIKAN FUNGSI DI LUAR (GLOBAL SCOPE)
+function updateCardPreview() {
+    // Jika form digital tidak ada di halaman (bukan produk digital), hentikan fungsi
+    if ($('#nama_penerima').length === 0) return;
+
+    // Ambil data dari form input
+    let nama = $('#nama_penerima').val();
+    let wa = $('#no_wa_penerima').val();
+    
+    let alamat = $('#alamat_lengkap_penerima').val();
+    let kel = $('#kelurahan_penerima').val();
+    let kec = $('#kecamatan_penerima').val();
+    let kota = $('#kota_penerima').val();
+    let prov = $('#provinsi_penerima').val();
+    let pos = $('#kode_pos_penerima').val();
+
+    // Rangkai alamat menjadi satu kalimat utuh
+    let arrAlamat = [alamat, kel, kec, kota, prov, pos].filter(Boolean);
+    let fullAlamat = arrAlamat.join(', ');
+
+    // Tembak data ke kartu preview secara real-time
+    if(nama) $('#preview_nama').text(nama);
+    if(wa) $('#preview_wa').text(wa);
+    if(fullAlamat) $('#preview_alamat').text(fullAlamat);
+}
+
+// 2. JALANKAN EVENT LISTENER DI DALAM DOCUMENT READY
 $(document).ready(function() {
-    function updateCardPreview() {
-        // Jika form digital tidak ada di halaman (bukan produk digital), hentikan fungsi
-        if ($('#nama_penerima').length === 0) return;
-
-        // Ambil data dari form input
-        let nama = $('#nama_penerima').val();
-        let wa = $('#no_wa_penerima').val();
-        
-        let alamat = $('#alamat_lengkap_penerima').val();
-        let kel = $('#kelurahan_penerima').val();
-        let kec = $('#kecamatan_penerima').val();
-        let kota = $('#kota_penerima').val();
-        let prov = $('#provinsi_penerima').val();
-        let pos = $('#kode_pos_penerima').val();
-
-        // Rangkai alamat menjadi satu kalimat utuh
-        let arrAlamat = [alamat, kel, kec, kota, prov, pos].filter(Boolean); // Hapus variabel yang kosong
-        let fullAlamat = arrAlamat.join(', ');
-
-        // Tembak data ke kartu preview secara real-time
-        if(nama) $('#preview_nama').text(nama);
-        if(wa) $('#preview_wa').text(wa);
-        if(fullAlamat) $('#preview_alamat').text(fullAlamat);
-    }
-
-    // 1. Deteksi otomatis saat user mengetik manual di keyboard
+    // Deteksi otomatis saat user mengetik manual di keyboard
     $('#nama_penerima, #no_wa_penerima, #alamat_lengkap_penerima').on('input', function() {
         updateCardPreview();
     });
 
-    // 2. Deteksi otomatis saat user memilih alamat dari dropdown Select2 (KiriminAja)
+    // Deteksi otomatis saat user memilih alamat dari dropdown Select2 (KiriminAja)
     $('#select2_alamat_digital').on('select2:select', function () {
-        setTimeout(updateCardPreview, 300); // Beri jeda 0.3 detik agar input terisi dulu oleh sistem
+        setTimeout(updateCardPreview, 300); 
     });
 
-    // 3. Pengecekan background otomatis (Karena API GPS bekerja di background dan butuh waktu beberapa detik)
+    // Pengecekan background otomatis
     setInterval(function() {
         updateCardPreview();
-    }, 1500); // Mengecek dan menyamakan data setiap 1.5 detik
+    }, 1500);
 });
 </script>
 
