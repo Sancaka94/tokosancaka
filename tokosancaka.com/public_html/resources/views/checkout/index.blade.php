@@ -429,13 +429,15 @@
             <ul id="paymentOptionsList" class="max-h-[60vh] overflow-y-auto space-y-2 p-4">
 
                 {{-- 1. OPSI INTERNAL (SALDO) --}}
+                @auth
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
                     data-value="SALDO"
                     data-label="Saldo Sancaka"
                     data-img="{{ asset('public/assets/saldo.png') }}">
                     <img src="{{ asset('public/assets/saldo.png') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">Saldo {{ Auth::user()->nama_lengkap }}: (Rp{{ number_format(Auth::user()->saldo, 0, ',', '.') }})</span>
+                    <span class="text-sm font-medium text-gray-900">Saldo {{ optional(Auth::user())->nama_lengkap }}: (Rp{{ number_format(optional(Auth::user())->saldo ?? 0, 0, ',', '.') }})</span>
                 </li>
+                @endauth
 
                 {{-- 2. OPSI KHUSUS (DOKU) --}}
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
@@ -918,59 +920,5 @@ window.addEventListener('load', function() {
 </script>
 <!-- ====================================================== -->
 
-<script>
-window.addEventListener('load', function() {
-    if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                // Sukses dapat lokasi
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                document.getElementById('latitude').value = lat;
-                document.getElementById('longitude').value = lon;
-
-                // JIKA PRODUK DIGITAL, PECAH KOORDINAT MENJADI ALAMAT (Reverse Geocoding OSM)
-                @if($isDigital)
-                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data && data.address) {
-                            const addr = data.address;
-                            
-                            // Pecah response menjadi bagian-bagian spesifik
-                            const kotaKab = addr.city || addr.town || addr.county || '';
-                            const kecamatan = addr.suburb || addr.municipality || '';
-                            const kelurahan = addr.village || addr.neighbourhood || addr.residential || '';
-                            const provinsi = addr.state || '';
-                            const kodePos = addr.postcode || '';
-                            const alamatLengkap = data.display_name || '';
-
-                            // Masukkan ke dalam form
-                            if(document.getElementById('kota_penerima')) document.getElementById('kota_penerima').value = kotaKab;
-                            if(document.getElementById('kecamatan_penerima')) document.getElementById('kecamatan_penerima').value = kecamatan;
-                            if(document.getElementById('kelurahan_penerima')) document.getElementById('kelurahan_penerima').value = kelurahan;
-                            if(document.getElementById('provinsi_penerima')) document.getElementById('provinsi_penerima').value = provinsi;
-                            if(document.getElementById('kode_pos_penerima')) document.getElementById('kode_pos_penerima').value = kodePos;
-                            if(document.getElementById('alamat_lengkap_penerima')) document.getElementById('alamat_lengkap_penerima').value = alamatLengkap;
-                        }
-                    })
-                    .catch(err => console.error('Gagal mendapatkan rincian alamat dari GPS:', err));
-                @endif
-            },
-            function(error) {
-                // Gagal dapat lokasi
-                console.warn('Gagal mendapatkan lokasi GPS:', error.message);
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
-        );
-    } else {
-        console.warn('Geolocation tidak didukung browser ini.');
-    }
-});
-</script>
 
 @endsection
