@@ -151,7 +151,7 @@
     </div>
     @endif
 
-    @push('scripts')
+   @push('scripts')
     {{-- Memanggil Library SweetAlert2 --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
@@ -167,20 +167,26 @@
                 }
             });
 
-            // 2. Eksekusi request di belakang layar (AJAX) tanpa pindah halaman
-            $.ajax({
-                url: '/uat-dana-status/' + orderId,
-                type: 'GET',
-                success: function(response) {
-                    
-                   if (response.success && response.status === 'PAID') {
+            // 2. Eksekusi request menggunakan Fetch API (Javascript Murni, Tanpa jQuery)
+            const url = "{{ url('/uat-dana-status') }}/" + orderId;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(response => {
+                    // 3. Tampilkan hasil berdasarkan respon dari controller
+                    if (response.success && response.status === 'PAID') {
                         Swal.fire({
                             icon: 'success',
                             title: 'Pembayaran Lunas!',
                             text: 'Status di DANA sudah PAID. Saldo berhasil masuk ke akun Anda.',
                             footer: '<span style="color:#6b7280; font-size:12px;">Ref: ' + orderId + '</span>'
                         }).then((result) => {
-                            // Refresh otomatis jika tombol OK diklik
+                            // Refresh halaman otomatis jika tombol OK diklik
                             if (result.isConfirmed) {
                                 window.location.reload(); 
                             }
@@ -201,15 +207,16 @@
                             text: response.message || 'Transaksi sudah kadaluarsa atau tidak ditemukan di DANA.'
                         });
                     }
-                },
-                error: function() {
+                })
+                .catch(error => {
+                    // 4. Tangkap error jika terjadi masalah di backend (misal kode 500)
+                    console.error("Fetch Error: ", error);
                     Swal.fire({
                         icon: 'error',
                         title: 'Koneksi Terputus',
-                        text: 'Terjadi kesalahan sistem saat menghubungi server DANA.'
+                        text: 'Terjadi kesalahan sistem di server atau koneksi internet terputus.'
                     });
-                }
-            });
+                });
         }
     </script>
 @endpush
