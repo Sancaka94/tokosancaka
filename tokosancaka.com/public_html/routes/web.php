@@ -1557,3 +1557,5 @@ Route::prefix('deliveree')->group(function () {
 });
 
 Route::get('/api/deliveree/extra-services/{vehicle_id}', [\App\Http\Controllers\CustomerOrderController::class, 'getDelivereeExtraServices']);
+
+Route::get('/api/kiriminaja/search', [\App\Http\Controllers\CheckoutController::class, 'searchAddressAjax']);

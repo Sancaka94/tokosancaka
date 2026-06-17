@@ -32,7 +32,7 @@ class CategoryController extends Controller
         return view('admin.categories.create');
     }
 
-    /**
+  /**
      * Menyimpan kategori baru ke dalam database.
      */
     public function store(Request $request)
@@ -48,12 +48,8 @@ class CategoryController extends Controller
             'slug' => Str::slug($request->name),
             'type' => $request->type,
             'icon' => $request->icon,
+            'user_id' => Auth::id(), // <--- UBAH DI SINI: Langsung masukkan Auth::id()
         ];
-
-        // Hanya tambahkan user_id jika tipenya adalah 'blog'
-        if ($request->type === 'blog') {
-            $data['user_id'] = Auth::id();
-        }
 
         Category::create($data);
 

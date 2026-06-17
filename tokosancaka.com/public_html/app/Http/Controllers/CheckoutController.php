@@ -92,20 +92,30 @@ class CheckoutController extends Controller
     }
 
 
-    /**
-     * Menampilkan halaman checkout.
-     */
     public function index(KiriminAjaService $kiriminAja)
     {
-        if (!Auth::check()) {
-            return redirect()->route('customer.login')
-                ->with('info', 'Anda harus login untuk melanjutkan ke checkout.');
-        }
-
         $cart = session()->get('cart', []);
         if (empty($cart)) {
             return redirect()->route('cart.index')
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
+        }
+
+        // ========================================================
+        // 1. DETEKSI PRODUK DIGITAL DI KERANJANG
+        // ========================================================
+        $isDigital = false;
+        foreach ($cart as $item) {
+            // Asumsi Anda menggunakan key 'type' di session cart, atau cek dari database produk
+            if (isset($item['type']) && $item['type'] === 'eticket') { 
+                $isDigital = true;
+                break;
+            }
+        }
+
+        // 2. BLOKIR JIKA PRODUK FISIK TAPI BELUM LOGIN
+        if (!$isDigital && !Auth::check()) {
+            return redirect()->route('customer.login')
+                ->with('info', 'Anda harus login untuk melanjutkan pesanan produk fisik.');
         }
 
        // === [1] GANTI BAGIAN INI DI FUNCTION INDEX() ===
@@ -138,6 +148,19 @@ class CheckoutController extends Controller
         });
 
         $user = Auth::user();
+
+        // ========================================================
+        // 3. BYPASS VALIDASI ALAMAT JIKA DIGITAL
+        // ========================================================
+        if (!$isDigital) {
+            // Pindahkan validasi kelengkapan alamat ke dalam blok ini
+            // karena produk digital (dan guest) tidak butuh alamat lengkap
+            if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province)) {
+                 Log::warning('Alamat user tidak lengkap', ['user_id' => $user->id_pengguna]);
+                return redirect()->route('profile.edit')
+                    ->with('warning', 'Alamat pengiriman Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
+            }
+        }
 
         $firstCartItemData = reset($cart);
         $productId = $firstCartItemData['product_id'] ?? null;
@@ -317,25 +340,31 @@ class CheckoutController extends Controller
                 }
             }
             $instantOptions['results'] = $parsedInstantOptions;
-        } else {
-            $errorMessage = $instantOptions['text'] ?? 'Gagal mengambil opsi Instant/Sameday.';
-            Log::error('Hasil API Instant Pricing tidak valid atau koordinat tidak ada', ['response' => $instantOptions]);
-            $instantOptions = ['status' => false, 'text' => $errorMessage, 'results' => []];
-
-            if (empty($expressOptions['results'])) {
-                try {
-                    broadcast(new AdminNotificationEvent(
-                        'ERROR KRITIS: Ongkir Checkout Gagal',
-                        'Gagal memuat ongkir Instant DAN Express. Cek log KiriminAja.',
-                        route('admin.dashboard')
-                    ));
-                } catch (Exception $e) {
-                    Log::error('Gagal broadcast AdminNotificationEvent untuk error ongkir', ['error' => $e->getMessage()]);
-                }
-            }
+        else {
+            // ========================================================
+            // JIKA PRODUK DIGITAL: BERIKAN FAKE RESPONSE AGAR BLADE AMAN
+            // ========================================================
+            $expressOptions = [
+                'status' => true,
+                'results' => [
+                    [
+                        'service_name' => 'Pengiriman Digital / E-Ticket',
+                        'service' => 'eticket',
+                        'service_type' => 'noncod',
+                        'cost' => 0,
+                        'final_price' => 0,
+                        'etd' => 'Otomatis (1 Detik)',
+                        'group' => 'Digital',
+                        'insurance_cost' => 0,
+                        'cod_available' => false,
+                        'cod_fee' => 0
+                    ]
+                ]
+            ];
         }
 
-        return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels'));
+        // PASTIKAN VARIABLE 'isDigital' DILEMPAR KE COMPACT
+        return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'isDigital'));
     }
 
 
@@ -588,8 +617,19 @@ class CheckoutController extends Controller
                     // ======================================================
                     Log::info('RESPON JSON CREATE ORDER (INSTANT):', $kiriminResponse);
                     // ======================================================
+                } elseif ($shipping_type === 'digital_delivery') {
+                    // ======================================================
+                    // BYPASS API KIRIMINAJA UNTUK E-TICKET / JASA
+                    // ======================================================
+                    Log::info('Pesanan Digital/Jasa terdeteksi, bypass API KiriminAja.');
+                    
+                    // Buat fake response agar script di bawahnya tidak error
+                    $kiriminResponse = [
+                        'status' => true, 
+                        'pickup_number' => 'DIGITAL-' . strtoupper(Str::random(6))
+                    ];
                 } else {
-                    throw new \Exception('Tipe pengiriman tidak didukung.');
+                    throw new \Exception('Tipe pengiriman tidak didukung: ' . $shipping_type);
                 }
 
                 if (empty($kiriminResponse['status']) || $kiriminResponse['status'] !== true) {
@@ -1369,9 +1409,83 @@ class CheckoutController extends Controller
                     goto skip_kiriminaja;
                 }
 
-                $validTypes = ['regular', 'cargo', 'instant', 'trucking'];
+                //$validTypes = ['regular', 'cargo', 'instant', 'trucking'];
+                //if (!in_array($type, $validTypes)) $type = 'regular';
+                //$service = strtoupper(trim($service));
+
+              // Tambahkan 'digital_delivery' ke dalam array validTypes
+                $validTypes = ['regular', 'cargo', 'instant', 'trucking', 'digital_delivery'];
                 if (!in_array($type, $validTypes)) $type = 'regular';
                 $service = strtoupper(trim($service));
+
+                // ========================================================
+                // BYPASS BOOKING KURIR JIKA PRODUK DIGITAL
+                // ========================================================
+                if ($type === 'digital_delivery') {
+                    Log::info("Pesanan {$order->invoice_number} adalah produk digital. Melewati proses booking kurir fisik.");
+                    
+                    $order->status = 'processing'; // Ubah status pesanan menjadi diproses
+                    $order->shipping_reference = 'E-TICKET-' . time();
+                    $order->save();
+                    
+                    // ====================================================
+                    // KIRIM E-TICKET VIA EMAILCONTROLLER
+                    // ====================================================
+                    $customer = $order->user;
+                    $tujuanEmail = $customer->email ?? null;
+
+                    if ($tujuanEmail) {
+                        // 1. Susun rincian produk untuk ditampilkan di body email
+                        $rincianProduk = '';
+                        foreach($order->items as $item) {
+                            $namaProduk = $item->product ? $item->product->name : 'Produk Digital';
+                            if ($item->variant) {
+                                $namaProduk .= ' (' . str_replace(';', ', ', $item->variant->combination_string) . ')';
+                            }
+                            $rincianProduk .= "<li>{$namaProduk} <b>(x{$item->quantity})</b></li>";
+                        }
+
+                        // 2. Siapkan Data yang diminta oleh validasi EmailController
+                        $emailData = [
+                            'to' => $tujuanEmail,
+                            'subject' => 'E-Ticket / Pesanan Digital Anda: ' . $order->invoice_number,
+                            'body' => "
+                                <div style='font-family: Arial, sans-serif; color: #333;'>
+                                    <h2>Terima Kasih Telah Berbelanja! 🎉</h2>
+                                    <p>Halo <b>{$customer->nama_lengkap}</b>,</p>
+                                    <p>Pembayaran untuk pesanan <b>{$order->invoice_number}</b> telah berhasil dikonfirmasi. Berikut adalah rincian pesanan digital/jasa Anda:</p>
+                                    <ul>
+                                        {$rincianProduk}
+                                    </ul>
+                                    <p>Mohon simpan email ini sebagai bukti konfirmasi atau E-Ticket Anda.</p>
+                                    <br>
+                                    <p>Salam hangat,<br><b>Tim Sancaka Express</b></p>
+                                </div>
+                            "
+                        ];
+
+                        try {
+                            // 3. Panggil Controller dan buat Fake Request
+                            $emailController = app(\App\Http\Controllers\Admin\EmailController::class);
+                            
+                            $emailRequest = new \Illuminate\Http\Request();
+                            $emailRequest->replace($emailData); // Masukkan array data ke dalam request
+
+                            // 4. Eksekusi pengiriman email
+                            $emailController->send($emailRequest);
+
+                            Log::info("E-Ticket berhasil dikirim via EmailController ke: " . $tujuanEmail);
+                        } catch (\Exception $e) {
+                            Log::error("Gagal mengirim E-Ticket via EmailController: " . $e->getMessage());
+                        }
+                    } else {
+                        Log::warning("Gagal mengirim E-Ticket: Customer tidak memiliki email yang valid.");
+                    }
+                    // ====================================================
+
+                    // Langsung lompat ke bagian bawah (skip_kiriminaja) untuk kirim WA "Lunas"
+                    goto skip_kiriminaja; 
+                }
 
                 // --- BUILD PAYLOAD BOOKING ---
                 $payload = [];
@@ -2272,6 +2386,41 @@ TEXT;
         } catch (\Exception $e) {
             Log::error("PayPal Capture Error: " . $e->getMessage());
             return redirect()->route('checkout.index')->with('error', 'Terjadi kesalahan saat memverifikasi PayPal.');
+        }
+    }
+
+    /**
+     * Endpoint AJAX untuk fitur pencarian alamat KiriminAja bagi Guest
+     */
+    public function searchAddressAjax(Request $request, \App\Services\KiriminAjaService $kiriminAja)
+    {
+        $keyword = $request->query('q');
+        if (strlen($keyword) < 3) {
+            return response()->json(['results' => []]);
+        }
+
+        try {
+            $response = $kiriminAja->searchAddress($keyword);
+            $data = $response['data'] ?? [];
+            
+            // Format ulang agar sesuai dengan library Select2 dan siap dipecah
+            $formatted = array_map(function($item) {
+                return [
+                    'id' => $item['subdistrict_id'], // Subdistrict ID sebagai value utama
+                    'text' => $item['subdistrict_name'] . ', ' . $item['district_name'] . ', ' . $item['city_name'] . ', ' . $item['province_name'],
+                    // Bawa data mentah untuk di-pecah di frontend JS
+                    'provinsi'    => $item['province_name'],
+                    'kota'        => $item['city_name'],
+                    'kecamatan'   => $item['district_name'],
+                    'kelurahan'   => $item['subdistrict_name'],
+                    'district_id' => $item['district_id']
+                ];
+            }, $data);
+
+            return response()->json(['results' => $formatted]);
+        } catch (\Exception $e) {
+            Log::error('AJAX KiriminAja Error: ' . $e->getMessage());
+            return response()->json(['results' => []]);
         }
     }
 
