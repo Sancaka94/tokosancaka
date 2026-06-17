@@ -2446,15 +2446,29 @@ TEXT;
             
             // Format ulang agar sesuai dengan library Select2 dan siap dipecah
             $formatted = array_map(function($item) {
+                // =====================================================================
+                // PERBAIKAN: Gunakan fallback (??) ganda untuk mengatasi respon API yang labil
+                // =====================================================================
+                $provinsi  = $item['province_name'] ?? $item['provinsi'] ?? '';
+                $kota      = $item['city_name'] ?? $item['kabupaten'] ?? $item['kota'] ?? '';
+                $kecamatan = $item['district_name'] ?? $item['kecamatan'] ?? '';
+                $kelurahan = $item['subdistrict_name'] ?? $item['kelurahan'] ?? $item['name'] ?? '';
+                
+                $subdistrictId = $item['subdistrict_id'] ?? $item['id'] ?? '';
+                $districtId    = $item['district_id'] ?? '';
+
+                // Gabungkan teks dengan cerdas (Abaikan jika ada variabel yang kosong agar tidak ada koma berlebih)
+                $textLabel = array_filter([$kelurahan, $kecamatan, $kota, $provinsi]);
+
                 return [
-                    'id' => $item['subdistrict_id'], // Subdistrict ID sebagai value utama
-                    'text' => $item['subdistrict_name'] . ', ' . $item['district_name'] . ', ' . $item['city_name'] . ', ' . $item['province_name'],
+                    'id' => $subdistrictId, // Subdistrict ID sebagai value utama
+                    'text' => implode(', ', $textLabel),
                     // Bawa data mentah untuk di-pecah di frontend JS
-                    'provinsi'    => $item['province_name'],
-                    'kota'        => $item['city_name'],
-                    'kecamatan'   => $item['district_name'],
-                    'kelurahan'   => $item['subdistrict_name'],
-                    'district_id' => $item['district_id']
+                    'provinsi'    => $provinsi,
+                    'kota'        => $kota,
+                    'kecamatan'   => $kecamatan,
+                    'kelurahan'   => $kelurahan,
+                    'district_id' => $districtId
                 ];
             }, $data);
 
