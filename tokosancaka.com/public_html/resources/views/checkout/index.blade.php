@@ -920,5 +920,4 @@ window.addEventListener('load', function() {
 </script>
 <!-- ====================================================== -->
 
-
 @endsection
