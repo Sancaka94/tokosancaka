@@ -3813,9 +3813,11 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $path       = '/payment-gateway/v1.0/debit/cancel.htm';
 
+            // MENCEGAH INVALID FORMAT: Tambahkan field reason
             $body = [
                 "originalPartnerReferenceNo" => (string) $orderId,
-                "merchantId"                 => (string) $merchantId
+                "merchantId"                 => (string) $merchantId,
+                "reason"                     => "Pesanan dibatalkan oleh pelanggan" 
             ];
             
             $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
@@ -3824,8 +3826,8 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $accessToken = $this->danaSignature->getAccessToken();
             $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
-            // MENCEGAH ERROR 500: Gunakan UUID Standar 36 Karakter
-            $externalId = \Illuminate\Support\Str::uuid()->toString();
+            // MENCEGAH INVALID FORMAT: Gunakan persis 32 Karakter Alphanumeric
+            $externalId = \Illuminate\Support\Str::random(32);
 
             $headers = [
                 'Content-Type'  => 'application/json',
@@ -3879,15 +3881,18 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $path       = '/payment-gateway/v1.0/debit/refund.htm';
             
-            // MENCEGAH ERROR 500: Hapus kata "REF", gunakan MURNI ANGKA 20 digit!
-            $partnerRefundNo = date('YmdHis') . rand(100000, 999999); 
+            // MENCEGAH INVALID FORMAT: Gunakan persis 32 Karakter Alphanumeric
+            $partnerRefundNo = \Illuminate\Support\Str::random(32); 
+            $externalId      = \Illuminate\Support\Str::random(32);
             
             $refundAmountValue = number_format((float)$transaction->amount, 2, '.', '');
 
+            // MENCEGAH INVALID FORMAT: Tambahkan field reason
             $body = [
                 "merchantId"                 => (string) $merchantId,
                 "originalPartnerReferenceNo" => (string) $orderId,
                 "partnerRefundNo"            => (string) $partnerRefundNo,
+                "reason"                     => "Pengembalian dana pelanggan",
                 "refundAmount" => [
                     "value"    => $refundAmountValue,
                     "currency" => "IDR"
@@ -3899,9 +3904,6 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
             $accessToken = $this->danaSignature->getAccessToken();
             $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
-
-            // MENCEGAH ERROR 500: Gunakan UUID Standar 36 Karakter
-            $externalId = \Illuminate\Support\Str::uuid()->toString();
 
             $headers = [
                 'Content-Type'  => 'application/json',
