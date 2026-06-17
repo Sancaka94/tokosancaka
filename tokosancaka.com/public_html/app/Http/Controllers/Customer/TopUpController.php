@@ -3796,7 +3796,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
    /**
      * API Cancel Order DANA
-     * Untuk pesanan yang statusnya masih Pending (01)
+     * Sesuai Dokumentasi Gapura Payment Gateway API (SNAP Service Code: 57)
      */
     public function cancelDanaPayment($orderId)
     {
@@ -3814,9 +3814,10 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $path       = '/payment-gateway/v1.0/debit/cancel.htm';
 
+            // Menyusun payload SAMA PERSIS dengan Request Sample di Dokumentasi
             $body = [
-                "originalPartnerReferenceNo" => $orderId,
-                "merchantId"                 => $merchantId
+                "originalPartnerReferenceNo" => (string) $orderId,
+                "merchantId"                 => (string) $merchantId
             ];
             
             $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
@@ -3831,7 +3832,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 'X-SIGNATURE'   => $signature,
                 'ORIGIN'        => config('services.dana.origin'),
                 'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-                'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
+                'X-EXTERNAL-ID' => date('YmdHis') . rand(100, 999), // Max 36 chars
                 'CHANNEL-ID'    => '95221'
             ];
             
@@ -3844,11 +3845,11 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $result = $response->json();
             Log::info('LOG LOG: [DANA CANCEL] Response dari DANA: ', $result ?? ['raw_body' => $response->body()]);
             
-            // 2005700 = Successful Cancel
+            // 2005700 = Successful Cancel sesuai Response Codes List
             if (($result['responseCode'] ?? '') === '2005700') {
-                $transaction->update(['status' => 'failed']); // Ubah status lokal jadi failed/batal
+                $transaction->update(['status' => 'failed']); 
                 Log::info('LOG LOG: [DANA CANCEL] Berhasil dibatalkan di DANA dan Database.');
-                return response()->json(['success' => true, 'message' => 'Pesanan berhasil dibatalkan.']);
+                return response()->json(['success' => true, 'message' => 'Pesanan berhasil dibatalkan di DANA.']);
             }
 
             Log::error('LOG LOG: [DANA CANCEL] Gagal dibatalkan. Pesan: ' . ($result['responseMessage'] ?? 'Unknown Error'));
@@ -3862,7 +3863,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
     /**
      * API Refund Order DANA
-     * Untuk pesanan yang statusnya sudah Paid/Success (00)
+     * Sesuai Dokumentasi Gapura Payment Gateway API (SNAP Service Code: 58)
      */
     public function refundDanaPayment($orderId)
     {
@@ -3880,16 +3881,16 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $path       = '/payment-gateway/v1.0/debit/refund.htm';
             
-            // Menghilangkan karakter strip (-) untuk mencegah Invalid Field Format
-            $partnerRefundNo = 'REF' . time() . rand(1000, 9999); 
+            $partnerRefundNo = date('YmdHis') . rand(1000, 9999); 
             
-            // Memastikan format nominal strict sesuai standar ISO-4217 (10000.00)
+            // Format wajib: Angka dengan 2 desimal (ISO-4217)
             $refundAmountValue = number_format((float)$transaction->amount, 2, '.', '');
 
+            // Menyusun payload SAMA PERSIS dengan Request Sample di Dokumentasi
             $body = [
-                "merchantId"                 => $merchantId,
-                "originalPartnerReferenceNo" => $orderId,
-                "partnerRefundNo"            => $partnerRefundNo,
+                "merchantId"                 => (string) $merchantId,
+                "originalPartnerReferenceNo" => (string) $orderId,
+                "partnerRefundNo"            => (string) $partnerRefundNo,
                 "refundAmount" => [
                     "value"    => $refundAmountValue,
                     "currency" => "IDR"
@@ -3908,7 +3909,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 'X-SIGNATURE'   => $signature,
                 'ORIGIN'        => config('services.dana.origin'),
                 'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-                'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
+                'X-EXTERNAL-ID' => date('YmdHis') . rand(100, 999), // Max 36 chars
                 'CHANNEL-ID'    => '95221'
             ];
             
@@ -3921,7 +3922,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $result = $response->json();
             Log::info('LOG LOG: [DANA REFUND] Response dari DANA: ', $result ?? ['raw_body' => $response->body()]);
             
-            // 2005800 = Successful Refund
+            // 2005800 = Successful Refund sesuai Response Codes List
             if (($result['responseCode'] ?? '') === '2005800') {
                 $transaction->update(['status' => 'refunded']); 
                 
@@ -3929,7 +3930,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 $user = \App\Models\User::find($transaction->user_id);
                 if ($user) $user->decrement('saldo', $transaction->amount);
 
-                Log::info('LOG LOG: [DANA REFUND] Berhasil di-refund! Saldo user dipotong Rp ' . $transaction->amount);
+                Log::info('LOG LOG: [DANA REFUND] Berhasil di-refund! Saldo ditarik.');
                 return response()->json(['success' => true, 'message' => 'Dana berhasil dikembalikan ke akun DANA pelanggan.']);
             }
 
