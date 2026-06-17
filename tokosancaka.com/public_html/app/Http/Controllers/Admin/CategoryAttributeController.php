@@ -15,7 +15,7 @@ class CategoryAttributeController extends Controller
      */
     public function index(Request $request)
     {
-        $categories = Category::where('type', 'marketplace')->orderBy('name')->get();
+        $categories = Category::whereIn('type', ['product', 'marketplace'])->orderBy('name')->get();
         $selectedCategory = null;
         $attributes = collect();
 
