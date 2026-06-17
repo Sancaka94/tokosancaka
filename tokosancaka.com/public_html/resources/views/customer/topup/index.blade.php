@@ -43,22 +43,40 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4">{{ $transaction->created_at->format('d M Y, H:i') }}</td>
-                            <td class="px-6 py-4 flex items-center space-x-3">
+                           <td class="px-6 py-4 flex items-center space-x-2">
 
-                                {{-- Tombol Detail (Muncul untuk semua transaksi) --}}
                                 <a href="{{ route('customer.topup.show', ['topup' => $transaction->reference_id]) }}" class="text-blue-600 hover:text-blue-800 font-medium hover:underline">
                                     Detail
                                 </a>
 
-                                {{-- Tombol Cek Status DANA --}}
+                                {{-- Tombol DANA (Khusus Metode DANA) --}}
                                 @if(str_contains(strtoupper($transaction->payment_method ?? ''), 'DANA') || str_contains(strtoupper($transaction->description ?? ''), 'DANA'))
+                                    
+                                    {{-- Tombol Cek Status (Muncul di semua kondisi kecuali sudah refund/failed) --}}
+                                    @if(!in_array($transaction->status, ['failed', 'refunded']))
                                     <button type="button" onclick="cekStatusDana('{{ $transaction->reference_id }}')" 
-                                    class="inline-flex items-center px-2 py-1 bg-green-50 text-green-600 border border-green-200 rounded text-xs hover:bg-green-100 hover:text-green-800 transition-colors"
-                                    title="Cek status transaksi ke DANA Gateway">
-                                        <i class="fas fa-sync-alt mr-1"></i> Cek DANA
+                                    class="inline-flex items-center px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-xs hover:bg-blue-100 transition-colors" title="Cek DANA">
+                                        <i class="fas fa-sync-alt mr-1"></i> Cek
                                     </button>
-                                @endif
+                                    @endif
 
+                                    {{-- Jika Status PENDING = Muncul Tombol Cancel --}}
+                                    @if($transaction->status == 'pending')
+                                    <button type="button" onclick="cancelDana('{{ $transaction->reference_id }}')" 
+                                    class="inline-flex items-center px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-xs hover:bg-red-100 transition-colors" title="Batalkan Pesanan">
+                                        <i class="fas fa-times-circle mr-1"></i> Batal
+                                    </button>
+                                    @endif
+
+                                    {{-- Jika Status SUCCESS = Muncul Tombol Refund --}}
+                                    @if($transaction->status == 'success')
+                                    <button type="button" onclick="refundDana('{{ $transaction->reference_id }}')" 
+                                    class="inline-flex items-center px-2 py-1 bg-purple-50 text-purple-600 border border-purple-200 rounded text-xs hover:bg-purple-100 transition-colors" title="Kembalikan Dana">
+                                        <i class="fas fa-undo mr-1"></i> Refund
+                                    </button>
+                                    @endif
+
+                                @endif
                             </td>
                         </tr>
                     @empty

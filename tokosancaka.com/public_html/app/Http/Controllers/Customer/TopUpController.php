@@ -3794,4 +3794,120 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         }
     }
 
+    /**
+     * API Cancel Order DANA
+     * Untuk pesanan yang statusnya masih Pending (01)
+     */
+    public function cancelDanaPayment($orderId)
+    {
+        try {
+            $transaction = \App\Models\Transaction::where('reference_id', $orderId)->first();
+            if (!$transaction) return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan.'], 404);
+
+            $this->applyDynamicConfig();
+            $merchantId = config('services.dana.merchant_id');
+            $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $path       = '/payment-gateway/v1.0/debit/cancel.htm';
+
+            $body = [
+                "originalPartnerReferenceNo" => $orderId,
+                "merchantId"                 => $merchantId
+            ];
+            
+            $jsonBody    = json_encode($body, JSON_UNESCAPED_SLASHES);
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            
+            // 2005700 = Successful Cancel
+            if (($result['responseCode'] ?? '') === '2005700') {
+                $transaction->update(['status' => 'failed']); // Ubah status lokal jadi failed/batal
+                return response()->json(['success' => true, 'message' => 'Pesanan berhasil dibatalkan.']);
+            }
+
+            return response()->json(['success' => false, 'message' => $result['responseMessage'] ?? 'Gagal membatalkan pesanan.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * API Refund Order DANA
+     * Untuk pesanan yang statusnya sudah Paid/Success (00)
+     */
+    public function refundDanaPayment($orderId)
+    {
+        try {
+            $transaction = \App\Models\Transaction::where('reference_id', $orderId)->first();
+            if (!$transaction) return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan.'], 404);
+
+            $this->applyDynamicConfig();
+            $merchantId = config('services.dana.merchant_id');
+            $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $path       = '/payment-gateway/v1.0/debit/refund.htm';
+            
+            // DANA mewajibkan nomor refund unik per permintaan
+            $partnerRefundNo = 'REF-' . time() . '-' . rand(1000, 9999); 
+
+            $body = [
+                "merchantId"                 => $merchantId,
+                "originalPartnerReferenceNo" => $orderId,
+                "partnerRefundNo"            => $partnerRefundNo,
+                "refundAmount" => [
+                    "value"    => number_format((float)$transaction->amount, 2, '.', ''),
+                    "currency" => "IDR"
+                ]
+            ];
+            
+            $jsonBody    = json_encode($body, JSON_UNESCAPED_SLASHES);
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            
+            // 2005800 = Successful Refund
+            if (($result['responseCode'] ?? '') === '2005800') {
+                $transaction->update(['status' => 'refunded']); 
+                
+                // Opsional: Tarik kembali saldo user karena dananya di-refund ke DANA
+                $user = \App\Models\User::find($transaction->user_id);
+                if ($user) $user->decrement('saldo', $transaction->amount);
+
+                return response()->json(['success' => true, 'message' => 'Dana berhasil dikembalikan ke akun DANA pelanggan.']);
+            }
+
+            return response()->json(['success' => false, 'message' => $result['responseMessage'] ?? 'Gagal memproses refund.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
+        }
+    }
 }

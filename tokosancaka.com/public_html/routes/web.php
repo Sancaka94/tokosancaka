@@ -952,6 +952,10 @@ Route::get('/dana/check-gateway/{orderId}', [TopUpController::class, 'checkDanaG
 // Route UAT DANA - Cek Status Pembayaran (Sesuai Dokumentasi Gapura API)
 Route::get('/uat-dana-status/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'checkDanaPaymentStatus'])->name('dana.uat_status');
 
+Route::post('/dana/cancel/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'cancelDanaPayment'])->name('dana.cancel_payment');
+Route::post('/dana/refund/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'refundDanaPayment'])->name('dana.refund_payment');
+
+
 // Route untuk halaman Pusat Bisnis
 Route::get('/customer/business-center', function () {
     return view('customer.business.index');
