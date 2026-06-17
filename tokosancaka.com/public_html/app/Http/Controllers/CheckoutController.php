@@ -101,14 +101,22 @@ class CheckoutController extends Controller
         }
 
         // ========================================================
-        // 1. DETEKSI PRODUK DIGITAL DI KERANJANG
+        // 1. DETEKSI PRODUK DIGITAL & JASA DI KERANJANG
         // ========================================================
         $isDigital = false;
         foreach ($cart as $item) {
-            // Asumsi Anda menggunakan key 'type' di session cart, atau cek dari database produk
-            if (isset($item['type']) && $item['type'] === 'eticket') { 
+            // Cek dari session type
+            if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) { 
                 $isDigital = true;
                 break;
+            }
+            // Cek langsung ke database berdasarkan kolom category_group yang baru
+            $productCheck = \App\Models\Product::with('category')->find($item['product_id'] ?? null);
+            if ($productCheck && $productCheck->category) {
+                if (in_array($productCheck->category->category_group, ['produk_digital', 'jasa'])) {
+                    $isDigital = true;
+                    break;
+                }
             }
         }
 
@@ -196,14 +204,27 @@ class CheckoutController extends Controller
         }
 
         $storeSearch = $store->village . ', ' . $store->district . ', ' . $store->regency . ', ' . $store->province;
-        $userSearch  = $user->village . ', ' . $user->district . ', ' . $user->regency . ', ' . $user->province;
+        // Amankan userSearch jika user tidak login (Guest)
+        $userSearch  = $user ? ($user->village . ', ' . $user->district . ', ' . $user->regency . ', ' . $user->province) : '';
 
-        try {
-            $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
-            $userAddrRes  = $kiriminAja->searchAddress($userSearch);
-        } catch (Exception $e) {
-             Log::error('Gagal mencari alamat KiriminAja di Checkout Index', ['error' => $e->getMessage()]);
-             return redirect()->route('cart.index')->with('error', 'Gagal memvalidasi alamat pengiriman. Silakan coba lagi nanti.');
+        // API Ekspedisi Fisik hanya dipanggil jika produk BUKAN digital/jasa
+        if (!$isDigital) {
+            try {
+                $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
+                $userAddrRes  = $kiriminAja->searchAddress($userSearch);
+                
+                $storeAddr = $storeAddrRes['data'][0] ?? null;
+                $userAddr  = $userAddrRes['data'][0] ?? null;
+
+                if (!$storeAddr || !$userAddr) {
+                     Log::error('Alamat tidak ditemukan oleh KiriminAja', ['store_search' => $storeSearch, 'user_search' => $userSearch, 'store_res' => $storeAddrRes, 'user_res' => $userAddrRes]);
+                    return redirect()->route('cart.index')
+                        ->with('error', 'Alamat pengiriman atau alamat toko tidak dapat divalidasi oleh sistem ekspedisi.');
+                }
+            } catch (Exception $e) {
+                 Log::error('Gagal mencari alamat KiriminAja di Checkout Index', ['error' => $e->getMessage()]);
+                 return redirect()->route('cart.index')->with('error', 'Gagal memvalidasi alamat pengiriman. Silakan coba lagi nanti.');
+            }
         }
 
 
@@ -390,7 +411,17 @@ class CheckoutController extends Controller
             return redirect()->route('etalase.index')->with('error', 'Terjadi kesalahan. Keranjang Anda kosong.');
         }
 
-        if (empty($user->address_detail)) {
+        // Ambil status digital kembali untuk validasi store
+        $isDigital = false;
+        foreach ($cart as $item) {
+            $productCheck = \App\Models\Product::with('category')->find($item['product_id'] ?? null);
+            if ($productCheck && $productCheck->category && in_array($productCheck->category->category_group, ['produk_digital', 'jasa'])) {
+                $isDigital = true;
+                break;
+            }
+        }
+
+        if (!$isDigital && (!$user || empty($user->address_detail))) {
             return redirect()->route('profile.edit')->with('warning', 'Silakan lengkapi alamat pengiriman dahulu.');
         }
 
@@ -489,8 +520,8 @@ class CheckoutController extends Controller
 
             // Pembuatan Order sekarang tidak akan error karena variabel sudah dideklarasikan
             $order = new Order([
-                 'store_id'                => $store->id,
-                 'user_id'                 => $user->id_pengguna,
+                 'store_id'                => $store ? $store->id : null,
+                 'user_id'                 => $user ? $user->id_pengguna : null, // Aman jika Guest (null)
                  'invoice_number'          => $invoiceNumber,
                  'subtotal'                => $subtotal,
                  'shipping_cost'           => $shipping_cost,
@@ -500,11 +531,12 @@ class CheckoutController extends Controller
                  'shipping_method'         => $request->shipping_method,
                  'payment_method'          => $request->payment_method,
                  'status'                  => (in_array($request->payment_method, ['cod', 'cash', 'CODBARANG'])) ? 'processing' : 'pending',
-                 'shipping_address'        => $request->alamat_lengkap_penerima ?? $user->address_detail ?? 'Alamat tidak diatur',
+                 // Ambil dari Form Input GPS / Digital jika ada
+                 'shipping_address'        => $request->alamat_lengkap_penerima ?? ($user ? $user->address_detail : 'Alamat Produk Digital/Jasa'),
                  'customer_latitude'       => $request->latitude ?? null,
                  'customer_longitude'      => $request->longitude ?? null,
-                 'receiver_name'           => $request->nama_penerima ?? $user->nama_lengkap ?? 'Customer',
-                 'receiver_phone'          => $request->no_wa_penerima ?? $user->no_wa ?? '081234567890',
+                 'receiver_name'           => $request->nama_penerima ?? ($user ? $user->nama_lengkap : 'Guest Customer'),
+                 'receiver_phone'          => $request->no_wa_penerima ?? ($user ? $user->no_wa : '081234567890'),
                  'nik_penerima'            => $request->nik_penerima ?? null,
                  'receiver_district_id'    => $userDistrictId,        // <-- SUDAH AMAN
                  'receiver_subdistrict_id' => $userSubdistrictId,     // <-- SUDAH AMAN
@@ -822,12 +854,18 @@ class CheckoutController extends Controller
                     ->with('success', 'Pesanan berhasil dibuat (Mode Admin).');
             }
 
-            // 2. Jika CUSTOMER / SELLER -> Ke Halaman Riwayat Belanja
+            // 2. Jika CUSTOMER / SELLER / GUEST -> Ke Halaman Riwayat Belanja atau Langsung Invoice
             else {
 
                 // Kirim notifikasi jika COD/Cash
                 if (in_array($request->payment_method, ['cod', 'cash'])) {
                     $this->kirimNotifikasiPesananLengkap($order, 'Baru (COD/Cash)');
+                }
+
+                // JIKA GUEST (TIDAK LOGIN): Langsung kunci arahkan ke halaman Invoice Sukses
+                if (!$currentUser) {
+                    return redirect()->route('checkout.invoice', ['invoice' => $order->invoice_number])
+                        ->with('success', 'Pesanan berhasil dibuat! Silakan selesaikan pembayaran Anda.');
                 }
 
                 return redirect()->route('customer.pesanan.riwayat_belanja')
