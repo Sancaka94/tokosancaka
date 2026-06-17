@@ -43,10 +43,21 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4">{{ $transaction->created_at->format('d M Y, H:i') }}</td>
-                            <td class="px-6 py-4">
+                            <td class="px-6 py-4 flex items-center space-x-3">
 
-                                {{-- ✅ PERBAIKAN: Memperbaiki panggilan route agar sesuai dengan controller --}}
-                                <a href="{{ route('customer.topup.show', ['topup' => $transaction->reference_id]) }}" class="text-blue-600 hover:underline">Detail</a>
+                                {{-- Tombol Detail (Muncul untuk semua transaksi) --}}
+                                <a href="{{ route('customer.topup.show', ['topup' => $transaction->reference_id]) }}" class="text-blue-600 hover:text-blue-800 font-medium hover:underline">
+                                    Detail
+                                </a>
+
+                                {{-- Tombol Cek Status DANA (Hanya muncul jika metode pembayaran mengandung kata 'DANA') --}}
+                                @if(str_contains(strtoupper($transaction->payment_method ?? ''), 'DANA'))
+                                    <a href="{{ url('/uat-dana-status/' . $transaction->reference_id) }}" 
+                                    class="inline-flex items-center px-2 py-1 bg-green-50 text-green-600 border border-green-200 rounded text-xs hover:bg-green-100 hover:text-green-800 transition-colors"
+                                    title="Cek status transaksi ke DANA Gateway">
+                                        <i class="fas fa-sync-alt mr-1"></i> Cek DANA
+                                    </a>
+                                @endif
 
                             </td>
                         </tr>
