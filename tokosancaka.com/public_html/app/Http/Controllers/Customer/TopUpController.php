@@ -3705,4 +3705,98 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         }
     }
 
+    /**
+     * API Query Payment Status (DANA)
+     * Mengacu pada dokumen Gapura Payment Gateway API
+     */
+    public function checkDanaPaymentStatus($orderId)
+    {
+        Log::info('LOG LOG: Memulai pengecekan Query Payment Status DANA untuk Order ID: ' . $orderId);
+
+        // 1. Memuat konfigurasi dinamis (Sandbox/Prod)
+        $this->applyDynamicConfig();
+
+        $merchantId = config('services.dana.merchant_id');
+        $partnerId  = config('services.dana.x_partner_id');
+        
+        // Waktu harus dalam format YYYY-MM-DDTHH:mm:ss+07:00 (GMT+7 Jakarta)
+        $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+
+        // 2. Endpoint spesifik untuk Query Payment
+        $path = '/payment-gateway/v1.0/debit/status.htm';
+
+        // 3. Susun Body Request sesuai spesifikasi
+        // Catatan: serviceCode menggunakan kode transaksi original (misal 54 untuk debit H2H)
+        $body = [
+            "originalPartnerReferenceNo" => $orderId,
+            "serviceCode"                => "54", 
+            "merchantId"                 => $merchantId
+        ];
+        
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+
+        try {
+            // 4. Generate Token & Asymmetric Signature
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+            // 5. Susun Headers
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => $partnerId,
+                'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
+                'CHANNEL-ID'    => '95221' // ID Perangkat Akses API
+            ];
+
+            // 6. Eksekusi Request POST
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            
+            Log::info('LOG LOG: Hasil Response Query Payment DANA:', $result);
+
+            // 7. Evaluasi Respon (Sesuai Tabel Response Codes List)
+            $responseCode = $result['responseCode'] ?? 'UNKNOWN';
+            
+            if ($responseCode === '2005500') {
+                $status = $result['latestTransactionStatus'] ?? null;
+                
+                if ($status === '00') {
+                    // Success, the order has been successfully in final state and paid
+                    return ['success' => true, 'status' => 'PAID', 'data' => $result];
+                } elseif (in_array($status, ['01', '02'])) {
+                    // Initiated or Paying (Proses pending)
+                    return ['success' => true, 'status' => 'PENDING', 'data' => $result];
+                } elseif ($status === '05') {
+                    // Cancelled
+                    return ['success' => false, 'status' => 'CANCELLED', 'data' => $result];
+                } elseif ($status === '07') {
+                    // Not Found
+                    return ['success' => false, 'status' => 'NOT_FOUND', 'data' => $result];
+                }
+            }
+
+            // Jika response code selain 2005500 (misal 4045501, 5005500, dll)
+            return [
+                'success' => false, 
+                'status'  => 'ERROR', 
+                'message' => $result['responseMessage'] ?? 'Terjadi kesalahan gateway.',
+                'data'    => $result
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [Query Payment DANA] System Error: ' . $e->getMessage());
+            return [
+                'success' => false, 
+                'status'  => 'SYSTEM_ERROR', 
+                'message' => $e->getMessage()
+            ];
+        }
+    }
+
 }
