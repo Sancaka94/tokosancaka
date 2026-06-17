@@ -1004,31 +1004,56 @@ $(document).ready(function() {
         minimumInputLength: 3, // Mulai cari setelah 3 huruf
     });
 
-    // Aksi ketika user memilih wilayah dari Dropdown
+   // Aksi ketika user memilih wilayah dari Dropdown
     $('#select2_alamat_digital').on('select2:select', function (e) {
         const data = e.params.data; 
         
-        // Cerdas memecah kalimat "Ketanggi, Ngawi, Kab. Ngawi, Jawa Timur" menjadi array
-        let textParts = data.text ? data.text.split(', ') : [];
+        // --- LOG DEBUG F12 ---
+        console.log("LOG: Data Terpilih dari API KiriminAja:", data);
         
-        // Jika data dari API (data.kelurahan) kosong, ambil dari hasil pecahan kalimat (textParts)
+        // Pecah teks jika data rincian kosong
+        let textParts = data.text ? data.text.split(', ') : [];
+        console.log("LOG: Pecahan Teks Alamat:", textParts);
+        
         let kelurahan = data.kelurahan || (textParts[0] || '');
         let kecamatan = data.kecamatan || (textParts[1] || '');
         let kota      = data.kota || (textParts[2] || '');
         let provinsi  = data.provinsi || (textParts[3] || '');
         
-        // Masukkan ke dalam form
-        if(document.getElementById('provinsi_penerima')) document.getElementById('provinsi_penerima').value = provinsi;
-        if(document.getElementById('kota_penerima')) document.getElementById('kota_penerima').value = kota;
-        if(document.getElementById('kecamatan_penerima')) document.getElementById('kecamatan_penerima').value = kecamatan;
-        if(document.getElementById('kelurahan_penerima')) document.getElementById('kelurahan_penerima').value = kelurahan;
+        console.log("LOG: Nilai yang akan dimasukkan ke form:", {
+            kelurahan, kecamatan, kota, provinsi
+        });
         
-        // Fokuskan kursor ke Alamat Lengkap agar user lanjut mengisi jalannya
+        // Memasukkan ke dalam form
+        if(document.getElementById('provinsi_penerima')) {
+            document.getElementById('provinsi_penerima').value = provinsi;
+            console.log("LOG: Input provinsi_penerima terisi.");
+        }
+        
+        if(document.getElementById('kota_penerima')) {
+            document.getElementById('kota_penerima').value = kota;
+            console.log("LOG: Input kota_penerima terisi.");
+        }
+        
+        if(document.getElementById('kecamatan_penerima')) {
+            document.getElementById('kecamatan_penerima').value = kecamatan;
+            console.log("LOG: Input kecamatan_penerima terisi.");
+        }
+        
+        if(document.getElementById('kelurahan_penerima')) {
+            document.getElementById('kelurahan_penerima').value = kelurahan;
+            console.log("LOG: Input kelurahan_penerima terisi.");
+        }
+        
+        // Fokuskan kursor
         document.getElementById('alamat_lengkap_penerima').focus();
         
-        // Panggil fungsi preview kartu jika Anda menggunakannya
+        // Panggil fungsi preview kartu
         if (typeof updateCardPreview === "function") {
             updateCardPreview();
+            console.log("LOG: Kartu Preview telah diperbarui.");
+        } else {
+            console.warn("LOG: Fungsi updateCardPreview tidak ditemukan!");
         }
     });
 });
