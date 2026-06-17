@@ -205,6 +205,7 @@ class TopUpController extends Controller
                     'amount'         => $amount,
                     'type'           => 'topup',
                     'status'         => 'pending',
+                    'payment_method' => 'DANA',
                     'description'    => 'Top up saldo via DANA',
                 ]);
 

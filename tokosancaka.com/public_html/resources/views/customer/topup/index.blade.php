@@ -50,12 +50,13 @@
                                     Detail
                                 </a>
 
-                                {{-- Tombol Cek Status DANA (Hanya muncul jika metode pembayaran mengandung kata 'DANA') --}}
-                                @if(str_contains(strtoupper($transaction->payment_method ?? ''), 'DANA'))
+                                {{-- Tombol Cek Status DANA --}}
+                                @if(str_contains(strtoupper($transaction->payment_method ?? ''), 'DANA') || str_contains(strtoupper($transaction->description ?? ''), 'DANA'))
                                     <a href="{{ url('/uat-dana-status/' . $transaction->reference_id) }}" 
                                     class="inline-flex items-center px-2 py-1 bg-green-50 text-green-600 border border-green-200 rounded text-xs hover:bg-green-100 hover:text-green-800 transition-colors"
-                                    title="Cek status transaksi ke DANA Gateway">
-                                        <i class="fas fa-sync-alt mr-1"></i> Cek DANA
+                                    title="Cek status transaksi ke DANA Gateway"
+                                    target="_blank">
+                                        <i class="fas fa-sync-alt mr-1"></i> Cek Status DANA
                                     </a>
                                 @endif
 
