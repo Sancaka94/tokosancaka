@@ -3813,13 +3813,10 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $path       = '/payment-gateway/v1.0/debit/cancel.htm';
 
-            // Memasukkan Identitas Sub Merchant dan Store sesuai DANA Dashboard
+            // FORMAT STRICT DANA: Hanya menyertakan parameter wajib sesuai sampel dokumen
             $body = [
                 "originalPartnerReferenceNo" => (string) $orderId,
-                "merchantId"                 => (string) $merchantId,
-                "subMerchantId"              => "SANCAKA216620080014040009735",
-                "externalStoreId"            => "toko-pelanggan",
-                "reason"                     => "Pesanan dibatalkan" 
+                "merchantId"                 => (string) $merchantId
             ];
             
             $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
@@ -3828,8 +3825,8 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $accessToken = $this->danaSignature->getAccessToken();
             $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
-            // 32 Karakter Alphanumeric MURNI
-            $externalId = \Illuminate\Support\Str::random(32);
+            // FORMAT STRICT DANA: X-EXTERNAL-ID HARUS MURNI ANGKA (Tanpa huruf/strip)
+            $externalId = date('YmdHis') . mt_rand(100000000, 999999999);
 
             $headers = [
                 'Content-Type'  => 'application/json',
@@ -3837,7 +3834,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 'X-SIGNATURE'   => $signature,
                 'ORIGIN'        => config('services.dana.origin'),
                 'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-                'X-EXTERNAL-ID' => $externalId,
+                'X-EXTERNAL-ID' => (string) $externalId,
                 'CHANNEL-ID'    => '95221'
             ];
             
@@ -3883,20 +3880,16 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $path       = '/payment-gateway/v1.0/debit/refund.htm';
             
-            // 32 Karakter Alphanumeric MURNI
-            $partnerRefundNo = \Illuminate\Support\Str::random(32); 
-            $externalId      = \Illuminate\Support\Str::random(32);
+            // FORMAT STRICT DANA: Partner Refund No HARUS MURNI ANGKA (Tanpa huruf)
+            $partnerRefundNo = date('YmdHis') . mt_rand(100000000, 999999999); 
             
             $refundAmountValue = number_format((float)$transaction->amount, 2, '.', '');
 
-            // Memasukkan Identitas Sub Merchant dan Store sesuai DANA Dashboard
+            // FORMAT STRICT DANA: Hanya field yang benar-benar wajib (Sama persis dengan Request Sample PDF [cite: 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119])
             $body = [
                 "merchantId"                 => (string) $merchantId,
-                "subMerchantId"              => "SANCAKA216620080014040009735",
-                "externalStoreId"            => "toko-pelanggan",
                 "originalPartnerReferenceNo" => (string) $orderId,
                 "partnerRefundNo"            => (string) $partnerRefundNo,
-                "reason"                     => "Pengembalian dana pelanggan",
                 "refundAmount" => [
                     "value"    => $refundAmountValue,
                     "currency" => "IDR"
@@ -3909,13 +3902,16 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $accessToken = $this->danaSignature->getAccessToken();
             $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
+            // FORMAT STRICT DANA: X-EXTERNAL-ID HARUS MURNI ANGKA
+            $externalId = date('YmdHis') . mt_rand(100000000, 999999999);
+
             $headers = [
                 'Content-Type'  => 'application/json',
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
                 'ORIGIN'        => config('services.dana.origin'),
                 'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-                'X-EXTERNAL-ID' => $externalId,
+                'X-EXTERNAL-ID' => (string) $externalId,
                 'CHANNEL-ID'    => '95221'
             ];
             
