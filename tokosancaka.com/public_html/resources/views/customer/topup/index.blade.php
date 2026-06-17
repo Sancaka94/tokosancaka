@@ -160,7 +160,7 @@
             // 1. Munculkan modal loading
             Swal.fire({
                 title: 'Mengecek Status...',
-                text: 'Menghubungi server DANA Gateway',
+                text: 'Menghubungi server DANA',
                 allowOutsideClick: false,
                 didOpen: () => {
                     Swal.showLoading();
