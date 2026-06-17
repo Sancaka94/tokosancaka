@@ -3805,7 +3805,6 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         try {
             $transaction = \App\Models\Transaction::where('reference_id', $orderId)->first();
             if (!$transaction) {
-                Log::error('LOG LOG: [DANA CANCEL] Transaksi tidak ditemukan di DB lokal.');
                 return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan.'], 404);
             }
 
@@ -3814,7 +3813,6 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $path       = '/payment-gateway/v1.0/debit/cancel.htm';
 
-            // Menyusun payload SAMA PERSIS dengan Request Sample di Dokumentasi
             $body = [
                 "originalPartnerReferenceNo" => (string) $orderId,
                 "merchantId"                 => (string) $merchantId
@@ -3826,13 +3824,16 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $accessToken = $this->danaSignature->getAccessToken();
             $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
+            // MENCEGAH ERROR 500: Gunakan UUID Standar 36 Karakter
+            $externalId = \Illuminate\Support\Str::uuid()->toString();
+
             $headers = [
                 'Content-Type'  => 'application/json',
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
                 'ORIGIN'        => config('services.dana.origin'),
                 'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-                'X-EXTERNAL-ID' => date('YmdHis') . rand(100, 999), // Max 36 chars
+                'X-EXTERNAL-ID' => $externalId,
                 'CHANNEL-ID'    => '95221'
             ];
             
@@ -3845,14 +3846,12 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $result = $response->json();
             Log::info('LOG LOG: [DANA CANCEL] Response dari DANA: ', $result ?? ['raw_body' => $response->body()]);
             
-            // 2005700 = Successful Cancel sesuai Response Codes List
             if (($result['responseCode'] ?? '') === '2005700') {
                 $transaction->update(['status' => 'failed']); 
                 Log::info('LOG LOG: [DANA CANCEL] Berhasil dibatalkan di DANA dan Database.');
                 return response()->json(['success' => true, 'message' => 'Pesanan berhasil dibatalkan di DANA.']);
             }
 
-            Log::error('LOG LOG: [DANA CANCEL] Gagal dibatalkan. Pesan: ' . ($result['responseMessage'] ?? 'Unknown Error'));
             return response()->json(['success' => false, 'message' => $result['responseMessage'] ?? 'Gagal membatalkan pesanan.']);
             
         } catch (\Exception $e) {
@@ -3872,7 +3871,6 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         try {
             $transaction = \App\Models\Transaction::where('reference_id', $orderId)->first();
             if (!$transaction) {
-                Log::error('LOG LOG: [DANA REFUND] Transaksi tidak ditemukan di DB lokal.');
                 return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan.'], 404);
             }
 
@@ -3881,12 +3879,11 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
             $path       = '/payment-gateway/v1.0/debit/refund.htm';
             
-            $partnerRefundNo = date('YmdHis') . rand(1000, 9999); 
+            // MENCEGAH ERROR 500: Hapus kata "REF", gunakan MURNI ANGKA 20 digit!
+            $partnerRefundNo = date('YmdHis') . rand(100000, 999999); 
             
-            // Format wajib: Angka dengan 2 desimal (ISO-4217)
             $refundAmountValue = number_format((float)$transaction->amount, 2, '.', '');
 
-            // Menyusun payload SAMA PERSIS dengan Request Sample di Dokumentasi
             $body = [
                 "merchantId"                 => (string) $merchantId,
                 "originalPartnerReferenceNo" => (string) $orderId,
@@ -3903,13 +3900,16 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $accessToken = $this->danaSignature->getAccessToken();
             $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
 
+            // MENCEGAH ERROR 500: Gunakan UUID Standar 36 Karakter
+            $externalId = \Illuminate\Support\Str::uuid()->toString();
+
             $headers = [
                 'Content-Type'  => 'application/json',
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
                 'ORIGIN'        => config('services.dana.origin'),
                 'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
-                'X-EXTERNAL-ID' => date('YmdHis') . rand(100, 999), // Max 36 chars
+                'X-EXTERNAL-ID' => $externalId,
                 'CHANNEL-ID'    => '95221'
             ];
             
@@ -3922,11 +3922,9 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $result = $response->json();
             Log::info('LOG LOG: [DANA REFUND] Response dari DANA: ', $result ?? ['raw_body' => $response->body()]);
             
-            // 2005800 = Successful Refund sesuai Response Codes List
             if (($result['responseCode'] ?? '') === '2005800') {
                 $transaction->update(['status' => 'refunded']); 
                 
-                // Tarik kembali saldo user karena dananya di-refund ke DANA
                 $user = \App\Models\User::find($transaction->user_id);
                 if ($user) $user->decrement('saldo', $transaction->amount);
 
@@ -3934,7 +3932,6 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 return response()->json(['success' => true, 'message' => 'Dana berhasil dikembalikan ke akun DANA pelanggan.']);
             }
 
-            Log::error('LOG LOG: [DANA REFUND] Gagal di-refund. Pesan: ' . ($result['responseMessage'] ?? 'Unknown Error'));
             return response()->json(['success' => false, 'message' => $result['responseMessage'] ?? 'Gagal memproses refund.']);
             
         } catch (\Exception $e) {
