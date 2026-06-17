@@ -2430,66 +2430,37 @@ TEXT;
         }
     }
 
-    /**
-     * Endpoint AJAX untuk fitur pencarian alamat KiriminAja bagi Guest
-     */
     public function searchAddressAjax(Request $request, \App\Services\KiriminAjaService $kiriminAja)
     {
         $keyword = $request->query('q');
-        
-        // Log saat pencarian dimulai
-        Log::info('AJAX KiriminAja: Mencari alamat dengan keyword: ' . $keyword);
-
-        if (strlen($keyword) < 3) {
-            return response()->json(['results' => []]);
-        }
+        if (strlen($keyword) < 3) return response()->json(['results' => []]);
 
         try {
             $response = $kiriminAja->searchAddress($keyword);
             
-            // Log raw response dari API untuk debugging struktur data
-            Log::debug('AJAX KiriminAja: Raw Response:', ['response' => $response]);
-
-            $data = $response['data'] ?? [];
+            // Logika baru: Ambil data dari response['response']['data'] berdasarkan log Anda
+            $data = $response['response']['data'] ?? $response['data'] ?? [];
             
-            if (empty($data)) {
-                Log::warning('AJAX KiriminAja: API mengembalikan data kosong untuk keyword: ' . $keyword);
-            }
-
             $formatted = array_map(function($item) {
-                $provinsi  = $item['province_name'] ?? $item['provinsi'] ?? '';
-                $kota      = $item['city_name'] ?? $item['kabupaten'] ?? $item['kota'] ?? '';
-                $kecamatan = $item['district_name'] ?? $item['kecamatan'] ?? '';
-                $kelurahan = $item['subdistrict_name'] ?? $item['kelurahan'] ?? '';
+                // Gunakan full_address sebagai fallback utama jika field spesifik tidak ada
+                $displayText = $item['full_address'] ?? 'Alamat Ditemukan';
                 
-                $subdistrictId = $item['subdistrict_id'] ?? $item['id'] ?? '';
-                $districtId    = $item['district_id'] ?? '';
-
-                $textParts = array_filter([$kelurahan, $kecamatan, $kota, $provinsi]);
-                
-                $displayText = !empty($textParts) ? implode(', ', $textParts) : ($item['name'] ?? $item['text'] ?? 'Alamat Ditemukan');
-
-                // Log per item jika Anda butuh detail struktur data yang diproses
-                // Log::debug('AJAX KiriminAja: Memproses item', ['item' => $item, 'result' => $displayText]);
-
                 return [
-                    'id' => $subdistrictId, 
-                    'text' => $displayText,
-                    'provinsi'    => $provinsi,
-                    'kota'        => $kota,
-                    'kecamatan'   => $kecamatan,
-                    'kelurahan'   => $kelurahan,
-                    'district_id' => $districtId
+                    'id'    => $item['subdistrict_id'] ?? $item['id'] ?? '',
+                    'text'  => $displayText,
+                    // Karena API tidak kasih nama per field, kita kirim full_address ke JS
+                    // agar nanti di-split/dipecah di sisi JavaScript
+                    'raw_address' => $displayText,
+                    'provinsi'    => '', // Akan diisi di JS
+                    'kota'        => '',
+                    'kecamatan'   => '',
+                    'kelurahan'   => ''
                 ];
             }, $data);
 
             return response()->json(['results' => $formatted]);
-
         } catch (\Exception $e) {
-            // Log Error dengan detail lengkap
-            Log::error('AJAX KiriminAja Error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
+            Log::error('AJAX KiriminAja Error: ' . $e->getMessage());
             return response()->json(['results' => []]);
         }
     }

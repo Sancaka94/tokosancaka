@@ -1004,57 +1004,27 @@ $(document).ready(function() {
         minimumInputLength: 3, // Mulai cari setelah 3 huruf
     });
 
-   // Aksi ketika user memilih wilayah dari Dropdown
-    $('#select2_alamat_digital').on('select2:select', function (e) {
+   $('#select2_alamat_digital').on('select2:select', function (e) {
         const data = e.params.data; 
+        console.log("LOG: Data mentah dari API:", data.raw_address);
         
-        // --- LOG DEBUG F12 ---
-        console.log("LOG: Data Terpilih dari API KiriminAja:", data);
+        // Memecah string: Kebraon, Karangpilang, Surabaya, Jawa Timur, 60222
+        let parts = data.raw_address.split(', ');
         
-        // Pecah teks jika data rincian kosong
-        let textParts = data.text ? data.text.split(', ') : [];
-        console.log("LOG: Pecahan Teks Alamat:", textParts);
+        // Asumsi urutan: [Kelurahan, Kecamatan, Kota, Provinsi, KodePos]
+        let kelurahan = parts[0] || '';
+        let kecamatan = parts[1] || '';
+        let kota      = parts[2] || '';
+        let provinsi  = parts[3] || '';
         
-        let kelurahan = data.kelurahan || (textParts[0] || '');
-        let kecamatan = data.kecamatan || (textParts[1] || '');
-        let kota      = data.kota || (textParts[2] || '');
-        let provinsi  = data.provinsi || (textParts[3] || '');
+        // Masukkan ke form
+        $('#provinsi_penerima').val(provinsi);
+        $('#kota_penerima').val(kota);
+        $('#kecamatan_penerima').val(kecamatan);
+        $('#kelurahan_penerima').val(kelurahan);
         
-        console.log("LOG: Nilai yang akan dimasukkan ke form:", {
-            kelurahan, kecamatan, kota, provinsi
-        });
-        
-        // Memasukkan ke dalam form
-        if(document.getElementById('provinsi_penerima')) {
-            document.getElementById('provinsi_penerima').value = provinsi;
-            console.log("LOG: Input provinsi_penerima terisi.");
-        }
-        
-        if(document.getElementById('kota_penerima')) {
-            document.getElementById('kota_penerima').value = kota;
-            console.log("LOG: Input kota_penerima terisi.");
-        }
-        
-        if(document.getElementById('kecamatan_penerima')) {
-            document.getElementById('kecamatan_penerima').value = kecamatan;
-            console.log("LOG: Input kecamatan_penerima terisi.");
-        }
-        
-        if(document.getElementById('kelurahan_penerima')) {
-            document.getElementById('kelurahan_penerima').value = kelurahan;
-            console.log("LOG: Input kelurahan_penerima terisi.");
-        }
-        
-        // Fokuskan kursor
+        console.log("LOG: Data berhasil diisi:", {kelurahan, kecamatan, kota, provinsi});
         document.getElementById('alamat_lengkap_penerima').focus();
-        
-        // Panggil fungsi preview kartu
-        if (typeof updateCardPreview === "function") {
-            updateCardPreview();
-            console.log("LOG: Kartu Preview telah diperbarui.");
-        } else {
-            console.warn("LOG: Fungsi updateCardPreview tidak ditemukan!");
-        }
     });
 });
 </script>
