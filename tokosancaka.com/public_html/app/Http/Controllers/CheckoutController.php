@@ -193,16 +193,13 @@ class CheckoutController extends Controller
 
         $store = $firstProduct->store;
 
-        if (empty($store->village) || empty($store->district) || empty($store->regency) || empty($store->province)) {
-             Log::error('Alamat toko tidak lengkap', ['store_id' => $store->id]);
-            return redirect()->route('cart.index')
-                ->with('error', 'Alamat toko asal pengiriman tidak lengkap. Silakan hubungi penjual.');
-        }
-
-        if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province)) {
-             Log::warning('Alamat user tidak lengkap', ['user_id' => $user->id_pengguna]);
-            return redirect()->route('profile.edit')
-                ->with('warning', 'Alamat pengiriman Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
+        // Validasi kelengkapan alamat toko (Hanya eksekusi jika produk fisik)
+        if (!$isDigital && $store) {
+            if (empty($store->village) || empty($store->district) || empty($store->regency) || empty($store->province)) {
+                 Log::error('Alamat toko tidak lengkap', ['store_id' => $store->id]);
+                return redirect()->route('cart.index')
+                    ->with('error', 'Alamat toko asal pengiriman tidak lengkap. Silakan hubungi penjual.');
+            }
         }
 
         $storeSearch = $store->village . ', ' . $store->district . ', ' . $store->regency . ', ' . $store->province;
