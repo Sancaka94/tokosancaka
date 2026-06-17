@@ -34,8 +34,8 @@
                             <td class="px-6 py-4 font-medium">{{ $transaction->reference_id }}</td>
 
                             <td class="px-6 py-4 font-semibold text-green-600">Rp {{ number_format($transaction->amount, 0, ',', '.') }}</td>
-                            <td class="px-6 py-4 text-sm text-gray-600">
-                                {{ str_replace('_', ' ', $transaction->payment_method ?? '-') }}
+                            <td class="px-6 py-4 text-sm text-gray-600 font-medium">
+                                {{ $transaction->payment_method ? str_replace('_', ' ', $transaction->payment_method) : str_replace('Top up saldo via ', '', $transaction->description ?? '-') }}
                             </td>
                             <td class="px-6 py-4">
                                 <span class="px-3 py-1 text-sm font-semibold leading-tight rounded-full
