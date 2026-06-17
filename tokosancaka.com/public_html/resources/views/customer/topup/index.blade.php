@@ -52,12 +52,11 @@
 
                                 {{-- Tombol Cek Status DANA --}}
                                 @if(str_contains(strtoupper($transaction->payment_method ?? ''), 'DANA') || str_contains(strtoupper($transaction->description ?? ''), 'DANA'))
-                                    <a href="{{ url('/uat-dana-status/' . $transaction->reference_id) }}" 
+                                    <button type="button" onclick="cekStatusDana('{{ $transaction->reference_id }}')" 
                                     class="inline-flex items-center px-2 py-1 bg-green-50 text-green-600 border border-green-200 rounded text-xs hover:bg-green-100 hover:text-green-800 transition-colors"
-                                    title="Cek status transaksi ke DANA Gateway"
-                                    target="_blank">
-                                        <i class="fas fa-sync-alt mr-1"></i> Cek Status DANA
-                                    </a>
+                                    title="Cek status transaksi ke DANA Gateway">
+                                        <i class="fas fa-sync-alt mr-1"></i> Cek DANA
+                                    </button>
                                 @endif
 
                             </td>
@@ -151,5 +150,64 @@
         </div>
     </div>
     @endif
+
+    @push('scripts')
+    {{-- Memanggil Library SweetAlert2 --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <script>
+        function cekStatusDana(orderId) {
+            // 1. Munculkan modal loading
+            Swal.fire({
+                title: 'Mengecek Status...',
+                text: 'Menghubungi server DANA Gateway',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // 2. Eksekusi request di belakang layar (AJAX) tanpa pindah halaman
+            $.ajax({
+                url: '/uat-dana-status/' + orderId,
+                type: 'GET',
+                success: function(response) {
+                    
+                    // 3. Tampilkan hasil berdasarkan respon dari controller
+                    if (response.success && response.status === 'PAID') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Pembayaran Lunas! (00)',
+                            text: 'Status di DANA sudah PAID. Saldo sudah diamankan.',
+                            footer: '<span style="color:#6b7280; font-size:12px;">Ref: ' + orderId + '</span>'
+                        });
+                        
+                    } else if (response.success && response.status === 'PENDING') {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Masih Pending',
+                            text: 'Transaksi ini belum dibayar oleh pelanggan di aplikasi DANA.',
+                        });
+                        
+                    } else {
+                        // Untuk status Cancelled, Expired, atau Not Found
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal / Tidak Ditemukan',
+                            text: response.message || 'Transaksi sudah kadaluarsa atau tidak ditemukan di DANA.'
+                        });
+                    }
+                },
+                error: function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Koneksi Terputus',
+                        text: 'Terjadi kesalahan sistem saat menghubungi server DANA.'
+                    });
+                }
+            });
+        }
+    </script>
+@endpush
 
 @endsection
