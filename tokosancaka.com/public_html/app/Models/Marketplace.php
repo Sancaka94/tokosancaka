@@ -53,6 +53,7 @@ class Marketplace extends Model
         'height',
         'jenis_barang',
         'rating',
+        'nik_penerima'
     ];
 
     /**
