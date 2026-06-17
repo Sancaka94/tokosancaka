@@ -223,131 +223,137 @@
                         </div>
                     </div>
 
-                    <!-- Opsi Pengiriman -->
-                   <div class="bg-white rounded-xl shadow-md p-6">
+                  <div class="bg-white rounded-xl shadow-md p-6">
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Pilih Metode Pengiriman</h2>
-                        <div class="space-y-4">
 
-                        {{-- ====================================================================== --}}
-                        {{-- ================== AWAL BLOK PENGIRIMAN ================== --}}
-                        {{-- ====================================================================== --}}
-                        @php
-                            // 1. Ambil hasil Express (sudah bersih dari controller)
-                            $expressResults = collect($expressOptions['results'] ?? []);
-
-                            // 2. Ambil hasil Instant (sudah bersih dari controller)
-                            $instantResults = collect([]); // Default ke array kosong
-                            if (isset($instantOptions['status']) && $instantOptions['status'] === true && isset($instantOptions['results'])) {
-                                $instantResults = collect($instantOptions['results']);
-                            }
-
-                            // 3. Gabungkan keduanya
-                            $allResults = $expressResults->merge($instantResults);
-
-                            // 4. Buat grup. Gunakan 'group' key yang sudah ada.
-                            $groupedOptions = $allResults->groupBy('group');
-
-                            // 5. Pastikan urutan tab benar
-                            $groupOrder = ['Regular', 'One Day', 'Instant', 'Cargo', 'Trucking'];
-                            $finalGrouped = collect($groupOrder)
-                                ->mapWithKeys(function($key) use ($groupedOptions) {
-                                    $key = \Illuminate\Support\Str::title($key);
-                                    return [$key => $groupedOptions->get(strtolower($key), collect())];
-                                })
-                                ->filter(fn($group) => $group->isNotEmpty()); // Hapus tab yang kosong
-
-                            $firstActiveGroup = $finalGrouped->keys()->first();
-                        @endphp
-
-                        <div class="flex flex-wrap gap-2 mb-4">
-                            @forelse($finalGrouped as $group => $options)
-                                <button type="button"
-                                        class="px-4 py-2 rounded-lg border hover:bg-gray-100 group-button {{ $group === $firstActiveGroup ? 'active' : '' }}"
-                                        data-group="{{ $group }}">
-                                    {{ $group }}
-                                </button>
-                            @empty
-                                <p class="text-sm text-gray-500">Tidak ada opsi pengiriman yang tersedia untuk alamat Anda.</p>
-                            @endforelse
-                        </div>
-
-                        @foreach($finalGrouped as $group => $options)
-                            <div class="shipping-group-options {{ $group !== $firstActiveGroup ? 'hidden' : '' }}" data-group="{{ $group }}">
-                                @php
-                                    $sortedOptions = $options->sortBy('final_price')->values();
-                                @endphp
-
-                                @foreach($sortedOptions as $i => $option)
-                                    @php
-                                        $serviceName = $option['service_name'];
-                                        $service = $option['service'];
-                                        $serviceType = $option['service_type'];
-                                        $etd = $option['etd'];
-                                        $finalPrice = $option['final_price'];
-
-                                        // ======================================================
-                                        // ==== INI ADALAH PERBAIKAN UNTUK ERROR DI SCREENSHOT ANDA ====
-                                        // ==== SAYA TETAP MENGGUNAKAN 'insurance_cost' BUKAN 'insurance' ====
-                                        $insurance = $option['insurance_cost'] ?? 0;
-                                        // ======================================================
-
-                                        $codAvailable = $option['cod_available'] ?? false;
-                                        $codFee = $option['cod_fee'] ?? 0;
-                                        $groupName = $option['group'];
-
-                                        $logoName = strtolower(str_replace(' ', '', $service)) . '.png';
-
-                                        $value = sprintf('%s-%s-%s-%d-%d-%d',
-                                            strtolower($groupName),
-                                            $service,
-                                            $serviceType,
-                                            $finalPrice,
-                                            $insurance,
-                                            $codFee
-                                        );
-                                    @endphp
-                                    <label class="flex items-center border border-gray-200 p-4 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-red-50 has-[:checked]:border-red-500 mb-2">
-                                        <input
-                                            type="radio"
-                                            name="shipping_method"
-                                            value="{{ $value }}"
-                                            class="form-radio h-5 w-5 text-red-600"
-                                            data-cost="{{ $finalPrice }}"
-                                            data-insurance="{{ $insurance }}"
-                                            data-cod="{{ $codAvailable ? 'true' : 'false' }}"
-                                            data-cod-fee="{{ $codFee }}"
-                                            {{ $group === $firstActiveGroup && $loop->first ? 'checked' : '' }}
-                                        >
-                                        <div class="ml-4 flex justify-between w-full items-center">
-                                            <div class="flex items-center gap-3">
-                                                <img src="{{ asset('public/storage/logo-ekspedisi/'.$logoName) }}"
-                                                     alt="{{ $serviceName }}"
-                                                     class="w-8 h-8 object-contain"
-                                                     onerror="this.style.display='none'">
-                                                <div>
-                                                    <span class="text-sm font-medium text-gray-900"><strong>{{ $serviceName }}</strong></span>
-                                                    <span class="block text-xs text-gray-500">
-                                                        Estimasi In Syaa Allah: {{ $etd }}
-                                                        @if( !\Illuminate\Support\Str::contains($etd, ['menit', 'minutes', 'Jam', 'hours',]) )
-                                                            Hari
-                                                        @endif
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <span class="text-sm font-medium text-gray-900">
-                                                Rp{{ number_format($finalPrice, 0, ',', '.') }}
-                                            </span>
-                                        </div>
-                                    </label>
-                                @endforeach
+                        @if($isDigital)
+                            <div class="p-4 bg-green-50 border border-green-200 rounded-lg flex items-start mb-4">
+                                <i class="fas fa-bolt text-green-500 text-2xl mr-4 mt-1"></i>
+                                <div>
+                                    <h3 class="font-bold text-green-800">Pengiriman Instan (Otomatis)</h3>
+                                    <p class="text-sm text-green-600 mt-1">Sistem mendeteksi ini adalah produk Digital/E-Ticket/Jasa. Produk ini tidak memerlukan pengiriman kurir fisik dan akan langsung diproses setelah pembayaran lunas.</p>
+                                </div>
                             </div>
-                        @endforeach
-                        {{-- ====================================================================== --}}
-                        {{-- =================== AKHIR BLOK PENGIRIMAN ================== --}}
-                        {{-- ====================================================================== --}}
 
-                        </div>
-                   </div>
+                            <input type="radio" 
+                                   name="shipping_method" 
+                                   value="digital_delivery-eticket-noncod-0-0-0" 
+                                   data-cost="0" 
+                                   data-insurance="0" 
+                                   data-cod="false" 
+                                   data-cod-fee="0" 
+                                   class="hidden" 
+                                   checked>
+
+                        @else
+                            <div class="space-y-4">
+
+                            {{-- ====================================================================== --}}
+                            {{-- ================== AWAL BLOK PENGIRIMAN ================== --}}
+                            {{-- ====================================================================== --}}
+                            @php
+                                $expressResults = collect($expressOptions['results'] ?? []);
+                                $instantResults = collect([]);
+                                if (isset($instantOptions['status']) && $instantOptions['status'] === true && isset($instantOptions['results'])) {
+                                    $instantResults = collect($instantOptions['results']);
+                                }
+                                $allResults = $expressResults->merge($instantResults);
+                                $groupedOptions = $allResults->groupBy('group');
+
+                                $groupOrder = ['Regular', 'One Day', 'Instant', 'Cargo', 'Trucking'];
+                                $finalGrouped = collect($groupOrder)
+                                    ->mapWithKeys(function($key) use ($groupedOptions) {
+                                        $key = \Illuminate\Support\Str::title($key);
+                                        return [$key => $groupedOptions->get(strtolower($key), collect())];
+                                    })
+                                    ->filter(fn($group) => $group->isNotEmpty());
+
+                                $firstActiveGroup = $finalGrouped->keys()->first();
+                            @endphp
+
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                @forelse($finalGrouped as $group => $options)
+                                    <button type="button"
+                                            class="px-4 py-2 rounded-lg border hover:bg-gray-100 group-button {{ $group === $firstActiveGroup ? 'active' : '' }}"
+                                            data-group="{{ $group }}">
+                                        {{ $group }}
+                                    </button>
+                                @empty
+                                    <p class="text-sm text-gray-500">Tidak ada opsi pengiriman yang tersedia untuk alamat Anda.</p>
+                                @endforelse
+                            </div>
+
+                            @foreach($finalGrouped as $group => $options)
+                                <div class="shipping-group-options {{ $group !== $firstActiveGroup ? 'hidden' : '' }}" data-group="{{ $group }}">
+                                    @php
+                                        $sortedOptions = $options->sortBy('final_price')->values();
+                                    @endphp
+
+                                    @foreach($sortedOptions as $i => $option)
+                                        @php
+                                            $serviceName = $option['service_name'];
+                                            $service = $option['service'];
+                                            $serviceType = $option['service_type'];
+                                            $etd = $option['etd'];
+                                            $finalPrice = $option['final_price'];
+                                            $insurance = $option['insurance_cost'] ?? 0;
+                                            $codAvailable = $option['cod_available'] ?? false;
+                                            $codFee = $option['cod_fee'] ?? 0;
+                                            $groupName = $option['group'];
+                                            $logoName = strtolower(str_replace(' ', '', $service)) . '.png';
+
+                                            $value = sprintf('%s-%s-%s-%d-%d-%d',
+                                                strtolower($groupName),
+                                                $service,
+                                                $serviceType,
+                                                $finalPrice,
+                                                $insurance,
+                                                $codFee
+                                            );
+                                        @endphp
+                                        <label class="flex items-center border border-gray-200 p-4 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:bg-red-50 has-[:checked]:border-red-500 mb-2">
+                                            <input
+                                                type="radio"
+                                                name="shipping_method"
+                                                value="{{ $value }}"
+                                                class="form-radio h-5 w-5 text-red-600"
+                                                data-cost="{{ $finalPrice }}"
+                                                data-insurance="{{ $insurance }}"
+                                                data-cod="{{ $codAvailable ? 'true' : 'false' }}"
+                                                data-cod-fee="{{ $codFee }}"
+                                                {{ $group === $firstActiveGroup && $loop->first ? 'checked' : '' }}
+                                            >
+                                            <div class="ml-4 flex justify-between w-full items-center">
+                                                <div class="flex items-center gap-3">
+                                                    <img src="{{ asset('public/storage/logo-ekspedisi/'.$logoName) }}"
+                                                         alt="{{ $serviceName }}"
+                                                         class="w-8 h-8 object-contain"
+                                                         onerror="this.style.display='none'">
+                                                    <div>
+                                                        <span class="text-sm font-medium text-gray-900"><strong>{{ $serviceName }}</strong></span>
+                                                        <span class="block text-xs text-gray-500">
+                                                            Estimasi In Syaa Allah: {{ $etd }}
+                                                            @if( !\Illuminate\Support\Str::contains($etd, ['menit', 'minutes', 'Jam', 'hours',]) )
+                                                                Hari
+                                                            @endif
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <span class="text-sm font-medium text-gray-900">
+                                                    Rp{{ number_format($finalPrice, 0, ',', '.') }}
+                                                </span>
+                                            </div>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            @endforeach
+                            {{-- ====================================================================== --}}
+                            {{-- =================== AKHIR BLOK PENGIRIMAN ================== --}}
+                            {{-- ====================================================================== --}}
+
+                            </div>
+                        @endif
+                    </div>
 
                     <!-- Opsi Pembayaran -->
                     <div class="bg-white rounded-xl shadow-md p-6">
