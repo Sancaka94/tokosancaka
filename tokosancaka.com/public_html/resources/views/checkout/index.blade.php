@@ -1028,7 +1028,7 @@ $(document).ready(function() {
     });
 });
 </script>
-<!-- ====================================================== -->
+
 
 <script>
 // 1. DEKLARASIKAN FUNGSI DI LUAR (GLOBAL SCOPE)
