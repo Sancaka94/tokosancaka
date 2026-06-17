@@ -500,20 +500,30 @@ class CheckoutController extends Controller
 
             // --- 4. Buat Order & Order Items ---
 
-            // Pindahkan logika KiriminAja ke sini agar variabel ID kecamatan/kelurahan tersedia
-            // --- KODE BARU YANG SUDAH FIX (TAMBAHKAN . $store->district . & $user->district) ---
-			$storeSearch = $store->village . ', ' . $store->district . ', ' . $store->regency . ', ' . $store->province;
-			$userSearch = $user->village . ', ' . $user->district . ', ' . $user->regency . ', ' . $user->province;
-            $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
-            $userAddrRes = $kiriminAja->searchAddress($userSearch);
+            // --- 4. Buat Order & Order Items ---
 
-            $storeAddr = $storeAddrRes['data'][0] ?? null;
-            $userAddr = $userAddrRes['data'][0] ?? null;
+            $storeDistrictId = null;
+            $storeSubdistrictId = null;
+            $userDistrictId = null;
+            $userSubdistrictId = null;
 
-            $storeDistrictId = $storeAddr['district_id'] ?? null;
-            $storeSubdistrictId = $storeAddr['subdistrict_id'] ?? null;
-            $userDistrictId = $userAddr['district_id'] ?? null;
-            $userSubdistrictId = $userAddr['subdistrict_id'] ?? null;
+            // HANYA TEMBAK API KIRIMINAJA JIKA BUKAN PRODUK DIGITAL & USER LOGIN
+            if (!$isDigital && $user && $store) {
+                // Gunakan operator ?-> (nullsafe) untuk mencegah error on null
+                $storeSearch = $store?->village . ', ' . $store?->district . ', ' . $store?->regency . ', ' . $store?->province;
+                $userSearch = $user?->village . ', ' . $user?->district . ', ' . $user?->regency . ', ' . $user?->province;
+
+                $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
+                $userAddrRes = $kiriminAja->searchAddress($userSearch);
+
+                $storeAddr = $storeAddrRes['data'][0] ?? null;
+                $userAddr = $userAddrRes['data'][0] ?? null;
+
+                $storeDistrictId = $storeAddr['district_id'] ?? null;
+                $storeSubdistrictId = $storeAddr['subdistrict_id'] ?? null;
+                $userDistrictId = $userAddr['district_id'] ?? null;
+                $userSubdistrictId = $userAddr['subdistrict_id'] ?? null;
+            }
 
             // Generate Invoice
             do {
