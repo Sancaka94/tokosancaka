@@ -71,8 +71,7 @@ public function index(Request $request) // Tambahkan Request
     {
         // Ambil kategori untuk dropdown
         $categories = Category::whereIn('type', ['product', 'marketplace'])
-        ->orderBy('id', 'asc')
-        ->orderBy('name', 'asc')
+        ->orderBy('name')
         ->get();
 
         // Kirim $categories ke view
