@@ -172,9 +172,9 @@
                                 $nama = optional($user)->nama_lengkap ?? 'Guest (Tamu)';
                                 $wa = optional($user)->no_wa ?? '-';
                             @endphp
-                            <p class="font-semibold">{{ $nama }}</p>
-                            <p class="text-sm text-gray-600">{{ $wa }}</p>
-                            <p class="text-sm text-gray-600 mt-2">{{ $alamat }}</p>
+                            <p class="font-semibold" id="preview_nama">{{ $nama }}</p>
+                            <p class="text-sm text-gray-600" id="preview_wa">{{ $wa }}</p>
+                            <p class="text-sm text-gray-600 mt-2" id="preview_alamat">{{ $alamat }}</p>
                             @auth
                             <a href="{{ route('customer.profile.edit') }}?redirect_to=checkout" class="text-sm text-red-600 hover:underline mt-2 inline-block">Ubah Alamat</a>
                             @endauth
