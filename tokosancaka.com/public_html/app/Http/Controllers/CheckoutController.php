@@ -2444,26 +2444,26 @@ TEXT;
             $response = $kiriminAja->searchAddress($keyword);
             $data = $response['data'] ?? [];
             
-            // Format ulang agar sesuai dengan library Select2 dan siap dipecah
             $formatted = array_map(function($item) {
-                // =====================================================================
-                // PERBAIKAN: Gunakan fallback (??) ganda untuk mengatasi respon API yang labil
-                // =====================================================================
+                // Ambil data pecahan jika API menyediakannya
                 $provinsi  = $item['province_name'] ?? $item['provinsi'] ?? '';
                 $kota      = $item['city_name'] ?? $item['kabupaten'] ?? $item['kota'] ?? '';
                 $kecamatan = $item['district_name'] ?? $item['kecamatan'] ?? '';
-                $kelurahan = $item['subdistrict_name'] ?? $item['kelurahan'] ?? $item['name'] ?? '';
+                $kelurahan = $item['subdistrict_name'] ?? $item['kelurahan'] ?? '';
                 
                 $subdistrictId = $item['subdistrict_id'] ?? $item['id'] ?? '';
                 $districtId    = $item['district_id'] ?? '';
 
-                // Gabungkan teks dengan cerdas (Abaikan jika ada variabel yang kosong agar tidak ada koma berlebih)
-                $textLabel = array_filter([$kelurahan, $kecamatan, $kota, $provinsi]);
+                // Susun teks dari pecahan
+                $textParts = array_filter([$kelurahan, $kecamatan, $kota, $provinsi]);
+                
+                // JIKA PECAHAN KOSONG, AMBIL LANGSUNG DARI KEY "name" / "text" BAWAAN API
+                $displayText = !empty($textParts) ? implode(', ', $textParts) : ($item['name'] ?? $item['text'] ?? 'Alamat Ditemukan');
 
                 return [
-                    'id' => $subdistrictId, // Subdistrict ID sebagai value utama
-                    'text' => implode(', ', $textLabel),
-                    // Bawa data mentah untuk di-pecah di frontend JS
+                    'id' => $subdistrictId, 
+                    'text' => $displayText, // Ini yang akan muncul di dropdown
+                    // Bawa data mentah ke frontend
                     'provinsi'    => $provinsi,
                     'kota'        => $kota,
                     'kecamatan'   => $kecamatan,

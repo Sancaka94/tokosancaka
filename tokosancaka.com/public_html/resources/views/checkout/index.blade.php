@@ -34,6 +34,48 @@
             color: white;
             border-color: #dc2626; /* GANTI KE Tailwind red-600 */
         }
+
+        /* ====================================================== */
+        /* === CUSTOM CSS SELECT2 AGAR MENYATU DENGAN TAILWIND === */
+        /* ====================================================== */
+        .select2-container {
+            width: 100% !important; /* Paksa lebar 100% */
+        }
+        .select2-container .select2-selection--single {
+            height: 42px !important; /* Samakan tinggi dengan input Tailwind */
+            border: 1px solid #d1d5db !important; /* Warna border abu-abu Tailwind */
+            border-radius: 0.375rem !important; /* Lengkungan Tailwind */
+            display: flex;
+            align-items: center;
+            padding-left: 0.25rem;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 40px !important;
+            right: 8px !important;
+        }
+        .select2-dropdown {
+            border: 1px solid #d1d5db !important;
+            border-radius: 0.375rem !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important; /* Efek shadow Tailwind */
+            z-index: 9999; /* Pastikan dropdown selalu di atas */
+        }
+
+        .select2-results__option {
+            color: #1f2937 !important; /* Warna teks gelap */
+            padding: 8px 12px !important; /* Jarak agar nyaman dibaca */
+        }
+
+        .select2-search__field {
+            border: 1px solid #d1d5db !important;
+            border-radius: 0.375rem !important;
+            padding: 0.5rem !important;
+            outline: none !important;
+        }
+        .select2-search__field:focus {
+            border-color: #ef4444 !important; /* Berubah merah saat diketik (Tailwind red-500) */
+            box-shadow: 0 0 0 1px #ef4444 !important;
+        }
+
     </style>
 @endpush
 
@@ -939,6 +981,7 @@ window.addEventListener('load', function() {
 $(document).ready(function() {
     // Inisialisasi Select2
     $('#select2_alamat_digital').select2({
+        width: '100%',
         placeholder: 'Ketik min. 3 huruf (Cth: Ngawi / Margomulyo)...',
         allowClear: true,
         ajax: {
@@ -963,16 +1006,30 @@ $(document).ready(function() {
 
     // Aksi ketika user memilih wilayah dari Dropdown
     $('#select2_alamat_digital').on('select2:select', function (e) {
-        const data = e.params.data; // Data JSON balikan API KiriminAja
+        const data = e.params.data; 
         
-        // Timpa value form GPS yang salah dengan data yang benar dari API
-        if(document.getElementById('provinsi_penerima')) document.getElementById('provinsi_penerima').value = data.provinsi || '';
-        if(document.getElementById('kota_penerima')) document.getElementById('kota_penerima').value = data.kota || '';
-        if(document.getElementById('kecamatan_penerima')) document.getElementById('kecamatan_penerima').value = data.kecamatan || '';
-        if(document.getElementById('kelurahan_penerima')) document.getElementById('kelurahan_penerima').value = data.kelurahan || '';
+        // Cerdas memecah kalimat "Ketanggi, Ngawi, Kab. Ngawi, Jawa Timur" menjadi array
+        let textParts = data.text ? data.text.split(', ') : [];
         
-        // Opsional: Fokuskan kursor ke Alamat Lengkap agar user lanjut mengisi jalannya
+        // Jika data dari API (data.kelurahan) kosong, ambil dari hasil pecahan kalimat (textParts)
+        let kelurahan = data.kelurahan || (textParts[0] || '');
+        let kecamatan = data.kecamatan || (textParts[1] || '');
+        let kota      = data.kota || (textParts[2] || '');
+        let provinsi  = data.provinsi || (textParts[3] || '');
+        
+        // Masukkan ke dalam form
+        if(document.getElementById('provinsi_penerima')) document.getElementById('provinsi_penerima').value = provinsi;
+        if(document.getElementById('kota_penerima')) document.getElementById('kota_penerima').value = kota;
+        if(document.getElementById('kecamatan_penerima')) document.getElementById('kecamatan_penerima').value = kecamatan;
+        if(document.getElementById('kelurahan_penerima')) document.getElementById('kelurahan_penerima').value = kelurahan;
+        
+        // Fokuskan kursor ke Alamat Lengkap agar user lanjut mengisi jalannya
         document.getElementById('alamat_lengkap_penerima').focus();
+        
+        // Panggil fungsi preview kartu jika Anda menggunakannya
+        if (typeof updateCardPreview === "function") {
+            updateCardPreview();
+        }
     });
 });
 </script>
