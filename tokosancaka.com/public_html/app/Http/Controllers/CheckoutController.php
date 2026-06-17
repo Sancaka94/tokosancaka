@@ -101,19 +101,21 @@ class CheckoutController extends Controller
         }
 
         // ========================================================
-        // 1. DETEKSI PRODUK DIGITAL & JASA DI KERANJANG
+        // 1. DETEKSI DILENGKAPI: PRODUK DIGITAL & JASA DI KERANJANG
         // ========================================================
         $isDigital = false;
         foreach ($cart as $item) {
-            // Cek dari session type
             if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) { 
                 $isDigital = true;
                 break;
             }
-            // Cek langsung ke database berdasarkan kolom category_group yang baru
-            $productCheck = \App\Models\Product::with('category')->find($item['product_id'] ?? null);
-            if ($productCheck && $productCheck->category) {
-                if (in_array($productCheck->category->category_group, ['produk_digital', 'jasa'])) {
+            
+            $productCheck = Product::find($item['product_id'] ?? null);
+            if ($productCheck) {
+                // Paksa panggil method relasi () agar tidak bentrok dengan kolom string 'category'
+                $kategoriObj = $productCheck->category()->first();
+                
+                if ($kategoriObj && in_array($kategoriObj->category_group, ['produk_digital', 'jasa'])) {
                     $isDigital = true;
                     break;
                 }
@@ -427,13 +429,23 @@ class CheckoutController extends Controller
         }
         // =========================================================================
 
-        // Ambil status digital kembali untuk validasi store
+        // Deteksi ulang tipe produk di dalam fungsi store untuk bypass validasi profile
         $isDigital = false;
         foreach ($cart as $item) {
-            $productCheck = \App\Models\Product::with('category')->find($item['product_id'] ?? null);
-            if ($productCheck && $productCheck->category && in_array($productCheck->category->category_group, ['produk_digital', 'jasa'])) {
+            if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) { 
                 $isDigital = true;
                 break;
+            }
+            
+            $productCheck = Product::find($item['product_id'] ?? null);
+            if ($productCheck) {
+                // Paksa panggil method relasi () agar tidak bentrok dengan kolom string 'category'
+                $kategoriObj = $productCheck->category()->first();
+                
+                if ($kategoriObj && in_array($kategoriObj->category_group, ['produk_digital', 'jasa'])) {
+                    $isDigital = true;
+                    break;
+                }
             }
         }
 
