@@ -115,11 +115,11 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
-                            <input type="text" name="nama_penerima" id="nama_penerima" value="{{ Auth::user()->nama_lengkap ?? '' }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                            <input type="text" name="nama_penerima" id="nama_penerima" value="{{ optional(Auth::user())->nama_lengkap }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Nomor WhatsApp</label>
-                            <input type="text" name="no_wa_penerima" id="no_wa_penerima" value="{{ Auth::user()->no_wa ?? '' }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
+                            <input type="text" name="no_wa_penerima" id="no_wa_penerima" value="{{ optional(Auth::user())->no_wa }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700">NIK (Opsional)</label>
@@ -159,12 +159,16 @@
                         <div class="border border-gray-200 rounded-lg p-4">
                             @php
                                 $user = Auth::user();
-                                $alamat = $user->address_detail ?? 'Mohon lengkapi alamat Anda.';
+                                $alamat = $user ? ($user->address_detail ?? 'Mohon lengkapi alamat Anda.') : 'Alamat Guest (Lihat form di atas)';
+                                $nama = optional($user)->nama_lengkap ?? 'Guest (Tamu)';
+                                $wa = optional($user)->no_wa ?? '-';
                             @endphp
-                            <p class="font-semibold">{{ $user->nama_lengkap }}</p>
-                            <p class="text-sm text-gray-600">{{ $user->no_wa }}</p>
+                            <p class="font-semibold">{{ $nama }}</p>
+                            <p class="text-sm text-gray-600">{{ $wa }}</p>
                             <p class="text-sm text-gray-600 mt-2">{{ $alamat }}</p>
+                            @auth
                             <a href="{{ route('customer.profile.edit') }}?redirect_to=checkout" class="text-sm text-red-600 hover:underline mt-2 inline-block">Ubah Alamat</a>
+                            @endauth
                         </div>
                     </div>
 
