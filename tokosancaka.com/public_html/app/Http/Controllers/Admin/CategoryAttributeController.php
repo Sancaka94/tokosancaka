@@ -15,7 +15,13 @@ class CategoryAttributeController extends Controller
      */
     public function index(Request $request)
     {
-        $categories = Category::whereIn('type', ['product', 'marketplace'])->orderBy('name')->get();
+        // PERBAIKAN 1: Pastikan query ini sinkron dengan data kategori Anda.
+        // Jika type 'marketplace', 'product', 'blog' digunakan:
+        $categories = Category::whereIn('type', ['product', 'marketplace'])
+            ->orderBy('category_group') // Opsional: kelompokkan visual dropdown
+            ->orderBy('name')
+            ->get();
+            
         $selectedCategory = null;
         $attributes = collect();
 
@@ -42,13 +48,13 @@ class CategoryAttributeController extends Controller
             'is_required' => 'nullable|boolean',
         ]);
 
-        // Simpan data
+        // PERBAIKAN 2: Penamaan variabel $attribute yang aman
         $attribute = $category->attributes()->create([
             'name' => $validated['name'],
             'slug' => Str::slug($validated['name']), // Generate slug otomatis
             'type' => $validated['type'],
-            'options' => $validated['options'] ?? null,
-            // Gunakan helper boolean() agar aman untuk JSON (true/false) maupun Form (on/off)
+            // Hapus spasi berlebih pada options jika user input sembarangan (contoh: "Merah, Biru ")
+            'options' => isset($validated['options']) ? implode(',', array_map('trim', explode(',', $validated['options']))) : null,
             'is_required' => $request->boolean('is_required'),
         ]);
 
@@ -92,7 +98,8 @@ class CategoryAttributeController extends Controller
             'name' => $validated['name'],
             'slug' => Str::slug($validated['name']),
             'type' => $validated['type'],
-            'options' => $validated['options'] ?? null,
+            // PERBAIKAN 3: Sanitisasi input options saat diupdate
+            'options' => isset($validated['options']) ? implode(',', array_map('trim', explode(',', $validated['options']))) : null,
             'is_required' => $request->boolean('is_required'),
         ]);
 

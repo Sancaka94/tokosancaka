@@ -12,17 +12,22 @@ class CategoryController extends Controller
 {
     
     public function index(Request $request)
-{
-    $query = Category::query();
-    
-    // Tambahkan filter di halaman admin
-    if ($request->filled('type')) {
-        $query->where('type', $request->type);
-    }
+    {
+        $query = Category::query();
+        
+        // Tambahkan filter di halaman admin
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
 
-    $categories = $query->latest()->paginate(15);
-    return view('admin.categories.index', compact('categories'));
-}
+        // Opsional filter berdasarkan kelompok produk/jasa
+        if ($request->filled('category_group')) {
+            $query->where('category_group', $request->category_group);
+        }
+
+        $categories = $query->latest()->paginate(15);
+        return view('admin.categories.index', compact('categories'));
+    }
 
     /**
      * Menampilkan form untuk membuat kategori baru.
@@ -32,14 +37,15 @@ class CategoryController extends Controller
         return view('admin.categories.create');
     }
 
-  /**
+    /**
      * Menyimpan kategori baru ke dalam database.
      */
     public function store(Request $request)
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:categories,name',
-            'type' => 'required|string|in:marketplace,blog', // Tipe kategori yang diizinkan
+            'type' => 'required|string|in:marketplace,blog,product', // Menyesuaikan dengan data type di DB Anda
+            'category_group' => 'required|string|in:produk_fisik,produk_digital,jasa', // <-- TAMBAHAN VALIDASI BARU
             'icon' => 'nullable|string|max:255',
         ]);
 
@@ -47,8 +53,9 @@ class CategoryController extends Controller
             'name' => $request->name,
             'slug' => Str::slug($request->name),
             'type' => $request->type,
+            'category_group' => $request->category_group, // <-- TAMBAHAN PENYIMPANAN DATA BARU
             'icon' => $request->icon,
-            'user_id' => Auth::id(), // <--- UBAH DI SINI: Langsung masukkan Auth::id()
+            'user_id' => Auth::id(),
         ];
 
         Category::create($data);
@@ -71,7 +78,8 @@ class CategoryController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
-            'type' => 'required|string|in:marketplace,blog',
+            'type' => 'required|string|in:marketplace,blog,product',
+            'category_group' => 'required|string|in:produk_fisik,produk_digital,jasa', // <-- TAMBAHAN VALIDASI EDIT
             'icon' => 'nullable|string|max:255',
         ]);
 
@@ -79,6 +87,7 @@ class CategoryController extends Controller
             'name' => $request->name,
             'slug' => Str::slug($request->name),
             'type' => $request->type,
+            'category_group' => $request->category_group, // <-- TAMBAHAN UPDATE DATA BARU
             'icon' => $request->icon,
         ]);
 
@@ -90,7 +99,6 @@ class CategoryController extends Controller
      */
     public function destroy(Category $category)
     {
-        // Opsi: Cek jika kategori masih digunakan sebelum menghapus
         if ($category->type === 'marketplace' && $category->products()->count() > 0) {
             return back()->with('error', 'Kategori tidak dapat dihapus karena masih digunakan oleh produk.');
         }
@@ -107,72 +115,60 @@ class CategoryController extends Controller
      */
     public function etalaseIndex()
     {
-        // Logika ini akan menampilkan kategori dengan tipe 'marketplace'
-        // menggunakan view yang Anda tentukan.
         $categories = Category::where('type', 'marketplace')->latest()->paginate(15);
-        
-        // Pastikan file view ini ada
         return view('admin.categories.etalase.index', compact('categories'));
     }
 
-        /**
+    /**
      * Menampilkan detail satu kategori.
-     * (Catatan: Method ini tidak benar-benar dibutuhkan untuk alur CRUD saat ini,
-     * karena semua info sudah ada di halaman 'edit' atau 'index'.)
      */
     public function show(Category $category)
     {
-        // Biasanya, method ini akan mengarahkan ke halaman detail.
-        // Dalam kasus ini, kita bisa arahkan saja ke halaman edit.
         return redirect()->route('admin.categories.edit', $category);
     }
 
     public function storeAjax(Request $request)
-{
-    // 1. Validasi sederhana
-    $request->validate([
-        'name' => 'required|string|max:255|unique:categories,name'
-    ]);
+    {
+        $request->validate([
+            'name' => 'required|string|max:255|unique:categories,name',
+            'category_group' => 'nullable|string|in:produk_fisik,produk_digital,jasa' // Validasi opsional untuk AJAX
+        ]);
 
-    // 2. Buat Slug & Simpan
-    $category = \App\Models\Category::create([
-        'name' => $request->name,
-        'slug' => \Illuminate\Support\Str::slug($request->name),
-        'type' => 'product', 
-        'user_id' => auth()->id(), // <--- TAMBAHKAN BARIS INI (Ambil ID user yg login)
-    ]);
+        $category = Category::create([
+            'name' => $request->name,
+            'slug' => Str::slug($request->name),
+            'type' => 'product', 
+            'category_group' => $request->category_group ?? 'produk_fisik', // Default fallback jika request AJAX kosongan
+            'user_id' => auth()->id(), 
+        ]);
 
-    // 3. Kembalikan JSON Response
-    return response()->json([
-        'success' => true,
-        'message' => 'Kategori berhasil ditambahkan',
-        'data' => [
-            'id' => $category->id,
-            'name' => $category->name,
-            'attributes_url' => route('admin.categories.attributes', $category->id) 
-        ]
-    ]);
-}
-
-public function destroyAjax($id)
-{
-    $category = \App\Models\Category::findOrFail($id);
-    
-    // Cek apakah sedang dipakai produk (Opsional, untuk keamanan)
-    if ($category->products()->exists()) {
         return response()->json([
-            'success' => false,
-            'message' => 'Gagal! Kategori ini sedang digunakan oleh produk lain.'
-        ], 422);
+            'success' => true,
+            'message' => 'Kategori berhasil ditambahkan',
+            'data' => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'attributes_url' => route('admin.categories.attributes', $category->id) 
+            ]
+        ]);
     }
 
-    $category->delete();
+    public function destroyAjax($id)
+    {
+        $category = Category::findOrFail($id);
+        
+        if ($category->products()->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal! Kategori ini sedang digunakan oleh produk lain.'
+            ], 422);
+        }
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Kategori berhasil dihapus'
-    ]);
+        $category->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kategori berhasil dihapus'
+        ]);
+    }
 }
-
-}
-
