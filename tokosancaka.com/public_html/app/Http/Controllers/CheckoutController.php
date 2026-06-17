@@ -100,25 +100,6 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-        // =========================================================================
-        // 🔥 ATURAN KETAT: SEMUA PRODUK TIDAK BOLEH CASH KECUALI USER ID 4 (ADMIN)
-        // =========================================================================
-        $paymentMethodRaw = strtoupper(trim($request->payment_method));
-        
-        // Tentukan keyword metode pembayaran apa saja yang dianggap "Cash" di sistem Anda
-        // Contoh: 'CASH', 'COD', 'CODBARANG'
-        $cashMethods = ['CASH', 'COD', 'CODBARANG'];
-
-        if (in_array($paymentMethodRaw, $cashMethods)) {
-            // Cek apakah user sedang login DAN apakah ID-nya adalah 4
-            if (!$user || $user->id_pengguna != 4) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Mohon maaf, metode pembayaran Cash/COD hanya diperbolehkan khusus untuk akun Administrator Sancaka.');
-            }
-        }
-        // =========================================================================
-
         // ========================================================
         // 1. DETEKSI PRODUK DIGITAL & JASA DI KERANJANG
         // ========================================================
@@ -419,7 +400,7 @@ class CheckoutController extends Controller
             'no_wa_penerima' => 'nullable|string|max:20',
             'alamat_lengkap_penerima' => 'nullable|string',
         ]);
-        
+
 
         $cart = session()->get('cart', []);
         $user = Auth::user();
