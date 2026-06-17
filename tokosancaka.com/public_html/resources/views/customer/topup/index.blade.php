@@ -19,6 +19,7 @@
                     <tr class="text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b bg-gray-50">
                         <th class="px-6 py-3">ID Transaksi</th>
                         <th class="px-6 py-3">Jumlah</th>
+                        <th class="px-6 py-3">Metode</th>
                         <th class="px-6 py-3">Status</th>
                         <th class="px-6 py-3">Tanggal</th>
                         <th class="px-6 py-3">Aksi</th>
@@ -33,7 +34,10 @@
                             <td class="px-6 py-4 font-medium">{{ $transaction->reference_id }}</td>
 
                             <td class="px-6 py-4 font-semibold text-green-600">Rp {{ number_format($transaction->amount, 0, ',', '.') }}</td>
-                            <td class="px-6 py-4">
+                            <td class="px-6 py-4 text-sm text-gray-600">
+                                {{ str_replace('_', ' ', $transaction->payment_method ?? '-') }}
+                            </td>
+                            <td class="px-6 py-4">s
                                 <span class="px-3 py-1 text-sm font-semibold leading-tight rounded-full
                                     @if($transaction->status == 'success') bg-green-100 text-green-700 @endif
                                     @if($transaction->status == 'pending') bg-yellow-100 text-yellow-700 @endif
