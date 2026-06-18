@@ -874,12 +874,13 @@ class CheckoutController extends Controller
                     $this->kirimNotifikasiPesananLengkap($order, 'Baru (COD/Cash)');
                 }
 
-                // JIKA GUEST (TIDAK LOGIN): Langsung kunci arahkan ke halaman Invoice Sukses
-                if (!$currentUser) {
-                    return redirect()->route('checkout.invoice', ['invoice' => $order->invoice_number])
-                        ->with('success', 'Pesanan berhasil dibuat! Silakan selesaikan pembayaran Anda.');
+                // JIKA GUEST (TIDAK LOGIN ATAU USER_ID NULL):
+                if (!$currentUser || empty($order->user_id)) {
+                    return redirect()->route('guest.history_belanja', ['invoice' => $order->invoice_number])
+                        ->with('success', 'Pesanan berhasil dibuat! Silakan pantau pesanan Anda di sini.');
                 }
 
+                // JIKA USER LOGIN
                 return redirect()->route('customer.pesanan.riwayat_belanja')
                     ->with('success', 'Pesanan berhasil! Silakan cek status pembayaran Anda.');
             }
@@ -940,6 +941,10 @@ class CheckoutController extends Controller
         $timestamp    = \Carbon\Carbon::now('Asia/Jakarta')->toIso8601String();
         $expiryTime   = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
         $amountValue  = number_format((float)$order->total_amount, 2, '.', '');
+        // 🔥 LOGIKA SMART ROUTING
+        $returnUrl = $order->user_id 
+            ? route('customer.pesanan.riwayat_belanja') 
+            : route('guest.history_belanja', ['invoice' => $order->invoice_number]);
 
       // ====================================================================
         // 3. BODY REQUEST (TANPA payOptionDetails)
@@ -953,17 +958,17 @@ class CheckoutController extends Controller
             ],
             "validUpTo"          => $expiryTime,
             "urlParams"          => [
-                [
-                    "url"        => url('/dana/return') . '?trx_id=' . $cleanInvoice, 
-                    "type"       => "PAY_RETURN", 
-                    "isDeeplink" => "N"
-                ],
-                [
-                    "url"        => url('/dana/notify'), 
-                    "type"       => "NOTIFICATION", 
-                    "isDeeplink" => "N"
-                ]
+            [
+                "url"        => $returnUrl, // <--- UBAH MENJADI VARIABLE INI
+                "type"       => "PAY_RETURN", 
+                "isDeeplink" => "N"
             ],
+            [
+                "url"        => url('/dana/notify'), 
+                "type"       => "NOTIFICATION", 
+                "isDeeplink" => "N"
+            ]
+        ],
             "additionalInfo"     => [
                 "mcc" => "5732", 
                 "envInfo" => [
@@ -1985,6 +1990,11 @@ TEXT;
         // 5. Buat Signature
         $signature = hash_hmac('sha256', $merchantCode . $order->invoice_number . $amount, $privateKey);
 
+        // 🔥 LOGIKA SMART ROUTING
+        $returnUrl = $order->user_id 
+            ? route('customer.pesanan.riwayat_belanja') 
+            : route('guest.history_belanja', ['invoice' => $order->invoice_number]);
+
         // 6. Siapkan Payload
         $payload = [
             'method'         => $methodChannel,
@@ -1994,7 +2004,7 @@ TEXT;
             'customer_email' => $custEmail,
             'customer_phone' => $custPhone,
             'order_items'    => $items,
-            'return_url'     => route('checkout.invoice', ['invoice' => $order->invoice_number]),
+            'return_url'     => $returnUrl, // <--- UBAH BAGIAN INI
             'expired_time'   => (time() + (24 * 60 * 60)), // Expired 24 Jam
             'signature'      => $signature
         ];
@@ -2177,7 +2187,7 @@ TEXT;
             return response()->json(['message' => 'Internal server error.'], 500);
         }
     }
-    
+
 
 	/**
      * =========================================================================
@@ -2400,6 +2410,10 @@ TEXT;
         $timestamp    = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $validUpTo    = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP');
         $amountValue  = number_format((float)$order->total_amount, 2, '.', '');
+        // 🔥 LOGIKA SMART ROUTING
+        $returnUrl = $order->user_id 
+            ? route('customer.pesanan.riwayat_belanja') 
+            : route('guest.history_belanja', ['invoice' => $order->invoice_number]);
 
         // 3. BODY REQUEST (CUSTOM CHECKOUT - BALANCE)
         $body = [
@@ -2410,18 +2424,18 @@ TEXT;
                 "value"    => $amountValue,
                 "currency" => "IDR"
             ],
-            "urlParams" => [
-                [
-                    "url"        => route('dana.return', ['trx_id' => $cleanInvoice]),
-                    "type"       => "PAY_RETURN",
-                    "isDeeplink" => "N"
-                ],
-                [
-                    "url"        => url('/dana/notify'),
-                    "type"       => "NOTIFICATION",
-                    "isDeeplink" => "N"
-                ]
+            "urlParams"          => [
+            [
+                "url"        => $returnUrl, // <--- UBAH MENJADI VARIABLE INI
+                "type"       => "PAY_RETURN", 
+                "isDeeplink" => "N"
             ],
+            [
+                "url"        => url('/dana/notify'), 
+                "type"       => "NOTIFICATION", 
+                "isDeeplink" => "N"
+            ]
+        ],
             // Mengunci metode ke Saldo DANA
             "payOptionDetails" => [
                 [
@@ -2633,6 +2647,17 @@ TEXT;
             Log::error('AJAX KiriminAja Error: ' . $e->getMessage());
             return response()->json(['results' => []]);
         }
+    }
+
+    public function guestHistory($invoice)
+{
+        // Cari order berdasarkan nomor invoice
+        // Tidak butuh validasi user_id karena ini halaman public
+        $order = \App\Models\Order::with('items.product', 'store')
+            ->where('invoice_number', $invoice)
+            ->firstOrFail();
+
+        return view('customer.pesanan.history-belanja', compact('order'));
     }
 
 } // Akhir Class
