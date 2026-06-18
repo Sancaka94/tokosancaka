@@ -2174,7 +2174,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         $body = [
             "partnerReferenceNo" => (string) $trxId,
             "merchantId"         => config('services.dana.merchant_id'),
-            "validUpTo"          => \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP'),
+            "validUpTo"          => \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP'),
             "amount" => [
                 "value"    => $amountValue,
                 "currency" => "IDR"
@@ -2231,7 +2231,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    // "orderTerminalType" => "WEB" 
+                    "orderTerminalType" => "WEB" 
                 ],
                 "productCode"                => "51051000100000000001",
                 "supportDeepLinkCheckoutUrl" => "true" 
