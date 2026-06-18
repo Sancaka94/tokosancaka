@@ -753,9 +753,6 @@ class CheckoutController extends Controller
             {
                 // --- 6. Logika Pembayaran Online (Midtrans, Tripay, ATAU Doku) ---
 
-                // ==========================================================
-                // 🔥 PERBAIKAN: VARIABEL PENGAMAN UNTUK GUEST CHECKOUT 🔥
-                // ==========================================================
                 $custName  = $request->nama_penerima ?? ($user ? $user->nama_lengkap : 'Guest Customer');
                 $custPhone = $request->no_wa_penerima ?? ($user ? $user->no_wa : '081234567890');
                 // Payment Gateway (DOKU/Tripay) biasanya mewajibkan email
