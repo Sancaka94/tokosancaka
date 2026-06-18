@@ -2231,7 +2231,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "WEB" 
+                    // "orderTerminalType" => "WEB" 
                 ],
                 "productCode"                => "51051000100000000001",
                 "supportDeepLinkCheckoutUrl" => "true" 
