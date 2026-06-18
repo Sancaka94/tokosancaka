@@ -2165,30 +2165,30 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
         // 1. FORMAT WAKTU STANDAR ISO8601 GMT+7
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
-        $amountValue = number_format($transaction->amount, 2, '.', '');
+        
+        // Catatan Dokumen: Di Sandbox, validUpTo harus <= 30 menit. Kita set 29 menit.
+        $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP');
+        
+        // Pastikan casting ke float agar tidak memicu error number_format
+        $amountValue = number_format((float)$transaction->amount, 2, '.', '');
 
         // 2. ENDPOINT SESUAI DOKUMENTASI RESMI DANA SNAP
         $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
-        // 3. PAYLOAD DISAMAKAN PERSIS DENGAN DOKUMENTASI (Versi Paling Minimalis & Aman)
+        // 3. PAYLOAD DISAMAKAN PERSIS DENGAN DOKUMENTASI & EXPO (Minimalis & Aman)
         $body = [
             "partnerReferenceNo" => (string) $trxId,
             "merchantId"         => config('services.dana.merchant_id'),
-            
-            // Catatan Dokumen: Di Sandbox, validUpTo harus <= 30 menit. 
-            // Kita set 29 menit untuk mencegah delay detik server yang membuatnya jadi > 30 menit.
-            "validUpTo"          => \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP'),
-            
+            "validUpTo"          => $validUpTo,
             "amount" => [
-                "value"    => number_format((float)$transaction->amount, 2, '.', ''),
+                "value"    => $amountValue,
                 "currency" => "IDR"
             ],
             "urlParams" => [
                 [
                     "url"        => route('dana.return', ['trx_id' => $trxId]),
                     "type"       => "PAY_RETURN",
-                    "isDeeplink" => "Y"
+                    "isDeeplink" => "N" // Pertahankan "N" untuk Web
                 ],
                 [
                     "url"        => url('/dana/notify'),
@@ -2198,16 +2198,16 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             ],
             "additionalInfo" => [
                 "order" => [
-                    // Cukup orderTitle saja sesuai sampel dokumen
                     "orderTitle" => substr("Top Up " . $trxId, 0, 64)
                 ],
-                "mcc"                        => "5732", // Sesuai dengan jenis bisnis Anda
+                "mcc"                        => "5732", 
                 "envInfo" => [
-                    "sourcePlatform" => "IPG",
-                    "terminalType"   => "SYSTEM"
+                    "sourcePlatform"    => "IPG",
+                    "terminalType"      => "SYSTEM",
+                    "orderTerminalType" => "WEB" // Konsisten dengan Expo
                 ],
                 "productCode"                => "51051000100000000001",
-                "supportDeepLinkCheckoutUrl" => "true" // Pastikan formatnya string "true", bukan boolean true
+                "supportDeepLinkCheckoutUrl" => "true" 
             ]
         ];
 
@@ -2218,6 +2218,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $signature      = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
             $baseUrl        = config('services.dana.base_url');
 
+            // 4. HEADERS (Wajib ada Authorization-Customer untuk Binding)
             $headers = [
                 'Content-Type'           => 'application/json',
                 'Authorization'          => 'Bearer ' . $accessTokenB2B,
@@ -2231,39 +2232,41 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 'CHANNEL-ID'             => '95221'
             ];
 
-            // Eksekusi HTTP Request
+            // 5. EKSEKUSI HTTP REQUEST
             $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post($baseUrl . $path);
 
             $result = $response->json();
 
-            // CEK RESPON SUKSES SESUAI DOKUMEN (2005400)
+            // 6. CEK RESPON SUKSES SESUAI DOKUMEN (2005400)
             if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
 
-                // Sesuai dokumen, webRedirectUrl PASTI ADA jika sukses
-                if (!empty($result['webRedirectUrl']) || !empty($result['appLinkUrl'])) {
-                    $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'];
-                    
+                // KUNCI EXPO: HANYA AMBIL WEB URL-NYA SAJA (webRedirectUrl)
+                $redirectUrl = $result['webRedirectUrl'] ?? null;
+                
+                if (!empty($redirectUrl)) {
                     Log::info('LOG LOG: [DANA BINDING] Berhasil generate URL Express Checkout.');
                     
                     $transaction->update(['payment_url' => $redirectUrl]);
                     
-                    // Arahkan user ke DANA. Karena sudah Binding, user akan langsung lihat tombol Bayar!
+                    // Arahkan user ke halaman DANA (Langsung masuk fase bayar karena ada Authorization-Customer)
                     return redirect()->away($redirectUrl);
                 }
 
-                // Fallback jika anehnya DANA sukses tapi nggak ngasih URL
+                // Fallback jika anehnya DANA sukses tapi tidak memberikan URL Web
                 $transaction->update(['status' => 'failed']);
+                Log::error('LOG LOG: [WEB BINDING] Transaksi DANA menggantung. Tidak ada Web URL yang diterbitkan.');
                 return back()->with('error', 'Gagal: URL Pembayaran DANA tidak diterbitkan.');
             }
 
-            // Penanganan Error
+            // 7. PENANGANAN ERROR DANA
             $transaction->update(['status' => 'failed']);
             $errorCode  = $result['responseCode'] ?? 'UNKNOWN';
             $pesanGagal = $result['responseMessage'] ?? 'Terjadi kesalahan pada sistem pembayaran.';
 
-            Log::error("LOG LOG: [DANA BINDING] Gagal generate URL. Code: $errorCode | Msg: $pesanGagal");
+            // Log full result untuk mempermudah debugging jika masih ada kode error
+            Log::error("LOG LOG: [DANA BINDING] Gagal generate URL. Code: $errorCode | Msg: $pesanGagal", $result);
 
             return back()->with('error', "Gagal dari DANA [$errorCode]: $pesanGagal");
 
