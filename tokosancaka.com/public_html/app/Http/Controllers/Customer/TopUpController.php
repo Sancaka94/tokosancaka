@@ -2193,7 +2193,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             ],
             "payOptionDetails" => [
                 [
-                    "payMethod"   => "",
+                    "payMethod"   => "BALANCE",
                     "payOption"   => "",
                     "transAmount" => [
                         "value"    => $amountValue,
