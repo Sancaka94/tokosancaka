@@ -389,7 +389,7 @@ class TopUpController extends Controller
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "WEB" // KUNCI 2: Pertahankan "WEB"
+                    "orderTerminalType" => "APP" // KUNCI 2: Pertahankan "WEB"
                 ]
             ]
         ];
