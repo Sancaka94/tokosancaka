@@ -124,7 +124,8 @@
                                         <p class="text-sm font-bold text-gray-800 mb-3 text-center">{{ $asset['name'] }}</p>
                                         
                                         @if($asset['type'] === 'link' || $asset['type'] === 'file')
-                                            <a href="{{ $asset['link'] }}" target="_blank" class="flex items-center justify-center w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition">
+                                            {{-- DITAMBAHKAN ONCLICK ALERT --}}
+                                            <a href="{{ $asset['link'] }}" target="_blank" onclick="alert('PENTING: Jangan lupa klik tombol \'Telah Menerima Produk\' di bawah jika file/link berhasil diakses ya!');" class="flex items-center justify-center w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition">
                                                 <i class="fas fa-cloud-download-alt mr-2 text-lg"></i> Akses / Download
                                             </a>
                                         @else
@@ -143,7 +144,8 @@
                         @elseif($isValidResiToken)
                             @if($isUrl)
                                 <p class="text-sm text-blue-600 mb-5">Pesanan Anda berupa tautan eksternal. Silakan klik tombol di bawah.</p>
-                                <a href="{{ $resiOrToken }}" target="_blank" class="inline-flex items-center justify-center w-full md:w-auto px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-200 transition transform hover:-translate-y-0.5">
+                                {{-- DITAMBAHKAN ONCLICK ALERT --}}
+                                <a href="{{ $resiOrToken }}" target="_blank" onclick="alert('PENTING: Jangan lupa klik tombol \'Telah Menerima Produk\' di bawah jika file/link berhasil diakses ya!');" class="inline-flex items-center justify-center w-full md:w-auto px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-200 transition transform hover:-translate-y-0.5">
                                     <i class="fas fa-cloud-download-alt mr-2 text-lg"></i> Akses / Download
                                 </a>
                             @else
@@ -164,6 +166,22 @@
                             </div>
                             <p class="text-sm text-blue-600 mb-0 font-medium">Menunggu penjual memproses dan mengunggah produk Anda.</p>
                             <p class="text-xs text-blue-400 mt-1">Silakan <a href="javascript:window.location.reload(true)" class="underline font-bold hover:text-blue-700">refresh</a> halaman ini secara berkala.</p>
+                        @endif
+
+                        {{-- 🟢 FITUR BARU: TOMBOL TERIMA PRODUK (Memicu Status Completed & Escrow Cair) --}}
+                        @if(strtolower($order->status) !== 'completed')
+                            <div class="mt-8 pt-6 border-t border-blue-200">
+                                <p class="text-xs text-blue-600 mb-3 font-medium">Apakah Anda sudah berhasil mengunduh/menyalin produk?</p>
+                                
+                                {{-- Pastikan nama route ini disesuaikan dengan route penyelesaian pesanan Anda --}}
+                                <form action="{{ route('guest.order.complete', $order->id) }}" method="POST" id="formTerimaPesanan">
+                                    @csrf
+                                    <button type="button" onclick="confirmTerimaPesanan()" class="w-full px-6 py-3.5 bg-green-500 hover:bg-green-600 text-white font-extrabold rounded-xl shadow-md shadow-green-200 transition transform hover:-translate-y-0.5 flex justify-center items-center gap-2">
+                                        <i class="fas fa-check-double text-lg"></i> Telah Menerima Produk
+                                    </button>
+                                </form>
+                                <p class="text-[10px] text-gray-400 mt-2">*Klik tombol ini agar dana diteruskan ke Penjual.</p>
+                            </div>
                         @endif
 
                    @else
@@ -203,7 +221,7 @@
 
         </div>
         
-        <div class="text-center mt-8">
+        <div class="text-center mt-8 mb-10">
             <a href="{{ url('/etalase') }}" class="inline-flex items-center px-6 py-3 bg-white text-gray-600 font-bold rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition">
                 <i class="fas fa-arrow-left mr-2"></i> Kembali ke Beranda
             </a>
@@ -213,7 +231,31 @@
 </div>
 
 <script>
-    // Tambahkan parameter `id`
+    // JS KONFIRMASI TERIMA PESANAN BARU
+    function confirmTerimaPesanan() {
+        if(typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Konfirmasi',
+                text: "Apakah Anda yakin sudah menerima dan bisa mengakses produk ini? Transaksi akan diselesaikan dan dana diteruskan ke penjual.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#22c55e',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Ya, Selesaikan!',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('formTerimaPesanan').submit();
+                }
+            })
+        } else {
+            if(confirm('Apakah Anda yakin sudah menerima dan bisa mengakses produk/tiket ini? Transaksi akan diselesaikan dan dana diteruskan ke penjual.')) {
+                document.getElementById('formTerimaPesanan').submit();
+            }
+        }
+    }
+
+    // MODIFIKASI FUNGSI COPY TOKEN (TAMBAH ALERT PENGINGAT)
     function copyToken(id) {
         // Ambil elemen berdasarkan parameter ID yang dilempar
         var copyText = document.getElementById(id);
@@ -222,9 +264,15 @@
         navigator.clipboard.writeText(copyText.value);
         
         if(typeof Swal !== 'undefined') {
-            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Kode / SN berhasil disalin!', showConfirmButton: false, timer: 2000 });
+            Swal.fire({ 
+                icon: 'success', 
+                title: 'Berhasil Disalin!', 
+                text: "Silakan klik tombol 'Telah Menerima Produk' di bagian bawah agar transaksi selesai.",
+                confirmButtonColor: '#3085d6',
+                confirmButtonText: 'Mengerti'
+            });
         } else {
-            alert("Kode / SN berhasil disalin!");
+            alert("Kode / SN berhasil disalin! \n\nSilakan klik tombol 'Telah Menerima Produk' di bagian bawah agar transaksi selesai.");
         }
     }
 

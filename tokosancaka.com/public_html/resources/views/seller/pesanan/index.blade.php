@@ -207,13 +207,34 @@
                                 </span>
 
                                 {{-- FITUR PENGIRIMAN DIGITAL MANUAL --}}
+                                @php
+                                    // Cek apakah produk di keranjang sudah punya file/link digital dari database
+                                    $hasDigitalAsset = false;
+                                    foreach($order->items as $item) {
+                                        if($item->product && (!empty($item->product->digital_url) || !empty($item->product->digital_file_path) || !empty($item->product->digital_sn_list))) {
+                                            $hasDigitalAsset = true;
+                                            break;
+                                        }
+                                    }
+                                    // Cek apakah resi sudah diisi manual sebelumnya
+                                    $isAlreadySent = !empty($order->shipping_reference) && $order->shipping_reference !== 'Menunggu Penjual' && $order->shipping_reference !== 'NULL';
+                                @endphp
+
                                 @if($isDigitalOrder && $isPaid && !$isCompleted)
-                                    <button type="button" 
-                                            onclick="openDigitalDeliveryModal('{{ $order->invoice_number }}', '{{ addslashes($order->user->nama_lengkap ?? 'Customer') }}')" 
-                                            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold py-2 rounded-lg transition-colors flex items-center justify-center shadow-sm mt-1">
-                                        <i class="fas fa-upload mr-1.5"></i> Kirim File / E-Ticket
-                                    </button>
-                                    <p class="text-[9px] text-center text-gray-500 mt-1">Upload manual untuk cairkan dana</p>
+                                    @if(!$hasDigitalAsset && !$isAlreadySent)
+                                        <button type="button" 
+                                                onclick="openDigitalDeliveryModal('{{ $order->invoice_number }}', '{{ addslashes($order->user->nama_lengkap ?? 'Customer') }}')" 
+                                                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold py-2 rounded-lg transition-colors flex items-center justify-center shadow-sm mt-1">
+                                            <i class="fas fa-upload mr-1.5"></i> Kirim File / E-Ticket
+                                        </button>
+                                        <p class="text-[9px] text-center text-gray-500 mt-1">Upload manual untuk cairkan dana</p>
+                                    @else
+                                        <div class="text-center p-2 bg-green-50 border border-green-200 rounded-lg w-full mt-2 shadow-inner">
+                                            <i class="fas fa-check-circle text-green-500 mb-1"></i>
+                                            <p class="text-[10px] text-green-700 font-bold leading-tight">Produk Terkirim Otomatis</p>
+                                        </div>
+                                        <p class="text-[9px] text-center text-gray-500 mt-1">Menunggu pembeli klik "Terima Produk"</p>
+                                    @endif
                                 @endif
 
                                 @php
