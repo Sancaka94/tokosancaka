@@ -2182,7 +2182,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 [
                     "url"        => route('dana.return', ['trx_id' => $trxId]),
                     "type"       => "PAY_RETURN",
-                    "isDeeplink" => "N"
+                    "isDeeplink" => "Y"
                 ],
                 [
                     "url"        => url('/dana/notify'),
