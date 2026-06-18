@@ -2165,38 +2165,43 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
-        $amountValue = number_format($transaction->amount, 2, '.', '');
         
         $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
+        $amountValue = number_format((float)$transaction->amount, 2, '.', '');
+
+        // 3. PAYLOAD DISAMAKAN PERSIS DENGAN DOKUMENTASI & KEBUTUHAN STRICT DANA
         $body = [
-            "partnerReferenceNo" => $trxId,
+            "partnerReferenceNo" => (string) $trxId,
             "merchantId"         => config('services.dana.merchant_id'),
-            "validUpTo"          => $validUpTo,
-            "amount"             => ["value" => $amountValue, "currency" => "IDR"],
-            "urlParams"          => [
+            "validUpTo"          => \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP'),
+            "amount" => [
+                "value"    => $amountValue,
+                "currency" => "IDR"
+            ],
+            "urlParams" => [
                 [
-                    "url" => route('dana.return', ['trx_id' => $trxId]),
-                    "type" => "PAY_RETURN",
-                    "isDeeplink" => "N" // KUNCI 1: Paksa ke "N" agar DANA memberikan Web URL murni
+                    "url"        => route('dana.return', ['trx_id' => $trxId]),
+                    "type"       => "PAY_RETURN",
+                    "isDeeplink" => "N"
                 ],
                 [
-                    "url" => url('/dana/notify'),
-                    "type" => "NOTIFICATION",
+                    "url"        => url('/dana/notify'),
+                    "type"       => "NOTIFICATION",
                     "isDeeplink" => "N"
                 ]
             ],
-            "payOptionDetails"   => [
+            "payOptionDetails" => [
                 [
-                    "payMethod"   => "BALANCE", 
-                    "payOption"   => "BALANCE", 
-                    "transAmount" => ["value" => $amountValue, "currency" => "IDR"]
+                    "payMethod"   => "BALANCE",
+                    "payOption"   => "BALANCE",
+                    "transAmount" => [
+                        "value"    => $amountValue,
+                        "currency" => "IDR"
+                    ]
                 ]
             ],
-            "additionalInfo"     => [
-                "supportDeepLinkCheckoutUrl" => "true",
-                "productCode"                => "51051000100000000001",
-                "mcc"                        => "5732",
+            "additionalInfo" => [
                 "order" => [
                     "orderTitle"        => substr("Top Up " . $trxId, 0, 64),
                     "merchantTransType" => "01",
@@ -2205,13 +2210,31 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                         "externalUserId"   => (string) $userAccount->id_pengguna,
                         "externalUserType" => "MERCHANT_USER",
                         "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $userAccount->nama_lengkap ?? 'Customer'), 0, 64)
+                    ],
+                    // INI DIA TERSANGKA UTAMANYA! (Kembali dimasukkan)
+                    "goods" => [
+                        [
+                            "merchantGoodsId" => "ITEM-" . $trxId,
+                            "description"     => "Top Up Saldo Aplikasi",
+                            "category"        => "DIGITAL_GOODS",
+                            "price"           => [
+                                "value"    => $amountValue,
+                                "currency" => "IDR"
+                            ],
+                            "unit"            => "pcs",
+                            "quantity"        => "1",
+                            "name"            => "Saldo Top Up"
+                        ]
                     ]
                 ],
+                "mcc"                        => "5732", 
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "WEB" // KUNCI 2: Pertahankan "WEB"
-                ]
+                    "orderTerminalType" => "WEB" 
+                ],
+                "productCode"                => "51051000100000000001",
+                "supportDeepLinkCheckoutUrl" => "true" 
             ]
         ];
 
