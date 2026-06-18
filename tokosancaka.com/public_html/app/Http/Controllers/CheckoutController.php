@@ -2659,27 +2659,25 @@ TEXT;
 
         return view('customer.pesanan.history-belanja', compact('order'));
     }
-    
 
-    public function downloadPDF($invoice)
+
+    public function downloadGuestPDF($invoice)
     {
+        // 1. Cari data order (Tanpa auth check)
         $order = Order::with('items.product', 'items.variant', 'store', 'user')
             ->where('invoice_number', $invoice)
             ->firstOrFail();
 
+        // 2. Load View PDF
         $pdf = Pdf::loadView('checkout.invoice_pdf', compact('order'))
                 ->setPaper('a4', 'portrait');
 
-        // 🔥 LOGIKA NAMA FILE BARU
-        // Ambil nama dari input form Guest, atau dari User Auth, atau fallback 'Guest'
+        // 3. Format Nama File (nama_id transaksi.pdf)
         $namaPembeli = $order->receiver_name ?? ($order->user->nama_lengkap ?? 'Guest');
-        
-        // Membersihkan spasi pada nama agar rapi jadi PDF (Misal: Budi Santoso -> Budi-Santoso)
         $namaAman = \Illuminate\Support\Str::slug($namaPembeli, '_'); 
-        
-        // Format: budi-santoso_SCK-ORD-12345.pdf
         $namaFile = $namaAman . '_' . $order->invoice_number . '.pdf';
 
+        // 4. Eksekusi Download
         return $pdf->download($namaFile);
     }
 
