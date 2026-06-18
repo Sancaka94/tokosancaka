@@ -1705,64 +1705,65 @@ public function handleCallback(Request $request)
     public function createPaymentDANA(Transaction $transaction)
     {
         $trxId = $transaction->reference_id;
-        Log::info('DANA START for Transaction Table: ' . $trxId); // LOG LOG dipertahankan
+        $amountValue = number_format((float)$transaction->amount, 2, '.', '');
+        
+        // Gunakan nullsafe untuk mencegah error jika user tidak ditemukan
+        $userId = $user ? (string) $user->id_pengguna : 'GUEST' . rand(100, 999);
+        $nickname = $user ? substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap), 0, 40) : 'Customer Sancaka';
 
-        $user = Auth::user();
-        $returnUrl = route('dana.return', ['trx_id' => $trxId]);
-        $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
-
-        // Fallback ke nilai asli jika tidak sedang mengaktifkan variabel testing di atas
-        $merchantId = isset($merchantId) ? $merchantId : config('services.dana.merchant_id');
-        $finalAmount = isset($testAmount) ? $testAmount : number_format($transaction->amount, 2, '.', '');
-
+        // ====================================================================
+        // 3. BODY REQUEST (Disamakan persis dengan format Checkout yang SUKSES)
+        // ====================================================================
         $bodyArray = [
             "partnerReferenceNo" => $trxId,
-            "merchantId" => $merchantId,
-            "amount" => [
-                "value" => $finalAmount,
+            "merchantId"         => config('services.dana.merchant_id'),
+            "amount"             => [
+                "value"    => $amountValue,
                 "currency" => "IDR"
             ],
-            "validUpTo" => $expiryTime,
-            "urlParams" => [
+            "validUpTo"          => \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP'),
+            "urlParams"          => [
                 [
-                    "url" => $returnUrl,
-                    "type" => "PAY_RETURN",
-                    "isDeeplink" => "N"
+                    "url"        => route('dana.return', ['trx_id' => $trxId]),
+                    "type"       => "PAY_RETURN",
+                    "isDeeplink" => "N" // Di log checkout sukses Anda ini "N"
                 ],
                 [
-                    "url" => "https://tokosancaka.com/dana/notify",
-                    "type" => "NOTIFICATION",
+                    "url"        => url('/dana/notify'),
+                    "type"       => "NOTIFICATION",
                     "isDeeplink" => "N"
                 ]
             ],
-            // 💡 DITAMBAHKAN: payOptionDetails (Wajib ada agar lolos validasi format)
-            "payOptionDetails" => [
-                [
-                    "payMethod" => "BALANCE",
-                    "payOption" => "",
-                    "transAmount" => [
-                        "value" => $finalAmount,
-                        "currency" => "IDR"
-                    ]
-                ]
-            ],
-            "additionalInfo" => [
-                "mcc" => "5732",
-                "order" => [
-                    "orderTitle" => "Top Up " . $trxId,
-                    "merchantTransType" => "01",
-                    "scenario" => "REDIRECT",
-                    "buyer" => [
-                        "externalUserId" => (string) $user->id_pengguna,
-                        "externalUserType" => "MERCHANT_USER",
-                        "nickname" => Str::limit($user->nama_lengkap ?? 'Guest', 40),
-                    ]
-                ],
+            "additionalInfo"     => [
+                "mcc"     => "5732",
                 "envInfo" => [
-                    "sourcePlatform" => "IPG",
-                    "terminalType" => "SYSTEM",
-                    "orderTerminalType" => "WEB",
+                    "sourcePlatform"    => "IPG",
+                    "terminalType"      => "SYSTEM",
+                    "orderTerminalType" => "WEB"
+                ],
+                "order"   => [
+                    "orderTitle"        => "Top Up " . $trxId,
+                    "scenario"          => "REDIRECT",
+                    "merchantTransType" => "01",
+                    "buyer"             => [
+                        "externalUserId"   => $userId,
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname"         => $nickname
+                    ],
+                    "goods"             => [
+                        [
+                            "name"            => "Saldo Top Up",
+                            "merchantGoodsId" => "ITEM" . $trxId,
+                            "description"     => "Top Up Saldo Aplikasi",
+                            "category"        => "DIGITAL_GOODS",
+                            "price"           => [
+                                "value"    => $amountValue,
+                                "currency" => "IDR"
+                            ],
+                            "unit"            => "pcs",
+                            "quantity"        => "1"
+                        ]
+                    ]
                 ]
             ]
         ];
