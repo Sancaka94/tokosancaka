@@ -96,7 +96,7 @@
                             <i class="fas fa-ticket-alt"></i> Akses Produk Anda
                         </h4>
                         
-                        @if(!empty($resiOrToken) && $resiOrToken !== 'NULL' && !str_starts_with($resiOrToken, 'DIGITAL-'))
+                        @if(!empty($resiOrToken) && $resiOrToken !== 'NULL' && $resiOrToken !== 'Menunggu Penjual' && !str_starts_with($resiOrToken, 'DIGITAL-'))
                             
                             @if($isUrl)
                                 <p class="text-sm text-blue-600 mb-5">Pesanan Anda berupa file atau tautan eksternal. Silakan klik tombol di bawah untuk mengaksesnya.</p>

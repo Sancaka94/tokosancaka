@@ -352,6 +352,9 @@ public function index(Request $request) // Tambahkan Request
             'tags' => 'nullable|string',
             'is_new' => 'nullable|boolean',
             'is_bestseller' => 'nullable|boolean',
+            'digital_url' => 'nullable|url',
+            'digital_file' => 'nullable|file|mimes:pdf,zip,jpg,png|max:5120',
+            'digital_sn_list' => 'nullable|string',
             
         ], [
             'original_price.gt' => 'Harga Asli (Coret) harus lebih besar dari Harga Jual.'
