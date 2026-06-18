@@ -2175,20 +2175,20 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         // 2. ENDPOINT SESUAI DOKUMENTASI RESMI DANA SNAP
         $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
-        // 3. PAYLOAD DISAMAKAN PERSIS DENGAN DOKUMENTASI & EXPO (Minimalis & Aman)
+       // 3. PAYLOAD DISAMAKAN PERSIS DENGAN DOKUMENTASI (Direct Debit / Binding)
         $body = [
             "partnerReferenceNo" => (string) $trxId,
             "merchantId"         => config('services.dana.merchant_id'),
-            "validUpTo"          => $validUpTo,
+            "validUpTo"          => \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP'),
             "amount" => [
-                "value"    => $amountValue,
+                "value"    => number_format((float)$transaction->amount, 2, '.', ''),
                 "currency" => "IDR"
             ],
             "urlParams" => [
                 [
                     "url"        => route('dana.return', ['trx_id' => $trxId]),
                     "type"       => "PAY_RETURN",
-                    "isDeeplink" => "N" // Pertahankan "N" untuk Web
+                    "isDeeplink" => "N"
                 ],
                 [
                     "url"        => url('/dana/notify'),
@@ -2198,13 +2198,20 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             ],
             "additionalInfo" => [
                 "order" => [
-                    "orderTitle" => substr("Top Up " . $trxId, 0, 64)
+                    "orderTitle"        => substr("Top Up " . $trxId, 0, 64),
+                    "merchantTransType" => "01", // MANDATORY UNTUK DIRECT DEBIT
+                    "scenario"          => "REDIRECT",
+                    "buyer" => [ // MANDATORY UNTUK DIRECT DEBIT (Memastikan identitas user)
+                        "externalUserId"   => (string) $userAccount->id_pengguna,
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $userAccount->nama_lengkap ?? 'Customer'), 0, 64)
+                    ]
                 ],
                 "mcc"                        => "5732", 
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "WEB" // Konsisten dengan Expo
+                    "orderTerminalType" => "WEB" 
                 ],
                 "productCode"                => "51051000100000000001",
                 "supportDeepLinkCheckoutUrl" => "true" 
