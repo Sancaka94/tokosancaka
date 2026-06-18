@@ -128,38 +128,90 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                                 @endforeach
                             </div>
 
-                            <div class="flex flex-col justify-between border-t md:border-t-0 md:border-l border-gray-100 md:pl-8 pt-4 md:pt-0">
+                           <div class="flex flex-col justify-between border-t md:border-t-0 md:border-l border-gray-100 md:pl-8 pt-4 md:pt-0">
+                                
+                                {{-- DETEKSI PRODUK DIGITAL --}}
+                                @php 
+                                    $shippingMethodLow = strtolower($order->shipping_method ?? '');
+                                    $isDigital = str_contains($shippingMethodLow, 'digital') || str_contains($shippingMethodLow, 'eticket');
+                                    $resiOrToken = $order->shipping_resi ?? ($order->shipping_reference ?? null);
+                                @endphp
+
                                 <div class="mb-4">
-                                    <p class="text-xs text-gray-500 uppercase font-bold mb-2 tracking-wider">KURIR PENGIRIMAN</p>
+                                    <p class="text-xs text-gray-500 uppercase font-bold mb-2 tracking-wider">
+                                        {{ $isDigital ? 'INFORMASI PENGIRIMAN DIGITAL' : 'KURIR PENGIRIMAN' }}
+                                    </p>
+                                    
                                     <div class="flex items-center gap-3">
-                                        @php
-                                            $parts = explode('-', $order->shipping_method);
-                                            $courierName = $parts[1] ?? 'Kurir';
-                                            $logoExpedition = asset('public/storage/logo-ekspedisi/' . strtolower($courierName) . '.png');
-                                        @endphp
-                                        <div class="w-12 h-auto bg-white rounded border border-gray-200 p-1">
-                                            <img src="{{ $logoExpedition }}" alt="{{ $courierName }}" class="w-full h-full object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                            <i class="fas fa-truck text-gray-400 text-lg hidden text-center w-full mt-1"></i>
-                                        </div>
-                                        <div>
-                                            <p class="text-sm font-bold text-gray-800 uppercase">{{ $courierName }}</p>
-                                            <p class="text-[10px] text-gray-500">{{ strtoupper($parts[2] ?? '') }}</p>
-                                        </div>
+                                        @if($isDigital)
+                                            <div class="w-12 h-auto bg-blue-50 rounded border border-blue-200 p-2 flex items-center justify-center text-blue-500">
+                                                <i class="fas fa-cloud-download-alt text-xl"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-sm font-bold text-blue-800 uppercase">PRODUK DIGITAL</p>
+                                                <p class="text-[10px] text-gray-500 uppercase">File / Voucher / SN / Link</p>
+                                            </div>
+                                        @else
+                                            @php
+                                                $parts = explode('-', $order->shipping_method);
+                                                $courierName = $parts[1] ?? 'Kurir';
+                                                $logoExpedition = asset('public/storage/logo-ekspedisi/' . strtolower($courierName) . '.png');
+                                            @endphp
+                                            <div class="w-12 h-auto bg-white rounded border border-gray-200 p-1">
+                                                <img src="{{ $logoExpedition }}" alt="{{ $courierName }}" class="w-full h-full object-contain" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                                <i class="fas fa-truck text-gray-400 text-lg hidden text-center w-full mt-1"></i>
+                                            </div>
+                                            <div>
+                                                <p class="text-sm font-bold text-gray-800 uppercase">{{ $courierName }}</p>
+                                                <p class="text-[10px] text-gray-500">{{ strtoupper($parts[2] ?? '') }}</p>
+                                            </div>
+                                        @endif
                                     </div>
 
-                                    @php $resi = $order->shipping_resi ?? ($order->shipping_reference ?? null); @endphp
-                                    @if(!empty($resi) && $resi !== 'NULL')
-                                        <div class="mt-3 bg-green-50 border border-green-200 rounded p-2 flex justify-between items-center group cursor-pointer" onclick="navigator.clipboard.writeText('{{ $resi }}'); alert('Resi disalin!')">
-                                            <div>
-                                                <p class="text-[10px] text-green-700 font-bold uppercase">Nomor Resi / Ref</p>
-                                                <p class="text-xs font-mono text-gray-900 font-bold">{{ $resi }}</p>
+                                    {{-- TAMPILAN RESI ATAU LINK DOWNLOAD --}}
+                                    @if($isDigital)
+                                        @if(!empty($resiOrToken) && $resiOrToken !== 'NULL' && !str_starts_with($resiOrToken, 'DIGITAL-'))
+                                            @php
+                                                // Cek apakah token berupa Link/URL (Google Drive, PDF link, dll)
+                                                $isUrl = filter_var($resiOrToken, FILTER_VALIDATE_URL);
+                                            @endphp
+                                            
+                                            @if($isUrl)
+                                                <div class="mt-3">
+                                                    <a href="{{ $resiOrToken }}" target="_blank" class="block w-full text-center bg-blue-50 hover:bg-blue-100 border border-blue-300 text-blue-700 text-xs font-bold py-2 rounded transition">
+                                                        <i class="fas fa-external-link-alt mr-1"></i> Akses / Download File
+                                                    </a>
+                                                </div>
+                                            @else
+                                                <div class="mt-3 bg-blue-50 border border-blue-200 rounded p-2 flex justify-between items-center group cursor-pointer" onclick="navigator.clipboard.writeText('{{ $resiOrToken }}'); alert('Disalin ke clipboard!')">
+                                                    <div>
+                                                        <p class="text-[10px] text-blue-700 font-bold uppercase">Kode E-Ticket / PPOB / SN</p>
+                                                        <p class="text-xs font-mono text-gray-900 font-bold break-all">{{ $resiOrToken }}</p>
+                                                    </div>
+                                                    <i class="fas fa-copy text-blue-400 group-hover:text-blue-600 ml-2"></i>
+                                                </div>
+                                            @endif
+                                        @elseif(in_array($status, ['paid', 'processing']))
+                                            <div class="mt-3 text-xs text-yellow-600 bg-yellow-50 p-2 rounded border border-yellow-200 flex items-start gap-2">
+                                                <i class="fas fa-clock mt-0.5"></i><span>Menunggu penjual mengirimkan File/Tiket/SN pesanan Anda.</span>
                                             </div>
-                                            <i class="fas fa-copy text-green-400 group-hover:text-green-600"></i>
-                                        </div>
-                                    @elseif(in_array($status, ['paid', 'processing']))
-                                        <div class="mt-3 text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-100 flex items-start gap-2">
-                                            <i class="fas fa-clock mt-0.5"></i><span>Menunggu Resi dari Penjual</span>
-                                        </div>
+                                        @endif
+                                    @else
+                                        {{-- Tampilan Resi Ekspedisi Fisik (Asli bawaan Anda) --}}
+                                        @php $resi = $order->shipping_resi ?? ($order->shipping_reference ?? null); @endphp
+                                        @if(!empty($resi) && $resi !== 'NULL')
+                                            <div class="mt-3 bg-green-50 border border-green-200 rounded p-2 flex justify-between items-center group cursor-pointer" onclick="navigator.clipboard.writeText('{{ $resi }}'); alert('Resi disalin!')">
+                                                <div>
+                                                    <p class="text-[10px] text-green-700 font-bold uppercase">Nomor Resi / Ref</p>
+                                                    <p class="text-xs font-mono text-gray-900 font-bold">{{ $resi }}</p>
+                                                </div>
+                                                <i class="fas fa-copy text-green-400 group-hover:text-green-600"></i>
+                                            </div>
+                                        @elseif(in_array($status, ['paid', 'processing']))
+                                            <div class="mt-3 text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-100 flex items-start gap-2">
+                                                <i class="fas fa-clock mt-0.5"></i><span>Menunggu Resi dari Penjual</span>
+                                            </div>
+                                        @endif
                                     @endif
                                 </div>
 
@@ -178,8 +230,8 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
 
                                         @else
 
-                                            {{-- Lacak Resi Utama --}}
-                                            @if(!empty($resi) && $resi !== 'NULL')
+                                            {{-- Lacak Resi Utama (Hanya untuk fisik) --}}
+                                            @if(!$isDigital && !empty($resi) && $resi !== 'NULL')
                                                 <a href="{{ route('tracking.index', ['resi' => $resi]) }}" class="block w-full text-center border border-red-600 text-red-600 text-sm font-bold py-2 rounded-lg hover:bg-red-50 transition">Lacak Paket Awal</a>
                                             @endif
 
@@ -193,14 +245,13 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                                                 <div class="grid grid-cols-2 gap-2 mt-1">
                                                     <form action="{{ route('customer.pesanan.terima', $order->id ?? 0) }}" method="POST">
                                                         @csrf
-                                                        <button type="submit" {{ $isCair ? 'disabled' : '' }} onclick="return confirm('Paket diterima dengan baik? Dana akan diteruskan ke penjual.');" class="w-full {{ $isCair ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600' }} text-white text-[11px] font-bold py-2.5 rounded-lg transition flex items-center justify-center shadow-sm">
-                                                            <i class="fas fa-check-circle mr-1"></i> {{ $isCair ? 'Selesai' : 'Terima' }}
+                                                        <button type="submit" {{ $isCair ? 'disabled' : '' }} onclick="return confirm('{{ $isDigital ? 'Pesanan digital berfungsi dengan baik? Dana akan diteruskan ke penjual.' : 'Paket diterima dengan baik? Dana akan diteruskan ke penjual.' }}');" class="w-full {{ $isCair ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600' }} text-white text-[11px] font-bold py-2.5 rounded-lg transition flex items-center justify-center shadow-sm">
+                                                            <i class="fas fa-check-circle mr-1"></i> {{ $isCair ? 'Selesai' : ($isDigital ? 'Selesaikan' : 'Terima') }}
                                                         </button>
                                                     </form>
 
                                                     {{-- DATA UNTUK TOMBOL KOMPLAIN (BISA LANGSUNG RETUR) --}}
                                                     @php
-                                                        // Menggunakan safe null operator (?->) untuk menghindari error jika data dihapus
                                                         $weight = $order->items->sum(function($item) { return ($item->product?->weight ?? 1000) * $item->quantity; });
                                                         $itemPrice = $order->items->sum(function($item) { return $item->price * $item->quantity; });
                                                         $buyerArea = trim(($order->shipping_district ?? '') . ' ' . ($order->shipping_regency ?? ''));
@@ -219,6 +270,7 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                                                             'store_area' => $storeArea,
                                                             'weight' => $weight > 0 ? $weight : 1000,
                                                             'item_price' => $itemPrice > 0 ? $itemPrice : 10000,
+                                                            'is_digital' => $isDigital
                                                         ];
                                                     @endphp
                                                     <button type="button" {{ $isCair ? 'disabled' : '' }} data-retur="{{ json_encode($returKirimData) }}" onclick="openKomplainModal('{{ $order->invoice_number }}', '{{ addslashes($storeName) }}', this)" class="w-full border {{ $isCair ? 'border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed' : 'border-orange-500 text-orange-500 hover:bg-orange-50' }} text-[11px] font-bold py-2.5 rounded-lg transition flex items-center justify-center shadow-sm">
@@ -227,51 +279,53 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                                                 </div>
                                             @endif
 
-                                            {{-- Tombol Lacak & Resi Retur --}}
-                                            @php
-                                                $returnOrder = \App\Models\ReturnOrder::where('order_id', $order->id)->first();
-                                            @endphp
-
-                                            @if(in_array($status, ['returning', 'return_approved']) && !$returnOrder)
+                                            {{-- Tombol Lacak & Resi Retur (Sembunyikan jika Digital) --}}
+                                            @if(!$isDigital)
                                                 @php
-                                                    // Kita render ulang data untuk fallback jika status sudah approve tapi belum input
-                                                    if(!isset($returKirimData)) {
-                                                        $weight = $order->items->sum(function($item) { return ($item->product?->weight ?? 1000) * $item->quantity; });
-                                                        $itemPrice = $order->items->sum(function($item) { return $item->price * $item->quantity; });
-                                                        $buyerArea = trim(($order->shipping_district ?? '') . ' ' . ($order->shipping_regency ?? ''));
-                                                        $storeArea = trim(($seller?->district ?? '') . ' ' . ($seller?->regency ?? ''));
+                                                    $returnOrder = \App\Models\ReturnOrder::where('order_id', $order->id)->first();
+                                                @endphp
 
-                                                        $returKirimData = [
-                                                            'invoice' => $order->invoice_number, 'old_resi' => $order->shipping_reference ?? '-',
-                                                            'buyer_name' => Auth::user()->nama_lengkap ?? '', 'buyer_phone' => Auth::user()->no_wa ?? '08000000000',
-                                                            'buyer_address' => $order->shipping_address ?? '', 'buyer_area' => $buyerArea,
-                                                            'store_name' => $storeName, 'store_phone' => $seller?->no_wa ?? '08000000000',
-                                                            'store_address' => $seller?->address_detail ?? 'Alamat Toko', 'store_area' => $storeArea,
-                                                            'weight' => $weight > 0 ? $weight : 1000, 'item_price' => $itemPrice > 0 ? $itemPrice : 10000,
+                                                @if(in_array($status, ['returning', 'return_approved']) && !$returnOrder)
+                                                    @php
+                                                        if(!isset($returKirimData)) {
+                                                            $weight = $order->items->sum(function($item) { return ($item->product?->weight ?? 1000) * $item->quantity; });
+                                                            $itemPrice = $order->items->sum(function($item) { return $item->price * $item->quantity; });
+                                                            $buyerArea = trim(($order->shipping_district ?? '') . ' ' . ($order->shipping_regency ?? ''));
+                                                            $storeArea = trim(($seller?->district ?? '') . ' ' . ($seller?->regency ?? ''));
+
+                                                            $returKirimData = [
+                                                                'invoice' => $order->invoice_number, 'old_resi' => $order->shipping_reference ?? '-',
+                                                                'buyer_name' => Auth::user()->nama_lengkap ?? '', 'buyer_phone' => Auth::user()->no_wa ?? '08000000000',
+                                                                'buyer_address' => $order->shipping_address ?? '', 'buyer_area' => $buyerArea,
+                                                                'store_name' => $storeName, 'store_phone' => $seller?->no_wa ?? '08000000000',
+                                                                'store_address' => $seller?->address_detail ?? 'Alamat Toko', 'store_area' => $storeArea,
+                                                                'weight' => $weight > 0 ? $weight : 1000, 'item_price' => $itemPrice > 0 ? $itemPrice : 10000,
+                                                                'is_digital' => false
+                                                            ];
+                                                        }
+                                                    @endphp
+                                                    <button type="button" data-retur="{{ json_encode($returKirimData) }}" onclick="openKirimReturModal(this)" class="w-full mt-2 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold py-2.5 rounded-lg transition shadow-sm flex items-center justify-center animate-pulse">
+                                                        <i class="fas fa-truck-loading mr-1.5"></i> Input Resi Retur
+                                                    </button>
+                                                @endif
+
+                                                @if($returnOrder)
+                                                    @php
+                                                        $shipInfo = \App\Helpers\ShippingHelper::parseShippingMethod($returnOrder->courier);
+                                                        $infoReturData = [
+                                                            'store_name' => $storeName, 'store_address' => $seller?->address_detail ?? '-',
+                                                            'buyer_name' => Auth::user()->nama_lengkap ?? 'Pembeli', 'buyer_address' => $order->shipping_address ?? '-',
+                                                            'courier' => strtoupper($returnOrder->courier), 'service' => 'REGULER',
+                                                            'logo' => $shipInfo['logo_url'] ?? '', 'resi' => $returnOrder->new_resi,
+                                                            'cost' => number_format($returnOrder->shipping_cost, 0, ',', '.'),
+                                                            'date' => $returnOrder->created_at->format('d M Y, H:i'),
+                                                            'track_url' => route('tracking.index', ['resi' => $returnOrder->new_resi])
                                                         ];
-                                                    }
-                                                @endphp
-                                                <button type="button" data-retur="{{ json_encode($returKirimData) }}" onclick="openKirimReturModal(this)" class="w-full mt-2 bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold py-2.5 rounded-lg transition shadow-sm flex items-center justify-center animate-pulse">
-                                                    <i class="fas fa-truck-loading mr-1.5"></i> Input Resi Retur
-                                                </button>
-                                            @endif
-
-                                            @if($returnOrder)
-                                                @php
-                                                    $shipInfo = \App\Helpers\ShippingHelper::parseShippingMethod($returnOrder->courier);
-                                                    $infoReturData = [
-                                                        'store_name' => $storeName, 'store_address' => $seller?->address_detail ?? '-',
-                                                        'buyer_name' => Auth::user()->nama_lengkap ?? 'Pembeli', 'buyer_address' => $order->shipping_address ?? '-',
-                                                        'courier' => strtoupper($returnOrder->courier), 'service' => 'REGULER',
-                                                        'logo' => $shipInfo['logo_url'] ?? '', 'resi' => $returnOrder->new_resi,
-                                                        'cost' => number_format($returnOrder->shipping_cost, 0, ',', '.'),
-                                                        'date' => $returnOrder->created_at->format('d M Y, H:i'),
-                                                        'track_url' => route('tracking.index', ['resi' => $returnOrder->new_resi])
-                                                    ];
-                                                @endphp
-                                                <button type="button" data-info="{{ json_encode($infoReturData) }}" onclick="openReturModal(this)" class="w-full mt-2 bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-700 text-[11px] font-bold py-2 rounded-lg transition shadow-sm flex items-center justify-center">
-                                                    <i class="fas fa-exchange-alt mr-1.5"></i> Lacak Pengembalian
-                                                </button>
+                                                    @endphp
+                                                    <button type="button" data-info="{{ json_encode($infoReturData) }}" onclick="openReturModal(this)" class="w-full mt-2 bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-700 text-[11px] font-bold py-2 rounded-lg transition shadow-sm flex items-center justify-center">
+                                                        <i class="fas fa-exchange-alt mr-1.5"></i> Lacak Pengembalian
+                                                    </button>
+                                                @endif
                                             @endif
 
                                             <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="block w-full text-center bg-gray-100 text-gray-700 text-sm font-bold py-2 rounded-lg mt-2 hover:bg-gray-200 transition">Detail & Invoice</a>
@@ -531,14 +585,22 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
         btnReturChat.parentNode.replaceChild(newBtnReturChat, btnReturChat);
 
         if (btnElement && btnElement.hasAttribute('data-retur')) {
-            newBtnReturChat.innerText = "Input Resi Retur";
-            newBtnReturChat.classList.replace('text-red-600', 'text-teal-600');
-            newBtnReturChat.classList.replace('border-red-500', 'border-teal-500');
+            const dataRetur = JSON.parse(btnElement.getAttribute('data-retur')); // TAMBAHKAN BARIS INI
+            
+            // JIKA PRODUK DIGITAL, JANGAN TAMPILKAN TOMBOL INPUT RESI RETUR
+            if (dataRetur.is_digital) {
+                newBtnReturChat.style.display = 'none';
+            } else {
+                newBtnReturChat.style.display = 'inline-block';
+                newBtnReturChat.innerText = "Input Resi Retur";
+                newBtnReturChat.classList.replace('text-red-600', 'text-teal-600');
+                newBtnReturChat.classList.replace('border-red-500', 'border-teal-500');
 
-            newBtnReturChat.onclick = function() {
-                closeKomplainModal();
-                openKirimReturModal(btnElement);
-            };
+                newBtnReturChat.onclick = function() {
+                    closeKomplainModal();
+                    openKirimReturModal(btnElement);
+                };
+            }
         } else {
             newBtnReturChat.innerText = "Ajukan Retur Paket";
             newBtnReturChat.classList.replace('text-teal-600', 'text-red-600');
