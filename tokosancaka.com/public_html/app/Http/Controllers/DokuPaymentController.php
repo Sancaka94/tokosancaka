@@ -20,6 +20,7 @@ use Doku\Snap\Models\AdditionalInfo;
 use App\Services\DokuJokulService;
 
 // Import Controller Anda untuk Dispatcher Webhook
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CustomerOrderController; // Untuk 'INV-'
 use App\Http\Controllers\Customer\TopUpController; // Untuk 'TOPUP-'
 use App\Http\Controllers\Admin\PesananController as AdminPesananController; // Untuk 'CVSANCAK-'
@@ -342,6 +343,11 @@ class DokuPaymentController extends Controller
                 // Handle pembayaran TopUp
                 Log::info("DOKU Dispatcher: Mengirim $orderId ke TopUpController...");
                 return (new TopUpController())->handleDokuCallback($data);
+
+            } else if (Str::startsWith($orderId, 'SCK-ORD-') || Str::startsWith($orderId, 'ORD-') || Str::startsWith($orderId, 'SCK-')) {
+                // Handle pembayaran Marketplace Utama (Produk Fisik & Digital)
+                Log::info("DOKU Dispatcher: Mengirim $orderId ke CheckoutController...");
+                return app(CheckoutController::class)->handleDokuCallback($data);
             
             } else if (Str::startsWith($orderId, 'INV-')) {
                 // Handle pembayaran Marketplace
