@@ -2175,46 +2175,49 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         // 2. ENDPOINT SESUAI DOKUMENTASI RESMI DANA SNAP
         $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
-       // 3. PAYLOAD DISAMAKAN PERSIS DENGAN DOKUMENTASI (Direct Debit / Binding)
-        $body = [
-            "partnerReferenceNo" => (string) $trxId,
+       $body = [
+            "partnerReferenceNo" => $trxId,
             "merchantId"         => config('services.dana.merchant_id'),
-            "validUpTo"          => \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP'),
-            "amount" => [
-                "value"    => number_format((float)$transaction->amount, 2, '.', ''),
-                "currency" => "IDR"
-            ],
-            "urlParams" => [
+            "validUpTo"          => $validUpTo,
+            "amount"             => ["value" => $amountValue, "currency" => "IDR"],
+            "urlParams"          => [
                 [
-                    "url"        => route('dana.return', ['trx_id' => $trxId]),
-                    "type"       => "PAY_RETURN",
-                    "isDeeplink" => "N"
+                    "url" => route('dana.return', ['trx_id' => $trxId]),
+                    "type" => "PAY_RETURN",
+                    "isDeeplink" => "N" // KUNCI 1: Paksa ke "N" agar DANA memberikan Web URL murni
                 ],
                 [
-                    "url"        => url('/dana/notify'),
-                    "type"       => "NOTIFICATION",
+                    "url" => url('/dana/notify'),
+                    "type" => "NOTIFICATION",
                     "isDeeplink" => "N"
                 ]
             ],
-            "additionalInfo" => [
+            "payOptionDetails"   => [
+                [
+                    "payMethod"   => "BALANCE", 
+                    "payOption"   => "BALANCE", 
+                    "transAmount" => ["value" => $amountValue, "currency" => "IDR"]
+                ]
+            ],
+            "additionalInfo"     => [
+                "supportDeepLinkCheckoutUrl" => "true",
+                "productCode"                => "51051000100000000001",
+                "mcc"                        => "5732",
                 "order" => [
                     "orderTitle"        => substr("Top Up " . $trxId, 0, 64),
-                    "merchantTransType" => "01", // MANDATORY UNTUK DIRECT DEBIT
+                    "merchantTransType" => "01",
                     "scenario"          => "REDIRECT",
-                    "buyer" => [ // MANDATORY UNTUK DIRECT DEBIT (Memastikan identitas user)
+                    "buyer" => [
                         "externalUserId"   => (string) $userAccount->id_pengguna,
                         "externalUserType" => "MERCHANT_USER",
                         "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $userAccount->nama_lengkap ?? 'Customer'), 0, 64)
                     ]
                 ],
-                "mcc"                        => "5732", 
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "WEB" 
-                ],
-                "productCode"                => "51051000100000000001",
-                "supportDeepLinkCheckoutUrl" => "true" 
+                    "orderTerminalType" => "WEB" // KUNCI 2: Pertahankan "WEB"
+                ]
             ]
         ];
 
