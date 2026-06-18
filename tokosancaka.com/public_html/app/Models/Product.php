@@ -68,7 +68,7 @@ class Product extends Model
         'end_cut_off',          // Jam selesai gangguan
         'seller_product_status', // Status dari Provider (1=Aktif, 0=Gangguan)
         'multi',                // Boolean: Bisa transaksi ganda/tidak
-        'unlimited_stock'       // Boolean: Stok tak terbatas (untuk digital)
+        'unlimited_stock',      // Boolean: Stok tak terbatas (untuk digital)
 
         'digital_url',
         'digital_file_path', 
