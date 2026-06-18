@@ -167,6 +167,40 @@
                         </div>
                     </div>
 
+                    {{-- AREA PRODUK DIGITAL (Tampil Dinamis) --}}
+                    <div id="digital-asset-container" class="bg-blue-50 p-6 rounded-lg shadow-md border-2 border-blue-200 hidden">
+                        <h2 class="text-lg font-extrabold text-blue-800 mb-2"><i class="fas fa-cloud-download-alt mr-2"></i>Aset Produk Digital / Jasa</h2>
+                        <p class="text-sm text-blue-600 mb-4">Karena kategori ini adalah produk non-fisik, silakan masukkan Link Akses ATAU Upload File E-Ticket.</p>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label for="digital_url" class="block text-sm font-medium text-gray-700">Link Akses Eksternal</label>
+                                <input type="url" name="digital_url" id="digital_url" value="{{ old('digital_url') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Contoh: https://drive.google.com/...">
+                            </div>
+                            
+                            <div class="relative py-2">
+                                <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                                    <div class="w-full border-t border-blue-200"></div>
+                                </div>
+                                <div class="relative flex justify-center">
+                                    <span class="px-2 bg-blue-50 text-xs font-bold text-blue-400">ATAU UPLOAD FILE</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="digital_file" class="block text-sm font-medium text-gray-700">Upload File (E-Ticket, Dokumen, ZIP)</label>
+                                <input type="file" name="digital_file" id="digital_file" accept=".pdf,.zip,.jpg,.jpeg,.png,.webp" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                                <p class="mt-1 text-xs text-gray-500">Maksimal 5MB (Format: PDF, ZIP, JPG, PNG).</p>
+                            </div>
+
+                            <div class="pt-2">
+                                <label for="digital_sn_list" class="block text-sm font-medium text-gray-700">Daftar Serial Number / Voucher (Opsional)</label>
+                                <textarea name="digital_sn_list" id="digital_sn_list" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="SN-123, SN-456, SN-789 (Pisahkan dengan koma)">{{ old('digital_sn_list') }}</textarea>
+                                <p class="mt-1 text-xs text-gray-500">Jika pembeli akan menerima kode unik satu per satu.</p>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 {{-- Kolom Kanan --}}
@@ -236,8 +270,11 @@
                                 <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" required>
                                     <option value="">-- Pilih Kategori --</option>
                                     @foreach($categories as $category)
-                                        {{-- PERUBAHAN 5: Route attributes diubah ke seller --}}
-                                        <option value="{{ $category->id }}" data-attributes-url="{{ route('seller.categories.attributes', $category->id) }}" {{ old('category_id') == $category->id ? 'selected' : '' }}>
+                                        {{-- Tambahkan data-kategori-grup agar JS tahu tipe kategorinya --}}
+                                        <option value="{{ $category->id }}" 
+                                                data-attributes-url="{{ route('seller.categories.attributes', $category->id) }}" 
+                                                data-kategori-grup="{{ strtolower($category->category_group ?? $category->type ?? '') }}"
+                                                {{ old('category_id') == $category->id ? 'selected' : '' }}>
                                             {{ $category->name }}
                                         </option>
                                     @endforeach
@@ -462,13 +499,29 @@ document.addEventListener('DOMContentLoaded', () => {
         return wrapper;
     }
 
-    if (categorySelect) { 
-        categorySelect.addEventListener('change', fetchAndRenderAttributes);
-        if(categorySelect.value) {
-            fetchAndRenderAttributes();
+   // --- Script Atribut & Aset Digital Dinamis ---
+    const digitalContainer = document.getElementById('digital-asset-container');
+
+    function checkDigitalCategory() {
+        if (!categorySelect) return;
+        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+        
+        if (!selectedOption || !selectedOption.value) {
+            digitalContainer.classList.add('hidden');
+            return;
         }
-    } else {
-        console.error("Elemen select kategori tidak ditemukan.");
+
+        // Ambil grup kategori dari atribut data
+        const kategoriGrup = selectedOption.getAttribute('data-kategori-grup') || '';
+        
+        // Cek apakah string kategori mengandung kata kunci digital/jasa
+        const isDigital = ['produk_digital', 'jasa', 'digital', 'eticket'].some(keyword => kategoriGrup.includes(keyword));
+
+        if (isDigital) {
+            digitalContainer.classList.remove('hidden'); // Tampilkan form file digital
+        } else {
+            digitalContainer.classList.add('hidden'); // Sembunyikan untuk produk fisik
+        }
     }
 
 
