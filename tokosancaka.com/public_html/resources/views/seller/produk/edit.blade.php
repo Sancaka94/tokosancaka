@@ -85,7 +85,6 @@
                         <div class="space-y-4">
                             <div>
                                 <label for="name" class="block text-sm font-medium text-gray-700">Nama Produk</label>
-                                {{-- Menggunakan old() dengan data $produk sebagai default --}}
                                 <input type="text" name="name" id="name" value="{{ old('name', $produk->name) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm @error('name') border-red-500 @enderror" required>
                                 @error('name') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                             </div>
@@ -125,6 +124,54 @@
                         <p class="text-sm text-gray-600 mb-4">Ubah varian jika produk Anda memiliki pilihan seperti warna atau ukuran. Ini akan menonaktifkan input stok utama.</p>
                         <div id="variant-groups-container" class="space-y-6">
                             {{-- Grup varian dinamis akan ditambahkan di sini oleh JavaScript --}}
+                        </div>
+                    </div>
+
+                    {{-- AREA PRODUK DIGITAL (Tampil Dinamis) --}}
+                    <div id="digital-asset-container" class="bg-blue-50 p-6 rounded-lg shadow-md border-2 border-blue-200 hidden">
+                        <h2 class="text-lg font-extrabold text-blue-800 mb-2"><i class="fas fa-cloud-download-alt mr-2"></i>Aset Produk Digital / Jasa</h2>
+                        <p class="text-sm text-blue-600 mb-4">Karena kategori ini adalah produk non-fisik, silakan masukkan Link Akses ATAU Upload File E-Ticket baru jika ingin mengubahnya.</p>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label for="digital_url" class="block text-sm font-medium text-gray-700">Link Akses Eksternal</label>
+                                <input type="url" name="digital_url" id="digital_url" value="{{ old('digital_url', $produk->digital_url ?? '') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="Contoh: https://drive.google.com/...">
+                            </div>
+                            
+                            <div class="relative py-2">
+                                <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                                    <div class="w-full border-t border-blue-200"></div>
+                                </div>
+                                <div class="relative flex justify-center">
+                                    <span class="px-2 bg-blue-50 text-xs font-bold text-blue-400">ATAU UPLOAD FILE BARU</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label for="digital_file" class="block text-sm font-medium text-gray-700">Upload File (Abaikan jika tidak ingin mengubah)</label>
+                                <input type="file" name="digital_file" id="digital_file" accept=".pdf,.zip,.jpg,.jpeg,.png,.webp" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer">
+                                
+                                {{-- Indikator File Lama --}}
+                                @if(!empty($produk->digital_file_path))
+                                    <p class="mt-2 text-xs text-green-600 font-bold"><i class="fas fa-check-circle mr-1"></i>File E-Ticket/Digital saat ini sudah tersimpan di sistem.</p>
+                                @else
+                                    <p class="mt-1 text-xs text-gray-500">Maksimal 5MB (Format: PDF, ZIP, JPG, PNG).</p>
+                                @endif
+                            </div>
+
+                            <div class="pt-2">
+                                <label for="digital_sn_list" class="block text-sm font-medium text-gray-700">Daftar Serial Number / Voucher (Opsional)</label>
+                                <textarea name="digital_sn_list" id="digital_sn_list" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="SN-123, SN-456, SN-789 (Pisahkan dengan koma)">{{ old('digital_sn_list', $produk->digital_sn_list ?? '') }}</textarea>
+                                <p class="mt-1 text-xs text-gray-500">Jika pembeli akan menerima kode unik satu per satu.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Card untuk Atribut Dinamis --}}
+                    <div id="attributes-card" class="bg-white p-6 rounded-lg shadow-md hidden">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Spesifikasi Produk</h2>
+                        <div id="dynamic-attributes-container" class="space-y-4">
+                            {{-- Field dinamis akan muncul di sini oleh JavaScript --}}
                         </div>
                     </div>
 
@@ -199,7 +246,7 @@
                                     @foreach($categories as $category)
                                         <option value="{{ $category->id }}" 
                                                 data-attributes-url="{{ route('seller.categories.attributes', $category->id) }}" 
-                                                {{-- Memilih kategori yang sesuai --}}
+                                                data-kategori-grup="{{ strtolower($category->category_group ?? $category->type ?? '') }}"
                                                 @selected(old('category_id', $produk->category_id) == $category->id)>
                                             {{ $category->name }}
                                         </option>
@@ -209,7 +256,6 @@
                             </div>
                             <div>
                                 <label for="tags" class="block text-sm font-medium text-gray-700">Tags (pisahkan koma)</label>
-                                {{-- Mengubah tags JSON (jika) menjadi string --}}
                                 @php
                                     $tags = old('tags', $produk->tags);
                                     if (is_string($tags)) {
@@ -224,14 +270,6 @@
                         </div>
                     </div>
 
-                    {{-- Card untuk Atribut Dinamis --}}
-                    <div id="attributes-card" class="bg-white p-6 rounded-lg shadow-md hidden">
-                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Spesifikasi Produk</h2>
-                        <div id="dynamic-attributes-container" class="space-y-4">
-                            {{-- Field dinamis akan muncul di sini oleh JavaScript --}}
-                        </div>
-                    </div>
-
                     <div class="bg-white p-6 rounded-lg shadow-md">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">Status & Label</h2>
                         <div class="space-y-4">
@@ -243,7 +281,6 @@
                                 </select>
                             </div>
                             <div class="flex items-center">
-                                {{-- Handle checkbox value --}}
                                 <input type="checkbox" name="is_new" id="is_new" value="1" @checked(old('is_new', $produk->is_new))>
                                 <label for="is_new" class="ml-2 block text-sm text-gray-900">Tandai sebagai Produk Baru</label>
                             </div>
@@ -254,42 +291,24 @@
                         </div>
                     </div>
                     
-            <div class="bg-white p-6 rounded-lg shadow-md flex justify-end gap-3">
-    {{-- Tombol Batal (merah) --}}
-    <a href="{{ route('seller.produk.index') }}"
-       class="px-5 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 transition">
-        Batal
-    </a>
-
-    {{-- Tombol Update Produk (hijau) --}}
-    <button id="submit-button" type="submit"
-        class="px-5 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300 transition flex items-center gap-2">
-        Update Produk
-    </button>
-</div>
+                    <div class="bg-white p-6 rounded-lg shadow-md flex justify-end gap-3">
+                        <a href="{{ route('seller.produk.index') }}" class="px-5 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 transition">
+                            Batal
+                        </a>
+                        <button id="submit-button" type="submit" class="px-5 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300 transition flex items-center gap-2">
+                            Update Produk
+                        </button>
+                    </div>
 
                 </div>
             </div>
-
-            
         </form>
     </div>
 </div>
 @endsection
 
 @push('scripts')
-{{-- 
-=================================================================
-PERHATIAN: DATA UNTUK JAVASCRIPT
-=================================================================
-Kode ini perlu data JSON dari controller. Pastikan fungsi `edit()`
-di `ProdukController` Anda mengirimkan variabel:
-- `$existing_attributes_json`
-- `$existing_variant_types_json`
-=================================================================
---}}
 <script>
-    // Data dari controller
     const existingAttributes = {!! $existing_attributes_json ?? '{}' !!};
     const existingVariantTypes = {!! $existing_variant_types_json ?? '[]' !!};
 </script>
@@ -327,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     preview.src = event.target.result;
-                    preview.style.display = 'block'; // Tampilkan preview baru
+                    preview.style.display = 'block'; 
                 };
                 reader.readAsDataURL(file);
             }
@@ -351,10 +370,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Script Atribut Dinamis ---
+    // --- Script Atribut & Aset Digital Dinamis ---
     const categorySelect = document.getElementById('category_id');
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
+    const digitalContainer = document.getElementById('digital-asset-container');
 
     async function fetchAndRenderAttributes() {
         const selectedOption = categorySelect.options[categorySelect.selectedIndex];
@@ -371,10 +391,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(`Gagal memuat atribut (status: ${response.status}).`);
             const attributes = await response.json();
             attributesContainer.innerHTML = '';
+            
             if (attributes && attributes.length > 0) { 
                 attributes.forEach(attr => {
                     if (typeof attr === 'object' && attr !== null && attr.slug) {
-                        // Kirim data yang ada ke fungsi createField
                         const existingValue = existingAttributes[attr.slug] || null;
                         const field = createAttributeField(attr, existingValue);
                         attributesContainer.appendChild(field);
@@ -433,10 +453,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return wrapper;
     }
 
-    if (categorySelect) { 
-        categorySelect.addEventListener('change', fetchAndRenderAttributes);
-        if(categorySelect.value) {
-            fetchAndRenderAttributes(); // Langsung panggil saat load
+    function checkDigitalCategory() {
+        if (!categorySelect) return;
+        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+        
+        if (!selectedOption || !selectedOption.value) {
+            digitalContainer.classList.add('hidden');
+            return;
+        }
+
+        const kategoriGrup = selectedOption.getAttribute('data-kategori-grup') || '';
+        const isDigital = ['produk_digital', 'jasa', 'digital', 'eticket', 'tiket', 'ticket', 'event'].some(keyword => kategoriGrup.includes(keyword));
+
+        if (isDigital) {
+            digitalContainer.classList.remove('hidden');
+        } else {
+            digitalContainer.classList.add('hidden');
         }
     }
 
@@ -502,7 +534,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // BARU: Fungsi untuk memuat varian yang sudah ada
     function loadExistingVariants() {
         if (existingVariantTypes && existingVariantTypes.length > 0) {
             existingVariantTypes.forEach((variant) => {
@@ -511,16 +542,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 );
                 variantIndex++;
             });
-            toggleMainStock(); // Panggil toggle stock setelah memuat
+            toggleMainStock(); 
         }
     }
 
-    // Panggil fungsi-fungsi saat halaman dimuat
-    loadExistingVariants();
-    toggleMainStock(); // Panggil juga toggle stock utama
-    if (categorySelect.value) {
-        fetchAndRenderAttributes(); // Panggil fetch attributes
+    // Panggil event listeners & inisialisasi awal
+    if (categorySelect) { 
+        categorySelect.addEventListener('change', () => {
+            fetchAndRenderAttributes();
+            checkDigitalCategory();
+        });
+        
+        // Eksekusi langsung saat load untuk menangkap kategori yang sudah terpilih (termasuk yang "old")
+        if(categorySelect.value) {
+            fetchAndRenderAttributes();
+            checkDigitalCategory();
+        }
     }
+
+    loadExistingVariants();
+    toggleMainStock(); 
 
 });
 </script>
