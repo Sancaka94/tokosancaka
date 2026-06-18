@@ -221,7 +221,8 @@ class TopUpController extends Controller
      * HELPER: EKSEKUTOR API DANA GATEWAY KHUSUS TOPUP (REVISI GAPURA IPG)
      * =========================================================================
      */
-    private function _createTopUpDanaGateway(Transaction $transaction, $user)
+    
+    /* private function _createTopUpDanaGateway(Transaction $transaction, $user)
     {
         $timestamp   = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $expiryTime  = Carbon::now('Asia/Jakarta')->addMinutes(60)->format('Y-m-d\TH:i:sP');
@@ -329,6 +330,128 @@ class TopUpController extends Controller
         } catch (\Exception $e) {
             Log::error('Koneksi DANA Error: ' . $e->getMessage());
             return ['success' => false, 'message' => 'Koneksi DANA Error: ' . $e->getMessage()];
+        }
+    } 
+        
+    /**
+     * =========================================================================
+     * HELPER: EKSEKUTOR API DANA GATEWAY KHUSUS TOPUP (CUSTOM CHECKOUT)
+     * =========================================================================
+     */
+    private function _createTopUpDanaGateway(Transaction $transaction, $user)
+    {
+        $trxId = $transaction->reference_id;
+        Log::info('LOG LOG: [API MOBILE - DANA CUSTOM CHECKOUT] Memulai request Create Order untuk: ' . $trxId);
+
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        
+        // Aturan Sandbox: validUpTo harus <= 30 menit dari request time
+        $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP');
+        $amountValue = number_format((float)$transaction->amount, 2, '.', '');
+        
+        $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+
+        $body = [
+            "partnerReferenceNo" => (string) $trxId,
+            "merchantId"         => config('services.dana.merchant_id'),
+            "amount"             => [
+                "value"    => $amountValue,
+                "currency" => "IDR"
+            ],
+            "validUpTo"          => $validUpTo,
+            "urlParams"          => [
+                [
+                    // Endpoint callback webview/browser, biarkan pakai web karena akan ditangkap oleh Expo
+                    "url"        => route('dana.return', ['trx_id' => $trxId]),
+                    "type"       => "PAY_RETURN",
+                    "isDeeplink" => "N"
+                ],
+                [
+                    "url"        => url('/dana/notify'),
+                    "type"       => "NOTIFICATION",
+                    "isDeeplink" => "N"
+                ]
+            ],
+            "payOptionDetails"   => [
+                [
+                    "payMethod"   => "BALANCE",
+                    "payOption"   => "",
+                    "transAmount" => [
+                        "value"    => $amountValue,
+                        "currency" => "IDR"
+                    ]
+                ]
+            ],
+            "additionalInfo"     => [
+                "order"   => [
+                    "orderTitle" => substr("Top Up " . $trxId, 0, 64),
+                    "scenario"   => "API"
+                ],
+                "mcc"     => "5732", 
+                "envInfo" => [
+                    "sourcePlatform"    => "IPG",
+                    "terminalType"      => "SYSTEM",
+                    "orderTerminalType" => "APP" // Khusus Expo, kita set APP
+                ]
+            ]
+        ];
+
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        try {
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+            $baseUrl     = config('services.dana.base_url');
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessToken,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            Log::info('LOG LOG: [API MOBILE - DANA CUSTOM CHECKOUT] Request Body Terkirim:', $body);
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post($baseUrl . $path);
+
+            $result = $response->json();
+
+            // CEK RESPON SUKSES (2005400)
+            if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
+
+                // Ambil URL (Bisa appLinkUrl jika APP, atau webRedirectUrl jika via WebView)
+                $redirectUrl = $result['appLinkUrl'] ?? $result['webRedirectUrl'] ?? null;
+                
+                if (!empty($redirectUrl)) {
+                    Log::info('LOG LOG: [API MOBILE - DANA CUSTOM CHECKOUT] Berhasil generate URL Checkout.');
+                    
+                    // KEMBALIKAN ARRAY AGAR DITANGKAP OLEH FUNGSI STORE()
+                    return [
+                        'success'      => true, 
+                        'redirect_url' => $redirectUrl
+                    ];
+                }
+
+                Log::error('LOG LOG: [API MOBILE - DANA CUSTOM CHECKOUT] Transaksi menggantung. URL tidak diterbitkan.', $result);
+                return ['success' => false, 'message' => 'Gagal: URL Pembayaran DANA tidak diterbitkan.'];
+            }
+
+            // PENANGANAN ERROR DANA
+            $errorCode  = $result['responseCode'] ?? 'UNKNOWN';
+            $pesanGagal = $result['responseMessage'] ?? 'Terjadi kesalahan pada sistem pembayaran.';
+
+            Log::error("LOG LOG: [API MOBILE - DANA CUSTOM CHECKOUT] Gagal generate URL. Code: $errorCode | Msg: $pesanGagal", $result);
+            return ['success' => false, 'message' => "Gagal dari DANA [$errorCode]: $pesanGagal"];
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [API MOBILE - DANA CUSTOM CHECKOUT] Fatal Exception: ' . $e->getMessage());
+            return ['success' => false, 'message' => 'Koneksi ke sistem DANA gagal. Silakan coba beberapa saat lagi.'];
         }
     }
 
