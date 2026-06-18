@@ -3,126 +3,146 @@
 @section('title', 'Detail Pesanan & E-Ticket - ' . $order->invoice_number)
 
 @section('content')
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-8 col-md-10">
+<div class="bg-gray-50 min-h-screen py-10">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {{-- Header Status --}}
+        <div class="text-center mb-8">
+            <h1 class="text-2xl md:text-3xl font-extrabold text-gray-900 mb-2">Rincian Pesanan Anda</h1>
+            <p class="text-sm text-gray-500">Simpan tautan halaman ini untuk mengakses produk Anda sewaktu-waktu.</p>
+        </div>
+
+        <div class="bg-white shadow-sm border border-gray-200 rounded-2xl overflow-hidden mb-6">
             
-            {{-- Header Status --}}
-            <div class="text-center mb-4">
-                <h2 class="fw-bold text-dark mb-1">Rincian Pesanan Anda</h2>
-                <p class="text-muted">Simpan tautan halaman ini untuk mengakses produk Anda sewaktu-waktu.</p>
+            {{-- Bagian Atas: QR Code & Status --}}
+            <div class="p-6 md:p-8 bg-gray-50 border-b border-gray-100 flex flex-col-reverse md:flex-row items-center justify-between gap-6">
+                <div class="text-center md:text-left w-full md:w-auto">
+                    @php 
+                        $status = strtolower($order->status);
+                        $badgeClass = match($status) {
+                            'paid', 'completed', 'success', 'lunas', 'selesai' => 'bg-green-100 text-green-800 border-green-200',
+                            'pending', 'unpaid', 'menunggu_pembayaran' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
+                            'processing', 'diproses' => 'bg-blue-100 text-blue-800 border-blue-200',
+                            default => 'bg-gray-100 text-gray-800 border-gray-200'
+                        };
+                    @endphp
+                    <span class="inline-block px-4 py-1.5 rounded-full text-xs font-bold tracking-wider border {{ $badgeClass }} mb-3">
+                        {{ strtoupper($status) }}
+                    </span>
+                    <h2 class="text-2xl font-black text-gray-900 mb-1 tracking-tight">{{ $order->invoice_number }}</h2>
+                    <p class="text-sm text-gray-500 font-medium"><i class="fas fa-calendar-alt mr-1.5"></i> {{ $order->created_at->format('d F Y, H:i') }} WIB</p>
+                </div>
+                
+                {{-- Barcode 2D (QR Code) --}}
+                <div class="bg-white p-3 border border-gray-200 rounded-xl shadow-sm flex flex-col items-center justify-center flex-shrink-0">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ urlencode($order->invoice_number) }}" alt="QR Code" class="w-24 h-24 object-contain">
+                    <span class="text-[9px] font-bold text-gray-400 mt-2 uppercase tracking-widest">ID Transaksi</span>
+                </div>
             </div>
 
-            <div class="card shadow-sm border-0 rounded-4 overflow-hidden mb-4">
-                {{-- Bagian Atas: QR Code & Status --}}
-                <div class="card-body p-4 bg-light border-bottom d-flex flex-column flex-md-row align-items-center justify-content-between gap-4">
-                    <div class="text-center text-md-start">
-                        <span class="badge {{ strtolower($order->status) === 'paid' ? 'bg-success' : 'bg-warning text-dark' }} px-3 py-2 rounded-pill mb-2 fs-6">
-                            {{ strtoupper($order->status) }}
-                        </span>
-                        <h4 class="fw-bold text-primary mb-1">{{ $order->invoice_number }}</h4>
-                        <small class="text-muted"><i class="fas fa-calendar-alt me-1"></i> {{ $order->created_at->format('d F Y, H:i') }} WIB</small>
+            {{-- Daftar Produk & Info Penjual --}}
+            <div class="p-6 md:p-8">
+                <div class="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+                    <div class="w-10 h-10 bg-red-50 text-red-600 rounded-full flex items-center justify-center border border-red-100 flex-shrink-0">
+                        <i class="fas fa-store"></i>
                     </div>
-                    
-                    {{-- Barcode 2D (QR Code) dari API Publik gratis --}}
-                    <div class="text-center bg-white p-2 border rounded-3 shadow-sm">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ urlencode($order->invoice_number) }}" alt="QR Code Transaksi" class="img-fluid" style="width: 100px; height: 100px;">
-                        <div class="mt-1" style="font-size: 10px; color: #6c757d;">ID Transaksi</div>
-                    </div>
+                    <h3 class="font-bold text-gray-800 text-base">{{ $order->store->name ?? 'Toko Penjual' }}</h3>
                 </div>
 
-                {{-- Daftar Produk & Info Penjual --}}
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
-                            <i class="fas fa-store"></i>
-                        </div>
-                        <h6 class="fw-bold mb-0">{{ $order->store->name ?? 'Toko Penjual' }}</h6>
-                    </div>
-
+                <div class="space-y-4">
                     @foreach($order->items as $item)
-                    <div class="d-flex align-items-center p-3 border rounded-3 mb-3 bg-white">
+                    <div class="flex items-start gap-4 p-4 border border-gray-100 rounded-xl bg-white hover:bg-gray-50 hover:border-gray-200 transition duration-200 group">
                         {{-- Gambar Produk --}}
-                        <div class="flex-shrink-0">
+                        <div class="w-20 h-20 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
                             @php
                                 $imgUrl = $item->product && $item->product->image_url 
                                     ? asset('public/storage/' . str_replace('public/', '', $item->product->image_url)) 
-                                    : 'https://placehold.co/80x80?text=No+Pic';
+                                    : 'https://placehold.co/100x100?text=No+Pic';
                             @endphp
-                            <img src="{{ $imgUrl }}" alt="{{ $item->product->name ?? 'Produk' }}" class="img-fluid rounded border" style="width: 80px; height: 80px; object-fit: cover;">
+                            <img src="{{ $imgUrl }}" alt="{{ $item->product->name ?? 'Produk' }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                         </div>
                         
                         {{-- Detail Produk --}}
-                        <div class="flex-grow-1 ms-3">
-                            <h6 class="fw-bold text-dark mb-1">{{ $item->product->name ?? 'Produk Digital' }}</h6>
-                            <small class="text-muted d-block mb-2">Qty: {{ $item->quantity }} x Rp {{ number_format($item->price, 0, ',', '.') }}</small>
-                            <span class="badge bg-info text-dark border"><i class="fas fa-bolt me-1"></i> Pengiriman Instan</span>
+                        <div class="flex-grow pt-1">
+                            <h4 class="font-bold text-gray-900 text-sm md:text-base leading-tight mb-1">{{ $item->product->name ?? 'Produk Digital' }}</h4>
+                            <p class="text-sm text-gray-600 font-medium mb-2">{{ $item->quantity }} x Rp {{ number_format($item->price, 0, ',', '.') }}</p>
+                            <span class="inline-flex items-center px-2 py-1 rounded bg-blue-50 border border-blue-100 text-blue-600 text-[10px] font-bold">
+                                <i class="fas fa-bolt mr-1"></i> Pengiriman Instan
+                            </span>
                         </div>
                     </div>
                     @endforeach
-
-                    {{-- Total Harga --}}
-                    <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-2">
-                        <span class="text-muted fw-bold">Total Pembayaran</span>
-                        <h4 class="fw-bold text-danger mb-0">Rp {{ number_format($order->total_amount, 0, ',', '.') }}</h4>
-                    </div>
                 </div>
 
-                {{-- Bagian Eksekusi (E-Ticket / Download Link / SN) --}}
-                @php 
-                    $resiOrToken = $order->shipping_resi ?? ($order->shipping_reference ?? null);
-                    $isUrl = filter_var($resiOrToken, FILTER_VALIDATE_URL);
-                    $isPaid = strtolower($order->status) === 'paid' || strtolower($order->status) === 'processing';
-                @endphp
+                {{-- Total Harga --}}
+                <div class="flex justify-between items-center pt-6 mt-6 border-t border-dashed border-gray-200">
+                    <span class="text-gray-500 font-bold text-sm uppercase tracking-wider">Total Pembayaran</span>
+                    <span class="text-xl md:text-2xl font-black text-red-600">Rp {{ number_format($order->total_amount, 0, ',', '.') }}</span>
+                </div>
+            </div>
 
-                <div class="card-footer bg-white border-top-0 p-4 pt-0">
-                    <div class="bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 p-4 text-center">
+            {{-- Bagian Eksekusi (E-Ticket / Download Link / SN) --}}
+            @php 
+                $resiOrToken = $order->shipping_resi ?? ($order->shipping_reference ?? null);
+                $isUrl = filter_var($resiOrToken, FILTER_VALIDATE_URL);
+                $isPaid = in_array(strtolower($order->status), ['paid', 'processing', 'completed', 'selesai', 'lunas']);
+            @endphp
+
+            <div class="p-6 md:p-8 pt-0 bg-white">
+                <div class="bg-blue-50 border border-blue-200 rounded-2xl p-6 md:p-8 text-center shadow-inner">
+                    
+                    @if($isPaid)
+                        <h4 class="font-extrabold text-blue-800 mb-2 text-lg flex items-center justify-center gap-2">
+                            <i class="fas fa-ticket-alt"></i> Akses Produk Anda
+                        </h4>
                         
-                        @if($isPaid)
-                            <h5 class="fw-bold text-primary mb-2"><i class="fas fa-ticket-alt me-2"></i>Akses Produk Anda</h5>
+                        @if(!empty($resiOrToken) && $resiOrToken !== 'NULL' && !str_starts_with($resiOrToken, 'DIGITAL-'))
                             
-                            @if(!empty($resiOrToken) && $resiOrToken !== 'NULL' && !str_starts_with($resiOrToken, 'DIGITAL-'))
-                                
-                                @if($isUrl)
-                                    <p class="text-muted small mb-3">Pesanan Anda berupa file atau tautan eksternal. Silakan klik tombol di bawah untuk mengunduh/mengaksesnya.</p>
-                                    <a href="{{ $resiOrToken }}" target="_blank" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm">
-                                        <i class="fas fa-cloud-download-alt me-2"></i> Akses / Download Sekarang
-                                    </a>
-                                @else
-                                    <p class="text-muted small mb-2">Gunakan Serial Number / Kode Voucher di bawah ini:</p>
-                                    <div class="input-group input-group-lg w-100 mx-auto">
-                                        <input type="text" class="form-control text-center fw-bold text-dark font-monospace bg-white" value="{{ $resiOrToken }}" id="snToken" readonly>
-                                        <button class="btn btn-outline-primary fw-bold" type="button" onclick="copyToken()">
-                                            <i class="fas fa-copy"></i> Salin
-                                        </button>
-                                    </div>
-                                @endif
-
+                            @if($isUrl)
+                                <p class="text-sm text-blue-600 mb-5">Pesanan Anda berupa file atau tautan eksternal. Silakan klik tombol di bawah untuk mengaksesnya.</p>
+                                <a href="{{ $resiOrToken }}" target="_blank" class="inline-flex items-center justify-center w-full md:w-auto px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-200 transition transform hover:-translate-y-0.5">
+                                    <i class="fas fa-cloud-download-alt mr-2 text-lg"></i> Akses / Download Sekarang
+                                </a>
                             @else
-                                <div class="spinner-border text-primary spinner-border-sm mb-2" role="status"></div>
-                                <p class="text-muted small mb-0">Menunggu penjual memproses dan mengirimkan E-Ticket/File pesanan Anda. Silakan *refresh* halaman ini secara berkala.</p>
+                                <p class="text-sm text-blue-600 mb-4">Gunakan Kode Voucher / Serial Number di bawah ini:</p>
+                                <div class="flex items-center w-full max-w-md mx-auto shadow-sm rounded-xl overflow-hidden border-2 border-blue-300 bg-white">
+                                    <input type="text" class="flex-1 text-center font-mono font-bold text-gray-800 bg-transparent py-3 px-4 focus:outline-none text-sm md:text-base" value="{{ $resiOrToken }}" id="snToken" readonly>
+                                    <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold py-3 px-6 transition duration-200 flex items-center gap-2 border-l border-blue-200" type="button" onclick="copyToken()">
+                                        <i class="fas fa-copy"></i> <span class="hidden md:inline">Salin</span>
+                                    </button>
+                                </div>
+                                <p class="text-[10px] text-blue-400 mt-3">* Jangan berikan kode ini kepada siapapun.</p>
                             @endif
 
                         @else
-                            {{-- Jika Belum Dibayar --}}
-                            <h5 class="fw-bold text-danger mb-2"><i class="fas fa-exclamation-triangle me-2"></i>Menunggu Pembayaran</h5>
-                            <p class="text-muted small mb-3">Silakan selesaikan pembayaran Anda agar e-ticket/produk dapat segera diakses.</p>
-                            <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="btn btn-danger btn-lg w-100 fw-bold shadow-sm">
-                                <i class="fas fa-wallet me-2"></i> Lanjutkan Pembayaran
-                            </a>
+                            <div class="flex justify-center mb-3">
+                                <i class="fas fa-circle-notch fa-spin text-blue-500 text-3xl"></i>
+                            </div>
+                            <p class="text-sm text-blue-600 mb-0 font-medium">Menunggu penjual memproses dan mengirimkan produk Anda.</p>
+                            <p class="text-xs text-blue-400 mt-1">Silakan <a href="javascript:window.location.reload(true)" class="underline font-bold hover:text-blue-700">refresh</a> halaman ini secara berkala.</p>
                         @endif
-                    </div>
-                </div>
 
-            </div>
-            
-            <div class="text-center">
-                <a href="{{ url('/') }}" class="btn btn-light border shadow-sm px-4">
-                    <i class="fas fa-arrow-left me-2"></i> Kembali ke Beranda
-                </a>
+                    @else
+                        {{-- Jika Belum Dibayar --}}
+                        <h4 class="font-extrabold text-red-600 mb-2 text-lg flex items-center justify-center gap-2">
+                            <i class="fas fa-exclamation-triangle"></i> Menunggu Pembayaran
+                        </h4>
+                        <p class="text-sm text-red-500 mb-5">Silakan selesaikan pembayaran Anda agar pesanan dapat segera diakses.</p>
+                        <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="inline-flex items-center justify-center w-full md:w-auto px-8 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md shadow-red-200 transition transform hover:-translate-y-0.5">
+                            <i class="fas fa-wallet mr-2"></i> Lanjutkan Pembayaran
+                        </a>
+                    @endif
+                </div>
             </div>
 
         </div>
+        
+        <div class="text-center mt-8">
+            <a href="{{ url('/') }}" class="inline-flex items-center px-6 py-3 bg-white text-gray-600 font-bold rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition">
+                <i class="fas fa-arrow-left mr-2"></i> Kembali ke Beranda
+            </a>
+        </div>
+
     </div>
 </div>
 
@@ -133,7 +153,19 @@
         copyText.setSelectionRange(0, 99999); /* Untuk mobile */
         navigator.clipboard.writeText(copyText.value);
         
-        alert("Kode / SN berhasil disalin!");
+        // SweetAlert jika ada, kalau tidak fallback ke JS alert biasa
+        if(typeof Swal !== 'undefined') {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Kode / SN berhasil disalin!',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        } else {
+            alert("Kode / SN berhasil disalin!");
+        }
     }
 </script>
 @endsection
