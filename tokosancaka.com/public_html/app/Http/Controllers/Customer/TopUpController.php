@@ -2205,7 +2205,6 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 "order" => [
                     "orderTitle"        => substr("Top Up " . $trxId, 0, 64),
                     "merchantTransType" => "01",
-                    "scenario"          => "REDIRECT",
                     "buyer" => [
                         "externalUserId"   => (string) $userAccount->id_pengguna,
                         "externalUserType" => "MERCHANT_USER",
