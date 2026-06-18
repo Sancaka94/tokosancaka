@@ -641,31 +641,33 @@ class TopUpController extends Controller
     }
 
   public function startBinding(Request $request)
-{
-    Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA (Debug)...');
-    $user = \Illuminate\Support\Facades\Auth::user();
+    {
+        Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA (Debug)...');
+        $user = \Illuminate\Support\Facades\Auth::user();
 
-    // Simpan id_pengguna ke session sebagai cadangan pengenal user
-    session(['dana_user_id' => $user->id_pengguna]);
+        // Simpan id_pengguna ke session sebagai cadangan pengenal user
+        session(['dana_user_id' => $user->id_pengguna]);
 
-    $queryParams = [
-        'partnerId'   => config('services.dana.x_partner_id'),
-        'merchantId'  => config('services.dana.merchant_id'),
-        'timestamp'   => now('Asia/Jakarta')->format('Y-m-d\TH:i:s+07:00'),
-        'externalId'  => 'BIND-' . $user->id_pengguna . '-' . time(),
-        'channelId'   => 'DANAID',
-        'redirectUrl' => 'https://tokosancaka.com/dana/callback',
-        'state'       => \Illuminate\Support\Str::random(16),
-        'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
-        'allowRegistration' => 'true',
-    ];
+        // DANA OAuth 2.0 Web Authorize Parameters (Standar Resmi)
+        $queryParams = [
+            'clientId'     => config('services.dana.client_id'), // PENTING: Harus clientId, bukan partnerId
+            'redirectUrl'  => url('/dana/callback'), // Pastikan route ini sesuai dengan setting di Dashboard DANA Anda
+            'scopes'       => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE', // AGREEMENT_PAY wajib untuk Direct Debit!
+            'state'        => \Illuminate\Support\Str::random(16),
+            'terminalType' => 'WEB', // Penting agar UI DANA tahu dirender sebagai Web
+            'merchantId'   => config('services.dana.merchant_id'),
+        ];
 
-    $baseUrl = config('services.dana.dana_env') === 'PRODUCTION'
-        ? 'https://m.dana.id/d/portal/oauth'
-        : 'https://m.sandbox.dana.id/d/portal/oauth';
+        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION'
+            ? 'https://m.dana.id/d/portal/oauth'
+            : 'https://m.sandbox.dana.id/d/portal/oauth';
 
-    return redirect($baseUrl . "?" . http_build_query($queryParams));
-}
+        $fullUrl = $baseUrl . "?" . http_build_query($queryParams);
+        
+        Log::info('LOG LOG: [BINDING] Redirecting User to: ' . $fullUrl);
+
+        return redirect($fullUrl);
+    }
 
 public function handleCallback(Request $request)
 {
