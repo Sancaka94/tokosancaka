@@ -4,136 +4,43 @@
     <meta charset="UTF-8">
     <title>Invoice #{{ $order->invoice_number }}</title>
     <style>
-        /* Pengaturan ukuran halaman dan margin yang ketat untuk DomPDF */
         @page {
-            margin: 25px 30px; /* Atas/bawah 25px, Kiri/Kanan 30px */
+            margin: 25px 30px; 
             size: a4 portrait;
         }
-
         body { 
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-            font-size: 13px; /* Ukuran font diperkecil sedikit agar muat */
+            font-size: 13px; 
             color: #333; 
             line-height: 1.4; 
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
         }
-
-        .container { 
-            width: 100%; 
-            margin: 0 auto; 
-            page-break-after: avoid; /* Mencegah patah halaman yang tidak perlu */
-        }
-
-        /* --- HEADER --- */
-        .header { 
-            width: 100%; 
-            margin-bottom: 20px; /* Margin diperkecil */
-            border-bottom: 2px solid #eee; 
-            padding-bottom: 15px; 
-        }
+        .container { width: 100%; margin: 0 auto; page-break-after: avoid; }
+        .header { width: 100%; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
         .header table { width: 100%; border-collapse: collapse; }
         .company-name { font-size: 22px; font-weight: bold; color: #2c3e50; margin: 0 0 4px 0; }
         .company-detail { font-size: 11px; color: #7f8c8d; margin: 0; }
         .invoice-title { font-size: 24px; font-weight: bold; color: #e74c3c; text-align: right; margin: 0; }
         .invoice-number { font-size: 14px; font-weight: bold; text-align: right; margin: 4px 0; }
         .invoice-date { font-size: 11px; text-align: right; color: #7f8c8d; margin: 0; }
-
-        /* --- INFO SECTION --- */
         .info-section { width: 100%; margin-bottom: 20px; }
         .info-section table { width: 100%; table-layout: fixed; border-collapse: collapse; }
-        .info-box { 
-            background-color: #f8f9fa; 
-            padding: 10px 12px; 
-            border-radius: 5px; 
-            border: 1px solid #e9ecef; 
-        }
-        .info-title { 
-            font-size: 11px; 
-            font-weight: bold; 
-            color: #34495e; 
-            text-transform: uppercase; 
-            margin-bottom: 6px; 
-            border-bottom: 1px solid #ddd; 
-            padding-bottom: 4px;
-        }
-        /* Mencegah link E-Ticket panjang merusak tabel */
-        .word-wrap {
-            word-wrap: break-word;
-            word-break: break-all;
-            overflow-wrap: break-word;
-        }
-
-        /* --- TABLE ITEMS --- */
-        .table-items { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin-bottom: 20px; 
-            page-break-inside: auto; /* Memastikan baris tabel tidak terputus sembarangan */
-        }
-        .table-items tr { page-break-inside: avoid; page-break-after: auto; }
-        .table-items th { 
-            background-color: #2c3e50; 
-            color: #fff; 
-            padding: 8px 10px; 
-            text-align: left; 
-            font-size: 12px; 
-        }
-        .table-items td { 
-            border-bottom: 1px solid #eee; 
-            padding: 10px; 
-            font-size: 12px; 
-        }
+        .info-box { background-color: #f8f9fa; padding: 10px 12px; border-radius: 5px; border: 1px solid #e9ecef; }
+        .info-title { font-size: 11px; font-weight: bold; color: #34495e; text-transform: uppercase; margin-bottom: 6px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+        .table-items { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .table-items tr { page-break-inside: avoid; }
+        .table-items th { background-color: #2c3e50; color: #fff; padding: 8px 10px; text-align: left; font-size: 12px; }
+        .table-items td { border-bottom: 1px solid #eee; padding: 10px; font-size: 12px; vertical-align: top; }
         .table-items th.right, .table-items td.right { text-align: right; }
         .table-items th.center, .table-items td.center { text-align: center; }
-
-        /* --- TOTALS --- */
-        .totals-container {
-            width: 100%;
-            margin-bottom: 20px;
-        }
-        .totals-table { 
-            width: 50%; 
-            float: right; 
-            border-collapse: collapse;
-            page-break-inside: avoid; /* Mencegah kotak total terpisah dari item */
-        }
+        .totals-container { width: 100%; margin-bottom: 20px; }
+        .totals-table { width: 50%; float: right; border-collapse: collapse; }
         .totals-table td { padding: 6px 10px; font-size: 13px; }
         .totals-table .bold { font-weight: bold; color: #2c3e50; }
-        .totals-table .grand-total { 
-            font-size: 16px; 
-            font-weight: bold; 
-            color: #e74c3c; 
-            border-top: 2px solid #e74c3c; 
-        }
-        
-        /* Clearfix untuk float */
-        .clearfix::after {
-            content: "";
-            clear: both;
-            display: table;
-        }
-
-        /* --- FOOTER --- */
-        .footer { 
-            text-align: center; 
-            margin-top: 30px; 
-            font-size: 11px; 
-            color: #7f8c8d; 
-            border-top: 1px solid #eee; 
-            padding-top: 15px;
-            page-break-inside: avoid;
-        }
-
-        /* --- BADGE --- */
-        .badge { 
-            display: inline-block; 
-            padding: 4px 8px; 
-            border-radius: 3px; 
-            font-weight: bold; 
-            font-size: 11px; 
-            color: white;
-        }
+        .totals-table .grand-total { font-size: 16px; font-weight: bold; color: #e74c3c; border-top: 2px solid #e74c3c; }
+        .clearfix::after { content: ""; clear: both; display: table; }
+        .footer { text-align: center; margin-top: 30px; font-size: 11px; color: #7f8c8d; border-top: 1px solid #eee; padding-top: 15px; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 3px; font-weight: bold; font-size: 11px; color: white; }
         .bg-green { background-color: #27ae60; }
         .bg-yellow { background-color: #f1c40f; color: #333;}
     </style>
@@ -172,6 +79,15 @@
             </table>
         </div>
 
+        @php
+            $isDigitalOrder = false;
+            foreach($order->items as $itm) {
+                $katObj = $itm->product ? $itm->product->category()->first() : null;
+                if (($katObj && in_array($katObj->category_group, ['produk_digital', 'jasa'])) || str_contains(strtolower($order->shipping_method), 'digital')) {
+                    $isDigitalOrder = true; break;
+                }
+            }
+        @endphp
         <div class="info-section">
             <table>
                 <tr>
@@ -188,13 +104,16 @@
                             <div class="info-title">Detail Pengiriman</div>
                             @php
                                 $kurir = explode('-', $order->shipping_method);
-                                $isDigital = str_contains(strtolower($order->shipping_method), 'digital');
-                                $namaKurir = $isDigital ? 'PRODUK DIGITAL / E-TICKET' : strtoupper(($kurir[1] ?? 'KURIR') . ' - ' . ($kurir[2] ?? ''));
+                                $namaKurir = $isDigitalOrder ? 'PRODUK DIGITAL / E-TICKET' : strtoupper(($kurir[1] ?? 'KURIR') . ' - ' . ($kurir[2] ?? ''));
                             @endphp
                             <p style="margin: 0 0 3px 0;">Kurir: <strong>{{ $namaKurir }}</strong></p>
 
                             @if(in_array(strtolower($order->status), ['paid', 'processing', 'shipped', 'completed']))
-                                <p class="word-wrap" style="margin: 0;">No. Resi/SN: <strong>{{ !empty($order->shipping_reference) && $order->shipping_reference !== '-' ? $order->shipping_reference : 'Menunggu Update Penjual' }}</strong></p>
+                                @if($isDigitalOrder)
+                                    <p style="margin: 0; color: #e74c3c;"><strong>Akses: Lihat QR Code di tabel produk.</strong></p>
+                                @else
+                                    <p style="margin: 0;">No. Resi: <strong>{{ !empty($order->shipping_reference) && $order->shipping_reference !== '-' ? $order->shipping_reference : 'Menunggu Update Penjual' }}</strong></p>
+                                @endif
                             @else
                                 <p style="margin: 0; color: #7f8c8d; font-style: italic;">Akses/Resi muncul setelah lunas</p>
                             @endif
@@ -210,16 +129,54 @@
                     <th>Deskripsi Produk</th>
                     <th class="center" style="width: 20%;">Harga</th>
                     <th class="center" style="width: 10%;">Qty</th>
-                    <th class="right" style="width: 25%;">Total</th>
+                    <th class="right" style="width: 20%;">Total</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($order->items as $item)
                 <tr>
                     <td>
-                        <strong>{{ $item->product->name ?? 'Produk Dihapus' }}</strong>
+                        <strong style="font-size: 13px;">{{ $item->product->name ?? 'Produk Dihapus' }}</strong>
                         @if($item->variant)
                             <br><span style="font-size: 10px; color: #7f8c8d;">Varian: {{ $item->variant->name }}</span>
+                        @endif
+
+                        {{-- LOGIKA QR CODE DIGITAL --}}
+                        @if($isDigitalOrder && in_array(strtolower($order->status), ['paid', 'processing', 'completed']))
+                            @php
+                                $qrDataContent = null;
+                                if ($item->product) {
+                                    if (!empty($item->product->digital_url)) {
+                                        $qrDataContent = $item->product->digital_url;
+                                    } elseif (!empty($item->product->digital_file_path)) {
+                                        $qrDataContent = asset('public/storage/' . $item->product->digital_file_path);
+                                    } elseif (!empty($item->product->digital_sn_list)) {
+                                        $qrDataContent = $item->product->digital_sn_list; 
+                                    }
+                                }
+                                
+                                // Fallback jika tidak ada di tabel produk
+                                if (!$qrDataContent && !empty($order->shipping_reference) && $order->shipping_reference !== 'Menunggu Penjual') {
+                                    $qrDataContent = $order->shipping_reference;
+                                }
+
+                                $qrSrcItem = '';
+                                if ($qrDataContent && $qrDataContent !== 'Menunggu Penjual') {
+                                    try {
+                                        // Panggil API QR Code
+                                        $qrUrlItem = "https://api.qrserver.com/v1/create-qr-code/?size=90x90&margin=1&data=" . urlencode($qrDataContent);
+                                        $qrDataItem = base64_encode(file_get_contents($qrUrlItem));
+                                        $qrSrcItem = 'data:image/png;base64,' . $qrDataItem;
+                                    } catch(\Exception $e) {}
+                                }
+                            @endphp
+                            
+                            @if($qrSrcItem)
+                                <div style="margin-top: 10px;">
+                                    <div style="font-size: 9px; font-weight: bold; color: #e74c3c; margin-bottom: 3px;">SCAN PRODUK DISINI:</div>
+                                    <img src="{{ $qrSrcItem }}" style="width: 65px; height: 65px; border: 1px solid #ccc; padding: 3px; border-radius: 4px;">
+                                </div>
+                            @endif
                         @endif
                     </td>
                     <td class="center">Rp {{ number_format($item->price, 0, ',', '.') }}</td>
