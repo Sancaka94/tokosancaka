@@ -1507,71 +1507,118 @@ class CheckoutController extends Controller
                 $service = strtoupper(trim($service));
 
                 // ========================================================
-                // BYPASS BOOKING KURIR JIKA PRODUK DIGITAL
+                // BYPASS BOOKING KURIR & EKSEKUSI AUTO-DELIVERY DIGITAL
                 // ========================================================
                 if ($type === 'digital_delivery') {
-                    Log::info("Pesanan {$order->invoice_number} adalah produk digital. Melewati proses booking kurir fisik.");
+                    Log::info("Pesanan {$order->invoice_number} adalah produk digital. Mengeksekusi pengecekan Auto-Delivery.");
                     
-                    $order->status = 'processing'; // Ubah status pesanan menjadi diproses
-                    $order->shipping_reference = 'E-TICKET-' . time();
-                    $order->save();
+                    // 1. Cari File / URL dari database produk yang dibeli
+                    $digitalAccess = null;
+                    $rincianProduk = '';
                     
-                    // ====================================================
-                    // KIRIM E-TICKET VIA EMAILCONTROLLER
-                    // ====================================================
+                    foreach($order->items as $item) {
+                        $namaProduk = $item->product ? $item->product->name : 'Produk Digital';
+                        if ($item->variant) {
+                            $namaProduk .= ' (' . str_replace(';', ', ', $item->variant->combination_string) . ')';
+                        }
+                        $rincianProduk .= "<li>{$namaProduk} <b>(x{$item->quantity})</b></li>";
+
+                        // Cek apakah ada aset digital yang sudah disiapkan oleh Penjual
+                        if (!empty($item->product->digital_url)) {
+                            $digitalAccess = $item->product->digital_url;
+                        } elseif (!empty($item->product->digital_file_path)) {
+                            $digitalAccess = asset('public/storage/' . $item->product->digital_file_path);
+                        } elseif (!empty($item->product->digital_sn_list)) {
+                            // Ambil 1 SN, lalu update sisa SN di database
+                            $snArray = array_map('trim', explode(',', $item->product->digital_sn_list));
+                            if (count($snArray) > 0 && !empty($snArray[0])) {
+                                $digitalAccess = array_shift($snArray);
+                                $item->product->digital_sn_list = implode(', ', $snArray);
+                                $item->product->save();
+                            }
+                        }
+                    }
+
                     $customer = $order->user;
                     $tujuanEmail = $customer->email ?? null;
 
-                    if ($tujuanEmail) {
-                        // 1. Susun rincian produk untuk ditampilkan di body email
-                        $rincianProduk = '';
-                        foreach($order->items as $item) {
-                            $namaProduk = $item->product ? $item->product->name : 'Produk Digital';
-                            if ($item->variant) {
-                                $namaProduk .= ' (' . str_replace(';', ', ', $item->variant->combination_string) . ')';
+                    // 2. LOGIKA CERDAS: AUTO VS MANUAL
+                    if (!empty($digitalAccess)) {
+                        // [SKENARIO A] Penjual sudah siap barang -> KIRIM OTOMATIS & CAIRKAN DANA
+                        
+                        $order->shipping_reference = $digitalAccess;
+                        $order->status = 'completed'; // Selesai otomatis! Dana siap cair ke penjual.
+                        $order->save();
+                        
+                        Log::info("Auto-Delivery berhasil untuk {$order->invoice_number}. Status => COMPLETED.");
+
+                        // Kirim Email E-Ticket/File ke Pembeli
+                        if ($tujuanEmail) {
+                            $emailData = [
+                                'to' => $tujuanEmail,
+                                'subject' => 'Akses Produk Digital Anda: ' . $order->invoice_number,
+                                'body' => "
+                                    <div style='font-family: Arial, sans-serif; color: #333;'>
+                                        <h2>Terima Kasih Telah Berbelanja! 🎉</h2>
+                                        <p>Halo <b>{$customer->nama_lengkap}</b>,</p>
+                                        <p>Pembayaran pesanan <b>{$order->invoice_number}</b> telah berhasil. Berikut adalah produk digital Anda:</p>
+                                        <ul>{$rincianProduk}</ul>
+                                        <div style='margin: 20px 0; padding: 15px; background-color: #f3f4f6; border-left: 4px solid #4f46e5;'>
+                                            <p style='margin: 0; font-size: 12px; color: #6b7280;'>Akses / Serial Number / Link Download:</p>
+                                            <p style='margin: 5px 0 0 0; font-weight: bold; font-size: 16px; word-break: break-all;'>
+                                                <a href='{$digitalAccess}' target='_blank' style='color: #4f46e5;'>{$digitalAccess}</a>
+                                            </p>
+                                        </div>
+                                        <p>Silakan simpan email ini sebagai bukti. Salam hangat,<br><b>Tim Sancaka Express</b></p>
+                                    </div>
+                                "
+                            ];
+
+                            try {
+                                $emailController = app(\App\Http\Controllers\Admin\EmailController::class);
+                                $emailRequest = new \Illuminate\Http\Request();
+                                $emailRequest->replace($emailData);
+                                $emailController->send($emailRequest);
+                                Log::info("E-Ticket otomatis dikirim ke: " . $tujuanEmail);
+                            } catch (\Exception $e) {
+                                Log::error("Gagal mengirim E-Ticket via EmailController: " . $e->getMessage());
                             }
-                            $rincianProduk .= "<li>{$namaProduk} <b>(x{$item->quantity})</b></li>";
-                        }
-
-                        // 2. Siapkan Data yang diminta oleh validasi EmailController
-                        $emailData = [
-                            'to' => $tujuanEmail,
-                            'subject' => 'E-Ticket / Pesanan Digital Anda: ' . $order->invoice_number,
-                            'body' => "
-                                <div style='font-family: Arial, sans-serif; color: #333;'>
-                                    <h2>Terima Kasih Telah Berbelanja! 🎉</h2>
-                                    <p>Halo <b>{$customer->nama_lengkap}</b>,</p>
-                                    <p>Pembayaran untuk pesanan <b>{$order->invoice_number}</b> telah berhasil dikonfirmasi. Berikut adalah rincian pesanan digital/jasa Anda:</p>
-                                    <ul>
-                                        {$rincianProduk}
-                                    </ul>
-                                    <p>Mohon simpan email ini sebagai bukti konfirmasi atau E-Ticket Anda.</p>
-                                    <br>
-                                    <p>Salam hangat,<br><b>Tim Sancaka Express</b></p>
-                                </div>
-                            "
-                        ];
-
-                        try {
-                            // 3. Panggil Controller dan buat Fake Request
-                            $emailController = app(\App\Http\Controllers\Admin\EmailController::class);
-                            
-                            $emailRequest = new \Illuminate\Http\Request();
-                            $emailRequest->replace($emailData); // Masukkan array data ke dalam request
-
-                            // 4. Eksekusi pengiriman email
-                            $emailController->send($emailRequest);
-
-                            Log::info("E-Ticket berhasil dikirim via EmailController ke: " . $tujuanEmail);
-                        } catch (\Exception $e) {
-                            Log::error("Gagal mengirim E-Ticket via EmailController: " . $e->getMessage());
                         }
                     } else {
-                        Log::warning("Gagal mengirim E-Ticket: Customer tidak memiliki email yang valid.");
-                    }
-                    // ====================================================
+                        // [SKENARIO B] Penjual belum upload barang -> TAHAN DANA & MINTA UPLOAD MANUAL
+                        
+                        $order->shipping_reference = 'Menunggu Penjual';
+                        $order->status = 'processing'; // Dana tertahan karena status belum 'completed'
+                        $order->save();
+                        
+                        Log::info("Aset digital kosong untuk {$order->invoice_number}. Menunggu penjual upload manual. Status => PROCESSING.");
 
-                    // Langsung lompat ke bagian bawah (skip_kiriminaja) untuk kirim WA "Lunas"
+                        // Optional: Beritahu pembeli bahwa barang sedang disiapkan penjual
+                        if ($tujuanEmail) {
+                            $emailData = [
+                                'to' => $tujuanEmail,
+                                'subject' => 'Pembayaran Berhasil: ' . $order->invoice_number,
+                                'body' => "
+                                    <div style='font-family: Arial, sans-serif; color: #333;'>
+                                        <h2>Pembayaran Berhasil! 🎉</h2>
+                                        <p>Halo <b>{$customer->nama_lengkap}</b>,</p>
+                                        <p>Pembayaran pesanan <b>{$order->invoice_number}</b> telah kami terima. Saat ini penjual sedang menyiapkan file/akses produk Anda.</p>
+                                        <ul>{$rincianProduk}</ul>
+                                        <p>Anda akan menerima notifikasi email beserta link akses setelah penjual mengirimkannya.</p>
+                                        <p>Salam hangat,<br><b>Tim Sancaka Express</b></p>
+                                    </div>
+                                "
+                            ];
+                            try {
+                                $emailController = app(\App\Http\Controllers\Admin\EmailController::class);
+                                $emailRequest = new \Illuminate\Http\Request();
+                                $emailRequest->replace($emailData);
+                                $emailController->send($emailRequest);
+                            } catch (\Exception $e) {}
+                        }
+                    }
+
+                    // Langsung lompat ke bawah (skip_kiriminaja) untuk kirim WA "Lunas" umum
                     goto skip_kiriminaja; 
                 }
 
