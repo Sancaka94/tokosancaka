@@ -2235,6 +2235,14 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 'CHANNEL-ID'             => '95221'
             ];
 
+            Log::info('LOG LOG: [DANA BINDING] ==== DEBUG PAYLOAD ====');
+            Log::info('LOG LOG: [DANA BINDING] merchantId: ' . var_export(config('services.dana.merchant_id'), true));
+            Log::info('LOG LOG: [DANA BINDING] X-PARTNER-ID: ' . var_export(config('services.dana.x_partner_id'), true));
+            Log::info('LOG LOG: [DANA BINDING] id_pengguna: ' . var_export($userAccount->id_pengguna, true));
+            Log::info('LOG LOG: [DANA BINDING] dana_access_token: ' . (empty($userAccount->dana_access_token) ? 'KOSONG/NULL' : 'ADA, panjang=' . strlen($userAccount->dana_access_token)));
+            Log::info('LOG LOG: [DANA BINDING] Final Body Terkirim: ' . $jsonBody);
+
+
             $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post($baseUrl . $path);
