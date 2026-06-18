@@ -242,7 +242,7 @@ public function index(Request $request) // Tambahkan Request
         if (!$user || !$user->store) { abort(403, 'Anda harus login dan memiliki toko'); }
         $storeId = $user->store->id; // <-- AMBIL ID TOKO
 
-        $categories = Category::where('type', 'product')->orderBy('name')->get(['id', 'name']);
+        $categories = Category::where('type', 'product', 'marketplace')->orderBy('name')->get(['id', 'name']);
 
         // === PERBAIKAN ===
         $produk = Product::where('slug', $slug)
