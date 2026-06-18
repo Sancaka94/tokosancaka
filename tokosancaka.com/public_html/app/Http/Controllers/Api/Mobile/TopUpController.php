@@ -357,7 +357,7 @@ class TopUpController extends Controller
                 [
                     "url" => route('dana.return', ['trx_id' => $trxId]),
                     "type" => "PAY_RETURN",
-                    "isDeeplink" => "N" // KUNCI 1: Paksa ke "N" agar DANA memberikan Web URL murni
+                    "isDeeplink" => "N" 
                 ],
                 [
                     "url" => url('/dana/notify'),
@@ -379,7 +379,7 @@ class TopUpController extends Controller
                 "order" => [
                     "orderTitle"        => substr("Top Up " . $trxId, 0, 64),
                     "merchantTransType" => "01",
-                    //"scenario"          => "REDIRECT",
+                    "scenario"          => "REDIRECT",
                     "buyer" => [
                         "externalUserId"   => (string) $userAccount->id_pengguna,
                         "externalUserType" => "MERCHANT_USER",
@@ -389,7 +389,7 @@ class TopUpController extends Controller
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "APP" // KUNCI 2: Pertahankan "WEB"
+                    "orderTerminalType" => "APP"
                 ]
             ]
         ];
@@ -420,24 +420,19 @@ class TopUpController extends Controller
 
             $result = $response->json();
 
-            // CEK RESPON SUKSES SESUAI DOKUMEN (2005400)
             if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
 
-                // KUNCI 3: KITA HANYA AMBIL WEB URL-NYA SAJA (webRedirectUrl). JANGAN AMBIL appLinkUrl!
-                // Ini memastikan In-App Browser (WebBrowser) di HP bisa merendernya dengan lancar.
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
                 
                 if (!empty($redirectUrl)) {
                     Log::info('LOG LOG: [DANA BINDING] Berhasil generate URL Web Express Checkout.');
                     
-                    // Kembalikan URL web ini ke aplikasi mobile
                     return [
                         'success' => true, 
                         'redirect_url' => $redirectUrl
                     ];
                 }
 
-                // Fallback jika anehnya DANA tidak memberikan URL Web
                 Log::error('LOG LOG: [API MOBILE] Transaksi DANA menggantung. Tidak ada Web URL yang diterbitkan.');
                 return ['success' => false, 'message' => 'Gagal: URL Pembayaran Web DANA tidak diterbitkan.'];
             }
