@@ -123,6 +123,12 @@ public function index(Request $request) // Tambahkan Request
             'variant_types.*.name' => 'required_with:variant_types|string|max:255', // Validasi nested array
             'variant_types.*.options' => 'required_with:variant_types|string', // Validasi nested array
             'product_variants' => 'nullable|array', // Untuk kombinasi varian (biasanya di-handle di 'update')
+
+            // --- VALIDASI PRODUK DIGITAL ---
+            'digital_url' => 'nullable|url',
+            'digital_file' => 'nullable|file|mimes:pdf,zip,jpg,png|max:5120',
+            'digital_sn_list' => 'nullable|string',
+
         ], [
             'original_price.gt' => 'Harga Asli (Coret) harus lebih besar dari Harga Jual.'
         ]);
@@ -139,6 +145,18 @@ public function index(Request $request) // Tambahkan Request
                 $imagePath = $request->file('product_image')->store('products', 'public');
                 $dataToCreate['image_url'] = $imagePath;
             }
+
+            // --- HANDLE UPLOAD FILE DIGITAL / E-TICKET ---
+            if ($request->hasFile('digital_file')) {
+                // Simpan di folder tertutup agar tidak sembarang orang bisa akses
+                $digitalPath = $request->file('digital_file')->store('digital_products', 'public');
+                $dataToCreate['digital_file_path'] = $digitalPath;
+            }
+            $dataToCreate['digital_url'] = $request->digital_url;
+            $dataToCreate['digital_sn_list'] = $request->digital_sn_list;
+
+            // Buang key file fisik agar tidak ikut masuk ke mass assignment DB
+            unset($dataToCreate['digital_file']);
 
             // === PERBAIKAN: Ambil data dari $store dan $user ===
             // 2. Tambahkan Data Toko & User
@@ -331,6 +349,7 @@ public function index(Request $request) // Tambahkan Request
             'tags' => 'nullable|string',
             'is_new' => 'nullable|boolean',
             'is_bestseller' => 'nullable|boolean',
+            
         ], [
             'original_price.gt' => 'Harga Asli (Coret) harus lebih besar dari Harga Jual.'
         ]);
@@ -348,6 +367,25 @@ public function index(Request $request) // Tambahkan Request
                 $imagePath = $request->file('product_image')->store('products', 'public');
                 $dataToUpdate['image_url'] = $imagePath;
             }
+
+            // --- HANDLE UPDATE FILE DIGITAL / E-TICKET ---
+            if ($request->hasFile('digital_file')) {
+                // Hapus file digital lama jika ada
+                if ($product->digital_file_path && Storage::disk('public')->exists($product->digital_file_path)) {
+                    Storage::disk('public')->delete($product->digital_file_path);
+                }
+                $digitalPath = $request->file('digital_file')->store('digital_products', 'public');
+                $dataToUpdate['digital_file_path'] = $digitalPath;
+            }
+            
+            // Update URL dan SN List jika diisi
+            if ($request->has('digital_url')) {
+                $dataToUpdate['digital_url'] = $request->digital_url;
+            }
+            if ($request->has('digital_sn_list')) {
+                $dataToUpdate['digital_sn_list'] = $request->digital_sn_list;
+            }
+            unset($dataToUpdate['digital_file']);
 
             // 2. Handle Slug
             if ($request->name !== $product->name) {
