@@ -2171,61 +2171,43 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         // 2. ENDPOINT SESUAI DOKUMENTASI RESMI DANA SNAP
         $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
-        // 3. PAYLOAD DISAMAKAN PERSIS DENGAN DOKUMENTASI
+        // 3. PAYLOAD DISAMAKAN PERSIS DENGAN DOKUMENTASI (Versi Paling Minimalis & Aman)
         $body = [
-            "partnerReferenceNo" => $trxId,
+            "partnerReferenceNo" => (string) $trxId,
             "merchantId"         => config('services.dana.merchant_id'),
-            "validUpTo"          => $validUpTo,
+            
+            // Catatan Dokumen: Di Sandbox, validUpTo harus <= 30 menit. 
+            // Kita set 29 menit untuk mencegah delay detik server yang membuatnya jadi > 30 menit.
+            "validUpTo"          => \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP'),
+            
             "amount" => [
-                "value"    => $amountValue,
+                "value"    => number_format((float)$transaction->amount, 2, '.', ''),
                 "currency" => "IDR"
             ],
             "urlParams" => [
                 [
-                    "url" => route('dana.return', ['trx_id' => $trxId]),
-                    "type" => "PAY_RETURN",
+                    "url"        => route('dana.return', ['trx_id' => $trxId]),
+                    "type"       => "PAY_RETURN",
                     "isDeeplink" => "Y"
                 ],
                 [
-                    "url" => url('/dana/notify'),
-                    "type" => "NOTIFICATION",
+                    "url"        => url('/dana/notify'),
+                    "type"       => "NOTIFICATION",
                     "isDeeplink" => "N"
                 ]
             ],
             "additionalInfo" => [
-                "supportDeepLinkCheckoutUrl" => "true",
-                "productCode"                => "51051000100000000001",
-                "mcc"                        => "5732",
                 "order" => [
-                    "orderTitle"        => substr("Top Up " . $trxId, 0, 64),
-                    "merchantTransType" => "01",
-                    "scenario"          => "REDIRECT",
-                    "buyer" => [
-                        "externalUserId"   => (string) $userAccount->id_pengguna,
-                        "externalUserType" => "MERCHANT_USER",
-                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $userAccount->nama_lengkap ?? 'Customer'), 0, 64)
-                    ],
-                    // 🚨 PERBAIKAN: Array goods ditambahkan karena ini adalah Mandatory Field
-                    "goods" => [
-                        [
-                            "name"            => "Saldo Top Up",
-                            "merchantGoodsId" => "ITEM" . $trxId,
-                            "description"     => "Top Up Saldo Aplikasi via Binding",
-                            "category"        => "DIGITAL_GOODS",
-                            "price"           => [
-                                "value"    => $amountValue,
-                                "currency" => "IDR"
-                            ],
-                            "unit"            => "pcs",
-                            "quantity"        => "1"
-                        ]
-                    ]
+                    // Cukup orderTitle saja sesuai sampel dokumen
+                    "orderTitle" => substr("Top Up " . $trxId, 0, 64)
                 ],
+                "mcc"                        => "5732", // Sesuai dengan jenis bisnis Anda
                 "envInfo" => [
-                    "sourcePlatform"    => "IPG",
-                    "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "WEB"
-                ]
+                    "sourcePlatform" => "IPG",
+                    "terminalType"   => "SYSTEM"
+                ],
+                "productCode"                => "51051000100000000001",
+                "supportDeepLinkCheckoutUrl" => "true" // Pastikan formatnya string "true", bukan boolean true
             ]
         ];
 
