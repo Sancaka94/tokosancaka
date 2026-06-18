@@ -2254,7 +2254,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 'ORIGIN'                 => config('services.dana.origin'),
                 'X-PARTNER-ID'           => config('services.dana.x_partner_id'),
                 'X-EXTERNAL-ID'          => (string) time() . \Illuminate\Support\Str::random(6),
-                'X-DEVICE-ID'            => 'SANCAKA-APP-MBL',
+                'X-DEVICE-ID'            => 'SANCAKA-WEB-POS',
                 'CHANNEL-ID'             => '95221'
             ];
 
