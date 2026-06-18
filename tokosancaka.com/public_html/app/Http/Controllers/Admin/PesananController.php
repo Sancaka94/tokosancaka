@@ -2297,6 +2297,44 @@ public function cetakThermal($resi)
         }
     }
 
+    public function sendDigitalManual(Request $request)
+{
+    $request->validate([
+        'invoice_number' => 'required|string',
+        'digital_url' => 'nullable|url',
+        'digital_file' => 'nullable|file|mimes:pdf,zip,jpg,png|max:5120',
+    ]);
+
+    if (!$request->digital_url && !$request->hasFile('digital_file')) {
+        return redirect()->back()->with('error', 'Anda harus memasukkan URL atau meng-upload file e-ticket.');
+    }
+
+    // Cari pesanan milik toko ini (Pencegahan keamanan)
+    $storeId = Auth::user()->store->id;
+    $order = \App\Models\Order::where('invoice_number', $request->invoice_number)
+                              ->where('store_id', $storeId)
+                              ->firstOrFail();
+
+    // Simpan file jika ada
+    $digitalAccess = '';
+    if ($request->hasFile('digital_file')) {
+        $digitalPath = $request->file('digital_file')->store('digital_deliveries', 'public');
+        $digitalAccess = asset('storage/' . $digitalPath);
+    } else {
+        $digitalAccess = $request->digital_url;
+    }
+
+    // Update pesanan menjadi COMPLETED agar DOKU SAC bisa mencairkan uang
+    $order->shipping_reference = $digitalAccess;
+    $order->status = 'completed';
+    $order->save();
+
+    // OPTIONAL: Disini kamu bisa panggil EmailController untuk mengirim notif otomatis ke pembeli
+    // ...
+
+    return redirect()->back()->with('success', 'Pesanan digital berhasil dikirim! Status pesanan otomatis Selesai dan Dana akan masuk ke saldo Anda.');
+}
+
 
 } // Akhir Class PesananController
 
