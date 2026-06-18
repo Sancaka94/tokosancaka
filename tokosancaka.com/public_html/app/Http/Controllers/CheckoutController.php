@@ -2183,7 +2183,7 @@ TEXT;
      * EKSEKUTOR PEMBAYARAN DANA BINDING (AUTO-DEBIT / DIRECT DEBIT)
      * =========================================================================
      */
-    public function createPaymentDanaBinding(Order $order, $userAccount)
+    /* public function createPaymentDanaBinding(Order $order, $userAccount)
     {
         // 1. DYNAMIC CONFIGURATION DARI DATABASE
         $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
@@ -2350,6 +2350,164 @@ TEXT;
 
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('LOG LOG: [DANA BINDING] Exception: ' . $e->getMessage());
+            return redirect()->route('checkout.index')->with('error', 'Koneksi ke DANA terputus. Silakan coba metode pembayaran lain.');
+        }
+    } */
+
+    /**
+     * =========================================================================
+     * EKSEKUTOR PEMBAYARAN DANA (CUSTOM CHECKOUT - METODE BALANCE)
+     * Nama fungsi dipertahankan, namun logika menggunakan Custom Checkout
+     * =========================================================================
+     */
+    public function createPaymentDanaBinding(Order $order, $userAccount)
+    {
+        // 1. DYNAMIC CONFIGURATION DARI DATABASE
+        $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
+        $isProduction = ($danaMode == '1');
+
+        if ($isProduction) {
+            $merchantIdConf = \App\Models\Api::getValue('dana_prod_merchant_id', 'production');
+            $partnerIdConf  = \App\Models\Api::getValue('dana_prod_client_id', 'production');
+            $privateKey     = \App\Models\Api::getValue('dana_prod_private_key', 'production');
+            $publicKey      = \App\Models\Api::getValue('dana_prod_public_key', 'production');
+            $baseUrl        = 'https://api.saas.dana.id';
+        } else {
+            $merchantIdConf = \App\Models\Api::getValue('dana_sandbox_merchant_id', 'sandbox');
+            $partnerIdConf  = \App\Models\Api::getValue('dana_sandbox_client_id', 'sandbox');
+            $privateKey     = \App\Models\Api::getValue('dana_sandbox_private_key', 'sandbox');
+            $publicKey      = \App\Models\Api::getValue('dana_sandbox_public_key', 'sandbox');
+            $baseUrl        = 'https://api.sandbox.dana.id';
+        }
+
+        // WAJIB: Timpa config runtime agar DanaSignatureService membaca key yang dinamis ini
+        config([
+            'services.dana.merchant_id'   => $merchantIdConf,
+            'services.dana.client_id'     => $partnerIdConf,
+            'services.dana.x_partner_id'  => $partnerIdConf,
+            'services.dana.private_key'   => $privateKey,
+            'services.dana.public_key'    => $publicKey,
+            'services.dana.base_url'      => $baseUrl,
+            'services.dana.dana_env'      => $isProduction ? 'PRODUCTION' : 'SANDBOX',
+            'services.dana.origin'        => url('/')
+        ]);
+
+        // 2. DATA PREPARATION
+        // Catatan: Endpoint Custom Checkout diakhiri dengan .htm
+        $path         = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+        $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $order->invoice_number);
+        $timestamp    = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $validUpTo    = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP');
+        $amountValue  = number_format((float)$order->total_amount, 2, '.', '');
+
+        // 3. BODY REQUEST (CUSTOM CHECKOUT - BALANCE)
+        $body = [
+            "partnerReferenceNo" => $cleanInvoice,
+            "merchantId"         => $merchantIdConf,
+            "validUpTo"          => $validUpTo,
+            "amount" => [
+                "value"    => $amountValue,
+                "currency" => "IDR"
+            ],
+            "urlParams" => [
+                [
+                    "url"        => route('dana.return', ['trx_id' => $cleanInvoice]),
+                    "type"       => "PAY_RETURN",
+                    "isDeeplink" => "N"
+                ],
+                [
+                    "url"        => url('/dana/notify'),
+                    "type"       => "NOTIFICATION",
+                    "isDeeplink" => "N"
+                ]
+            ],
+            // Mengunci metode ke Saldo DANA
+            "payOptionDetails" => [
+                [
+                    "payMethod"   => "BALANCE",
+                    "payOption"   => "",
+                    "transAmount" => [
+                        "value"    => $amountValue,
+                        "currency" => "IDR"
+                    ]
+                ]
+            ],
+            "additionalInfo" => [
+                "order" => [
+                    "orderTitle" => substr("Checkout " . $cleanInvoice, 0, 64),
+                    "scenario"   => "API" // Wajib "API" untuk Custom Checkout
+                ],
+                "mcc"     => "5732",
+                "envInfo" => [
+                    "sourcePlatform" => "IPG",
+                    "terminalType"   => "SYSTEM"
+                ]
+            ]
+        ];
+
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        try {
+            // 4. GENERATE TOKEN B2B & SIGNATURE
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+            $signature      = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessTokenB2B,
+                // 'Authorization-Customer' Dihapus karena Custom Checkout tidak butuh token binding user
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => url('/'),
+                'X-PARTNER-ID'  => $partnerIdConf,
+                'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            \Illuminate\Support\Facades\Log::info('LOG LOG: [DANA CUSTOM CHECKOUT] Menyiapkan Request API (Marketplace).', ['URL' => $baseUrl . $path]);
+            \Illuminate\Support\Facades\Log::info('LOG LOG: [DANA CUSTOM CHECKOUT] Payload:', $body);
+
+            // 5. SEND REQUEST
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post($baseUrl . $path);
+
+            $result = $response->json();
+
+            \Illuminate\Support\Facades\Log::info('LOG LOG: [DANA CUSTOM CHECKOUT] Respon API DANA: ', [
+                'HTTP_Status' => $response->status(),
+                'Result'      => $result
+            ]);
+
+            // 6. HANDLE RESPONSE (2005400 = SUCCESS)
+            if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
+
+                // Custom Checkout pasti mereturn webRedirectUrl
+                if (!empty($result['webRedirectUrl'])) {
+                    \Illuminate\Support\Facades\Log::info('LOG LOG: [DANA CUSTOM CHECKOUT] Berhasil! Mengarahkan user ke Web Kasir DANA.');
+                    
+                    $order->payment_url = substr($result['webRedirectUrl'], 0, 255);
+                    $order->save();
+                    
+                    session()->forget('cart');
+                    session()->put('last_dana_ref', $order->invoice_number);
+                    
+                    return redirect()->away($result['webRedirectUrl']);
+                }
+
+                \Illuminate\Support\Facades\Log::error('LOG LOG: [DANA CUSTOM CHECKOUT] Transaksi menggantung. URL Kasir tidak diterbitkan.', $result);
+                return redirect()->route('checkout.index')->with('error', 'Gagal: URL Pembayaran DANA tidak ditemukan.');
+            }
+
+            // Jika Gagal (Respon DANA selain 2005400)
+            $errorCode  = $result['responseCode'] ?? 'UNKNOWN';
+            $pesanGagal = $result['responseMessage'] ?? 'Terjadi kesalahan sistem.';
+            \Illuminate\Support\Facades\Log::error("LOG LOG: [DANA CUSTOM CHECKOUT] Gagal. Code: $errorCode | Msg: $pesanGagal");
+
+            return redirect()->route('checkout.index')->with('error', "Pembayaran DANA Gagal [$errorCode]: $pesanGagal");
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('LOG LOG: [DANA CUSTOM CHECKOUT] Exception: ' . $e->getMessage());
             return redirect()->route('checkout.index')->with('error', 'Koneksi ke DANA terputus. Silakan coba metode pembayaran lain.');
         }
     }
