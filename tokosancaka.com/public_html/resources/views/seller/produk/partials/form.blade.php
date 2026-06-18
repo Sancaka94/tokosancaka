@@ -515,8 +515,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const kategoriGrup = selectedOption.getAttribute('data-kategori-grup') || '';
         
         // Cek apakah string kategori mengandung kata kunci digital/jasa
-        const isDigital = ['produk_digital', 'jasa', 'digital', 'eticket'].some(keyword => kategoriGrup.includes(keyword));
 
+        const isDigital = ['produk_digital', 'jasa', 'digital', 'eticket', 'tiket', 'ticket', 'event'].some(keyword => kategoriGrup.includes(keyword));
+        
         if (isDigital) {
             digitalContainer.classList.remove('hidden'); // Tampilkan form file digital
         } else {
