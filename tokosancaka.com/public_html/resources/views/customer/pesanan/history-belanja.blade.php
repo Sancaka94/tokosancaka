@@ -86,39 +86,83 @@
                 $resiOrToken = $order->shipping_resi ?? ($order->shipping_reference ?? null);
                 $isUrl = filter_var($resiOrToken, FILTER_VALIDATE_URL);
                 $isPaid = in_array(strtolower($order->status), ['paid', 'processing', 'completed', 'selesai', 'lunas']);
+                
+                // Cek Validasi Resi Lama
+                $isValidResiToken = (!empty($resiOrToken) && $resiOrToken !== 'NULL' && $resiOrToken !== 'Menunggu Penjual' && !str_starts_with($resiOrToken, 'DIGITAL-'));
+
+                // EKSTRAK ASET DIGITAL LANGSUNG DARI DATABASE PRODUK
+                $digitalAssets = [];
+                if ($isPaid) {
+                    foreach($order->items as $item) {
+                        $product = $item->product;
+                        if ($product) {
+                            if (!empty($product->digital_url)) {
+                                $digitalAssets[] = ['name' => $product->name, 'link' => $product->digital_url, 'type' => 'link'];
+                            } elseif (!empty($product->digital_file_path)) {
+                                $digitalAssets[] = ['name' => $product->name, 'link' => asset('public/storage/' . $product->digital_file_path), 'type' => 'file'];
+                            } elseif (!empty($product->digital_sn_list)) {
+                                $digitalAssets[] = ['name' => $product->name, 'link' => $product->digital_sn_list, 'type' => 'sn'];
+                            }
+                        }
+                    }
+                }
             @endphp
 
             <div class="p-6 md:p-8 pt-0 bg-white border-b border-gray-100">
                 <div class="bg-blue-50 border border-blue-200 rounded-2xl p-6 md:p-8 text-center shadow-inner">
                     
                     @if($isPaid)
-                        <h4 class="font-extrabold text-blue-800 mb-2 text-lg flex items-center justify-center gap-2">
+                        <h4 class="font-extrabold text-blue-800 mb-4 text-lg flex items-center justify-center gap-2">
                             <i class="fas fa-ticket-alt"></i> Akses Produk Anda
                         </h4>
                         
-                        @if(!empty($resiOrToken) && $resiOrToken !== 'NULL' && $resiOrToken !== 'Menunggu Penjual' && !str_starts_with($resiOrToken, 'DIGITAL-'))
-                            
+                        {{-- JIKA ASET DITEMUKAN DI TABEL PRODUCTS --}}
+                        @if(count($digitalAssets) > 0)
+                            <div class="space-y-4">
+                                @foreach($digitalAssets as $asset)
+                                    <div class="p-4 bg-white border border-blue-100 rounded-xl text-left shadow-sm">
+                                        <p class="text-sm font-bold text-gray-800 mb-3 text-center">{{ $asset['name'] }}</p>
+                                        
+                                        @if($asset['type'] === 'link' || $asset['type'] === 'file')
+                                            <a href="{{ $asset['link'] }}" target="_blank" class="flex items-center justify-center w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition">
+                                                <i class="fas fa-cloud-download-alt mr-2 text-lg"></i> Akses / Download
+                                            </a>
+                                        @else
+                                            <div class="flex items-center w-full shadow-sm rounded-xl overflow-hidden border-2 border-blue-300 bg-gray-50">
+                                                <input type="text" class="flex-1 text-center font-mono font-bold text-gray-800 bg-transparent py-3 px-4 focus:outline-none" value="{{ $asset['link'] }}" id="snToken_{{ $loop->index }}" readonly>
+                                                <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold py-3 px-6 transition duration-200 border-l border-blue-200" type="button" onclick="copyToken('snToken_{{ $loop->index }}')">
+                                                    <i class="fas fa-copy"></i> <span class="hidden md:inline">Salin</span>
+                                                </button>
+                                            </div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+
+                        {{-- FALLBACK: JIKA ASET GAK KETEMU, TAPI RESI ADA ISINYA --}}
+                        @elseif($isValidResiToken)
                             @if($isUrl)
-                                <p class="text-sm text-blue-600 mb-5">Pesanan Anda berupa file atau tautan eksternal. Silakan klik tombol di bawah untuk mengaksesnya.</p>
+                                <p class="text-sm text-blue-600 mb-5">Pesanan Anda berupa tautan eksternal. Silakan klik tombol di bawah.</p>
                                 <a href="{{ $resiOrToken }}" target="_blank" class="inline-flex items-center justify-center w-full md:w-auto px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md shadow-blue-200 transition transform hover:-translate-y-0.5">
-                                    <i class="fas fa-cloud-download-alt mr-2 text-lg"></i> Akses / Download Sekarang
+                                    <i class="fas fa-cloud-download-alt mr-2 text-lg"></i> Akses / Download
                                 </a>
                             @else
                                 <p class="text-sm text-blue-600 mb-4">Gunakan Kode Voucher / Serial Number di bawah ini:</p>
                                 <div class="flex items-center w-full max-w-md mx-auto shadow-sm rounded-xl overflow-hidden border-2 border-blue-300 bg-white">
-                                    <input type="text" class="flex-1 text-center font-mono font-bold text-gray-800 bg-transparent py-3 px-4 focus:outline-none text-sm md:text-base" value="{{ $resiOrToken }}" id="snToken" readonly>
-                                    <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold py-3 px-6 transition duration-200 flex items-center gap-2 border-l border-blue-200" type="button" onclick="copyToken()">
+                                    <input type="text" class="flex-1 text-center font-mono font-bold text-gray-800 bg-transparent py-3 px-4 focus:outline-none text-sm md:text-base" value="{{ $resiOrToken }}" id="snToken_fallback" readonly>
+                                    <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold py-3 px-6 transition duration-200 flex items-center gap-2 border-l border-blue-200" type="button" onclick="copyToken('snToken_fallback')">
                                         <i class="fas fa-copy"></i> <span class="hidden md:inline">Salin</span>
                                     </button>
                                 </div>
                                 <p class="text-[10px] text-blue-400 mt-3">* Jangan berikan kode ini kepada siapapun.</p>
                             @endif
 
+                        {{-- JIKA BENAR-BENAR KOSONG --}}
                         @else
                             <div class="flex justify-center mb-3">
                                 <i class="fas fa-circle-notch fa-spin text-blue-500 text-3xl"></i>
                             </div>
-                            <p class="text-sm text-blue-600 mb-0 font-medium">Menunggu penjual memproses dan mengirimkan produk Anda.</p>
+                            <p class="text-sm text-blue-600 mb-0 font-medium">Menunggu penjual memproses dan mengunggah produk Anda.</p>
                             <p class="text-xs text-blue-400 mt-1">Silakan <a href="javascript:window.location.reload(true)" class="underline font-bold hover:text-blue-700">refresh</a> halaman ini secara berkala.</p>
                         @endif
 
@@ -129,7 +173,6 @@
                         </h4>
                         <p class="text-sm text-red-500 mb-5">Silakan selesaikan pembayaran Anda agar pesanan dapat segera diakses.</p>
                         
-                        {{-- ✅ INI KODE YANG BENAR ✅ --}}
                         @if(!empty($order->payment_url))
                             <a href="{{ $order->payment_url }}" class="inline-flex items-center justify-center w-full md:w-auto px-8 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md shadow-red-200 transition transform hover:-translate-y-0.5">
                                 <i class="fas fa-wallet mr-2"></i> Lanjutkan Pembayaran
@@ -138,9 +181,7 @@
                             <button disabled class="inline-flex items-center justify-center w-full md:w-auto px-8 py-3.5 bg-gray-400 text-white font-bold rounded-xl shadow-md cursor-not-allowed">
                                 <i class="fas fa-exclamation-circle mr-2"></i> Link Belum Tersedia
                             </button>
-                            <p class="text-[10px] text-gray-500 mt-2 text-center">Sistem sedang memproses. Silakan refresh halaman.</p>
                         @endif
-
                     @endif
                 </div>
             </div>
