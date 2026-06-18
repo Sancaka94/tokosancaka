@@ -192,7 +192,7 @@
                         <p class="text-sm text-red-500 mb-5">Silakan selesaikan pembayaran Anda agar pesanan dapat segera diakses.</p>
                         
                         @if(!empty($order->payment_url))
-                            <a href="{{ $order->payment_url }}" class="inline-flex items-center justify-center w-full md:w-auto px-8 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md shadow-red-200 transition transform hover:-translate-y-0.5">
+                            <a href="{{ $order->payment_url }}" target="_blank" class="inline-flex items-center justify-center w-full md:w-auto px-8 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md shadow-red-200 transition transform hover:-translate-y-0.5">
                                 <i class="fas fa-wallet mr-2"></i> Lanjutkan Pembayaran
                             </a>
                         @else
