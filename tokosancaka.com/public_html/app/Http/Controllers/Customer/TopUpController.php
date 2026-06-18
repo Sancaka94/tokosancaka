@@ -2171,7 +2171,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         // 2. ENDPOINT SESUAI DOKUMENTASI RESMI DANA SNAP
         $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
-        // 3. PAYLOAD DISAMAKAN PERSIS DENGAN DOKUMENTASI (Tanpa payOptionDetails)
+        // 3. PAYLOAD DISAMAKAN PERSIS DENGAN DOKUMENTASI
         $body = [
             "partnerReferenceNo" => $trxId,
             "merchantId"         => config('services.dana.merchant_id'),
@@ -2204,6 +2204,21 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                         "externalUserId"   => (string) $userAccount->id_pengguna,
                         "externalUserType" => "MERCHANT_USER",
                         "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $userAccount->nama_lengkap ?? 'Customer'), 0, 64)
+                    ],
+                    // 🚨 PERBAIKAN: Array goods ditambahkan karena ini adalah Mandatory Field
+                    "goods" => [
+                        [
+                            "name"            => "Saldo Top Up",
+                            "merchantGoodsId" => "ITEM" . $trxId,
+                            "description"     => "Top Up Saldo Aplikasi via Binding",
+                            "category"        => "DIGITAL_GOODS",
+                            "price"           => [
+                                "value"    => $amountValue,
+                                "currency" => "IDR"
+                            ],
+                            "unit"            => "pcs",
+                            "quantity"        => "1"
+                        ]
                     ]
                 ],
                 "envInfo" => [
