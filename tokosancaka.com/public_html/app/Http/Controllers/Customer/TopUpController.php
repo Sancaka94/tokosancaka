@@ -2163,19 +2163,13 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         $trxId = $transaction->reference_id;
         Log::info('LOG LOG: [DANA BINDING] Memulai Express Checkout (1-Click) untuk Top Up: ' . $trxId);
 
-        // 1. FORMAT WAKTU STANDAR ISO8601 GMT+7
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        
-        // Catatan Dokumen: Di Sandbox, validUpTo harus <= 30 menit. Kita set 29 menit.
         $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+        $amountValue = number_format($transaction->amount, 2, '.', '');
         
-        // Pastikan casting ke float agar tidak memicu error number_format
-        $amountValue = number_format((float)$transaction->amount, 2, '.', '');
-
-        // 2. ENDPOINT SESUAI DOKUMENTASI RESMI DANA SNAP
         $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
-       $body = [
+        $body = [
             "partnerReferenceNo" => $trxId,
             "merchantId"         => config('services.dana.merchant_id'),
             "validUpTo"          => $validUpTo,
@@ -2228,21 +2222,19 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $signature      = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
             $baseUrl        = config('services.dana.base_url');
 
-            // 4. HEADERS (Wajib ada Authorization-Customer untuk Binding)
             $headers = [
                 'Content-Type'           => 'application/json',
                 'Authorization'          => 'Bearer ' . $accessTokenB2B,
-                'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token, // Bypass Login DANA
+                'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token, 
                 'X-TIMESTAMP'            => $timestamp,
                 'X-SIGNATURE'            => $signature,
                 'ORIGIN'                 => config('services.dana.origin'),
                 'X-PARTNER-ID'           => config('services.dana.x_partner_id'),
                 'X-EXTERNAL-ID'          => (string) time() . \Illuminate\Support\Str::random(6),
-                'X-DEVICE-ID'            => 'SANCAKA-WEB-POS',
+                'X-DEVICE-ID'            => 'SANCAKA-APP-MBL',
                 'CHANNEL-ID'             => '95221'
             ];
 
-            // 5. EKSEKUSI HTTP REQUEST
             $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post($baseUrl . $path);
