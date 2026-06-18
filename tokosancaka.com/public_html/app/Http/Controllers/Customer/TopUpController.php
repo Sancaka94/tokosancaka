@@ -2167,7 +2167,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         
         // Catatan Dokumen: Di Sandbox, validUpTo harus <= 30 menit. Kita set 29 menit.
-        $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP');
+        $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
         
         // Pastikan casting ke float agar tidak memicu error number_format
         $amountValue = number_format((float)$transaction->amount, 2, '.', '');
