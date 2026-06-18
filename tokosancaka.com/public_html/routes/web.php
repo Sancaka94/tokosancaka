@@ -1570,3 +1570,6 @@ Route::get('/guest/history-belanja/{invoice}', [App\Http\Controllers\CheckoutCon
 Route::get('/checkout/download-pdf/{invoice}', [App\Http\Controllers\CheckoutController::class, 'downloadGuestPDF'])->name('guest.download_pdf');
 
 Route::post('/guest/history-belanja/{invoice}/send-wa', [App\Http\Controllers\CheckoutController::class, 'sendGuestWA'])->name('guest.send_wa');
+
+Route::post('pesanan/marketplace/send-digital', [PesananController::class, 'sendDigitalManual'])->name('seller.pesanan.marketplace.send_digital');
+
