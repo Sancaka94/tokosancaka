@@ -749,58 +749,62 @@ class CheckoutController extends Controller
                 $this->processOrderCallback($order->invoice_number, 'PAID', []);
                 $order->refresh();
             }
-            else
+           else
             {
                 // --- 6. Logika Pembayaran Online (Midtrans, Tripay, ATAU Doku) ---
 
-				$paymentGateway = 'tripay'; // Default
-				$paymentMethodRaw = strtoupper($request->payment_method);
-				
-				if ($paymentMethodRaw === 'DOKU_JOKUL') {
-				    $paymentGateway = 'doku';
-				} elseif ($paymentMethodRaw === 'MIDTRANS') {
-				    $paymentGateway = 'midtrans';
-				} elseif (in_array($paymentMethodRaw, ['DANA', 'NETWORK_PAY_PG_DANA', 'DANA_BINDING'])) {
-				    $paymentGateway = 'dana_direct';
-				} elseif ($paymentMethodRaw === 'PAYPAL') { // <--- TAMBAHAN UNTUK PAYPAL
-				    $paymentGateway = 'paypal';
-				}
-				
-				// ==========================================================
-				// PROSES VIA MIDTRANS
-				// ==========================================================
-				if ($paymentGateway === 'midtrans') {
-				    Log::info('Memulai proses MIDTRANS Marketplace untuk ' . $order->invoice_number);
-				    $paymentUrl = $this->createPaymentMidtransSnap($order);
-				    $order->payment_url = $paymentUrl;
-				}
-				
-				// ==========================================================
-				// PROSES VIA DOKU
-				// ==========================================================
-				elseif ($paymentGateway === 'doku') {
+                // ==========================================================
+                // 🔥 PERBAIKAN: VARIABEL PENGAMAN UNTUK GUEST CHECKOUT 🔥
+                // ==========================================================
+                $custName  = $request->nama_penerima ?? ($user ? $user->nama_lengkap : 'Guest Customer');
+                $custPhone = $request->no_wa_penerima ?? ($user ? $user->no_wa : '081234567890');
+                // Payment Gateway (DOKU/Tripay) biasanya mewajibkan email
+                $custEmail = $user ? $user->email : 'guest@tokosancaka.com'; 
+                // ==========================================================
+
+                $paymentGateway = 'tripay'; // Default
+                $paymentMethodRaw = strtoupper($request->payment_method);
+                
+                if ($paymentMethodRaw === 'DOKU_JOKUL') {
+                    $paymentGateway = 'doku';
+                } elseif ($paymentMethodRaw === 'MIDTRANS') {
+                    $paymentGateway = 'midtrans';
+                } elseif (in_array($paymentMethodRaw, ['DANA', 'NETWORK_PAY_PG_DANA', 'DANA_BINDING'])) {
+                    $paymentGateway = 'dana_direct';
+                } elseif ($paymentMethodRaw === 'PAYPAL') {
+                    $paymentGateway = 'paypal';
+                }
+                
+                // ==========================================================
+                // PROSES VIA MIDTRANS
+                // ==========================================================
+                if ($paymentGateway === 'midtrans') {
+                    Log::info('Memulai proses MIDTRANS Marketplace untuk ' . $order->invoice_number);
+                    $paymentUrl = $this->createPaymentMidtransSnap($order); // Akan mengambil Auth::user di dalam fungsinya, tapi jika guest kita sarankan kirim parameter
+                    $order->payment_url = $paymentUrl;
+                }
+                
+                // ==========================================================
+                // PROSES VIA DOKU
+                // ==========================================================
+                elseif ($paymentGateway === 'doku') {
                     Log::info('Memulai proses DOKU (Jokul) Marketplace untuk ' . $order->invoice_number);
 
-                    // ==============================================================
-                    // 🔥🔥 UBAH LOGIKA ROUTING DOKU (HOLD DANA KE ADMIN) 🔥🔥
-                    // ==============================================================
-                    $targetSacId = null; // <-- DIBUAT NULL AGAR DANA SELALU MASUK KE ADMIN DULU
+                    $targetSacId = null; // DANA SELALU MASUK KE ADMIN DULU
 
-                    // Pengecekan hanya untuk dicatat di Log saja
                     if (!empty($store->doku_sac_id)) {
-                        Log::info("DOKU Routing: Toko punya SAC ID ({$store->doku_sac_id}), TAPI dana ditahan di Admin Sancaka (Master Account) sampai admin klik cairkan.");
-                    } else {
-                        Log::info("DOKU Routing: Toko tidak punya SAC ID. Dana ditahan di Admin Sancaka (Master Account).");
+                        Log::info("DOKU Routing: Toko punya SAC ID ({$store->doku_sac_id}), TAPI dana ditahan di Admin.");
                     }
 
                     $dokuService = new DokuJokulService();
+                    
+                    // Menggunakan variabel pengaman
                     $customerData = [
-                        'name'  => $user->nama_lengkap,
-                        'email' => $user->email,
-                        'phone' => $user->no_wa
+                        'name'  => $custName,
+                        'email' => $custEmail,
+                        'phone' => $custPhone
                     ];
 
-                    // 2. Siapkan Data Routing (Additional Info)
                     $additionalInfo = [];
                     if (!empty($targetSacId)) {
                         $additionalInfo = [
@@ -808,13 +812,12 @@ class CheckoutController extends Controller
                         ];
                     }
 
-                    // 3. Panggil Service Create Payment
                     $paymentUrl = $dokuService->createPayment(
                         $order->invoice_number,
                         $grand_total,
                         $customerData,
                         $orderItemsPayload,
-                        $additionalInfo     // <-- Data routing dikirim di sini
+                        $additionalInfo
                     );
 
                     if (empty($paymentUrl)) {
@@ -822,45 +825,46 @@ class CheckoutController extends Controller
                     }
 
                     $order->payment_url = $paymentUrl;
-
-                } // ==========================================================
-				// PROSES VIA TRIPAY
-				// ==========================================================
-				elseif ($paymentGateway === 'tripay') { // 👉 2. Ubah 'else' menjadi 'elseif'
-				    Log::info('Memulai proses TRIPAY Marketplace untuk ' . $order->invoice_number);
-				
-				    // 1. Buat Transaksi ke Tripay
-				    $tripayResult = $this->_createTripayTransaction(
-				        $order,
-				        $request->payment_method,
-				        $grand_total,
-				        $user->nama_lengkap,
-				        $user->email,
-				        $user->no_wa,
-				        $orderItemsPayload
-				    );
-				
-				    if ($tripayResult['success']) {
-				        $tripayData = $tripayResult['data'];
-				        $order->payment_url = $tripayData['checkout_url'] ?? $tripayData['pay_url'] ?? null;
-				        $order->pay_code = $tripayData['pay_code'] ?? null;
-				        $order->qr_url = $tripayData['qr_url'] ?? null;
-				        $order->save();
-				    } else {
-				        throw new \Exception($tripayResult['message']);
-				    }
-				}
+                } 
+                
+                // ==========================================================
+                // PROSES VIA TRIPAY
+                // ==========================================================
+                elseif ($paymentGateway === 'tripay') { 
+                    Log::info('Memulai proses TRIPAY Marketplace untuk ' . $order->invoice_number);
+                
+                    $tripayResult = $this->_createTripayTransaction(
+                        $order,
+                        $request->payment_method,
+                        $grand_total,
+                        $custName,  // Menggunakan variabel pengaman
+                        $custEmail, // Menggunakan variabel pengaman
+                        $custPhone, // Menggunakan variabel pengaman
+                        $orderItemsPayload
+                    );
+                
+                    if ($tripayResult['success']) {
+                        $tripayData = $tripayResult['data'];
+                        $order->payment_url = $tripayData['checkout_url'] ?? $tripayData['pay_url'] ?? null;
+                        $order->pay_code = $tripayData['pay_code'] ?? null;
+                        $order->qr_url = $tripayData['qr_url'] ?? null;
+                        $order->save();
+                    } else {
+                        throw new \Exception($tripayResult['message']);
+                    }
+                }
 
                 // ==========================================================
-				// PROSES VIA PAYPAL
-				// ==========================================================
-				elseif ($paymentGateway === 'paypal') {
-				    Log::info('Memulai proses PAYPAL Marketplace untuk ' . $order->invoice_number);
-				    $paymentUrl = $this->createPaymentPayPal($order);
-				    $order->payment_url = $paymentUrl;
-				}
+                // PROSES VIA PAYPAL
+                // ==========================================================
+                elseif ($paymentGateway === 'paypal') {
+                    Log::info('Memulai proses PAYPAL Marketplace untuk ' . $order->invoice_number);
+                    $paymentUrl = $this->createPaymentPayPal($order);
+                    $order->payment_url = $paymentUrl;
+                }
 
             // --- 7. Selesai Semua, Commit Transaksi ---
+            
             }
 
             // ==========================================================
