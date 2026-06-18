@@ -1573,3 +1573,4 @@ Route::post('/guest/history-belanja/{invoice}/send-wa', [App\Http\Controllers\Ch
 
 Route::post('/seller/pesanan/marketplace/send-digital', [PesananController::class, 'sendDigitalManual'])->name('seller.pesanan.marketplace.send_digital');
 
+Route::post('/guest/order/{id}/complete', [App\Http\Controllers\CheckoutController::class, 'completeOrder'])->name('guest.order.complete');

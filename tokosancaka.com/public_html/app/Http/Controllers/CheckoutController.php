@@ -2807,4 +2807,57 @@ TEXT;
         }
     }
 
+    /**
+     * Fungsi untuk public/guest menyelesaikan pesanan digital
+     */
+    public function completeOrder($id)
+    {
+        try {
+            // Cari data pesanan
+            $order = \App\Models\Order::findOrFail($id);
+
+            // Pastikan hanya pesanan yang sudah dibayar (paid/processing) yang bisa diselesaikan
+            $validStatuses = ['paid', 'processing', 'lunas', 'diproses'];
+            
+            if (in_array(strtolower($order->status), $validStatuses)) {
+                
+                // 1. Ubah status pesanan menjadi completed
+                $order->status = 'completed'; 
+                $order->save();
+
+                // 2. LOGIKA PENCAIRAN ESCROW KE PENJUAL (Disesuaikan dengan Model Anda)
+                $escrow = \App\Models\Escrow::where('order_id', $order->id)->first();
+                
+                if ($escrow && $escrow->status_dana !== 'dicairkan') {
+                    // Update status escrow dan catat waktu pencairan
+                    $escrow->status_dana = 'dicairkan';
+                    $escrow->dicairkan_pada = now(); // Mengisi field datetime dicairkan_pada
+                    $escrow->save();
+                    
+                    // 3. TERUSKAN DANA KE SALDO PENJUAL
+                    // Mengambil data user penjual (seller) melalui relasi store
+                    $seller = $order->store->user; 
+                    
+                    if ($seller) {
+                        // Tambahkan 'nominal_ditahan' ke saldo penjual
+                        // NOTE: Pastikan 'saldo' adalah nama kolom yang benar di tabel 'penggunas'
+                        $seller->saldo += $escrow->nominal_ditahan; 
+                        $seller->save();
+                    }
+                }
+
+                // LOG LOG tidak diubah / dihapus (Aman!)
+                \Illuminate\Support\Facades\Log::info("Pesanan {$order->invoice_number} diselesaikan oleh Publik/Guest. Escrow berhasil dicairkan.");
+
+                return redirect()->back()->with('success', 'Terima kasih! Pesanan telah dikonfirmasi selesai dan dana diteruskan ke Penjual.');
+            }
+
+            return redirect()->back()->with('error', 'Gagal! Status pesanan saat ini tidak dapat diselesaikan.');
+            
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Error Complete Order Digital: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat memproses penyelesaian pesanan.');
+        }
+    }
+
 } // Akhir Class
