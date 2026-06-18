@@ -49,8 +49,16 @@
                     </td>
                     <td style="width: 40%; vertical-align: top; text-align: right;">
                         {{-- 🔥 BARCODE 2D DITAMBAHKAN DI SINI --}}
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ urlencode($order->invoice_number) }}" style="width: 70px; height: 70px; margin-bottom: 5px;">
-                        
+
+                        @php
+                            $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=" . urlencode($order->invoice_number);
+                            // Ambil gambar dan ubah ke base64
+                            $qrData = base64_encode(file_get_contents($qrUrl));
+                            $qrSrc = 'data:image/png;base64,' . $qrData;
+                        @endphp
+
+                        <img src="{{ $qrSrc }}" style="width: 70px; height: 70px; margin-bottom: 5px;">
+
                         <h2 class="invoice-title">INVOICE</h2>
                         <p class="invoice-number">#{{ $order->invoice_number }}</p>
                         <p class="invoice-date">Tanggal: {{ $order->created_at->format('d F Y, H:i') }}</p>

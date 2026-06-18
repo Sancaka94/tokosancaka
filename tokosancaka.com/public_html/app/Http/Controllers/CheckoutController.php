@@ -2702,6 +2702,7 @@ TEXT;
 
         // 2. Load View PDF
         $pdf = Pdf::loadView('checkout.invoice_pdf', compact('order'))
+                ->setOption(['isRemoteEnabled' => true]);
                 ->setPaper('a4', 'portrait');
 
         // 3. Format Nama File (nama_id transaksi.pdf)
