@@ -152,7 +152,7 @@
         </div>
         
         <div class="text-center mt-8">
-            <a href="{{ url('/') }}" class="inline-flex items-center px-6 py-3 bg-white text-gray-600 font-bold rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition">
+            <a href="{{ url('/etalase') }}" class="inline-flex items-center px-6 py-3 bg-white text-gray-600 font-bold rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition">
                 <i class="fas fa-arrow-left mr-2"></i> Kembali ke Beranda
             </a>
         </div>
