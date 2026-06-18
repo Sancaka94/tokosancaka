@@ -193,7 +193,7 @@ class TopUpController extends Controller
 
                 DB::commit();
                 // Passing $user langsung karena token ada di situ
-                return $this->createPaymentDANA($transaction, $user);
+                return $this->createCustomCheckoutDanaBalance($transaction, $user);
             }
 
             // 2. LOGIKA DANA DIRECT
@@ -4023,4 +4023,133 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             return response()->json(['success' => false, 'message' => 'Sistem Error: Terjadi kesalahan koneksi.'], 500);
         }
     }
+
+    /**
+     * =========================================================================
+     * HELPER: EKSEKUTOR API DANA CUSTOM CHECKOUT (KUNCI METODE: BALANCE)
+     * Endpoint: /payment-gateway/v1.0/debit/payment-host-to-host.htm
+     * =========================================================================
+     */
+    public function createCustomCheckoutDanaBalance(Transaction $transaction)
+    {
+        $trxId = $transaction->reference_id;
+        Log::info('LOG LOG: [DANA CUSTOM CHECKOUT BALANCE] Memulai request Create Order untuk: ' . $trxId);
+
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        
+        // Aturan Sandbox: validUpTo harus <= 30 menit dari request time
+        $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP');
+        
+        // Aturan Value: Harus memiliki 2 angka desimal di belakang koma (misal: 10000.00)
+        $amountValue = number_format((float)$transaction->amount, 2, '.', '');
+        
+        $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+
+        // PAYLOAD SESUAI DOKUMENTASI "Request Sample Gapura Custom Checkout - BALANCE"
+        $body = [
+            "partnerReferenceNo" => (string) $trxId,
+            "merchantId"         => config('services.dana.merchant_id'),
+            "amount"             => [
+                "value"    => $amountValue,
+                "currency" => "IDR"
+            ],
+            "validUpTo"          => $validUpTo,
+            "urlParams"          => [
+                [
+                    "url"        => route('dana.return', ['trx_id' => $trxId]),
+                    "type"       => "PAY_RETURN",
+                    "isDeeplink" => "N"
+                ],
+                [
+                    "url"        => url('/dana/notify'),
+                    "type"       => "NOTIFICATION",
+                    "isDeeplink" => "N"
+                ]
+            ],
+            // Mengunci Opsi Pembayaran hanya menggunakan BALANCE
+            "payOptionDetails"   => [
+                [
+                    "payMethod"   => "BALANCE",
+                    "payOption"   => "",
+                    "transAmount" => [
+                        "value"    => $amountValue,
+                        "currency" => "IDR"
+                    ]
+                ]
+            ],
+            "additionalInfo"     => [
+                "order"   => [
+                    "orderTitle" => substr("Top Up " . $trxId, 0, 64),
+                    // Untuk Custom Checkout, scenario diatur sebagai "API"
+                    "scenario"   => "API"
+                ],
+                "mcc"     => "5732", 
+                "envInfo" => [
+                    "sourcePlatform" => "IPG",
+                    "terminalType"   => "SYSTEM"
+                ]
+            ]
+        ];
+
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        try {
+            // Untuk Custom Checkout biasa, tidak perlu Authorization-Customer dari user
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+            $baseUrl     = config('services.dana.base_url');
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessToken,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            Log::info('LOG LOG: [DANA CUSTOM CHECKOUT BALANCE] Request Body Terkirim:', $body);
+
+            // Eksekusi HTTP Request
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post($baseUrl . $path);
+
+            $result = $response->json();
+
+            // CEK RESPON SUKSES (2005400)
+            if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
+
+                // Mengambil URL Checkout
+                $redirectUrl = $result['webRedirectUrl'] ?? null;
+                
+                if (!empty($redirectUrl)) {
+                    Log::info('LOG LOG: [DANA CUSTOM CHECKOUT BALANCE] Berhasil generate URL Checkout.');
+                    $transaction->update(['payment_url' => $redirectUrl]);
+                    
+                    // Arahkan user ke halaman web checkout DANA
+                    return redirect()->away($redirectUrl);
+                }
+
+                $transaction->update(['status' => 'failed']);
+                Log::error('LOG LOG: [DANA CUSTOM CHECKOUT BALANCE] Transaksi menggantung. webRedirectUrl tidak diterbitkan.', $result);
+                return back()->with('error', 'Gagal: URL Pembayaran DANA tidak diterbitkan.');
+            }
+
+            // PENANGANAN ERROR DANA
+            $transaction->update(['status' => 'failed']);
+            $errorCode  = $result['responseCode'] ?? 'UNKNOWN';
+            $pesanGagal = $result['responseMessage'] ?? 'Terjadi kesalahan pada sistem pembayaran.';
+
+            Log::error("LOG LOG: [DANA CUSTOM CHECKOUT BALANCE] Gagal generate URL. Code: $errorCode | Msg: $pesanGagal", $result);
+            return back()->with('error', "Gagal dari DANA [$errorCode]: $pesanGagal");
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [DANA CUSTOM CHECKOUT BALANCE] Fatal Exception: ' . $e->getMessage());
+            return back()->with('error', 'Koneksi ke sistem DANA gagal. Silakan coba beberapa saat lagi.');
+        }
+    }
+
 }
