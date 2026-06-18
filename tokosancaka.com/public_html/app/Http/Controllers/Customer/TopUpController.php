@@ -2163,7 +2163,7 @@ public function handleCallback(Request $request)
      * HELPER: EKSEKUTOR API DANA BINDING (EXPRESS CHECKOUT MOBILE - VIA WEBVIEW)
      * =========================================================================
      */
-    private function _createPa(Transaction $transaction, $userAccount)
+    private function createPaymentDanaBinding(Transaction $transaction, $userAccount)
     {
         $trxId = $transaction->reference_id;
         Log::info('LOG LOG: [DANA BINDING] Memulai Express Checkout (1-Click) untuk Top Up: ' . $trxId);
