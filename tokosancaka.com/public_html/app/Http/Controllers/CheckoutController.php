@@ -887,38 +887,32 @@ class CheckoutController extends Controller
 			    return $this->createPaymentDanaBinding($order, Auth::user());
 			}
 
-            // --- B. JIKA COD / CASH / TRIPAY / DOKU (REDIRECT KE HALAMAN TOKO) ---
+           // --- B. JIKA COD / CASH / TRIPAY / DOKU (REDIRECT KE HALAMAN TOKO) ---
 
             // Cek Role User untuk menentukan tujuan redirect
             $currentUser = Auth::user();
 
             // 1. Jika ADMIN -> Ke Halaman Admin Orders
             if ($currentUser && $currentUser->role === 'Admin') {
-
-                // Kirim notifikasi jika COD/Cash
                 if (in_array($request->payment_method, ['cod', 'cash'])) {
                     $this->kirimNotifikasiPesananLengkap($order, 'Baru (COD/Cash)');
                 }
-
                 return redirect()->to('https://tokosancaka.com/admin/orders')
                     ->with('success', 'Pesanan berhasil dibuat (Mode Admin).');
             }
-
-            // 2. Jika CUSTOMER / SELLER / GUEST -> Ke Halaman Riwayat Belanja atau Langsung Invoice
+            // 2. Jika CUSTOMER / SELLER / GUEST
             else {
-
-                // Kirim notifikasi jika COD/Cash
                 if (in_array($request->payment_method, ['cod', 'cash'])) {
                     $this->kirimNotifikasiPesananLengkap($order, 'Baru (COD/Cash)');
                 }
 
-                // JIKA GUEST (TIDAK LOGIN ATAU USER_ID NULL):
-                if (!$currentUser || empty($order->user_id)) {
+                // 🔥 SMART ROUTING: Jika user_id kosong, berarti dia GUEST
+                if (empty($order->user_id)) {
                     return redirect()->route('guest.history_belanja', ['invoice' => $order->invoice_number])
-                        ->with('success', 'Pesanan berhasil dibuat! Silakan pantau pesanan Anda di sini.');
+                        ->with('success', 'Pesanan berhasil dibuat! Silakan selesaikan pembayaran Anda.');
                 }
 
-                // JIKA USER LOGIN
+                // Jika user_id ada, berarti punya akun
                 return redirect()->route('customer.pesanan.riwayat_belanja')
                     ->with('success', 'Pesanan berhasil! Silakan cek status pembayaran Anda.');
             }

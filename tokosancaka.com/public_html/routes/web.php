@@ -1566,6 +1566,7 @@ Route::get('/checkout/search-address-ajax', [\App\Http\Controllers\CheckoutContr
 Route::get('/guest/history-belanja/{invoice}', [App\Http\Controllers\CheckoutController::class, 'guestHistory'])
     ->name('guest.history_belanja');
 
-Route::get('/guest/history-belanja/{invoice}/pdf', [App\Http\Controllers\CheckoutController::class, 'downloadGuestPDF'])->name('guest.download_pdf');
+// Ubah bagian ini di baris paling bawah web.php
+Route::get('/checkout/download-pdf/{invoice}', [App\Http\Controllers\CheckoutController::class, 'downloadGuestPDF'])->name('guest.download_pdf');
 
-    Route::post('/guest/history-belanja/{invoice}/send-wa', [App\Http\Controllers\CheckoutController::class, 'sendGuestWA'])->name('guest.send_wa');
+Route::post('/guest/history-belanja/{invoice}/send-wa', [App\Http\Controllers\CheckoutController::class, 'sendGuestWA'])->name('guest.send_wa');
