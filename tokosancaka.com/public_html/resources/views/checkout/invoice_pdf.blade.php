@@ -47,7 +47,10 @@
                         <p class="company-detail">JL. DR. WAHIDIN NO.18A, NGAWI</p>
                         <p class="company-detail">Telp/WA: 085745808809</p>
                     </td>
-                    <td style="width: 40%; vertical-align: top;">
+                    <td style="width: 40%; vertical-align: top; text-align: right;">
+                        {{-- 🔥 BARCODE 2D DITAMBAHKAN DI SINI --}}
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ urlencode($order->invoice_number) }}" style="width: 70px; height: 70px; margin-bottom: 5px;">
+                        
                         <h2 class="invoice-title">INVOICE</h2>
                         <p class="invoice-number">#{{ $order->invoice_number }}</p>
                         <p class="invoice-date">Tanggal: {{ $order->created_at->format('d F Y, H:i') }}</p>
@@ -70,24 +73,27 @@
                     <td style="width: 50%; padding-right: 15px; vertical-align: top;">
                         <div class="info-box">
                             <div class="info-title">Penerima Tagihan & Pengiriman</div>
-                            <p style="font-weight: bold; margin: 0 0 5px 0;">{{ $order->user->nama_lengkap ?? 'Pelanggan' }}</p>
-                            <p style="margin: 0 0 5px 0;">{{ $order->user->no_wa ?? '-' }}</p>
-                            <p style="margin: 0;">{{ $order->shipping_address ?? $order->user->address_detail ?? '-' }}</p>
+                            {{-- 🔥 PERBAIKAN SMART GUEST: Jangan panggil $order->user jika tidak perlu --}}
+                            <p style="font-weight: bold; margin: 0 0 5px 0;">{{ $order->receiver_name ?? ($order->user->nama_lengkap ?? 'Guest / Tamu') }}</p>
+                            <p style="margin: 0 0 5px 0;">{{ $order->receiver_phone ?? ($order->user->no_wa ?? '-') }}</p>
+                            <p style="margin: 0;">{{ $order->shipping_address ?? 'Alamat tidak tersedia' }}</p>
                         </div>
                     </td>
                     <td style="width: 50%; padding-left: 15px; vertical-align: top;">
                         <div class="info-box">
-                            <div class="info-title">Detail Ekspedisi</div>
+                            <div class="info-title">Detail Pengiriman</div>
                             @php
                                 $kurir = explode('-', $order->shipping_method);
-                                $namaKurir = strtoupper(($kurir[1] ?? 'KURIR') . ' - ' . ($kurir[2] ?? ''));
+                                // Jika metode berbunyi 'digital_delivery', ganti nama kurirnya jadi E-Ticket
+                                $isDigital = str_contains(strtolower($order->shipping_method), 'digital');
+                                $namaKurir = $isDigital ? 'PRODUK DIGITAL / E-TICKET' : strtoupper(($kurir[1] ?? 'KURIR') . ' - ' . ($kurir[2] ?? ''));
                             @endphp
                             <p style="margin: 0 0 5px 0;">Kurir: <strong>{{ $namaKurir }}</strong></p>
 
                             @if(in_array(strtolower($order->status), ['paid', 'processing', 'shipped', 'completed']))
-                                <p style="margin: 0;">No. Resi: <strong>{{ !empty($order->shipping_reference) && $order->shipping_reference !== '-' ? $order->shipping_reference : 'Menunggu Update Kurir' }}</strong></p>
+                                <p style="margin: 0;">No. Resi/SN: <strong>{{ !empty($order->shipping_reference) && $order->shipping_reference !== '-' ? $order->shipping_reference : 'Menunggu Update Penjual' }}</strong></p>
                             @else
-                                <p style="margin: 0; color: #7f8c8d; font-style: italic;">Resi muncul setelah lunas</p>
+                                <p style="margin: 0; color: #7f8c8d; font-style: italic;">Akses/Resi muncul setelah lunas</p>
                             @endif
                         </div>
                     </td>

@@ -530,6 +530,42 @@ class CheckoutController extends Controller
                  $invoiceNumber = 'SCK-ORD-' . strtoupper(Str::random(8));
             } while (Order::where('invoice_number', $invoiceNumber)->exists() || Pesanan::where('nomor_invoice', $invoiceNumber)->exists());
 
+            // ==========================================================
+            // 🔥 MERAKIT ALAMAT LENGKAP JIKA MENGGUNAKAN FORM GUEST
+            // ==========================================================
+            $finalAddress = null;
+
+            if ($isDigital && !$user) {
+                // Jika Guest, rangkai semua input dari form manual
+                $arrAlamat = array_filter([
+                    $request->alamat_lengkap_penerima,
+                    $request->kelurahan_penerima,
+                    $request->kecamatan_penerima,
+                    $request->kota_penerima,
+                    $request->provinsi_penerima,
+                    $request->kode_pos_penerima
+                ]);
+                
+                // Gabungkan menjadi string: "Jalan Mawar, Margomulyo, Ngawi, Jawa Timur, 63211"
+                $finalAddress = implode(', ', $arrAlamat);
+            } else {
+                // Jika Auth User, utamakan alamat dari profile
+                $finalAddress = $user ? $user->address_detail : 'Alamat Tidak Valid';
+                
+                // Fallback jika profile kosong tapi user isi form manual di checkout digital
+                if(empty($finalAddress) && $isDigital) {
+                     $arrAlamat = array_filter([
+                        $request->alamat_lengkap_penerima,
+                        $request->kelurahan_penerima,
+                        $request->kecamatan_penerima,
+                        $request->kota_penerima,
+                        $request->provinsi_penerima,
+                        $request->kode_pos_penerima
+                    ]);
+                    $finalAddress = implode(', ', $arrAlamat);
+                }
+            }
+
             // Pembuatan Order sekarang tidak akan error karena variabel sudah dideklarasikan
             $order = new Order([
                  'store_id'                => $store ? $store->id : null,
@@ -543,17 +579,19 @@ class CheckoutController extends Controller
                  'shipping_method'         => $request->shipping_method,
                  'payment_method'          => $request->payment_method,
                  'status'                  => (in_array($request->payment_method, ['cod', 'cash', 'CODBARANG'])) ? 'processing' : 'pending',
-                 // Ambil dari Form Input GPS / Digital jika ada
-                 'shipping_address'        => $request->alamat_lengkap_penerima ?? ($user ? $user->address_detail : 'Alamat Produk Digital/Jasa'),
                  'customer_latitude'       => $request->latitude ?? null,
                  'customer_longitude'      => $request->longitude ?? null,
+                 
+                 // 🔥 MENGGUNAKAN VARIABEL YANG SUDAH DIRAKIT
+                 'shipping_address'        => $finalAddress,
                  'receiver_name'           => $request->nama_penerima ?? ($user ? $user->nama_lengkap : 'Guest Customer'),
                  'receiver_phone'          => $request->no_wa_penerima ?? ($user ? $user->no_wa : '081234567890'),
                  'nik_penerima'            => $request->nik_penerima ?? null,
-                 'receiver_district_id'    => $userDistrictId,        // <-- SUDAH AMAN
-                 'receiver_subdistrict_id' => $userSubdistrictId,     // <-- SUDAH AMAN
-                 'sender_district_id'      => $storeDistrictId,       // <-- SUDAH AMAN
-                 'sender_subdistrict_id'   => $storeSubdistrictId,    // <-- SUDAH AMAN
+                 
+                 'receiver_district_id'    => $userDistrictId,
+                 'receiver_subdistrict_id' => $userSubdistrictId,
+                 'sender_district_id'      => $storeDistrictId,
+                 'sender_subdistrict_id'   => $storeSubdistrictId,
             ]);
             $order->save();
 
