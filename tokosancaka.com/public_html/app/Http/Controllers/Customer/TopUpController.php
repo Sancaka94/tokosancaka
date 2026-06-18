@@ -2194,7 +2194,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             "payOptionDetails" => [
                 [
                     "payMethod"   => "BALANCE",
-                    "payOption"   => "",
+                    "payOption"   => "BALANCE",
                     "transAmount" => [
                         "value"    => $amountValue,
                         "currency" => "IDR"
