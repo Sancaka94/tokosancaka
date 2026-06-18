@@ -2203,7 +2203,7 @@ public function handleCallback(Request $request)
             "validUpTo"          => $validUpTo,
             "urlParams" => [
                 [
-                    "url"        => route('dana.return', ['trx_id' => $trxId]),
+                    "url"        => url('/dana/return') . '?trx_id=' . $trxId,
                     "type"       => "PAY_RETURN",
                     "isDeeplink" => "N"
                 ],
