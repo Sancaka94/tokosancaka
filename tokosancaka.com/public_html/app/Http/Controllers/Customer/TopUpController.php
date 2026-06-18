@@ -3879,7 +3879,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             // FORMAT STRICT DANA: Partner Refund No HARUS MURNI ANGKA (Tanpa huruf)
             $partnerRefundNo = date('YmdHis') . mt_rand(100000000, 999999999); 
             
-            $refundAmountValue = (string) (int) $transaction->amount;
+            $refundAmountValue = number_format((float)$transaction->amount, 2, '.', '');
 
             // FORMAT STRICT DANA: Hanya field yang benar-benar wajib (Sama persis dengan Request Sample PDF [cite: 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119])
             $body = [
