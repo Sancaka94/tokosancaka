@@ -4067,7 +4067,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 ]
             ],
             // Mengunci Opsi Pembayaran hanya menggunakan BALANCE
-            /* "payOptionDetails"   => [
+            "payOptionDetails"   => [
                 [
                     "payMethod"   => "BALANCE",
                     "payOption"   => "",
@@ -4076,13 +4076,13 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                         "currency" => "IDR"
                     ]
                 ]
-            ], */
+            ],
 
             "additionalInfo"     => [
                 "order"   => [
                     "orderTitle" => substr("Top Up " . $trxId, 0, 64),
                     // Untuk Custom Checkout, scenario diatur sebagai "API"
-                    "scenario"   => "REDIRECT"
+                    "scenario"   => "API"
                 ],
                 "mcc"     => "5732", 
                 "envInfo" => [
