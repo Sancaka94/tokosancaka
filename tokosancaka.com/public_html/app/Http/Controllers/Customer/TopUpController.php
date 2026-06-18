@@ -2158,79 +2158,97 @@ public function handleCallback(Request $request)
         }
     }
 
-/**
-     * =========================================================================
-     * HELPER: EKSEKUTOR API DANA BINDING (EXPRESS CHECKOUT MOBILE - VIA WEBVIEW)
-     * =========================================================================
-     */
-    private function createPaymentDanaBinding(Transaction $transaction, $userAccount)
+public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
     {
         $trxId = $transaction->reference_id;
         Log::info('LOG LOG: [DANA BINDING] Memulai Express Checkout (1-Click) untuk Top Up: ' . $trxId);
 
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP');
-        $amountValue = number_format((float)$transaction->amount, 2, '.', '');
+        $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
         
-        $baseUrl = config('services.dana.base_url');
-        $accessTokenB2B = $this->danaSignature->getAccessToken();
+        $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
-        // =====================================================================
-        // TAHAP 1: REQUEST EXPRESS CHECKOUT (Sesuai Arahan CS DANA)
-        // =====================================================================
-        $pathCheckout = '/rest/redirection/v1.0/debit/payment-host-to-host';
-        
-        $bodyCheckout = [
-            "additionalInfo" => [
-                "mcc" => "5732",
-                "envInfo" => [
-                    "sourcePlatform"    => "IPG",
-                    "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "WEB"
-                ],
-                "order" => [
-                    "orderTitle"        => substr("Top Up " . $trxId, 0, 64),
-                    "merchantTransType" => "01",
-                    "buyer" => [
-                        "externalUserType" => "MERCHANT_USER",
-                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $userAccount->nama_lengkap ?? 'Customer'), 0, 64),
-                        "externalUserId"   => (string) $userAccount->id_pengguna
-                    ],
-                    "scenario"          => "REDIRECT"
-                ]
-            ],
+        $amountValue = number_format((float)$transaction->amount, 2, '.', '');
+
+        $body = [
             "partnerReferenceNo" => (string) $trxId,
             "merchantId"         => config('services.dana.merchant_id'),
+            "validUpTo"          => \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP'),
             "amount" => [
                 "value"    => $amountValue,
                 "currency" => "IDR"
             ],
-            "validUpTo"          => $validUpTo,
             "urlParams" => [
                 [
                     "url"        => route('dana.return', ['trx_id' => $trxId]),
                     "type"       => "PAY_RETURN",
-                    "isDeeplink" => "N"
+                    "isDeeplink" => "Y"
                 ],
                 [
-                    "url"        => url('/dana/notify') . '?trx_id=' . $trxId,
+                    "url"        => url('/dana/notify'),
                     "type"       => "NOTIFICATION",
                     "isDeeplink" => "N"
                 ]
+            ],
+            "payOptionDetails" => [
+                [
+                    "payMethod"   => "BALANCE",
+                    "payOption"   => "BALANCE",
+                    "transAmount" => [
+                        "value"    => $amountValue,
+                        "currency" => "IDR"
+                    ]
+                ]
+            ],
+            "additionalInfo" => [
+                "order" => [
+                    "orderTitle"        => substr("Top Up " . $trxId, 0, 64),
+                    "merchantTransType" => "01",
+                    "buyer" => [
+                        "externalUserId"   => (string) $userAccount->id_pengguna,
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $userAccount->nama_lengkap ?? 'Customer'), 0, 64)
+                    ],
+
+                    "goods" => [
+                        [
+                            "merchantGoodsId" => "ITEM-" . $trxId,
+                            "description"     => "Top Up Saldo Aplikasi",
+                            "category"        => "DIGITAL_GOODS",
+                            "price"           => [
+                                "value"    => $amountValue,
+                                "currency" => "IDR"
+                            ],
+                            "unit"            => "pcs",
+                            "quantity"        => "1",
+                            "name"            => "Saldo Top Up"
+                        ]
+                    ]
+                ],
+                "mcc"                        => "5732", 
+                "envInfo" => [
+                    "sourcePlatform"    => "IPG",
+                    "terminalType"      => "SYSTEM",
+                    "orderTerminalType" => "WEB" 
+                ],
+                "productCode"                => "51051000100000000001",
+                "supportDeepLinkCheckoutUrl" => "true" 
             ]
         ];
 
-        $jsonBodyCheckout = json_encode($bodyCheckout, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         try {
-            $signatureCheckout = $this->danaSignature->generateSignature('POST', $pathCheckout, $jsonBodyCheckout, $timestamp);
+            $accessTokenB2B = $this->danaSignature->getAccessToken();
+            $signature      = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+            $baseUrl        = config('services.dana.base_url');
 
-            $headersCheckout = [
+            $headers = [
                 'Content-Type'           => 'application/json',
                 'Authorization'          => 'Bearer ' . $accessTokenB2B,
-                'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token,
+                'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token, 
                 'X-TIMESTAMP'            => $timestamp,
-                'X-SIGNATURE'            => $signatureCheckout,
+                'X-SIGNATURE'            => $signature,
                 'ORIGIN'                 => config('services.dana.origin'),
                 'X-PARTNER-ID'           => config('services.dana.x_partner_id'),
                 'X-EXTERNAL-ID'          => (string) time() . \Illuminate\Support\Str::random(6),
@@ -2238,24 +2256,31 @@ public function handleCallback(Request $request)
                 'CHANNEL-ID'             => '95221'
             ];
 
-            Log::info('LOG LOG: [DANA BINDING] Execute Checkout Phase 1...');
+            Log::info('LOG LOG: [DANA BINDING] ==== DEBUG PAYLOAD ====');
+            Log::info('LOG LOG: [DANA BINDING] merchantId: ' . var_export(config('services.dana.merchant_id'), true));
+            Log::info('LOG LOG: [DANA BINDING] X-PARTNER-ID: ' . var_export(config('services.dana.x_partner_id'), true));
+            Log::info('LOG LOG: [DANA BINDING] id_pengguna: ' . var_export($userAccount->id_pengguna, true));
+            Log::info('LOG LOG: [DANA BINDING] dana_access_token: ' . (empty($userAccount->dana_access_token) ? 'KOSONG/NULL' : 'ADA, panjang=' . strlen($userAccount->dana_access_token)));
+            Log::info('LOG LOG: [DANA BINDING] Final Body Terkirim: ' . $jsonBody);
 
-            $responseCheckout = \Illuminate\Support\Facades\Http::withHeaders($headersCheckout)
-                ->withBody($jsonBodyCheckout, 'application/json')
-                ->post($baseUrl . $pathCheckout);
 
-            $resultCheckout = $responseCheckout->json();
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post($baseUrl . $path);
 
-            // Jika Checkout Lolos
-            if (isset($resultCheckout['responseCode']) && $resultCheckout['responseCode'] === '2005400') {
+            $result = $response->json();
 
-                $redirectUrl = $resultCheckout['webRedirectUrl'] ?? $resultCheckout['appLinkUrl'] ?? null;
+            // 6. CEK RESPON SUKSES SESUAI DOKUMEN (2005400)
+            if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
+
+                // KUNCI EXPO: HANYA AMBIL WEB URL-NYA SAJA (webRedirectUrl)
+                $redirectUrl = $result['webRedirectUrl'] ?? null;
                 
                 if (!empty($redirectUrl)) {
-                    Log::info('LOG LOG: [DANA BINDING] Checkout Sukses. Melanjutkan ke Fase 2: Apply OTT...');
+                    Log::info('LOG LOG: [DANA BINDING] Berhasil generate URL Express Checkout.');
                     
                     // =====================================================================
-                    // TAHAP 2: REQUEST APPLY OTT (Berdasarkan Dokumentasi OTT)
+                    // TAHAP 2: REQUEST APPLY OTT (Agar bypass Halaman Login DANA)
                     // =====================================================================
                     $pathOtt = '/rest/v1.1/qr/apply-ott';
                     $timestampOtt = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
@@ -2271,7 +2296,7 @@ public function handleCallback(Request $request)
 
                     $headersOtt = [
                         'Content-Type'           => 'application/json',
-                        'Authorization'          => 'Bearer ' . $accessTokenB2B, // Wajib disertakan gateway
+                        'Authorization'          => 'Bearer ' . $accessTokenB2B, 
                         'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token,
                         'X-TIMESTAMP'            => $timestampOtt,
                         'X-SIGNATURE'            => $signatureOtt,
@@ -2281,6 +2306,8 @@ public function handleCallback(Request $request)
                         'X-DEVICE-ID'            => 'SANCAKA-WEB-POS',
                         'CHANNEL-ID'             => '95221'
                     ];
+
+                    Log::info('LOG LOG: [DANA BINDING] Request Apply OTT ke DANA...');
 
                     $responseOtt = \Illuminate\Support\Facades\Http::withHeaders($headersOtt)
                         ->withBody($jsonBodyOtt, 'application/json')
@@ -2294,43 +2321,42 @@ public function handleCallback(Request $request)
                         
                         if ($ottToken) {
                             Log::info('LOG LOG: [DANA BINDING] OTT Berhasil diambil! Melakukan Append ke URL...');
-                            // Cek apakah URL asli sudah ada parameter '?'-nya atau belum
+                            
+                            // Deteksi apakah URL sudah punya query string (?) atau belum
                             $separator = str_contains($redirectUrl, '?') ? '&' : '?';
                             $redirectUrl .= $separator . 'ott=' . $ottToken;
                         }
                     } else {
-                        // Tidak di-return error agar user tetap bisa bayar meski harus login ulang
-                        Log::warning('LOG LOG: [DANA BINDING] Gagal Apply OTT, fallback ke URL biasa tanpa OTT.', $resultOtt);
+                        // Jika gagal, biarkan saja. User tetap bisa bayar tapi mungkin harus pencet login/masukin PIN lagi
+                        Log::warning('LOG LOG: [DANA BINDING] Gagal Apply OTT, fallback ke URL Checkout biasa.', $resultOtt);
                     }
                     // =====================================================================
-
-                    // Simpan URL Final ke Database
+                    
                     $transaction->update(['payment_url' => $redirectUrl]);
                     
-                    Log::info('LOG LOG: [DANA BINDING] Transaksi Siap Dieksekusi 1-Click Pay!');
-                    return [
-                        'success' => true, 
-                        'redirect_url' => $redirectUrl
-                    ];
+                    // Arahkan user ke halaman DANA (Sekarang URL-nya sudah bawa OTT)
+                    return redirect()->away($redirectUrl);
                 }
 
+                // Fallback jika anehnya DANA sukses tapi tidak memberikan URL Web
                 $transaction->update(['status' => 'failed']);
-                Log::error('LOG LOG: [API MOBILE] Transaksi DANA menggantung. Tidak ada URL yang diterbitkan.', $resultCheckout);
-                return ['success' => false, 'message' => 'Gagal: URL Pembayaran DANA tidak diterbitkan.'];
+                Log::error('LOG LOG: [WEB BINDING] Transaksi DANA menggantung. Tidak ada Web URL yang diterbitkan.');
+                return back()->with('error', 'Gagal: URL Pembayaran DANA tidak diterbitkan.');
             }
 
-            // Penanganan Error dari Tahap 1 (Checkout)
+            // 7. PENANGANAN ERROR DANA
             $transaction->update(['status' => 'failed']);
-            $errorCode  = $resultCheckout['responseCode'] ?? 'UNKNOWN';
-            $pesanGagal = $resultCheckout['responseMessage'] ?? 'Terjadi kesalahan pada sistem pembayaran.';
+            $errorCode  = $result['responseCode'] ?? 'UNKNOWN';
+            $pesanGagal = $result['responseMessage'] ?? 'Terjadi kesalahan pada sistem pembayaran.';
 
-            Log::error("LOG LOG: [DANA BINDING] Gagal generate URL. Code: $errorCode | Msg: $pesanGagal", $resultCheckout);
+            // Log full result untuk mempermudah debugging jika masih ada kode error
+            Log::error("LOG LOG: [DANA BINDING] Gagal generate URL. Code: $errorCode | Msg: $pesanGagal", $result);
 
-            return ['success' => false, 'message' => "Gagal dari DANA [$errorCode]: $pesanGagal"];
+            return back()->with('error', "Gagal dari DANA [$errorCode]: $pesanGagal");
 
         } catch (\Exception $e) {
             Log::error('LOG LOG: [DANA BINDING] Fatal Exception: ' . $e->getMessage());
-            return ['success' => false, 'message' => 'Koneksi ke sistem DANA gagal. Silakan coba beberapa saat lagi.'];
+            return back()->with('error', 'Koneksi ke sistem DANA gagal. Silakan coba beberapa saat lagi.');
         }
     }
 
