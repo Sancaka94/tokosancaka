@@ -2659,6 +2659,7 @@ TEXT;
 
         return view('customer.pesanan.history-belanja', compact('order'));
     }
+    
 
     public function downloadPDF($invoice)
     {
