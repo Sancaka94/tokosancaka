@@ -193,7 +193,7 @@ class TopUpController extends Controller
 
                 DB::commit();
                 // Passing $user langsung karena token ada di situ
-                return $this->createPaymentDanaBinding($transaction, $user);
+                return $this->_createTopUpDanaBinding($transaction, $user);
             }
 
             // 2. LOGIKA DANA DIRECT
