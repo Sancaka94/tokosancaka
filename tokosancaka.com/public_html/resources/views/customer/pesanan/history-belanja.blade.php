@@ -139,7 +139,8 @@
             <div class="px-6 md:px-8 py-6 bg-white">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {{-- Sesuaikan "route('checkout.download_pdf')" dengan nama route aslinya jika berbeda --}}
-                    <a href="{{ url('checkout/download-pdf/' . $order->invoice_number) }}" target="_blank" class="flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold rounded-xl transition border border-gray-200 shadow-sm">
+                    {{-- TOMBOL DOWNLOAD PDF (MENGGUNAKAN ROUTE BARU) --}}
+                    <a href="{{ route('guest.download_pdf', ['invoice' => $order->invoice_number]) }}" target="_blank" class="flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold rounded-xl transition border border-gray-200 shadow-sm">
                         <i class="fas fa-file-pdf text-red-500 text-lg"></i> Download Invoice (PDF)
                     </a>
                     
