@@ -122,15 +122,25 @@
                             <p class="text-xs text-blue-400 mt-1">Silakan <a href="javascript:window.location.reload(true)" class="underline font-bold hover:text-blue-700">refresh</a> halaman ini secara berkala.</p>
                         @endif
 
-                    @else
+                   @else
                         {{-- Jika Belum Dibayar --}}
                         <h4 class="font-extrabold text-red-600 mb-2 text-lg flex items-center justify-center gap-2">
                             <i class="fas fa-exclamation-triangle"></i> Menunggu Pembayaran
                         </h4>
                         <p class="text-sm text-red-500 mb-5">Silakan selesaikan pembayaran Anda agar pesanan dapat segera diakses.</p>
-                        <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="inline-flex items-center justify-center w-full md:w-auto px-8 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md shadow-red-200 transition transform hover:-translate-y-0.5">
-                            <i class="fas fa-wallet mr-2"></i> Lanjutkan Pembayaran
-                        </a>
+                        
+                        {{-- ✅ INI KODE YANG BENAR ✅ --}}
+                        @if(!empty($order->payment_url))
+                            <a href="{{ $order->payment_url }}" class="inline-flex items-center justify-center w-full md:w-auto px-8 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md shadow-red-200 transition transform hover:-translate-y-0.5">
+                                <i class="fas fa-wallet mr-2"></i> Lanjutkan Pembayaran
+                            </a>
+                        @else
+                            <button disabled class="inline-flex items-center justify-center w-full md:w-auto px-8 py-3.5 bg-gray-400 text-white font-bold rounded-xl shadow-md cursor-not-allowed">
+                                <i class="fas fa-exclamation-circle mr-2"></i> Link Belum Tersedia
+                            </button>
+                            <p class="text-[10px] text-gray-500 mt-2 text-center">Sistem sedang memproses. Silakan refresh halaman.</p>
+                        @endif
+
                     @endif
                 </div>
             </div>
