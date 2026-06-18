@@ -34,6 +34,18 @@
             </div>
         </div>
 
+        {{-- Menampilkan Alert Sukses/Gagal (PENTING untuk feedback Upload Manual) --}}
+        @if(session('success'))
+            <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-md relative" role="alert">
+                <span class="block sm:inline">{{ session('success') }}</span>
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md relative" role="alert">
+                <span class="block sm:inline">{{ session('error') }}</span>
+            </div>
+        @endif
+
         {{-- Card Utama --}}
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-xl border border-gray-200">
 
@@ -60,12 +72,18 @@
                 <div class="col-span-3">Alamat</div>
                 <div class="col-span-2">Ekspedisi & Ongkir</div>
                 <div class="col-span-2">Isi Paket</div>
-                <div class="col-span-2">Status</div>
+                <div class="col-span-2 text-right">Status / Aksi</div>
             </div>
 
             {{-- Body Tabel (Loop) --}}
             <div class="bg-white divide-y divide-gray-200">
                 @forelse ($orders as $order)
+                    @php
+                        // CEK APAKAH INI PESANAN DIGITAL ATAU FISIK
+                        $isDigitalOrder = str_contains(strtolower($order->shipping_method), 'digital');
+                        $isPaid = in_array(strtolower($order->status), ['paid', 'processing', 'completed']);
+                        $isCompleted = strtolower($order->status) === 'completed';
+                    @endphp
                     <div class="p-6 hover:bg-indigo-50/30 transition-colors duration-200">
                         <div class="grid grid-cols-1 lg:grid-cols-12 gap-x-4 gap-y-6 text-sm">
 
@@ -85,49 +103,69 @@
 
                             {{-- ALAMAT --}}
                             <div class="lg:col-span-3 space-y-3">
-                                {{-- Pengirim (Toko Anda) --}}
-                                <div class="flex gap-3">
-                                    <div class="address-icon icon-send shadow-sm"><i class="fas fa-store text-[10px]"></i></div>
-                                    <div>
-                                        @if($order->store)
-                                            <div class="font-bold text-gray-900 text-xs">{{ $order->store->name ?? 'Toko Pengirim' }} <span class="text-gray-400 font-normal">/ {{ $order->store->user->no_wa ?? '' }}</span></div>
-                                            <div class="text-[11px] text-gray-600 leading-tight mt-0.5">{{ $order->store->address_detail ?? 'Alamat Toko' }}</div>
-                                        @else
-                                            <div class="font-bold text-red-500 text-xs">Toko Tidak Ditemukan</div>
-                                        @endif
+                                {{-- Jika pesanan Digital, sederhanakan tampilan alamat --}}
+                                @if($isDigitalOrder)
+                                    <div class="flex gap-3 items-center">
+                                        <div class="address-icon icon-receive shadow-sm bg-indigo-500"><i class="fas fa-envelope text-[10px]"></i></div>
+                                        <div>
+                                            <div class="font-bold text-gray-900 text-xs">{{ $order->user->nama_lengkap ?? ($order->receiver_name ?? 'Customer') }}</div>
+                                            <div class="text-[11px] text-gray-600 leading-tight mt-0.5"><i class="fab fa-whatsapp text-green-500"></i> {{ $order->user->no_wa ?? ($order->receiver_phone ?? 'Tidak ada WA') }}</div>
+                                        </div>
                                     </div>
-                                </div>
-                                {{-- Penerima (Customer) --}}
-                                <div class="flex gap-3">
-                                    <div class="address-icon icon-receive shadow-sm"><i class="fas fa-user text-[10px]"></i></div>
-                                    <div>
-                                        <div class="font-bold text-gray-900 text-xs">{{ $order->user->nama_lengkap ?? 'Customer' }} <span class="text-gray-400 font-normal">/ {{ $order->user->no_wa ?? '' }}</span></div>
-                                        <div class="text-[11px] text-gray-600 leading-tight mt-0.5">{{ $order->shipping_address }}</div>
+                                @else
+                                    {{-- Pengirim (Toko Anda) --}}
+                                    <div class="flex gap-3">
+                                        <div class="address-icon icon-send shadow-sm"><i class="fas fa-store text-[10px]"></i></div>
+                                        <div>
+                                            @if($order->store)
+                                                <div class="font-bold text-gray-900 text-xs">{{ $order->store->name ?? 'Toko Pengirim' }} <span class="text-gray-400 font-normal">/ {{ $order->store->user->no_wa ?? '' }}</span></div>
+                                                <div class="text-[11px] text-gray-600 leading-tight mt-0.5">{{ $order->store->address_detail ?? 'Alamat Toko' }}</div>
+                                            @else
+                                                <div class="font-bold text-red-500 text-xs">Toko Tidak Ditemukan</div>
+                                            @endif
+                                        </div>
                                     </div>
-                                </div>
+                                    {{-- Penerima (Customer) --}}
+                                    <div class="flex gap-3">
+                                        <div class="address-icon icon-receive shadow-sm"><i class="fas fa-user text-[10px]"></i></div>
+                                        <div>
+                                            <div class="font-bold text-gray-900 text-xs">{{ $order->user->nama_lengkap ?? 'Customer' }} <span class="text-gray-400 font-normal">/ {{ $order->user->no_wa ?? '' }}</span></div>
+                                            <div class="text-[11px] text-gray-600 leading-tight mt-0.5">{{ $order->shipping_address }}</div>
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
 
                             {{-- EKSPEDISI & ONGKIR --}}
                             <div class="lg:col-span-2 space-y-1">
-                                @php
-                                    $shippingParts = explode('-', $order->shipping_method);
-                                    $courier = $shippingParts[1] ?? 'N/A';
-                                    $service = $shippingParts[2] ?? 'N/A';
-                                @endphp
-                                <div class="font-bold text-gray-800 uppercase text-xs border-b border-gray-100 pb-1 w-max">{{ $courier }} - {{ $service }}</div>
-                                <div class="font-bold text-green-600 text-xs pt-1">Rp {{ number_format($order->shipping_cost) }}</div>
+                                @if($isDigitalOrder)
+                                    <div class="font-bold text-indigo-700 uppercase text-[10px] bg-indigo-50 px-2 py-1 rounded w-max border border-indigo-100">
+                                        <i class="fas fa-cloud-download-alt mr-1"></i> PENGIRIMAN DIGITAL
+                                    </div>
+                                    <div class="text-[10px] text-gray-500 mt-2 bg-gray-50 p-1 rounded border border-gray-200 w-max break-all">
+                                        <span class="font-bold">Akses:</span> {{ $order->shipping_reference && str_contains($order->shipping_reference, 'E-TICKET') ? 'Otomatis' : 'Manual / Belum Dikirim' }}
+                                    </div>
+                                @else
+                                    @php
+                                        $shippingParts = explode('-', $order->shipping_method);
+                                        $courier = $shippingParts[1] ?? 'N/A';
+                                        $service = $shippingParts[2] ?? 'N/A';
+                                    @endphp
+                                    <div class="font-bold text-gray-800 uppercase text-xs border-b border-gray-100 pb-1 w-max">{{ $courier }} - {{ $service }}</div>
+                                    <div class="font-bold text-green-600 text-xs pt-1">Rp {{ number_format($order->shipping_cost) }}</div>
 
-                                @if($order->cod_fee > 0)
-                                    @if(strtolower($order->payment_method) == 'cod')
-                                    <div class="text-[10px] text-orange-600 font-semibold">Tagihan COD: Rp {{ number_format($order->total_amount) }}</div>
-                                    @elseif($order->cod_fee > 0)
-                                    <div class="text-[10px] text-orange-600 font-semibold">Biaya COD: Rp {{ number_format($order->cod_fee) }}</div>
+                                    @if($order->cod_fee > 0)
+                                        @if(strtolower($order->payment_method) == 'cod')
+                                        <div class="text-[10px] text-orange-600 font-semibold">Tagihan COD: Rp {{ number_format($order->total_amount) }}</div>
+                                        @elseif($order->cod_fee > 0)
+                                        <div class="text-[10px] text-orange-600 font-semibold">Biaya COD: Rp {{ number_format($order->cod_fee) }}</div>
+                                        @endif
                                     @endif
-                                @endif
 
-                                <div class="text-[10px] text-gray-500 mt-2 bg-gray-50 p-1 rounded border border-gray-200 w-max break-all">
-                                    <span class="font-bold">Resi:</span> {{ $order->shipping_reference ?? '-' }}
-                                </div>
+                                    <div class="text-[10px] text-gray-500 mt-2 bg-gray-50 p-1 rounded border border-gray-200 w-max break-all">
+                                        <span class="font-bold">Resi:</span> {{ $order->shipping_reference ?? '-' }}
+                                    </div>
+                                @endif
                             </div>
 
                             {{-- ISI PAKET --}}
@@ -141,7 +179,7 @@
                                     @foreach($order->items as $item)
                                         @php
                                             $totalWeight += ($item->product->weight ?? 0) * $item->quantity;
-                                            if($loop->first && $item->product) {
+                                            if($loop->first && $item->product && !$isDigitalOrder) {
                                                 $dimension = "Dim. " . ($item->product->length ?? '5') . "x" . ($item->product->width ?? '5') . "x" . ($item->product->height ?? '5') . " cm";
                                             }
                                         @endphp
@@ -151,10 +189,13 @@
                                         </div>
                                     @endforeach
                                 </div>
+                                
+                                @if(!$isDigitalOrder)
                                 <div class="flex flex-wrap gap-1 text-[9px] font-bold text-gray-500">
                                     <span class="bg-gray-100 px-1.5 py-0.5 rounded">{{ number_format($totalWeight) }} gr</span>
                                     <span class="bg-gray-100 px-1.5 py-0.5 rounded">{{ $dimension }}</span>
                                 </div>
+                                @endif
                             </div>
 
                             {{-- STATUS & TOMBOL AKSI PINTAR (SELLER) --}}
@@ -164,6 +205,16 @@
                                 <span class="px-3 py-1 inline-flex text-[11px] leading-5 font-bold rounded-full border shadow-sm {{ $order->status_badge_class }} mb-2">
                                     {{ Str::title($order->status) }}
                                 </span>
+
+                                {{-- FITUR PENGIRIMAN DIGITAL MANUAL --}}
+                                @if($isDigitalOrder && $isPaid && !$isCompleted)
+                                    <button type="button" 
+                                            onclick="openDigitalDeliveryModal('{{ $order->invoice_number }}', '{{ addslashes($order->user->nama_lengkap ?? 'Customer') }}')" 
+                                            class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold py-2 rounded-lg transition-colors flex items-center justify-center shadow-sm mt-1">
+                                        <i class="fas fa-upload mr-1.5"></i> Kirim File / E-Ticket
+                                    </button>
+                                    <p class="text-[9px] text-center text-gray-500 mt-1">Upload manual untuk cairkan dana</p>
+                                @endif
 
                                 @php
                                     $escrow = \App\Models\Escrow::where('order_id', $order->id)->first();
@@ -179,21 +230,21 @@
 
                                 {{-- 1. TAMPILAN JIKA REFUND SELESAI --}}
                                 @if($isRefundDone)
-                                    <div class="text-center p-2 bg-red-50 border border-red-200 rounded-lg w-full mb-2 shadow-inner">
+                                    <div class="text-center p-2 bg-red-50 border border-red-200 rounded-lg w-full mt-2 shadow-inner">
                                         <i class="fas fa-undo-alt text-red-500 text-xl mb-1"></i>
                                         <p class="text-[10px] text-red-700 font-bold uppercase tracking-wider">Refund Selesai</p>
                                     </div>
 
                                 {{-- 2. TAMPILAN JIKA REFUND PENDING --}}
                                 @elseif($isRefundPending)
-                                    <div class="text-center p-2 bg-yellow-50 border border-yellow-200 rounded-lg w-full mb-2 shadow-inner">
+                                    <div class="text-center p-2 bg-yellow-50 border border-yellow-200 rounded-lg w-full mt-2 shadow-inner">
                                         <i class="fas fa-undo text-yellow-500 text-xl mb-1"></i>
                                         <p class="text-[10px] text-yellow-700 font-bold uppercase tracking-wider leading-tight">Proses Refund</p>
                                     </div>
 
                                 {{-- 3. TAMPILAN JIKA PROSES RETUR --}}
                                 @elseif($isRetur)
-                                    <div class="w-full mb-2">
+                                    <div class="w-full mt-2">
                                         @php
                                             // Ambil data dari tabel return_orders
                                             $returnOrder = \App\Models\ReturnOrder::where('order_id', $order->id)->first();
@@ -228,7 +279,7 @@
 
                                 {{-- 4. TAMPILAN JIKA MEDIASI AKTIF --}}
                                 @elseif($isMediasi)
-                                    <div class="text-center p-2 bg-orange-50 border border-orange-200 rounded-lg w-full mb-2 shadow-inner">
+                                    <div class="text-center p-2 bg-orange-50 border border-orange-200 rounded-lg w-full mt-2 shadow-inner">
                                         <i class="fas fa-gavel text-orange-500 text-xl mb-1"></i>
                                         <p class="text-[10px] text-orange-700 font-bold uppercase tracking-wider">Mediasi Admin</p>
                                     </div>
@@ -236,7 +287,7 @@
 
                                 {{-- TOMBOL CHAT RESOLUSI (Selalu muncul jika ada riwayat masalah) --}}
                                 @if($isRetur || $isMediasi || $isRefundPending || $isRefundDone)
-                                    <div class="w-full mt-1">
+                                    <div class="w-full mt-2">
                                         <button type="button" onclick="openKomplainModal('{{ $order->invoice_number }}', '{{ addslashes($order->user->nama_lengkap ?? 'Pembeli') }}')" class="w-full bg-white hover:bg-red-50 border border-gray-300 hover:border-red-300 text-gray-700 hover:text-red-600 text-[10px] font-bold py-2 rounded-lg transition-colors flex items-center justify-center shadow-sm">
                                             <i class="fas fa-comments mr-1.5 text-red-400"></i> Chat Resolusi
                                         </button>
@@ -273,6 +324,70 @@
     </div>
 </div>
 
+
+{{-- ============================================================== --}}
+{{-- MODAL UPLOAD PENGIRIMAN DIGITAL MANUAL (BARU) --}}
+{{-- ============================================================== --}}
+<div id="digitalDeliveryModal" class="fixed inset-0 z-[100] hidden bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col transform transition-all scale-95 opacity-0" id="digitalDeliveryModalContent">
+        <div class="bg-indigo-600 px-5 py-4 flex justify-between items-center text-white shadow-md z-10">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white backdrop-blur-sm">
+                    <i class="fas fa-cloud-upload-alt text-sm"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-sm leading-tight">Pengiriman Produk Digital</h3>
+                    <p class="text-[10px] text-indigo-100" id="ddm-invoice">INV-12345</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeDigitalDeliveryModal()" class="text-white hover:text-indigo-200 bg-indigo-700 hover:bg-indigo-800 rounded-full w-8 h-8 flex items-center justify-center transition">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <form action="{{ route('seller.pesanan.marketplace.send_digital') }}" method="POST" enctype="multipart/form-data" class="p-5 flex-1 overflow-y-auto">
+            @csrf
+            <input type="hidden" name="invoice_number" id="ddm-invoice-input">
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <p class="text-xs text-blue-800 font-medium">
+                    <i class="fas fa-info-circle mr-1 text-blue-600"></i>
+                    Masukkan tautan (link) ATAU upload file untuk menyelesaikan pesanan ini. Setelah dikirim, dana akan masuk ke Saldo Anda.
+                </p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">1. Masukkan Link Akses (Opsional)</label>
+                    <input type="url" name="digital_url" placeholder="Contoh: https://drive.google.com/..." class="w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                </div>
+
+                <div class="relative py-1">
+                    <div class="absolute inset-0 flex items-center" aria-hidden="true"><div class="w-full border-t border-gray-200"></div></div>
+                    <div class="relative flex justify-center"><span class="px-2 bg-white text-[10px] font-bold text-gray-400">ATAU</span></div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">2. Upload File Dokumen/Gambar (Opsional)</label>
+                    <input type="file" name="digital_file" accept=".pdf,.zip,.jpg,.jpeg,.png,.webp" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-gray-200 rounded-lg p-1">
+                    <p class="mt-1 text-[10px] text-gray-500">Format: PDF, ZIP, JPG, PNG (Max 5MB)</p>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-4">
+                <button type="button" onclick="closeDigitalDeliveryModal()" class="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition text-xs">Batal</button>
+                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 transition text-xs shadow-sm flex items-center">
+                    <i class="fas fa-paper-plane mr-2"></i> Kirim Pesanan
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+{{-- ============================================================== --}}
+{{-- MODAL RETUR (TETAP ADA) --}}
+{{-- ============================================================== --}}
 <div id="returModal" class="fixed inset-0 z-[100] hidden bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col transform transition-all scale-95 opacity-0" id="returModalContent">
         <div class="bg-teal-600 px-5 py-4 flex justify-between items-center text-white shadow-md z-10">
@@ -332,10 +447,31 @@
 </div>
 
 <script>
-    function openReturModal(btn) {
-        // Ambil dan parse data JSON dari tombol
-        const data = JSON.parse(btn.getAttribute('data-info'));
+    // FUNGSI UNTUK MODAL PENGIRIMAN DIGITAL MANUAL
+    function openDigitalDeliveryModal(invoice, customerName) {
+        document.getElementById('ddm-invoice').innerText = invoice + ' - ' + customerName;
+        document.getElementById('ddm-invoice-input').value = invoice;
+        
+        const modal = document.getElementById('digitalDeliveryModal');
+        const content = document.getElementById('digitalDeliveryModalContent');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('scale-95', 'opacity-0');
+            content.classList.add('scale-100', 'opacity-100');
+        }, 50);
+    }
 
+    function closeDigitalDeliveryModal() {
+        const modal = document.getElementById('digitalDeliveryModal');
+        const content = document.getElementById('digitalDeliveryModalContent');
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => { modal.classList.add('hidden'); }, 300);
+    }
+
+    // FUNGSI MODAL RETUR (TETAP SAMA)
+    function openReturModal(btn) {
+        const data = JSON.parse(btn.getAttribute('data-info'));
         document.getElementById('rm-store-name').innerText = data.store_name;
         document.getElementById('rm-store-address').innerText = data.store_address;
         document.getElementById('rm-buyer-name').innerText = data.buyer_name;
@@ -347,22 +483,16 @@
         const imgEl = document.getElementById('rm-logo');
         const noImgEl = document.getElementById('rm-no-logo');
         if(data.logo && data.logo !== '') {
-            imgEl.src = data.logo;
-            imgEl.classList.remove('hidden');
-            noImgEl.classList.add('hidden');
+            imgEl.src = data.logo; imgEl.classList.remove('hidden'); noImgEl.classList.add('hidden');
         } else {
-            imgEl.classList.add('hidden');
-            noImgEl.classList.remove('hidden');
+            imgEl.classList.add('hidden'); noImgEl.classList.remove('hidden');
         }
         document.getElementById('rm-track-btn').href = data.track_url;
 
         const modal = document.getElementById('returModal');
         const content = document.getElementById('returModalContent');
         modal.classList.remove('hidden');
-        setTimeout(() => {
-            content.classList.remove('scale-95', 'opacity-0');
-            content.classList.add('scale-100', 'opacity-100');
-        }, 50);
+        setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); content.classList.add('scale-100', 'opacity-100'); }, 50);
     }
 
     function closeReturModal() {
@@ -374,6 +504,9 @@
     }
 </script>
 
+{{-- ============================================================== --}}
+{{-- MODAL KOMPLAIN CHAT (TETAP ADA) --}}
+{{-- ============================================================== --}}
 <div id="komplainModal" class="fixed inset-0 z-[99] hidden bg-gray-900 bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 transition-opacity duration-300">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col h-[600px] transform transition-all scale-95 opacity-0" id="komplainModalContent">
 
@@ -398,7 +531,7 @@
                 <form id="formApproveRetur" method="POST" onsubmit="return confirm('Anda yakin menyetujui Retur Barang? \n\nSistem akan meminta pembeli memaketkan kembali barangnya.');">
                     @csrf
                     <button type="submit" class="bg-white border border-orange-500 text-orange-600 text-[10px] px-2.5 py-1.5 rounded font-bold hover:bg-orange-100 transition shadow-sm">
-                        Setujui Retur Barang
+                        Setujui Retur
                     </button>
                 </form>
                 <form id="formApproveRefund" method="POST" onsubmit="return confirm('Anda yakin menyetujui Pengembalian Dana?\n\nAdmin Sancaka akan segera mengembalikan uang ke Saldo Pembeli (Hanya harga barang, ongkir hangus).');">
@@ -453,7 +586,6 @@
         currentInvoice = invoice;
         document.getElementById('komplainInvoice').innerText = invoice;
         document.getElementById('komplainCustomerName').innerText = 'Pembeli: ' + customerName;
-
         document.getElementById('formApproveRetur').action = `/seller/komplain/retur/${invoice}`;
         document.getElementById('formApproveRefund').action = `/seller/komplain/refund/${invoice}`;
 
@@ -485,7 +617,6 @@
         const chatBox = document.getElementById('chatBoxContent');
         chatBox.innerHTML = '<div class="text-center text-xs text-gray-400 my-4"><i class="fas fa-spinner fa-spin"></i> Memuat pesan...</div>';
 
-        // URL GANTI SESUAI ROUTE SELLER MAS
         fetch(`/seller/komplain/chat/${currentInvoice}`)
             .then(res => res.json())
             .then(data => {
@@ -511,17 +642,13 @@
         input.value = '';
         input.disabled = true;
 
-        // URL GANTI SESUAI ROUTE SELLER MAS
         fetch(`{{ route('seller.komplain.send_chat') }}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
-            body: JSON.stringify({
-                invoice_number: currentInvoice,
-                message: msg
-            })
+            body: JSON.stringify({ invoice_number: currentInvoice, message: msg })
         })
         .then(res => res.json())
         .then(data => {
@@ -539,13 +666,11 @@
     function appendChatHTML(chat) {
         const chatBox = document.getElementById('chatBoxContent');
         const isSeller = chat.sender_type === 'seller';
-
         const dateObj = new Date(chat.created_at);
         const time = dateObj.toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'});
 
         let html = '';
         if(isSeller) {
-            // Bubble Penjual (Kanan)
             html = `
             <div class="flex items-start justify-end gap-2 mt-2">
                 <div class="bg-orange-50 border border-orange-100 rounded-2xl rounded-tr-none p-3 max-w-[80%] shadow-sm">
@@ -554,7 +679,6 @@
                 </div>
             </div>`;
         } else {
-            // Bubble Pembeli / Admin (Kiri)
             const isAdmin = chat.sender_type === 'admin';
             const icon = isAdmin ? '<i class="fas fa-shield-alt text-blue-500"></i>' : '<i class="fas fa-user text-gray-500"></i>';
             const senderName = isAdmin ? 'Admin Sancaka' : (chat.sender ? chat.sender.nama_lengkap : 'Pembeli');
