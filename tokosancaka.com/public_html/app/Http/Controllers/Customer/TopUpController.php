@@ -1702,31 +1702,40 @@ public function handleCallback(Request $request)
         }
     }
 
-    public function createPaymentDANA(Transaction $transaction)
+  public function createPaymentDANA(Transaction $transaction)
     {
         $trxId = $transaction->reference_id;
+        Log::info('DANA START for Transaction Table: ' . $trxId); // LOG LOG dipertahankan
+
+        // INI YANG SEMPAT HILANG: Deklarasi $user
+        $user = Auth::user(); 
+
+        $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+
+        $merchantId = config('services.dana.merchant_id');
         $amountValue = number_format((float)$transaction->amount, 2, '.', '');
-        
+
         // Gunakan nullsafe untuk mencegah error jika user tidak ditemukan
         $userId = $user ? (string) $user->id_pengguna : 'GUEST' . rand(100, 999);
         $nickname = $user ? substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap), 0, 40) : 'Customer Sancaka';
 
         // ====================================================================
-        // 3. BODY REQUEST (Disamakan persis dengan format Checkout yang SUKSES)
+        // BODY REQUEST BERSUKU CADANG SESUAI DENGAN PAYLOAD GAPURA YANG SUKSES
         // ====================================================================
         $bodyArray = [
             "partnerReferenceNo" => $trxId,
-            "merchantId"         => config('services.dana.merchant_id'),
+            "merchantId"         => $merchantId,
             "amount"             => [
                 "value"    => $amountValue,
                 "currency" => "IDR"
             ],
-            "validUpTo"          => \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP'),
+            "validUpTo"          => $expiryTime,
             "urlParams"          => [
                 [
                     "url"        => route('dana.return', ['trx_id' => $trxId]),
                     "type"       => "PAY_RETURN",
-                    "isDeeplink" => "N" // Di log checkout sukses Anda ini "N"
+                    "isDeeplink" => "N"
                 ],
                 [
                     "url"        => url('/dana/notify'),
@@ -1778,7 +1787,6 @@ public function handleCallback(Request $request)
 
             Log::info('LOG LOG: [UAT DANA TESTING] Mengirim request API H2H payment-host-to-host.htm DANA');
 
-            // --- KITA DEFINISIKAN HEADER DULU AGAR BISA DI-DD DENGAN RAPI ---
             $headersUAT = [
                 'Authorization' => 'Bearer ' . $accessToken,
                 'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
@@ -1800,19 +1808,6 @@ public function handleCallback(Request $request)
             Log::info('DANA Create Payment Result:', $result);
             Log::info('LOG LOG: [UAT DANA TESTING] Hasil Response createPaymentDANA:', $result);
 
-            // =========================================================================
-            // --- [DD KHUSUS UAT DANA - ROW 1 & 2] ---
-            // Nanti kalau UAT sudah selesai, baris dd() ini di-comment (//) saja ya.
-            // =========================================================================
-            //dd([
-            //    'UAT_SCENARIO'   => 'Payment Host to Host (Copy ke Excel UAT)',
-            //    'URL_REQUEST'    => $baseUrl . '/payment-gateway/v1.0/debit/payment-host-to-host.htm',
-            //    'HEADER_REQUEST' => $headersUAT,
-            //    'BODY_REQUEST'   => $bodyArray,
-            //    'BODY_RESPONSE'  => $result
-            //]);
-            // =========================================================================
-
             if (isset($result['responseCode']) && $result['responseCode'] == '2005400') {
                 $redirectUrl = $result['webRedirectUrl'] ?? $result['appLinkUrl'] ?? null;
                 if ($redirectUrl) {
@@ -1824,7 +1819,7 @@ public function handleCallback(Request $request)
 
             Log::error('DANA Gagal:', $result);
 
-            // Output error code ke UI agar Anda tahu skenario mana yang sedang ter-trigger
+            // Output error code ke UI
             $errorCode = $result['responseCode'] ?? 'N/A';
             return back()->with('error', 'Gagal dari DANA: ' . ($result['responseMessage'] ?? 'Unknown') . ' (Code: ' . $errorCode . ')');
 
