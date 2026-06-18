@@ -124,7 +124,7 @@ class TopUpController extends Controller
                     throw new Exception("Akun DANA Anda belum terhubung. Silakan hubungkan di menu profil.");
                 }
 
-                $danaRes = $this->_createTopUpDanaBinding($transaction, $user);
+                $danaRes = $this->_createTopUpDanaGateway($transaction, $user);
 
                 if (!isset($danaRes['success']) || !$danaRes['success']) {
                     throw new Exception($danaRes['message'] ?? 'Gagal memproses Auto Debit DANA.');
