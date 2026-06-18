@@ -88,7 +88,7 @@
                 $isPaid = in_array(strtolower($order->status), ['paid', 'processing', 'completed', 'selesai', 'lunas']);
             @endphp
 
-            <div class="p-6 md:p-8 pt-0 bg-white">
+            <div class="p-6 md:p-8 pt-0 bg-white border-b border-gray-100">
                 <div class="bg-blue-50 border border-blue-200 rounded-2xl p-6 md:p-8 text-center shadow-inner">
                     
                     @if($isPaid)
@@ -135,6 +135,20 @@
                 </div>
             </div>
 
+            {{-- 🟢 TOMBOL BARU: DOWNLOAD PDF & WA FONNTE --}}
+            <div class="px-6 md:px-8 py-6 bg-white">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {{-- Sesuaikan "route('checkout.download_pdf')" dengan nama route aslinya jika berbeda --}}
+                    <a href="{{ url('checkout/download-pdf/' . $order->invoice_number) }}" target="_blank" class="flex items-center justify-center gap-2 px-4 py-3 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold rounded-xl transition border border-gray-200 shadow-sm">
+                        <i class="fas fa-file-pdf text-red-500 text-lg"></i> Download Invoice (PDF)
+                    </a>
+                    
+                    <button type="button" id="btnSendWa" onclick="sendInvoiceWA('{{ $order->invoice_number }}')" class="flex items-center justify-center gap-2 px-4 py-3 bg-green-50 hover:bg-green-100 text-green-700 font-bold rounded-xl transition border border-green-200 shadow-sm">
+                        <i class="fab fa-whatsapp text-green-600 text-lg"></i> Kirim Akses ke WA
+                    </button>
+                </div>
+            </div>
+
         </div>
         
         <div class="text-center mt-8">
@@ -150,22 +164,54 @@
     function copyToken() {
         var copyText = document.getElementById("snToken");
         copyText.select();
-        copyText.setSelectionRange(0, 99999); /* Untuk mobile */
+        copyText.setSelectionRange(0, 99999);
         navigator.clipboard.writeText(copyText.value);
         
-        // SweetAlert jika ada, kalau tidak fallback ke JS alert biasa
         if(typeof Swal !== 'undefined') {
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: 'Kode / SN berhasil disalin!',
-                showConfirmButton: false,
-                timer: 2000
-            });
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Kode / SN berhasil disalin!', showConfirmButton: false, timer: 2000 });
         } else {
             alert("Kode / SN berhasil disalin!");
         }
+    }
+
+    // Fungsi AJAX untuk mengirim notif Fonnte
+    function sendInvoiceWA(invoice) {
+        const btn = document.getElementById('btnSendWa');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin text-lg text-green-600"></i> Mengirim...';
+
+        fetch(`/guest/history-belanja/${invoice}/send-wa`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fab fa-whatsapp text-green-600 text-lg"></i> Kirim Akses ke WA';
+            
+            if(data.success) {
+                if(typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message });
+                } else {
+                    alert(data.message);
+                }
+            } else {
+                if(typeof Swal !== 'undefined') {
+                    Swal.fire({ icon: 'error', title: 'Gagal', text: data.message });
+                } else {
+                    alert('Gagal: ' + data.message);
+                }
+            }
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fab fa-whatsapp text-green-600 text-lg"></i> Kirim Akses ke WA';
+            alert('Terjadi kesalahan jaringan saat mengirim WhatsApp.');
+        });
     }
 </script>
 @endsection

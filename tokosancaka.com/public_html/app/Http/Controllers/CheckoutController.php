@@ -2660,4 +2660,71 @@ TEXT;
         return view('customer.pesanan.history-belanja', compact('order'));
     }
 
+    public function downloadPDF($invoice)
+    {
+        $order = Order::with('items.product', 'items.variant', 'store', 'user')
+            ->where('invoice_number', $invoice)
+            ->firstOrFail();
+
+        $pdf = Pdf::loadView('checkout.invoice_pdf', compact('order'))
+                ->setPaper('a4', 'portrait');
+
+        // 🔥 LOGIKA NAMA FILE BARU
+        // Ambil nama dari input form Guest, atau dari User Auth, atau fallback 'Guest'
+        $namaPembeli = $order->receiver_name ?? ($order->user->nama_lengkap ?? 'Guest');
+        
+        // Membersihkan spasi pada nama agar rapi jadi PDF (Misal: Budi Santoso -> Budi-Santoso)
+        $namaAman = \Illuminate\Support\Str::slug($namaPembeli, '_'); 
+        
+        // Format: budi-santoso_SCK-ORD-12345.pdf
+        $namaFile = $namaAman . '_' . $order->invoice_number . '.pdf';
+
+        return $pdf->download($namaFile);
+    }
+
+    public function sendGuestWA($invoice)
+    {
+        try {
+            $order = Order::with('items.product')->where('invoice_number', $invoice)->firstOrFail();
+            $fonnteService = app(\App\Services\FonnteService::class);
+            
+            // Ambil nomor WA (Prioritas dari form checkout Guest, jika tidak ada baru ambil dari User)
+            $noWa = $order->receiver_phone ?? ($order->user->no_wa ?? null);
+            
+            if (empty($noWa) || $noWa === '-' || $noWa === '081234567890') {
+                return response()->json(['success' => false, 'message' => 'Nomor WhatsApp pembeli tidak valid atau tidak ditemukan.']);
+            }
+
+            $namaPembeli = $order->receiver_name ?? ($order->user->nama_lengkap ?? 'Pelanggan');
+            $linkAkses = route('guest.history_belanja', ['invoice' => $order->invoice_number]);
+            
+            // Buat List Produk
+            $rincian = "";
+            foreach($order->items as $item) {
+                $rincian .= "- " . ($item->product->name ?? 'Produk Digital') . " (x{$item->quantity})\n";
+            }
+
+            // Rakit Pesan
+            $pesan = "*Halo {$namaPembeli}!*\n\n";
+            $pesan .= "Berikut adalah rincian pesanan Anda di *Sancaka Express*:\n\n";
+            $pesan .= "*ID Transaksi:* {$order->invoice_number}\n";
+            $pesan .= "*Status:* " . strtoupper($order->status) . "\n";
+            $pesan .= "*Total:* Rp " . number_format($order->total_amount, 0, ',', '.') . "\n\n";
+            $pesan .= "*Item:*\n{$rincian}\n";
+            $pesan .= "Gunakan tautan di bawah ini untuk melihat rincian lengkap, mengunduh invoice (PDF), dan mengakses *E-Ticket / Produk Digital* Anda sewaktu-waktu:\n\n";
+            $pesan .= $linkAkses . "\n\n";
+            $pesan .= "Terima kasih telah berbelanja!";
+
+            // Pastikan format nomor diawali '62'
+            $noWaFormatted = preg_replace('/^0/', '62', $noWa);
+            $fonnteService->sendMessage($noWaFormatted, $pesan);
+
+            return response()->json(['success' => true, 'message' => 'Tautan rincian belanja berhasil dikirim ke WhatsApp (' . $noWa . ') Anda.']);
+            
+        } catch (\Exception $e) {
+            Log::error('Gagal kirim resi WA Guest: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan internal.']);
+        }
+    }
+
 } // Akhir Class

@@ -1565,3 +1565,5 @@ Route::get('/checkout/search-address-ajax', [\App\Http\Controllers\CheckoutContr
 // Halaman History / Download Khusus Guest
 Route::get('/guest/history-belanja/{invoice}', [App\Http\Controllers\CheckoutController::class, 'guestHistory'])
     ->name('guest.history_belanja');
+
+    Route::post('/guest/history-belanja/{invoice}/send-wa', [App\Http\Controllers\CheckoutController::class, 'sendGuestWA'])->name('guest.send_wa');
