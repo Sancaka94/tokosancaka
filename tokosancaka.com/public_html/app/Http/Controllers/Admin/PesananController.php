@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Pesanan;
 use App\Models\Kontak;
+use App\Models\Order;
 use App\Models\User;
 use App\Models\Keuangan; // <--- WAJIB ADA
 use App\Models\TopUp; // Tetap import jika diperlukan di fungsi lain
