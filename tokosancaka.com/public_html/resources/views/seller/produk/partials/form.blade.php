@@ -1,111 +1,46 @@
 @extends('layouts.customer') 
-{{-- PERUBAHAN 1: Menggunakan layout customer --}}
 
 @push('styles')
 <style>
-    /* =============================
-        STYLE TAMBAH PRODUK - FIXED
-        ============================= */
-    /* CSS ini dipertahankan karena men-style komponen di dalam form */
-
     .image-uploader {
-        border: 2px dashed #d1d5db;
-        border-radius: 0.5rem;
-        padding: 2rem;
-        text-align: center;
-        cursor: pointer;
-        transition: border-color 0.3s ease;
+        border: 2px dashed #d1d5db; border-radius: 0.5rem; padding: 2rem;
+        text-align: center; cursor: pointer; transition: border-color 0.3s ease;
         background-color: #fafafa;
     }
-
-    .image-uploader:hover,
-    .image-uploader.dragging {
-        border-color: #dc2626; /* GANTI: red-600 */
-        background-color: #fee2e2; /* GANTI: red-50 */
+    .image-uploader:hover, .image-uploader.dragging {
+        border-color: #dc2626; background-color: #fee2e2;
     }
-
     .image-preview {
-        margin-top: 1rem;
-        max-width: 100%;
-        max-height: 300px;
-        border-radius: 0.5rem;
-        display: none; /* Sembunyikan default */
+        margin-top: 1rem; max-width: 100%; max-height: 300px;
+        border-radius: 0.5rem; display: none;
     }
-
     .spinner {
-        display: inline-block;
-        width: 1rem;
-        height: 1rem;
-        vertical-align: text-bottom;
-        border: 0.2em solid currentColor;
-        border-right-color: transparent;
-        border-radius: 50%;
-        animation: spinner-border .75s linear infinite;
+        display: inline-block; width: 1rem; height: 1rem; vertical-align: text-bottom;
+        border: 0.2em solid currentColor; border-right-color: transparent;
+        border-radius: 50%; animation: spinner-border .75s linear infinite;
     }
-
-    @keyframes spinner-border {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-
-    /* Style tambahan untuk tombol varian */
+    @keyframes spinner-border { to { transform: rotate(360deg); } }
     .btn {
-        padding: 0.5rem 1rem;
-        border-radius: 0.375rem;
-        font-weight: 600;
-        transition: all 0.2s ease-in-out;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        line-height: 1.25;
+        padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 600;
+        transition: all 0.2s ease-in-out; display: inline-flex;
+        align-items: center; justify-content: center; line-height: 1.25;
     }
-    .btn-primary {
-        background-color: #dc2626; /* GANTI: red-600 */
-        color: white;
-        border: 1px solid transparent;
-    }
-    .btn-primary:hover {
-        background-color: #b91c1c; /* GANTI: red-700 */
-    }
-    .btn-secondary {
-        background-color: #e5e7eb;
-        color: #374151;
-        border: 1px solid #d1d5db;
-    }
-    .btn-secondary:hover {
-        background-color: #d1d5db;
-    }
-    .btn-outline-primary {
-        background-color: transparent;
-        color: #dc2626; /* GANTI: red-600 */
-        border: 1px solid #dc2626; /* GANTI: red-600 */
-    }
-    .btn-outline-primary:hover {
-        background-color: #fee2e2; /* GANTI: red-50 */
-    }
-    .btn-sm {
-        padding: 0.25rem 0.75rem;
-        font-size: 0.875rem;
-    }
-    /* Mengubah cursor untuk input disabled */
+    .btn-primary { background-color: #dc2626; color: white; border: 1px solid transparent; }
+    .btn-primary:hover { background-color: #b91c1c; }
+    .btn-secondary { background-color: #e5e7eb; color: #374151; border: 1px solid #d1d5db; }
+    .btn-secondary:hover { background-color: #d1d5db; }
+    .btn-outline-primary { background-color: transparent; color: #dc2626; border: 1px solid #dc2626; }
+    .btn-outline-primary:hover { background-color: #fee2e2; }
+    .btn-sm { padding: 0.25rem 0.75rem; font-size: 0.875rem; }
     input:disabled, textarea:disabled, select:disabled {
-        cursor: not-allowed;
-        background-color: #f3f4f6;
+        cursor: not-allowed; background-color: #f3f4f6;
     }
-
-    /* =============================
-        PERUBAHAN 2: CSS KHUSUS ADMINLTE DIHAPUS
-        ============================= */
-    /* Bagian CSS untuk 'html, body, .content-wrapper' dihapus */
-
 </style>
 @endpush
 
 @section('content')
 <div class="py-12">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        {{-- Menampilkan error validasi (Ringkasan) --}}
         @if ($errors->any())
             <div class="mb-6 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md relative" role="alert">
                 <strong class="font-bold">Oops!</strong>
@@ -113,13 +48,14 @@
             </div>
         @endif
 
-        {{-- PERUBAHAN 3: Form action dirubah ke route seller --}}
         <form id="product-form" action="{{ route('seller.produk.store') }}" method="POST" enctype="multipart/form-data" novalidate>
             @csrf
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {{-- Kolom Kiri --}}
+                {{-- ========================================== --}}
+                {{-- KOLOM KIRI (UTAMA) --}}
+                {{-- ========================================== --}}
                 <div class="lg:col-span-2 space-y-6">
 
                     {{-- Informasi Produk --}}
@@ -151,10 +87,6 @@
                         @error('product_image') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                     </div>
 
-                    {{-- PERUBAHAN 4: Card Informasi Penjual DIHAPUS --}}
-                    {{-- Data ini akan diisi otomatis oleh Controller dari data Auth::user()->store --}}
-
-
                     {{-- Varian Produk --}}
                     <div class="bg-white p-6 rounded-lg shadow-md">
                         <div class="flex justify-between items-center mb-4">
@@ -162,9 +94,7 @@
                             <button type="button" id="add-variant-group" class="btn btn-sm btn-outline-primary">Tambah Varian</button>
                         </div>
                         <p class="text-sm text-gray-600 mb-4">Tambahkan varian jika produk Anda memiliki pilihan seperti warna atau ukuran. Ini akan menonaktifkan input stok utama.</p>
-                        <div id="variant-groups-container" class="space-y-6">
-                            {{-- Grup varian dinamis akan ditambahkan di sini oleh JavaScript --}}
-                        </div>
+                        <div id="variant-groups-container" class="space-y-6"></div>
                     </div>
 
                     {{-- AREA PRODUK DIGITAL (Tampil Dinamis) --}}
@@ -201,10 +131,20 @@
                         </div>
                     </div>
 
+                    {{-- Card untuk Atribut Dinamis / Spesifikasi --}}
+                    <div id="attributes-card" class="bg-white p-6 rounded-lg shadow-md hidden">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Spesifikasi Produk</h2>
+                        <div id="dynamic-attributes-container" class="space-y-4"></div>
+                    </div>
+
                 </div>
 
-                {{-- Kolom Kanan --}}
+                {{-- ========================================== --}}
+                {{-- KOLOM KANAN (SIDEBAR) --}}
+                {{-- ========================================== --}}
                 <div class="space-y-6">
+
+                    {{-- Harga, Stok & Pengiriman --}}
                     <div class="bg-white p-6 rounded-lg shadow-md">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">Harga, Stok & Pengiriman</h2>
                         <div class="space-y-4">
@@ -258,6 +198,7 @@
                         </div>
                     </div>
 
+                    {{-- Organisasi Produk --}}
                     <div class="bg-white p-6 rounded-lg shadow-md">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">Organisasi Produk</h2>
                         <div class="space-y-4">
@@ -270,7 +211,6 @@
                                 <select name="category_id" id="category_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" required>
                                     <option value="">-- Pilih Kategori --</option>
                                     @foreach($categories as $category)
-                                        {{-- Tambahkan data-kategori-grup agar JS tahu tipe kategorinya --}}
                                         <option value="{{ $category->id }}" 
                                                 data-attributes-url="{{ route('seller.categories.attributes', $category->id) }}" 
                                                 data-kategori-grup="{{ strtolower($category->category_group ?? $category->type ?? '') }}"
@@ -288,14 +228,7 @@
                         </div>
                     </div>
 
-                    {{-- Card untuk Atribut Dinamis --}}
-                    <div id="attributes-card" class="bg-white p-6 rounded-lg shadow-md hidden">
-                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Spesifikasi Produk</h2>
-                        <div id="dynamic-attributes-container" class="space-y-4">
-                            {{-- Field dinamis akan muncul di sini oleh JavaScript --}}
-                        </div>
-                    </div>
-
+                    {{-- Status & Label --}}
                     <div class="bg-white p-6 rounded-lg shadow-md">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">Status & Label</h2>
                         <div class="space-y-4">
@@ -317,25 +250,18 @@
                         </div>
                     </div>
                     
-                    {{-- Tombol Aksi Sticky --}}
-                    <div class="bg-white p-6 rounded-lg shadow-md flex justify-end gap-3">
-                        {{-- Tombol Batal (merah) --}}
-                        <a href="{{ route('seller.produk.index') }}"
-                           class="px-5 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 transition">
-                            Batal
-                        </a>
-                    
-                        {{-- Tombol Simpan Produk (hijau) --}}
-                        <button id="submit-button" type="submit"
-                            class="px-5 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300 transition flex items-center gap-2">
+                    {{-- Tombol Aksi --}}
+                    <div class="bg-white p-6 rounded-lg shadow-md flex flex-col gap-3">
+                        <button id="submit-button" type="submit" class="w-full px-5 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300 transition flex items-center justify-center gap-2">
                             Simpan Produk
                         </button>
+                        <a href="{{ route('seller.produk.index') }}" class="w-full px-5 py-3 bg-red-100 text-red-700 font-bold rounded-lg hover:bg-red-200 transition text-center">
+                            Batal
+                        </a>
                     </div>
 
                 </div>
             </div>
-
-            
         </form>
     </div>
 </div>
@@ -359,15 +285,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (e.key === 'Enter' || e.key === ' ') openFileDialog();
         });
 
-        // Drag and Drop
         uploader.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploader.classList.add('dragging');
+            e.preventDefault(); uploader.classList.add('dragging');
         });
         uploader.addEventListener('dragleave', () => uploader.classList.remove('dragging'));
         uploader.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploader.classList.remove('dragging');
+            e.preventDefault(); uploader.classList.remove('dragging');
             if (e.dataTransfer.files.length > 0) {
                 input.files = e.dataTransfer.files;
                 handleFileChange({ target: input });
@@ -387,10 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         input.addEventListener('change', handleFileChange);
     }
-
-    // Inisialisasi uploader
     setupImageUploader('image-uploader', 'product_image', 'image-preview');
-    // PERUBAHAN 7: Inisialisasi seller-logo-uploader DIHAPUS
 
     // --- Form Submission Loading Spinner ---
     const form = document.getElementById('product-form');
@@ -403,19 +323,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             submitButton.disabled = true;
-            submitButton.innerHTML = `
-                <span class="spinner" role="status" aria-hidden="true"></span>
-                Menyimpan...
-            `;
+            submitButton.innerHTML = `<span class="spinner" role="status" aria-hidden="true"></span> Menyimpan...`;
         });
     }
-
-    // PERUBAHAN 8: Script WhatsApp Formatter DIHAPUS
 
     // --- Script Atribut Dinamis ---
     const categorySelect = document.getElementById('category_id');
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
+    const digitalContainer = document.getElementById('digital-asset-container');
 
     async function fetchAndRenderAttributes() {
         const selectedOption = categorySelect.options[categorySelect.selectedIndex];
@@ -441,8 +357,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (typeof attr === 'object' && attr !== null && attr.slug) {
                         const field = createAttributeField(attr);
                         attributesContainer.appendChild(field);
-                    } else {
-                        console.warn('Data atribut tidak valid:', attr);
                     }
                 });
             } else {
@@ -473,35 +387,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 fieldHtml = `${label}<textarea name="${inputName}" id="attr_${attribute.slug}" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" ${isRequired}></textarea>`;
                 break;
             case 'select':
-                const options = optionsString.split(',')
-                    .map(opt => opt.trim())
-                    .filter(opt => opt) 
-                    .map(opt => `<option value="${opt}">${opt}</option>`)
-                    .join('');
+                const options = optionsString.split(',').map(opt => opt.trim()).filter(opt => opt).map(opt => `<option value="${opt}">${opt}</option>`).join('');
                 fieldHtml = `${label}<select name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" ${isRequired}><option value="">-- Pilih ${attributeName} --</option>${options}</select>`;
                 break;
             case 'checkbox':
-                const checkboxes = optionsString.split(',')
-                    .map(opt => opt.trim())
-                    .filter(opt => opt) 
-                    .map((opt, index) => `
-                        <div class="flex items-center">
-                            <input type="checkbox" name="${inputName}[]" id="attr_${attribute.slug}_${index}" value="${opt}" class="h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500">
-                            <label for="attr_${attribute.slug}_${index}" class="ml-2 block text-sm text-gray-900">${opt}</label>
-                        </div>`).join('');
+                const checkboxes = optionsString.split(',').map(opt => opt.trim()).filter(opt => opt).map((opt, index) => `
+                    <div class="flex items-center">
+                        <input type="checkbox" name="${inputName}[]" id="attr_${attribute.slug}_${index}" value="${opt}" class="h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                        <label for="attr_${attribute.slug}_${index}" class="ml-2 block text-sm text-gray-900">${opt}</label>
+                    </div>`).join('');
                 fieldHtml = `<label class="block text-sm font-medium text-gray-700">${attributeName} ${requiredAsterisk}</label><div class="mt-2 space-y-2">${checkboxes}</div>`;
                 break;
             default:
-                console.warn(`Tipe atribut tidak dikenali: ${attribute.type} untuk ${attributeName}`);
-                fieldHtml = `${label}<input type="text" name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired} title="Tipe asli: ${attribute.type}">`;
+                fieldHtml = `${label}<input type="text" name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}>`;
         }
         wrapper.innerHTML = fieldHtml;
         return wrapper;
     }
 
-   // --- Script Atribut & Aset Digital Dinamis ---
-    const digitalContainer = document.getElementById('digital-asset-container');
-
+    // --- Fungsi Cek Digital ---
     function checkDigitalCategory() {
         if (!categorySelect) return;
         const selectedOption = categorySelect.options[categorySelect.selectedIndex];
@@ -511,20 +415,30 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Ambil grup kategori dari atribut data
         const kategoriGrup = selectedOption.getAttribute('data-kategori-grup') || '';
         
-        // Cek apakah string kategori mengandung kata kunci digital/jasa
-
+        // DI SINI KATA KUNCI 'tiket', 'ticket', 'event' SUDAH DITAMBAHKAN
         const isDigital = ['produk_digital', 'jasa', 'digital', 'eticket', 'tiket', 'ticket', 'event'].some(keyword => kategoriGrup.includes(keyword));
-        
+
         if (isDigital) {
-            digitalContainer.classList.remove('hidden'); // Tampilkan form file digital
+            digitalContainer.classList.remove('hidden');
         } else {
-            digitalContainer.classList.add('hidden'); // Sembunyikan untuk produk fisik
+            digitalContainer.classList.add('hidden');
         }
     }
 
+    // --- Event Listener Kategori (Utama) ---
+    if (categorySelect) { 
+        categorySelect.addEventListener('change', () => {
+            fetchAndRenderAttributes(); 
+            checkDigitalCategory();     
+        });
+        
+        if(categorySelect.value) {
+            fetchAndRenderAttributes();
+            checkDigitalCategory();
+        }
+    }
 
     // --- Script Varian Dinamis ---
     const variantContainer = document.getElementById('variant-groups-container');
@@ -539,18 +453,11 @@ document.addEventListener('DOMContentLoaded', () => {
             variantIndex++;
             toggleMainStock();
         });
-    } else {
-        if (!addVariantBtn) console.error("Tombol 'Tambah Varian' tidak ditemukan.");
-        if (!variantContainer) console.error("Kontainer grup varian tidak ditemukan.");
-        if (!mainStockInput) console.error("Input stok utama tidak ditemukan.");
     }
-
 
     function createVariantGroup(index) {
         const groupWrapper = document.createElement('div');
         groupWrapper.classList.add('border', 'rounded-md', 'p-4', 'space-y-3', 'bg-gray-50');
-        // PERUBAHAN 9: Nama input varian diubah dari 'variants' menjadi 'variant_types'
-        // Ini agar konsisten dengan Controller Admin (ProductController.php)
         groupWrapper.innerHTML = `
             <div class="flex justify-between items-center">
                 <h3 class="font-semibold text-gray-700">Tipe Varian #${index + 1}</h3>
@@ -567,43 +474,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="text" name="variant_types[${index}][options]" id="variant_${index}_options" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" placeholder="Contoh: Merah, Biru, Hijau" required>
             </div>
         `;
-
         groupWrapper.querySelector('.remove-variant-group').addEventListener('click', (e) => {
             e.preventDefault();
             groupWrapper.remove();
             toggleMainStock();
-            // re-index tidak di-porting, tapi bisa ditambahkan jika perlu
         });
-
         return groupWrapper;
     }
 
     function toggleMainStock() {
         if (!mainStockInput) return;
-
         const warningId = 'stock-warning';
         const existingWarning = document.getElementById(warningId);
         if (existingWarning) existingWarning.remove();
 
-
         if (variantContainer && variantContainer.children.length > 0) { 
             mainStockInput.disabled = true;
-            mainStockInput.value = '0'; // Set ke 0 agar validasi controller lolos
+            mainStockInput.value = '0';
             if (mainStockInput.parentElement) {
                 mainStockInput.parentElement.insertAdjacentHTML('afterend', `
                     <p id="${warningId}" class="mt-1 text-xs text-red-600">
                         Stok utama dinonaktifkan. Stok akan diatur dari total varian.
                     </p>
                 `);
-            } else {
-                console.error("Parent element dari input stok tidak ditemukan.");
             }
         } else {
             mainStockInput.disabled = false;
         }
     }
-
-    // Panggil saat load untuk cek kondisi awal
     toggleMainStock();
 
 });
