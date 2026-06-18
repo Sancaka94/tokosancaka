@@ -2170,7 +2170,6 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
         $amountValue = number_format((float)$transaction->amount, 2, '.', '');
 
-        // 3. PAYLOAD DISAMAKAN PERSIS DENGAN DOKUMENTASI & KEBUTUHAN STRICT DANA
         $body = [
             "partnerReferenceNo" => (string) $trxId,
             "merchantId"         => config('services.dana.merchant_id'),
