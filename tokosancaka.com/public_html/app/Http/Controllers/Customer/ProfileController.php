@@ -134,7 +134,6 @@ class ProfileController extends Controller
                 '4. NO_WA_YANG_DICEK' => $user->no_wa
             ]);
         }
-        // ------------------------------------------------------------------------
 
         // 4. Proses Cocokkan
         if (strtoupper($user->setup_token) === strtoupper($inputOtp)) {
