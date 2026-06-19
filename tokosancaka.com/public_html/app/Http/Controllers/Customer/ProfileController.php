@@ -10,9 +10,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use App\Services\KiriminAjaService; // ðŸ”‘ Ditambahkan untuk service API
+use App\Services\KiriminAjaService; // 🔑 Ditambahkan untuk service API
 use Carbon\Carbon; // Ditambahkan untuk timestamp
-
 
 class ProfileController extends Controller
 {
@@ -44,7 +43,7 @@ class ProfileController extends Controller
             // --- VALIDASI DENGAN EXCEPTION UNTUK 'unique:Pengguna' ---
             $validated = $request->validate([
                 'nama_lengkap'          => ['required', 'string', 'max:255'],
-                // ðŸ”‘ PERBAIKAN: Menambahkan Rule::unique untuk No. WA yang diperbarui
+                // 🔑 PERBAIKAN: Menambahkan Rule::unique untuk No. WA yang diperbarui
                 'no_wa'                 => ['required', 'string', 'max:20', Rule::unique('Pengguna', 'no_wa')->ignore($user->id_pengguna, 'id_pengguna')],
                 'store_name'            => ['nullable', 'string', 'max:255'],
                 'store_logo'            => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
@@ -92,19 +91,54 @@ class ProfileController extends Controller
     }
 
     /**
-     * Menampilkan form setup profil menggunakan token (setelah registrasi).
-     * Route: customer/profile/setup/{token}
+     * Menampilkan Form Input OTP
      */
-    public function setup(Request $request, $token)
+    public function showOtpForm()
     {
-        $user = User::where('setup_token', $token)->firstOrFail();
+        $user = auth()->user();
 
-        // Perbaikan: Cek jika user yang login ID-nya tidak sama dengan user pemilik token
-        if (!auth()->check() || $user->id_pengguna !== auth()->id()) {
-            Auth::logout();
-            // Simpan token di session agar bisa login dan langsung redirect (logic harus ada di LoginController)
-            session(['setup_token_pending' => $token]);
-            return redirect()->route('login')->with('info', 'Sesi Anda tidak valid. Silakan login ulang untuk melanjutkan aktivasi akun.');
+        // Jika status sudah aktif, jangan izinkan akses halaman OTP lagi
+        if ($user->status === 'Aktif') {
+            return redirect()->route('customer.dashboard');
+        }
+
+        return view('customer.profile.otp');
+    }
+
+    /**
+     * Memproses Verifikasi Inputan OTP
+     */
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required|string|size:6'
+        ], [
+            'otp.required' => 'Kode OTP wajib diisi.',
+            'otp.size'     => 'Kode OTP harus 6 karakter.'
+        ]);
+
+        $user = auth()->user();
+
+        // Cek apakah input OTP sama dengan yang ada di database
+        if (strtoupper($user->setup_token) === strtoupper($request->otp)) {
+            // Jika valid, arahkan ke halaman isi form profil lengkap
+            return redirect()->route('customer.profile.setup')->with('success', 'OTP Valid! Silakan lengkapi data profil Anda.');
+        }
+
+        return redirect()->back()->with('error', 'Kode OTP yang Anda masukkan salah.');
+    }
+
+    /**
+     * Menampilkan form setup profil (Tanpa Token di URL).
+     * Route: customer/profile/setup
+     */
+    public function setup(Request $request)
+    {
+        $user = auth()->user();
+
+        // Jika sudah aktif, lempar ke dashboard
+        if ($user->status === 'Aktif') {
+            return redirect()->route('customer.dashboard');
         }
 
         return view('customer.profile.setup', [
@@ -112,24 +146,17 @@ class ProfileController extends Controller
         ]);
     }
 
-
     /**
-     * Memperbarui informasi profil dari form setup token.
-     * Route: customer/profile/update-setup/{token} (Asumsi Route Name: customer.profile.update.setup)
+     * Memperbarui informasi profil dari form setup.
+     * Route: customer/profile/update-setup
      */
-    public function updateSetup(Request $request, $token)
+    public function updateSetup(Request $request)
     {
-        $user = User::where('setup_token', $token)->firstOrFail();
-
-        // ðŸ”‘ PENTING: Validasi kepemilikan sesi sebelum update
-        if ($user->id_pengguna !== auth()->id()) {
-            return redirect()->route('login')->with('error', 'Sesi tidak valid.');
-        }
+        $user = auth()->user();
 
         // --- VALIDASI SAMA DENGAN UPDATE BIASA ---
         $validated = $request->validate([
             'nama_lengkap'          => ['required', 'string', 'max:255'],
-            // Mengabaikan user saat ini (token memastikan kita memilikinya)
             'no_wa'                 => ['required', 'string', 'max:20', Rule::unique('Pengguna', 'no_wa')->ignore($user->id_pengguna, 'id_pengguna')],
             'store_name'            => ['nullable', 'string', 'max:255'],
             'store_logo'            => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
@@ -158,7 +185,7 @@ class ProfileController extends Controller
             $user->store_logo_path = $path;
         }
 
-        // ðŸ”‘ Proses Akhir Setup
+        // 🔑 Proses Akhir Setup
         $user->fill($validated);
         $user->profile_setup_at = Carbon::now(); // Tandai waktu setup selesai
         $user->status = 'Aktif'; // Ubah status menjadi Aktif
@@ -169,7 +196,6 @@ class ProfileController extends Controller
         return redirect()->route('customer.profile.show')
                         ->with('success', 'Aktivasi dan Profil Anda berhasil diselesaikan!');
     }
-
 
     public function searchKiriminAjaAddress(Request $request, KiriminAjaService $kiriminAja)
     {
@@ -190,24 +216,12 @@ class ProfileController extends Controller
                     // Memecah string full_address (asumsi format: Kelurahan, Kecamatan, Kota, Provinsi, Kode Pos)
                     $addressParts = array_map('trim', explode(',', $item['full_address'] ?? ''));
 
-                    // Asumsi: Kita hanya perlu nama wilayahnya. Kita akan menggunakan data
-                    // dari API untuk mengisi field yang diperlukan JavaScript.
-
-                    // Kita asumsikan urutan di full_address adalah:
-                    // 0: Village (Kelurahan)
-                    // 1: District (Kecamatan)
-                    // 2: Regency/City (Kota)
-                    // 3: Province (Provinsi)
-                    // 4: Postal Code (Kode Pos)
-
                     return [
-                        // Nilai-nilai ini HARUS persis seperti yang diminta di JavaScript (item.province, item.regency, dst.)
                         'province' => $addressParts[3] ?? 'N/A',
                         'regency' => $addressParts[2] ?? 'N/A',
                         'district' => $addressParts[1] ?? 'N/A',
                         'village' => $addressParts[0] ?? 'N/A',
                         'postal_code' => $addressParts[4] ?? 'N/A',
-                        // Tambahkan full_address untuk tampilan di hasil pencarian
                         'full_address_display' => $item['full_address'] ?? 'Alamat Tidak Terstruktur',
                     ];
                 });
@@ -248,11 +262,6 @@ class ProfileController extends Controller
         ]);
 
         try {
-            // LOGIC PERMOHONAN:
-            // Karena ini public, kita HANYA MENCATAT permohonan, BUKAN langsung menghapus.
-            // Anda bisa menyimpan $validated ini ke tabel baru (misal: AccountDeletionRequests)
-            // Atau mengirim email ke Admin. Di sini, kita catat ke sistem Log Laravel.
-
             Log::info('PERMOHONAN PENGHAPUSAN AKUN DITERIMA:', [
                 'email'        => $validated['email'],
                 'nama_lengkap' => $validated['nama_lengkap'],
@@ -260,8 +269,6 @@ class ProfileController extends Controller
                 'ip_address'   => $request->ip(),
                 'waktu'        => Carbon::now()->toDateTimeString(),
             ]);
-
-            // TODO: Jika Anda punya model misal DeletionRequest::create($validated); letakkan di sini.
 
             return redirect()->back()->with('success', 'Permohonan penghapusan akun berhasil dikirim. Tim Sancaka Express akan segera menghubungi Anda melalui Email/WhatsApp untuk proses verifikasi.');
 

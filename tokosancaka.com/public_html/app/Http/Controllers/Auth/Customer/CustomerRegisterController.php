@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Log;
 
 use App\Notifications\NotifikasiUmum;
 
-
 class CustomerRegisterController extends Controller
 {
     use RegistersUsers;
@@ -43,7 +42,7 @@ class CustomerRegisterController extends Controller
             'email'        => ['required', 'string', 'email', 'max:255', 'unique:Pengguna,email'],
             'password'     => ['required', 'string', 'min:8', 'confirmed'],
             'no_wa'        => ['required', 'string', 'max:15', 'unique:Pengguna,no_wa'],
-            'store_name'       => ['required', 'string'],
+            'store_name'   => ['required', 'string'],
         ]);
     }
 
@@ -53,7 +52,7 @@ class CustomerRegisterController extends Controller
     protected function create(array $data)
     {
         $user = User::create([
-            'store_name' => $data['store_name'],
+            'store_name'   => $data['store_name'],
             'nama_lengkap' => $data['nama_lengkap'],
             'email'        => $data['email'],
             'no_wa'        => $data['no_wa'],
@@ -63,9 +62,9 @@ class CustomerRegisterController extends Controller
             'status'       => 'Tidak Aktif',
         ]);
 
-        // Generate token setup
-        $token = Str::random(40);
-        $user->setup_token = $token;
+        // Generate OTP 6 Karakter (Kombinasi Huruf Kapital & Angka)
+        $otp = strtoupper(Str::random(6));
+        $user->setup_token = $otp;
         $user->save();
 
         // --- Notifikasi ke Admin (Kode Tetap) ---
@@ -87,22 +86,15 @@ class CustomerRegisterController extends Controller
         }
         // --- SELESAI TAMBAHAN KODE ---
 
-        // 🔑 PERBAIKAN: Gunakan fungsi route() untuk membuat link yang dinamis
-        // Route Name: 'customer.profile.setup' harus ada di file routing Anda.
-        $setup_url = route('customer.profile.setup', ['token' => $token]);
-
+        // Pesan WhatsApp berisi OTP
         $message = <<<TEXT
 *Selamat Datang di Aplikasi Sancaka Express, Kak {$user->nama_lengkap}*
 
-Apabila Anda mengalami kendala atau memiliki pertanyaan, silakan hubungi Admin Sancaka melalui nomor +628819435180.
+Pendaftaran akun Anda berhasil. Berikut adalah *KODE OTP* rahasia Anda:
 
-Berikut adalah *TOKEN RAHASIA* dan Link Pendaftaran Kakak {$user->nama_lengkap}:
+*{$otp}*
 
-TOKEN RAHASIA ANDA: *{$token}*
-
-Lanjutkan Pendaftaran Dengan Klik Link Dibawah ini:
-
-Link Setup Profile: {$setup_url}
+Silakan masukkan 6 digit kode OTP di atas pada halaman verifikasi untuk melanjutkan pengaturan profil Anda. Jika butuh bantuan, hubungi Admin Sancaka melalui nomor +628819435180.
 
 Hormat kami,
 *Manajemen Sancaka* CV Sancaka Karya Hutama
@@ -111,7 +103,7 @@ TEXT;
 
         $noWa = preg_replace('/^0/', '62', $user->no_wa);
 
-        // 🔑 PERBAIKAN: Panggil FonnteService langsung dari class yang sudah di-import
+        // Kirim Pesan WA
         FonnteService::sendMessage($noWa, $message);
         FonnteService::sendMessage('085745808809', $message);
 
@@ -123,6 +115,7 @@ TEXT;
      */
     protected function registered(Request $request, $user)
     {
-        return redirect()->route('register.success', ['no_wa' => $user->no_wa]);
+        // Langsung arahkan ke halaman form verifikasi OTP
+        return redirect()->route('customer.otp.form');
     }
 }
