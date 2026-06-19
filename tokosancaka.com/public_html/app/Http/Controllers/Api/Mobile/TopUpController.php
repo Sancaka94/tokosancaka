@@ -666,38 +666,43 @@ class TopUpController extends Controller
         return $this->processDanaCancel($orderId, '/v1.0/debit/cancel.htm');
     }
 
-    private function processDanaCancel($orderId, $path)
+  private function processDanaCancel($orderId)
     {
-        Log::info('LOG LOG: [DANA CANCEL] Memulai proses Cancel untuk Order ID: ' . $orderId . ' via ' . $path);
+        Log::info('LOG LOG: [DANA CANCEL EXPO] Memulai proses Cancel untuk Order ID: ' . $orderId);
         
         DB::beginTransaction();
         try {
-            $user = \Illuminate\Support\Facades\Auth::user();
+            $userAuth = \Illuminate\Support\Facades\Auth::user();
             $transaction = \App\Models\Transaction::where('reference_id', $orderId)->lockForUpdate()->first();
             
             if (!$transaction) {
                 DB::rollBack();
-                return $this->respondError('Transaksi tidak ditemukan.', 404);
+                return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan.'], 404);
             }
 
-            // PROTEKSI KEAMANAN (IDOR): Pastikan user hanya bisa membatalkan transaksinya sendiri
-            if ($transaction->user_id !== $user->id_pengguna && strtolower($user->role) !== 'admin') {
+            // PROTEKSI KEAMANAN (IDOR)
+            if ($transaction->user_id !== $userAuth->id_pengguna && strtolower($userAuth->role) !== 'admin') {
                 DB::rollBack();
-                return $this->respondError('Anda tidak memiliki izin untuk membatalkan transaksi ini.', 403);
+                return response()->json(['success' => false, 'message' => 'Anda tidak memiliki izin untuk membatalkan transaksi ini.'], 403);
             }
 
             if (strtoupper($transaction->status) !== 'PENDING') {
                 DB::rollBack();
-                Log::warning('LOG LOG: [DANA CANCEL] Ditolak. Transaksi berstatus: ' . $transaction->status);
-                return $this->respondError('Hanya transaksi berstatus PENDING yang dapat dibatalkan.', 400);
+                return response()->json(['success' => false, 'message' => 'Hanya transaksi berstatus PENDING yang dapat dibatalkan.'], 400);
             }
 
-            $createdAt = \Carbon\Carbon::parse($transaction->created_at)->timezone('Asia/Jakarta');
-            if (now('Asia/Jakarta')->diffInMinutes($createdAt) > 30) {
-                DB::rollBack();
-                Log::warning('LOG LOG: [DANA CANCEL] Ditolak. Waktu lebih dari 30 menit.');
-                return $this->respondError('Batas waktu pembatalan (30 menit) telah kedaluwarsa.', 400);
-            }
+            // =====================================================================
+            // KUNCI CERDAS CANCEL: Pilihan Jalur API (Widget vs Gateway)
+            // =====================================================================
+            $metodeBayar = strtoupper($transaction->payment_method);
+            $isWidget = str_contains($metodeBayar, 'BINDING') || str_contains($metodeBayar, 'WIDGET');
+            
+            // Sesuai Aturan:
+            // Widget -> /v1.0/debit/cancel.htm
+            // Gateway -> /payment-gateway/v1.0/debit/cancel.htm
+            $path = $isWidget ? '/v1.0/debit/cancel.htm' : '/payment-gateway/v1.0/debit/cancel.htm';
+
+            Log::info("LOG LOG: [DANA CANCEL EXPO] Metode: $metodeBayar | Menggunakan Jalur API: $path");
 
             $this->applyDynamicConfig();
             $merchantId = config('services.dana.merchant_id');
@@ -728,22 +733,28 @@ class TopUpController extends Controller
                 ->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
-            Log::info('LOG LOG: [DANA CANCEL] Response DANA: ', $result ?? ['raw' => $response->body()]);
+            Log::info('LOG LOG: [DANA CANCEL EXPO] Response DANA: ', $result ?? ['raw' => $response->body()]);
             
             if (($result['responseCode'] ?? '') === '2005700') {
                 $transaction->update(['status' => 'failed']); 
                 DB::commit(); 
-                Log::info('LOG LOG: [DANA CANCEL] Berhasil dibatalkan di DANA dan Database.');
-                return $this->respondSuccess('Pesanan berhasil dibatalkan secara permanen di DANA.');
+                return response()->json(['success' => true, 'message' => 'Pesanan berhasil dibatalkan secara permanen di DANA.'], 200);
+            }
+
+            // Jika Not Found (Misal user belum buka URL bayar sama sekali)
+            if (($result['responseCode'] ?? '') === '4045701') {
+                 $transaction->update(['status' => 'failed']); 
+                 DB::commit(); 
+                 return response()->json(['success' => true, 'message' => 'Pesanan berhasil dibatalkan (Transaksi belum terbuat di sistem DANA).'], 200);
             }
 
             DB::rollBack();
-            return $this->respondError('Gagal membatalkan pesanan: ' . ($result['responseMessage'] ?? 'Unknown Error'), 400);
+            return response()->json(['success' => false, 'message' => 'Gagal membatalkan pesanan: ' . ($result['responseMessage'] ?? 'Unknown Error')], 400);
             
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('LOG LOG: [DANA CANCEL] Exception Error: ' . $e->getMessage());
-            return $this->respondError('Sistem Error: Terjadi kesalahan koneksi saat membatalkan.', 500);
+            Log::error('LOG LOG: [DANA CANCEL EXPO] Exception Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error: Terjadi kesalahan koneksi saat membatalkan.'], 500);
         }
     }
 
