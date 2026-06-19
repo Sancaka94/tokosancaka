@@ -262,7 +262,7 @@ Route::prefix('seller')->group(function () {
         Route::post('/topup/refund/{orderId}', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'refundDanaPayment']);
 
         Route::post('/topup/status/{orderId}', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'apiCheckDanaPaymentStatus']);
-        
+
         // --------------------------------------------------
 
         // ==========================================
@@ -388,6 +388,9 @@ Route::post('/customer/pesanan/cancel', [App\Http\Controllers\Api\Mobile\Pesanan
 
     // Pastikan ini berada di dalam group middleware auth (login required)
 Route::middleware('auth:sanctum')->group(function () {
+
+    Route::post('/universal/cancel/{orderId}', [\App\Http\Controllers\Api\Mobile\UniversalPaymentController::class, 'universalCancel']);
+    Route::post('/universal/refund/{orderId}', [\App\Http\Controllers\Api\Mobile\UniversalPaymentController::class, 'universalRefund']);
 
     Route::get('/customer/member/status', [DaftarMemberController::class, 'getStatus']);
     Route::post('/customer/member/register-agent', [DaftarMemberController::class, 'registerAgent']);
