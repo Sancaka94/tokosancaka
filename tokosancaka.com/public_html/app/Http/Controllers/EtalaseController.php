@@ -1,4 +1,3 @@
-PHP
 <?php
 
 namespace App\Http\Controllers;
@@ -35,18 +34,18 @@ class EtalaseController extends Controller
             ->orderBy('discount_percentage', 'desc')
             ->limit(8)
             ->get();
-            
+
         $categories = Category::where('type', 'product')->orderBy('name')->get();
-        $banners = BannerEtalase::latest()->get(); 
+        $banners = BannerEtalase::latest()->get();
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
-        
+
         // --- AWAL TAMBAHAN PPOB DANA ---
         Log::info('LOG LOG - User accessing Homepage with PPOB Data');
         $ppobProducts = ProductDanaPpob::where('is_available', true)
             ->orderBy('price_value', 'asc')
             ->get();
         // --- AKHIR TAMBAHAN PPOB DANA ---
-                                    
+
         // Tambahkan $ppobProducts ke dalam compact()
         return view('etalase.index', compact('products', 'flashSaleProducts', 'banners', 'settings', 'categories', 'ppobProducts'));
     }
@@ -66,14 +65,14 @@ class EtalaseController extends Controller
             ->where('stock', '>', 0)
             ->latest()
             ->paginate(12);
-        
+
         $banners = BannerEtalase::latest()->get();
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
         $allCategories = Category::where('type', 'product')->orderBy('name')->get();
 
         return view('etalase.category-show', compact('category', 'products', 'banners', 'settings', 'allCategories'));
     }
-    
+
     /**
      * Menampilkan halaman detail produk.
      */
@@ -90,15 +89,15 @@ class EtalaseController extends Controller
         // SEMULA: $product->load(['store.user']);
         // BARU: (Tambahkan 'category.attributes' ke dalam array)
         $product->load(['category.attributes', 'store.user']);
-        
+
         $relatedProducts = Product::with(['category', 'store'])->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)->where('status', 'active')
             ->where('stock', '>', 0)->inRandomOrder()->limit(5)->get();
 
         $categories = Category::where('type', 'product')->orderBy('name')->get();
-        $banners = BannerEtalase::latest()->get(); 
+        $banners = BannerEtalase::latest()->get();
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
-            
+
         return view('etalase.show', compact('product', 'relatedProducts', 'categories', 'banners', 'settings'));
     }
 
