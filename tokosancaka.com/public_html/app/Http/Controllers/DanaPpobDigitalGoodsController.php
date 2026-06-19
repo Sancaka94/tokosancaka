@@ -15,7 +15,7 @@ class DanaPpobDigitalGoodsController extends Controller
      */
     public function destinationInquiry(Request $request)
     {
-        Log::info('LOG LOG - Incoming Destination Inquiry', $request->all());
+        Log::info('LOG LOG - Incoming Destination Inquiry from DANA', $request->all());
 
         $head = $request->input('request.head');
         $destinations = $request->input('request.body.destinationInfos', []);
@@ -23,8 +23,9 @@ class DanaPpobDigitalGoodsController extends Controller
         $inquiryResults = [];
 
         foreach ($destinations as $dest) {
+            $inqId = uniqid('inq_');
             $inquiryResults[] = [
-                "inquiryId" => uniqid('inq_'),
+                "inquiryId" => $inqId,
                 "inquiryStatus" => [
                     "code" => "10",
                     "status" => "SUCCESS",
@@ -35,6 +36,7 @@ class DanaPpobDigitalGoodsController extends Controller
                     "secondaryParam" => $dest['secondaryParam'] ?? ""
                 ]
             ];
+            Log::info("LOG LOG - Destination Inquiry Success for Target: {$dest['primaryParam']} | InqID: {$inqId}");
         }
 
         return $this->formatResponse('dana.digital.goods.destination.inquiry', $head['reqMsgId'], [
@@ -47,13 +49,18 @@ class DanaPpobDigitalGoodsController extends Controller
      */
     public function createOrder(Request $request)
     {
-        Log::info('LOG LOG - Incoming Create Order', $request->all());
+        Log::info('LOG LOG - Incoming Create Order from DANA', $request->all());
 
         $head = $request->input('request.head');
         $body = $request->input('request.body');
         
-        $requestId = $body['requestId'];
+        $requestId = $body['requestId'] ?? null;
         
+        if (!$requestId) {
+            Log::error('LOG LOG - Create Order Failed: Missing requestId from DANA payload.');
+            return response()->json(['error' => 'Missing requestId'], 400);
+        }
+
         // 1. IDEMPOTENCY CHECK
         $existingOrder = DB::table('orders_ppob_dana')
             ->leftJoin('products_dana_ppob', 'orders_ppob_dana.product_id', '=', 'products_dana_ppob.product_id')
@@ -61,7 +68,7 @@ class DanaPpobDigitalGoodsController extends Controller
             ->first();
             
         if ($existingOrder) {
-            Log::info('LOG LOG - Idempotent request detected for ID: ' . $requestId);
+            Log::warning("LOG LOG - Idempotent request detected for RequestID: {$requestId}. Returning existing order status.");
             return $this->formatOrderResponse($head, $existingOrder);
         }
 
@@ -78,7 +85,7 @@ class DanaPpobDigitalGoodsController extends Controller
                 'primary_param' => $body['destinationInfo']['primaryParam'],
                 'dana_price_value' => $body['danaSellingPrice']['value'] ?? null,
                 'dana_price_currency' => $body['danaSellingPrice']['currency'] ?? 'IDR',
-                'status_code' => '20', 
+                'status_code' => '20', // Wajib 20 (Pending) saat pertama kali dibuat
                 'status_status' => 'PENDING',
                 'status_message' => 'Pending processing',
                 'created_at' => Carbon::now('Asia/Jakarta'),
@@ -86,6 +93,7 @@ class DanaPpobDigitalGoodsController extends Controller
             ]);
 
             DB::commit();
+            Log::info("LOG LOG - New PPOB Order Created Successfully. OrderID: {$merchantOrderId} | RequestID: {$requestId}");
 
             // Fetch newly created order with product details
             $order = DB::table('orders_ppob_dana')
@@ -97,9 +105,14 @@ class DanaPpobDigitalGoodsController extends Controller
 
         } catch (Exception $e) {
             DB::rollBack();
-            Log::error('LOG LOG - Create Order Failed: ' . $e->getMessage());
+            Log::error("LOG LOG - CRITICAL: Create Order Failed. Reason: " . $e->getMessage());
             
-            return response()->json(['error' => 'Internal Server Error'], 500); 
+            return response()->json([
+                'response' => [
+                    'head' => $head,
+                    'body' => ['error' => 'Internal Server Error']
+                ]
+            ], 500); 
         }
     }
 
@@ -108,7 +121,7 @@ class DanaPpobDigitalGoodsController extends Controller
      */
     public function getOrderDetail(Request $request)
     {
-        Log::info('LOG LOG - Incoming Get Order Detail', $request->all());
+        Log::info('LOG LOG - Incoming Get Order Detail from DANA', $request->all());
 
         $head = $request->input('request.head');
         $identifiers = $request->input('request.body.orderIdentifiers', []);
@@ -116,16 +129,19 @@ class DanaPpobDigitalGoodsController extends Controller
         $ordersResponse = [];
 
         foreach ($identifiers as $identifier) {
+            $reqId = $identifier['requestId'];
             $order = DB::table('orders_ppob_dana')
                 ->leftJoin('products_dana_ppob', 'orders_ppob_dana.product_id', '=', 'products_dana_ppob.product_id')
-                ->where('orders_ppob_dana.request_id', $identifier['requestId'])
+                ->where('orders_ppob_dana.request_id', $reqId)
                 ->first();
             
             if ($order) {
+                Log::info("LOG LOG - Get Order Detail: Order Found for RequestID: {$reqId}. Status: {$order->status_status}");
                 $ordersResponse[] = $this->buildOrderObject($order);
             } else {
+                Log::warning("LOG LOG - Get Order Detail: Order NOT FOUND for RequestID: {$reqId}. Returning EMPTY status (Code 40).");
                 $ordersResponse[] = [
-                    "requestId" => $identifier['requestId'],
+                    "requestId" => $reqId,
                     "orderStatus" => [
                         "code" => "40",
                         "status" => "EMPTY",
@@ -141,78 +157,12 @@ class DanaPpobDigitalGoodsController extends Controller
     }
 
     /**
-     * Helper: Format standard DANA Response Head & Body
-     */
-    private function formatResponse($function, $reqMsgId, $body)
-    {
-        $response = [
-            "response" => [
-                "head" => [
-                    "version" => "2.0",
-                    "function" => $function,
-                    "respTime" => Carbon::now('Asia/Jakarta')->toIso8601String(),
-                    "reqMsgId" => $reqMsgId
-                ],
-                "body" => $body,
-                "signature" => "YOUR_GENERATED_SIGNATURE_HERE" 
-            ]
-        ];
-
-        return response()->json($response);
-    }
-
-    /**
-     * Helper: Format Order Response specifically for createOrder endpoint
-     */
-    private function formatOrderResponse($head, $order)
-    {
-        return $this->formatResponse('dana.digital.goods.order.create', $head['reqMsgId'], [
-            "order" => $this->buildOrderObject($order)
-        ]);
-    }
-
-    /**
-     * Helper: Map DB row to DANA Order Object format
-     */
-    private function buildOrderObject($order)
-    {
-        return [
-            "requestId" => $order->request_id,
-            "orderId" => $order->order_id,
-            "createdTime" => Carbon::parse($order->created_at)->timezone('Asia/Jakarta')->toIso8601String(),
-            "modifiedTime" => Carbon::parse($order->updated_at)->timezone('Asia/Jakarta')->toIso8601String(),
-            "destinationInfo" => [
-                "primaryParam" => $order->primary_param,
-                "secondaryParam" => $order->secondary_param ?? ""
-            ],
-            "orderStatus" => [
-                "code" => $order->status_code,
-                "status" => $order->status_status,
-                "message" => $order->status_message
-            ],
-            "serialNumber" => $order->serial_number,
-            "token" => $order->token,
-            "product" => [
-                "productId" => $order->product_id,
-                // These fallbacks handle cases where the product might not exist in products_dana_ppob yet
-                "type" => $order->product_type ?? "MOBILE_CREDIT", 
-                "provider" => $order->provider ?? "telkomsel", 
-                "price" => [
-                    "value" => $order->dana_price_value,
-                    "currency" => $order->dana_price_currency
-                ],
-                "availability" => (bool) ($order->is_available ?? true)
-            ]
-        ];
-    }
-
-    /**
      * POST https://tokosancaka.com/product
      * Used by DANA to query the product and sync the product availability status.
      */
     public function getProductList(Request $request)
     {
-        Log::info('LOG LOG - Incoming Get List of Product', $request->all());
+        Log::info('LOG LOG - Incoming Get List of Product from DANA', $request->all());
 
         $head = $request->input('request.head');
         $body = $request->input('request.body');
@@ -222,6 +172,7 @@ class DanaPpobDigitalGoodsController extends Controller
         $provider = $body['provider'] ?? null;
 
         if (!$type) {
+            Log::error('LOG LOG - Get List of Product Failed: Empty mandatory parameter (type).');
             return response()->json([
                 "response" => [
                     "head" => [
@@ -258,8 +209,76 @@ class DanaPpobDigitalGoodsController extends Controller
             ];
         }
 
+        Log::info("LOG LOG - Get List of Product Success. Synced " . count($productsResponse) . " products for type: {$type}.");
+
         return $this->formatResponse('dana.digital.goods.product.query', $head['reqMsgId'], [
             "products" => $productsResponse
         ]);
+    }
+
+    /**
+     * Helper: Format standard DANA Response Head & Body
+     */
+    private function formatResponse($function, $reqMsgId, $body)
+    {
+        $response = [
+            "response" => [
+                "head" => [
+                    "version" => "2.0",
+                    "function" => $function,
+                    "respTime" => Carbon::now('Asia/Jakarta')->toIso8601String(),
+                    "reqMsgId" => $reqMsgId
+                ],
+                "body" => $body,
+                "signature" => "YOUR_GENERATED_SIGNATURE_HERE" // TODO: Pastikan Signature Generator diimplementasikan
+            ]
+        ];
+
+        return response()->json($response);
+    }
+
+    /**
+     * Helper: Format Order Response specifically for createOrder endpoint
+     */
+    private function formatOrderResponse($head, $order)
+    {
+        return $this->formatResponse('dana.digital.goods.order.create', $head['reqMsgId'], [
+            "order" => $this->buildOrderObject($order)
+        ]);
+    }
+
+    /**
+     * Helper: Map DB row to DANA Order Object format
+     */
+    private function buildOrderObject($order)
+    {
+        return [
+            "requestId" => $order->request_id,
+            "orderId" => $order->order_id,
+            "createdTime" => Carbon::parse($order->created_at)->timezone('Asia/Jakarta')->toIso8601String(),
+            "modifiedTime" => Carbon::parse($order->updated_at)->timezone('Asia/Jakarta')->toIso8601String(),
+            "destinationInfo" => [
+                "primaryParam" => $order->primary_param,
+                "secondaryParam" => $order->secondary_param ?? ""
+            ],
+            "orderStatus" => [
+                "code" => $order->status_code,
+                "status" => $order->status_status,
+                "message" => $order->status_message
+            ],
+            "serialNumber" => $order->serial_number ?? "",
+            "token" => $order->token ?? "",
+            "product" => [
+                "productId" => $order->product_id,
+                // Fallbacks handle cases where the product might be missing in joined table
+                "type" => $order->product_type ?? "MOBILE_CREDIT", 
+                "provider" => $order->provider ?? "telkomsel", 
+                "price" => [
+                    "value" => $order->dana_price_value,
+                    "currency" => $order->dana_price_currency
+                ],
+                "availability" => (bool) ($order->is_available ?? true)
+            ]
+        ];
     }
 }
