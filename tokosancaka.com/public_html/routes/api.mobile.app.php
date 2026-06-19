@@ -258,6 +258,9 @@ Route::prefix('seller')->group(function () {
 
         Route::get('/topup/history', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'history']);
 
+        Route::post('/topup/cancel/{orderId}', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'cancelDanaPayment']);
+        Route::post('/topup/refund/{orderId}', [\App\Http\Controllers\Api\Mobile\TopUpController::class, 'refundDanaPayment']);
+
         // --------------------------------------------------
 
         // ==========================================

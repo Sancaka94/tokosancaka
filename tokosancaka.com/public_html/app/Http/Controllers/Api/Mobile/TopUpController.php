@@ -647,4 +647,238 @@ class TopUpController extends Controller
             ]);
         }
     }
+
+    /**
+     * =========================================================================
+     * API CANCEL ORDER DANA (REGULAR & WIDGET)
+     * =========================================================================
+     */
+    public function cancelDanaPayment($orderId)
+    {
+        return $this->processDanaCancel($orderId, '/payment-gateway/v1.0/debit/cancel.htm');
+    }
+
+    public function cancelDanaWidgetPayment($orderId)
+    {
+        return $this->processDanaCancel($orderId, '/v1.0/debit/cancel.htm');
+    }
+
+    private function processDanaCancel($orderId, $path)
+    {
+        Log::info('LOG LOG: [DANA CANCEL] Memulai proses Cancel untuk Order ID: ' . $orderId . ' via ' . $path);
+        
+        DB::beginTransaction();
+        try {
+            $user = \Illuminate\Support\Facades\Auth::user();
+            $transaction = \App\Models\Transaction::where('reference_id', $orderId)->lockForUpdate()->first();
+            
+            if (!$transaction) {
+                DB::rollBack();
+                return $this->respondError('Transaksi tidak ditemukan.', 404);
+            }
+
+            // PROTEKSI KEAMANAN (IDOR): Pastikan user hanya bisa membatalkan transaksinya sendiri
+            if ($transaction->user_id !== $user->id_pengguna && strtolower($user->role) !== 'admin') {
+                DB::rollBack();
+                return $this->respondError('Anda tidak memiliki izin untuk membatalkan transaksi ini.', 403);
+            }
+
+            if (strtoupper($transaction->status) !== 'PENDING') {
+                DB::rollBack();
+                Log::warning('LOG LOG: [DANA CANCEL] Ditolak. Transaksi berstatus: ' . $transaction->status);
+                return $this->respondError('Hanya transaksi berstatus PENDING yang dapat dibatalkan.', 400);
+            }
+
+            $createdAt = \Carbon\Carbon::parse($transaction->created_at)->timezone('Asia/Jakarta');
+            if (now('Asia/Jakarta')->diffInMinutes($createdAt) > 30) {
+                DB::rollBack();
+                Log::warning('LOG LOG: [DANA CANCEL] Ditolak. Waktu lebih dari 30 menit.');
+                return $this->respondError('Batas waktu pembatalan (30 menit) telah kedaluwarsa.', 400);
+            }
+
+            $this->applyDynamicConfig();
+            $merchantId = config('services.dana.merchant_id');
+            $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+
+            $body = [
+                "originalPartnerReferenceNo" => (string) $orderId,
+                "merchantId"                 => (string) $merchantId
+            ];
+            
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+            $externalId  = date('YmdHis') . mt_rand(10000, 99999);
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) $externalId,
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            Log::info('LOG LOG: [DANA CANCEL] Response DANA: ', $result ?? ['raw' => $response->body()]);
+            
+            if (($result['responseCode'] ?? '') === '2005700') {
+                $transaction->update(['status' => 'failed']); 
+                DB::commit(); 
+                Log::info('LOG LOG: [DANA CANCEL] Berhasil dibatalkan di DANA dan Database.');
+                return $this->respondSuccess('Pesanan berhasil dibatalkan secara permanen di DANA.');
+            }
+
+            DB::rollBack();
+            return $this->respondError('Gagal membatalkan pesanan: ' . ($result['responseMessage'] ?? 'Unknown Error'), 400);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('LOG LOG: [DANA CANCEL] Exception Error: ' . $e->getMessage());
+            return $this->respondError('Sistem Error: Terjadi kesalahan koneksi saat membatalkan.', 500);
+        }
+    }
+
+    /**
+     * =========================================================================
+     * API REFUND ORDER DANA (REGULAR & WIDGET)
+     * =========================================================================
+     */
+    public function refundDanaPayment($orderId)
+    {
+        return $this->processDanaRefund($orderId, '/payment-gateway/v1.0/debit/refund.htm');
+    }
+
+    public function refundDanaWidgetPayment($orderId)
+    {
+        return $this->processDanaRefund($orderId, '/v1.0/debit/refund.htm');
+    }
+
+    private function processDanaRefund($orderId, $path)
+    {
+        Log::info('LOG LOG: [DANA REFUND] Memulai proses Refund untuk Order ID: ' . $orderId . ' via ' . $path);
+        
+        DB::beginTransaction();
+        try {
+            $userAuth = \Illuminate\Support\Facades\Auth::user();
+            $transaction = \App\Models\Transaction::where('reference_id', $orderId)->lockForUpdate()->first();
+            
+            if (!$transaction) {
+                DB::rollBack();
+                return $this->respondError('Transaksi tidak ditemukan.', 404);
+            }
+
+            // PROTEKSI KEAMANAN (IDOR): Pastikan user hanya bisa refund transaksinya sendiri
+            if ($transaction->user_id !== $userAuth->id_pengguna && strtolower($userAuth->role) !== 'admin') {
+                DB::rollBack();
+                return $this->respondError('Anda tidak memiliki izin untuk memproses refund transaksi ini.', 403);
+            }
+
+            if (!in_array(strtoupper($transaction->status), ['SUCCESS', 'PAID'])) {
+                DB::rollBack();
+                Log::warning('LOG LOG: [DANA REFUND] Ditolak. Transaksi berstatus: ' . $transaction->status);
+                return $this->respondError('Hanya transaksi berstatus SUCCESS/PAID yang dapat di-refund.', 400);
+            }
+
+            $createdAt = \Carbon\Carbon::parse($transaction->created_at)->timezone('Asia/Jakarta');
+            if (now('Asia/Jakarta')->diffInMinutes($createdAt) > 30) {
+                DB::rollBack();
+                Log::warning('LOG LOG: [DANA REFUND] Ditolak. Waktu transaksi lebih dari 30 menit.');
+                return $this->respondError('Batas waktu refund (30 menit) telah kedaluwarsa.', 400);
+            }
+
+            // PROTEKSI SALDO MINUS: Ambil state user terbaru dari DB (lock for update opsional)
+            $userModel = \App\Models\User::where('id_pengguna', $transaction->user_id)->lockForUpdate()->first();
+            if (!$userModel || $userModel->saldo < $transaction->amount) {
+                DB::rollBack();
+                Log::warning('LOG LOG: [DANA REFUND] Ditolak. Saldo tidak mencukupi (kurang dari amount).');
+                return $this->respondError('Gagal Refund: Saldo aplikasi Anda tidak mencukupi (saldo mungkin sudah terpakai).', 400);
+            }
+
+            $this->applyDynamicConfig();
+            $merchantId = config('services.dana.merchant_id');
+            $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            
+            $partnerRefundNo = date('YmdHis') . mt_rand(10000, 99999); 
+            $refundAmountValue = number_format((float)$transaction->amount, 2, '.', '');
+
+            $body = [
+                "merchantId"                 => (string) $merchantId,
+                "originalPartnerReferenceNo" => (string) $orderId,
+                "partnerRefundNo"            => (string) $partnerRefundNo,
+                "refundAmount" => [
+                    "value"    => $refundAmountValue,
+                    "currency" => "IDR"
+                ]
+            ];
+            
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+            $externalId  = date('YmdHis') . mt_rand(10000, 99999);
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) $externalId,
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            Log::info('LOG LOG: [DANA REFUND] Response DANA: ', $result ?? ['raw' => $response->body()]);
+            
+            if (($result['responseCode'] ?? '') === '2005800') {
+                // Tarik saldo karena sudah dipastikan cukup pada pengecekan di atas
+                $userModel->decrement('saldo', $transaction->amount);
+                $transaction->update(['status' => 'refunded']); 
+                DB::commit(); 
+
+                Log::info('LOG LOG: [DANA REFUND] Berhasil di-refund! Saldo ditarik.');
+                return $this->respondSuccess('Dana berhasil dikembalikan ke akun DANA pelanggan.');
+            }
+
+            DB::rollBack();
+            return $this->respondError('Gagal memproses refund: ' . ($result['responseMessage'] ?? 'Unknown Error'), 400);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('LOG LOG: [DANA REFUND] Exception Error: ' . $e->getMessage());
+            return $this->respondError('Sistem Error: Terjadi kesalahan koneksi saat me-refund.', 500);
+        }
+    }
+
+    /**
+     * =========================================================================
+     * HELPER RESPONSE KHUSUS API MOBILE (JSON ONLY)
+     * =========================================================================
+     */
+    private function respondSuccess($message)
+    {
+        // Sengaja diganti menjadi format boolean (success: true/false) 
+        // agar sejalan dengan response history() dan store() Anda sebelumnya
+        return response()->json([
+            'success' => true,
+            'message' => $message
+        ], 200);
+    }
+
+    private function respondError($message, $statusCode = 400)
+    {
+        return response()->json([
+            'success' => false,
+            'message' => $message
+        ], $statusCode);
+    }
 }
