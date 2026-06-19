@@ -30,12 +30,15 @@ use App\Http\Controllers\Admin\Customers\DataPenggunaController;
 use App\Http\Controllers\PelangganController;
 use App\Http\Controllers\PublicPelangganController;
 use App\Http\Controllers\Admin\CustomerController;
+use App\Http\Controllers\DanaPpobDigitalGoodsController; // <-- TAMBAHKAN INI DI ATAS
 
 // Telegram Group
 use App\Http\Controllers\TelegramGroupController;
 
 // Kontak & Chat
 use App\Http\Controllers\Customer\ProfileController;
+
+use App\Http\Controllers\MarketplacePpobController;
 
 // Pembayaran
 use App\Http\Controllers\PembayaranController;
@@ -388,6 +391,18 @@ Route::get('/test/doku/marketplace', [TestOrderController::class, 'testMarketpla
 // =========================================================================
 Route::post('/digiflazz/webhook', [DigiflazzWebhookController::class, 'handle'])->name('digiflazz.webhook');
 Route::post('/dana/notification', [DanaController::class, 'handleNotification'])->name('dana.payment.notify');
+
+// PPOB DANA 
+// --- AWAL RUTE DANA PPOB DIGITAL GOODS ---
+// URL: tokosancaka.com/destination/inquiry
+Route::post('/destination/inquiry', [DanaPpobDigitalGoodsController::class, 'destinationInquiry']);
+// URL: tokosancaka.com/order/create
+Route::post('/order/create', [DanaPpobDigitalGoodsController::class, 'createOrder']);
+// URL: tokosancaka.com/order/detail
+Route::post('/order/detail', [DanaPpobDigitalGoodsController::class, 'getOrderDetail']);
+// --- AKHIR RUTE DANA PPOB DIGITAL GOODS ---
+
+
 Route::post('/callback/tripay', [CheckoutController::class, 'TripayCallback'])->name('payment.callback.tripay');
 Route::get('/pesanan/get-tripay-channels', [App\Http\Controllers\Admin\PesananController::class, 'getTripayChannels'])->name('admin.pesanan.get_channels');
 Route::get('/customer/pesanan/get-channels', [App\Http\Controllers\Customer\PesananController::class, 'getTripayChannels'])->name('customer.pesanan.get_channels');
@@ -1574,3 +1589,9 @@ Route::post('/guest/history-belanja/{invoice}/send-wa', [App\Http\Controllers\Ch
 Route::post('/seller/pesanan/marketplace/send-digital', [PesananController::class, 'sendDigitalManual'])->name('seller.pesanan.marketplace.send_digital');
 
 Route::post('/guest/order/{id}/complete', [App\Http\Controllers\CheckoutController::class, 'completeOrder'])->name('guest.order.complete');
+
+Route::prefix('ppob')->group(function () {
+    Route::get('/', [MarketplacePpobController::class, 'index'])->name('ppob.index');
+    // Arahkan proses pembayarannya ke fungsi baru di CheckoutController
+    Route::post('/pay', [CheckoutController::class, 'storePpobDanaPayment'])->name('ppob.pay');
+});

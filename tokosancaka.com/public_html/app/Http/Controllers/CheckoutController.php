@@ -1219,14 +1219,25 @@ class CheckoutController extends Controller
                 Log::info('Routing callback to TopupDanaController', ['ref' => $merchantRef]);
                 return app(\App\Http\Controllers\Customer\TopupDanaController::class)->handlePaymentCallback($request);
 
-            // 4. PPOB (Format: PXXXXX) ---> INI LOGIKA YANG BARU DITAMBAHKAN
+            // 4. PPOB DANA TOKOSANCAKA (Format: PPOBDANA-XXXX)
+            } elseif (Str::startsWith($merchantRef, 'PPOBDANA-')) {
+                Log::info('LOG LOG - Routing callback to DanaPpobDigitalGoodsController', ['ref' => $merchantRef]);
+                
+                // Update status lunas di DB
+                if ($status === 'PAID') {
+                    \App\Models\OrderPpobDana::where('order_id', $merchantRef)
+                        ->update(['status_status' => 'PAID', 'status_message' => 'Lunas, Memproses TopUp']);
+                        
+                    // TODO: Panggil fungsi topup otomatis ke vendor Anda di sini
+                }
+
+            // 5. PPOB Mobile (Format: PXXXXX) ---> INI LOGIKA LAMA ANDA
             } elseif (Str::startsWith($merchantRef, 'P')) {
                 Log::info('Routing callback to PPOB Controller', ['ref' => $merchantRef]);
-                // Pastikan class/controller ini punya fungsi static processPpobCallback
                 \App\Http\Controllers\Api\Mobile\PpobMobileController::processPpobCallback($merchantRef, $status, $data);
 
             // ====================================================================
-            // 5. TIKET PESAWAT (Format: FLT-{order_id}-{pnr}) ---> TAMBAHKAN INI
+            // 6. TIKET PESAWAT (Format: FLT-{order_id}-{pnr}) ---> TAMBAHKAN INI
             // ====================================================================
             } elseif (Str::startsWith($merchantRef, 'FLT-')) {
                 Log::info('Routing callback to TicketingController (Tiket Pesawat)', ['ref' => $merchantRef]);
@@ -2857,6 +2868,114 @@ TEXT;
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Error Complete Order Digital: " . $e->getMessage());
             return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat memproses penyelesaian pesanan.');
+        }
+    }
+
+    /**
+     * =========================================================================
+     * EKSEKUTOR PEMBAYARAN KHUSUS PPOB DANA (TRIPAY & SALDO)
+     * =========================================================================
+     */
+    public function storePpobDanaPayment(Request $request)
+    {
+        Log::info('LOG LOG - Memulai Pembayaran PPOB DANA', $request->all());
+
+        $request->validate([
+            'primary_param'  => 'required|numeric|min_digits:9',
+            'product_id'     => 'required|string|exists:products_dana_ppob,product_id',
+            'payment_method' => 'required|string',
+        ], [
+            'payment_method.required' => 'Silakan pilih metode pembayaran terlebih dahulu.'
+        ]);
+
+        $product = \App\Models\ProductDanaPpob::where('product_id', $request->product_id)->first();
+        if (!$product || !$product->is_available) {
+            return back()->with('error', 'Produk tidak tersedia saat ini.');
+        }
+
+        $user = Auth::user();
+        if (!$user) {
+            return redirect()->route('customer.login')->with('info', 'Anda harus login untuk bertransaksi PPOB.');
+        }
+
+        $grand_total = $product->price_value;
+        $invoiceNumber = 'PPOBDANA-' . strtoupper(Str::random(8));
+
+        DB::beginTransaction();
+        try {
+            // 1. Catat ke tabel orders_ppob_dana
+            \App\Models\OrderPpobDana::create([
+                'order_id'      => $invoiceNumber,
+                'request_id'    => $invoiceNumber, 
+                'product_id'    => $product->product_id,
+                'primary_param' => $request->primary_param,
+                'dana_price_value' => $grand_total,
+                'status_code'   => '20', // Pending
+                'status_status' => 'PENDING_PAYMENT',
+                'status_message'=> 'Menunggu Pembayaran Customer'
+            ]);
+
+            $paymentMethodRaw = strtoupper($request->payment_method);
+
+            // 2. LOGIKA POTONG SALDO INTERNAL
+            if (in_array($paymentMethodRaw, ['POTONG SALDO', 'SALDO'])) {
+                if ($user->saldo < $grand_total) {
+                    throw new Exception('Saldo akun Anda tidak mencukupi.');
+                }
+                $user->saldo -= $grand_total;
+                $user->save();
+
+                DB::commit();
+                Log::info("LOG LOG - PPOB DANA Lunas via Saldo: {$invoiceNumber}");
+                
+                // TODO: Panggil fungsi di DanaPpobDigitalGoodsController untuk eksekusi top-up ke Provider (Misal Digiflazz)
+                // \App\Http\Controllers\DanaPpobDigitalGoodsController::processCallback($invoiceNumber, 'PAID');
+                
+                return redirect()->route('customer.pesanan.riwayat_belanja')
+                    ->with('success', 'Pembayaran via Saldo Berhasil! Transaksi PPOB sedang diproses.');
+            }
+
+            // 3. LOGIKA TRIPAY / PAYMENT GATEWAY
+            $orderItemsPayload = [[
+                'sku'      => $product->product_id,
+                'name'     => 'Topup ' . strtoupper($product->provider) . ' - ' . $request->primary_param,
+                'price'    => (int) $grand_total,
+                'quantity' => 1
+            ]];
+
+            // Buat Dummy Object Order agar fungsi _createTripayTransaction tidak error
+            $dummyOrder = new \stdClass();
+            $dummyOrder->invoice_number = $invoiceNumber;
+            $dummyOrder->user_id = $user->id_pengguna;
+
+            // Generate Link Tripay
+            $tripayResult = $this->_createTripayTransaction(
+                $dummyOrder,
+                $request->payment_method, // Kode dari form (contoh: QRISC, MYBVA)
+                $grand_total,
+                $user->nama_lengkap ?? 'Customer Sancaka',
+                $user->email ?? 'customer@tokosancaka.com',
+                $user->no_wa ?? '081234567890',
+                $orderItemsPayload
+            );
+
+            if ($tripayResult['success']) {
+                $paymentUrl = $tripayResult['data']['checkout_url'] ?? $tripayResult['data']['pay_url'];
+                
+                // Simpan URL pembayaran ke kolom token (opsional)
+                \App\Models\OrderPpobDana::where('order_id', $invoiceNumber)->update(['token' => $paymentUrl]);
+                
+                DB::commit();
+                Log::info("LOG LOG - PPOB DANA Redirect ke Tripay: {$invoiceNumber}");
+                return redirect()->away($paymentUrl);
+            } else {
+                throw new Exception($tripayResult['message']);
+            }
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            Log::error('LOG LOG - PPOB Payment Error: ' . $e->getMessage());
+            return back()->with('error', 'Gagal memproses pembayaran: ' . $e->getMessage());
         }
     }
 

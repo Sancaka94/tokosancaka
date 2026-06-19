@@ -47,6 +47,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/webhook/paypal',
             'webhook/deliveree',
             'webhook/lalamove',
+            'destination/inquiry',
+            'order/create',
+            'order/detail',
 
             ]);
 

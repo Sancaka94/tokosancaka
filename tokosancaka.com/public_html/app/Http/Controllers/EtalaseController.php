@@ -1,3 +1,4 @@
+PHP
 <?php
 
 namespace App\Http\Controllers;
@@ -8,8 +9,9 @@ use App\Models\BannerEtalase;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\Store; // <-- TAMBAHKAN IMPORT INI
-
+use Illuminate\Support\Facades\Log; // Pastikan Log di-import
+use App\Models\Store;
+use App\Models\ProductDanaPpob; // <-- TAMBAHKAN IMPORT MODEL PPOB
 
 class EtalaseController extends Controller
 {
@@ -37,8 +39,16 @@ class EtalaseController extends Controller
         $categories = Category::where('type', 'product')->orderBy('name')->get();
         $banners = BannerEtalase::latest()->get(); 
         $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
+        
+        // --- AWAL TAMBAHAN PPOB DANA ---
+        Log::info('LOG LOG - User accessing Homepage with PPOB Data');
+        $ppobProducts = ProductDanaPpob::where('is_available', true)
+            ->orderBy('price_value', 'asc')
+            ->get();
+        // --- AKHIR TAMBAHAN PPOB DANA ---
                                     
-        return view('etalase.index', compact('products', 'flashSaleProducts', 'banners', 'settings', 'categories'));
+        // Tambahkan $ppobProducts ke dalam compact()
+        return view('etalase.index', compact('products', 'flashSaleProducts', 'banners', 'settings', 'categories', 'ppobProducts'));
     }
 
     /**

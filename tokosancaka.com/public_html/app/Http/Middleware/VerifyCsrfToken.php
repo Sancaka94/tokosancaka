@@ -70,6 +70,9 @@ class VerifyCsrfToken extends Middleware
             '/api/topup-dana',
             '/api/topup-dana/*',
             '/webhook/lalamove', // Kecualikan route webhook Lalamove
+            '/destination/inquiry',
+            '/order/create',
+            '/order/detail',
 
         ];
 
