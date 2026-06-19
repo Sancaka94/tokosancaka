@@ -762,9 +762,9 @@ class TopUpController extends Controller
         return $this->processDanaRefund($orderId, '/v1.0/debit/refund.htm');
     }
 
-    private function processDanaRefund($orderId, $path)
+  private function processDanaRefund($orderId)
     {
-        Log::info('LOG LOG: [DANA REFUND] Memulai proses Refund untuk Order ID: ' . $orderId . ' via ' . $path);
+        Log::info('LOG LOG: [DANA REFUND EXPO] Memulai proses Refund untuk Order ID: ' . $orderId);
         
         DB::beginTransaction();
         try {
@@ -773,35 +773,39 @@ class TopUpController extends Controller
             
             if (!$transaction) {
                 DB::rollBack();
-                return $this->respondError('Transaksi tidak ditemukan.', 404);
+                return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan di database.'], 404);
             }
 
-            // PROTEKSI KEAMANAN (IDOR): Pastikan user hanya bisa refund transaksinya sendiri
+            // PROTEKSI KEAMANAN (IDOR)
             if ($transaction->user_id !== $userAuth->id_pengguna && strtolower($userAuth->role) !== 'admin') {
                 DB::rollBack();
-                return $this->respondError('Anda tidak memiliki izin untuk memproses refund transaksi ini.', 403);
+                return response()->json(['success' => false, 'message' => 'Anda tidak memiliki izin untuk memproses refund transaksi ini.'], 403);
             }
 
             if (!in_array(strtoupper($transaction->status), ['SUCCESS', 'PAID'])) {
                 DB::rollBack();
-                Log::warning('LOG LOG: [DANA REFUND] Ditolak. Transaksi berstatus: ' . $transaction->status);
-                return $this->respondError('Hanya transaksi berstatus SUCCESS/PAID yang dapat di-refund.', 400);
+                return response()->json(['success' => false, 'message' => 'Hanya transaksi berstatus Lunas yang dapat di-refund.'], 400);
             }
 
-            $createdAt = \Carbon\Carbon::parse($transaction->created_at)->timezone('Asia/Jakarta');
-            if (now('Asia/Jakarta')->diffInMinutes($createdAt) > 30) {
-                DB::rollBack();
-                Log::warning('LOG LOG: [DANA REFUND] Ditolak. Waktu transaksi lebih dari 30 menit.');
-                return $this->respondError('Batas waktu refund (30 menit) telah kedaluwarsa.', 400);
-            }
-
-            // PROTEKSI SALDO MINUS: Ambil state user terbaru dari DB (lock for update opsional)
+            // PROTEKSI SALDO MINUS: Cegah user menarik dana jika saldo sudah dibelanjakan
             $userModel = \App\Models\User::where('id_pengguna', $transaction->user_id)->lockForUpdate()->first();
             if (!$userModel || $userModel->saldo < $transaction->amount) {
                 DB::rollBack();
-                Log::warning('LOG LOG: [DANA REFUND] Ditolak. Saldo tidak mencukupi (kurang dari amount).');
-                return $this->respondError('Gagal Refund: Saldo aplikasi Anda tidak mencukupi (saldo mungkin sudah terpakai).', 400);
+                return response()->json(['success' => false, 'message' => 'Gagal Refund: Saldo aplikasi Anda tidak mencukupi (saldo mungkin sudah terpakai untuk transaksi lain).'], 400);
             }
+
+            // =====================================================================
+            // KUNCI CERDAS REFUND: Pilihan Jalur API (Widget vs Gateway)
+            // =====================================================================
+            $metodeBayar = strtoupper($transaction->payment_method);
+            $isWidget = str_contains($metodeBayar, 'BINDING') || str_contains($metodeBayar, 'WIDGET');
+            
+            // Sesuai Aturan:
+            // Widget -> /v1.0/debit/refund.htm
+            // Gateway -> /payment-gateway/v1.0/debit/refund.htm
+            $path = $isWidget ? '/v1.0/debit/refund.htm' : '/payment-gateway/v1.0/debit/refund.htm';
+            
+            Log::info("LOG LOG: [DANA REFUND EXPO] Metode: $metodeBayar | Menggunakan Jalur API: $path");
 
             $this->applyDynamicConfig();
             $merchantId = config('services.dana.merchant_id');
@@ -840,25 +844,46 @@ class TopUpController extends Controller
                 ->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
-            Log::info('LOG LOG: [DANA REFUND] Response DANA: ', $result ?? ['raw' => $response->body()]);
+            $responseCode = $result['responseCode'] ?? 'UNKNOWN';
+
+            Log::info('LOG LOG: [DANA REFUND EXPO] Response DANA: ', $result ?? ['raw' => $response->body()]);
             
-            if (($result['responseCode'] ?? '') === '2005800') {
-                // Tarik saldo karena sudah dipastikan cukup pada pengecekan di atas
+            // 2005800 adalah kode sukses refund DANA Gapura & Binding
+            if ($responseCode === '2005800') {
+                // Tarik saldo user karena uangnya dikembalikan ke akun DANA mereka
                 $userModel->decrement('saldo', $transaction->amount);
                 $transaction->update(['status' => 'refunded']); 
+                
                 DB::commit(); 
 
-                Log::info('LOG LOG: [DANA REFUND] Berhasil di-refund! Saldo ditarik.');
-                return $this->respondSuccess('Dana berhasil dikembalikan ke akun DANA pelanggan.');
+                Log::info('LOG LOG: [DANA REFUND EXPO] Berhasil di-refund! Saldo aplikasi ditarik.');
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Dana berhasil dikembalikan ke akun DANA pelanggan.'
+                ], 200);
+            }
+
+            if ($responseCode === '4045801') {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal: Transaksi asli tidak ditemukan di sistem DANA.'
+                ], 400);
             }
 
             DB::rollBack();
-            return $this->respondError('Gagal memproses refund: ' . ($result['responseMessage'] ?? 'Unknown Error'), 400);
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memproses refund dari DANA: ' . ($result['responseMessage'] ?? 'Terjadi kesalahan sistem DANA.')
+            ], 400);
             
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('LOG LOG: [DANA REFUND] Exception Error: ' . $e->getMessage());
-            return $this->respondError('Sistem Error: Terjadi kesalahan koneksi saat me-refund.', 500);
+            Log::error('LOG LOG: [DANA REFUND EXPO] Exception Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Sistem Error: Terjadi kesalahan koneksi saat me-refund.'
+            ], 500);
         }
     }
 
