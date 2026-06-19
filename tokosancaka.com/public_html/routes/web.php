@@ -969,14 +969,26 @@ Route::get('/dana/check-gateway/{orderId}', [TopUpController::class, 'checkDanaG
 // Route UAT DANA - Cek Status Pembayaran (Sesuai Dokumentasi Gapura API)
 Route::get('/uat-dana-status/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'checkDanaPaymentStatus'])->name('dana.uat_status');
 
-Route::post('/dana/cancel/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'cancelDanaPayment'])->name('dana.cancel_payment');
-Route::post('/dana/refund/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'refundDanaPayment'])->name('dana.refund_payment');
+// =========================================================================
+// API ROUTE: DANA REGULER & WIDGET BINDING (CANCEL & REFUND)
+// =========================================================================
+Route::prefix('api/dana')->middleware(['auth'])->group(function () {
+    
+    // 1. DANA Biasa (Reguler)
+    Route::post('/cancel/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'cancelDanaPayment'])
+        ->name('api.dana.cancel_payment');
+        
+    Route::post('/refund/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'refundDanaPayment'])
+        ->name('api.dana.refund_payment');
 
-// =========================================================================
-// Route DANA WIDGET (Cancel & Refund)
-// =========================================================================
-Route::post('/dana/widget/cancel/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'cancelDanaWidgetPayment'])->name('dana.widget.cancel_payment');
-Route::post('/dana/widget/refund/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'refundDanaWidgetPayment'])->name('dana.widget.refund_payment');
+    // 2. DANA Binding (Widget / Express)
+    Route::post('/widget/cancel/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'cancelDanaWidgetPayment'])
+        ->name('api.dana.widget.cancel_payment');
+        
+    Route::post('/widget/refund/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'refundDanaWidgetPayment'])
+        ->name('api.dana.widget.refund_payment');
+        
+});
 
 // Route untuk halaman Pusat Bisnis
 Route::get('/customer/business-center', function () {
