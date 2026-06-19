@@ -4388,20 +4388,20 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             
             if (!$transaction) {
                 DB::rollBack();
-                return back()->with('error', 'Transaksi tidak ditemukan.');
+                return $this->respondError('Transaksi tidak ditemukan.', 404);
             }
 
             if (strtoupper($transaction->status) !== 'PENDING') {
                 DB::rollBack();
                 Log::warning('LOG LOG: [DANA CANCEL] Ditolak. Transaksi berstatus: ' . $transaction->status);
-                return back()->with('error', 'Hanya transaksi berstatus PENDING yang dapat dibatalkan.');
+                return $this->respondError('Hanya transaksi berstatus PENDING yang dapat dibatalkan.', 400);
             }
 
             $createdAt = \Carbon\Carbon::parse($transaction->created_at)->timezone('Asia/Jakarta');
             if (now('Asia/Jakarta')->diffInMinutes($createdAt) > 30) {
                 DB::rollBack();
                 Log::warning('LOG LOG: [DANA CANCEL] Ditolak. Waktu lebih dari 30 menit.');
-                return back()->with('error', 'Batas waktu pembatalan (30 menit) telah kedaluwarsa.');
+                return $this->respondError('Batas waktu pembatalan (30 menit) telah kedaluwarsa.', 400);
             }
 
             $this->applyDynamicConfig();
@@ -4439,16 +4439,16 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 $transaction->update(['status' => 'failed']); 
                 DB::commit(); 
                 Log::info('LOG LOG: [DANA CANCEL] Berhasil dibatalkan di DANA dan Database.');
-                return back()->with('success', 'Pesanan berhasil dibatalkan secara permanen di DANA.');
+                return $this->respondSuccess('Pesanan berhasil dibatalkan secara permanen di DANA.');
             }
 
             DB::rollBack();
-            return back()->with('error', 'Gagal membatalkan pesanan: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+            return $this->respondError('Gagal membatalkan pesanan: ' . ($result['responseMessage'] ?? 'Unknown Error'), 400);
             
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('LOG LOG: [DANA CANCEL] Exception Error: ' . $e->getMessage());
-            return back()->with('error', 'Sistem Error: Terjadi kesalahan koneksi saat membatalkan.');
+            return $this->respondError('Sistem Error: Terjadi kesalahan koneksi saat membatalkan.', 500);
         }
     }
 
@@ -4477,20 +4477,20 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             
             if (!$transaction) {
                 DB::rollBack();
-                return back()->with('error', 'Transaksi tidak ditemukan.');
+                return $this->respondError('Transaksi tidak ditemukan.', 404);
             }
 
             if (!in_array(strtoupper($transaction->status), ['SUCCESS', 'PAID'])) {
                 DB::rollBack();
                 Log::warning('LOG LOG: [DANA REFUND] Ditolak. Transaksi berstatus: ' . $transaction->status);
-                return back()->with('error', 'Hanya transaksi berstatus SUCCESS/PAID yang dapat di-refund.');
+                return $this->respondError('Hanya transaksi berstatus SUCCESS/PAID yang dapat di-refund.', 400);
             }
 
             $createdAt = \Carbon\Carbon::parse($transaction->created_at)->timezone('Asia/Jakarta');
             if (now('Asia/Jakarta')->diffInMinutes($createdAt) > 30) {
                 DB::rollBack();
                 Log::warning('LOG LOG: [DANA REFUND] Ditolak. Waktu transaksi lebih dari 30 menit.');
-                return back()->with('error', 'Batas waktu refund (30 menit) telah kedaluwarsa.');
+                return $this->respondError('Batas waktu refund (30 menit) telah kedaluwarsa.', 400);
             }
 
             $this->applyDynamicConfig();
@@ -4542,17 +4542,44 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 DB::commit(); 
 
                 Log::info('LOG LOG: [DANA REFUND] Berhasil di-refund! Saldo ditarik.');
-                return back()->with('success', 'Dana berhasil dikembalikan ke akun DANA pelanggan.');
+                return $this->respondSuccess('Dana berhasil dikembalikan ke akun DANA pelanggan.');
             }
 
             DB::rollBack();
-            return back()->with('error', 'Gagal memproses refund: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+            return $this->respondError('Gagal memproses refund: ' . ($result['responseMessage'] ?? 'Unknown Error'), 400);
             
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('LOG LOG: [DANA REFUND] Exception Error: ' . $e->getMessage());
-            return back()->with('error', 'Sistem Error: Terjadi kesalahan koneksi saat me-refund.');
+            return $this->respondError('Sistem Error: Terjadi kesalahan koneksi saat me-refund.', 500);
         }
+    }
+
+    /**
+     * =========================================================================
+     * HELPER RESPONSE (AGAR BISA BACA AJAX & REGULAR REQUEST)
+     * =========================================================================
+     */
+    private function respondSuccess($message)
+    {
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'status'  => 'success',
+                'message' => $message
+            ], 200);
+        }
+        return back()->with('success', $message);
+    }
+
+    private function respondError($message, $statusCode = 400)
+    {
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => $message
+            ], $statusCode);
+        }
+        return back()->with('error', $message);
     }
 
 }
