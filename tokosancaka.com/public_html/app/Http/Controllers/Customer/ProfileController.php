@@ -100,40 +100,51 @@ class ProfileController extends Controller
         return view('customer.profile.otp');
     }
 
-    /**
-     * Memproses Verifikasi OTP dan Login Otomatis
+   /**
+     * Memproses Verifikasi Inputan OTP (Lalu login otomatis)
      */
     public function verifyOtp(Request $request)
     {
+        // 1. Validasi dilonggarkan sedikit untuk mencegah error spasi
         $request->validate([
-            'otp' => 'required|string|size:6'
+            'otp' => 'required|string'
         ], [
-            'otp.required' => 'Kode OTP wajib diisi.',
-            'otp.size'     => 'Kode OTP harus 6 karakter.'
+            'otp.required' => 'Kode OTP wajib diisi.'
         ]);
 
-        // 1. Ambil nomor WA dari session sementara
         $noWa = session('otp_no_wa');
-        $user = User::where('no_wa', $noWa)->first();
+
+        // 2. PERBAIKAN: Tarik data PALING BARU (berjaga-jaga jika ada nomor WA duplikat/lama)
+        $user = User::where('no_wa', $noWa)->orderBy('id_pengguna', 'desc')->first();
 
         if (!$user) {
             return redirect()->route('login')->with('error', 'Data pendaftar tidak ditemukan.');
         }
 
-        // 2. Cocokkan OTP dari input dengan database
-        if (strtoupper($user->setup_token) === strtoupper($request->otp)) {
+        // 3. PERBAIKAN: Hapus semua spasi barangkali tidak sengaja terketik
+        $inputOtp = preg_replace('/\s+/', '', $request->otp);
 
-            // 3. OTP Benar -> Login Otomatis!
+        // --- 🛠️ BARIS DEBUGGING (AKAN MUNCUL LAYAR HITAM UNTUK CEK DATA ASLI) ---
+        if (strtoupper($user->setup_token) !== strtoupper($inputOtp)) {
+            dd([
+                'Penyebab Error' => 'Kode di Database BERBEDA dengan yang diketik!',
+                '1. OTP_DARI_DATABASE' => $user->setup_token,
+                '2. OTP_YANG_ANDA_KETIK' => $inputOtp,
+                '3. ID_PENGGUNA_YANG_DICEK' => $user->id_pengguna,
+                '4. NO_WA_YANG_DICEK' => $user->no_wa
+            ]);
+        }
+        // ------------------------------------------------------------------------
+
+        // 4. Proses Cocokkan
+        if (strtoupper($user->setup_token) === strtoupper($inputOtp)) {
+
             Auth::login($user);
-
-            // 4. Hapus session sementara
             session()->forget('otp_no_wa');
 
-            // 5. Arahkan ke halaman Setup Profile
             return redirect()->route('customer.profile.setup')->with('success', 'Verifikasi berhasil! Silakan lengkapi data profil Anda.');
         }
 
-        // Jika salah
         return redirect()->back()->with('error', 'Kode OTP yang Anda masukkan salah.');
     }
 
