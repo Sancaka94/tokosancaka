@@ -881,4 +881,125 @@ class TopUpController extends Controller
             'message' => $message
         ], $statusCode);
     }
+
+    /**
+     * =========================================================================
+     * API EXPO: CEK STATUS TRANSAKSI DANA
+     * =========================================================================
+     */
+    public function apiCheckDanaPaymentStatus($orderId)
+    {
+        try {
+            $user = \Illuminate\Support\Facades\Auth::user();
+            
+            // 1. Pastikan transaksi ada di database lokal dan milik user tersebut
+            $transaction = \App\Models\Transaction::where('reference_id', $orderId)
+                ->where('user_id', $user->id_pengguna)
+                ->first();
+
+            if (!$transaction) {
+                return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan.'], 404);
+            }
+
+            // 2. Jika status di lokal sudah final, cegah hit API DANA (Hemat Quota / Cegah Spam)
+            $localStatus = strtoupper($transaction->status);
+            if (in_array($localStatus, ['SUCCESS', 'PAID'])) {
+                return response()->json(['success' => true, 'status' => 'SUCCESS', 'message' => 'Transaksi sudah berstatus Lunas.']);
+            }
+            if (in_array($localStatus, ['FAILED', 'REFUNDED', 'CANCELLED'])) {
+                return response()->json(['success' => true, 'status' => $localStatus, 'message' => 'Transaksi sudah berstatus ' . $localStatus]);
+            }
+
+            // 3. Konfigurasi DANA
+            $this->applyDynamicConfig();
+            $merchantId = config('services.dana.merchant_id');
+            $partnerId  = config('services.dana.x_partner_id');
+            $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            
+            // Menyesuaikan endpoint dengan metode pembayaran. 
+            // DANA_BINDING menggunakan /rest/v1.1/, sedangkan DANA reguler menggunakan /payment-gateway/v1.0/
+            $isBinding = str_contains(strtoupper($transaction->payment_method), 'BINDING');
+            $path = $isBinding ? '/rest/v1.1/debit/status' : '/payment-gateway/v1.0/debit/status.htm';
+
+            $body = [
+                "originalPartnerReferenceNo" => $orderId,
+                "serviceCode"                => "54", 
+                "merchantId"                 => $merchantId
+            ];
+            
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+
+            // 4. Generate Signature
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => $partnerId,
+                'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            // 5. Eksekusi Request POST ke DANA
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            $responseCode = $result['responseCode'] ?? 'UNKNOWN';
+
+            // 6. Evaluasi Respon DANA
+            if ($responseCode === '2005500') {
+                $statusDana = $result['latestTransactionStatus'] ?? null;
+                
+                // STATUS: BERHASIL LUNAS
+                if ($statusDana === '00') {
+                    // Panggil prosesor utama agar saldo user otomatis ditambah & notifikasi terkirim
+                    self::processTopUp($orderId, 'PAID', $transaction->amount);
+                    return response()->json([
+                        'success' => true, 
+                        'status'  => 'SUCCESS',
+                        'message' => 'Pembayaran berhasil dikonfirmasi! Saldo telah ditambahkan.'
+                    ]);
+                } 
+                
+                // STATUS: PENDING
+                elseif (in_array($statusDana, ['01', '02', '03'])) {
+                    return response()->json([
+                        'success' => true, 
+                        'status'  => 'PENDING',
+                        'message' => 'Menunggu pembayaran. Silakan selesaikan pembayaran di aplikasi DANA.'
+                    ]);
+                } 
+                
+                // STATUS: GAGAL / KADALUARSA / CANCEL
+                else {
+                    $transaction->update(['status' => 'failed']);
+                    return response()->json([
+                        'success' => true, 
+                        'status'  => 'FAILED',
+                        'message' => 'Transaksi telah kadaluarsa atau dibatalkan.'
+                    ]);
+                }
+            }
+
+            // Jika API DANA membalas dengan error gateway (Misal: 404 Transaction Not Found)
+            if ($responseCode === '4045501') {
+                $transaction->update(['status' => 'failed']);
+                return response()->json(['success' => true, 'status' => 'FAILED', 'message' => 'Transaksi tidak ditemukan di sistem DANA (Kadaluarsa).']);
+            }
+
+            return response()->json([
+                'success' => false, 
+                'message' => $result['responseMessage'] ?? 'Terjadi kesalahan dari server DANA.'
+            ], 400);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('API EXPO DANA Cek Status Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error: Terjadi gangguan koneksi jaringan.'], 500);
+        }
+    }
 }
