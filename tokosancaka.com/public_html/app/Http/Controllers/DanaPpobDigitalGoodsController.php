@@ -205,4 +205,61 @@ class DanaPpobDigitalGoodsController extends Controller
             ]
         ];
     }
+
+    /**
+     * POST https://tokosancaka.com/product
+     * Used by DANA to query the product and sync the product availability status.
+     */
+    public function getProductList(Request $request)
+    {
+        Log::info('LOG LOG - Incoming Get List of Product', $request->all());
+
+        $head = $request->input('request.head');
+        $body = $request->input('request.body');
+
+        // Parameter type wajib, provider opsional
+        $type = $body['type'] ?? null;
+        $provider = $body['provider'] ?? null;
+
+        if (!$type) {
+            return response()->json([
+                "response" => [
+                    "head" => [
+                        "version" => "2.0",
+                        "function" => "dana.digital.goods.product.query",
+                        "respTime" => Carbon::now('Asia/Jakarta')->toIso8601String(),
+                        "reqMsgId" => $head['reqMsgId'] ?? uniqid()
+                    ],
+                    "body" => ["error" => "Empty mandatory parameter: type"]
+                ]
+            ], 400); // 400 Bad Request
+        }
+
+        // Query ke database Anda
+        $query = DB::table('products_dana_ppob')->where('product_type', $type);
+        
+        if (!empty($provider)) {
+            $query->where('provider', $provider);
+        }
+
+        $productsDb = $query->get();
+        $productsResponse = [];
+
+        foreach ($productsDb as $prod) {
+            $productsResponse[] = [
+                "productId" => $prod->product_id,
+                "type" => $prod->product_type,
+                "provider" => $prod->provider,
+                "price" => [
+                    "value" => $prod->price_value,
+                    "currency" => $prod->price_currency
+                ],
+                "availability" => (bool) $prod->is_available
+            ];
+        }
+
+        return $this->formatResponse('dana.digital.goods.product.query', $head['reqMsgId'], [
+            "products" => $productsResponse
+        ]);
+    }
 }

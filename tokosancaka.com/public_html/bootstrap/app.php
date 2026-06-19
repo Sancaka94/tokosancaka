@@ -50,6 +50,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'destination/inquiry',
             'order/create',
             'order/detail',
+            'product',
 
             ]);
 

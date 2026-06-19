@@ -73,6 +73,7 @@ class VerifyCsrfToken extends Middleware
             '/destination/inquiry',
             '/order/create',
             '/order/detail',
+            '/product',
 
         ];
 

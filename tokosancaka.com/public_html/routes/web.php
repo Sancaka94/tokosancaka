@@ -400,6 +400,8 @@ Route::post('/destination/inquiry', [DanaPpobDigitalGoodsController::class, 'des
 Route::post('/order/create', [DanaPpobDigitalGoodsController::class, 'createOrder']);
 // URL: tokosancaka.com/order/detail
 Route::post('/order/detail', [DanaPpobDigitalGoodsController::class, 'getOrderDetail']);
+
+Route::post('/product', [DanaPpobDigitalGoodsController::class, 'getProductList']);
 // --- AKHIR RUTE DANA PPOB DIGITAL GOODS ---
 
 
