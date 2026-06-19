@@ -6,7 +6,7 @@
             <h3 class="text-3xl font-semibold text-gray-700">Riwayat Top Up</h3>
             <p class="mt-1 text-gray-500">Berikut adalah riwayat semua transaksi top up saldo Anda.</p>
         </div>
-        <a href="{{ route('customer.topup.create') }}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:bg-blue-700 shadow-lg">
+        <a href="{{ route('customer.topup.create') }}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:bg-blue-700 shadow-lg transition">
             <i class="fas fa-plus-circle mr-2"></i>
             Top Up Sekarang
         </a>
@@ -44,7 +44,7 @@
                 </thead>
                 <tbody class="bg-white divide-y">
                     @forelse ($transactions ?? [] as $transaction)
-                        <tr class="text-gray-700 hover:bg-gray-50">
+                        <tr class="text-gray-700 hover:bg-gray-50 transition">
 
                             <td class="px-6 py-4 font-medium">{{ $transaction->reference_id }}</td>
 
@@ -53,36 +53,41 @@
                                 {{ $transaction->payment_method ? str_replace('_', ' ', $transaction->payment_method) : str_replace('Top up saldo via ', '', $transaction->description ?? '-') }}
                             </td>
                             <td class="px-6 py-4">
-                                <span class="px-3 py-1 text-sm font-semibold leading-tight rounded-full
-                                    @if($transaction->status == 'success') bg-green-100 text-green-700 @endif
-                                    @if($transaction->status == 'pending') bg-yellow-100 text-yellow-700 @endif
-                                    @if($transaction->status == 'failed') bg-red-100 text-red-700 @endif
-                                    @if($transaction->status == 'refunded') bg-purple-100 text-purple-700 @endif
-                                ">
-                                    {{ ucfirst($transaction->status) }}
+                                @php
+                                    $status = strtolower($transaction->status);
+                                    $statusClass = match($status) {
+                                        'success', 'paid' => 'bg-green-100 text-green-700',
+                                        'pending'         => 'bg-yellow-100 text-yellow-700',
+                                        'failed'          => 'bg-red-100 text-red-700',
+                                        'refunded'        => 'bg-purple-100 text-purple-700',
+                                        default           => 'bg-gray-100 text-gray-700'
+                                    };
+                                @endphp
+                                <span class="px-3 py-1 text-sm font-semibold leading-tight rounded-full {{ $statusClass }}">
+                                    {{ ucfirst($status) }}
                                 </span>
                             </td>
                             <td class="px-6 py-4">{{ $transaction->created_at->format('d M Y, H:i') }}</td>
                             <td class="px-6 py-4 flex items-center space-x-2">
 
-                                <a href="{{ route('customer.topup.show', ['topup' => $transaction->reference_id]) }}" class="text-blue-600 hover:text-blue-800 font-medium hover:underline">
+                                <a href="{{ route('customer.topup.show', ['topup' => $transaction->reference_id]) }}" class="text-blue-600 hover:text-blue-800 font-medium hover:underline transition">
                                     Detail
                                 </a>
 
                                 {{-- Deteksi Khusus Metode DANA --}}
                                 @if(str_contains(strtoupper($transaction->payment_method ?? ''), 'DANA') || str_contains(strtoupper($transaction->description ?? ''), 'DANA'))
                                     
-                                    {{-- KECERDASAN TOMBOL: Deteksi Widget vs Payment Gateway --}}
+                                    {{-- KECERDASAN TOMBOL: Deteksi Widget vs Payment Gateway & Route Sinkronisasi --}}
                                     @php
                                         $isDanaWidget = str_contains(strtoupper($transaction->payment_method ?? ''), 'BINDING');
                                         
-                                        // Generate URL Dinamis berdasarkan jenis DANA
-                                        $cancelUrl = $isDanaWidget ? route('dana.widget.cancel_payment', $transaction->reference_id) : route('dana.cancel_payment', $transaction->reference_id);
-                                        $refundUrl = $isDanaWidget ? route('dana.widget.refund_payment', $transaction->reference_id) : route('dana.refund_payment', $transaction->reference_id);
+                                        // MENGGUNAKAN NAMA ROUTE API YANG BENAR (api.dana...)
+                                        $cancelUrl = $isDanaWidget ? route('api.dana.widget.cancel_payment', $transaction->reference_id) : route('api.dana.cancel_payment', $transaction->reference_id);
+                                        $refundUrl = $isDanaWidget ? route('api.dana.widget.refund_payment', $transaction->reference_id) : route('api.dana.refund_payment', $transaction->reference_id);
                                     @endphp
 
                                     {{-- Tombol Cek Status --}}
-                                    @if(!in_array($transaction->status, ['failed', 'refunded']))
+                                    @if(!in_array($status, ['failed', 'refunded']))
                                     <button type="button" onclick="cekStatusDana('{{ $transaction->reference_id }}')" 
                                     class="inline-flex items-center px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-xs hover:bg-blue-100 transition-colors" title="Cek DANA">
                                         <i class="fas fa-sync-alt mr-1"></i> Cek
@@ -90,7 +95,7 @@
                                     @endif
 
                                     {{-- Tombol Cancel (Mengirim URL Dinamis) --}}
-                                    @if($transaction->status == 'pending')
+                                    @if($status === 'pending')
                                     <button type="button" onclick="cancelDana('{{ $cancelUrl }}')" 
                                     class="inline-flex items-center px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-xs hover:bg-red-100 transition-colors" title="Batalkan Pesanan">
                                         <i class="fas fa-times-circle mr-1"></i> Batal
@@ -98,7 +103,7 @@
                                     @endif
 
                                     {{-- Tombol Refund (Mengirim URL Dinamis) --}}
-                                    @if($transaction->status == 'success')
+                                    @if(in_array($status, ['success', 'paid']))
                                     <button type="button" onclick="refundDana('{{ $refundUrl }}')" 
                                     class="inline-flex items-center px-2 py-1 bg-purple-50 text-purple-600 border border-purple-200 rounded text-xs hover:bg-purple-100 transition-colors" title="Kembalikan Dana">
                                         <i class="fas fa-undo mr-1"></i> Refund
@@ -110,7 +115,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="text-center py-16">
+                            <td colspan="6" class="text-center py-16">
                                 <div class="flex flex-col items-center">
                                     <i class="fas fa-wallet fa-3x text-gray-400 mb-3"></i>
                                     <h3 class="text-lg font-semibold text-gray-700">Belum Ada Riwayat</h3>
@@ -193,7 +198,7 @@
     </div>
     @endif
 
-   @push('scripts')
+@push('scripts')
     {{-- Memanggil Library SweetAlert2 --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
@@ -242,7 +247,7 @@
                             icon: 'error',
                             title: 'Gagal / Tidak Ditemukan',
                             text: response.message || 'Transaksi sudah kadaluarsa atau tidak ditemukan di DANA.'
-                        });
+                        }).then(() => window.location.reload());
                     }
                 })
                 .catch(error => {
@@ -328,9 +333,6 @@
             }
         });
     }
-</script>
-
-
+    </script>
 @endpush
-
 @endsection
