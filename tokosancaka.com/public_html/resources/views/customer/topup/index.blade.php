@@ -152,7 +152,12 @@
 
             const url = "{{ url('/uat-dana-status') }}/" + orderId;
 
-            fetch(url)
+            fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
@@ -216,20 +221,22 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            'Accept': 'application/json', // <--- WAJIB ADA AGAR LARAVEL TAHU INI AJAX
+                            'X-Requested-With': 'XMLHttpRequest', // <--- WAJIB ADA AGAR LARAVEL TAHU INI AJAX
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         }
                     })
                     .then(res => res.json())
                     .then(response => {
-                        // Cek apakah response punya kunci 'success'
-                        if(response.success) {
+                        // Cek status sesuai dengan helper backend kita
+                        if(response.status === 'success') {
                             Swal.fire('Dibatalkan!', response.message, 'success').then(() => window.location.reload());
                         } else {
                             Swal.fire('Gagal', response.message || 'Terjadi kesalahan sistem.', 'error');
                         }
                     }).catch(error => {
                         console.error('Error:', error);
-                        Swal.fire('Error', 'Terjadi kesalahan sistem saat menghubungi server.', 'error');
+                        Swal.fire('Error', 'Gagal membatalkan pesanan. Cek console log untuk detail.', 'error');
                     });
                 }
             });
@@ -254,20 +261,22 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            'Accept': 'application/json', // <--- WAJIB ADA
+                            'X-Requested-With': 'XMLHttpRequest', // <--- WAJIB ADA
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         }
                     })
                     .then(res => res.json())
                     .then(response => {
-                        // Menangkap JSON dari controller
-                        if(response.success) {
+                        // Cek status sesuai dengan helper backend kita
+                        if(response.status === 'success') {
                             Swal.fire('Berhasil!', response.message, 'success').then(() => window.location.reload());
                         } else {
                             Swal.fire('Gagal', response.message || 'Terjadi kesalahan sistem.', 'error');
                         }
                     }).catch(error => {
                         console.error('Error:', error);
-                        Swal.fire('Error', 'Gagal memproses refund. Server tidak merespons.', 'error');
+                        Swal.fire('Error', 'Gagal memproses refund. Server tidak merespons JSON dengan benar.', 'error');
                     });
                 }
             });
