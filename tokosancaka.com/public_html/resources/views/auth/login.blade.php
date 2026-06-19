@@ -25,7 +25,7 @@
         padding: 2rem 1rem;
         position: relative;
     }
-    
+
     /* Kartu Utama */
     .auth-card {
         max-width: 950px;
@@ -52,7 +52,7 @@
         background-position: 0 0, 25px 25px;
         opacity: 0.5;
     }
-    
+
     .brand-logo-container {
         position: absolute;
         top: 2rem;
@@ -93,7 +93,7 @@
         cursor: pointer;
         color: #adb5bd;
     }
-    
+
     /* Teks Copyright di bawah tengah seperti di referensi */
     .copyright-text {
         position: absolute;
@@ -101,12 +101,20 @@
         width: 100%;
         text-align: center;
     }
+
+    /* Memaksa gambar Captcha menjadi responsif */
+    .captcha-wrapper img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 0.375rem; /* Menyesuaikan lengkungan border Bootstrap */
+    }
+
 </style>
 @endpush
 
 @section('content')
 <div class="auth-wrapper">
-    
+
     @php
         $formAction = request()->is('admin/*') ? route('admin.login') : route('login');
         $registerRoute = Route::has('register') ? route('register') : '#';
@@ -114,14 +122,14 @@
 
     <div class="card auth-card bg-white">
         <div class="row g-0 h-100">
-            
+
             {{-- 1. SISI KIRI (Branding & Sambutan) --}}
             <div class="col-md-5 d-none d-md-flex auth-brand-side flex-column">
                 <div class="brand-logo-container">
                     {{-- Logo putih (invert) --}}
                     <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Sancaka Express" style="max-height: 40px; filter: brightness(0) invert(1);" onerror="this.src='https://placehold.co/150x40?text=Sancaka'">
                 </div>
-                
+
                 <div class="my-auto px-4 px-lg-5 text-center text-white position-relative z-2">
                     <p class="mb-2 fw-medium text-uppercase tracking-wider" style="letter-spacing: 1px; font-size: 0.9rem;">Nice to see you again</p>
                     <h2 class="fw-bold mb-4" style="font-size: 2.5rem;">WELCOME BACK</h2>
@@ -132,7 +140,7 @@
 
             {{-- 2. SISI KANAN (Form & Aksi) --}}
             <div class="col-12 col-md-7 p-4 p-md-5 d-flex flex-column justify-content-center">
-                
+
                 {{-- Logo untuk Mobile --}}
                 <div class="text-center d-md-none mb-4">
                     <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Sancaka Express" style="max-height: 45px;">
@@ -156,7 +164,7 @@
 
                 <form method="POST" action="{{ $formAction }}" class="px-xl-4">
                     @csrf
-                    
+
                     <div class="form-floating mb-3">
                         <input type="text" class="form-control" id="email" name="login" placeholder="Email / WA" value="{{ old('email') }}" required autofocus>
                         <label for="email" class="text-muted">Email atau Nomor WhatsApp</label>
@@ -171,7 +179,7 @@
                     {{-- Keamanan Captcha --}}
                     <div class="mb-3 p-3 bg-light rounded-3 border">
                         <label class="form-label text-muted small mb-2 d-block text-center">Keamanan: Ketik karakter pada gambar</label>
-                        <div class="text-center mb-2">
+                        <div class="text-center mb-2 captcha-wrapper">
                             {!! captcha_img('flat') !!}
                         </div>
                         <input type="text" class="form-control text-center" name="captcha" placeholder="Masukkan karakter di atas" required autocomplete="off">
@@ -191,13 +199,13 @@
                     <div class="d-grid mb-3">
                         <button type="submit" class="btn btn-danger btn-lg text-uppercase">Login</button>
                     </div>
-                    
+
                     @if (Route::has('password.request') && !request()->is('admin/*'))
                         <div class="text-center mt-3">
                             <a href="https://tokosancaka.com/password/reset" class="small text-muted text-decoration-none">Lupa password?</a>
                         </div>
                     @endif
-                
+
                 </form>
 
                  <div class="text-center">
@@ -208,12 +216,12 @@
 
             </div>
 
-             
+
 
         </div>
     </div>
 
-    
+
 </div>
 @endsection
 
