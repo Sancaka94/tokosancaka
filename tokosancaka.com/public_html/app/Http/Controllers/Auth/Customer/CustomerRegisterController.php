@@ -47,26 +47,30 @@ class CustomerRegisterController extends Controller
         ]);
     }
 
-    /**
+   /**
      * Membuat user baru.
      */
     protected function create(array $data)
     {
+        // 1. Generate OTP DULU SEBELUM CREATE
+        $otp = strtoupper(Str::random(6));
+
+        // 2. Masukkan ke dalam proses create
         $user = User::create([
             'store_name'   => $data['store_name'],
             'nama_lengkap' => $data['nama_lengkap'],
             'email'        => $data['email'],
             'no_wa'        => $data['no_wa'],
-            'password'     => $data['password'], // hash di mutator User
+            'password'     => $data['password'],
             'role'         => 'Pelanggan',
             'is_verified'  => 1,
             'status'       => 'Tidak Aktif',
+            'setup_token'  => $otp, // 🔑 MASUKKAN OTP DI SINI
         ]);
 
-        // 🔑 Generate OTP 6 Karakter (Kombinasi Huruf Kapital & Angka)
-        $otp = strtoupper(Str::random(6));
-        $user->setup_token = $otp;
-        $user->save();
+        // (KODE INI DIHAPUS KARENA SUDAH DIMASUKKAN KE CREATE)
+        // $user->setup_token = $otp;
+        // $user->save();
 
         // --- Notifikasi ke Admin (Kode Tetap) ---
         try {
@@ -85,9 +89,8 @@ class CustomerRegisterController extends Controller
         } catch (\Exception $e) {
             Log::error('Gagal mengirim notifikasi pendaftaran: ' . $e->getMessage());
         }
-        // --- SELESAI TAMBAHAN KODE ---
 
-        // 🔑 Pesan WhatsApp dikirim berupa OTP, BUKAN link setup lagi
+        // Pesan WhatsApp
         $message = <<<TEXT
 *Selamat Datang di Aplikasi Sancaka Express, Kak {$user->nama_lengkap}*
 
@@ -104,7 +107,6 @@ TEXT;
 
         $noWa = preg_replace('/^0/', '62', $user->no_wa);
 
-        // Kirim Pesan WA
         FonnteService::sendMessage($noWa, $message);
         FonnteService::sendMessage('085745808809', $message);
 
