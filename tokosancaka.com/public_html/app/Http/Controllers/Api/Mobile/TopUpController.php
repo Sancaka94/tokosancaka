@@ -1038,7 +1038,6 @@ class TopUpController extends Controller
                 ],
                 [
                     "type"       => "MAIN_APP_PAY_RETURN",
-                    // Jika Expo Anda memakai deep link (misal: sancaka://), ganti URL di bawah dengan deep link Anda
                     "url"        => route('dana.return', ['trx_id' => $trxId]), 
                     "isDeeplink" => "Y"
                 ]
@@ -1081,7 +1080,7 @@ class TopUpController extends Controller
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "WEB" // WEB paling aman untuk ditangkap expo-web-browser
+                    "orderTerminalType" => "WEB" 
                 ],
                 "productCode"                => "51051000100000000001",
                 "supportDeepLinkCheckoutUrl" => "true" 
@@ -1108,25 +1107,21 @@ class TopUpController extends Controller
                 'CHANNEL-ID'             => '95221'
             ];
 
-            Log::info('LOG LOG: [DANA BINDING EXPO] Mengirim Request Host-to-Host...');
-
             $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
                 ->post($baseUrl . $path);
 
             $result = $response->json();
 
-            // CEK RESPON SUKSES SESUAI DOKUMEN (2005400)
             if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
 
-                // KUNCI EXPO: HANYA AMBIL WEB URL-NYA SAJA
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
                 
                 if (!empty($redirectUrl)) {
                     Log::info('LOG LOG: [DANA BINDING EXPO] Berhasil generate URL Express Checkout.');
                     
                     // =====================================================================
-                    // TAHAP 2: REQUEST APPLY OTT (Agar bypass Halaman Login DANA di Expo)
+                    // TAHAP 2: REQUEST APPLY OTT
                     // =====================================================================
                     $pathOtt = '/rest/v1.1/qr/apply-ott';
                     $timestampOtt = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
@@ -1159,7 +1154,7 @@ class TopUpController extends Controller
 
                     $resultOtt = $responseOtt->json();
                     
-                    // Jika OTT Berhasil (2004900)
+                    // Jika OTT Berhasil
                     if (isset($resultOtt['responseCode']) && $resultOtt['responseCode'] === '2004900') {
                         $ottToken = $resultOtt['userResources'][0]['value'] ?? null;
                         
@@ -1171,47 +1166,36 @@ class TopUpController extends Controller
                         Log::warning('LOG LOG: [DANA BINDING EXPO] Gagal Apply OTT, fallback ke URL Checkout biasa.', $resultOtt);
                     }
                     
-                    // Simpan URL ke database
-                    $transaction->update(['payment_url' => $redirectUrl]);
-                    
-                    // --- PERUBAHAN UTAMA UNTUK EXPO (JSON RESPONSE) ---
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Berhasil membuat tagihan DANA (Binding).',
-                        'data' => [
-                            'reference_id' => $trxId,
-                            'amount'       => $transaction->amount,
-                            'payment_url'  => $redirectUrl
-                        ]
-                    ], 200);
+                    // KEMBALIKAN DALAM BENTUK ARRAY AGAR FUNGSI store() BISA MEMBACANYA
+                    return [
+                        'success'      => true,
+                        'redirect_url' => $redirectUrl
+                    ];
                 }
 
-                $transaction->update(['status' => 'failed']);
-                Log::error('LOG LOG: [DANA BINDING EXPO] Transaksi DANA menggantung. Tidak ada Web URL.');
-                return response()->json([
+                return [
                     'success' => false,
                     'message' => 'Gagal: URL Pembayaran DANA tidak diterbitkan oleh server pusat.'
-                ], 400);
+                ];
             }
 
             // PENANGANAN ERROR DANA
-            $transaction->update(['status' => 'failed']);
             $errorCode  = $result['responseCode'] ?? 'UNKNOWN';
             $pesanGagal = $result['responseMessage'] ?? 'Terjadi kesalahan pada sistem pembayaran.';
 
             Log::error("LOG LOG: [DANA BINDING EXPO] Gagal generate URL. Code: $errorCode | Msg: $pesanGagal");
 
-            return response()->json([
+            return [
                 'success' => false,
                 'message' => "Gagal dari DANA [$errorCode]: $pesanGagal"
-            ], 400);
+            ];
 
         } catch (\Exception $e) {
             Log::error('LOG LOG: [DANA BINDING EXPO] Fatal Exception: ' . $e->getMessage());
-            return response()->json([
+            return [
                 'success' => false,
                 'message' => 'Koneksi ke sistem DANA gagal. Silakan coba beberapa saat lagi.'
-            ], 500);
+            ];
         }
     }
 }
