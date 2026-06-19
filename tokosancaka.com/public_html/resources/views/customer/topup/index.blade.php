@@ -12,6 +12,23 @@
         </a>
     </div>
 
+    {{-- ALERT INFORMASI REFUND & CANCEL DANA --}}
+    <div class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg shadow-sm">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-circle text-red-500 mt-1"></i>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm text-red-700 leading-relaxed font-medium">
+                    Mohon maaf, refund dana dan cancel transaksi otomatis hanya bisa dilakukan ketika kakak memilih metode pembayaran dengan Saldo akun DANA. Jangan lupa pilih <strong>DANA BALANCE</strong> dan tautkan akun DANA Anda ke website Sancaka Express.
+                    <br><br>
+                    Terima kasih,<br>
+                    <strong>Manajemen Sancaka Express</strong>
+                </p>
+            </div>
+        </div>
+    </div>
+
     <div class="bg-white rounded-lg shadow-lg">
         <div class="overflow-x-auto">
             <table class="w-full whitespace-no-wrap">
@@ -40,6 +57,7 @@
                                     @if($transaction->status == 'success') bg-green-100 text-green-700 @endif
                                     @if($transaction->status == 'pending') bg-yellow-100 text-yellow-700 @endif
                                     @if($transaction->status == 'failed') bg-red-100 text-red-700 @endif
+                                    @if($transaction->status == 'refunded') bg-purple-100 text-purple-700 @endif
                                 ">
                                     {{ ucfirst($transaction->status) }}
                                 </span>
@@ -313,6 +331,5 @@
 </script>
 
 @endpush
-
 
 @endsection
