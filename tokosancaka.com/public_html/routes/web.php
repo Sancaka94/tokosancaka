@@ -972,6 +972,11 @@ Route::get('/uat-dana-status/{orderId}', [\App\Http\Controllers\Customer\TopUpCo
 Route::post('/dana/cancel/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'cancelDanaPayment'])->name('dana.cancel_payment');
 Route::post('/dana/refund/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'refundDanaPayment'])->name('dana.refund_payment');
 
+// =========================================================================
+// Route DANA WIDGET (Cancel & Refund)
+// =========================================================================
+Route::post('/dana/widget/cancel/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'cancelDanaWidgetPayment'])->name('dana.widget.cancel_payment');
+Route::post('/dana/widget/refund/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'refundDanaWidgetPayment'])->name('dana.widget.refund_payment');
 
 // Route untuk halaman Pusat Bisnis
 Route::get('/customer/business-center', function () {

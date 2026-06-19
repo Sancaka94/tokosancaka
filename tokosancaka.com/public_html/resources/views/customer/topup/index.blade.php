@@ -26,11 +26,9 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y">
-                    {{-- ✅ PERBAIKAN: Menggunakan $transactions (dari Controller) dan $transaction (loop) --}}
                     @forelse ($transactions ?? [] as $transaction)
                         <tr class="text-gray-700 hover:bg-gray-50">
 
-                            {{-- ✅ PERBAIKAN: Menggunakan reference_id --}}
                             <td class="px-6 py-4 font-medium">{{ $transaction->reference_id }}</td>
 
                             <td class="px-6 py-4 font-semibold text-green-600">Rp {{ number_format($transaction->amount, 0, ',', '.') }}</td>
@@ -47,16 +45,25 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4">{{ $transaction->created_at->format('d M Y, H:i') }}</td>
-                           <td class="px-6 py-4 flex items-center space-x-2">
+                            <td class="px-6 py-4 flex items-center space-x-2">
 
                                 <a href="{{ route('customer.topup.show', ['topup' => $transaction->reference_id]) }}" class="text-blue-600 hover:text-blue-800 font-medium hover:underline">
                                     Detail
                                 </a>
 
-                                {{-- Tombol DANA (Khusus Metode DANA) --}}
+                                {{-- Deteksi Khusus Metode DANA --}}
                                 @if(str_contains(strtoupper($transaction->payment_method ?? ''), 'DANA') || str_contains(strtoupper($transaction->description ?? ''), 'DANA'))
                                     
-                                    {{-- Tombol Cek Status (Muncul di semua kondisi kecuali sudah refund/failed) --}}
+                                    {{-- KECERDASAN TOMBOL: Deteksi Widget vs Payment Gateway --}}
+                                    @php
+                                        $isDanaWidget = str_contains(strtoupper($transaction->payment_method ?? ''), 'BINDING');
+                                        
+                                        // Generate URL Dinamis berdasarkan jenis DANA
+                                        $cancelUrl = $isDanaWidget ? route('dana.widget.cancel_payment', $transaction->reference_id) : route('dana.cancel_payment', $transaction->reference_id);
+                                        $refundUrl = $isDanaWidget ? route('dana.widget.refund_payment', $transaction->reference_id) : route('dana.refund_payment', $transaction->reference_id);
+                                    @endphp
+
+                                    {{-- Tombol Cek Status --}}
                                     @if(!in_array($transaction->status, ['failed', 'refunded']))
                                     <button type="button" onclick="cekStatusDana('{{ $transaction->reference_id }}')" 
                                     class="inline-flex items-center px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-xs hover:bg-blue-100 transition-colors" title="Cek DANA">
@@ -64,17 +71,17 @@
                                     </button>
                                     @endif
 
-                                    {{-- Jika Status PENDING = Muncul Tombol Cancel --}}
+                                    {{-- Tombol Cancel (Mengirim URL Dinamis) --}}
                                     @if($transaction->status == 'pending')
-                                    <button type="button" onclick="cancelDana('{{ $transaction->reference_id }}')" 
+                                    <button type="button" onclick="cancelDana('{{ $cancelUrl }}')" 
                                     class="inline-flex items-center px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-xs hover:bg-red-100 transition-colors" title="Batalkan Pesanan">
                                         <i class="fas fa-times-circle mr-1"></i> Batal
                                     </button>
                                     @endif
 
-                                    {{-- Jika Status SUCCESS = Muncul Tombol Refund --}}
+                                    {{-- Tombol Refund (Mengirim URL Dinamis) --}}
                                     @if($transaction->status == 'success')
-                                    <button type="button" onclick="refundDana('{{ $transaction->reference_id }}')" 
+                                    <button type="button" onclick="refundDana('{{ $refundUrl }}')" 
                                     class="inline-flex items-center px-2 py-1 bg-purple-50 text-purple-600 border border-purple-200 rounded text-xs hover:bg-purple-100 transition-colors" title="Kembalikan Dana">
                                         <i class="fas fa-undo mr-1"></i> Refund
                                     </button>
@@ -84,7 +91,6 @@
                             </td>
                         </tr>
                     @empty
-                        {{-- Tampilan ini akan muncul jika tidak ada data top up --}}
                         <tr>
                             <td colspan="5" class="text-center py-16">
                                 <div class="flex flex-col items-center">
@@ -99,7 +105,6 @@
             </table>
         </div>
 
-        {{-- ✅ PERBAIKAN: Menggunakan $transactions (dari Controller) --}}
         @if(isset($transactions) && $transactions->hasPages())
             <div class="p-4 bg-white border-t">
                 {{ $transactions->links() }}
@@ -107,10 +112,7 @@
         @endif
     </div>
 
-    {{-- ================================================================= --}}
     {{-- MODAL SUKSES (POPUP) --}}
-    {{-- Akan muncul otomatis jika ada session 'dana_success' --}}
-    {{-- ================================================================= --}}
     @if(session('dana_success'))
     <div x-data="{ show: true }" x-show="show"
          class="fixed inset-0 z-50 overflow-y-auto"
@@ -179,7 +181,6 @@
     
     <script>
         function cekStatusDana(orderId) {
-            // 1. Munculkan modal loading
             Swal.fire({
                 title: 'Mengecek Status...',
                 text: 'Menghubungi server DANA',
@@ -189,7 +190,6 @@
                 }
             });
 
-            // 2. Eksekusi request menggunakan Fetch API (Javascript Murni, Tanpa jQuery)
             const url = "{{ url('/uat-dana-status') }}/" + orderId;
 
             fetch(url)
@@ -200,7 +200,6 @@
                     return response.json();
                 })
                 .then(response => {
-                    // 3. Tampilkan hasil berdasarkan respon dari controller
                     if (response.success && response.status === 'PAID') {
                         Swal.fire({
                             icon: 'success',
@@ -208,7 +207,6 @@
                             text: 'Status di DANA sudah PAID. Saldo berhasil masuk ke akun Anda.',
                             footer: '<span style="color:#6b7280; font-size:12px;">Ref: ' + orderId + '</span>'
                         }).then((result) => {
-                            // Refresh halaman otomatis jika tombol OK diklik
                             if (result.isConfirmed) {
                                 window.location.reload(); 
                             }
@@ -222,7 +220,6 @@
                         });
                         
                     } else {
-                        // Untuk status Cancelled, Expired, atau Not Found
                         Swal.fire({
                             icon: 'error',
                             title: 'Gagal / Tidak Ditemukan',
@@ -231,7 +228,6 @@
                     }
                 })
                 .catch(error => {
-                    // 4. Tangkap error jika terjadi masalah di backend (misal kode 500)
                     console.error("Fetch Error: ", error);
                     Swal.fire({
                         icon: 'error',
@@ -243,8 +239,8 @@
     </script>
 
     <script>
-    // FUNGSI CANCEL
-    function cancelDana(orderId) {
+    // FUNGSI CANCEL CERDAS (Menerima URL Dinamis)
+    function cancelDana(actionUrl) {
         Swal.fire({
             title: 'Batalkan Pesanan?',
             text: "Pesanan ini akan dibatalkan secara permanen di DANA.",
@@ -258,11 +254,11 @@
             if (result.isConfirmed) {
                 Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-                fetch("{{ url('/dana/cancel') }}/" + orderId, {
+                fetch(actionUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}' // Wajib untuk POST Laravel
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     }
                 })
                 .then(res => res.json())
@@ -279,8 +275,8 @@
         });
     }
 
-    // FUNGSI REFUND
-    function refundDana(orderId) {
+    // FUNGSI REFUND CERDAS (Menerima URL Dinamis)
+    function refundDana(actionUrl) {
         Swal.fire({
             title: 'Refund Saldo?',
             text: "Saldo pelanggan ini akan ditarik dan dikembalikan ke akun DANA mereka.",
@@ -294,7 +290,7 @@
             if (result.isConfirmed) {
                 Swal.fire({ title: 'Memproses Refund...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-                fetch("{{ url('/dana/refund') }}/" + orderId, {
+                fetch(actionUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -315,7 +311,6 @@
         });
     }
 </script>
-
 
 @endpush
 

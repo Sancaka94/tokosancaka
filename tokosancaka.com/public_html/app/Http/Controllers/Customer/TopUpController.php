@@ -195,7 +195,7 @@ class TopUpController extends Controller
                 // Passing $user langsung karena token ada di situ
                 // return $this->createCustomCheckoutDanaBalance($transaction, $user);
 
-                return $this->createPaymentDanaBindingOpsiKedua($transaction, $user);
+                return $this->createPaymentDanaBindingWidget($transaction, $user);
             }
 
             // 2. LOGIKA DANA DIRECT
@@ -2364,7 +2364,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         }
     }
 
-    public function createPaymentDanaBindingOpsiKedua(Transaction $transaction, $userAccount)
+    public function createPaymentDanaBindingWidget(Transaction $transaction, $userAccount)
     {
         $trxId = $transaction->reference_id;
         Log::info('LOG LOG: [DANA BINDING] Memulai Express Checkout (1-Click) untuk Top Up: ' . $trxId);
@@ -4358,6 +4358,181 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         } catch (\Exception $e) {
             Log::error('LOG LOG: [DANA CUSTOM CHECKOUT BALANCE] Fatal Exception: ' . $e->getMessage());
             return back()->with('error', 'Koneksi ke sistem DANA gagal. Silakan coba beberapa saat lagi.');
+        }
+    }
+
+    /**
+     * =========================================================================
+     * API CANCEL ORDER DANA WIDGET (SNAP Service Code: 57)
+     * Hanya berlaku untuk transaksi PENDING dan maksimal 30 menit.
+     * =========================================================================
+     */
+    public function cancelDanaWidgetPayment($orderId)
+    {
+        Log::info('LOG LOG: [DANA WIDGET CANCEL] Memulai proses Cancel untuk Order ID: ' . $orderId);
+        
+        try {
+            $transaction = \App\Models\Transaction::where('reference_id', $orderId)->first();
+            if (!$transaction) {
+                return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan.'], 404);
+            }
+
+            // --- VALIDASI CS DANA: STATUS HARUS PENDING ---
+            if (strtoupper($transaction->status) !== 'PENDING') {
+                Log::warning('LOG LOG: [DANA WIDGET CANCEL] Ditolak. Transaksi tidak berstatus PENDING.');
+                return response()->json(['success' => false, 'message' => 'Hanya transaksi berstatus PENDING yang dapat dibatalkan.'], 400);
+            }
+
+            // --- VALIDASI CS DANA: MAKSIMAL 30 MENIT ---
+            $createdAt = \Carbon\Carbon::parse($transaction->created_at);
+            if (now()->diffInMinutes($createdAt) > 30) {
+                Log::warning('LOG LOG: [DANA WIDGET CANCEL] Ditolak. Waktu lebih dari 30 menit.');
+                return response()->json(['success' => false, 'message' => 'Batas waktu pembatalan (30 menit) telah kedaluwarsa.'], 400);
+            }
+
+            $this->applyDynamicConfig();
+            $merchantId = config('services.dana.merchant_id');
+            $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $path       = '/v1.0/debit/cancel.htm'; // Path spesifik Widget Cancel
+
+            // BODY SESUAI DOKUMEN DANA WIDGET CANCEL
+            $body = [
+                "originalPartnerReferenceNo" => (string) $orderId,
+                "merchantId"                 => (string) $merchantId
+            ];
+            
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+            Log::info('LOG LOG: [DANA WIDGET CANCEL] Request Body: ' . $jsonBody);
+
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+            $externalId = date('YmdHis') . mt_rand(100000000, 999999999);
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) $externalId,
+                'CHANNEL-ID'    => '95221'
+            ];
+            
+            Log::info('LOG LOG: [DANA WIDGET CANCEL] Headers Disiapkan: ', $headers);
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            Log::info('LOG LOG: [DANA WIDGET CANCEL] Response dari DANA: ', $result ?? ['raw_body' => $response->body()]);
+            
+            if (($result['responseCode'] ?? '') === '2005700') {
+                $transaction->update(['status' => 'failed']); 
+                Log::info('LOG LOG: [DANA WIDGET CANCEL] Berhasil dibatalkan di DANA dan Database.');
+                return response()->json(['success' => true, 'message' => 'Pesanan Widget berhasil dibatalkan di DANA.']);
+            }
+
+            return response()->json(['success' => false, 'message' => $result['responseMessage'] ?? 'Gagal membatalkan pesanan.']);
+            
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [DANA WIDGET CANCEL] Exception Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error: Terjadi kesalahan koneksi.'], 500);
+        }
+    }
+
+    /**
+     * =========================================================================
+     * API REFUND ORDER DANA WIDGET (SNAP Service Code: 58)
+     * Hanya berlaku untuk transaksi SUKSES dan maksimal 30 menit.
+     * =========================================================================
+     */
+    public function refundDanaWidgetPayment($orderId)
+    {
+        Log::info('LOG LOG: [DANA WIDGET REFUND] Memulai proses Refund untuk Order ID: ' . $orderId);
+        
+        try {
+            $transaction = \App\Models\Transaction::where('reference_id', $orderId)->first();
+            if (!$transaction) {
+                return response()->json(['success' => false, 'message' => 'Transaksi tidak ditemukan.'], 404);
+            }
+
+            // --- VALIDASI CS DANA: STATUS HARUS SUCCESS / PAID ---
+            if (!in_array(strtoupper($transaction->status), ['SUCCESS', 'PAID'])) {
+                Log::warning('LOG LOG: [DANA WIDGET REFUND] Ditolak. Transaksi belum sukses dibayar.');
+                return response()->json(['success' => false, 'message' => 'Hanya transaksi berstatus SUCCESS yang dapat di-refund.'], 400);
+            }
+
+            // --- VALIDASI CS DANA: MAKSIMAL 30 MENIT ---
+            $createdAt = \Carbon\Carbon::parse($transaction->created_at);
+            if (now()->diffInMinutes($createdAt) > 30) {
+                Log::warning('LOG LOG: [DANA WIDGET REFUND] Ditolak. Waktu transaksi lebih dari 30 menit.');
+                return response()->json(['success' => false, 'message' => 'Batas waktu refund (30 menit) telah kedaluwarsa.'], 400);
+            }
+
+            $this->applyDynamicConfig();
+            $merchantId = config('services.dana.merchant_id');
+            $timestamp  = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $path       = '/v1.0/debit/refund.htm'; // Path spesifik Widget Refund
+            
+            $partnerRefundNo = date('YmdHis') . mt_rand(100000000, 999999999); 
+            $refundAmountValue = number_format((float)$transaction->amount, 2, '.', '');
+
+            // BODY SESUAI DOKUMEN DANA WIDGET REFUND
+            $body = [
+                "merchantId"                 => (string) $merchantId,
+                "originalPartnerReferenceNo" => (string) $orderId,
+                "partnerRefundNo"            => (string) $partnerRefundNo,
+                "refundAmount" => [
+                    "value"    => $refundAmountValue,
+                    "currency" => "IDR"
+                ]
+            ];
+            
+            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+            Log::info('LOG LOG: [DANA WIDGET REFUND] Request Body: ' . $jsonBody);
+
+            $accessToken = $this->danaSignature->getAccessToken();
+            $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+            $externalId = date('YmdHis') . mt_rand(100000000, 999999999);
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) $externalId,
+                'CHANNEL-ID'    => '95221'
+            ];
+            
+            Log::info('LOG LOG: [DANA WIDGET REFUND] Headers Disiapkan: ', $headers);
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            Log::info('LOG LOG: [DANA WIDGET REFUND] Response dari DANA: ', $result ?? ['raw_body' => $response->body()]);
+            
+            if (($result['responseCode'] ?? '') === '2005800') {
+                $transaction->update(['status' => 'refunded']); 
+                
+                // Tarik kembali saldo user jika refund berhasil
+                $user = \App\Models\User::find($transaction->user_id);
+                if ($user) $user->decrement('saldo', $transaction->amount);
+
+                Log::info('LOG LOG: [DANA WIDGET REFUND] Berhasil di-refund! Saldo ditarik.');
+                return response()->json(['success' => true, 'message' => 'Dana berhasil dikembalikan ke akun DANA pelanggan.']);
+            }
+
+            return response()->json(['success' => false, 'message' => $result['responseMessage'] ?? 'Gagal memproses refund.']);
+            
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [DANA WIDGET REFUND] Exception Error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error: Terjadi kesalahan koneksi.'], 500);
         }
     }
 
