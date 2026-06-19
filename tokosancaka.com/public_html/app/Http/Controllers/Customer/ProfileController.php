@@ -10,8 +10,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use App\Services\KiriminAjaService; // 🔑 Ditambahkan untuk service API
-use Carbon\Carbon; // Ditambahkan untuk timestamp
+use App\Services\KiriminAjaService;
+use Carbon\Carbon;
 
 class ProfileController extends Controller
 {
@@ -40,10 +40,8 @@ class ProfileController extends Controller
         $user = $request->user();
 
         try {
-            // --- VALIDASI DENGAN EXCEPTION UNTUK 'unique:Pengguna' ---
             $validated = $request->validate([
                 'nama_lengkap'          => ['required', 'string', 'max:255'],
-                // 🔑 PERBAIKAN: Menambahkan Rule::unique untuk No. WA yang diperbarui
                 'no_wa'                 => ['required', 'string', 'max:20', Rule::unique('Pengguna', 'no_wa')->ignore($user->id_pengguna, 'id_pengguna')],
                 'store_name'            => ['nullable', 'string', 'max:255'],
                 'store_logo'            => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:2048'],
@@ -65,7 +63,6 @@ class ProfileController extends Controller
             ]);
 
             if ($request->hasFile('store_logo')) {
-                // Hapus logo lama jika ada
                 if ($user->store_logo_path) {
                     Storage::disk('public')->delete($user->store_logo_path);
                 }
@@ -91,22 +88,20 @@ class ProfileController extends Controller
     }
 
     /**
-     * Menampilkan Form Input OTP
+     * Menampilkan Form Input OTP (Public - Belum Login)
      */
     public function showOtpForm()
     {
-        $user = auth()->user();
-
-        // Jika status sudah aktif, jangan izinkan akses halaman OTP lagi
-        if ($user->status === 'Aktif') {
-            return redirect()->route('customer.dashboard');
+        // Jika tidak ada session nomor WA dari pendaftaran, tolak akses ke halaman OTP
+        if (!session()->has('otp_no_wa')) {
+            return redirect()->route('login')->with('error', 'Sesi tidak valid. Silakan login atau daftar terlebih dahulu.');
         }
 
         return view('customer.profile.otp');
     }
 
     /**
-     * Memproses Verifikasi Inputan OTP
+     * Memproses Verifikasi OTP dan Login Otomatis
      */
     public function verifyOtp(Request $request)
     {
@@ -117,26 +112,40 @@ class ProfileController extends Controller
             'otp.size'     => 'Kode OTP harus 6 karakter.'
         ]);
 
-        $user = auth()->user();
+        // 1. Ambil nomor WA dari session sementara
+        $noWa = session('otp_no_wa');
+        $user = User::where('no_wa', $noWa)->first();
 
-        // Cek apakah input OTP sama dengan yang ada di database
-        if (strtoupper($user->setup_token) === strtoupper($request->otp)) {
-            // Jika valid, arahkan ke halaman isi form profil lengkap
-            return redirect()->route('customer.profile.setup')->with('success', 'OTP Valid! Silakan lengkapi data profil Anda.');
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Data pendaftar tidak ditemukan.');
         }
 
+        // 2. Cocokkan OTP dari input dengan database
+        if (strtoupper($user->setup_token) === strtoupper($request->otp)) {
+
+            // 3. OTP Benar -> Login Otomatis!
+            Auth::login($user);
+
+            // 4. Hapus session sementara
+            session()->forget('otp_no_wa');
+
+            // 5. Arahkan ke halaman Setup Profile
+            return redirect()->route('customer.profile.setup')->with('success', 'Verifikasi berhasil! Silakan lengkapi data profil Anda.');
+        }
+
+        // Jika salah
         return redirect()->back()->with('error', 'Kode OTP yang Anda masukkan salah.');
     }
 
     /**
-     * Menampilkan form setup profil (Tanpa Token di URL).
+     * Menampilkan form setup profil (Khusus User yang baru login dari OTP).
      * Route: customer/profile/setup
      */
     public function setup(Request $request)
     {
         $user = auth()->user();
 
-        // Jika sudah aktif, lempar ke dashboard
+        // Jika statusnya sudah aktif, langsung tendang ke dashboard (tidak boleh set up ulang)
         if ($user->status === 'Aktif') {
             return redirect()->route('customer.dashboard');
         }
@@ -154,7 +163,6 @@ class ProfileController extends Controller
     {
         $user = auth()->user();
 
-        // --- VALIDASI SAMA DENGAN UPDATE BIASA ---
         $validated = $request->validate([
             'nama_lengkap'          => ['required', 'string', 'max:255'],
             'no_wa'                 => ['required', 'string', 'max:20', Rule::unique('Pengguna', 'no_wa')->ignore($user->id_pengguna, 'id_pengguna')],
@@ -187,16 +195,20 @@ class ProfileController extends Controller
 
         // 🔑 Proses Akhir Setup
         $user->fill($validated);
-        $user->profile_setup_at = Carbon::now(); // Tandai waktu setup selesai
-        $user->status = 'Aktif'; // Ubah status menjadi Aktif
-        $user->setup_token = null; // Hapus token agar tidak bisa digunakan lagi
+        $user->profile_setup_at = Carbon::now();
+        $user->status = 'Aktif'; // Ubah status menjadi Aktif agar bisa akses fitur lain
+        $user->setup_token = null; // Hapus token OTP agar bersih
 
         $user->save();
 
-        return redirect()->route('customer.profile.show')
-                        ->with('success', 'Aktivasi dan Profil Anda berhasil diselesaikan!');
+        // 🔑 PERBAIKAN: Setelah setup beres, langsung gass ke Dashboard
+        return redirect()->route('customer.dashboard')
+                        ->with('success', 'Aktivasi dan Profil Anda berhasil diselesaikan! Selamat datang di aplikasi Sancaka Express.');
     }
 
+    /**
+     * API KiriminAja Address Search
+     */
     public function searchKiriminAjaAddress(Request $request, KiriminAjaService $kiriminAja)
     {
         $query = $request->get('q');
@@ -209,11 +221,7 @@ class ProfileController extends Controller
             $apiResponse = $kiriminAja->searchAddress($query);
 
             if (isset($apiResponse['data']) && !empty($apiResponse['data'])) {
-
-                // 🔑 KUNCI PERBAIKAN: Memetakan data dari API
                 $processedData = collect($apiResponse['data'])->map(function ($item) {
-
-                    // Memecah string full_address (asumsi format: Kelurahan, Kecamatan, Kota, Provinsi, Kode Pos)
                     $addressParts = array_map('trim', explode(',', $item['full_address'] ?? ''));
 
                     return [
@@ -238,7 +246,7 @@ class ProfileController extends Controller
     }
 
     /**
-     * Menampilkan form permohonan penghapusan akun (Bisa diakses Public)
+     * Menampilkan form permohonan penghapusan akun (Public)
      */
     public function showDeleteAccountForm()
     {
@@ -246,11 +254,10 @@ class ProfileController extends Controller
     }
 
     /**
-     * Memproses permohonan penghapusan akun dari form public
+     * Memproses permohonan penghapusan akun
      */
     public function submitDeleteAccountRequest(Request $request)
     {
-        // Validasi input dari user
         $validated = $request->validate([
             'email'        => ['required', 'email', 'max:255'],
             'nama_lengkap' => ['required', 'string', 'max:255'],
@@ -274,7 +281,6 @@ class ProfileController extends Controller
 
         } catch (\Throwable $e) {
             Log::error('Gagal memproses permohonan hapus akun: '.$e->getMessage());
-
             return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan pada sistem. Silakan coba beberapa saat lagi.');
         }
     }

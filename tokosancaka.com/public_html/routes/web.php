@@ -509,6 +509,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 
+    // Rute Verifikasi OTP
+    Route::get('/verifikasi-otp', [CustomerProfileController::class, 'showOtpForm'])->name('otp.form');
+    Route::post('/verifikasi-otp', [CustomerProfileController::class, 'verifyOtp'])->name('otp.process');
+
+
+
 // =========================================================================
 // 5. CUSTOMER ROUTES (ROLE: PELANGGAN & MIXED)
 // =========================================================================
@@ -516,9 +522,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan'])->prefix('customer')->name('customer.')->group(function () {
     if(file_exists(__DIR__.'/web/customer.php')) require __DIR__.'/web/customer.php';
 
-    // Rute Verifikasi OTP
-    Route::get('/verifikasi-otp', [CustomerProfileController::class, 'showOtpForm'])->name('otp.form');
-    Route::post('/verifikasi-otp', [CustomerProfileController::class, 'verifyOtp'])->name('otp.process');
 
     // Rute Setup Profil Baru (Tanpa Token)
     Route::get('/profile/setup', [CustomerProfileController::class, 'setup'])->name('profile.setup');

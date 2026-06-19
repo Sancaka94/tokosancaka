@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use App\Services\FonnteService;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth; // 🔑 Wajib ditambahkan untuk mematikan auto-login
 
 use App\Notifications\NotifikasiUmum;
 
@@ -62,7 +63,7 @@ class CustomerRegisterController extends Controller
             'status'       => 'Tidak Aktif',
         ]);
 
-        // Generate OTP 6 Karakter (Kombinasi Huruf Kapital & Angka)
+        // 🔑 Generate OTP 6 Karakter (Kombinasi Huruf Kapital & Angka)
         $otp = strtoupper(Str::random(6));
         $user->setup_token = $otp;
         $user->save();
@@ -86,7 +87,7 @@ class CustomerRegisterController extends Controller
         }
         // --- SELESAI TAMBAHAN KODE ---
 
-        // Pesan WhatsApp berisi OTP
+        // 🔑 Pesan WhatsApp dikirim berupa OTP, BUKAN link setup lagi
         $message = <<<TEXT
 *Selamat Datang di Aplikasi Sancaka Express, Kak {$user->nama_lengkap}*
 
@@ -115,7 +116,13 @@ TEXT;
      */
     protected function registered(Request $request, $user)
     {
-        // Langsung arahkan ke halaman form verifikasi OTP
+        // 1. Logout paksa bawaan Laravel agar tidak ter-login otomatis (Mencegah error merah)
+        Auth::logout();
+
+        // 2. Simpan nomor WA ke session sementara untuk dicek di halaman verifikasi OTP
+        session(['otp_no_wa' => $user->no_wa]);
+
+        // 3. Arahkan langsung ke halaman form verifikasi OTP
         return redirect()->route('customer.otp.form');
     }
 }
