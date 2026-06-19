@@ -278,7 +278,7 @@ Route::post('/dharmawisata/login', [App\Http\Controllers\Api\Mobile\TicketingCon
 Route::get('/register/success/{no_wa}', function ($no_wa) {
     return view('auth.register-success', compact('no_wa'));
 })->name('register.success');
-Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 'setup'])->name('customer.profile.setup');
+// Route::get('customer/profile/setup/{token}', [CustomerProfileController::class, 'setup'])->name('customer.profile.setup');
 
 
 // BENAR
@@ -392,7 +392,7 @@ Route::get('/test/doku/marketplace', [TestOrderController::class, 'testMarketpla
 Route::post('/digiflazz/webhook', [DigiflazzWebhookController::class, 'handle'])->name('digiflazz.webhook');
 Route::post('/dana/notification', [DanaController::class, 'handleNotification'])->name('dana.payment.notify');
 
-// PPOB DANA 
+// PPOB DANA
 // --- AWAL RUTE DANA PPOB DIGITAL GOODS ---
 // URL: tokosancaka.com/destination/inquiry
 Route::post('/destination/inquiry', [DanaPpobDigitalGoodsController::class, 'destinationInquiry']);
@@ -515,6 +515,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan'])->prefix('customer')->name('customer.')->group(function () {
     if(file_exists(__DIR__.'/web/customer.php')) require __DIR__.'/web/customer.php';
+
+    // Rute Verifikasi OTP
+    Route::get('/verifikasi-otp', [CustomerProfileController::class, 'showOtpForm'])->name('otp.form');
+    Route::post('/verifikasi-otp', [CustomerProfileController::class, 'verifyOtp'])->name('otp.process');
+
+    // Rute Setup Profil Baru (Tanpa Token)
+    Route::get('/profile/setup', [CustomerProfileController::class, 'setup'])->name('profile.setup');
+    Route::post('/profile/setup', [CustomerProfileController::class, 'updateSetup'])->name('profile.update.setup');
 
     // Marketplace & Cart
     Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('marketplace.index');
@@ -973,21 +981,21 @@ Route::get('/uat-dana-status/{orderId}', [\App\Http\Controllers\Customer\TopUpCo
 // API ROUTE: DANA REGULER & WIDGET BINDING (CANCEL & REFUND)
 // =========================================================================
 Route::prefix('api/dana')->middleware(['auth'])->group(function () {
-    
+
     // 1. DANA Biasa (Reguler)
     Route::post('/cancel/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'cancelDanaPayment'])
         ->name('api.dana.cancel_payment');
-        
+
     Route::post('/refund/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'refundDanaPayment'])
         ->name('api.dana.refund_payment');
 
     // 2. DANA Binding (Widget / Express)
     Route::post('/widget/cancel/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'cancelDanaWidgetPayment'])
         ->name('api.dana.widget.cancel_payment');
-        
+
     Route::post('/widget/refund/{orderId}', [\App\Http\Controllers\Customer\TopUpController::class, 'refundDanaWidgetPayment'])
         ->name('api.dana.widget.refund_payment');
-        
+
 });
 
 
