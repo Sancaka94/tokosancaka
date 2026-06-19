@@ -77,11 +77,11 @@
                                 {{-- Deteksi Khusus Metode DANA --}}
                                 @if(str_contains(strtoupper($transaction->payment_method ?? ''), 'DANA') || str_contains(strtoupper($transaction->description ?? ''), 'DANA'))
                                     
-                                    {{-- KECERDASAN TOMBOL: Deteksi Widget vs Payment Gateway & Route Sinkronisasi --}}
+                                    {{-- KECERDASAN TOMBOL: Deteksi Widget vs Payment Gateway --}}
                                     @php
                                         $isDanaWidget = str_contains(strtoupper($transaction->payment_method ?? ''), 'BINDING');
                                         
-                                        // MENGGUNAKAN NAMA ROUTE API YANG BENAR (api.dana...)
+                                        // URL Dinamis ke API JSON
                                         $cancelUrl = $isDanaWidget ? route('api.dana.widget.cancel_payment', $transaction->reference_id) : route('api.dana.cancel_payment', $transaction->reference_id);
                                         $refundUrl = $isDanaWidget ? route('api.dana.widget.refund_payment', $transaction->reference_id) : route('api.dana.refund_payment', $transaction->reference_id);
                                     @endphp
@@ -94,15 +94,15 @@
                                     </button>
                                     @endif
 
-                                    {{-- Tombol Cancel (Mengirim URL Dinamis) --}}
-                                    @if($status === 'pending')
+                                    {{-- Tombol Cancel (Pake tipe 'button' agar dieksekusi AJAX) --}}
+                                    @if($status == 'pending')
                                     <button type="button" onclick="cancelDana('{{ $cancelUrl }}')" 
                                     class="inline-flex items-center px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-xs hover:bg-red-100 transition-colors" title="Batalkan Pesanan">
                                         <i class="fas fa-times-circle mr-1"></i> Batal
                                     </button>
                                     @endif
 
-                                    {{-- Tombol Refund (Mengirim URL Dinamis) --}}
+                                    {{-- Tombol Refund (Pake tipe 'button' agar dieksekusi AJAX) --}}
                                     @if(in_array($status, ['success', 'paid']))
                                     <button type="button" onclick="refundDana('{{ $refundUrl }}')" 
                                     class="inline-flex items-center px-2 py-1 bg-purple-50 text-purple-600 border border-purple-200 rounded text-xs hover:bg-purple-100 transition-colors" title="Kembalikan Dana">
@@ -134,69 +134,6 @@
             </div>
         @endif
     </div>
-
-    {{-- MODAL SUKSES (POPUP) --}}
-    @if(session('dana_success'))
-    <div x-data="{ show: true }" x-show="show"
-         class="fixed inset-0 z-50 overflow-y-auto"
-         aria-labelledby="modal-title" role="dialog" aria-modal="true" style="display: none;">
-
-        <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-
-            {{-- Background Overlay --}}
-            <div x-show="show"
-                 x-transition:enter="ease-out duration-300"
-                 x-transition:enter-start="opacity-0"
-                 x-transition:enter-end="opacity-100"
-                 x-transition:leave="ease-in duration-200"
-                 x-transition:leave-start="opacity-100"
-                 x-transition:leave-end="opacity-0"
-                 class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-
-            <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-            {{-- Modal Panel --}}
-            <div x-show="show"
-                 x-transition:enter="ease-out duration-300"
-                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                 x-transition:leave="ease-in duration-200"
-                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                 class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-
-                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                    <div class="sm:flex sm:items-start">
-                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
-                            <svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                Transaksi Diproses!
-                            </h3>
-                            <div class="mt-2">
-                                <p class="text-sm text-gray-500">
-                                    {{ session('dana_success') }} <br><br>
-                                    Sistem sedang memverifikasi pembayaran Anda dari DANA. Saldo akan bertambah otomatis dalam hitungan detik. Silakan refresh halaman ini.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                    <button type="button" @click="show = false; window.location.reload();" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
-                        Refresh Halaman
-                    </button>
-                    <button type="button" @click="show = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
-                        Tutup
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
 
 @push('scripts')
     {{-- Memanggil Library SweetAlert2 --}}
@@ -259,80 +196,82 @@
                     });
                 });
         }
-    </script>
 
-    <script>
-    // FUNGSI CANCEL CERDAS (Menerima URL Dinamis)
-    function cancelDana(actionUrl) {
-        Swal.fire({
-            title: 'Batalkan Pesanan?',
-            text: "Pesanan ini akan dibatalkan secara permanen di DANA.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Ya, Batalkan!',
-            cancelButtonText: 'Tutup'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+        // FUNGSI CANCEL AJAX
+        function cancelDana(actionUrl) {
+            Swal.fire({
+                title: 'Batalkan Pesanan?',
+                text: "Pesanan ini akan dibatalkan secara permanen di DANA.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Ya, Batalkan!',
+                cancelButtonText: 'Tutup'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'Memproses...', text: 'Menghubungi DANA', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-                fetch(actionUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    }
-                })
-                .then(res => res.json())
-                .then(response => {
-                    if(response.success) {
-                        Swal.fire('Dibatalkan!', response.message, 'success').then(() => window.location.reload());
-                    } else {
-                        Swal.fire('Gagal', response.message, 'error');
-                    }
-                }).catch(error => {
-                    Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
-                });
-            }
-        });
-    }
+                    fetch(actionUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(response => {
+                        // Cek apakah response punya kunci 'success'
+                        if(response.success) {
+                            Swal.fire('Dibatalkan!', response.message, 'success').then(() => window.location.reload());
+                        } else {
+                            Swal.fire('Gagal', response.message || 'Terjadi kesalahan sistem.', 'error');
+                        }
+                    }).catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire('Error', 'Terjadi kesalahan sistem saat menghubungi server.', 'error');
+                    });
+                }
+            });
+        }
 
-    // FUNGSI REFUND CERDAS (Menerima URL Dinamis)
-    function refundDana(actionUrl) {
-        Swal.fire({
-            title: 'Refund Saldo?',
-            text: "Saldo pelanggan ini akan ditarik dan dikembalikan ke akun DANA mereka.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#9333ea',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Ya, Refund Sekarang',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                Swal.fire({ title: 'Memproses Refund...', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
+        // FUNGSI REFUND AJAX
+        function refundDana(actionUrl) {
+            Swal.fire({
+                title: 'Refund Saldo?',
+                text: "Saldo Sancaka Anda akan ditarik dan dikembalikan ke akun DANA Anda.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#9333ea',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Ya, Refund Sekarang',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({ title: 'Memproses Refund...', text: 'Mengembalikan dana ke DANA', allowOutsideClick: false, didOpen: () => { Swal.showLoading(); }});
 
-                fetch(actionUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    }
-                })
-                .then(res => res.json())
-                .then(response => {
-                    if(response.success) {
-                        Swal.fire('Berhasil!', response.message, 'success').then(() => window.location.reload());
-                    } else {
-                        Swal.fire('Gagal', response.message, 'error');
-                    }
-                }).catch(error => {
-                    Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
-                });
-            }
-        });
-    }
+                    fetch(actionUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(response => {
+                        // Menangkap JSON dari controller
+                        if(response.success) {
+                            Swal.fire('Berhasil!', response.message, 'success').then(() => window.location.reload());
+                        } else {
+                            Swal.fire('Gagal', response.message || 'Terjadi kesalahan sistem.', 'error');
+                        }
+                    }).catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire('Error', 'Gagal memproses refund. Server tidak merespons.', 'error');
+                    });
+                }
+            });
+        }
     </script>
 @endpush
 @endsection
