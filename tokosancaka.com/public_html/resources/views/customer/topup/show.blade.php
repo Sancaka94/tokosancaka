@@ -1,405 +1,291 @@
 @extends('layouts.customer')
 
-@section('title', 'Detail Top Up - ' . $topUp->reference_id)
-
 @section('content')
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h3 class="text-3xl font-semibold text-gray-700">Riwayat Top Up</h3>
+            <p class="mt-1 text-gray-500">Berikut adalah riwayat semua transaksi top up saldo Anda.</p>
+        </div>
+        <a href="{{ route('customer.topup.create') }}" class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:bg-blue-700 shadow-lg">
+            <i class="fas fa-plus-circle mr-2"></i>
+            Top Up Sekarang
+        </a>
+    </div>
 
-    {{-- Main container with a subtle gradient background --}}
-    <div class="bg-gradient-to-br from-gray-50 to-gray-200 min-h-screen flex items-center justify-center p-4 sm:p-6 font-sans">
-
-        {{-- Invoice Card --}}
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden relative">
-
-            {{-- Header Section with Branding --}}
-            <div class="p-6 border-b border-gray-200">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    {{-- Company Branding --}}
-                    <div class="flex items-center">
-                        <img src="https://tokosancaka.biz.id/storage/uploads/logo.jpeg" alt="Logo CV. Sancaka Karya Hutama" class="h-16 w-16 mr-4 flex-shrink-0 rounded-lg object-cover" onerror="this.style.display='none';">
-                        <div>
-                            <h2 class="text-lg font-bold text-gray-800">CV. Sancaka Karya Hutama</h2>
-                            <div class="flex items-start text-xs text-gray-500 mt-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" fill="none" viewBox="0-0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                <span class="max-w-xs">JL.DR.WAHIDIN NO.18A RT.22 RW.05 KEL.KETANGGI KEC.NGAWI KAB.NGAWI JAWA TIMUR 63211</span>
-                            </div>
-                            <div class="flex items-center text-xs text-gray-500 mt-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 flex-shrink-0" fill="none" viewBox="0-0 24 24" stroke="currentColor">
-                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                </svg>
-                                <span>085745808809 / 08819435180</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Invoice Details --}}
-                    <div class="text-left sm:text-right w-full sm:w-auto flex-shrink-0">
-                        <h1 class="text-2xl font-bold text-blue-600">DETAIL TOP UP</h1>
-                        <p class="font-semibold text-gray-700">#{{ $topUp->reference_id }}</p>
-                        <p class="text-sm text-gray-500">Tanggal: {{ $topUp->created_at->format('d/m/Y') }}</p>
-                    </div>
-                </div>
+    {{-- ALERT INFORMASI REFUND & CANCEL DANA --}}
+    <div class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-lg shadow-sm">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-circle text-red-500 mt-1"></i>
             </div>
-
-            {{-- Main Content Section with Horizontal Layout --}}
-            <div class="flex flex-col md:flex-row">
-
-                {{-- Left Column: Order Details --}}
-                <div class="w-full md:w-1/2 p-8">
-                    <div class="mb-6">
-                        <h2 class="text-base font-semibold text-gray-700 mb-3">Detail Pelanggan</h2>
-                        <div class="text-sm text-gray-600 space-y-1">
-                            <p class="font-medium text-gray-800">{{ $topUp->user->nama_lengkap ?? 'Nama Pelanggan' }}</p>
-                            <p>{{ $topUp->user->no_wa ?? '' }}</p>
-                            <p>{{ $topUp->user->email ?? '' }}</p>
-                        </div>
-                    </div>
-
-                    {{-- Ringkasan Top Up --}}
-                    <h3 class="text-base font-semibold text-gray-700 mb-2">Ringkasan Top Up</h3>
-                    <ul role="list" class="divide-y divide-gray-200 border-b border-t border-gray-200">
-                        <li class="flex py-4 items-center">
-                            <div class="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-blue-50 flex items-center justify-center">
-                                <img
-                                    src="https://tokosancaka.com/public/assets/saldo.png"
-                                    alt="Icon Wallet"
-                                    class="h-8 w-8"
-                                />
-                            </div>
-                            <div class="ml-4 flex flex-1 flex-col text-sm">
-                                <h4 class="font-medium text-gray-800">Top Up Saldo</h4>
-                                <p class="text-gray-500">Top up saldo via {{ $topUp->payment_method }}</p>
-                                <p class="text-gray-500 mt-auto">Metode: {{ $topUp->description }}</p>
-                            </div>
-                        </li>
-                    </ul>
-
-                    {{-- Rincian Biaya --}}
-                    <div class="mt-6 space-y-4">
-                        <div class="flex justify-between text-lg font-bold text-gray-800 border-t border-gray-200 pt-4">
-                            <span>Nominal Top Up:</span>
-                            <span class="text-blue-600">Rp {{ number_format($topUp->amount, 0, ',', '.') }}</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-8 text-center">
-                        @php
-                            $status = strtolower($topUp->status);
-                            $badgeClass = match($status) {
-                                'pending'    => 'bg-yellow-100 text-yellow-800 border border-yellow-300',
-                                'success', 'paid' => 'bg-green-100 text-green-800 border border-green-300',
-                                'failed'     => 'bg-red-100 text-red-800 border border-red-300',
-                                'refunded'   => 'bg-purple-100 text-purple-800 border border-purple-300',
-                                'expired'    => 'bg-gray-100 text-gray-800 border border-gray-300',
-                                default      => 'bg-gray-100 text-gray-800 border border-gray-300'
-                            };
-                        @endphp
-
-                        <p class="text-gray-600">Status:
-                            <span class="px-4 py-1.5 rounded-full text-sm font-semibold {{ $badgeClass }}">
-                                {{ ucfirst($status) }}
-                            </span>
-                        </p>
-                    </div>
-                </div>
-
-                {{-- Right Column: Payment Instructions & Smart Actions --}}
-                <div class="w-full md:w-1/2 p-8 bg-gray-50 md:border-l border-t md:border-t-0 border-gray-200">
-                    
-                    {{-- VARIABEL SMART DETECT DANA --}}
-                    @php
-                        $method = trim(strtoupper($topUp->payment_method));
-                        $description = trim(strtoupper($topUp->description));
-                        $url    = $topUp->payment_url;
-                        $virtualAccounts = ['PERMATAVA','BNIVA','BRIVA','MANDIRIVA','BCAVA','MUAMALATVA','CIMBVA','BSIVA','OCBCVA','DANAMONVA','OTHERBANKVA'];
-
-                        // Deteksi Otomatis untuk API DANA
-                        $isDanaRegular = in_array($method, ['DANA', 'NETWORK_PAY_PG_DANA']);
-                        $isDanaBinding = $method === 'DANA_BINDING';
-                        $isDanaFamily = $isDanaRegular || $isDanaBinding;
-
-                        // Tentukan rute API pembatalan/refund berdasarkan metode (sesuaikan dengan web.php Anda)
-                        $cancelRoute = $isDanaBinding ? url('/api/dana/widget/cancel/' . $topUp->reference_id) : url('/api/dana/cancel/' . $topUp->reference_id);
-                        $refundRoute = $isDanaBinding ? url('/api/dana/widget/refund/' . $topUp->reference_id) : url('/api/dana/refund/' . $topUp->reference_id);
-                    @endphp
-
-                    {{-- === TAMPILAN JIKA STATUS PENDING === --}}
-                    @if($status === 'pending')
-                        <div class="h-full flex flex-col justify-center">
-                            <h2 class="text-lg font-semibold text-gray-800 mb-4 text-center flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-gray-400" fill="none" viewBox="0-0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                </svg>
-                                Instruksi Pembayaran
-                            </h2>
-
-                            <div class="text-center">
-
-                                {{-- 1. QRIS (Dynamic from Gateway) --}}
-                                @if (str_contains($method, 'QRIS') && !str_contains($description, 'MANUAL'))
-                                    <p class="text-gray-600 mb-4">Scan QR di bawah ini:</p>
-                                    <div class="flex justify-center p-2 bg-white rounded-lg shadow-inner">
-                                        <img src="{{ $url }}" alt="QRIS Payment" class="w-48 h-48 rounded-md">
-                                    </div>
-                                    <p class="mt-4 text-xs text-gray-500">Halaman ini akan diperbarui secara otomatis.</p>
-
-                                {{-- 2. DOKU / E-Wallet (Redirect) --}}
-                                @elseif (str_contains($method, 'DOKU_JOKUL') || in_array($method, ['OVO', 'DANA', 'DANA_BINDING', 'SHOPEEPAY', 'LINKAJA']))
-                                    <script>
-                                        window.location.href = "{{ $url }}";
-                                    </script>
-                                    <p class="text-gray-600 mb-4">Anda akan diarahkan ke halaman pembayaran...</p>
-                                    <a href="{{ $url }}" target="_blank" class="inline-block">
-                                        <button class="px-8 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75 transition-transform transform hover:scale-105">
-                                            Bayar Sekarang
-                                        </button>
-                                    </a>
-
-                                {{-- 3. Virtual Account (Tampilkan Nomor) --}}
-                                @elseif (in_array($method, $virtualAccounts))
-                                    <p class="text-gray-600 mb-2">Gunakan Virtual Account berikut:</p>
-                                    <div class="bg-white p-4 rounded-lg border-2 border-dashed">
-                                        <strong class="text-2xl font-mono tracking-widest text-blue-600">
-                                            {{ $url }}
-                                        </strong>
-                                    </div>
-                                    <p class="mt-4 text-xs text-gray-500">Status akan diperbarui secara otomatis.</p>
-
-                                {{-- 4. TRANSFER MANUAL (Info Rekening & QRIS Sancaka) --}}
-                                @elseif ($method === 'TRANSFER_MANUAL' || str_contains($description, 'TRANSFER MANUAL'))
-                                    <h3 class="text-base font-semibold text-gray-700 mb-3">Transfer Manual</h3>
-                                    <p class="text-sm text-gray-600 mb-4">Silakan transfer ke salah satu rekening resmi atau Scan QRIS:</p>
-
-                                    <div class="text-left space-y-3 p-4 bg-white rounded-lg border border-gray-200 shadow-inner">
-
-                                        {{-- BCA --}}
-                                        <div class="flex justify-between items-center account-row">
-                                            <p class="font-bold text-gray-800">
-                                                BCA: <span class="font-mono text-blue-600 account-number" data-account="7790480494">7790480494</span>
-                                            </p>
-                                            <button class="copy-btn px-3 py-1 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition"
-                                                    data-clipboard-target="7790480494">
-                                                <i class="fas fa-copy mr-1"></i> Copy
-                                            </button>
-                                        </div>
-
-                                        {{-- BRI --}}
-                                        <div class="flex justify-between items-center account-row">
-                                            <p class="font-bold text-gray-800">
-                                                BRI: <span class="font-mono text-blue-600 account-number" data-account="005701004162308">005701004162308</span>
-                                            </p>
-                                            <button class="copy-btn px-3 py-1 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition"
-                                                    data-clipboard-target="005701004162308">
-                                                <i class="fas fa-copy mr-1"></i> Copy
-                                            </button>
-                                        </div>
-
-                                        {{-- MANDIRI --}}
-                                        <div class="flex justify-between items-center account-row">
-                                            <p class="font-bold text-gray-800">
-                                                MANDIRI: <span class="font-mono text-blue-600 account-number" data-account="1710018351539">1710018351539</span>
-                                            </p>
-                                            <button class="copy-btn px-3 py-1 bg-green-500 text-white text-xs rounded-full hover:bg-green-600 transition"
-                                                    data-clipboard-target="1710018351539">
-                                                <i class="fas fa-copy mr-1"></i> Copy
-                                            </button>
-                                        </div>
-
-                                        {{-- QRIS SANCAKA (Tombol Modal) --}}
-                                        <div class="flex justify-between items-center account-row pt-2 border-t border-gray-100">
-                                            <div class="flex items-center">
-                                                <img src="https://tokosancaka.com/public/storage/logo/qris-sancaka.jpeg" class="h-6 w-6 rounded mr-2" onerror="this.style.display='none'">
-                                                <p class="font-bold text-gray-800">QRIS SANCAKA</p>
-                                            </div>
-                                            <button type="button" onclick="openQrisModal()" class="px-3 py-1 bg-red-600 text-white text-xs rounded-full hover:bg-purple-700 transition shadow-sm">
-                                                <i class="fas fa-qrcode mr-1"></i> Lihat QR
-                                            </button>
-                                        </div>
-
-                                        <p class="text-center font-semibold text-gray-800 pt-2 text-xs">a/n CV. SANCAKA KARYA HUTAMA</p>
-                                    </div>
-
-                                    {{-- Pesan Peringatan --}}
-                                    <div class="mt-4 p-3 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 text-sm text-left">
-                                        <p class="font-bold">Mohon kerjasamanya,</p>
-                                        <p>Transfer Lunas Akan Di Anggap Sah Apabila Bapak/Ibu Melampirkan Bukti Transfer. Terima kasih Banyak.</p>
-                                        <p class="font-medium mt-1">- Manajemen Sancaka Express</p>
-                                    </div>
-
-                                    {{-- Form Upload Bukti --}}
-                                    @if($topUp->payment_proof_path)
-                                        <div class="mt-4">
-                                            <p class="text-sm font-medium text-gray-700 mb-2">Bukti Transfer Anda (Sedang ditinjau):</p>
-                                            <img src="{{ asset('public/storage/' . $topUp->payment_proof_path) }}" alt="Bukti Bayar" class="w-full max-w-xs mx-auto rounded-lg shadow-md border border-gray-300">
-                                            <p class="mt-2 text-xs text-gray-500 text-center">Anda dapat meng-upload ulang jika ada kesalahan.</p>
-                                        </div>
-                                    @endif
-
-                                    <form action="{{ route('customer.topup.upload_proof', $topUp->reference_id) }}" method="POST" enctype="multipart/form-data" class="mt-4 space-y-3 p-4 border border-gray-200 rounded-lg bg-white shadow-inner">
-                                        @csrf
-                                        <div>
-                                            <label for="proof_of_payment" class="block text-sm font-medium text-gray-700 text-left">
-                                                {{ $topUp->payment_proof_path ? 'Upload Ulang Bukti Transfer' : 'Upload Bukti Transfer Anda' }}
-                                            </label>
-                                            <input type="file" name="proof_of_payment" id="proof_of_payment" required accept="image/png, image/jpeg, image/jpg" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-                                            @error('proof_of_payment')
-                                                <p class="text-red-500 text-xs mt-1 text-left">{{ $message }}</p>
-                                            @enderror
-                                        </div>
-                                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                            Kirim Bukti Transfer
-                                        </button>
-                                    </form>
-                                @endif
-                            </div>
-                            
-                            {{-- [SMART ACTION] TOMBOL CANCEL DANA --}}
-                            @if($isDanaFamily)
-                                <div class="mt-6 pt-4 border-t border-gray-200">
-                                    <form action="{{ $cancelRoute }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin membatalkan Tagihan DANA ini?');">
-                                        @csrf
-                                        <button type="submit" class="w-full flex items-center justify-center py-2.5 px-4 rounded-md shadow-sm text-sm font-semibold text-red-700 bg-red-100 hover:bg-red-200 border border-red-300 transition">
-                                            <i class="fas fa-times-circle mr-2"></i> Batalkan Transaksi DANA
-                                        </button>
-                                    </form>
-                                    <p class="mt-2 text-xs text-gray-500 text-center">Pesanan DANA yang dibatalkan tidak dapat dilanjutkan.</p>
-                                </div>
-                            @endif
-
-                        </div>
-                    
-                    {{-- === TAMPILAN JIKA STATUS SUDAH LUNAS / GAGAL === --}}
-                    @else
-                        <div class="h-full flex flex-col justify-center items-center text-center">
-                            @if(in_array($status, ['success', 'paid']))
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-green-500" fill="none" viewBox="0-0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <h2 class="text-xl font-semibold text-gray-800 mt-3">Top Up Berhasil</h2>
-                                <p class="text-gray-600 mt-2">Saldo Anda telah berhasil ditambahkan.</p>
-
-                                {{-- [SMART ACTION] TOMBOL REFUND DANA --}}
-                                @if($isDanaFamily)
-                                    <form action="{{ $refundRoute }}" method="POST" class="mt-4 w-full px-4" onsubmit="return confirm('PERINGATAN: Saldo Sancaka Anda akan dipotong dan uang akan dikembalikan ke DANA Anda. Proses ini tidak dapat dibatalkan. Lanjutkan?');">
-                                        @csrf
-                                        <button type="submit" class="w-full flex items-center justify-center py-2 px-4 rounded-lg shadow-sm text-sm font-semibold text-yellow-800 bg-yellow-100 hover:bg-yellow-200 border border-yellow-300 transition">
-                                            <i class="fas fa-undo-alt mr-2"></i> Tarik Dana ke DANA (Refund)
-                                        </button>
-                                    </form>
-                                    <p class="mt-2 text-xs text-gray-500">Berlaku maks 30 menit setelah pembayaran sukses.</p>
-                                @endif
-
-                            @else
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-red-500" fill="none" viewBox="0-0 24 24" stroke="currentColor">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <h2 class="text-xl font-semibold text-gray-800 mt-3">Top Up {{ ucfirst($status) }}</h2>
-                                <p class="text-gray-600 mt-2">Transaksi ini telah {{ $status }}.</p>
-                            @endif
-
-                            <a href="{{ route('customer.topup.index') }}" class="mt-6 px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition">
-                                Kembali ke Riwayat Top Up
-                            </a>
-                        </div>
-                    @endif
-                </div>
+            <div class="ml-3">
+                <p class="text-sm text-red-700 leading-relaxed font-medium">
+                    Mohon maaf, refund dana dan cancel transaksi otomatis hanya bisa dilakukan ketika kakak memilih metode pembayaran dengan Saldo akun DANA. Jangan lupa pilih <strong>DANA BALANCE</strong> dan tautkan akun DANA Anda ke website Sancaka Express.
+                    <br><br>
+                    Terima kasih,<br>
+                    <strong>Manajemen Sancaka Express</strong>
+                </p>
             </div>
         </div>
     </div>
 
-    {{-- MODAL QRIS SANCAKA --}}
-    <div id="qrisModal" class="fixed inset-0 z-50 hidden overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="bg-white rounded-lg shadow-lg">
+        <div class="overflow-x-auto">
+            <table class="w-full whitespace-no-wrap">
+                <thead>
+                    <tr class="text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b bg-gray-50">
+                        <th class="px-6 py-3">ID Transaksi</th>
+                        <th class="px-6 py-3">Jumlah</th>
+                        <th class="px-6 py-3">Metode</th>
+                        <th class="px-6 py-3">Status</th>
+                        <th class="px-6 py-3">Tanggal</th>
+                        <th class="px-6 py-3">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y">
+                    @forelse ($transactions ?? [] as $transaction)
+                        <tr class="text-gray-700 hover:bg-gray-50">
+
+                            <td class="px-6 py-4 font-medium">{{ $transaction->reference_id }}</td>
+
+                            <td class="px-6 py-4 font-semibold text-green-600">Rp {{ number_format($transaction->amount, 0, ',', '.') }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-600 font-medium">
+                                {{ $transaction->payment_method ? str_replace('_', ' ', $transaction->payment_method) : str_replace('Top up saldo via ', '', $transaction->description ?? '-') }}
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="px-3 py-1 text-sm font-semibold leading-tight rounded-full
+                                    @if(in_array($transaction->status, ['success', 'paid'])) bg-green-100 text-green-700 @endif
+                                    @if($transaction->status == 'pending') bg-yellow-100 text-yellow-700 @endif
+                                    @if($transaction->status == 'failed') bg-red-100 text-red-700 @endif
+                                    @if($transaction->status == 'refunded') bg-purple-100 text-purple-700 @endif
+                                ">
+                                    {{ ucfirst($transaction->status) }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">{{ $transaction->created_at->format('d M Y, H:i') }}</td>
+                            <td class="px-6 py-4 flex items-center space-x-2">
+
+                                <a href="{{ route('customer.topup.show', ['topup' => $transaction->reference_id]) }}" class="text-blue-600 hover:text-blue-800 font-medium hover:underline">
+                                    Detail
+                                </a>
+
+                                {{-- Deteksi Khusus Metode DANA --}}
+                                @if(str_contains(strtoupper($transaction->payment_method ?? ''), 'DANA') || str_contains(strtoupper($transaction->description ?? ''), 'DANA'))
+                                    
+                                    {{-- KECERDASAN TOMBOL: Deteksi Widget vs Payment Gateway --}}
+                                    @php
+                                        $isDanaWidget = str_contains(strtoupper($transaction->payment_method ?? ''), 'BINDING');
+                                        
+                                        // Generate URL Dinamis berdasarkan jenis DANA (sesuai routes/web.php)
+                                        $cancelUrl = $isDanaWidget ? route('api.dana.widget.cancel_payment', $transaction->reference_id) : route('api.dana.cancel_payment', $transaction->reference_id);
+                                        $refundUrl = $isDanaWidget ? route('api.dana.widget.refund_payment', $transaction->reference_id) : route('api.dana.refund_payment', $transaction->reference_id);
+                                    @endphp
+
+                                    {{-- Tombol Cek Status --}}
+                                    @if(!in_array($transaction->status, ['failed', 'refunded']))
+                                    <button type="button" onclick="cekStatusDana('{{ $transaction->reference_id }}')" 
+                                    class="inline-flex items-center px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 rounded text-xs hover:bg-blue-100 transition-colors" title="Cek DANA">
+                                        <i class="fas fa-sync-alt mr-1"></i> Cek
+                                    </button>
+                                    @endif
+
+                                    {{-- Tombol Cancel (FORM SUBMIT, BUKAN AJAX) --}}
+                                    @if($transaction->status == 'pending')
+                                    <form action="{{ $cancelUrl }}" method="POST" class="inline" onsubmit="return confirm('Batalkan pesanan ini secara permanen di DANA?');">
+                                        @csrf
+                                        <button type="submit" class="inline-flex items-center px-2 py-1 bg-red-50 text-red-600 border border-red-200 rounded text-xs hover:bg-red-100 transition-colors" title="Batalkan Pesanan">
+                                            <i class="fas fa-times-circle mr-1"></i> Batal
+                                        </button>
+                                    </form>
+                                    @endif
+
+                                    {{-- Tombol Refund (FORM SUBMIT, BUKAN AJAX) --}}
+                                    @if(in_array($transaction->status, ['success', 'paid']))
+                                    <form action="{{ $refundUrl }}" method="POST" class="inline" onsubmit="return confirm('Tarik kembali saldo dan kembalikan ke DANA pelanggan?');">
+                                        @csrf
+                                        <button type="submit" class="inline-flex items-center px-2 py-1 bg-purple-50 text-purple-600 border border-purple-200 rounded text-xs hover:bg-purple-100 transition-colors" title="Kembalikan Dana">
+                                            <i class="fas fa-undo mr-1"></i> Refund
+                                        </button>
+                                    </form>
+                                    @endif
+
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="text-center py-16">
+                                <div class="flex flex-col items-center">
+                                    <i class="fas fa-wallet fa-3x text-gray-400 mb-3"></i>
+                                    <h3 class="text-lg font-semibold text-gray-700">Belum Ada Riwayat</h3>
+                                    <p class="text-gray-500">Anda belum pernah melakukan top up.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        @if(isset($transactions) && $transactions->hasPages())
+            <div class="p-4 bg-white border-t">
+                {{ $transactions->links() }}
+            </div>
+        @endif
+    </div>
+
+    {{-- MODAL SUKSES DANA OTOMATIS (POPUP) --}}
+    @if(session('dana_success'))
+    <div x-data="{ show: true }" x-show="show"
+         class="fixed inset-0 z-50 overflow-y-auto"
+         aria-labelledby="modal-title" role="dialog" aria-modal="true" style="display: none;">
+
         <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
 
             {{-- Background Overlay --}}
-            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onclick="closeQrisModal()"></div>
+            <div x-show="show"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
 
             <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
             {{-- Modal Panel --}}
-            <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-md w-full">
-                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 text-center">
-                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-purple-100 mb-4">
-                        <i class="fas fa-qrcode text-purple-600 text-xl"></i>
-                    </div>
-                    <h3 class="text-lg leading-6 font-bold text-gray-900" id="modal-title">
-                        QRIS Sancaka Express
-                    </h3>
-                    <p class="text-sm text-gray-500 mb-4">Scan menggunakan E-Wallet atau M-Banking</p>
+            <div x-show="show"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
 
-                    {{-- Gambar QRIS --}}
-                    <div class="p-2 border rounded-lg shadow-sm bg-gray-50 inline-block">
-                        <img src="https://tokosancaka.com/public/storage/logo/qris-sancaka.jpeg" alt="QRIS Sancaka" class="max-w-full h-auto max-h-80 mx-auto rounded">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                                Transaksi Diproses!
+                            </h3>
+                            <div class="mt-2">
+                                <p class="text-sm text-gray-500">
+                                    {{ session('dana_success') }} <br><br>
+                                    Sistem sedang memverifikasi pembayaran Anda dari DANA. Saldo akan bertambah otomatis dalam hitungan detik. Silakan refresh halaman ini.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                {{-- Tombol Aksi Modal --}}
-                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse justify-center gap-2">
-                    <a href="https://tokosancaka.com/public/storage/logo/qris-sancaka.jpeg" download="QRIS-Sancaka.jpeg" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm items-center">
-                        <i class="fas fa-download mr-2"></i> Download QRIS
-                    </a>
-                    <button type="button" onclick="closeQrisModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" @click="show = false; window.location.reload();" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm">
+                        Refresh Halaman
+                    </button>
+                    <button type="button" @click="show = false" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
                         Tutup
                     </button>
                 </div>
             </div>
         </div>
     </div>
-
-@endsection
-
-@push('scripts')
-<script>
-    // === FUNGSI MODAL QRIS ===
-    function openQrisModal() {
-        document.getElementById('qrisModal').classList.remove('hidden');
-    }
-
-    function closeQrisModal() {
-        document.getElementById('qrisModal').classList.add('hidden');
-    }
-
-    // === POLLING STATUS & COPY TEXT ===
-    @if(strtolower($topUp->status) === 'pending')
-        const checkStatus = () => {
-            const statusCheckUrl = "{{ route('customer.topup.check_status', $topUp->reference_id) }}";
-            fetch(statusCheckUrl)
-                .then(response => {
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.status !== 'pending') {
-                        window.location.reload();
-                    }
-                })
-                .catch(error => clearInterval(pollingInterval));
-        };
-        const pollingInterval = setInterval(checkStatus, 3000);
     @endif
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const copyButtons = document.querySelectorAll('.copy-btn');
-        copyButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const accountNumber = button.getAttribute('data-clipboard-target');
-                if (accountNumber) {
-                    navigator.clipboard.writeText(accountNumber).then(() => {
-                        const originalText = button.innerHTML;
-                        button.innerHTML = '<i class="fas fa-check"></i> Disalin!';
-                        button.classList.remove('bg-green-500');
-                        button.classList.add('bg-blue-500');
-                        setTimeout(() => {
-                            button.innerHTML = originalText;
-                            button.classList.remove('bg-blue-500');
-                            button.classList.add('bg-green-500');
-                        }, 2000);
-                    });
+@push('scripts')
+    {{-- Memanggil Library SweetAlert2 --}}
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    {{-- TANGKAP FLASH MESSAGE DARI CONTROLLER (UNTUK CANCEL/REFUND) --}}
+    @if(session('success'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: '{!! session('success') !!}',
+                    confirmButtonColor: '#3085d6'
+                });
+            });
+        </script>
+    @endif
+
+    @if(session('error'))
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: '{!! session('error') !!}',
+                    confirmButtonColor: '#d33'
+                });
+            });
+        </script>
+    @endif
+
+    <script>
+        // Fungsi Cek Status (Tetap menggunakan AJAX karena rutenya memang mengembalikan JSON)
+        function cekStatusDana(orderId) {
+            Swal.fire({
+                title: 'Mengecek Status...',
+                text: 'Menghubungi server DANA',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
                 }
             });
-        });
-    });
-</script>
+
+            const url = "{{ url('/uat-dana-status') }}/" + orderId;
+
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(response => {
+                    if (response.success && response.status === 'PAID') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Pembayaran Lunas!',
+                            text: 'Status di DANA sudah PAID. Saldo berhasil masuk ke akun Anda.',
+                            footer: '<span style="color:#6b7280; font-size:12px;">Ref: ' + orderId + '</span>'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                window.location.reload(); 
+                            }
+                        });
+                        
+                    } else if (response.success && response.status === 'PENDING') {
+                        Swal.fire({
+                            icon: 'info',
+                            title: 'Masih Pending',
+                            text: 'Transaksi ini belum dibayar oleh pelanggan di aplikasi DANA.',
+                        });
+                        
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal / Tidak Ditemukan',
+                            text: response.message || 'Transaksi sudah kadaluarsa atau tidak ditemukan di DANA.'
+                        }).then(() => window.location.reload());
+                    }
+                })
+                .catch(error => {
+                    console.error("Fetch Error: ", error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Koneksi Terputus',
+                        text: 'Terjadi kesalahan sistem di server atau koneksi internet terputus.'
+                    });
+                });
+        }
+    </script>
 @endpush
+@endsection
