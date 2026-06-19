@@ -233,7 +233,7 @@ class TopUpController extends Controller
                 DB::commit();
 
                 // Arahkan ke fungsi baru
-                return $this->createTopUpPaymentDANA($transaction);
+                return $this->createCustomCheckoutDanaBalance($transaction);
             }
 
 
@@ -4581,6 +4581,6 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         }
         return back()->with('error', $message);
     }
-    
+
 
 }
