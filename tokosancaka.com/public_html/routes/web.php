@@ -509,9 +509,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 
-    // Rute Verifikasi OTP
-    Route::get('/verifikasi-otp', [CustomerProfileController::class, 'showOtpForm'])->name('otp.form');
-    Route::post('/verifikasi-otp', [CustomerProfileController::class, 'verifyOtp'])->name('otp.process');
+
+    // =========================================================================
+    // RUTE VERIFIKASI OTP (Harus di luar middleware auth karena belum login)
+    // =========================================================================
+    Route::get('/customer/verifikasi-otp', [\App\Http\Controllers\Customer\ProfileController::class, 'showOtpForm'])->name('customer.otp.form');
+    Route::post('/customer/verifikasi-otp', [\App\Http\Controllers\Customer\ProfileController::class, 'verifyOtp'])->name('customer.otp.process');
 
 
 
