@@ -1,6 +1,6 @@
 <header class="z-30 py-4 bg-white shadow-md">
     <div class="container flex items-center justify-between h-full px-6 mx-auto text-indigo-600">
-        
+
         {{-- Tombol Toggle Sidebar (hanya muncul di mobile) --}}
         <button class="p-1 -ml-1 mr-5 rounded-md md:hidden focus:outline-none focus:shadow-outline-indigo" @click="sidebarOpen = !sidebarOpen" aria-label="Menu">
             <i class="fas fa-bars w-6 h-6 text-gray-600"></i>
@@ -11,13 +11,13 @@
 
         {{-- Bagian Kanan Topbar --}}
         <ul class="flex items-center flex-shrink-0 space-x-2 sm:space-x-4">
-            
+
             {{-- ========================================== --}}
             {{-- 1. PERBAIKAN SALDO MOBILE                  --}}
             {{-- ========================================== --}}
             <li class="flex md:hidden items-center space-x-2">
                 <span class="fas fa-wallet font-semibold text-xs sm:text-sm text-gray-700">
-                    <a class="text-green-600">Saldo Anda: </a> 
+                    <a class="text-green-600">Saldo Anda: </a>
                     {{-- GANTI $saldo JADI Auth::user()->saldo --}}
                     <strong id="saldo-mobile">Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</strong>
                 </span>
@@ -32,7 +32,7 @@
             <li class="hidden md:flex items-center space-x-2 bg-gray-50 px-3 py-1.5 rounded-lg">
                 <i class="fas fa-wallet text-gray-500"></i>
                 <span class="font-semibold text-sm text-gray-700">
-                    <a class="text-green-600">Saldo Anda: </a> 
+                    <a class="text-green-600">Saldo Anda: </a>
                     {{-- GANTI $saldo JADI Auth::user()->saldo --}}
                     <strong id="saldo-desktop">Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</strong>
                 </span>
@@ -47,8 +47,8 @@
             {{-- Tombol Ikon Toko --}}
             @if(Auth::user() && Auth::user()->role == 'Seller')
             <li class="relative">
-                <a href="{{ url('https://tokosancaka.com/seller/dashboard') }}" 
-                   class="relative align-middle rounded-md focus:outline-none p-2 text-gray-600 hover:text-indigo-600" 
+                <a href="{{ url('https://tokosancaka.com/seller/dashboard') }}"
+                   class="relative align-middle rounded-md focus:outline-none p-2 text-gray-600 hover:text-indigo-600"
                    aria-label="Dashboard Toko"
                    title="Dashboard Toko">
                     <i class="fas fa-store w-5 h-5"></i>
@@ -99,10 +99,13 @@
                         <a class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 rounded-md hover:bg-indigo-600 hover:text-white" href="{{ route('customer.profile.show') }}">
                             <i class="fas fa-user-circle w-4 mr-2"></i> Profil
                         </a>
-                        <a class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 rounded-md hover:bg-indigo-600 hover:text-white" href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                            <i class="fas fa-sign-out-alt w-4 mr-2"></i> Keluar
-                        </a>
-                        <form id="logout-form" action="{{ route('logout') }}" method="POST" class="hidden">@csrf</form>
+
+                        <form method="POST" action="{{ route('logout') }}" class="m-0 p-0 w-full">
+                            @csrf
+                            <button type="submit" class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 rounded-md hover:bg-indigo-600 hover:text-white transition-colors duration-150 focus:outline-none">
+                                <i class="fas fa-sign-out-alt w-4 mr-2"></i> Keluar
+                            </button>
+                        </form>
                     </div>
                 </div>
             </li>
