@@ -150,6 +150,17 @@ class TopUpController extends Controller
                 }
             }
 
+            elseif ($paymentMethodRaw === '#DANA_BALANCE' || $paymentMethodRaw === 'DANA_BALANCE') {
+                Log::info("[API MOBILE] Eksekusi DANA Direct (Custom Checkout).");
+
+                $danaRes = $this->_createTopUpDanaGateway($transaction, $user);
+
+                if (!isset($danaRes['success']) || !$danaRes['success']) {
+                    throw new Exception($danaRes['message'] ?? 'Gagal membuat tagihan DANA Direct.');
+                }
+                $paymentUrl = $danaRes['redirect_url'];
+            }
+
             // B. VIA DANA GATEWAY BIASA (Checkout Gapura IPG)
             elseif ($paymentMethodRaw === '#DANA' || $paymentMethodRaw === 'DANA') {
                 Log::info("[API MOBILE] Eksekusi DANA Payment Gateway.");
@@ -378,7 +389,7 @@ class TopUpController extends Controller
             "payOptionDetails"   => [
                 [
                     "payMethod"   => "BALANCE",
-                    "payOption"   => "",
+                    "payOption"   => "BALANCE",
                     "transAmount" => [
                         "value"    => $amountValue,
                         "currency" => "IDR"
