@@ -6,11 +6,14 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
-use Illuminate\Support\Facades\Log; // Import Log Facade
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB; // <-- SEKARANG SUDAH DITAMBAHKAN FACADE DB
 
 class OtpController extends Controller
 {
-    // Method untuk menampilkan view OTP yang desainnya kotak-kotak tadi
+    /**
+     * Method untuk menampilkan view OTP yang desainnya kotak-kotak.
+     */
     public function showOtpForm(Request $request)
     {
         Log::info('Akses halaman form verifikasi OTP.');
@@ -21,10 +24,12 @@ class OtpController extends Controller
             return redirect()->route('login')->with('error', 'Sesi login tidak valid. Silakan login ulang.');
         }
 
-        return view('customer.otp'); // Sesuaikan dengan nama file view Anda (misal: 'auth.otp' jika di dalam folder auth)
+        return view('customer.otp'); 
     }
 
-    // Method aksi form ketika input OTP di submit
+    /**
+     * Method aksi form ketika input OTP di submit.
+     */
     public function processOtp(Request $request)
     {
         Log::info('Proses submit OTP dimulai.');
@@ -58,23 +63,29 @@ class OtpController extends Controller
         // 3. Cek apakah OTP yang diinput cocok dengan Session
         if (strtoupper($request->otp) !== strtoupper($sessionOtp)) {
             Log::warning('Verifikasi OTP gagal: Kode OTP tidak cocok.', ['user_id' => $userId, 'input_otp' => $request->otp]);
-            // Kembali ke halaman form OTP (SweetAlert error akan muncul karena ada with('error'))
             return back()->with('error', 'Kode OTP yang Anda masukkan salah. Silakan periksa kembali.');
         }
 
         // 4. JIKA OTP BENAR -> RESMIKAN LOGINNYA
         Log::info('Verifikasi OTP berhasil. Memulai proses login user.', ['user_id' => $userId]);
 
-        // Cari user menggunakan id_pengguna untuk memastikan keamanan tabel kustom Anda
-        $user = User::where('id_pengguna', $userId)->first();
+        // Menggunakan DB::table untuk memastikan langsung memeriksa ke tabel Pengguna
+        $user = DB::table('Pengguna')->where('id_pengguna', $userId)->first();
 
         if (!$user) {
-            Log::error('Verifikasi OTP gagal: Data user tidak ditemukan di database.', ['user_id' => $userId]);
+            Log::error('Verifikasi OTP gagal: Data user tidak ditemukan di database tabel Pengguna.', ['user_id' => $userId]);
             return redirect()->route('login')->with('error', 'Akun tidak ditemukan di sistem.');
         }
 
-        // Resmikan Login
-        Auth::login($user);
+        // Ambil instance model User menggunakan klausa primary key tabel kustom untuk login session guard
+        $userModel = User::where('id_pengguna', $userId)->first();
+        if (!$userModel) {
+            Log::error('Verifikasi OTP gagal: Model User gagal mengambil data.', ['user_id' => $userId]);
+            return redirect()->route('login')->with('error', 'Gagal memproses otorisasi akun.');
+        }
+
+        // Login User secara resmi ke aplikasi
+        Auth::login($userModel);
 
         // Bersihkan session OTP agar tidak disalahgunakan
         session()->forget(['auth_otp_code', 'auth_otp_expires_at', 'auth_otp_user_id']);
@@ -82,7 +93,7 @@ class OtpController extends Controller
 
         Log::info('Login berhasil dan sesi diregenerasi.', ['user_id' => $userId, 'role' => $user->role]);
 
-        // 5. OPTIONAL: Kirim pesan Welcome
+        // 5. Kirim pesan Welcome ke WhatsApp
         try {
             Log::info('Mencoba mengirim pesan Welcome Sancaka ke WA.', ['user_id' => $userId]);
             $noWa = preg_replace('/^0/', '62', $user->no_wa);
@@ -93,14 +104,14 @@ class OtpController extends Controller
             Log::error('Gagal kirim pesan welcome: ' . $e->getMessage(), ['user_id' => $userId]);
         }
 
-        // 6. Redirect ke dashboard
+        // 6. Redirect ke dashboard berdasarkan role masing-masing
         $role = strtolower(trim($user->role));
         Log::info('Redirecting user post-login.', ['user_id' => $userId, 'role' => $role]);
 
         if ($role === 'admin') {
             return redirect()->route('admin.dashboard');
         } elseif ($role === 'seller') {
-            return redirect()->route('seller.dashboard'); // Pastikan route ini ada jika Anda punya dashboard seller
+            return redirect()->route('seller.dashboard'); 
         } elseif ($role === 'agent') {
             return redirect()->route('customer.dashboard'); 
         }
@@ -111,7 +122,7 @@ class OtpController extends Controller
     /**
      * Membangun konten pesan WhatsApp
      *
-     * @param \App\Models\User $user
+     * @param object $user
      * @return string
      */
     protected function buildWelcomeMessage($user)
