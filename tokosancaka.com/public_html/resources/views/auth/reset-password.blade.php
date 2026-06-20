@@ -1,6 +1,6 @@
 {{--
     File: resources/views/auth/reset-password.blade.php
-    Halaman reset password yang senada dengan desain login Sancaka Express.
+    Halaman reset password OTP - Sancaka Express.
 --}}
 
 @extends('layouts.app')
@@ -58,6 +58,15 @@
         transform: translateY(-50%);
         cursor: pointer;
         color: #6c757d;
+        z-index: 10;
+    }
+    /* Style khusus untuk input OTP agar terlihat lebih jelas */
+    .input-otp {
+        letter-spacing: 5px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        text-align: center;
+        text-transform: uppercase;
     }
 </style>
 @endpush
@@ -72,10 +81,17 @@
                         <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Logo Sancaka Express" class="auth-logo mb-2" onerror="this.src='https://placehold.co/150x50?text=Sancaka'">
                     </a>
                     <h3 class="fw-bold">Buat Password Baru</h3>
-                    <p class="text-muted small">Silakan masukkan password baru untuk akun Anda.</p>
+                    <p class="text-muted small">Silakan masukkan Kode OTP dan password baru untuk akun Anda.</p>
                 </div>
 
-                {{-- Menampilkan Error Validasi (Standar Breeze) --}}
+                {{-- Menampilkan Pesan Status (Jika Ada) --}}
+                @if (session('status'))
+                    <div class="alert alert-success py-2 small mb-3">
+                        {{ session('status') }}
+                    </div>
+                @endif
+
+                {{-- Menampilkan Error Validasi --}}
                 @if ($errors->any())
                     <div class="alert alert-danger py-2 small mb-3">
                         <ul class="mb-0 ps-3">
@@ -86,26 +102,30 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('password.store') }}">
+                {{-- PASTIKAN ACTION MENGARAH KE password.update --}}
+                <form method="POST" action="{{ route('password.update') }}">
                     @csrf
 
-                    {{-- Token Reset Password (Hidden) --}}
-                    <input type="hidden" name="token" value="{{ $request->route('token') }}">
-
-                    {{-- Email Address (Biasanya otomatis terisi dari link email) --}}
+                    {{-- 1. Identifier (Email / No WA) - Ditampilkan Readonly --}}
                     <div class="form-floating mb-3">
-                        <input type="email" class="form-control @error('email') is-invalid @enderror" id="email" name="email" placeholder="Email Anda" value="{{ old('email', $request->email) }}" required autofocus autocomplete="username">
-                        <label for="email">Alamat Email</label>
+                        <input type="text" class="form-control bg-light" id="identifier" name="identifier" value="{{ $identifier ?? request('identifier') }}" readonly>
+                        <label for="identifier">Akun (Email/WhatsApp)</label>
                     </div>
 
-                    {{-- Password Baru --}}
+                    {{-- 2. Input Kode OTP --}}
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control input-otp @error('otp') is-invalid @enderror" id="otp" name="otp" placeholder="XXXXXX" value="{{ old('otp') }}" required autofocus maxlength="6" autocomplete="off">
+                        <label for="otp">Kode OTP (6 Digit)</label>
+                    </div>
+
+                    {{-- 3. Password Baru --}}
                     <div class="form-floating mb-3 position-relative">
                         <input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password" placeholder="Password Baru" required autocomplete="new-password">
                         <label for="password">Password Baru</label>
                         <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('password')"></i>
                     </div>
 
-                    {{-- Konfirmasi Password Baru --}}
+                    {{-- 4. Konfirmasi Password Baru --}}
                     <div class="form-floating mb-4 position-relative">
                         <input type="password" class="form-control @error('password_confirmation') is-invalid @enderror" id="password_confirmation" name="password_confirmation" placeholder="Konfirmasi Password" required autocomplete="new-password">
                         <label for="password_confirmation">Konfirmasi Password Baru</label>
@@ -128,7 +148,6 @@
 <script>
     function togglePasswordVisibility(fieldId) {
         const input = document.getElementById(fieldId);
-        // Mengambil icon yang berada tepat setelah input di dalam parent yang sama
         const icon = input.parentElement.querySelector('.password-toggle-icon');
 
         if (input.type === "password") {
