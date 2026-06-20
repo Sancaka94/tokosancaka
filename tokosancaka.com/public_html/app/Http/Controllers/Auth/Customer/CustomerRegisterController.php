@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 
 use App\Notifications\NotifikasiUmum;
+use Laravel\Socialite\Facades\Socialite; // <-- TAMBAHAN: Import Socialite
+use Illuminate\Http\RedirectResponse;    // <-- TAMBAHAN: Untuk tipe return redirect
 
 class CustomerRegisterController extends Controller
 {
@@ -166,5 +168,72 @@ TEXT;
 
         return redirect()->route('customer.otp.form')
                          ->with('info', 'Pendaftaran berhasil. Silakan cek WhatsApp atau Email Anda untuk mendapatkan kode OTP.');
+    }
+
+    // ====================================================================
+    // TAMBAHAN: FUNGSI REGISTER GOOGLE (SOCIALITE)
+    // ====================================================================
+
+    public function redirectToGoogle(): RedirectResponse
+    {
+        Log::info('Redirecting user ke Google Auth untuk pendaftaran.');
+        return Socialite::driver('google')->redirect();
+    }
+
+    public function handleGoogleCallback(Request $request): RedirectResponse
+    {
+        try {
+            Log::info('Proses callback Google Auth (Registrasi) dimulai.');
+            
+            $googleUser = Socialite::driver('google')->user();
+            Log::info('Data Google diterima.', ['email' => $googleUser->getEmail()]);
+
+            // Cari user di database berdasarkan email dari Google
+            $user = User::where('email', $googleUser->getEmail())->first();
+
+            if (!$user) {
+                // Jika tidak ada, buat akun baru secara otomatis
+                Log::info('Email tidak ditemukan, membuat user baru dari Google.', ['email' => $googleUser->getEmail()]);
+                
+                $user = User::create([
+                    'nama_lengkap' => $googleUser->getName(),
+                    'email'        => $googleUser->getEmail(),
+                    'role'         => 'Pelanggan', // Role default pendaftar
+                    'status'       => 'Menunggu Setup', // STATUS INI AKAN MEMAKSA MEREKA KE HALAMAN SETUP
+                    'password'     => bcrypt(Str::random(16)), // Generate password acak
+                ]);
+            }
+
+            // Langsung login-kan user tersebut
+            Auth::guard('web')->login($user);
+            $request->session()->regenerate();
+
+            Log::info('Registrasi/Login Google berhasil.', ['email' => $user->email]);
+
+            // ====================================================================
+            // CEK KELENGKAPAN PROFIL (Sesuai Permintaan)
+            // ====================================================================
+            // Jika status masih menunggu setup ATAU nomor WA masih kosong, lempar ke Setup Profil
+            if ($user->status !== 'Aktif' || empty($user->no_wa)) {
+                Log::info('Profil belum lengkap. Mengarahkan pengguna ke halaman Setup Profile.', ['user_id' => $user->id_pengguna]);
+                return redirect()->route('customer.profile.setup')
+                                 ->with('info', 'Akun berhasil ditautkan! Silakan lengkapi profil Anda terlebih dahulu.');
+            }
+
+            // Jika kebetulan dia sudah punya akun lengkap dan mengklik tombol Daftar Google,
+            // arahkan langsung ke dashboard sesuai role-nya.
+            $role = strtolower(trim($user->role));
+            if ($role === 'admin') {
+                return redirect()->route('admin.dashboard');
+            }
+
+            return redirect()->route('customer.dashboard');
+
+        } catch (\Exception $e) {
+            Log::error('Google Auth Gagal pada proses Registrasi: ' . $e->getMessage());
+            return redirect()->route('register')->withErrors([
+                'email' => 'Terjadi kesalahan saat pendaftaran menggunakan Google. Silakan coba lagi.'
+            ]);
+        }
     }
 }

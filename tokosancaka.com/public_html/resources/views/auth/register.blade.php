@@ -192,12 +192,29 @@
                         <a href="{{ route('login') }}" class="small text-danger text-decoration-none fw-medium">Already have an account? Login</a>
                     </div>
 
-                    <div class="d-grid mb-2">
+                    <div class="d-grid mb-3">
                         <button type="submit" class="btn btn-danger btn-lg text-uppercase">Register</button>
                     </div>
+
+                    {{-- ========================================== --}}
+                    {{-- TAMBAHAN: TOMBOL DAFTAR GOOGLE --}}
+                    {{-- ========================================== --}}
+                    <div class="d-flex align-items-center mb-3">
+                        <hr class="flex-grow-1 text-muted opacity-25">
+                        <span class="mx-2 text-muted small">ATAU</span>
+                        <hr class="flex-grow-1 text-muted opacity-25">
+                    </div>
+                    <div class="d-grid mb-4">
+                        <a href="{{ route('register.google') }}" class="btn btn-outline-dark btn-lg d-flex justify-content-center align-items-center">
+                            <img src="https://tokosancaka.com/public/assets/google.png" alt="Google Logo" style="width: 24px; height: 24px; object-fit: contain;" class="me-2"> 
+                            Daftar dengan Google
+                        </a>
+                    </div>
+                    {{-- ========================================== --}}
+
                 </form>
 
-                  <div class="text-center">
+                  <div class="text-center mt-3">
                     <p class="text-muted small mb-0">
                         &copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.
                     </p>
