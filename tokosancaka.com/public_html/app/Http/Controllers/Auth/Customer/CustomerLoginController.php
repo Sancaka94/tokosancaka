@@ -10,8 +10,9 @@ use App\Models\User;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Str; // <-- TAMBAHKAN INI UNTUK RANDOM STRING OTP
-
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB; // <-- SEKARANG SUDAH DITAMBAHKAN FACADE DB
 
 class CustomerLoginController extends Controller
 {
@@ -23,7 +24,7 @@ class CustomerLoginController extends Controller
         $role = strtolower(trim($user->role));
 
         Log::info('Redirecting user post-login.', [
-            'user_id' => $user->id,
+            'user_id' => $user->id_pengguna, 
             'role' => $role
         ]);
 
@@ -77,7 +78,6 @@ class CustomerLoginController extends Controller
             'status'    => 'Aktif',    
         ];
 
-        // LOGGING UNTUK DEBUGGING
         Log::info('LOGIN ATTEMPT - FINAL CREDENTIALS:', [
             'loginField' => $loginField,
             'loginValue' => $loginValue,
@@ -94,29 +94,28 @@ class CustomerLoginController extends Controller
         return $normalized; 
     }
 
-    /**
-     * PERBAIKAN: Fungsi Login dimodifikasi untuk menahan sesi dan melempar ke OTP
-     */
     public function login(Request $request)
     {
         Log::info('Proses login (sebelum OTP) dimulai.');
         $this->validateLogin($request);
         $credentials = $this->credentials($request);
 
-        // 1. VALIDASI KREDENSIAL TANPA LOGIN LANGSUNG
-        // guard()->validate() mengecek password tanpa memasukkan user ke status 'Logged In'
         if ($this->guard()->validate($credentials)) {
             Log::info('Kredensial valid. Melanjutkan ke proses OTP.');
             
-            // Ambil data user
+            // ====================================================================
+            // PERBAIKAN UTAMA: Menggunakan DB::table agar langsung tembus ke database
+            // ====================================================================
             $loginField = isset($credentials['email']) ? 'email' : 'no_wa';
-            $user = User::where($loginField, $credentials[$loginField])->first();
+            $user = DB::table('Pengguna')->where($loginField, $credentials[$loginField])->first();
+            
+            $userId = $user->id_pengguna;
 
             // Pengecekan Role
             $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent']; 
             if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
                 Log::warning('Akses Ditolak: Peran tidak diizinkan.', [
-                    'user_id' => $user->id,
+                    'user_id' => $userId,
                     'role' => $user->role
                 ]);
                 throw ValidationException::withMessages([
@@ -124,19 +123,21 @@ class CustomerLoginController extends Controller
                 ]);
             }
 
-            // 2. GENERATE KODE OTP (6 Karakter)
-            $otpCode = strtoupper(Str::random(6)); // Contoh output: X9B2A1
-            Log::info('OTP Code Generated.', ['user_id' => $user->id]);
+            // 2. GENERATE KODE OTP & LINK
+            $otpCode = strtoupper(Str::random(6)); 
+            Log::info('OTP Code Generated.', ['user_id' => $userId]);
+            
+            $otpLink = route('customer.otp.form') . '?otp=' . $otpCode;
 
             // 3. SIMPAN KE SESSION SEMENTARA
-            $request->session()->put('auth_otp_user_id', $user->id);
+            $request->session()->put('auth_otp_user_id', $userId);
             $request->session()->put('auth_otp_code', $otpCode);
-            $request->session()->put('auth_otp_expires_at', now()->addMinutes(1)); // Valid 1 Menit
-            Log::info('Session sementara OTP disimpan.', ['user_id' => $user->id, 'expires_at' => now()->addMinutes(1)]);
+            $request->session()->put('auth_otp_expires_at', now()->addMinutes(1)); 
+            Log::info('Session sementara OTP disimpan.', ['user_id' => $userId, 'expires_at' => now()->addMinutes(1)]);
 
             // 4. KIRIM OTP KE WHATSAPP
             $noWa = preg_replace('/^0/', '62', $user->no_wa);
-            $message = "Halo Kak {$user->nama_lengkap},\n\nSeseorang mencoba masuk ke akun Sancaka Anda. Berikut adalah kode verifikasi OTP Anda:\n\n*{$otpCode}*\n\nKode ini berlaku selama 1 menit. *JANGAN berikan kode ini kepada siapa pun*, termasuk admin Sancaka, demi keamanan akun Anda.";
+            $message = "Halo Kak {$user->nama_lengkap},\n\nSeseorang mencoba masuk ke akun Sancaka Anda. Berikut adalah kode verifikasi OTP Anda:\n\n*{$otpCode}*\n\nAtau klik link berikut untuk verifikasi otomatis:\n{$otpLink}\n\nKode ini berlaku selama 1 menit. *JANGAN berikan kode ini kepada siapa pun*, termasuk admin Sancaka, demi keamanan akun Anda.";
             
             Log::info('Mencoba mengirim OTP ke WhatsApp.', ['no_wa' => $noWa]);
             try {
@@ -146,41 +147,34 @@ class CustomerLoginController extends Controller
                 Log::error('FonnteService gagal kirim OTP: ' . $e->getMessage(), ['no_wa' => $noWa]);
             }
 
-            // ====================================================================
-            // 5. TAMBAHAN BARU: KIRIM OTP KE EMAIL JIKA USER MEMILIKI EMAIL
-            // ====================================================================
+            // 5. KIRIM OTP KE EMAIL JIKA USER MEMILIKI EMAIL
             if (!empty($user->email)) {
                 Log::info('Mencoba mengirim OTP ke Email.', ['email' => $user->email]);
                 try {
-                    $emailBody = "Halo Kak {$user->nama_lengkap},\n\nSeseorang mencoba masuk ke akun Sancaka Anda. Berikut adalah kode verifikasi OTP Anda:\n\n{$otpCode}\n\nKode ini berlaku selama 1 menit. JANGAN berikan kode ini kepada siapa pun demi keamanan akun Anda.\n\nHormat kami,\nManajemen Sancaka";
+                    $emailBody = "Halo Kak {$user->nama_lengkap},\n\nSeseorang mencoba masuk ke akun Sancaka Anda. Berikut adalah kode verifikasi OTP Anda:\n\n{$otpCode}\n\nAtau klik link berikut untuk verifikasi otomatis:\n{$otpLink}\n\nKode ini berlaku selama 1 menit. JANGAN berikan kode ini kepada siapa pun demi keamanan akun Anda.\n\nHormat kami,\nManajemen Sancaka";
                     
-                    \Illuminate\Support\Facades\Mail::raw($emailBody, function ($mail) use ($user) {
+                    Mail::raw($emailBody, function ($mail) use ($user) {
                         $mail->to($user->email)
                              ->subject('Kode Verifikasi (OTP) Login Sancaka');
                     });
                     
-                    // Mempertahankan LOG pelacakan sistem
                     Log::info('OTP berhasil dikirim ke Email: ' . $user->email);
                 } catch (\Exception $e) {
                     Log::error('Gagal kirim OTP ke Email: ' . $e->getMessage(), ['email' => $user->email]);
                 }
             } else {
-                Log::info('User tidak memiliki email, skip pengiriman OTP via email.', ['user_id' => $user->id]);
+                Log::info('User tidak memiliki email, skip pengiriman OTP via email.', ['user_id' => $userId]);
             }
-            // ====================================================================
 
             // 6. REDIRECT KE HALAMAN INPUT OTP
-            Log::info('Redirecting user ke form OTP.', ['user_id' => $user->id]);
+            Log::info('Redirecting user ke form OTP.', ['user_id' => $userId]);
             return redirect()->route('customer.otp.form')
                              ->with('info', 'Kode OTP telah dikirim ke WhatsApp dan Email Anda. Silakan cek pesan masuk.');
         }
 
-        // Jika Password/Username salah
         Log::warning('Login attempt gagal. Kredensial tidak valid.', ['login_input' => $request->login]);
         return $this->sendFailedLoginResponse($request);
     }
-    
-    // (Pindahkan fungsi buildWelcomeMessage ke Controller OTP nantinya, karena user baru resmi login setelah OTP benar)
     
     public function username()
     {
@@ -189,7 +183,7 @@ class CustomerLoginController extends Controller
 
     public function logout(Request $request)
     {
-        $userId = Auth::id();
+        $userId = Auth::check() ? Auth::user()->id_pengguna : 'Guest';
         Log::info('Proses logout dimulai.', ['user_id' => $userId]);
 
         $this->guard()->logout();

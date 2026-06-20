@@ -12,21 +12,16 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB; // <-- SEKARANG SUDAH DITAMBAHKAN FACADE DB
 
 class AuthenticatedSessionController extends Controller
 {
-    /**
-     * Display the login view.
-     */
     public function create(): View
     {
         Log::info('Akses halaman form login.');
         return view('auth.login');
     }
 
-    /**
-     * Normalisasi nomor HP (Hanya menyisakan angka).
-     */
     protected function normalizePhoneNumber(string $phone)
     {
         $normalized = preg_replace('/[^0-9]/', '', $phone);
@@ -34,14 +29,11 @@ class AuthenticatedSessionController extends Controller
         return $normalized; 
     }
 
-    /**
-     * Handle an incoming authentication request.
-     */
     public function store(Request $request): RedirectResponse
     {
         Log::info('Proses login (sebelum OTP) dimulai.');
 
-        // 1. Validasi Input Formulir & Captcha
+        // 1. Validasi Input
         Log::info('Validasi input login dimulai.', ['login_input' => $request->login]);
         $request->validate([
             'login'    => ['required', 'string'],
@@ -52,7 +44,7 @@ class AuthenticatedSessionController extends Controller
             'captcha.captcha'  => 'Kode pada gambar salah, silakan coba lagi.',
         ]);
 
-        // 2. Deteksi field login (Email atau Nomor WA)
+        // 2. Deteksi field login
         $loginValue = $request->login;
         $loginField = str_contains($loginValue, '@') ? 'email' : 'no_wa';
 
@@ -72,16 +64,18 @@ class AuthenticatedSessionController extends Controller
             'status'     => 'Aktif'
         ]);
 
-        // 3. Validasi kredensial keamanan tanpa langsung membuat sesi login aktif
+        // 3. Cek Kredensial
         if (Auth::guard('web')->validate($credentials)) {
             Log::info('Kredensial valid. Melanjutkan ke proses OTP.');
 
-            $user = User::where($loginField, $loginValue)->first();
+            // ====================================================================
+            // PERBAIKAN UTAMA: Menggunakan DB::table agar langsung tembus ke database
+            // ====================================================================
+            $user = DB::table('Pengguna')->where($loginField, $loginValue)->first();
             
-            // Menggunakan id_pengguna sesuai struktur tabel primary key database
             $userId = $user->id_pengguna; 
 
-            // Validasi Otorisasi Role Pengguna
+            // Validasi Otorisasi Role
             $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent']; 
             if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
                 Log::warning('Akses Ditolak: Peran tidak diizinkan.', [
@@ -93,20 +87,19 @@ class AuthenticatedSessionController extends Controller
                 ]);
             }
 
-            // 4. Pembuatan kode acak OTP dan Link Verifikasi Otomatis
+            // 4. Generate OTP & Link
             $otpCode = strtoupper(Str::random(6));
             Log::info('OTP Code Generated.', ['user_id' => $userId]);
 
-            // Pembuatan URL Halaman OTP lengkap dengan parameter ?otp=KODE
             $otpLink = route('customer.otp.form') . '?otp=' . $otpCode;
 
-            // 5. Menyimpan data verifikasi ke Session Sementara (Masa Aktif 1 Menit)
+            // 5. Simpan ke Session Sementara
             $request->session()->put('auth_otp_user_id', $userId);
             $request->session()->put('auth_otp_code', $otpCode);
             $request->session()->put('auth_otp_expires_at', now()->addMinutes(1));
             Log::info('Session sementara OTP disimpan.', ['user_id' => $userId, 'expires_at' => now()->addMinutes(1)]);
 
-            // 6. Pengiriman OTP ke WhatsApp menggunakan FonnteService
+            // 6. Kirim OTP ke WhatsApp
             $noWa = preg_replace('/^0/', '62', $user->no_wa);
             $message = "Halo Kak {$user->nama_lengkap},\n\nSeseorang mencoba masuk ke akun Sancaka Anda. Berikut adalah kode verifikasi OTP Anda:\n\n*{$otpCode}*\n\nAtau klik link berikut untuk verifikasi otomatis:\n{$otpLink}\n\nKode ini berlaku selama 1 menit. *JANGAN berikan kode ini kepada siapa pun*, termasuk admin Sancaka, demi keamanan akun Anda.";
             
@@ -118,7 +111,7 @@ class AuthenticatedSessionController extends Controller
                 Log::error('FonnteService gagal kirim OTP: ' . $e->getMessage(), ['no_wa' => $noWa]);
             }
 
-            // 7. Pengiriman OTP ke alamat Email (Apabila kolom email terisi di database)
+            // 7. Kirim OTP ke Email
             if (!empty($user->email)) {
                 Log::info('Mencoba mengirim OTP ke Email.', ['email' => $user->email]);
                 try {
@@ -137,22 +130,18 @@ class AuthenticatedSessionController extends Controller
                 Log::info('User tidak memiliki email, skip pengiriman OTP via email.', ['user_id' => $userId]);
             }
 
-            // 8. Mengarahkan Pengguna ke Halaman Pengisian OTP Kotak-Kotak
+            // 8. Redirect ke Form OTP
             Log::info('Redirecting user ke form OTP.', ['user_id' => $userId]);
             return redirect()->route('customer.otp.form')
-                             ->with('info', 'Kode OTP telah dikirim ke WhatsApp dan Email Anda. Silakan cek pesan masuk.');
+                             ->with('info', 'Kode OTP telah dikirim ke WhatsApp and Email Anda. Silakan cek pesan masuk.');
         }
 
-        // Penanganan apabila kombinasi password/login salah
         Log::warning('Login attempt gagal. Kredensial tidak valid.', ['login_input' => $request->login]);
         throw ValidationException::withMessages([
             'login' => trans('auth.failed') ?? 'Kredensial yang Anda masukkan salah atau akun belum aktif.',
         ]);
     }
 
-    /**
-     * Destroy an authenticated session.
-     */
     public function destroy(Request $request): RedirectResponse
     {
         $userId = Auth::check() ? Auth::user()->id_pengguna : 'Guest';
@@ -165,6 +154,5 @@ class AuthenticatedSessionController extends Controller
 
         Log::info('Logout berhasil.', ['user_id' => $userId]);
         return redirect('/');
- 
     }
 }
