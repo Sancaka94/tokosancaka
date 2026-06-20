@@ -547,8 +547,8 @@ class PpobDarmawisataController extends BaseController
             $payload = [
                 'productCode'        => $request->productCode,
                 'customerID'         => $request->customerID,
-                'customerMSISDN'     => $request->customerMSISDN ?? "",
-                'agentPayment'       => $totalPrice, // PERBEDAAN UTAMA: Parameter nominal pembayaran
+                'customerMSISDN'     => !empty($request->customerMSISDN) ? $request->customerMSISDN : $request->customerID,
+                'agentPayment'       => (float) $totalPrice, // Pastikan tipe datanya dikonversi ke float/decimal
                 'billingReferenceID' => $billingRef, // Masukkan Reference ID yang kita generate
                 'accessToken'        => $request->accessToken
             ];
