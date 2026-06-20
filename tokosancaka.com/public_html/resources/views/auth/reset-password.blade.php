@@ -51,6 +51,9 @@
         border-color: #dc3545;
         box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
     }
+    .password-wrapper .form-control {
+        padding-right: 2.5rem; /* Mencegah teks tertutup icon mata */
+    }
     .password-toggle-icon {
         position: absolute;
         top: 50%;
@@ -87,7 +90,7 @@
                 {{-- Menampilkan Pesan Status (Jika Ada) --}}
                 @if (session('status'))
                     <div class="alert alert-success py-2 small mb-3">
-                        {{ session('status') }}
+                        <i class="fas fa-check-circle me-1"></i> {{ session('status') }}
                     </div>
                 @endif
 
@@ -102,39 +105,46 @@
                     </div>
                 @endif
 
-                {{-- PASTIKAN ACTION MENGARAH KE password.update --}}
                 <form method="POST" action="{{ route('password.update') }}">
                     @csrf
 
-                    {{-- 1. Identifier (Email / No WA) - Ditampilkan Readonly --}}
+                    {{-- 1. Identifier (Email / No WA) --}}
                     <div class="form-floating mb-3">
-                        <input type="text" class="form-control bg-light" id="identifier" name="identifier" value="{{ $identifier ?? request('identifier') }}" readonly>
+                        <input type="text" class="form-control bg-light" id="identifier" name="identifier" 
+                               value="{{ old('identifier', $identifier ?? request('identifier')) }}" readonly required>
                         <label for="identifier">Akun (Email/WhatsApp)</label>
                     </div>
 
                     {{-- 2. Input Kode OTP --}}
                     <div class="form-floating mb-3">
-                        <input type="text" class="form-control input-otp @error('otp') is-invalid @enderror" id="otp" name="otp" placeholder="XXXXXX" value="{{ old('otp') }}" required autofocus maxlength="6" autocomplete="off">
+                        <input type="text" class="form-control input-otp @error('otp') is-invalid @enderror" 
+                               id="otp" name="otp" placeholder="XXXXXX" value="{{ old('otp') }}" 
+                               required autofocus maxlength="6" autocomplete="one-time-code" 
+                               oninput="this.value = this.value.toUpperCase().replace(/\s/g, '')">
                         <label for="otp">Kode OTP (6 Digit)</label>
                     </div>
 
                     {{-- 3. Password Baru --}}
-                    <div class="form-floating mb-3 position-relative">
-                        <input type="password" class="form-control @error('password') is-invalid @enderror" id="password" name="password" placeholder="Password Baru" required autocomplete="new-password">
+                    <div class="form-floating mb-3 position-relative password-wrapper">
+                        <input type="password" class="form-control @error('password') is-invalid @enderror" 
+                               id="password" name="password" placeholder="Password Baru" required autocomplete="new-password">
                         <label for="password">Password Baru</label>
                         <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('password')"></i>
                     </div>
 
                     {{-- 4. Konfirmasi Password Baru --}}
-                    <div class="form-floating mb-4 position-relative">
-                        <input type="password" class="form-control @error('password_confirmation') is-invalid @enderror" id="password_confirmation" name="password_confirmation" placeholder="Konfirmasi Password" required autocomplete="new-password">
+                    <div class="form-floating mb-4 position-relative password-wrapper">
+                        <input type="password" class="form-control @error('password_confirmation') is-invalid @enderror" 
+                               id="password_confirmation" name="password_confirmation" placeholder="Konfirmasi Password" required autocomplete="new-password">
                         <label for="password_confirmation">Konfirmasi Password Baru</label>
                         <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('password_confirmation')"></i>
                     </div>
 
                     {{-- Submit Button --}}
                     <div class="d-grid mb-3">
-                        <button type="submit" class="btn btn-danger btn-lg">Simpan Password Baru</button>
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="fas fa-save me-2"></i> Simpan Password Baru
+                        </button>
                     </div>
                 </form>
             </div>
