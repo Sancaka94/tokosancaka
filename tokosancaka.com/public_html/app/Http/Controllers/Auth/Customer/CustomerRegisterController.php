@@ -12,8 +12,8 @@ use Illuminate\Http\Request;
 use App\Services\FonnteService;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth; // 🔑 Wajib ditambahkan untuk mematikan auto-login
-use Illuminate\Support\Facades\Mail; // 🔑 TAMBAHAN IMPORT UNTUK FITUR KIRIM EMAIL
+use Illuminate\Support\Facades\Auth; 
+use Illuminate\Support\Facades\Mail;
 
 use App\Notifications\NotifikasiUmum;
 
@@ -69,12 +69,12 @@ class CustomerRegisterController extends Controller
             'role'         => 'Pelanggan',
             'is_verified'  => 1,
             'status'       => 'Tidak Aktif',
-            'setup_token'  => $otp, // 🔑 MASUKKAN OTP DI SINI
+            'setup_token'  => $otp, 
         ]);
 
         Log::info('User berhasil disimpan ke database.', ['id_pengguna' => $user->id_pengguna ?? $user->id]);
 
-        // --- Notifikasi ke Admin (Kode Tetap) ---
+        // --- Notifikasi ke Admin ---
         try {
             $admins = User::where('role', 'Admin')->get();
 
@@ -93,8 +93,12 @@ class CustomerRegisterController extends Controller
         }
 
         // ====================================================================
-        // 3. KIRIM KODE OTP KE WHATSAPP (Via Fonnte)
+        // 3. PEMBUATAN LINK OTP OTOMATIS & PENGIRIMAN WHATSAPP
         // ====================================================================
+        
+        // Link mengarah ke form OTP Registrasi (customer.otp.form)
+        $otpLink = route('customer.otp.form') . '?otp=' . $otp;
+
         $message = <<<TEXT
 *Selamat Datang di Aplikasi Sancaka Express, Kak {$user->nama_lengkap}*
 
@@ -102,7 +106,10 @@ Pendaftaran akun Anda berhasil. Berikut adalah *KODE OTP* rahasia Anda:
 
 *{$otp}*
 
-Silakan masukkan 6 digit kode OTP di atas pada halaman verifikasi untuk melanjutkan pengaturan profil Anda. Jika butuh bantuan, hubungi Admin Sancaka melalui nomor +628819435180.
+Atau, silakan klik link berikut untuk verifikasi otomatis:
+{$otpLink}
+
+Jika butuh bantuan, hubungi Admin Sancaka melalui nomor +628819435180.
 
 Hormat kami,
 *Manajemen Sancaka* CV Sancaka Karya Hutama
@@ -114,7 +121,7 @@ TEXT;
         Log::info('Mencoba mengirim OTP Registrasi ke WhatsApp.', ['no_wa' => $noWa]);
         try {
             FonnteService::sendMessage($noWa, $message);
-            FonnteService::sendMessage('085745808809', $message); // (Opsional) Mengirim copy notifikasi ke owner
+            FonnteService::sendMessage('085745808809', $message); // Copy notif owner
             Log::info('OTP Registrasi berhasil dikirim ke WhatsApp.', ['no_wa' => $noWa]);
         } catch (\Exception $e) {
             Log::error('FonnteService gagal kirim OTP Registrasi: ' . $e->getMessage(), ['no_wa' => $noWa]);
@@ -126,7 +133,7 @@ TEXT;
         if (!empty($user->email)) {
             Log::info('Mencoba mengirim OTP Registrasi ke Email.', ['email' => $user->email]);
             try {
-                $emailBody = "Halo Kak {$user->nama_lengkap},\n\nPendaftaran akun Sancaka Express Anda berhasil. Berikut adalah KODE OTP rahasia Anda:\n\n{$otp}\n\nSilakan masukkan 6 digit kode OTP di atas pada halaman verifikasi untuk melanjutkan. Jika butuh bantuan, silakan hubungi Admin.\n\nHormat kami,\nManajemen Sancaka";
+                $emailBody = "Halo Kak {$user->nama_lengkap},\n\nPendaftaran akun Sancaka Express Anda berhasil. Berikut adalah KODE OTP rahasia Anda:\n\n{$otp}\n\nAtau klik link berikut untuk verifikasi otomatis:\n{$otpLink}\n\nJika butuh bantuan, silakan hubungi Admin.\n\nHormat kami,\nManajemen Sancaka";
                 
                 Mail::raw($emailBody, function ($mail) use ($user) {
                     $mail->to($user->email)
@@ -149,14 +156,12 @@ TEXT;
     {
         Log::info('Mengeksekusi langkah pasca-registrasi. Me-logout sesi dan mengalihkan ke form OTP.');
 
-        // 1. Logout paksa bawaan Laravel agar tidak ter-login otomatis (Mencegah error merah)
         Auth::logout();
 
-        // 2. Simpan nomor WA ke session sementara untuk dicek di halaman verifikasi OTP
+        // Simpan nomor WA ke session sementara untuk dicek di halaman verifikasi OTP
         session(['otp_no_wa' => $user->no_wa]);
-        $request->session()->save(); // Pastikan sesi tersimpan instan ke server
+        $request->session()->save(); 
 
-        // 3. Arahkan langsung ke halaman form verifikasi OTP (Milik Registrasi)
         return redirect()->route('customer.otp.form')
                          ->with('info', 'Pendaftaran berhasil. Silakan cek WhatsApp atau Email Anda untuk mendapatkan kode OTP.');
     }
