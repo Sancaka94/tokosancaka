@@ -52,6 +52,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'order/detail',
             'product',
             'auth/google/callback',
+            'auth/google/register/callback',
 
             ]);
 

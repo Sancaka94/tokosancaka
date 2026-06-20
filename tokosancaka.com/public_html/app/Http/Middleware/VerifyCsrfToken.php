@@ -75,6 +75,7 @@ class VerifyCsrfToken extends Middleware
             '/order/detail',
             '/product',
             '/auth/google/callback',
+            '/auth/google/register/callback',
 
         ];
 
