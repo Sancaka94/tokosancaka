@@ -46,6 +46,9 @@ class PpobDarmawisataController extends BaseController
             'GOL' => 'k-vision%20dan%20gol.png',
             'PGN' => 'pertamina%20gas.png',
             'GAS' => 'pertamina%20gas.png',
+            'PRUDENTIAL' => 'prudential.png',
+            'BAF' => 'baf.png',
+            'BNI' => 'kredit_bni.png',
         ];
 
         foreach ($mappings as $keyword => $filename) {
