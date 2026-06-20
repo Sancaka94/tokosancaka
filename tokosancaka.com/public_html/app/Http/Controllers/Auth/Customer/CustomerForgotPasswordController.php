@@ -121,9 +121,10 @@ class CustomerForgotPasswordController extends Controller
             }
         }
 
-        // Arahkan ke form OTP dengan membawa identifier (email atau no_wa)
-        return redirect()->route('password.reset', ['identifier' => $user->email ?? $user->no_wa])
-                         ->with('status', 'Kode OTP rahasia telah dikirim ke WhatsApp dan Email Anda.');
+        return redirect()->route('password.reset', [
+            'token'      => 'verify-otp', // Wajib ada untuk mengisi {token} pada URL (menjadi: /reset-password/verify-otp)
+            'identifier' => $user->email ?? $user->no_wa // Akan otomatis menjadi query string (?identifier=...)
+        ])->with('status', 'Kode OTP rahasia telah dikirim ke WhatsApp dan Email Anda.');
     }
 
     /**
