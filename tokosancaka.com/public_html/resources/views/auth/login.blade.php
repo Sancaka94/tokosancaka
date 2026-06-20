@@ -211,7 +211,9 @@
                         </div>
                         <div class="d-grid mb-3">
                             <a href="{{ route('login.google') }}" class="btn btn-outline-dark btn-lg d-flex justify-content-center align-items-center">
-                                <i class="fa-brands fa-google text-danger me-2"></i> Masuk dengan Google
+                                {{-- Menggunakan gambar icon Google kustom milikmu --}}
+                                <img src="https://tokosancaka.com/public/assets/google.png" alt="Google Logo" style="width: 24px; height: 24px; object-fit: contain;" class="me-2"> 
+                                Masuk dengan Google
                             </a>
                         </div>
                     @endif
