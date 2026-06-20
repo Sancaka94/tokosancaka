@@ -6,235 +6,196 @@ use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User; // Impor model User
-use Illuminate\Validation\ValidationException; // Diperlukan untuk error custom
-use Illuminate\Support\Facades\Log; // Import Log Facade
-use Illuminate\Support\Facades\Route; // Tambahkan ini agar helper route() dikenali
+use App\Models\User;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str; // <-- TAMBAHKAN INI UNTUK RANDOM STRING OTP
 
 class CustomerLoginController extends Controller
 {
     use AuthenticatesUsers;
 
-    /**
- * Tentukan kemana user akan dialihkan setelah login berhasil.
- *
- * @return string
- */
-protected function redirectTo()
-{
-    $user = Auth::user();
-    $role = strtolower(trim($user->role)); // Tambahkan trim() di sini juga
+    protected function redirectTo()
+    {
+        $user = Auth::user();
+        $role = strtolower(trim($user->role));
 
-    // 1. Admin
-    if ($role === 'admin') {
-        return route('admin.dashboard');
+        Log::info('Redirecting user post-login.', [
+            'user_id' => $user->id,
+            'role' => $role
+        ]);
+
+        if ($role === 'admin') {
+            return route('admin.dashboard');
+        }
+
+        if ($role === 'agent') {
+            return route('customer.dashboard'); 
+        }
+        
+        return route('customer.dashboard');
     }
 
-    // 2. **PERBAIKAN: Tambahkan role 'agent'**
-    if ($role === 'agent') {
-        return route('customer.dashboard'); // Ganti dengan nama route yang benar untuk Agent
-    }
-    
-    // 3. Pelanggan/Seller/Default (catch-all)
-    return route('customer.dashboard');
-}
-
-    /**
-     * Tampilkan form login.
-     *
-     * @return \Illuminate\View\View
-     */
     public function showLoginForm()
     {
-        // Tidak perlu lagi generate string acak, package mews/captcha yang akan mengurusnya
+        Log::info('Akses halaman form login.');
         return view('auth.login');
     }
-    /**
-     * Dapatkan guard yang digunakan untuk autentikasi.
-     * Secara default, ini menggunakan guard 'web' atau guard default aplikasi.
-     *
-     * @return \Illuminate\Contracts\Auth\Guard
-     */
+
     protected function guard()
     {
-        return Auth::guard('web'); // Asumsikan Anda menggunakan guard 'web' untuk customer
+        return Auth::guard('web');
     }
 
- /**
-     * Validasi input request login.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return void
-     */
     protected function validateLogin(Request $request)
     {
-        // Tidak perlu lagi uppercase manual, package ini otomatis kebal huruf besar/kecil
+        Log::info('Validasi input login dimulai.', ['login_input' => $request->login]);
         $request->validate([
             $this->username() => 'required|string',
             'password' => 'required|string',
-            'captcha' => 'required|captcha', // Gunakan rule 'captcha' bawaan package
+            'captcha' => 'required|captcha', 
         ], [
             'captcha.required' => 'Kode keamanan wajib diisi.',
-            'captcha.captcha' => 'Kode pada gambar salah, silakan coba lagi.', // Pesan error jika salah
+            'captcha.captcha' => 'Kode pada gambar salah, silakan coba lagi.',
         ]);
     }
 
-    /**
-     * Dapatkan kredensial yang akan digunakan untuk attempt login.
-     *
-     * PERBAIKAN: Menghapus batasan role dan logika strtolower() yang bermasalah.
-     * * @param \Illuminate\Http\Request $request
-     * @return array
-     */
     protected function credentials(Request $request)
     {
-        // 1. Ambil nilai login tanpa perubahan case (biarkan database/collation yang menangani)
         $loginValue = $request->login;
-
-        // 2. Tentukan field yang digunakan
         $loginField = str_contains($loginValue, '@') ? 'email' : 'no_wa';
 
-        // 3. Normalisasi Nomor HP (hanya hapus non-angka)
         if ($loginField === 'no_wa') {
-            // Gunakan normalizePhoneNumber untuk membersihkan input no_wa
             $loginValue = $this->normalizePhoneNumber($loginValue); 
         }
 
-        // Kredensial tanpa batasan role (dapat login dengan role apapun asalkan status Aktif)
         $credentials = [
             $loginField => $loginValue,
             'password'  => $request->password,
-            // 'role'      => 'Pelanggan', // Dihapus
             'status'    => 'Aktif',    
         ];
-        
-        // LOGGING UNTUK DEBUGGING - Hapus baris ini setelah masalah teratasi
-        Log::info('LOGIN ATTEMPT - FINAL CREDENTIALS:', $credentials);
+
+        // LOGGING UNTUK DEBUGGING
+        Log::info('LOGIN ATTEMPT - FINAL CREDENTIALS:', [
+            'loginField' => $loginField,
+            'loginValue' => $loginValue,
+            'status' => 'Aktif'
+        ]);
 
         return $credentials;
     }
     
-    /**
-     * Normalisasi nomor HP untuk login.
-     * METHOD INI HANYA MENGHILANGKAN KARAKTER NON-ANGKA (sesuai format database 08xx...).
-     *
-     * @param string $phone
-     * @return string
-     */
     protected function normalizePhoneNumber(string $phone)
     {
-        // Hanya hapus semua karakter non-angka
-        return preg_replace('/[^0-9]/', '', $phone); 
+        $normalized = preg_replace('/[^0-9]/', '', $phone);
+        Log::info('Normalisasi nomor HP.', ['original' => $phone, 'normalized' => $normalized]);
+        return $normalized; 
     }
 
-
     /**
-     * Handle the POST request for login.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\Response|\Illuminate\Http\JsonResponse
-     *
-     * @throws \Illuminate\Validation\ValidationException
+     * PERBAIKAN: Fungsi Login dimodifikasi untuk menahan sesi dan melempar ke OTP
      */
     public function login(Request $request)
     {
+        Log::info('Proses login (sebelum OTP) dimulai.');
         $this->validateLogin($request);
+        $credentials = $this->credentials($request);
 
-        // 1. Cek apakah user bisa diautentikasi dengan kredensial
-        if ($this->attemptLogin($request)) {
+        // 1. VALIDASI KREDENSIAL TANPA LOGIN LANGSUNG
+        // guard()->validate() mengecek password tanpa memasukkan user ke status 'Logged In'
+        if ($this->guard()->validate($credentials)) {
+            Log::info('Kredensial valid. Melanjutkan ke proses OTP.');
             
-            if ($request->hasSession()) {
-                $request->session()->regenerate();
-            }
+            // Ambil data user
+            $loginField = isset($credentials['email']) ? 'email' : 'no_wa';
+            $user = User::where($loginField, $credentials[$loginField])->first();
 
-            // --- Logika Sesi dan Pengiriman Pesan ---
-            $user = Auth::user();
-            
-            // Pengecekan terakhir: Pastikan user yang berhasil login adalah salah satu role yang diizinkan
-            // Pengecekan ini harusnya mencegah user selain yang diizinkan masuk
+            // Pengecekan Role
             $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent']; 
-            if (!in_array(strtolower($user->role), $allowedRoles)) {
-                $this->guard()->logout();
+            if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
+                Log::warning('Akses Ditolak: Peran tidak diizinkan.', [
+                    'user_id' => $user->id,
+                    'role' => $user->role
+                ]);
                 throw ValidationException::withMessages([
-                    'login' => ['Akses Ditolak: Peran Anda tidak diizinkan masuk melalui halaman ini.'],
+                    'login' => ['Akses Ditolak: Peran Anda tidak diizinkan masuk.'],
                 ]);
             }
 
+            // 2. GENERATE KODE OTP (6 Karakter)
+            $otpCode = strtoupper(Str::random(6)); // Contoh output: X9B2A1
+            Log::info('OTP Code Generated.', ['user_id' => $user->id]);
+
+            // 3. SIMPAN KE SESSION SEMENTARA
+            $request->session()->put('auth_otp_user_id', $user->id);
+            $request->session()->put('auth_otp_code', $otpCode);
+            $request->session()->put('auth_otp_expires_at', now()->addMinutes(1)); // Valid 1 Menit
+            Log::info('Session sementara OTP disimpan.', ['user_id' => $user->id, 'expires_at' => now()->addMinutes(1)]);
+
+            // 4. KIRIM OTP KE WHATSAPP
             $noWa = preg_replace('/^0/', '62', $user->no_wa);
+            $message = "Halo Kak {$user->nama_lengkap},\n\nSeseorang mencoba masuk ke akun Sancaka Anda. Berikut adalah kode verifikasi OTP Anda:\n\n*{$otpCode}*\n\nKode ini berlaku selama 1 menit. *JANGAN berikan kode ini kepada siapa pun*, termasuk admin Sancaka, demi keamanan akun Anda.";
             
+            Log::info('Mencoba mengirim OTP ke WhatsApp.', ['no_wa' => $noWa]);
             try {
-                $message = $this->buildWelcomeMessage($user);
                 \App\Services\FonnteService::sendMessage($noWa, $message); 
+                Log::info('OTP berhasil dikirim ke WhatsApp.', ['no_wa' => $noWa]);
             } catch (\Exception $e) {
-                \Log::error('FonnteService failed to send message on login: ' . $e->getMessage());
+                Log::error('FonnteService gagal kirim OTP: ' . $e->getMessage(), ['no_wa' => $noWa]);
             }
 
-            return $this->sendLoginResponse($request);
+            // ====================================================================
+            // 5. TAMBAHAN BARU: KIRIM OTP KE EMAIL JIKA USER MEMILIKI EMAIL
+            // ====================================================================
+            if (!empty($user->email)) {
+                Log::info('Mencoba mengirim OTP ke Email.', ['email' => $user->email]);
+                try {
+                    $emailBody = "Halo Kak {$user->nama_lengkap},\n\nSeseorang mencoba masuk ke akun Sancaka Anda. Berikut adalah kode verifikasi OTP Anda:\n\n{$otpCode}\n\nKode ini berlaku selama 1 menit. JANGAN berikan kode ini kepada siapa pun demi keamanan akun Anda.\n\nHormat kami,\nManajemen Sancaka";
+                    
+                    \Illuminate\Support\Facades\Mail::raw($emailBody, function ($mail) use ($user) {
+                        $mail->to($user->email)
+                             ->subject('Kode Verifikasi (OTP) Login Sancaka');
+                    });
+                    
+                    // Mempertahankan LOG pelacakan sistem
+                    Log::info('OTP berhasil dikirim ke Email: ' . $user->email);
+                } catch (\Exception $e) {
+                    Log::error('Gagal kirim OTP ke Email: ' . $e->getMessage(), ['email' => $user->email]);
+                }
+            } else {
+                Log::info('User tidak memiliki email, skip pengiriman OTP via email.', ['user_id' => $user->id]);
+            }
+            // ====================================================================
+
+            // 6. REDIRECT KE HALAMAN INPUT OTP
+            Log::info('Redirecting user ke form OTP.', ['user_id' => $user->id]);
+            return redirect()->route('customer.otp.form')
+                             ->with('info', 'Kode OTP telah dikirim ke WhatsApp dan Email Anda. Silakan cek pesan masuk.');
         }
 
-        // Jika attemptLogin gagal, kembalikan error default.
+        // Jika Password/Username salah
+        Log::warning('Login attempt gagal. Kredensial tidak valid.', ['login_input' => $request->login]);
         return $this->sendFailedLoginResponse($request);
     }
     
-    /**
-     * Membangun konten pesan WhatsApp
-     *
-     * @param \App\Models\User $user
-     * @return string
-     */
-    protected function buildWelcomeMessage($user)
-    {
-        $message = <<<TEXT
-*Selamat Datang di Aplikasi Sancaka Express, Kak {$user->nama_lengkap}*
-
-Apabila Anda mengalami kendala atau memiliki pertanyaan, silakan hubungi Admin Sancaka melalui nomor *0881-9435-180*.
-
-Hormat kami,  
-
-*Manajemen Sancaka* CV Sancaka Karya Hutama  
-*Jl.Dr.Wahidin No.18A RT.22 RW.05 Ketanggi Ngawi Jawa Timur 63211* Website: tokosancaka.com
-TEXT;
-
-        if (!empty($user->setup_token) && empty($user->profile_setup_at)) {
-            $link = url('/customer/profile/setup/' . $user->setup_token);
-
-            $message .= <<<TEXT
-
----
-
-Berikut adalah *Link Pendaftaran* Kakak {$user->id}.  
-Agar pendaftaran Kakak berhasil, silakan klik link di bawah ini dan lengkapi datanya:  
-
-{$link}
-TEXT;
-        }
-        return $message;
-    }
-
-
-    /**
-     * Dapatkan field yang digunakan untuk login (email/no_wa)
-     *
-     * @return string
-     */
+    // (Pindahkan fungsi buildWelcomeMessage ke Controller OTP nantinya, karena user baru resmi login setelah OTP benar)
+    
     public function username()
     {
         return 'login';
     }
 
-    /**
-     * Handle logout request.
-     *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function logout(Request $request)
     {
+        $userId = Auth::id();
+        Log::info('Proses logout dimulai.', ['user_id' => $userId]);
+
         $this->guard()->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         
+        Log::info('Logout berhasil.', ['user_id' => $userId]);
         return redirect()->route('login')->with('success', 'Anda telah berhasil logout.');
     }
-
 }
