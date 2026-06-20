@@ -48,7 +48,7 @@
                     <div class="text-center mb-4">
                         <i class="fas fa-shield-alt fa-3x text-primary mb-3"></i>
                         <p class="text-muted">
-                            Pendaftaran berhasil! Kami telah mengirimkan 6 karakter kode OTP ke nomor WhatsApp Anda. Silakan masukkan kode tersebut di bawah ini.
+                            Pendaftaran berhasil! Kami telah mengirimkan 6 karakter kode OTP ke nomor WhatsApp dan Email Anda. Silakan masukkan kode tersebut di bawah ini.
                         </p>
                     </div>
 
@@ -78,7 +78,7 @@
 
                         <div class="d-flex justify-content-center mb-4">
                             <div class="input-group" style="width: auto;">
-                                <button class="btn btn-outline-secondary bg-light" type="button" id="btn-resend" disabled>RESEND</button>
+                                <button class="btn btn-outline-secondary bg-light" type="button" id="btn-resend" disabled onclick="window.location.href='{{ route('login') }}'">RESEND</button>
                                 <span class="input-group-text bg-light text-warning fw-bold" id="timer-display">01:00</span>
                             </div>
                         </div>
@@ -111,7 +111,8 @@ document.addEventListener('DOMContentLoaded', function() {
     inputs.forEach((input, index) => {
         // Handle input karakter
         input.addEventListener('input', (e) => {
-            e.target.value = e.target.value.toUpperCase(); // Force uppercase
+            // Hanya izinkan huruf dan angka
+            e.target.value = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
             
             if (e.target.value !== '') {
                 if (index < inputs.length - 1) {
@@ -133,7 +134,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle Paste dari Clipboard
         input.addEventListener('paste', (e) => {
             e.preventDefault();
-            const pastedData = e.clipboardData.getData('text').toUpperCase().slice(0, 6); // Ambil 6 digit pertama
+            // Ambil text, hilangkan karakter selain angka dan huruf, jadikan Uppercase, dan potong 6 digit
+            const pastedData = e.clipboardData.getData('text').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6); 
             
             let dataIndex = 0;
             inputs.forEach((inpt, i) => {
@@ -180,6 +182,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // =========================================================================
+    // FITUR AUTO-FILL DARI PARAMETER URL LInk OTP (Dari Klik Pesan WA/Email)
+    // =========================================================================
+    const urlParams = new URLSearchParams(window.location.search);
+    const otpFromUrl = urlParams.get('otp');
+
+    if (otpFromUrl && otpFromUrl.length === 6) {
+        const otpArray = otpFromUrl.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().split('');
+        
+        // Isi setiap kotak dengan karakter dari URL
+        inputs.forEach((input, index) => {
+            if (otpArray[index]) {
+                input.value = otpArray[index];
+            }
+        });
+        
+        // Panggil fungsi pengecekan untuk memicu warna hijau dan auto-submit
+        checkOTPCompletion();
+        
+        // Bersihkan parameter dari URL di address bar agar terlihat rapi dan aman
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    // =========================================================================
+
     // Logika Timer 1 Menit
     let timeLeft = 60; // 60 detik
     const timerDisplay = document.getElementById('timer-display');
@@ -207,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
             input.classList.add('error'); // Jadikan kotak warna merah
         });
         
-        let errorMessage = "{{ session('error') ?? $errors->first('otp') }}";
+        let errorMessage = "{!! addslashes(session('error') ?? $errors->first('otp')) !!}";
         
         Swal.fire({
             icon: 'error',
