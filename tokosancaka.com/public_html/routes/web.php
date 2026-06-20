@@ -141,6 +141,8 @@ use App\Http\Controllers\AdminPricelistController;
 
 use App\Http\Controllers\Admin\ProdukController; // Pastikan namespace controller sesuai
 
+use App\Http\Controllers\Auth\Customer\CustomerLoginController;
+
 // Website fontend WA Integration
 //use App\Http\Controllers\WhatsappController;
 
