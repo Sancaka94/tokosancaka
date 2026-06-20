@@ -534,8 +534,7 @@ Route::get('/password/reset', [\App\Http\Controllers\Auth\Customer\CustomerForgo
 Route::post('/password/email', [\App\Http\Controllers\Auth\Customer\CustomerForgotPasswordController::class, 'sendResetLinkRequest'])->name('password.email');
 
 Route::get('/password/reset/otp', [\App\Http\Controllers\Auth\Customer\CustomerResetPasswordController::class, 'showResetForm'])->name('password.reset');
-Route::post('/password/reset/otp', [\App\Http\Controllers\Auth\Customer\CustomerResetPasswordController::class, 'reset'])->name('password.update');
-    // =========================================================================
+Route::post('/password/reset/otp', [\App\Http\Controllers\Auth\Customer\CustomerResetPasswordController::class, 'reset'])->name('password.otp.submit');    // =========================================================================
     // RUTE VERIFIKASI OTP KHUSUS LOGIN (Terpisah dari Registrasi)
     // =========================================================================
     Route::get('/login/verifikasi-otp', [\App\Http\Controllers\Auth\Customer\OtpController::class, 'showOtpForm'])->name('login.otp.form');
