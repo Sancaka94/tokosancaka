@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str; // <-- TAMBAHKAN INI UNTUK RANDOM STRING OTP
 
+
 class CustomerLoginController extends Controller
 {
     use AuthenticatesUsers;
