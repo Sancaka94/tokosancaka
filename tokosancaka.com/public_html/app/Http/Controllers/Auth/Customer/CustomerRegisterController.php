@@ -72,6 +72,8 @@ class CustomerRegisterController extends Controller
             'setup_token'  => $otp, 
         ]);
 
+        $user->refresh();
+
         Log::info('User berhasil disimpan ke database.', ['id_pengguna' => $user->id_pengguna ?? $user->id]);
 
         // --- Notifikasi ke Admin ---
