@@ -574,6 +574,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
             Route::post('/history/bulk',   [ShipTicketingController::class, 'bulkDestroyHistory']);
         });
 
+
         // ==========================================
         // MODULE: SHIP DLU (TIKET KAPAL DLU)
         // ==========================================
@@ -628,6 +629,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/product-list', [PpobDarmawisataController::class, 'ppobProductList']);
                 Route::post('/inquiry', [PpobDarmawisataController::class, 'ppobInquiry']);
                 Route::post('/payment', [PpobDarmawisataController::class, 'ppobPayment']);
+                Route::post('/open-payment', [PpobDarmawisataController::class, 'ppobOpenPayment']);
                 Route::get('/history', [PpobDarmawisataController::class, 'ppobHistory']);
                 Route::post('/transaction-detail', [PpobDarmawisataController::class, 'ppobTransactionDetail']);
                 Route::post('/sync-status', [PpobDarmawisataController::class, 'syncPendingTransaction']);
@@ -646,19 +648,19 @@ Route::middleware(['auth:sanctum'])->group(function () {
                 Route::post('/handling', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'handling']);
                 Route::post('/goods', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'goods']);
                 Route::post('/handling-surcharge', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'handlingSurcharge']);
-                
+
                 // Transaksi & Tarif
                 Route::post('/tariff', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'tariff']);
                 Route::post('/price-detail', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'priceDetail']);
                 Route::post('/booking', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'booking']);
                 Route::post('/booking-list', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'bookingList']);
                 Route::post('/booking-detail', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'bookingDetail']);
-                
+
                 // Tracking & History
                 Route::post('/tracking', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'tracking']);
                 Route::get('/history', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'history']);
                 Route::post('/history/bulk-delete', [\App\Http\Controllers\Api\Mobile\CargoDarmaController::class, 'bulkDestroyHistory']);
-            
+
              });
 
             Route::prefix('darmawisata/topup')->group(function () {
@@ -675,6 +677,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
             });
 
         });
-        
+
 
     });

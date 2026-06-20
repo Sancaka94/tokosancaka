@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Http\Controllers\Api\Mobile;
 
@@ -60,7 +60,7 @@ class PpobDarmawisataController extends BaseController
     public function ppobProductGroup(Request $request)
     {
         Log::info("\n========== [PPOB PRODUCT GROUP - START] ==========");
-        
+
         $validator = Validator::make($request->all(), [
             'accessToken' => 'required|string',
         ]);
@@ -73,14 +73,14 @@ class PpobDarmawisataController extends BaseController
         $payload = [
             'accessToken' => $request->accessToken
         ];
-        
-        return $this->forwardRequest('PPOB/ProductGroup', $payload); 
+
+        return $this->forwardRequest('PPOB/ProductGroup', $payload);
     }
 
     public function ppobProductList(Request $request)
     {
         Log::info("\n========== [PPOB PRODUCT LIST - START] ==========");
-        
+
         $validator = Validator::make($request->all(), [
             'productGroup' => 'required|string',
             'accessToken'  => 'required|string',
@@ -92,15 +92,15 @@ class PpobDarmawisataController extends BaseController
 
         $payload = [
             'productGroup' => $request->productGroup,
-            'accessToken'  => $request->accessToken   
+            'accessToken'  => $request->accessToken
         ];
 
         // Ambil data produk dari Darmawisata
-        $response = $this->forwardRequest('PPOB/Product', $payload); 
+        $response = $this->forwardRequest('PPOB/Product', $payload);
         $json = json_decode($response->getContent(), true);
 
         // --- INI BAGIAN YANG DIUBAH (Auto Mapping Logo) ---
-        if (isset($json['productList']) && is_array($json['productList'])) { 
+        if (isset($json['productList']) && is_array($json['productList'])) {
             foreach ($json['productList'] as &$product) {
                 // Terapkan Smart Mapping ke setiap produk
                 $product['iconUrl'] = $this->getPpobLogo($product['group'] ?? '', $product['name'] ?? '');
@@ -129,10 +129,10 @@ class PpobDarmawisataController extends BaseController
             'productCode'    => $request->productCode,
             'customerID'     => $request->customerID,
             'customerMSISDN' => $request->customerMSISDN ?? "",
-            'accessToken'    => $request->accessToken   
+            'accessToken'    => $request->accessToken
         ];
 
-        return $this->forwardRequest('PPOB/Inquiry', $payload); 
+        return $this->forwardRequest('PPOB/Inquiry', $payload);
     }
 
    public function ppobPayment(Request $request)
@@ -157,7 +157,7 @@ class PpobDarmawisataController extends BaseController
 
         if (!$user || $user->saldo < $totalPrice) {
             return response()->json([
-                'status' => 'FAILED', 
+                'status' => 'FAILED',
                 'message' => 'Saldo tidak cukup. Butuh: Rp ' . number_format($totalPrice, 0, ',', '.')
             ], 400);
         }
@@ -168,7 +168,7 @@ class PpobDarmawisataController extends BaseController
             // 1. Potong saldo & catat transaksi PENDING dulu
             $orderId = DB::transaction(function () use ($request, $userId, $totalPrice) {
                 DB::table('Pengguna')->where('id_pengguna', $userId)->decrement('saldo', $totalPrice);
-                
+
                 return DB::table('dw_ppob_transactions')->insertGetId([
                     'user_id'              => $userId,
                     'product_code'         => $request->productCode,
@@ -184,18 +184,18 @@ class PpobDarmawisataController extends BaseController
             // 2. Siapkan payload ke Darmawisata
             $payload = [
                 'billingReferenceID' => $request->billingReferenceID,
-                'accessToken'        => $request->accessToken   
+                'accessToken'        => $request->accessToken
             ];
 
             // 3. Eksekusi API
-            $response = $this->forwardRequest('PPOB/Payment', $payload); 
+            $response = $this->forwardRequest('PPOB/Payment', $payload);
             $json = json_decode($response->getContent(), true);
 
             // 4. Evaluasi Response
             if (isset($json['status']) && $json['status'] === 'SUCCESS') {
                 DB::table('dw_ppob_transactions')->where('id', $orderId)->update([
                     'status'       => 'SUCCESS',
-                    'resp_message' => $json['respMessage'] ?? 'Transaksi Berhasil', 
+                    'resp_message' => $json['respMessage'] ?? 'Transaksi Berhasil',
                     'updated_at'   => now(),
                 ]);
 
@@ -207,7 +207,7 @@ class PpobDarmawisataController extends BaseController
             } else {
                 // JIKA FAILED TAPI PESANNYA PENDING (Masuk antrean provider)
                 $respMsg = strtolower($json['respMessage'] ?? '');
-                
+
                 if (str_contains($respMsg, 'pending')) {
                     DB::table('dw_ppob_transactions')->where('id', $orderId)->update([
                         'status'       => 'PENDING_PROVIDER',
@@ -240,11 +240,11 @@ class PpobDarmawisataController extends BaseController
             if ($orderId) {
                 // REFUND SALDO KARENA SYSTEM ERROR DARI SANCAKA SENDIRI
                 DB::table('Pengguna')->where('id_pengguna', $userId)->increment('saldo', $totalPrice);
-                
+
                 DB::table('dw_ppob_transactions')
                     ->where('id', $orderId)
                     ->update([
-                        'status' => 'FAILED_SYSTEM_ERROR', 
+                        'status' => 'FAILED_SYSTEM_ERROR',
                         'resp_message' => 'System Error: Saldo telah dikembalikan.',
                         'updated_at' => now()
                     ]);
@@ -265,14 +265,14 @@ class PpobDarmawisataController extends BaseController
         if ($validator->fails()) {
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
-        
+
         $payload = [
-            'customerID'         => $request->customerID,          
-            'billingReferenceID' => $request->billingReferenceID,  
-            'accessToken'        => $request->accessToken          
+            'customerID'         => $request->customerID,
+            'billingReferenceID' => $request->billingReferenceID,
+            'accessToken'        => $request->accessToken
         ];
 
-        return $this->forwardRequest('PPOB/TransactionDetail', $payload); 
+        return $this->forwardRequest('PPOB/TransactionDetail', $payload);
     }
 
     public function ppobHistory(Request $request)
@@ -284,8 +284,8 @@ class PpobDarmawisataController extends BaseController
 
             $query = DB::table('dw_ppob_transactions as t')
                 ->select(
-                    't.id', 't.product_code', 't.customer_id', 
-                    't.billing_reference_id', 't.sell_price', 
+                    't.id', 't.product_code', 't.customer_id',
+                    't.billing_reference_id', 't.sell_price',
                     't.status', 't.created_at', 't.resp_message', 't.user_id'
                 )
                 ->orderBy('t.created_at', 'desc');
@@ -301,7 +301,7 @@ class PpobDarmawisataController extends BaseController
             $formattedData = $orders->map(function ($order) {
                 return [
                     'id'                 => $order->id,
-                    'userId'             => $order->user_id, 
+                    'userId'             => $order->user_id,
                     'productCode'        => $order->product_code,
                     'productName'        => $order->product_code, // Bisa di-query detailnya jika perlu
                     // Gunakan fungsi smart mapping untuk History juga
@@ -356,12 +356,12 @@ class PpobDarmawisataController extends BaseController
             ]);
 
             Log::info("DOKU Webhook PPOB Darma: Status pesanan $transactionId berhasil diupdate ke PAID_PROCESSING.");
-            
-            // Catatan: Di titik ini uang sudah masuk ke Sancaka. 
+
+            // Catatan: Di titik ini uang sudah masuk ke Sancaka.
             // Kamu bisa men-trigger cronjob atau hit langsung API Payment Darmawisata di sini.
 
             return response()->json(['status' => 'success', 'message' => 'Webhook PPOB Darmawisata berhasil']);
-            
+
         } catch (\Exception $e) {
             Log::error("Webhook PPOB Darmawisata Error: " . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => 'Sistem Error'], 500);
@@ -404,16 +404,16 @@ class PpobDarmawisataController extends BaseController
             $payload = [
                 'customerID'         => $order->customer_id,
                 'billingReferenceID' => $order->billing_reference_id,
-                'accessToken'        => $request->accessToken 
+                'accessToken'        => $request->accessToken
             ];
 
             // 3. Tembak API Darmawisata
-            $response = $this->forwardRequest('PPOB/TransactionDetail', $payload); 
+            $response = $this->forwardRequest('PPOB/TransactionDetail', $payload);
             $json = json_decode($response->getContent(), true);
 
             // 4. Evaluasi Response dari Darmawisata
             if (isset($json['status']) && $json['status'] === 'SUCCESS' && isset($json['detail'])) {
-                
+
                 $providerStatus = strtoupper($json['detail']['transactionStatus']); // Status asli dari provider[cite: 1]
 
                 if ($providerStatus === 'SUCCESS') {
@@ -430,7 +430,7 @@ class PpobDarmawisataController extends BaseController
                     // TRANSAKSI GAGAL - KEMBALIKAN SALDO USER
                     DB::transaction(function () use ($order) {
                         DB::table('Pengguna')->where('id_pengguna', $order->user_id)->increment('saldo', $order->sell_price);
-                        
+
                         DB::table('dw_ppob_transactions')->where('id', $order->id)->update([
                             'status'       => 'FAILED',
                             'resp_message' => 'Transaksi gagal di sisi provider. Saldo dikembalikan.',
@@ -439,7 +439,7 @@ class PpobDarmawisataController extends BaseController
                     });
 
                     return response()->json(['status' => 'SUCCESS', 'message' => 'Transaksi gagal, saldo berhasil dikembalikan.']);
-                
+
                 } else {
                     // MASIH PENDING
                     return response()->json(['status' => 'PENDING', 'message' => 'Transaksi masih diproses oleh provider.']);
@@ -463,7 +463,7 @@ class PpobDarmawisataController extends BaseController
     public function bulkDestroyHistory(Request $request)
     {
         $user = $request->user();
-        
+
         // Proteksi: Hanya user ID 4 (atau role admin) yang boleh eksekusi
         $userId = $user->id_pengguna ?? $user->id;
         if ($userId != 4) {
@@ -487,5 +487,135 @@ class PpobDarmawisataController extends BaseController
             return response()->json(['status' => 'FAILED', 'message' => 'Gagal menghapus data di database.'], 500);
         }
     }
-    
+
+    /**
+     * =========================================================
+     * PPOB OPEN PAYMENT (Untuk Prudential, Asuransi, dll)
+     * =========================================================
+     */
+    public function ppobOpenPayment(Request $request)
+    {
+        Log::info("\n========== [PPOB OPEN PAYMENT - START] ==========");
+
+        // Validasi membutuhkan input sellPrice (Nominal yang diketik user)
+        $validator = Validator::make($request->all(), [
+            'productCode'    => 'required|string',
+            'customerID'     => 'required|string',
+            'customerMSISDN' => 'nullable|string',
+            'sellPrice'      => 'required|numeric', // Nominal dari input user WAJIB ada
+            'accessToken'    => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
+        }
+
+        $user = $request->user();
+        $totalPrice = (float) $request->sellPrice;
+        $userId = $user->id_pengguna ?? $user->id;
+
+        if (!$user || $user->saldo < $totalPrice) {
+            return response()->json([
+                'status' => 'FAILED',
+                'message' => 'Saldo tidak cukup. Butuh: Rp ' . number_format($totalPrice, 0, ',', '.')
+            ], 400);
+        }
+
+        $orderId = null;
+        // Karena kita men-skip Inquiry, kita tidak punya billingReferenceID dari Darmawisata.
+        // Solusinya: Kita generate Reference ID lokal milik kita sendiri.
+        $billingRef = 'OP-' . time() . '-' . rand(100, 999);
+
+        try {
+            // 1. Potong saldo & catat transaksi PENDING dulu
+            $orderId = DB::transaction(function () use ($request, $userId, $totalPrice, $billingRef) {
+                DB::table('Pengguna')->where('id_pengguna', $userId)->decrement('saldo', $totalPrice);
+
+                return DB::table('dw_ppob_transactions')->insertGetId([
+                    'user_id'              => $userId,
+                    'product_code'         => $request->productCode,
+                    'customer_id'          => $request->customerID,
+                    'billing_reference_id' => $billingRef,
+                    'sell_price'           => $totalPrice,
+                    'status'               => 'PENDING_PAYMENT',
+                    'created_at'           => now(),
+                    'updated_at'           => now(),
+                ]);
+            });
+
+            // 2. Siapkan Payload Khusus Darmawisata Open Payment
+            $payload = [
+                'productCode'        => $request->productCode,
+                'customerID'         => $request->customerID,
+                'customerMSISDN'     => $request->customerMSISDN ?? "",
+                'agentPayment'       => $totalPrice, // PERBEDAAN UTAMA: Parameter nominal pembayaran
+                'billingReferenceID' => $billingRef, // Masukkan Reference ID yang kita generate
+                'accessToken'        => $request->accessToken
+            ];
+
+            // 3. Eksekusi API (PERBEDAAN UTAMA: Endpoint Darmawisata adalah PPOB/OpenPayment)
+            $response = $this->forwardRequest('PPOB/OpenPayment', $payload);
+            $json = json_decode($response->getContent(), true);
+
+            // 4. Evaluasi Response (Identik dengan ppobPayment standar)
+            if (isset($json['status']) && $json['status'] === 'SUCCESS') {
+                DB::table('dw_ppob_transactions')->where('id', $orderId)->update([
+                    'status'       => 'SUCCESS',
+                    'resp_message' => $json['respMessage'] ?? 'Transaksi Berhasil',
+                    'updated_at'   => now(),
+                ]);
+
+                return response()->json([
+                    'status'  => 'SUCCESS',
+                    'message' => 'Pembayaran PPOB Open Payment Berhasil!',
+                    'data'    => $json
+                ]);
+            } else {
+                $respMsg = strtolower($json['respMessage'] ?? '');
+
+                if (str_contains($respMsg, 'pending')) {
+                    DB::table('dw_ppob_transactions')->where('id', $orderId)->update([
+                        'status'       => 'PENDING_PROVIDER',
+                        'resp_message' => 'Sedang diproses oleh provider (Pending Antrean).',
+                        'updated_at'   => now(),
+                    ]);
+
+                    return response()->json([
+                        'status'  => 'SUCCESS',
+                        'message' => 'Pembayaran sedang diproses oleh provider.',
+                        'data'    => $json
+                    ]);
+                }
+
+                // Gagal instan, Refund Saldo
+                DB::transaction(function () use ($userId, $totalPrice, $orderId, $json) {
+                    DB::table('Pengguna')->where('id_pengguna', $userId)->increment('saldo', $totalPrice);
+                    DB::table('dw_ppob_transactions')->where('id', $orderId)->update([
+                        'status'       => 'FAILED',
+                        'resp_message' => $json['respMessage'] ?? 'Gagal dari provider',
+                        'updated_at'   => now(),
+                    ]);
+                });
+
+                return response()->json(['status' => 'FAILED', 'message' => $json['respMessage'] ?? 'Transaksi Gagal']);
+            }
+
+       } catch (\Exception $e) {
+            Log::error("FATAL ERROR [PPOB Open Payment]: " . $e->getMessage());
+            if ($orderId) {
+                // Refund saldo untuk system error
+                DB::table('Pengguna')->where('id_pengguna', $userId)->increment('saldo', $totalPrice);
+
+                DB::table('dw_ppob_transactions')
+                    ->where('id', $orderId)
+                    ->update([
+                        'status' => 'FAILED_SYSTEM_ERROR',
+                        'resp_message' => 'System Error: Saldo telah dikembalikan.',
+                        'updated_at' => now()
+                    ]);
+            }
+            return response()->json(['status' => 'FAILED', 'message' => 'System Error: ' . $e->getMessage()], 500);
+        }
+    }
+
 }
