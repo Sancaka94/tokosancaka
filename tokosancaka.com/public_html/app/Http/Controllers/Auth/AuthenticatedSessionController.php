@@ -165,5 +165,6 @@ class AuthenticatedSessionController extends Controller
 
         Log::info('Logout berhasil.', ['user_id' => $userId]);
         return redirect('/');
+ 
     }
 }
