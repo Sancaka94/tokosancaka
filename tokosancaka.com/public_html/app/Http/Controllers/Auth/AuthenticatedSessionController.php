@@ -187,7 +187,7 @@ class AuthenticatedSessionController extends Controller
                     'nama_lengkap' => $googleUser->getName(),
                     'email'        => $googleUser->getEmail(),
                     'role'         => 'pelanggan', // Role default
-                    'status'       => 'Aktif',
+                    'status'       => 'Menunggu Setup', // STATUS SEMENTARA AGAR DIPAKSA SETUP PROFIL
                     'password'     => bcrypt(Str::random(16)), // Generate password acak
                 ]);
             }
@@ -210,8 +210,22 @@ class AuthenticatedSessionController extends Controller
 
             Log::info('Login Google berhasil.', ['email' => $user->email]);
 
-            // Arahkan ke dashboard utama
-            return redirect()->intended('/dashboard');
+            // ====================================================================
+            // CEK KELENGKAPAN PROFIL GOOGLE
+            // ====================================================================
+            if ($user->status !== 'Aktif' || empty($user->no_wa)) {
+                Log::info('User belum melengkapi profil. Dialihkan ke halaman Setup Profile.', ['user_id' => $user->id_pengguna]);
+                return redirect()->route('customer.profile.setup');
+            }
+
+            // Jika profil sudah lengkap (status Aktif), arahkan ke dashboard sesuai role
+            $role = strtolower(trim($user->role));
+            if ($role === 'admin') {
+                return redirect()->route('admin.dashboard');
+            }
+
+            // Default ke dashboard customer (mencakup pelanggan, agent, seller)
+            return redirect()->route('customer.dashboard');
 
         } catch (\Exception $e) {
             Log::error('Google Auth Gagal: ' . $e->getMessage());

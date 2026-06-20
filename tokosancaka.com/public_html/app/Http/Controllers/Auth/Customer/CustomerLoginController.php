@@ -29,6 +29,16 @@ class CustomerLoginController extends Controller
             'role' => $role
         ]);
 
+        // ====================================================================
+        // TAMBAHAN: CEK KELENGKAPAN PROFIL GOOGLE
+        // Jika statusnya belum "Aktif" atau datanya kosong (misal baru daftar via Google), 
+        // paksa ke halaman setup profile.
+        // ====================================================================
+        if ($user->status !== 'Aktif' || empty($user->no_wa)) {
+            Log::info('User belum melengkapi profil. Dialihkan ke halaman Setup Profile.');
+            return route('customer.profile.setup');
+        }
+
         if ($role === 'admin') {
             return route('admin.dashboard');
         }
@@ -228,7 +238,7 @@ class CustomerLoginController extends Controller
                     'nama_lengkap' => $googleUser->getName(),
                     'email'        => $googleUser->getEmail(),
                     'role'         => 'pelanggan', // Role default
-                    'status'       => 'Aktif',
+                    'status'       => 'Menunggu Setup', // STATUS SEMENTARA
                     'password'     => bcrypt(Str::random(16)), // Generate password acak
                 ]);
             }
@@ -251,7 +261,7 @@ class CustomerLoginController extends Controller
 
             Log::info('Login Google berhasil.', ['email' => $user->email]);
 
-            // Arahkan ke dashboard utama sesuai role yang ada di fungsi redirectTo()
+            // Arahkan ke rute berdasarkan kondisi profil (fungsi redirectTo di atas)
             return redirect()->intended($this->redirectTo());
 
         } catch (\Exception $e) {
