@@ -1,81 +1,78 @@
-<?php
-
-namespace App\Http\Controllers\Auth\Customer;
-
-use App\Http\Controllers\Controller;
-use Illuminate\Foundation\Auth\ResetsPasswords;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
-use App\Models\User; // Pastikan model User di-import
-
-class CustomerResetPasswordController extends Controller
-{
-    use ResetsPasswords;
-
-    /**
-     * ✅ PERBAIKAN FINAL: Mengarahkan LANGSUNG ke dashboard.
-     * Ini menghilangkan redirect kedua yang menyebabkan masalah sesi.
-     *
-     * @var string
-     */
-    protected $redirectTo = '/customer/dashboard';
-
-    public function showResetForm(Request $request)
-    {
-        $token = $request->route()->parameter('token');
-        return view('auth.passwords.reset')->with(
-            ['token' => $token, 'email' => $request->email]
-        );
-    }
-
-    /**
-     * Metode ini akan menangani logika reset secara manual untuk memastikan
-     * password di-hash dengan benar.
-     */
-    public function reset(Request $request)
-    {
-        $request->validate($this->rules(), $this->validationErrorMessages());
-
-        // Cari user berdasarkan email
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user) {
-            return back()->withInput($request->only('email'))
-                         ->withErrors(['email' => 'Email tidak ditemukan.']);
-        }
-
-        // Verifikasi token reset password
-        if (!Password::tokenExists($user, $request->token)) {
-            return back()->withInput($request->only('email'))
-                         ->withErrors(['email' => 'Token reset password tidak valid atau sudah kedaluwarsa.']);
-        }
-
-        // Hash password baru dan simpan ke database
-        $user->password = $request->password;
-        $user->save();
-
-        // Hapus token setelah digunakan
-        Password::deleteToken($user);
-
-        // Login pengguna secara otomatis setelah reset
-        $this->guard()->login($user);
-
-        // Mengarahkan ke dashboard dengan pesan sukses
-        return redirect($this->redirectPath())
-               ->with('status', 'Password Anda telah berhasil direset! Selamat datang kembali.');
-    }
-
-    /**
-     * Aturan validasi untuk form reset.
-     */
-    protected function rules()
-    {
-        return [
-            'token' => 'required',
-            'email' => 'required|email',
-            'password' => 'required|confirmed|min:8',
-        ];
-    }
-}
+<?php
+
+namespace App\Http\Controllers\Auth\Customer;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+
+class CustomerResetPasswordController extends Controller
+{
+    /**
+     * ✅ PERBAIKAN FINAL: Mengarahkan LANGSUNG ke dashboard.
+     */
+    protected $redirectTo = '/customer/dashboard';
+
+    public function showResetForm(Request $request)
+    {
+        // Tangkap identifier dari URL untuk dikirim ke form
+        $identifier = $request->query('identifier');
+        
+        if (!$identifier) {
+            return redirect()->route('password.request')->withErrors(['phone' => 'Sesi tidak valid, silakan ulangi permintaan.']);
+        }
+
+        return view('auth.passwords.reset')->with(['identifier' => $identifier]);
+    }
+
+    public function reset(Request $request)
+    {
+        Log::info('Proses validasi OTP dan Reset Password dimulai.', ['identifier' => $request->identifier]);
+
+        // 1. Validasi Input form
+        $request->validate([
+            'otp'                   => 'required|string',
+            'identifier'            => 'required|string',
+            'password'              => 'required|string|min:8|confirmed',
+        ], [
+            'otp.required'          => 'Kode OTP wajib diisi.',
+            'password.confirmed'    => 'Konfirmasi password tidak cocok.',
+            'password.min'          => 'Password minimal 8 karakter.',
+        ]);
+
+        // 2. Cari user berdasarkan Email atau No WA
+        $user = User::where('email', $request->identifier)->orWhere('no_wa', $request->identifier)->first();
+
+        if (!$user) {
+            return back()->withErrors(['otp' => 'Data pengguna tidak ditemukan.']);
+        }
+
+        // 3. Ambil dan Verifikasi OTP dari database
+        $inputOtp = preg_replace('/\s+/', '', $request->otp);
+        $table = DB::getSchemaBuilder()->hasTable('password_reset_tokens') ? 'password_reset_tokens' : 'password_resets';
+        
+        $resetRecord = DB::table($table)->where('email', $user->email ?? $user->no_wa)->first();
+
+        if (!$resetRecord || strtoupper($resetRecord->token) !== strtoupper($inputOtp)) {
+            Log::warning('Gagal: OTP salah atau expired.');
+            return back()->withErrors(['otp' => 'Kode OTP salah atau sudah kedaluwarsa.']);
+        }
+
+        // 4. Update Password (Bcrypt)
+        $user->password = bcrypt($request->password);
+        $user->save();
+
+        // 5. Bersihkan OTP dari tabel
+        DB::table($table)->where('email', $user->email ?? $user->no_wa)->delete();
+
+        // 6. Auto Login ke Dashboard
+        Auth::guard('web')->login($user);
+        Log::info('Reset Password sukses, otomatis login.', ['user_id' => $user->id_pengguna]);
+
+        return redirect($this->redirectTo)
+               ->with('success', 'Password berhasil diubah! Selamat datang kembali.');
+    }
+}
