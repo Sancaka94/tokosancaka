@@ -200,6 +200,23 @@
                         <button type="submit" class="btn btn-danger btn-lg text-uppercase">Login</button>
                     </div>
 
+                    {{-- ========================================== --}}
+                    {{-- TAMBAHAN: TOMBOL LOGIN GOOGLE --}}
+                    {{-- ========================================== --}}
+                    @if (!request()->is('admin/*'))
+                        <div class="d-flex align-items-center mb-3">
+                            <hr class="flex-grow-1 text-muted opacity-25">
+                            <span class="mx-2 text-muted small">ATAU</span>
+                            <hr class="flex-grow-1 text-muted opacity-25">
+                        </div>
+                        <div class="d-grid mb-3">
+                            <a href="{{ route('login.google') }}" class="btn btn-outline-dark btn-lg d-flex justify-content-center align-items-center">
+                                <i class="fa-brands fa-google text-danger me-2"></i> Masuk dengan Google
+                            </a>
+                        </div>
+                    @endif
+                    {{-- ========================================== --}}
+
                     @if (Route::has('password.request') && !request()->is('admin/*'))
                         <div class="text-center mt-3">
                             <a href="https://tokosancaka.com/password/reset" class="small text-muted text-decoration-none">Lupa password?</a>
@@ -208,7 +225,7 @@
 
                 </form>
 
-                 <div class="text-center">
+                 <div class="text-center mt-4">
                     <p class="text-muted small mb-0">
                         &copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.
                     </p>
@@ -216,11 +233,8 @@
 
             </div>
 
-
-
         </div>
     </div>
-
 
 </div>
 @endsection
