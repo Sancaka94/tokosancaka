@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB; // <-- FACADE DB UNTUK TABEL PENGGUNA
+use Laravel\Socialite\Facades\Socialite; // <-- TAMBAHAN: Import Socialite
 
 class CustomerLoginController extends Controller
 {
@@ -196,5 +197,68 @@ class CustomerLoginController extends Controller
         
         Log::info('Logout berhasil.', ['user_id' => $userId]);
         return redirect()->route('login')->with('success', 'Anda telah berhasil logout.');
+    }
+
+    // ====================================================================
+    // TAMBAHAN: FUNGSI LOGIN GOOGLE (SOCIALITE)
+    // ====================================================================
+
+    public function redirectToGoogle(): RedirectResponse
+    {
+        Log::info('Redirecting user ke Google Auth.');
+        return Socialite::driver('google')->redirect();
+    }
+
+    public function handleGoogleCallback(Request $request): RedirectResponse
+    {
+        try {
+            Log::info('Proses callback Google Auth dimulai.');
+            
+            $googleUser = Socialite::driver('google')->user();
+            Log::info('Data Google diterima.', ['email' => $googleUser->getEmail()]);
+
+            // Cari user di database berdasarkan email dari Google
+            $user = User::where('email', $googleUser->getEmail())->first();
+
+            if (!$user) {
+                // Jika tidak ada, buat akun baru secara otomatis
+                Log::info('Email tidak ditemukan, membuat user baru dari Google.', ['email' => $googleUser->getEmail()]);
+                
+                $user = User::create([
+                    'nama_lengkap' => $googleUser->getName(),
+                    'email'        => $googleUser->getEmail(),
+                    'role'         => 'pelanggan', // Role default
+                    'status'       => 'Aktif',
+                    'password'     => bcrypt(Str::random(16)), // Generate password acak
+                ]);
+            }
+
+            // Validasi Otorisasi Role sama seperti login manual
+            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent']; 
+            if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
+                Log::warning('Akses Ditolak: Peran tidak diizinkan (Via Google).', [
+                    'email' => $user->email,
+                    'role'  => $user->role
+                ]);
+                throw ValidationException::withMessages([
+                    'login' => ['Akses Ditolak: Peran Anda tidak diizinkan masuk.'],
+                ]);
+            }
+
+            // Bypass OTP dan langsung login ke dalam sistem
+            $this->guard()->login($user);
+            $request->session()->regenerate();
+
+            Log::info('Login Google berhasil.', ['email' => $user->email]);
+
+            // Arahkan ke dashboard utama sesuai role yang ada di fungsi redirectTo()
+            return redirect()->intended($this->redirectTo());
+
+        } catch (\Exception $e) {
+            Log::error('Google Auth Gagal: ' . $e->getMessage());
+            return redirect()->route('login')->withErrors([
+                'login' => 'Terjadi kesalahan saat otentikasi menggunakan Google. Silakan coba lagi.'
+            ]);
+        }
     }
 }
