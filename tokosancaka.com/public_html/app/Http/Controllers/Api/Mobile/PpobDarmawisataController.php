@@ -125,10 +125,16 @@ class PpobDarmawisataController extends BaseController
             return response()->json(['status' => 'FAILED', 'errors' => $validator->errors()], 422);
         }
 
+        // 👇 UBAH BAGIAN PAYLOAD INI 👇
         $payload = [
             'productCode'    => $request->productCode,
             'customerID'     => $request->customerID,
-            'customerMSISDN' => $request->customerMSISDN ?? "",
+            // 1. Samakan proteksi MSISDN seperti di Open Payment
+            'customerMSISDN' => !empty($request->customerMSISDN) ? $request->customerMSISDN : $request->customerID,
+
+            // 2. TAMBAHAN WAJIB UNTUK BPJS (Default cek 1 bulan)
+            'month'          => 1,
+
             'accessToken'    => $request->accessToken
         ];
 
