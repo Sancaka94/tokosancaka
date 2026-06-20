@@ -33,8 +33,8 @@
         <div id="geocode-alert" class="hidden mb-6 p-4 rounded-r-lg border-l-4" role="alert"></div>
 
 
-        <form method="POST" action="{{ route('customer.profile.update.setup', $user->setup_token) }}" enctype="multipart/form-data">
-            @csrf
+        <form method="POST" action="{{ route('customer.profile.update.setup', $user->setup_token ?? 'google-auth') }}" enctype="multipart/form-data">
+        @csrf
             @method('PUT')
 
             <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-slate-200">
