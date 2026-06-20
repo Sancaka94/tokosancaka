@@ -133,7 +133,8 @@ class CustomerLoginController extends Controller
             // 3. SIMPAN KE SESSION SEMENTARA
             $request->session()->put('auth_otp_user_id', $userId);
             $request->session()->put('auth_otp_code', $otpCode);
-            $request->session()->put('auth_otp_expires_at', now()->addMinutes(1)); 
+            $request->session()->put('auth_otp_expires_at', now()->addMinutes(1));
+            $request->session()->save();
             Log::info('Session sementara OTP disimpan.', ['user_id' => $userId, 'expires_at' => now()->addMinutes(1)]);
 
             // 4. KIRIM OTP KE WHATSAPP

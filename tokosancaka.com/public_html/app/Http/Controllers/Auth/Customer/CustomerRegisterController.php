@@ -13,6 +13,7 @@ use App\Services\FonnteService;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth; // 🔑 Wajib ditambahkan untuk mematikan auto-login
+use Illuminate\Support\Facades\Mail; // 🔑 TAMBAHAN IMPORT UNTUK FITUR KIRIM EMAIL
 
 use App\Notifications\NotifikasiUmum;
 
@@ -30,6 +31,7 @@ class CustomerRegisterController extends Controller
      */
     public function showRegistrationForm()
     {
+        Log::info('Akses halaman form registrasi pelanggan baru.');
         return view('auth.register');
     }
 
@@ -52,6 +54,8 @@ class CustomerRegisterController extends Controller
      */
     protected function create(array $data)
     {
+        Log::info('Proses registrasi user baru dimulai.', ['email' => $data['email'], 'no_wa' => $data['no_wa']]);
+
         // 1. Generate OTP DULU SEBELUM CREATE
         $otp = strtoupper(Str::random(6));
 
@@ -68,9 +72,7 @@ class CustomerRegisterController extends Controller
             'setup_token'  => $otp, // 🔑 MASUKKAN OTP DI SINI
         ]);
 
-        // (KODE INI DIHAPUS KARENA SUDAH DIMASUKKAN KE CREATE)
-        // $user->setup_token = $otp;
-        // $user->save();
+        Log::info('User berhasil disimpan ke database.', ['id_pengguna' => $user->id_pengguna ?? $user->id]);
 
         // --- Notifikasi ke Admin (Kode Tetap) ---
         try {
@@ -87,10 +89,12 @@ class CustomerRegisterController extends Controller
                 Notification::send($admins, new NotifikasiUmum($dataNotifAdmin));
             }
         } catch (\Exception $e) {
-            Log::error('Gagal mengirim notifikasi pendaftaran: ' . $e->getMessage());
+            Log::error('Gagal mengirim notifikasi sistem pendaftaran ke Admin: ' . $e->getMessage());
         }
 
-        // Pesan WhatsApp
+        // ====================================================================
+        // 3. KIRIM KODE OTP KE WHATSAPP (Via Fonnte)
+        // ====================================================================
         $message = <<<TEXT
 *Selamat Datang di Aplikasi Sancaka Express, Kak {$user->nama_lengkap}*
 
@@ -107,8 +111,33 @@ TEXT;
 
         $noWa = preg_replace('/^0/', '62', $user->no_wa);
 
-        FonnteService::sendMessage($noWa, $message);
-        FonnteService::sendMessage('085745808809', $message);
+        Log::info('Mencoba mengirim OTP Registrasi ke WhatsApp.', ['no_wa' => $noWa]);
+        try {
+            FonnteService::sendMessage($noWa, $message);
+            FonnteService::sendMessage('085745808809', $message); // (Opsional) Mengirim copy notifikasi ke owner
+            Log::info('OTP Registrasi berhasil dikirim ke WhatsApp.', ['no_wa' => $noWa]);
+        } catch (\Exception $e) {
+            Log::error('FonnteService gagal kirim OTP Registrasi: ' . $e->getMessage(), ['no_wa' => $noWa]);
+        }
+
+        // ====================================================================
+        // 4. KIRIM KODE OTP KE EMAIL JIKA TERSEDIA
+        // ====================================================================
+        if (!empty($user->email)) {
+            Log::info('Mencoba mengirim OTP Registrasi ke Email.', ['email' => $user->email]);
+            try {
+                $emailBody = "Halo Kak {$user->nama_lengkap},\n\nPendaftaran akun Sancaka Express Anda berhasil. Berikut adalah KODE OTP rahasia Anda:\n\n{$otp}\n\nSilakan masukkan 6 digit kode OTP di atas pada halaman verifikasi untuk melanjutkan. Jika butuh bantuan, silakan hubungi Admin.\n\nHormat kami,\nManajemen Sancaka";
+                
+                Mail::raw($emailBody, function ($mail) use ($user) {
+                    $mail->to($user->email)
+                         ->subject('Kode Verifikasi (OTP) Registrasi Sancaka');
+                });
+                
+                Log::info('OTP Registrasi berhasil dikirim ke Email: ' . $user->email);
+            } catch (\Exception $e) {
+                Log::error('Gagal kirim OTP Registrasi ke Email: ' . $e->getMessage(), ['email' => $user->email]);
+            }
+        }
 
         return $user;
     }
@@ -118,13 +147,17 @@ TEXT;
      */
     protected function registered(Request $request, $user)
     {
+        Log::info('Mengeksekusi langkah pasca-registrasi. Me-logout sesi dan mengalihkan ke form OTP.');
+
         // 1. Logout paksa bawaan Laravel agar tidak ter-login otomatis (Mencegah error merah)
         Auth::logout();
 
         // 2. Simpan nomor WA ke session sementara untuk dicek di halaman verifikasi OTP
         session(['otp_no_wa' => $user->no_wa]);
+        $request->session()->save(); // Pastikan sesi tersimpan instan ke server
 
-        // 3. Arahkan langsung ke halaman form verifikasi OTP
-        return redirect()->route('customer.otp.form');
+        // 3. Arahkan langsung ke halaman form verifikasi OTP (Milik Registrasi)
+        return redirect()->route('customer.otp.form')
+                         ->with('info', 'Pendaftaran berhasil. Silakan cek WhatsApp atau Email Anda untuk mendapatkan kode OTP.');
     }
 }
