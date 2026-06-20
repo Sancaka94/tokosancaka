@@ -91,7 +91,7 @@ class AuthenticatedSessionController extends Controller
             $otpCode = strtoupper(Str::random(6));
             Log::info('OTP Code Generated.', ['user_id' => $userId]);
 
-            $otpLink = route('customer.otp.form') . '?otp=' . $otpCode;
+            $otpLink = route('login.otp.form') . '?otp=' . $otpCode;
 
             // 5. Simpan ke Session Sementara
             $request->session()->put('auth_otp_user_id', $userId);
@@ -132,8 +132,8 @@ class AuthenticatedSessionController extends Controller
 
             // 8. Redirect ke Form OTP
             Log::info('Redirecting user ke form OTP.', ['user_id' => $userId]);
-            return redirect()->route('customer.otp.form')
-                             ->with('info', 'Kode OTP telah dikirim ke WhatsApp and Email Anda. Silakan cek pesan masuk.');
+            return redirect()->route('login.otp.form')
+                 ->with('info', 'Kode OTP telah dikirim ke WhatsApp dan Email Anda. Silakan cek pesan masuk.');
         }
 
         Log::warning('Login attempt gagal. Kredensial tidak valid.', ['login_input' => $request->login]);

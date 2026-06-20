@@ -11,20 +11,17 @@ use Illuminate\Support\Facades\DB; // <-- SEKARANG SUDAH DITAMBAHKAN FACADE DB
 
 class OtpController extends Controller
 {
-    /**
-     * Method untuk menampilkan view OTP yang desainnya kotak-kotak.
-     */
     public function showOtpForm(Request $request)
     {
-        Log::info('Akses halaman form verifikasi OTP.');
+        Log::info('Akses halaman form verifikasi OTP Login.');
 
-        // Cegah akses jika tidak ada session OTP
         if (!$request->session()->has('auth_otp_user_id')) {
-            Log::warning('Akses form OTP ditolak: Sesi tidak valid atau kosong.');
+            Log::warning('Akses form OTP Login ditolak: Sesi tidak valid atau kosong.');
             return redirect()->route('login')->with('error', 'Sesi login tidak valid. Silakan login ulang.');
         }
 
-        return view('customer.otp'); 
+        // MENGGUNAKAN FILE BLADE BARU YANG KHUSUS LOGIN
+        return view('auth.login_otp'); 
     }
 
     /**

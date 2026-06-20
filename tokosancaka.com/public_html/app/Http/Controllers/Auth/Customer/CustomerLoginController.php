@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\DB; // <-- SEKARANG SUDAH DITAMBAHKAN FACADE DB
+use Illuminate\Support\Facades\DB; // <-- FACADE DB UNTUK TABEL PENGGUNA
 
 class CustomerLoginController extends Controller
 {
@@ -127,7 +127,8 @@ class CustomerLoginController extends Controller
             $otpCode = strtoupper(Str::random(6)); 
             Log::info('OTP Code Generated.', ['user_id' => $userId]);
             
-            $otpLink = route('customer.otp.form') . '?otp=' . $otpCode;
+            // PERBAIKAN: Ubah route menjadi login.otp.form agar tidak bentrok dengan OTP Registrasi
+            $otpLink = route('login.otp.form') . '?otp=' . $otpCode;
 
             // 3. SIMPAN KE SESSION SEMENTARA
             $request->session()->put('auth_otp_user_id', $userId);
@@ -168,7 +169,9 @@ class CustomerLoginController extends Controller
 
             // 6. REDIRECT KE HALAMAN INPUT OTP
             Log::info('Redirecting user ke form OTP.', ['user_id' => $userId]);
-            return redirect()->route('customer.otp.form')
+            
+            // PERBAIKAN: Ubah route menjadi login.otp.form
+            return redirect()->route('login.otp.form')
                              ->with('info', 'Kode OTP telah dikirim ke WhatsApp dan Email Anda. Silakan cek pesan masuk.');
         }
 
