@@ -274,6 +274,9 @@ if(file_exists(__DIR__.'/web/auth.php')) require __DIR__.'/web/auth.php';
 if(file_exists(__DIR__.'/web/public.php')) require __DIR__.'/web/public.php';
 if(file_exists(__DIR__.'/web/pondok.php')) require __DIR__.'/web/pondok.php';
 
+Route::get('/auth/google', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'redirectToGoogle'])->name('login.google');
+Route::get('/auth/google/callback', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'handleGoogleCallback']);
+
 Route::post('/dharmawisata/login', [App\Http\Controllers\Api\Mobile\TicketingController::class, 'sessionLogin'])->name('api.dharmawisata.login');
 
 // Register Success
