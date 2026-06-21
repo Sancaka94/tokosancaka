@@ -71,6 +71,8 @@
         border-color: #dc3545;
         box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.15);
     }
+    
+    /* MODIFIKASI: Style tombol aktif dan tidak aktif */
     .btn-danger {
         background-color: #dc3545;
         border: none;
@@ -80,11 +82,28 @@
         border-radius: 0.5rem;
         transition: 0.3s;
     }
-    .btn-danger:hover {
+    .btn-danger:hover:not(:disabled) {
         background-color: #bd2130;
         transform: translateY(-2px);
         box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
     }
+    
+    /* Tombol saat disabled (Abu-abu) */
+    .btn:disabled, .btn[disabled] {
+        background-color: #6c757d !important;
+        border-color: #6c757d !important;
+        color: #ffffff !important;
+        opacity: 0.65;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    
+    /* Wrapper untuk menangkap klik saat tombol disabled */
+    .disabled-btn-wrapper {
+        cursor: not-allowed;
+    }
+
     .password-toggle-icon {
         position: absolute;
         top: 50%;
@@ -151,6 +170,11 @@
                     <p class="text-muted small">Masuk untuk melanjutkan ke akun Anda.</p>
                 </div>
 
+                {{-- Alert Info GPS untuk Pengguna --}}
+                <div id="gps-status-alert" class="alert alert-warning py-2 small mb-3 text-center">
+                    <i class="fas fa-map-marker-alt me-1"></i> Sistem mendeteksi keamanan. Mohon aktifkan/izinkan GPS perangkat Anda untuk login.
+                </div>
+
                 @if (session('status'))
                     <div class="alert alert-success py-2 small mb-3 text-center">{{ session('status') }}</div>
                 @endif
@@ -164,6 +188,10 @@
 
                 <form method="POST" action="{{ $formAction }}" class="px-xl-4">
                     @csrf
+
+                    {{-- Hidden Input untuk koordinat --}}
+                    <input type="hidden" name="latitude" id="latitude" value="">
+                    <input type="hidden" name="longitude" id="longitude" value="">
 
                     <div class="form-floating mb-3">
                         <input type="text" class="form-control" id="email" name="login" placeholder="Email / WA" value="{{ old('email') }}" required autofocus>
@@ -196,12 +224,13 @@
                         @endif
                     </div>
 
-                    <div class="d-grid mb-3">
-                        <button type="submit" class="btn btn-danger btn-lg text-uppercase">Login</button>
+                    {{-- MODIFIKASI: Tombol Submit di-disabled secara default --}}
+                    <div class="d-grid mb-3 disabled-btn-wrapper" onclick="checkGpsClick()">
+                        <button type="submit" id="btn-submit-manual" class="btn btn-danger btn-lg text-uppercase" disabled>Login</button>
                     </div>
 
                     {{-- ========================================== --}}
-                    {{-- TAMBAHAN: TOMBOL LOGIN GOOGLE --}}
+                    {{-- TOMBOL LOGIN GOOGLE --}}
                     {{-- ========================================== --}}
                     @if (!request()->is('admin/*'))
                         <div class="d-flex align-items-center mb-3">
@@ -209,9 +238,9 @@
                             <span class="mx-2 text-muted small">ATAU</span>
                             <hr class="flex-grow-1 text-muted opacity-25">
                         </div>
-                        <div class="d-grid mb-3">
-                            <a href="{{ route('login.google') }}" class="btn btn-outline-dark btn-lg d-flex justify-content-center align-items-center">
-                                {{-- Menggunakan gambar icon Google kustom milikmu --}}
+                        {{-- MODIFIKASI: Tombol Google di-disabled secara default menggunakan class bootstrap & pointer-events kustom --}}
+                        <div class="d-grid mb-3 disabled-btn-wrapper" onclick="checkGpsClick()">
+                            <a href="{{ route('login.google') }}" id="btn-submit-google" class="btn btn-outline-dark btn-lg d-flex justify-content-center align-items-center disabled" role="button" aria-disabled="true">
                                 <img src="https://tokosancaka.com/public/assets/google.png" alt="Google Logo" style="width: 24px; height: 24px; object-fit: contain;" class="me-2"> 
                                 Masuk dengan Google
                             </a>
@@ -254,5 +283,68 @@
             icon.classList.replace('fa-eye-slash', 'fa-eye');
         }
     }
+
+    // Variabel untuk melacak status aktivasi GPS
+    let isGpsActive = false;
+
+    // Fungsi untuk memunculkan alert jika tombol yang abu-abu diklik
+    function checkGpsClick() {
+        if (!isGpsActive) {
+            alert("Akses Ditolak! Anda wajib mengaktifkan GPS dan mengizinkan lokasi pada browser/perangkat Anda sebelum dapat menekan tombol Login.");
+            // Memicu ulang permintaan izin lokasi ke browser jika sebelumnya tidak sengaja tertutup
+            requestLocation();
+        }
+    }
+
+    // Fungsi utama untuk meminta izin lokasi/GPS
+    function requestLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    // JIKA USER MENGIZINKAN (HUMAN)
+                    isGpsActive = true;
+                    
+                    // Masukkan koordinat ke hidden input
+                    document.getElementById('latitude').value = position.coords.latitude;
+                    document.getElementById('longitude').value = position.coords.longitude;
+                    
+                    // Aktifkan tombol manual login (hapus atribut disabled)
+                    const btnManual = document.getElementById('btn-submit-manual');
+                    if(btnManual) btnManual.removeAttribute('disabled');
+                    
+                    // Aktifkan tombol Google login (hapus class disabled)
+                    const btnGoogle = document.getElementById('btn-submit-google');
+                    if(btnGoogle) {
+                        btnGoogle.classList.remove('disabled');
+                        btnGoogle.removeAttribute('aria-disabled');
+                    }
+                    
+                    // Ubah teks alert status menjadi sukses
+                    const statusAlert = document.getElementById('gps-status-alert');
+                    if(statusAlert) {
+                        statusAlert.classList.replace('alert-warning', 'alert-success');
+                        statusAlert.innerHTML = '<i class="fas fa-check-circle me-1"></i> Keamanan tervalidasi: GPS Berhasil Aktif. Silakan login.';
+                    }
+                },
+                function(error) {
+                    // JIKA USER MENOLAK / ERROR (Kemungkinan BOT atau User menonaktifkan fitur GPS)
+                    isGpsActive = false;
+                    console.warn("Akses GPS ditolak atau bermasalah: ", error.message);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        } else {
+            alert("Browser Anda tidak mendukung fitur deteksi lokasi keamanan (Geolocation).");
+        }
+    }
+
+    // Panggil fungsi saat halaman selesai dimuat sepenuhnya
+    document.addEventListener("DOMContentLoaded", function() {
+        requestLocation();
+    });
 </script>
 @endpush
