@@ -1,225 +1,224 @@
 // public/js/googlepay-app.js
 
-console.log("LOG LOG: File googlepay-app.js berhasil dieksekusi browser!");
+console.log("LOG LOG: File googlepay-app.js berhasil dieksekusi!");
 
 const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
 const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
-
-let sdkInstance = null;
-let googlePaySession = null;
-let paymentsClient = null;
-let rawGooglePayConfig = null;
 
 const baseRequest = {
     apiVersion: 2,
     apiVersionMinor: 0,
 };
 
-// ==========================================
-// INISIALISASI UTAMA (DIPANGGIL OTOMATIS)
-// ==========================================
-async function initPaymentGateway() {
-    console.log("LOG LOG: Memulai inisialisasi SDK PayPal v6 dinamis...");
+let paymentsClient = null,
+    allowedPaymentMethods = null,
+    merchantInfo = null;
 
-    try {
-        if (!window.paypal || !window.paypal.createInstance) {
-            console.error("LOG LOG: Objek global SDK PayPal v6 gagal dideteksi. Pastikan koneksi internet lancar.");
-            return;
-        }
-
-        // Inisialisasi Instance v6 secara dinamis menggunakan database Client ID
-        sdkInstance = await window.paypal.createInstance({
-            clientId: window.AppConfig.paypalClientId,
-            components: ["paypal-payments", "googlepay-payments"],
-            pageType: "checkout",
-            locale: "id-ID",
-        });
-
-        // Pengecekan ketersediaan metode pembayaran berdasarkan mata uang dinamis
-        const paymentMethods = await sdkInstance.findEligibleMethods({ 
-            currencyCode: window.AppConfig.currency 
-        });
-
-        // Setup: Tombol Standar PayPal
-        if (paymentMethods.isEligible("paypal")) {
-            console.log("LOG LOG: Metode PayPal Standar eligible.");
-            setupPayPalStandardButton();
-        } else {
-            console.warn("LOG LOG: Tombol PayPal disembunyikan (Tidak Eligible).");
-        }
-
-        // Setup: Tombol Google Pay
-        if (paymentMethods.isEligible("googlepay")) {
-            console.log("LOG LOG: Metode Google Pay eligible. Merender tombol...");
-            
-            const googlePayDetails = paymentMethods.getDetails("googlepay");
-            googlePaySession = sdkInstance.createGooglePayOneTimePaymentSession();
-            rawGooglePayConfig = googlePaySession.formatConfigForPaymentRequest(googlePayDetails.config);
-            
-            setupGooglePayButton();
-        } else {
-            console.warn("LOG LOG: Google Pay tidak didukung pada browser/perangkat atau region akun PayPal saat ini.");
-        }
-
-    } catch (err) {
-        console.error("LOG LOG: Kesalahan fatal pada blok inisialisasi:", err);
-    }
-}
-
-// Jalankan fungsi inisialisasi secara langsung!
-initPaymentGateway();
-
-/** ==========================================
- * FUNGSI LOGIKA: PAYPAL STANDARD
- * ========================================== */
-function setupPayPalStandardButton() {
-    const standardOptions = {
-        async onApprove(data) {
-            console.log("LOG LOG: Tombol PayPal Standar disetujui user. Order ID:", data.orderId);
-            try {
-                const response = await fetch(`/paypal/orders/${data.orderId}/capture`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Accept": "application/json", "X-CSRF-TOKEN": csrfToken }
+// =========================================================================
+// INISIALISASI TOMBOL STANDAR PAYPAL (Sebagai Cadangan/Pelengkap)
+// =========================================================================
+document.addEventListener("DOMContentLoaded", () => {
+    if (window.paypal && window.paypal.Buttons) {
+        console.log("LOG LOG: Merender PayPal Standard Buttons");
+        window.paypal.Buttons({
+            createOrder: async function() {
+                console.log("LOG LOG: Membuat Order via Tombol PayPal Standar");
+                const res = await fetch('/paypal/orders/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                    body: JSON.stringify({})
                 });
-                const captureData = await response.json();
+                const data = await res.json();
+                return data.id; // Return langsung ID untuk tombol standar
+            },
+            onApprove: async function(data) {
+                console.log("LOG LOG: Order PayPal Standar disetujui, menangkap pembayaran...", data.orderID);
+                const res = await fetch(`/paypal/orders/${data.orderID}/capture`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken }
+                });
+                const captureData = await res.json();
                 if (captureData && captureData.status === "COMPLETED") {
-                    console.log("LOG LOG: Capture PayPal standar sukses.");
                     alert("Pembayaran PayPal Berhasil!");
-                    window.location.href = "/pembayaran/sukses-tripay?reference=" + data.orderId + "&jenis=paypal";
+                    window.location.href = "/pembayaran/sukses-tripay?reference=" + data.orderID + "&jenis=paypal";
                 }
-            } catch (error) {
-                console.error("LOG LOG: Gagal capture order PayPal standar:", error);
             }
-        }
-    };
-
-    const standardSession = sdkInstance.createPayPalOneTimePaymentSession(standardOptions);
-    const btnElement = document.getElementById("standard-paypal-btn");
-    
-    if (btnElement) {
-        btnElement.removeAttribute("hidden");
-        btnElement.addEventListener("click", async () => {
-            try {
-                await standardSession.start({ presentationMode: "auto" }, createOrder());
-            } catch (err) {
-                console.error("LOG LOG: Gagal meluncurkan popup PayPal:", err);
-            }
-        });
+        }).render('#paypal-button-container');
     }
+});
+
+
+// =========================================================================
+// LOGIKA GOOGLE PAY (Sesuai Dokumentasi Resmi)
+// =========================================================================
+
+function getGoogleIsReadyToPayRequest(allowedPaymentMethods) {
+    return Object.assign({}, baseRequest, {
+        allowedPaymentMethods: allowedPaymentMethods,
+    });
 }
 
-/** ==========================================
- * FUNGSI LOGIKA: GOOGLE PAY
- * ========================================== */
+async function getGooglePayConfig() {
+    if (allowedPaymentMethods == null || merchantInfo == null) {
+        console.log("LOG LOG: Mengambil Config dari paypal.Googlepay().config()");
+        const googlePayConfig = await paypal.Googlepay().config();
+        allowedPaymentMethods = googlePayConfig.allowedPaymentMethods;
+        merchantInfo = googlePayConfig.merchantInfo;
+    }
+    return {
+        allowedPaymentMethods,
+        merchantInfo,
+    };
+}
+
+async function getGooglePaymentDataRequest() {
+    const paymentDataRequest = Object.assign({}, baseRequest);
+    const { allowedPaymentMethods, merchantInfo } = await getGooglePayConfig();
+    
+    paymentDataRequest.allowedPaymentMethods = allowedPaymentMethods;
+    paymentDataRequest.merchantInfo = merchantInfo;
+    paymentDataRequest.callbackIntents = ["PAYMENT_AUTHORIZATION"];
+    
+    paymentDataRequest.transactionInfo = {
+        countryCode: window.AppConfig.countryCode,
+        currencyCode: window.AppConfig.currency,
+        totalPriceStatus: "FINAL",
+        totalPrice: window.AppConfig.amount,
+    };
+    
+    return paymentDataRequest;
+}
+
+function onPaymentAuthorized(paymentData) {
+    console.log("LOG LOG: Otorisasi Google Pay disetujui di sisi klien.");
+    return new Promise(function (resolve, reject) {
+        processPayment(paymentData)
+            .then(function (data) {
+                if (data.transactionState === "SUCCESS") {
+                    resolve({ transactionState: "SUCCESS" });
+                } else {
+                    resolve({ transactionState: "ERROR", error: { intent: "PAYMENT_AUTHORIZATION", message: "Transaksi Gagal" }});
+                }
+            })
+            .catch(function (errDetails) {
+                resolve({ transactionState: "ERROR" });
+            });
+    });
+}
+
 function getGooglePaymentsClient() {
     if (paymentsClient === null) {
         paymentsClient = new google.payments.api.PaymentsClient({
-            environment: window.AppConfig.googlePayEnv,
+            environment: window.AppConfig.googlePayEnv, // Mengikuti setting database
             paymentDataCallbacks: {
                 onPaymentAuthorized: onPaymentAuthorized,
             },
         });
-        console.log("LOG LOG: Google PaymentsClient diatur ke environment:", window.AppConfig.googlePayEnv);
     }
     return paymentsClient;
 }
 
-function setupGooglePayButton() {
-    const client = getGooglePaymentsClient();
-    
-    const isReadyToPayRequest = Object.assign({}, baseRequest, {
-        allowedPaymentMethods: rawGooglePayConfig.allowedPaymentMethods,
-    });
-
-    client.isReadyToPay(isReadyToPayRequest).then(response => {
-        if (response.result) {
-            const button = client.createButton({
-                onClick: onGooglePaymentButtonClicked,
-                allowedPaymentMethods: rawGooglePayConfig.allowedPaymentMethods
-            });
-            document.getElementById("google-pay-button-container").appendChild(button);
-            console.log("LOG LOG: Tombol Google Pay berhasil ditampilkan di HTML.");
-        } else {
-            console.error("LOG LOG: isReadyToPay merespon false. Google Pay diblokir oleh browser.");
+// Fungsi ini dipanggil otomatis oleh <script onload="onGooglePayLoaded()"> di HTML
+async function onGooglePayLoaded() {
+    console.log("LOG LOG: Memulai pengecekan kelayakan Google Pay");
+    try {
+        if (!window.paypal || !window.paypal.Googlepay) {
+            console.error("LOG LOG: Komponen paypal.Googlepay tidak terdeteksi!");
+            return;
         }
-    }).catch(err => {
-        console.error("LOG LOG: Error pada fungsi isReadyToPay Google Pay:", err);
+
+        const paymentsClient = getGooglePaymentsClient();
+        const { allowedPaymentMethods } = await getGooglePayConfig();
+        
+        const response = await paymentsClient.isReadyToPay(getGoogleIsReadyToPayRequest(allowedPaymentMethods));
+        
+        if (response.result) {
+            console.log("LOG LOG: Perangkat mendukung Google Pay. Merender tombol...");
+            addGooglePayButton();
+        } else {
+            console.warn("LOG LOG: isReadyToPay = false. Google Pay tidak didukung oleh browser/perangkat saat ini, ATAU tidak ada kartu tersimpan di Google Wallet.");
+        }
+    } catch (err) {
+        console.error("LOG LOG: Error di onGooglePayLoaded:", err);
+    }
+}
+
+function addGooglePayButton() {
+    const paymentsClient = getGooglePaymentsClient();
+    const button = paymentsClient.createButton({
+        onClick: onGooglePaymentButtonClicked,
+        allowedPaymentMethods: allowedPaymentMethods // Konfigurasi visual UI
     });
+    const container = document.getElementById("google-pay-button-container");
+    if(container) {
+        container.innerHTML = "";
+        container.appendChild(button);
+        console.log("LOG LOG: Tombol Google Pay berhasil ditambahkan ke HTML");
+    }
 }
 
 async function onGooglePaymentButtonClicked() {
-    console.log("LOG LOG: Proses penekanan tombol Google Pay");
-    const paymentDataRequest = Object.assign({}, baseRequest);
-    
-    paymentDataRequest.allowedPaymentMethods = rawGooglePayConfig.allowedPaymentMethods;
-    paymentDataRequest.merchantInfo = rawGooglePayConfig.merchantInfo;
-    paymentDataRequest.callbackIntents = ["PAYMENT_AUTHORIZATION"];
-    
-    paymentDataRequest.transactionInfo = {
-        countryCode: window.AppConfig.countryCode, 
-        currencyCode: window.AppConfig.currency,
-        totalPriceStatus: "FINAL",
-        totalPrice: window.AppConfig.amount, 
-    };
-
-    const client = getGooglePaymentsClient();
-    client.loadPaymentData(paymentDataRequest);
+    console.log("LOG LOG: Tombol Google Pay diklik");
+    const paymentDataRequest = await getGooglePaymentDataRequest();
+    const paymentsClient = getGooglePaymentsClient();
+    paymentsClient.loadPaymentData(paymentDataRequest);
 }
 
-function onPaymentAuthorized(paymentData) {
-    console.log("LOG LOG: Callback otorisasi Google Pay disetujui oleh user.");
-    return new Promise(function (resolve) {
-        processGooglePay(paymentData)
-            .then(res => resolve(res))
-            .catch(err => resolve({ transactionState: "ERROR", error: { intent: "PAYMENT_AUTHORIZATION", message: err.message } }));
-    });
-}
+// Proses Pembayaran Utama (Create Order -> Confirm -> SCA -> Capture)
+async function processPayment(paymentData) {
+    try {
+        console.log("LOG LOG: 1. Membuat Order di Backend Laravel");
+        
+        const orderResponse = await fetch(`/paypal/orders/create`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": csrfToken
+            },
+            body: JSON.stringify({}),
+        });
+        const { id } = await orderResponse.json();
+        console.log("LOG LOG: Order ID didapatkan:", id);
 
-/** ==========================================
- * COMMUNICATOR HANDLER: BACKEND INTERACTION
- * ========================================== */
-function createOrder() {
-    console.log("LOG LOG: Memanggil Laravel backend untuk membuat kode referensi order baru");
-    return fetch("/paypal/orders/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json", "X-CSRF-TOKEN": csrfToken },
-        body: JSON.stringify({}),
-    }).then(res => res.json()).then(data => ({ orderId: data.id }));
-}
+        console.log("LOG LOG: 2. Konfirmasi Order menggunakan paypal.Googlepay().confirmOrder()");
+        const confirmOrderResponse = await paypal.Googlepay().confirmOrder({
+            orderId: id,
+            paymentMethodData: paymentData.paymentMethodData
+        });
 
-async function processGooglePay(paymentData) {
-    if (!csrfToken) throw new Error("CSRF Token kosong.");
-    
-    const orderData = await createOrder();
-    const orderId = orderData.orderId;
-    console.log("LOG LOG: Order ID backend berhasil didapatkan:", orderId);
+        console.log("LOG LOG: Status Konfirmasi:", confirmOrderResponse.status);
 
-    const { status } = await googlePaySession.confirmOrder({
-        orderId: orderId,
-        paymentMethodData: paymentData.paymentMethodData,
-    });
+        // Penanganan 3D Secure (SCA)
+        if (confirmOrderResponse.status === "PAYER_ACTION_REQUIRED") {
+            console.log("LOG LOG: 3DS Required. Meluncurkan initiatePayerAction...");
+            await paypal.Googlepay().initiatePayerAction({ orderId: id });
+            console.log("LOG LOG: Aksi Payer 3DS selesai.");
+        } else if (confirmOrderResponse.status !== "APPROVED") {
+            throw new Error("Order tidak disetujui oleh PayPal.");
+        }
 
-    console.log("LOG LOG: Status konfirmasi sesi Google Pay PayPal:", status);
+        console.log("LOG LOG: 3. Mengeksekusi Capture di Backend Laravel");
+        const captureResponse = await fetch(`/paypal/orders/${id}/capture`, {
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": csrfToken
+            }
+        });
+        const captureData = await captureResponse.json();
 
-    if (status === "PAYER_ACTION_REQUIRED") {
-        console.log("LOG LOG: Menjalankan tantangan keamanan 3DS bank penerbit...");
-        await googlePaySession.initiatePayerAction({ orderId: orderId });
-    } else if (status !== "APPROVED") {
-        throw new Error(`Otorisasi gagal dengan status: ${status}`);
-    }
+        if (captureData && captureData.status === "COMPLETED") {
+            console.log("LOG LOG: Order Capture Completed!");
+            alert("Pembayaran Google Pay Berhasil!");
+            window.location.href = "/pembayaran/sukses-tripay?reference=" + id + "&jenis=googlepay";
+            return { transactionState: 'SUCCESS' };
+        } else {
+            console.error("LOG LOG: Capture Gagal", captureData);
+            return { transactionState: 'ERROR', error: { intent: 'PAYMENT_AUTHORIZATION', message: 'TRANSACTION FAILED' }};
+        }
 
-    const captureResponse = await fetch(`/paypal/orders/${orderId}/capture`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Accept": "application/json", "X-CSRF-TOKEN": csrfToken }
-    });
-    const captureData = await captureResponse.json();
-
-    if (captureData && captureData.status === "COMPLETED") {
-        console.log("LOG LOG: Sesi transfer sukses secara keseluruhan.");
-        alert("Pembayaran Google Pay Berhasil!");
-        window.location.href = "/pembayaran/sukses-tripay?reference=" + orderId + "&jenis=googlepay";
-        return { transactionState: "SUCCESS" };
-    } else {
-        throw new Error("Gagal mengeksekusi capture order di database.");
+    } catch (err) {
+        console.error("LOG LOG: Terjadi kesalahan di processPayment:", err);
+        return { transactionState: 'ERROR', error: { intent: 'PAYMENT_AUTHORIZATION', message: err.message }};
     }
 }
