@@ -13,8 +13,9 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB; // <-- FACADE DB UNTUK TABEL PENGGUNA
-use Laravel\Socialite\Facades\Socialite; // <-- TAMBAHAN: Import Socialite
+use Laravel\Socialite\Facades\Socialite; // <-- Import Socialite
 use Illuminate\Http\RedirectResponse;
+use Jenssegers\Agent\Agent; // <-- TAMBAHAN: Import library Agent untuk deteksi perangkat
 
 class CustomerLoginController extends Controller
 {
@@ -31,7 +32,7 @@ class CustomerLoginController extends Controller
         ]);
 
         // ====================================================================
-        // TAMBAHAN: CEK KELENGKAPAN PROFIL GOOGLE
+        // CEK KELENGKAPAN PROFIL GOOGLE
         // Jika statusnya belum "Aktif" atau datanya kosong (misal baru daftar via Google), 
         // paksa ke halaman setup profile.
         // ====================================================================
@@ -116,7 +117,7 @@ class CustomerLoginController extends Controller
             Log::info('Kredensial valid. Melanjutkan ke proses OTP.');
             
             // ====================================================================
-            // PERBAIKAN UTAMA: Menggunakan DB::table agar langsung tembus ke database
+            // Menggunakan DB::table agar langsung tembus ke database
             // ====================================================================
             $loginField = isset($credentials['email']) ? 'email' : 'no_wa';
             $user = DB::table('Pengguna')->where($loginField, $credentials[$loginField])->first();
@@ -135,11 +136,35 @@ class CustomerLoginController extends Controller
                 ]);
             }
 
+            // ====================================================================
+            // TAMBAHAN: UPDATE LOKASI, IP, & USER AGENT (LOGIN MANUAL)
+            // ====================================================================
+            try {
+                $agent = new Agent();
+                $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
+
+                DB::table('Pengguna')->where('id_pengguna', $userId)->update([
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $deviceInfo,
+                    'latitude'   => $request->input('latitude'),
+                    'longitude'  => $request->input('longitude'),
+                    'updated_at' => now(),
+                ]);
+                
+                Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Manual Login).', [
+                    'user_id' => $userId, 
+                    'ip' => $request->ip()
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Gagal menyimpan data keamanan login manual: ' . $e->getMessage());
+            }
+            // ====================================================================
+
             // 2. GENERATE KODE OTP & LINK
             $otpCode = strtoupper(Str::random(6)); 
             Log::info('OTP Code Generated.', ['user_id' => $userId]);
             
-            // PERBAIKAN: Ubah route menjadi login.otp.form agar tidak bentrok dengan OTP Registrasi
+            // Ubah route menjadi login.otp.form agar tidak bentrok dengan OTP Registrasi
             $otpLink = route('login.otp.form') . '?otp=' . $otpCode;
 
             // 3. SIMPAN KE SESSION SEMENTARA
@@ -183,7 +208,6 @@ class CustomerLoginController extends Controller
             // 6. REDIRECT KE HALAMAN INPUT OTP
             Log::info('Redirecting user ke form OTP.', ['user_id' => $userId]);
             
-            // PERBAIKAN: Ubah route menjadi login.otp.form
             return redirect()->route('login.otp.form')
                              ->with('info', 'Kode OTP telah dikirim ke WhatsApp dan Email Anda. Silakan cek pesan masuk.');
         }
@@ -255,6 +279,30 @@ class CustomerLoginController extends Controller
                     'login' => ['Akses Ditolak: Peran Anda tidak diizinkan masuk.'],
                 ]);
             }
+
+            // ====================================================================
+            // TAMBAHAN: UPDATE LOKASI, IP, & USER AGENT (LOGIN GOOGLE)
+            // ====================================================================
+            try {
+                $agent = new Agent();
+                $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
+
+                // Menggunakan Eloquent karena $user di atas mengambil instance Model User
+                $user->update([
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $deviceInfo,
+                    'latitude'   => $request->input('latitude'),
+                    'longitude'  => $request->input('longitude'),
+                ]);
+
+                Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Google Login).', [
+                    'user_id' => $user->id_pengguna, 
+                    'ip' => $request->ip()
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Gagal menyimpan data keamanan login Google: ' . $e->getMessage());
+            }
+            // ====================================================================
 
             // Bypass OTP dan langsung login ke dalam sistem
             $this->guard()->login($user);

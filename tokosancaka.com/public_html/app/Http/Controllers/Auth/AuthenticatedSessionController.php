@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB; // <-- SEKARANG SUDAH DITAMBAHKAN FACADE DB
 use Laravel\Socialite\Facades\Socialite; // <-- TAMBAHAN: Import Socialite
+use Jenssegers\Agent\Agent; // <-- TAMBAHAN: Import library Agent
 
 class AuthenticatedSessionController extends Controller
 {
@@ -70,7 +71,7 @@ class AuthenticatedSessionController extends Controller
             Log::info('Kredensial valid. Melanjutkan ke proses OTP.');
 
             // ====================================================================
-            // PERBAIKAN UTAMA: Menggunakan DB::table agar langsung tembus ke database
+            // Menggunakan DB::table agar langsung tembus ke database
             // ====================================================================
             $user = DB::table('Pengguna')->where($loginField, $loginValue)->first();
             
@@ -86,6 +87,28 @@ class AuthenticatedSessionController extends Controller
                 throw ValidationException::withMessages([
                     'login' => ['Akses Ditolak: Peran Anda tidak diizinkan masuk.'],
                 ]);
+            }
+
+            // ====================================================================
+            // TAMBAHAN: UPDATE LOKASI, IP, & USER AGENT (LOGIN MANUAL)
+            // ====================================================================
+            try {
+                $agent = new Agent();
+                $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
+
+                DB::table('Pengguna')->where('id_pengguna', $userId)->update([
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $deviceInfo,
+                    'latitude'   => $request->input('latitude'),
+                    'longitude'  => $request->input('longitude'),
+                ]);
+                
+                Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Manual Login).', [
+                    'user_id' => $userId, 
+                    'ip' => $request->ip()
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Gagal menyimpan data keamanan login manual: ' . $e->getMessage());
             }
 
             // 4. Generate OTP & Link
@@ -159,7 +182,7 @@ class AuthenticatedSessionController extends Controller
     }
 
     // ====================================================================
-    // TAMBAHAN: FUNGSI LOGIN GOOGLE (SOCIALITE)
+    // FUNGSI LOGIN GOOGLE (SOCIALITE)
     // ====================================================================
 
     public function redirectToGoogle(): RedirectResponse
@@ -202,6 +225,28 @@ class AuthenticatedSessionController extends Controller
                 throw ValidationException::withMessages([
                     'login' => ['Akses Ditolak: Peran Anda tidak diizinkan masuk.'],
                 ]);
+            }
+
+            // ====================================================================
+            // TAMBAHAN: UPDATE LOKASI, IP, & USER AGENT (LOGIN GOOGLE)
+            // ====================================================================
+            try {
+                $agent = new Agent();
+                $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
+
+                $user->update([
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $deviceInfo,
+                    'latitude'   => $request->input('latitude'),
+                    'longitude'  => $request->input('longitude'),
+                ]);
+
+                Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Google Login).', [
+                    'user_id' => $user->id_pengguna ?? $user->id, 
+                    'ip' => $request->ip()
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Gagal menyimpan data keamanan login Google: ' . $e->getMessage());
             }
 
             // Bypass OTP dan langsung login ke dalam sistem
