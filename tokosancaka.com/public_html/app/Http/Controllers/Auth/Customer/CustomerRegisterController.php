@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Notifications\NotifikasiUmum;
 use Laravel\Socialite\Facades\Socialite; // <-- TAMBAHAN: Import Socialite
 use Illuminate\Http\RedirectResponse;    // <-- TAMBAHAN: Untuk tipe return redirect
+use Jenssegers\Agent\Agent;              // <-- TAMBAHAN: Import library Agent
 
 class CustomerRegisterController extends Controller
 {
@@ -77,6 +78,30 @@ class CustomerRegisterController extends Controller
         $user->refresh();
 
         Log::info('User berhasil disimpan ke database.', ['id_pengguna' => $user->id_pengguna ?? $user->id]);
+
+        // ====================================================================
+        // TAMBAHAN: UPDATE LOKASI, IP, & USER AGENT (REGISTER MANUAL)
+        // ====================================================================
+        try {
+            $agent = new Agent();
+            $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
+
+            // Menggunakan helper request() untuk mengambil data dari form
+            $user->update([
+                'ip_address' => request()->ip(),
+                'user_agent' => $deviceInfo,
+                'latitude'   => request()->input('latitude'),
+                'longitude'  => request()->input('longitude'),
+            ]);
+            
+            Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Manual Register).', [
+                'user_id' => $user->id_pengguna ?? $user->id, 
+                'ip' => request()->ip()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Gagal menyimpan data keamanan register manual: ' . $e->getMessage());
+        }
+        // ====================================================================
 
         // --- Notifikasi ke Admin ---
         try {
@@ -171,7 +196,7 @@ TEXT;
     }
 
     // ====================================================================
-    // TAMBAHAN: FUNGSI REGISTER GOOGLE (SOCIALITE)
+    // FUNGSI REGISTER GOOGLE (SOCIALITE)
     // ====================================================================
 
     public function redirectToGoogle(): RedirectResponse
@@ -203,6 +228,29 @@ TEXT;
                     'password'     => bcrypt(Str::random(16)), // Generate password acak
                 ]);
             }
+
+            // ====================================================================
+            // TAMBAHAN: UPDATE LOKASI, IP, & USER AGENT (REGISTER GOOGLE)
+            // ====================================================================
+            try {
+                $agent = new Agent();
+                $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
+
+                $user->update([
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $deviceInfo,
+                    'latitude'   => $request->input('latitude'),
+                    'longitude'  => $request->input('longitude'),
+                ]);
+
+                Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Google Register).', [
+                    'user_id' => $user->id_pengguna ?? $user->id, 
+                    'ip' => $request->ip()
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Gagal menyimpan data keamanan register Google: ' . $e->getMessage());
+            }
+            // ====================================================================
 
             // Langsung login-kan user tersebut
             Auth::guard('web')->login($user);

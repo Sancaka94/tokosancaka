@@ -67,6 +67,8 @@
         border-color: #dc3545;
         box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.15);
     }
+    
+    /* MODIFIKASI: Style tombol aktif dan tidak aktif */
     .btn-danger {
         background-color: #dc3545;
         border: none;
@@ -76,11 +78,28 @@
         border-radius: 0.5rem;
         transition: 0.3s;
     }
-    .btn-danger:hover {
+    .btn-danger:hover:not(:disabled) {
         background-color: #bd2130;
         transform: translateY(-2px);
         box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
     }
+
+    /* Tombol saat disabled (Abu-abu) */
+    .btn:disabled, .btn[disabled] {
+        background-color: #6c757d !important;
+        border-color: #6c757d !important;
+        color: #ffffff !important;
+        opacity: 0.65;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    
+    /* Wrapper untuk menangkap klik saat tombol disabled */
+    .disabled-btn-wrapper {
+        cursor: not-allowed;
+    }
+
     .password-toggle-icon {
         position: absolute;
         top: 50%;
@@ -131,6 +150,11 @@
                     <p class="text-muted small">Isi formulir di bawah ini dengan lengkap.</p>
                 </div>
 
+                {{-- Alert Info GPS untuk Pengguna --}}
+                <div id="gps-status-alert" class="alert alert-warning py-2 small mb-3 text-center">
+                    <i class="fas fa-map-marker-alt me-1"></i> Sistem mendeteksi keamanan. Mohon aktifkan/izinkan GPS perangkat Anda untuk mendaftar.
+                </div>
+
                 @if ($errors->any())
                     <div class="alert alert-danger py-2 small mb-3">
                         <ul class="mb-0 ps-3">
@@ -142,6 +166,10 @@
                 <form action="{{ route('register') }}" method="POST" class="px-xl-2">
                     @csrf
                     
+                    {{-- TAMBAHAN: Hidden Input untuk koordinat --}}
+                    <input type="hidden" name="latitude" id="latitude" value="">
+                    <input type="hidden" name="longitude" id="longitude" value="">
+
                     <div class="row g-3 mb-4">
                         <div class="col-12 col-sm-6">
                             <div class="form-floating">
@@ -192,8 +220,9 @@
                         <a href="{{ route('login') }}" class="small text-danger text-decoration-none fw-medium">Already have an account? Login</a>
                     </div>
 
-                    <div class="d-grid mb-3">
-                        <button type="submit" class="btn btn-danger btn-lg text-uppercase">Register</button>
+                    {{-- MODIFIKASI: Tombol Submit di-disabled secara default --}}
+                    <div class="d-grid mb-3 disabled-btn-wrapper" onclick="checkGpsClick()">
+                        <button type="submit" id="btn-submit-manual" class="btn btn-danger btn-lg text-uppercase" disabled>Register</button>
                     </div>
 
                     {{-- ========================================== --}}
@@ -204,8 +233,9 @@
                         <span class="mx-2 text-muted small">ATAU</span>
                         <hr class="flex-grow-1 text-muted opacity-25">
                     </div>
-                    <div class="d-grid mb-4">
-                        <a href="{{ route('register.google') }}" class="btn btn-outline-dark btn-lg d-flex justify-content-center align-items-center">
+                    {{-- MODIFIKASI: Tombol Google di-disabled secara default --}}
+                    <div class="d-grid mb-4 disabled-btn-wrapper" onclick="checkGpsClick()">
+                        <a href="{{ route('register.google') }}" id="btn-submit-google" class="btn btn-outline-dark btn-lg d-flex justify-content-center align-items-center disabled" role="button" aria-disabled="true">
                             <img src="https://tokosancaka.com/public/assets/google.png" alt="Google Logo" style="width: 24px; height: 24px; object-fit: contain;" class="me-2"> 
                             Daftar dengan Google
                         </a>
@@ -225,7 +255,6 @@
         </div>
     </div>
 
-    
 </div>
 @endsection
 
@@ -242,5 +271,69 @@
             icon.classList.replace('fa-eye-slash', 'fa-eye');
         }
     }
+
+    // Melacak status aktivasi GPS
+    let isGpsActive = false;
+
+    // Fungsi memunculkan alert jika tombol abu-abu diklik
+    function checkGpsClick() {
+        if (!isGpsActive) {
+            alert("Akses Ditolak! Anda wajib mengaktifkan GPS dan mengizinkan lokasi pada browser/perangkat Anda sebelum dapat menekan tombol Register.");
+            requestLocation();
+        }
+    }
+
+    // Fungsi utama meminta izin lokasi/GPS
+    function requestLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    isGpsActive = true;
+                    
+                    // Masukkan koordinat ke hidden input
+                    document.getElementById('latitude').value = position.coords.latitude;
+                    document.getElementById('longitude').value = position.coords.longitude;
+                    
+                    // Aktifkan tombol manual register
+                    const btnManual = document.getElementById('btn-submit-manual');
+                    if(btnManual) btnManual.removeAttribute('disabled');
+                    
+                    // Aktifkan tombol Google register & pasang parameter koordinat
+                    const btnGoogle = document.getElementById('btn-submit-google');
+                    if(btnGoogle) {
+                        btnGoogle.classList.remove('disabled');
+                        btnGoogle.removeAttribute('aria-disabled');
+                        
+                        // Dinamis menyelipkan koordinat ke URL redirect Google agar terbaca di Controller intermediate
+                        let baseUrl = "{{ route('register.google') }}";
+                        btnGoogle.href = baseUrl + "?latitude=" + position.coords.latitude + "&longitude=" + position.coords.longitude;
+                    }
+                    
+                    // Ubah box status alert menjadi sukses hijau
+                    const statusAlert = document.getElementById('gps-status-alert');
+                    if(statusAlert) {
+                        statusAlert.classList.replace('alert-warning', 'alert-success');
+                        statusAlert.innerHTML = '<i class="fas fa-check-circle me-1"></i> Keamanan tervalidasi: GPS Berhasil Aktif. Silakan melanjutkan pendaftaran.';
+                    }
+                },
+                function(error) {
+                    isGpsActive = false;
+                    console.warn("Akses GPS ditolak/bermasalah: ", error.message);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        } else {
+            alert("Browser Anda tidak mendukung fitur deteksi lokasi keamanan (Geolocation).");
+        }
+    }
+
+    // Trigger izin GPS sesaat setelah dokumen selesai diload
+    document.addEventListener("DOMContentLoaded", function() {
+        requestLocation();
+    });
 </script>
 @endpush
