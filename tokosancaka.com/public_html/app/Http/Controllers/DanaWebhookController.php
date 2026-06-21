@@ -1004,38 +1004,44 @@ class DanaWebhookController extends Controller
         }
     }
 
-    /**
-     * Helper untuk mengirim Email Sukses (Background)
-     */
     private function _sendEmailNotification($email, $name, $invoice, $type, $amount)
-    {
-        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) return;
+{
+    // 1. Bersihkan spasi agar filter_var tidak salah deteksi (PRO-TIP)
+    $email = trim($email);
 
-        try {
-            $subject = "✅ Pembayaran Berhasil - Invoice $invoice";
-            
-            $data = [
-                'name' => $name,
-                'invoice' => $invoice,
-                'type' => $type,
-                'amount' => $amount,
-                'date' => now()->timezone('Asia/Jakarta')->format('d M Y, H:i:s')
-            ];
-
-            // Render view blade menjadi format HTML string
-            $htmlBody = view('emails.transaction_success', $data)->render();
-
-            \Illuminate\Support\Facades\Mail::html($htmlBody, function ($message) use ($email, $subject) {
-                $message->to($email)
-                        ->subject($subject)
-                        ->from(config('mail.from.address', 'admin@tokosancaka.com'), config('mail.from.name', 'Sancaka Server'));
-            });
-
-            Log::info("📧 [EMAIL SENT] Notifikasi sukses dikirim ke: $email untuk invoice $invoice");
-        } catch (\Exception $e) {
-            Log::error("❌ [EMAIL FAILED] Gagal kirim email ke $email: " . $e->getMessage());
-        }
+    // 2. Tambahkan Log agar tidak terjadi Silent Fail
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        Log::warning("⚠️ [EMAIL SKIP] Pengiriman email diabaikan. Email kosong atau tidak valid: '{$email}' untuk invoice $invoice");
+        return;
     }
+
+    try {
+        $subject = "✅ Pembayaran Berhasil - Invoice $invoice";
+        
+        $data = [
+            'name' => $name,
+            'invoice' => $invoice,
+            'type' => $type,
+            'amount' => $amount,
+            'date' => now()->timezone('Asia/Jakarta')->format('d M Y, H:i:s')
+        ];
+
+        // Render view blade menjadi format HTML string
+        $htmlBody = view('emails.transaction_success', $data)->render();
+
+        \Illuminate\Support\Facades\Mail::html($htmlBody, function ($message) use ($email, $subject) {
+            $message->to($email)
+                    ->subject($subject)
+                    ->from(config('mail.from.address', 'admin@tokosancaka.com'), config('mail.from.name', 'Sancaka Server'));
+        });
+
+        Log::info("📧 [EMAIL SENT] Notifikasi sukses dikirim ke: $email untuk invoice $invoice");
+        
+    // 3. Ubah ke \Throwable untuk menangkap FATAL ERROR dari proses render() Blade
+    } catch (\Throwable $e) {
+        Log::error("❌ [EMAIL FAILED] Gagal kirim email ke $email: " . $e->getMessage());
+    }
+}
 
 	/**
      * =========================================================================

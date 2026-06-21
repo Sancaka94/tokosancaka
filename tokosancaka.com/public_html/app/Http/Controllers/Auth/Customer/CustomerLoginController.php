@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB; // <-- FACADE DB UNTUK TABEL PENGGUNA
 use Laravel\Socialite\Facades\Socialite; // <-- TAMBAHAN: Import Socialite
+use Illuminate\Http\RedirectResponse;
 
 class CustomerLoginController extends Controller
 {
@@ -168,7 +169,7 @@ class CustomerLoginController extends Controller
                     
                     Mail::raw($emailBody, function ($mail) use ($user) {
                         $mail->to($user->email)
-                             ->subject('Kode Verifikasi (OTP) Login Sancaka');
+                            ->subject('Kode Verifikasi (OTP) Login Sancaka');
                     });
                     
                     Log::info('OTP berhasil dikirim ke Email: ' . $user->email);
