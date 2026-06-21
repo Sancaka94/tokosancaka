@@ -13,6 +13,8 @@ use App\Services\KiriminAjaService;
 use App\Models\Post;
 use App\Http\Controllers\Api\Mobile\AuthController;
 use App\Http\Controllers\Rsud\AdminOrderObatController;
+// Tambahkan di bawah // Pembayaran
+use App\Http\Controllers\PayPalController;
 
 
 use App\Http\Controllers\Customer\TopupDanaController;
@@ -424,6 +426,15 @@ Route::prefix('payment')->group(function () {
     Route::post('/callback', [PaymentController::class, 'handleCallback'])->name('payment.callback');
     Route::post('/callback/refund', [PaymentController::class, 'handleRefundCallback'])->name('payment.callback.refund');
     Route::post('/callback/code', [PaymentController::class, 'handleCodeCallback'])->name('payment.callback.code');
+});
+
+// LOG LOG: API Endpoint internal untuk diakses SDK Google Pay & PayPal v6 Button dari Frontend
+Route::prefix('paypal/orders')->name('paypal.orders.')->group(function () {
+    // URL: tokosancaka.com/paypal/orders/create
+    Route::post('/create', [PayPalController::class, 'createOrder'])->name('create');
+    
+    // URL: tokosancaka.com/paypal/orders/{orderId}/capture
+    Route::post('/{order}/capture', [PayPalController::class, 'captureOrder'])->name('capture');
 });
 
 
