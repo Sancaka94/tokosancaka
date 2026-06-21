@@ -60,8 +60,8 @@ class NewPasswordController extends Controller
                          ->withErrors(['token' => 'Kode OTP salah. Silakan periksa kembali.']);
         }
 
-        // 5. Cek Masa Berlaku OTP (Maksimal 60 Menit)
-        if (Carbon::parse($resetRecord->created_at)->addMinutes(60)->isPast()) {
+        // 5. Cek Masa Berlaku OTP (Maksimal 5 Menit)
+        if (Carbon::parse($resetRecord->created_at)->addMinutes(5)->isPast()) {
             DB::table($table)->where('email', $request->email)->delete(); // Bersihkan yang expired
             return back()->withInput($request->only('email'))
                          ->withErrors(['token' => 'Kode OTP sudah kedaluwarsa. Silakan minta ulang.']);

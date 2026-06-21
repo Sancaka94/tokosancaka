@@ -87,7 +87,7 @@ class CustomerForgotPasswordController extends Controller
         $message .= "Kami menerima permintaan reset password untuk akun Anda.\n";
         $message .= "Berikut adalah *KODE OTP* rahasia Anda:\n\n";
         $message .= "*{$otpCode}*\n\n";
-        $message .= "Kode ini berlaku selama 60 menit. Jangan berikan kode ini kepada siapapun demi keamanan akun Anda.\n";
+        $message .= "Kode ini berlaku selama 5 menit. Jangan berikan kode ini kepada siapapun demi keamanan akun Anda.\n";
         $message .= "Jika Anda tidak meminta ini, abaikan saja.";
 
         $phoneTarget = preg_replace('/^0/', '62', $user->no_wa);
@@ -111,7 +111,7 @@ class CustomerForgotPasswordController extends Controller
         // ====================================================================
         if (!empty($user->email)) {
             try {
-                $emailBody = "Halo {$user->nama_lengkap},\n\nKami menerima permintaan reset password akun Sancaka Anda. Berikut adalah KODE OTP Anda:\n\n{$otpCode}\n\nKode ini berlaku 60 menit. Abaikan email ini jika Anda tidak merasa memintanya.";
+                $emailBody = "Halo {$user->nama_lengkap},\n\nKami menerima permintaan reset password akun Sancaka Anda. Berikut adalah KODE OTP Anda:\n\n{$otpCode}\n\nKode ini berlaku 5 menit. Abaikan email ini jika Anda tidak merasa memintanya.";
                 Mail::raw($emailBody, function ($mail) use ($user) {
                     $mail->to($user->email)->subject('Kode OTP Reset Password Sancaka');
                 });

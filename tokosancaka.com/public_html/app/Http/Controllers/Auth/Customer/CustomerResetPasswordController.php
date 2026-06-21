@@ -76,14 +76,14 @@ class CustomerResetPasswordController extends Controller
             return back()->withErrors(['otp' => 'Kode OTP salah. Silakan periksa kembali.']);
         }
 
-        // Cek Masa Berlaku OTP (Maksimal 60 Menit)
+        // Cek Masa Berlaku OTP (Maksimal 5 Menit)
         $tokenCreatedAt = Carbon::parse($resetRecord->created_at);
-        if ($tokenCreatedAt->addMinutes(60)->isPast()) {
+        if ($tokenCreatedAt->addMinutes(5)->isPast()) {
             // Hapus OTP yang sudah hangus agar database bersih
             DB::table($table)->where('email', $identifierForToken)->delete();
             
             Log::warning('Reset Gagal: OTP kedaluwarsa.', ['identifier' => $identifierForToken]);
-            return back()->withErrors(['otp' => 'Kode OTP sudah kedaluwarsa (lebih dari 60 menit). Silakan minta ulang kode baru.']);
+            return back()->withErrors(['otp' => 'Kode OTP sudah kedaluwarsa (lebih dari 5 menit). Silakan minta ulang kode baru.']);
         }
 
         // ====================================================================
