@@ -35,8 +35,13 @@ use App\Services\FonnteService;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\NotifikasiUmum;
 
+// Notif email ke user
+use App\Traits\TransactionEmailTrait;
+
 class PesananController extends Controller
 {
+    use TransactionEmailTrait;
+
     public function index(Request $request)
     {
         // Ambil ID Customer yang sedang login
@@ -568,6 +573,23 @@ class PesananController extends Controller
                 (int) $order->insurance_cost, (int) $order->cod_fee,
                 $notification_total, $request
             );
+
+            // ==========================================================
+            // 🔥 TAMBAHAN EMAIL KHUSUS SALDO & COD (INSTANT SUCCESS)
+            // ==========================================================
+            if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'Potong Saldo', 'cash'])) {
+                $customerEmail = Auth::user()->email ?? null;
+                if (!empty($customerEmail)) {
+                    $this->sendTransactionSuccessEmail(
+                        $customerEmail,
+                        Auth::user()->nama_lengkap ?? $validatedData['sender_name'],
+                        $order->nomor_invoice,
+                        'Pengiriman Paket Sancaka Express',
+                        $order->price
+                    );
+                }
+            }
+            // ==========================================================
 
             $notifMessage = 'Pesanan baru ' . ($order->resi ? 'dengan resi ' . $order->resi : 'dengan invoice ' . $order->nomor_invoice) . ' berhasil dibuat!';
 

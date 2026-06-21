@@ -39,10 +39,15 @@ use App\Http\Controllers\Toko\ProdukController;
 use App\Http\Controllers\Customer\KoliController;
 use App\Http\Controllers\Toko\CheckoutController as TokoCheckoutController;
 
+//Pengiriman notif ke email user saat webhook sukses
+use App\Traits\TransactionEmailTrait;
+
 
 
 class CheckoutController extends Controller
 {
+    use TransactionEmailTrait;
+
     protected $danaSignature;
 
     // Inject DanaSignatureService
@@ -1867,6 +1872,20 @@ class CheckoutController extends Controller
             // 3. KIRIM NOTIF WA
             $this->kirimNotifikasiPesananLengkap($order, 'Lunas');
             $this->_sendExpoPushNotification($order);
+
+            // ==========================================================
+            // 🔥 TAMBAHAN EMAIL KE USER (SEMUA GATEWAY & SALDO MASUK KESINI)
+            // ==========================================================
+            if ($order->user && !empty($order->user->email)) {
+                $this->sendTransactionSuccessEmail(
+                    $order->user->email,
+                    $order->user->nama_lengkap,
+                    $order->invoice_number,
+                    'Pesanan Marketplace Sancaka',
+                    $order->total_amount
+                );
+            }
+            // ==========================================================
 
         } elseif (in_array($status, ['EXPIRED', 'FAILED', 'UNPAID'])) {
             $order->status = ($status === 'EXPIRED') ? 'expired' : 'failed';
