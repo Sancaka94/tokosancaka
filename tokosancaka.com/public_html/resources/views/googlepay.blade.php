@@ -58,7 +58,7 @@
     console.log("LOG LOG: Config terpasang dinamis. Mode saat ini:", "{{ strtoupper($mode) }}");
 </script>
 
-<script src="{{ asset('js/googlepay-app.js') }}"></script>
+<script src="{{ asset('js/googlepay-app.js') }}?v={{ time() }}"></script>
 
 </body>
 </html>

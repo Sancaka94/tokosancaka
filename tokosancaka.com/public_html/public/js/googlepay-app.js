@@ -1,5 +1,7 @@
 // public/js/googlepay-app.js
 
+console.log("LOG LOG: File googlepay-app.js berhasil dieksekusi browser!");
+
 const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
 const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
 
@@ -13,12 +15,15 @@ const baseRequest = {
     apiVersionMinor: 0,
 };
 
-document.addEventListener("DOMContentLoaded", async () => {
+// ==========================================
+// INISIALISASI UTAMA (DIPANGGIL OTOMATIS)
+// ==========================================
+async function initPaymentGateway() {
     console.log("LOG LOG: Memulai inisialisasi SDK PayPal v6 dinamis...");
 
     try {
         if (!window.paypal || !window.paypal.createInstance) {
-            console.error("LOG LOG: Objek global SDK PayPal v6 gagal dideteksi.");
+            console.error("LOG LOG: Objek global SDK PayPal v6 gagal dideteksi. Pastikan koneksi internet lancar.");
             return;
         }
 
@@ -39,11 +44,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (paymentMethods.isEligible("paypal")) {
             console.log("LOG LOG: Metode PayPal Standar eligible.");
             setupPayPalStandardButton();
+        } else {
+            console.warn("LOG LOG: Tombol PayPal disembunyikan (Tidak Eligible).");
         }
 
         // Setup: Tombol Google Pay
         if (paymentMethods.isEligible("googlepay")) {
-            console.log("LOG LOG: Metode Google Pay eligible.");
+            console.log("LOG LOG: Metode Google Pay eligible. Merender tombol...");
             
             const googlePayDetails = paymentMethods.getDetails("googlepay");
             googlePaySession = sdkInstance.createGooglePayOneTimePaymentSession();
@@ -51,13 +58,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             
             setupGooglePayButton();
         } else {
-            console.warn("LOG LOG: Google Pay tidak didukung pada browser/perangkat atau mode akun saat ini.");
+            console.warn("LOG LOG: Google Pay tidak didukung pada browser/perangkat atau region akun PayPal saat ini.");
         }
 
     } catch (err) {
         console.error("LOG LOG: Kesalahan fatal pada blok inisialisasi:", err);
     }
-});
+}
+
+// Jalankan fungsi inisialisasi secara langsung!
+initPaymentGateway();
 
 /** ==========================================
  * FUNGSI LOGIKA: PAYPAL STANDARD
@@ -103,7 +113,6 @@ function setupPayPalStandardButton() {
  * ========================================== */
 function getGooglePaymentsClient() {
     if (paymentsClient === null) {
-        // Lingkungan Google Pay (TEST / PRODUCTION) mengikuti database Laravel secara dinamis
         paymentsClient = new google.payments.api.PaymentsClient({
             environment: window.AppConfig.googlePayEnv,
             paymentDataCallbacks: {
@@ -129,7 +138,9 @@ function setupGooglePayButton() {
                 allowedPaymentMethods: rawGooglePayConfig.allowedPaymentMethods
             });
             document.getElementById("google-pay-button-container").appendChild(button);
-            console.log("LOG LOG: Tombol Google Pay berhasil ditampilkan.");
+            console.log("LOG LOG: Tombol Google Pay berhasil ditampilkan di HTML.");
+        } else {
+            console.error("LOG LOG: isReadyToPay merespon false. Google Pay diblokir oleh browser.");
         }
     }).catch(err => {
         console.error("LOG LOG: Error pada fungsi isReadyToPay Google Pay:", err);
@@ -144,7 +155,6 @@ async function onGooglePaymentButtonClicked() {
     paymentDataRequest.merchantInfo = rawGooglePayConfig.merchantInfo;
     paymentDataRequest.callbackIntents = ["PAYMENT_AUTHORIZATION"];
     
-    // Data nilai transaksi dinamis dari database/backend Laravel
     paymentDataRequest.transactionInfo = {
         countryCode: window.AppConfig.countryCode, 
         currencyCode: window.AppConfig.currency,
@@ -198,7 +208,6 @@ async function processGooglePay(paymentData) {
         throw new Error(`Otorisasi gagal dengan status: ${status}`);
     }
 
-    // Eksekusi penarikan dana ke endpoint Laravel
     const captureResponse = await fetch(`/paypal/orders/${orderId}/capture`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/json", "X-CSRF-TOKEN": csrfToken }
