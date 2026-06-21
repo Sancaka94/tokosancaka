@@ -428,12 +428,22 @@ Route::prefix('payment')->group(function () {
     Route::post('/callback/code', [PaymentController::class, 'handleCodeCallback'])->name('payment.callback.code');
 });
 
-// LOG LOG: Route tampilan utama pembayaran menggunakan Google Pay & PayPal v6
+// LOG LOG: Route halaman pembayaran murni dinamis berbasis database
 Route::get('/googlepay', function () {
+    // 1. Ambil Mode Aktif (sandbox / production)
     $mode = \App\Models\Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
+    
+    // 2. Ambil Kredensial sesuai Mode yang aktif
     $paypalClientId = \App\Models\Api::getValue('PAYPAL_CLIENT_ID', $mode);
+    
+    // 3. Setup parameter transaksi secara dinamis (Bisa Anda hubungkan dengan data keranjang/invoice nanti)
+    $transaction = [
+        'amount'       => '100.00', // Contoh nominal dinamis
+        'currency'     => 'USD',    // Mata uang dinamis
+        'country_code' => 'US'      // Kode negara dinamis
+    ];
 
-    return view('googlepay', compact('paypalClientId'));
+    return view('googlepay', compact('paypalClientId', 'mode', 'transaction'));
 })->name('googlepay.index');
 
 // LOG LOG: API Endpoint internal untuk diakses SDK Google Pay & PayPal v6 Button dari Frontend
