@@ -187,7 +187,7 @@
 
                         <div class="col-12 col-sm-6">
                             <div class="form-floating">
-                                <input type="email" class="form-control" id="email" name="email" placeholder="Email" value="{{ old('email') }}" required>
+                                <input type="email" class="form-control" id="email" name="email" placeholder="Email" value="{{ old('email') }}" required autocomplete="off">
                                 <label for="email" class="text-muted">Alamat Email</label>
                             </div>
                         </div>
@@ -201,7 +201,7 @@
 
                         <div class="col-12 col-sm-6">
                             <div class="form-floating position-relative">
-                                <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                                <input type="password" class="form-control" id="password" name="password" placeholder="Password" required autocomplete="new-password">
                                 <label for="password" class="text-muted">Password</label>
                                 <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('password')"></i>
                             </div>
@@ -209,7 +209,7 @@
 
                         <div class="col-12 col-sm-6">
                             <div class="form-floating position-relative">
-                                <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" placeholder="Konfirmasi Password" required>
+                                <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" placeholder="Konfirmasi Password" required autocomplete="new-password">
                                 <label for="password_confirmation" class="text-muted">Konfirmasi Password</label>
                                 <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('password_confirmation')"></i>
                             </div>

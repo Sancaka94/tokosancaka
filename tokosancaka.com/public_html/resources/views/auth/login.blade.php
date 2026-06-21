@@ -194,7 +194,7 @@
                     <input type="hidden" name="longitude" id="longitude" value="">
 
                     <div class="form-floating mb-3">
-                        <input type="text" class="form-control" id="email" name="login" placeholder="Email / WA" value="{{ old('email') }}" required autofocus>
+                        <input type="text" class="form-control" id="email" name="login" placeholder="Email / WA" value="{{ old('login') }}" required autofocus autocomplete="off">
                         <label for="email" class="text-muted">Email atau Nomor WhatsApp</label>
                     </div>
 
