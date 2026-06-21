@@ -428,15 +428,19 @@ Route::prefix('payment')->group(function () {
     Route::post('/callback/code', [PaymentController::class, 'handleCodeCallback'])->name('payment.callback.code');
 });
 
+// LOG LOG: Route tampilan utama pembayaran menggunakan Google Pay & PayPal v6
+Route::get('/googlepay', function () {
+    $mode = \App\Models\Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
+    $paypalClientId = \App\Models\Api::getValue('PAYPAL_CLIENT_ID', $mode);
+
+    return view('googlepay', compact('paypalClientId'));
+})->name('googlepay.index');
+
 // LOG LOG: API Endpoint internal untuk diakses SDK Google Pay & PayPal v6 Button dari Frontend
 Route::prefix('paypal/orders')->name('paypal.orders.')->group(function () {
-    // URL: tokosancaka.com/paypal/orders/create
-    Route::post('/create', [PayPalController::class, 'createOrder'])->name('create');
-    
-    // URL: tokosancaka.com/paypal/orders/{orderId}/capture
-    Route::post('/{order}/capture', [PayPalController::class, 'captureOrder'])->name('capture');
+    Route::post('/create', [App\Http\Controllers\PayPalController::class, 'createOrder'])->name('create');
+    Route::post('/{order}/capture', [App\Http\Controllers\PayPalController::class, 'captureOrder'])->name('capture');
 });
-
 
 // =========================================================================
 // 4. AUTHENTICATED ROUTES (GENERAL)

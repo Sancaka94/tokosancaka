@@ -6,7 +6,7 @@
     
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
-    <title>Sancaka Express - Checkout Pembayaran</title>
+    <title>Sancaka Express - Google Pay & PayPal Checkout</title>
     
     <script src="https://www.paypal.com/sdk/js?client-id={{ $paypalClientId }}&currency=USD&components=googlepay,paypal-payments"></script>
     
@@ -91,10 +91,8 @@
                 return;
             }
 
-            // Membaca CSRF Token Laravel di scope lokal script
             const bladeCsrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-            // Membuat instance terpisah untuk Standard PayPal Payment Session
             const standardSdkInstance = await window.paypal.createInstance({
                 clientId: "{{ $paypalClientId }}",
                 components: ["paypal-payments"],
@@ -102,7 +100,6 @@
                 locale: "id-ID",
             });
 
-            // Handler Terpusat untuk Siklus Hidup Tombol PayPal Standar
             const standardOptions = {
                 async onApprove(data) {
                     console.log("LOG LOG: Tombol PayPal Standar disetujui user. Memulai request capture. Order ID:", data.orderId);
@@ -121,7 +118,6 @@
                         
                         if (captureData && captureData.status === "COMPLETED") {
                             alert("Pembayaran Berhasil Diverifikasi!");
-                            // Alihkan ke halaman sukses Tripay bawaan Anda agar tercatat rapi di log sistem
                             window.location.href = "/pembayaran/sukses-tripay?reference=" + data.orderId + "&jenis=paypal";
                         } else {
                             alert("Proses penarikan dana gagal atau tertunda.");
@@ -138,7 +134,6 @@
                 }
             };
 
-            // Mengecek kelayakan metode pembayaran standar
             const eligibilityCheck = await standardSdkInstance.findEligibleMethods({ currencyCode: "USD" });
 
             if (eligibilityCheck.isEligible("paypal")) {
@@ -152,11 +147,9 @@
                         try {
                             console.log("LOG LOG: Event klik tombol standar terdeteksi. Memicu pembukaan modal/popup.");
                             
-                            // Menggunakan fungsi createOrder global yang sudah dideklarasikan di googlepay-app.js
                             if (typeof createOrder === "function") {
                                 await standardSession.start({ presentationMode: "auto" }, createOrder());
                             } else {
-                                // Fallback aman jika script eksternal termuat terlambat
                                 const orderFallback = fetch("/paypal/orders/create", {
                                     method: "POST",
                                     headers: {

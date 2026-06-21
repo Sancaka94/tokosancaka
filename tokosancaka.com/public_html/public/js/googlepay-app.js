@@ -1,10 +1,8 @@
 // public/js/googlepay-app.js
 
-// Ambil CSRF token dari meta tag Laravel secara aman
 const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
 const csrfToken = csrfTokenMeta ? csrfTokenMeta.getAttribute('content') : '';
 
-// Konfigurasi dasar Google Pay API versi yang didukung oleh PayPal
 const baseRequest = {
     apiVersion: 2,
     apiVersionMinor: 0,
@@ -14,9 +12,6 @@ let paymentsClient = null;
 let allowedPaymentMethods = null;
 let merchantInfo = null;
 
-/**
- * Mengambil konfigurasi payment method dan merchant info dari PayPal SDK v6
- */
 async function getGooglePayConfig() {
     if (allowedPaymentMethods == null || merchantInfo == null) {
         console.log("LOG LOG: Mengambil konfigurasi Google Pay dari PayPal SDK");
@@ -32,9 +27,6 @@ async function getGooglePayConfig() {
     return { allowedPaymentMethods, merchantInfo };
 }
 
-/**
- * Inisialisasi Google PaymentsClient
- */
 function getGooglePaymentsClient() {
     if (paymentsClient === null) {
         console.log("LOG LOG: Inisialisasi Google PaymentsClient");
@@ -48,13 +40,9 @@ function getGooglePaymentsClient() {
     return paymentsClient;
 }
 
-/**
- * Entry Point utama setelah SDK Google Pay selesai dimuat (onload)
- */
 async function onGooglePayLoaded() {
     console.log("LOG LOG: SDK Google Pay berhasil dimuat ke dalam window");
     try {
-        // Pastikan global object dari PayPal dan Google sudah siap di window scope
         if (!window.google || !window.paypal || !window.paypal.Googlepay) {
             console.error("LOG LOG: SDK PayPal atau Google Pay belum siap atau tidak terdeteksi di global window");
             return;
@@ -79,9 +67,6 @@ async function onGooglePayLoaded() {
     }
 }
 
-/**
- * Merender tombol Google Pay ke kontainer HTML
- */
 function addGooglePayButton() {
     const client = getGooglePaymentsClient();
     const button = client.createButton({
@@ -90,7 +75,7 @@ function addGooglePayButton() {
     });
     const container = document.getElementById("google-pay-button-container");
     if (container) {
-        container.innerHTML = ""; // Bersihkan kontainer sebelum merender ulang
+        container.innerHTML = ""; 
         container.appendChild(button);
         console.log("LOG LOG: Tombol Google Pay berhasil ditempelkan ke kontainer");
     } else {
@@ -98,22 +83,15 @@ function addGooglePayButton() {
     }
 }
 
-/**
- * Menyusun objek detail transaksi secara dinamis
- */
 function getGoogleTransactionInfo() {
-    // Pada aplikasi nyata, nilai total price ini dapat diambil secara dinamis dari state aplikasi atau DOM keranjang belanja Anda
     return {
-        countryCode: "US", // Sesuaikan dengan target region bisnis/akun PayPal Anda
+        countryCode: "US", 
         currencyCode: "USD",
         totalPriceStatus: "FINAL",
         totalPrice: "100.00", 
     };
 }
 
-/**
- * Trigger ketika user menekan tombol Google Pay
- */
 async function onGooglePaymentButtonClicked() {
     console.log("LOG LOG: Event click tombol Google Pay terdeteksi");
     try {
@@ -133,9 +111,6 @@ async function onGooglePaymentButtonClicked() {
     }
 }
 
-/**
- * Callback otomatis dari Google Pay setelah user memilih kartu & menyetujui pembayaran di UI sheet
- */
 function onPaymentAuthorized(paymentData) {
     console.log("LOG LOG: Otorisasi Google Pay berhasil di sisi client. Memulai pemrosesan transaksi...");
     return new Promise(function (resolve, reject) {
@@ -168,9 +143,26 @@ function onPaymentAuthorized(paymentData) {
     });
 }
 
-/**
- * Integrasi utama backend Laravel + PayPal SDK v6 Confirm & Capture Lifecycle
- */
+function createOrder() {
+    console.log("LOG LOG: Memanggil route Laravel untuk create order");
+    return fetch("/paypal/orders/create", {
+        method: "POST",
+        headers: { 
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "X-CSRF-TOKEN": csrfToken 
+        },
+        body: JSON.stringify({}),
+    })
+    .then(response => {
+        if (!response.ok) throw new Error("Gagal menghubungi server pembuatan order");
+        return response.json();
+    })
+    .then(data => {
+        return { orderId: data.id }; 
+    });
+}
+
 async function processPayment(paymentData) {
     try {
         if (!csrfToken) {
@@ -178,35 +170,11 @@ async function processPayment(paymentData) {
         }
 
         console.log("LOG LOG: Mengirim request pembuatan Order ke Backend Laravel");
-        
-        // Step 1: Request pembuatan Order ke backend Laravel (Membaca config dinamis database)
-        const orderResponse = await fetch("/paypal/orders/create", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "X-CSRF-TOKEN": csrfToken
-            },
-            body: JSON.stringify({
-                // Sertakan payload metadata keranjang tambahan di sini jika dibutuhkan backend
-                description: "Pembayaran terintegrasi via Google Pay"
-            }),
-        });
-
-        if (!orderResponse.ok) {
-            throw new Error(`HTTP Error saat membuat order: ${orderResponse.status}`);
-        }
-
-        const orderData = await orderResponse.json();
-        const orderId = orderData.id;
-
-        if (!orderId) {
-            throw new Error("Gagal mendapatkan Order ID valid dari server internal Laravel");
-        }
+        const orderData = await createOrder();
+        const orderId = orderData.orderId;
 
         console.log("LOG LOG: Order ID berhasil dibuat di server Laravel:", orderId);
 
-        // Step 2: Konfirmasi intensi pembayaran menggunakan PayPal SDK v6 dengan payload token enkripsi dari Google Pay
         console.log("LOG LOG: Mengirim token enkripsi Google Pay ke PayPal SDK via confirmOrder");
         const confirmResponse = await paypal.Googlepay().confirmOrder({
             orderId: orderId,
@@ -215,19 +183,15 @@ async function processPayment(paymentData) {
 
         console.log("LOG LOG: Respon confirmOrder diterima dengan status:", confirmResponse.status);
 
-        // Step 3: Penanganan Strong Customer Authentication / SCA (3D Secure Kontingensi) jika dibutuhkan oleh bank penerbit
         if (confirmResponse.status === "PAYER_ACTION_REQUIRED") {
             console.log("LOG LOG: Status PAYER_ACTION_REQUIRED terdeteksi. Meluncurkan modul initiatePayerAction (3DS)...");
-            
-            // Menunggu user menyelesaikan interaksi tantangan OTP / PIN 3DS bank penerbit kartu
             await paypal.Googlepay().initiatePayerAction({ orderId: orderId });
             console.log("LOG LOG: Payer action/3DS kontingensi selesai divalidasi.");
         } else if (confirmResponse.status !== "APPROVED") {
             throw new Error(`Status otorisasi PayPal tidak disetujui. Status saat ini: ${confirmResponse.status}`);
         }
 
-        // Step 4: Sesi akhir - Eksekusi Capture dana ke backend Laravel agar dana berpindah ke rekening PayPal Anda
-        console.log("LOG LOG: Mengirim permintaan eksekusi capture ke backend Laravel untuk order:", orderId);
+        console.log("LOG LOG: Order di-approve, memanggil API Laravel untuk Capture");
         const captureResponse = await fetch(`/paypal/orders/${orderId}/capture`, {
             method: "POST",
             headers: {

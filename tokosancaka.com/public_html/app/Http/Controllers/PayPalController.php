@@ -5,11 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use App\Models\Api; // Panggil model Api Anda
+use App\Models\Api;
 
 class PayPalController extends Controller
 {
-    // Mengambil konfigurasi PayPal secara dinamis dari database sesuai kode Anda
     private function getPayPalConfig()
     {
         $mode = Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
@@ -17,7 +16,6 @@ class PayPalController extends Controller
         return [
             'mode'      => $mode,
             'client_id' => Api::getValue('PAYPAL_CLIENT_ID', $mode),
-            // Menggunakan secret_1 sebagai Client Secret standar API REST PayPal
             'secret'    => Api::getValue('PAYPAL_SECRET_1', $mode), 
             'base_url'  => $mode === 'production' 
                            ? 'https://api-m.paypal.com' 
@@ -43,7 +41,6 @@ class PayPalController extends Controller
             $config = $this->getPayPalConfig();
             $accessToken = $this->generateAccessToken($config);
             
-            // Kalkulasi nominal dari keranjang di sini
             $orderPayload = [
                 'intent' => 'CAPTURE',
                 'purchase_units' => [
