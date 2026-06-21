@@ -24,5 +24,6 @@
 
     <p style="margin-top: 20px;">Saldo akun Sancaka kamu sudah otomatis bertambah.</p>
     <p>Salam hangat,<br><strong>Tim Sancaka</strong></p>
+    
 </body>
 </html>
