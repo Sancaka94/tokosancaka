@@ -186,20 +186,29 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ $formAction }}" class="px-xl-4">
+                <form method="POST" action="{{ $formAction }}" class="px-xl-4" autocomplete="off">
                     @csrf
 
                     {{-- Hidden Input untuk koordinat --}}
                     <input type="hidden" name="latitude" id="latitude" value="">
                     <input type="hidden" name="longitude" id="longitude" value="">
 
+                    {{-- ========================================================= --}}
+                    {{-- TRIK ANTI-AUTOFILL: Input Palsu untuk mengecoh Google Chrome --}}
+                    {{-- ========================================================= --}}
+                    <input type="text" style="display:none" autocomplete="username" name="fake_username">
+                    <input type="password" style="display:none" autocomplete="current-password" name="fake_password">
+                    {{-- ========================================================= --}}
+
                     <div class="form-floating mb-3">
-                        <input type="text" class="form-control" id="email" name="login" placeholder="Email / WA" value="{{ old('login') }}" required autofocus autocomplete="off">
+                        {{-- Mengganti autocomplete="off" menjadi "nope" agar Chrome kebingungan --}}
+                        <input type="text" class="form-control" id="email" name="login" placeholder="Email / WA" value="{{ old('login') }}" required autofocus autocomplete="nope">
                         <label for="email" class="text-muted">Email atau Nomor WhatsApp</label>
                     </div>
 
                     <div class="form-floating mb-3 position-relative">
-                        <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                        {{-- Memaksa atribut new-password agar Chrome tidak menyuntikkan password lama --}}
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Password" required autocomplete="new-password">
                         <label for="password" class="text-muted">Password</label>
                         <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('password')"></i>
                     </div>
@@ -224,7 +233,7 @@
                         @endif
                     </div>
 
-                    {{-- MODIFIKASI: Tombol Submit di-disabled secara default --}}
+                    {{-- Tombol Submit --}}
                     <div class="d-grid mb-3 disabled-btn-wrapper" onclick="checkGpsClick()">
                         <button type="submit" id="btn-submit-manual" class="btn btn-danger btn-lg text-uppercase" disabled>Login</button>
                     </div>
@@ -238,7 +247,6 @@
                             <span class="mx-2 text-muted small">ATAU</span>
                             <hr class="flex-grow-1 text-muted opacity-25">
                         </div>
-                        {{-- MODIFIKASI: Tombol Google di-disabled secara default menggunakan class bootstrap & pointer-events kustom --}}
                         <div class="d-grid mb-3 disabled-btn-wrapper" onclick="checkGpsClick()">
                             <a href="{{ route('login.google') }}" id="btn-submit-google" class="btn btn-outline-dark btn-lg d-flex justify-content-center align-items-center disabled" role="button" aria-disabled="true">
                                 <img src="https://tokosancaka.com/public/assets/google.png" alt="Google Logo" style="width: 24px; height: 24px; object-fit: contain;" class="me-2"> 
@@ -291,7 +299,6 @@
     function checkGpsClick() {
         if (!isGpsActive) {
             alert("Akses Ditolak! Anda wajib mengaktifkan GPS dan mengizinkan lokasi pada browser/perangkat Anda sebelum dapat menekan tombol Login.");
-            // Memicu ulang permintaan izin lokasi ke browser jika sebelumnya tidak sengaja tertutup
             requestLocation();
         }
     }
@@ -301,25 +308,20 @@
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 function(position) {
-                    // JIKA USER MENGIZINKAN (HUMAN)
                     isGpsActive = true;
                     
-                    // Masukkan koordinat ke hidden input
                     document.getElementById('latitude').value = position.coords.latitude;
                     document.getElementById('longitude').value = position.coords.longitude;
                     
-                    // Aktifkan tombol manual login (hapus atribut disabled)
                     const btnManual = document.getElementById('btn-submit-manual');
                     if(btnManual) btnManual.removeAttribute('disabled');
                     
-                    // Aktifkan tombol Google login (hapus class disabled)
                     const btnGoogle = document.getElementById('btn-submit-google');
                     if(btnGoogle) {
                         btnGoogle.classList.remove('disabled');
                         btnGoogle.removeAttribute('aria-disabled');
                     }
                     
-                    // Ubah teks alert status menjadi sukses
                     const statusAlert = document.getElementById('gps-status-alert');
                     if(statusAlert) {
                         statusAlert.classList.replace('alert-warning', 'alert-success');
@@ -327,7 +329,6 @@
                     }
                 },
                 function(error) {
-                    // JIKA USER MENOLAK / ERROR (Kemungkinan BOT atau User menonaktifkan fitur GPS)
                     isGpsActive = false;
                     console.warn("Akses GPS ditolak atau bermasalah: ", error.message);
                 },
