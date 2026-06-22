@@ -1238,19 +1238,31 @@ class TicketingController extends BaseController
     }
 
    /**
-     * 1. FUNGSI PRIVATE: Mengambil Access Token dari Darmawisata
-     * Hanya mengembalikan string token jika sukses, atau null jika gagal.
-     * Bisa dipakai ulang di fungsi searchSchedule() atau processBooking().
+     * 1. FUNGSI PRIVATE: Mengambil Access Token dari Darmawisata (Dinamis dari DB)
      */
     private function sessionLogin()
     {
-        $userId   = 'PWB6RGHXRC';
-        $password = 'Darmaj4y4'; // Pastikan password ini benar tanpa spasi
-        $url      = 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/Session/Login';
+        // 1. Ambil Mode Global yang sedang aktif (development / production)
+        $env = \App\Models\Api::getValue('DHARMAWISATA_MODE', 'global', 'development');
+
+        // 2. Ambil Kredensial sesuai Mode dari Database
+        $userId   = \App\Models\Api::getValue('DHARMAWISATA_USER_ID', $env);
+        $password = \App\Models\Api::getValue('DHARMAWISATA_PASSWORD', $env);
+        $baseUrl  = \App\Models\Api::getValue('DHARMAWISATA_BASE_URL', $env);
+
+        // Failsafe: Jika base_url di database terdeteksi kosong, set default fallback
+        if (empty($baseUrl)) {
+            $baseUrl = ($env === 'production')
+                ? 'https://www.darmawisataindonesiah2h.co.id/'
+                : 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/';
+        }
+
+        // Pastikan URL tidak double slash di akhir sebelum ditambah /Session/Login
+        $url = rtrim($baseUrl, '/') . '/Session/Login';
 
         $token = date('Y-m-d\TH:i:s');
 
-        // Rumus enkripsi: MD5(token + MD5(password))
+        // Rumus enkripsi Darmawisata: MD5(token + MD5(password))
         $md5Password  = md5($password);
         $securityCode = md5($token . $md5Password);
 
@@ -1271,6 +1283,8 @@ class TicketingController extends BaseController
 
             // Kembalikan HANYA string token jika sukses
             if (isset($result['status']) && $result['status'] === 'SUCCESS') {
+                // LOG LOG
+                \Illuminate\Support\Facades\Log::info("LOG LOG: Session Darmawisata berhasil dibuat untuk mode: " . strtoupper($env));
                 return $result['accessToken'];
             } else {
                 \Illuminate\Support\Facades\Log::error("Darmawisata Login Gagal: " . json_encode($result));
