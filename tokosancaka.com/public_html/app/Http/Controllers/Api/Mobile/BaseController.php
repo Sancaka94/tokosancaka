@@ -96,21 +96,23 @@ class BaseController extends Controller
         }
     }
 
-   public function generateNewToken()
+  public function generateNewToken()
     {
-        // 1. Ambil data rahasia dari Database/Config agar tidak bocor ke sisi Client (HP)
-        $staticToken = Api::getValue('DHARMAWISATA_STATIC_TOKEN', $this->darmawisataMode);
+        // 1. Ambil data rahasia dari Database/Config
         $password    = Api::getValue('DHARMAWISATA_PASSWORD', $this->darmawisataMode);
         $userID      = $this->darmawisataUserId;
         $url         = rtrim($this->darmawisataBaseUrl, '/') . '/Session/Login';
 
-        // 2. Hitung Security Code sesuai rumus Darmawisata
-        $md5Password  = md5($password);
-        $securityCode = md5($staticToken . $md5Password);
+        // 2. PERBAIKAN: Token WAJIB menggunakan waktu real-time, BUKAN static token
+        $token = date('Y-m-d\TH:i:s');
 
-        // 3. Siapkan Payload sesuai dokumentasi yang Anda berikan
+        // 3. Hitung Security Code sesuai rumus Darmawisata
+        $md5Password  = md5($password);
+        $securityCode = md5($token . $md5Password);
+
+        // 4. Siapkan Payload sesuai dokumentasi
         $payload = [
-            'token'        => $staticToken,
+            'token'        => $token,
             'securityCode' => $securityCode,
             'language'     => "ID",
             'userID'       => $userID,
@@ -118,7 +120,7 @@ class BaseController extends Controller
         ];
 
         try {
-            // 4. Hit ke Darmawisata
+            // 5. Hit ke Darmawisata
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
@@ -126,7 +128,10 @@ class BaseController extends Controller
 
             $data = $response->json();
 
-            // 5. Kembalikan response sukses ke TSX
+            // LOG LOG tambahan untuk mengecek alasan pasti jika masih ditolak
+            Log::info("LOG LOG: Response Init Session Darmawisata:\n" . json_encode($data, JSON_PRETTY_PRINT));
+
+            // 6. Kembalikan response sukses ke TSX/React Native
             if (isset($data['status']) && $data['status'] === 'SUCCESS') {
                 return response()->json([
                     'status'      => 'SUCCESS',
