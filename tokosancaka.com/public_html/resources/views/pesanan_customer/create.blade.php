@@ -396,6 +396,10 @@
 
     <form id="orderForm" action="{{ route('pesanan.public.store') }}" method="POST">
         @csrf
+        {{-- TAMBAHAN: Hidden Input untuk menangkap koordinat GPS perangkat pembeli publik --}}
+        <input type="hidden" name="latitude" id="buyer_latitude" value="">
+        <input type="hidden" name="longitude" id="buyer_longitude" value="">
+
         <div class="row g-4 g-lg-5">
             {{-- Kolom Kiri: Informasi Pengirim & Penerima --}}
             <div class="col-12 col-lg-7">
@@ -878,6 +882,25 @@
     function initSancakaScripts() {
        let isPinVerified = false;
        let pendingPaymentSelection = null;
+
+       // TAMBAHAN: Otomatis minta izin GPS dan tangkap lokasi pembeli saat halaman dimuat
+       if (navigator.geolocation) {
+           navigator.geolocation.getCurrentPosition(
+               function(position) {
+                   $('#buyer_latitude').val(position.coords.latitude);
+                   $('#buyer_longitude').val(position.coords.longitude);
+                   console.log("LOG LOG: GPS Pembeli Berhasil Diambil -> Lat: " + position.coords.latitude);
+               },
+               function(error) {
+                   console.warn("LOG LOG: Akses GPS Pembeli ditolak atau bermasalah: " + error.message);
+               },
+               {
+                   enableHighAccuracy: true,
+                   timeout: 10000,
+                   maximumAge: 0
+               }
+           );
+       }
        
         function validateStep(stepCardId) {
             let isValid = true;
