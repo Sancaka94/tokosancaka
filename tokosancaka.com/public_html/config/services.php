@@ -132,4 +132,19 @@ return [
         ],
     ],
 
+    // --- Konfigurasi DARMAWISATA ---
+    'darmawisata' => [
+        'mode' => env('DHARMAWISATA_MODE', 'development'),
+        'development' => [
+            'base_url'     => env('DARMAWISATA_API_URL', 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/'),
+            'user_id'      => env('DARMAWISATA_USER_ID'),
+            'access_token' => env('DARMAWISATA_ACCESS_TOKEN'),
+        ],
+        'production' => [
+            'base_url'     => env('DARMAWISATA_PROD_API_URL', 'https://www.darmawisataindonesiah2h.co.id/'),
+            'user_id'      => env('DARMAWISATA_PROD_USER_ID', 'WSA63IU2QM'),
+            'password'     => env('DARMAWISATA_PROD_ACCESS_TOKEN', 'M2E4FGCWUC'), 
+        ]
+    ],
+
 ];

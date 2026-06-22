@@ -249,10 +249,15 @@ class ApiSettingsController extends Controller
             } elseif ($type === 'dharmawisata') {
                 $env = $request->dharmawisata_mode;
                 Api::setValue('DHARMAWISATA_MODE', $env, 'dharmawisata', 'global');
+                
+                // Tambahan: Auto-detect default Base URL sesuai environment
                 $baseUrl = $request->dharmawisata_base_url;
                 if (empty($baseUrl)) {
-                    $baseUrl = 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/';
+                    $baseUrl = ($env === 'production') 
+                        ? 'https://www.darmawisataindonesiah2h.co.id/' 
+                        : 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/';
                 }
+                
                 Api::setValue('DHARMAWISATA_USER_ID', $request->dharmawisata_user_id, 'dharmawisata', $env);
                 Api::setValue('DHARMAWISATA_ACCESS_TOKEN', $request->dharmawisata_access_token, 'dharmawisata', $env);
                 Api::setValue('DHARMAWISATA_BASE_URL', $baseUrl, 'dharmawisata', $env);
