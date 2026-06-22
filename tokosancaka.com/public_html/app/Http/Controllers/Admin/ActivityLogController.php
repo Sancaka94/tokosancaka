@@ -51,13 +51,11 @@ class ActivityLogController extends Controller
         // 2. DATA LOGIN PENGGUNA (FITUR BARU)
         if (!$filter || $filter === 'login') {
             $userLogins = User::withTrashed()
-                // PERBAIKAN: Hapus 'updated_at' dari select
                 ->select('id_pengguna', 'nama_lengkap', 'role', 'last_seen_at', 'created_at', 'ip_address', 'user_agent', 'latitude', 'longitude')
                 ->whereNotNull('ip_address') 
                 ->take(100)->get();
 
             foreach ($userLogins as $user) {
-                // PERBAIKAN: Hanya gunakan last_seen_at atau created_at
                 $loginTime = $user->last_seen_at ?? $user->created_at;
                 $loginTime = \Carbon\Carbon::parse($loginTime);
 
