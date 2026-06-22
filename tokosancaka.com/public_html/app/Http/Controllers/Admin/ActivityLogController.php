@@ -51,13 +51,14 @@ class ActivityLogController extends Controller
         // 2. DATA LOGIN PENGGUNA (FITUR BARU)
         if (!$filter || $filter === 'login') {
             $userLogins = User::withTrashed()
-                ->select('id_pengguna', 'nama_lengkap', 'role', 'updated_at', 'last_seen_at', 'created_at', 'ip_address', 'user_agent', 'latitude', 'longitude')
-                ->whereNotNull('ip_address') // Hanya ambil user yang IP-nya pernah tercatat saat login
+                // PERBAIKAN: Hapus 'updated_at' dari select
+                ->select('id_pengguna', 'nama_lengkap', 'role', 'last_seen_at', 'created_at', 'ip_address', 'user_agent', 'latitude', 'longitude')
+                ->whereNotNull('ip_address') 
                 ->take(100)->get();
 
             foreach ($userLogins as $user) {
-                // Cari waktu aktivitas terakhir yang tersedia
-                $loginTime = $user->last_seen_at ?? $user->updated_at ?? $user->created_at;
+                // PERBAIKAN: Hanya gunakan last_seen_at atau created_at
+                $loginTime = $user->last_seen_at ?? $user->created_at;
                 $loginTime = \Carbon\Carbon::parse($loginTime);
 
                 // Hindari mencetak log ganda jika waktu register dan login sama persis
