@@ -23,6 +23,7 @@
 
         <div class="my-6 flex flex-wrap items-center gap-2">
             <a href="{{ route('admin.activity-log.index') }}" class="px-4 py-2 text-sm font-medium rounded-md {{ !$currentFilter ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">Semua</a>
+            <a href="{{ route('admin.activity-log.index', ['filter' => 'login']) }}" class="px-4 py-2 text-sm font-medium rounded-md {{ $currentFilter == 'login' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">Login</a>
             <a href="{{ route('admin.activity-log.index', ['filter' => 'user']) }}" class="px-4 py-2 text-sm font-medium rounded-md {{ $currentFilter == 'user' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">Pendaftaran</a>
             <a href="{{ route('admin.activity-log.index', ['filter' => 'order']) }}" class="px-4 py-2 text-sm font-medium rounded-md {{ $currentFilter == 'order' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">Pesanan</a>
             <a href="{{ route('admin.activity-log.index', ['filter' => 'topup']) }}" class="px-4 py-2 text-sm font-medium rounded-md {{ $currentFilter == 'topup' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50' }}">Top Up</a>
@@ -49,6 +50,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center">
                                         @if($activity['type'] == 'user') <i class="fas fa-user-plus text-blue-500 mr-3"></i>
+                                        @elseif($activity['type'] == 'login') <i class="fas fa-sign-in-alt text-teal-500 mr-3"></i>
                                         @elseif($activity['type'] == 'order') <i class="fas fa-shopping-cart text-green-500 mr-3"></i>
                                         @elseif($activity['type'] == 'topup') <i class="fas fa-wallet text-purple-500 mr-3"></i>
                                         @elseif($activity['type'] == 'scan') <i class="fas fa-barcode text-yellow-500 mr-3"></i> @endif
@@ -60,7 +62,7 @@
                                     @php
                                         $status = strtolower($activity['status'] ?? '');
                                         $badgeColor = 'bg-gray-100 text-gray-700'; // Default
-                                        if (in_array($status, ['success', 'paid', 'selesai', 'terkirim'])) {
+                                        if (in_array($status, ['success', 'sukses', 'paid', 'selesai', 'terkirim'])) {
                                             $badgeColor = 'bg-green-100 text-green-700';
                                         } elseif (in_array($status, ['pending', 'diproses', 'proses pickup', 'menunggu pembayaran', 'menunggu pickup'])) {
                                             $badgeColor = 'bg-yellow-100 text-yellow-700';
@@ -128,8 +130,7 @@
                         <i class="fas fa-map-marker-alt text-gray-400 mr-3 fa-lg"></i>
                         <div>
                             <template x-if="modalData.latitude && modalData.longitude">
-                                {{-- PERBAIKAN: Perubahan sintaksis template literal & pemakaian URL Google Maps yang valid --}}
-                                <a :href="`https://www.google.com/maps?q=${modalData.latitude},${modalData.longitude}`" target="_blank" class="text-indigo-600 hover:text-indigo-900 font-medium inline-flex items-center">
+                                <a :href="`https://www.google.com/maps?q=$${modalData.latitude},${modalData.longitude}`" target="_blank" class="text-indigo-600 hover:text-indigo-900 font-medium inline-flex items-center">
                                     Lihat di Google Maps <i class="fas fa-external-link-alt ms-1 text-xs"></i>
                                 </a>
                             </template>

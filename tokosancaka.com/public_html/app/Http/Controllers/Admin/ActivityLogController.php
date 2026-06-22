@@ -23,34 +23,70 @@ class ActivityLogController extends Controller
         $allActivities = collect([]);
         $agent = new Agent();
 
-        // Mengambil data berdasarkan filter. Jika tidak ada filter, ambil semua.
+        // 1. DATA PENDAFTARAN PENGGUNA
         if (!$filter || $filter === 'user') {
             $userRegistrations = User::withTrashed()
-                ->whereIn('role', ['Pelanggan', 'Toko', 'Admin', 'Agent']) 
+                // HAPUS filter whereIn('role') yang rentan menyembunyikan data karena huruf besar/kecil
                 ->select('id_pengguna', 'nama_lengkap', 'role', 'created_at', 'ip_address', 'user_agent', 'latitude', 'longitude')
-                ->latest()->take(100)->get();
+                ->whereNotNull('created_at')
+                ->latest('created_at')->take(100)->get();
+
             foreach ($userRegistrations as $user) {
                 $allActivities->push([
                     'user' => $user->nama_lengkap ?? 'User Dihapus',
-                    'description' => 'Mendaftar sebagai ' . $user->role,
-                    'details' => '',
+                    'description' => 'Mendaftar sebagai ' . ucfirst($user->role),
+                    'details' => 'Pembuatan Akun Baru',
                     'type' => 'user',
-                    'status' => 'Selesai',
-                    'timestamp' => $user->created_at,
+                    'status' => 'Sukses',
+                    'timestamp' => \Carbon\Carbon::parse($user->created_at),
                     'ip_address' => $user->ip_address ?? 'N/A',
                     'device' => $this->parseUserAgent($agent, $user->user_agent),
                     'latitude' => $user->latitude,
                     'longitude' => $user->longitude,
-                    // PERBAIKAN: Format URL Google Maps yang benar
                     'maps_url' => ($user->latitude && $user->longitude) ? "https://www.google.com/maps?q={$user->latitude},{$user->longitude}" : null,
                 ]);
             }
         }
 
+        // 2. DATA LOGIN PENGGUNA (FITUR BARU)
+        if (!$filter || $filter === 'login') {
+            $userLogins = User::withTrashed()
+                ->select('id_pengguna', 'nama_lengkap', 'role', 'updated_at', 'last_seen_at', 'created_at', 'ip_address', 'user_agent', 'latitude', 'longitude')
+                ->whereNotNull('ip_address') // Hanya ambil user yang IP-nya pernah tercatat saat login
+                ->take(100)->get();
+
+            foreach ($userLogins as $user) {
+                // Cari waktu aktivitas terakhir yang tersedia
+                $loginTime = $user->last_seen_at ?? $user->updated_at ?? $user->created_at;
+                $loginTime = \Carbon\Carbon::parse($loginTime);
+
+                // Hindari mencetak log ganda jika waktu register dan login sama persis
+                if ($loginTime->diffInSeconds(\Carbon\Carbon::parse($user->created_at)) < 60 && $filter !== 'login') {
+                    continue; 
+                }
+
+                $allActivities->push([
+                    'user' => $user->nama_lengkap ?? 'User Dihapus',
+                    'description' => 'Login ke Sistem',
+                    'details' => 'Akses: ' . ucfirst($user->role),
+                    'type' => 'login',
+                    'status' => 'Sukses',
+                    'timestamp' => $loginTime,
+                    'ip_address' => $user->ip_address ?? 'N/A',
+                    'device' => $this->parseUserAgent($agent, $user->user_agent),
+                    'latitude' => $user->latitude,
+                    'longitude' => $user->longitude,
+                    'maps_url' => ($user->latitude && $user->longitude) ? "https://www.google.com/maps?q={$user->latitude},{$user->longitude}" : null,
+                ]);
+            }
+        }
+
+        // 3. DATA PESANAN
         if (!$filter || $filter === 'order') {
             $newOrders = Pesanan::with('pembeli')
                 ->select('id_pesanan', 'id_pengguna_pembeli', 'resi', 'shipping_cost', 'created_at', 'ip_address', 'user_agent', 'latitude', 'longitude', 'status_pesanan', 'sender_name')
-                ->latest()->take(100)->get();
+                ->latest('created_at')->take(100)->get();
+                
             foreach ($newOrders as $order) {
                 $allActivities->push([
                     'user' => optional($order->pembeli)->nama_lengkap ?? $order->sender_name,
@@ -58,7 +94,7 @@ class ActivityLogController extends Controller
                     'details' => 'Rp ' . number_format($order->shipping_cost, 0, ',', '.'),
                     'type' => 'order',
                     'status' => $order->status_pesanan ?? 'Baru',
-                    'timestamp' => $order->created_at,
+                    'timestamp' => \Carbon\Carbon::parse($order->created_at),
                     'ip_address' => $order->ip_address ?? 'N/A',
                     'device' => $this->parseUserAgent($agent, $order->user_agent),
                     'latitude' => $order->latitude,
@@ -68,10 +104,12 @@ class ActivityLogController extends Controller
             }
         }
 
+        // 4. DATA TOP UP
         if (!$filter || $filter === 'topup') {
             $topUps = TopUp::with('customer')
                 ->select('id', 'customer_id', 'amount', 'created_at', 'ip_address', 'user_agent', 'latitude', 'longitude', 'status')
-                ->latest()->take(100)->get();
+                ->latest('created_at')->take(100)->get();
+                
             foreach ($topUps as $topUp) {
                 $allActivities->push([
                     'user' => optional($topUp->customer)->nama_lengkap ?? 'Pelanggan Dihapus',
@@ -79,7 +117,7 @@ class ActivityLogController extends Controller
                     'details' => 'Rp ' . number_format($topUp->amount, 0, ',', '.'),
                     'type' => 'topup',
                     'status' => $topUp->status,
-                    'timestamp' => $topUp->created_at,
+                    'timestamp' => \Carbon\Carbon::parse($topUp->created_at),
                     'ip_address' => $topUp->ip_address ?? 'N/A',
                     'device' => $this->parseUserAgent($agent, $topUp->user_agent),
                     'latitude' => $topUp->latitude,
@@ -89,10 +127,11 @@ class ActivityLogController extends Controller
             }
         }
 
+        // 5. DATA SCAN SPX
         if (!$filter || $filter === 'scan') {
             $spxScans = ScannedPackage::with(['user', 'kontak'])
                 ->select('id', 'user_id', 'kontak_id', 'resi_number', 'created_at', 'ip_address', 'user_agent', 'latitude', 'longitude', 'status')
-                ->latest()->take(100)->get();
+                ->latest('created_at')->take(100)->get();
             
             foreach ($spxScans as $scan) {
                 $userName = optional($scan->kontak)->nama ?? optional($scan->user)->nama_lengkap ?? 'Nama Tidak Ditemukan';
@@ -102,7 +141,7 @@ class ActivityLogController extends Controller
                     'details' => $scan->resi_number,
                     'type' => 'scan',
                     'status' => $scan->status,
-                    'timestamp' => $scan->created_at,
+                    'timestamp' => \Carbon\Carbon::parse($scan->created_at),
                     'ip_address' => $scan->ip_address ?? 'N/A',
                     'device' => $this->parseUserAgent($agent, $scan->user_agent),
                     'latitude' => $scan->latitude,
@@ -112,6 +151,7 @@ class ActivityLogController extends Controller
             }
         }
 
+        // Sorting & Pagination
         $sortedActivities = $allActivities->sortByDesc('timestamp');
         $perPage = 25;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
@@ -128,31 +168,30 @@ class ActivityLogController extends Controller
     }
 
     /**
-     * ✅ DIPERBARUI: Mengambil 5 log aktivitas terbaru dari setiap kategori,
-     * lalu mengurutkan semuanya tanpa memotongnya lagi.
+     * Mengambil 5 log aktivitas terbaru dari setiap kategori untuk Header Admin
      */
     public function getHeaderNotifications()
     {
         $allActivities = collect([]);
-        $limit = 5; // Batas pengambilan data awal untuk setiap jenis aktivitas agar efisien
+        $limit = 5;
 
-        // 1. Mengambil data PENDAFTARAN pengguna terbaru
-        $userRegistrations = User::latest()->take($limit)->get();
+        // 1. Registrasi
+        $userRegistrations = User::latest('created_at')->take($limit)->get();
         foreach ($userRegistrations as $user) {
             if ($user && $user->id_pengguna) {
                 $allActivities->push((object)[
                     'icon' => 'fa-solid fa-user-plus text-blue-500',
                     'title' => 'Pengguna baru: ' . ($user->nama_lengkap ?? 'N/A'),
-                    'details' => 'Mendaftar sebagai ' . $user->role,
+                    'details' => 'Mendaftar sebagai ' . ucfirst($user->role),
                     'url' => route('admin.customers.edit', $user->id_pengguna),
-                    'created_at' => $user->created_at,
+                    'created_at' => \Carbon\Carbon::parse($user->created_at),
                     'maps_url' => ($user->latitude && $user->longitude) ? "https://www.google.com/maps?q={$user->latitude},{$user->longitude}" : null,
                 ]);
             }
         }
 
-        // 2. Mengambil data PESANAN terbaru
-        $newOrders = Pesanan::with('pembeli')->latest()->take($limit)->get();
+        // 2. Pesanan
+        $newOrders = Pesanan::with('pembeli')->latest('created_at')->take($limit)->get();
         foreach ($newOrders as $order) {
             if ($order && $order->resi) {
                 $allActivities->push((object)[
@@ -160,14 +199,14 @@ class ActivityLogController extends Controller
                     'title' => 'Pesanan baru dari ' . (optional($order->pembeli)->nama_lengkap ?? $order->sender_name),
                     'details' => 'Total: Rp ' . number_format($order->shipping_cost, 0, ',', '.'),
                     'url' => route('admin.pesanan.show', $order->resi),
-                    'created_at' => $order->created_at,
+                    'created_at' => \Carbon\Carbon::parse($order->created_at),
                     'maps_url' => ($order->latitude && $order->longitude) ? "https://www.google.com/maps?q={$order->latitude},{$order->longitude}" : null,
                 ]);
             }
         }
         
-        // 3. Mengambil data TOP UP SALDO terbaru
-        $topUps = TopUp::with('customer')->latest()->take($limit)->get();
+        // 3. Top Up
+        $topUps = TopUp::with('customer')->latest('created_at')->take($limit)->get();
         foreach ($topUps as $topUp) {
             if ($topUp) {
                  $allActivities->push((object)[
@@ -175,44 +214,37 @@ class ActivityLogController extends Controller
                     'title' => 'Request Top Up dari ' . (optional($topUp->customer)->nama_lengkap ?? 'N/A'),
                     'details' => 'Jumlah: Rp ' . number_format($topUp->amount, 0, ',', '.'),
                     'url' => route('admin.saldo.requests.index'),
-                    'created_at' => $topUp->created_at,
+                    'created_at' => \Carbon\Carbon::parse($topUp->created_at),
                     'maps_url' => ($topUp->latitude && $topUp->longitude) ? "https://www.google.com/maps?q={$topUp->latitude},{$topUp->longitude}" : null,
                 ]);
             }
         }
         
-        // 4. Mengambil data SCAN PAKET terbaru
-        $spxScans = ScannedPackage::with(['user', 'kontak'])->latest()->take($limit)->get();
-
+        // 4. Scan SPX
+        $spxScans = ScannedPackage::with(['user', 'kontak'])->latest('created_at')->take($limit)->get();
         foreach ($spxScans as $scan) {
             if ($scan) {
-                // Ambil nama dari kontak dulu, jika tidak ada baru dari user, jika tidak ada tampilkan 'N/A'
                 $userName = optional($scan->kontak)->nama ?? optional($scan->user)->nama_lengkap ?? 'N/A';
-
                 $allActivities->push((object)[
                     'icon' => 'fa-solid fa-barcode text-purple-500',
                     'title' => 'Scan Resi oleh ' . $userName, 
                     'details' => 'Resi: ' . $scan->resi_number,
                     'url' => route('admin.spx_scans.index'),
-                    'created_at' => $scan->created_at,
+                    'created_at' => \Carbon\Carbon::parse($scan->created_at),
                     'maps_url' => ($scan->latitude && $scan->longitude) ? "https://www.google.com/maps?q={$scan->latitude},{$scan->longitude}" : null,
                 ]);
             }
         }
 
-        // Urutkan semua aktivitas yang terkumpul (hingga 20 notifikasi) dan kembalikan semuanya.
         return $allActivities->sortByDesc('created_at');
     }
 
     /**
-     * Mem-parsing string User-Agent menjadi informasi yang detail.
+     * Mem-parsing string User-Agent
      */
     private function parseUserAgent(Agent $agent, $userAgentString)
     {
-        if (empty($userAgentString)) {
-            return 'Tidak Diketahui';
-        }
-
+        if (empty($userAgentString)) return 'Tidak Diketahui';
         $agent->setUserAgent($userAgentString);
 
         $platform = $agent->platform();
@@ -227,7 +259,6 @@ class ActivityLogController extends Controller
             if ($device && $device !== 'general mobile device') {
                  return "$browserStr on $device ($platformStr)";
             }
-            return "$browserStr on $platformStr";
         }
         
         return "$browserStr on $platformStr";
