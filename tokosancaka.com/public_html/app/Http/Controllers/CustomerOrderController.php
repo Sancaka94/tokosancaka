@@ -18,6 +18,7 @@ use App\Services\FonnteService; // <-- FONTE SUDAH ADA
 // use App\Events\AdminNotificationEvent; // <-- [PERBAIKAN] Dinonaktifkan, diganti NotifikasiUmum
 use App\Services\DanaSignatureService;
 use App\Http\Controllers\Api\PayPalGatewayController;
+use Jenssegers\Agent\Agent;
 
 // 👇 [PERBAIKAN] Import yang benar untuk notifikasi
 use Illuminate\Support\Facades\Notification;
@@ -397,7 +398,9 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             $cod_fee = $calculation['cod_fee'];
 
             // 4. Siapkan Data Pesanan (Fungsi baru)
-            $pesananData = $this->_preparePesananData($validatedData, $total_paid_ongkir, $request->ip(), $request->userAgent());
+            // $pesananData = $this->_preparePesananData($validatedData, $total_paid_ongkir, $request->ip(), $request->userAgent());
+
+            $pesananData = $this->_preparePesananData($validatedData, $total_paid_ongkir, $request);
 
             // Tambahkan biaya terpisah (PENTING UNTUK CALLBACK)
             $pesananData['shipping_cost'] = $shipping_cost;
@@ -663,6 +666,8 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             'payment_method' => 'required|string', 'ansuransi' => 'required|string|in:iya,tidak',
             'pengirim_id' => 'nullable|integer',
             'penerima_id' => 'nullable|integer',
+            'latitude' => 'nullable|numeric',  // <-- Sisipkan ini
+            'longitude' => 'nullable|numeric', // <-- Sisipkan ini
             'length' => 'nullable|numeric|min:0', 'width' => 'nullable|numeric|min:0', 'height' => 'nullable|numeric|min:0',
             'save_sender' => 'nullable', 'save_receiver' => 'nullable',
             'sender_district_id' => 'required|integer', 'sender_subdistrict_id' => 'required|integer',
@@ -680,7 +685,7 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
      * FUNGSI PERSIAPAN DATA BARU (SINKRONISASI)
      * =========================================================================
      */
-    private function _preparePesananData(array $validatedData, int $total_ongkir, string $ip, string $userAgent): array
+    /* private function _preparePesananData(array $validatedData, int $total_ongkir, string $ip, string $userAgent): array
     {
         // Prefix SCK- akan diroute ke AdminPesananController oleh CheckoutController
         do { $nomorInvoice = 'SCK-' . date('Ymd') . '-'. strtoupper(Str::random(6)); } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
@@ -708,7 +713,42 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             'tujuan' => $validatedData['receiver_regency'], // <-- Kolom lama
             // 'price' akan diisi di 'store'
         ]);
-    }
+    } */
+
+    private function _preparePesananData(array $validatedData, int $total_ongkir, Request $request): array
+{
+    // Prefix SCK- akan diroute ke AdminPesananController oleh CheckoutController
+    do { $nomorInvoice = 'SCK-' . date('Ymd') . '-'. strtoupper(Str::random(6)); } while (Pesanan::where('nomor_invoice', $nomorInvoice)->exists());
+
+    $fieldsToSave = array_keys($this->_validateOrderRequest(request()));
+    $fieldsToExclude = ['save_sender', 'save_receiver', 'customer_email', 'sender_phone_original', 'receiver_phone_original'];
+    $fieldsToSave = array_diff($fieldsToSave, $fieldsToExclude);
+
+    $pesananCoreData = collect($validatedData)->only($fieldsToSave)->all();
+
+    // Deteksi Device Pengguna agar rapi
+    $agent = new Agent();
+    $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
+
+    // Menggabungkan data inti dengan data keamanan IP, Perangkat, dan Koordinat GPS
+    return array_merge($pesananCoreData, [
+        'nomor_invoice' => $nomorInvoice,
+        'status' => 'Menunggu Pembayaran',
+        'status_pesanan' => 'Menunggu Pembayaran',
+        'tanggal_pesanan' => now(),
+        'ip_address' => $request->ip(),               // Tangkap IP Asli Pembeli
+        'user_agent' => $deviceInfo,                  // Tangkap Device Pembeli
+        'latitude' => $request->input('latitude'),    // Tangkap GPS Latitude Pembeli
+        'longitude' => $request->input('longitude'),  // Tangkap GPS Longitude Pembeli
+        'kontak_pengirim_id' => $validatedData['pengirim_id'] ?? null,
+        'kontak_penerima_id' => $validatedData['penerima_id'] ?? null,
+        'total_harga_barang' => $validatedData['item_price'],
+        'nama_pembeli' => $validatedData['receiver_name'], 
+        'telepon_pembeli' => $validatedData['receiver_phone'], 
+        'alamat_pengiriman' => $validatedData['receiver_address'], 
+        'tujuan' => $validatedData['receiver_regency'], 
+    ]);
+}
 
     /**
      * =========================================================================
