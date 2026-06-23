@@ -432,10 +432,10 @@ Route::prefix('payment')->group(function () {
 Route::get('/googlepay', function () {
     // 1. Ambil Mode Aktif (sandbox / production)
     $mode = \App\Models\Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
-    
+
     // 2. Ambil Kredensial sesuai Mode yang aktif
     $paypalClientId = \App\Models\Api::getValue('PAYPAL_CLIENT_ID', $mode);
-    
+
     // 3. Setup parameter transaksi secara dinamis (Bisa Anda hubungkan dengan data keranjang/invoice nanti)
     $transaction = [
         'amount'       => '100.00', // Contoh nominal dinamis
@@ -1676,4 +1676,50 @@ Route::prefix('ppob')->group(function () {
     Route::get('/', [MarketplacePpobController::class, 'index'])->name('ppob.index');
     // Arahkan proses pembayarannya ke fungsi baru di CheckoutController
     Route::post('/pay', [CheckoutController::class, 'storePpobDanaPayment'])->name('ppob.pay');
+});
+
+
+Route::get('/ipaymu', function () {
+    // 1. Masukkan VA dan API Key Sandbox kamu di sini
+    $va     = '0000008819435180';
+    $apiKey = 'SANDBOXB6D22D26-9A97-4546-8D0B-9F64C25E4E6E';
+
+    $url    = 'https://sandbox.ipaymu.com/api/v2/cod/area?area=surabaya';
+    $method = 'GET';
+
+    // 2. Karena metode GET, Body wajib string kosong
+    $jsonBody = '';
+
+    // 3. Generate Signature sesuai standar Mutlak iPaymu
+    $requestBody  = strtolower(hash('sha256', $jsonBody));
+    $stringToSign = $method . ':' . $va . ':' . $requestBody . ':' . $apiKey;
+    $signature    = hash_hmac('sha256', $stringToSign, $apiKey);
+    $timestamp    = date('YmdHis');
+
+    // 4. Eksekusi cURL Murni
+    $ch = curl_init($url);
+    $headers = [
+        'Accept: application/json',
+        'Content-Type: application/json',
+        'va: ' . $va,
+        'signature: ' . $signature,
+        'timestamp: ' . $timestamp
+    ];
+
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+    $res = curl_exec($ch);
+    $err = curl_error($ch);
+    curl_close($ch);
+
+    if ($err) {
+        return "Error cURL: " . $err;
+    }
+
+    // Tampilkan hasil mentah ke layar browser
+    header('Content-Type: application/json');
+    echo $res;
+    exit;
 });
