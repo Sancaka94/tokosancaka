@@ -2953,14 +2953,24 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             if ($status === 'PAID') { // Ini sudah dinormalisasi dari SUCCESS menjadi PAID di handleDanaCallback
 
                 Log::info('LOG LOG: Status DANA diterima sebagai LUNAS. Mengeksekusi penambahan saldo...', ['invoice' => $merchantRef]);
-
                 $transaction->status = 'success';
                 $transaction->save();
 
                 $user = \App\Models\User::find($transaction->user_id);
                 if ($user) {
-                    // Eksekusi penambahan saldo di tabel pengguna/users
-                    $user->increment('saldo', $transaction->amount);
+
+                    // --- PERBAIKAN: TANGANI NILAI NULL PADA SALDO ---
+                    $saldoSekarang = $user->saldo ? (float) $user->saldo : 0;
+                    $saldoBaru = $saldoSekarang + (float) $transaction->amount;
+
+                    // Eksekusi update langsung ke Database
+                    \Illuminate\Support\Facades\DB::table('Pengguna')
+                        ->where('id_pengguna', $transaction->user_id)
+                        ->update(['saldo' => $saldoBaru]);
+
+                    // Update objek di memori agar log dan event terbaca akurat
+                    $user->saldo = $saldoBaru;
+                    // ------------------------------------------------
 
                     Log::info('LOG LOG: Saldo user BERHASIL ditambah.', [
                         'user_id' => $user->id_pengguna ?? $user->id,
