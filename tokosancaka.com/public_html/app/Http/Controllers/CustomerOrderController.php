@@ -2275,24 +2275,24 @@ TEXT;
     private function _getIpaymuPricing($senderDistrict, $senderRegency, $receiverDistrict, $receiverRegency, $weight, $amount)
     {
         Log::info('LOG LOG: Start iPaymu Pricing', ['origin_dist' => $senderDistrict, 'dest_dist' => $receiverDistrict]);
-        
+
         try {
             $ipaymu = app(\App\Services\IpaymuService::class);
 
             $findAreaId = function($district, $regency) use ($ipaymu) {
                 $cleanRegency = trim(str_ireplace(['kabupaten ', 'kab. ', 'kota '], '', $regency));
-                
+
                 $queries = [
-                    $district,                           
-                    $district . ' ' . $cleanRegency,     
-                    $cleanRegency                        
+                    $district,
+                    $district . ' ' . $cleanRegency,
+                    $cleanRegency
                 ];
 
                 foreach ($queries as $q) {
                     if (empty($q)) continue;
-                    
+
                     $search = $ipaymu->getCodArea($q);
-                    
+
                     // ==========================================================
                     // 🐛 KODE DEBUG DITAMBAHKAN DI SINI 🐛
                     // ==========================================================
@@ -2302,13 +2302,13 @@ TEXT;
                     // ==========================================================
 
                     $id = $search['Data'][0]['id'] ?? $search['data'][0]['id'] ?? null;
-                    
+
                     if ($id) {
                         Log::info("LOG LOG: iPaymu Area Ditemukan untuk keyword [{$q}] -> ID: {$id}");
                         return $id;
                     }
                 }
-                
+
                 return null;
             };
 
@@ -2320,7 +2320,7 @@ TEXT;
                 if ($weightKg < 1) $weightKg = 1;
 
                 $ongkirRes = $ipaymu->calculateShipping($destId, $originId, $weightKg, $amount);
-                
+
                 // ==========================================================
                 // 🐛 KODE DEBUG ONGKIR IPAYMU 🐛
                 // ==========================================================
@@ -2341,7 +2341,7 @@ TEXT;
                             'distance_fees' => $svc['price'] ?? $svc['cost'] ?? 0,
                             'extra_fees' => 0,
                             'etd' => $svc['estimation'] ?? '2-3 Hari',
-                            'cod' => true 
+                            'cod' => true
                         ];
                     }
                     Log::info('LOG LOG: iPaymu Pricing Success menemukan ' . count($results) . ' kurir.');
