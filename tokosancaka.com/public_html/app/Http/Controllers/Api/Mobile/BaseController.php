@@ -54,6 +54,7 @@ class BaseController extends Controller
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
+                'User-Agent'   => 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36'
             ])
             ->withoutVerifying()
             ->post($url, $payload);
@@ -120,11 +121,13 @@ class BaseController extends Controller
         ];
 
         try {
-            // 5. Hit ke Darmawisata
             $response = Http::withHeaders([
                 'Content-Type' => 'application/json',
                 'Accept'       => 'application/json',
-            ])->withoutVerifying()->post($url, $payload);
+                'User-Agent'   => 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36'
+            ])
+            ->withoutVerifying()
+            ->post($url, $payload);
 
             $data = $response->json();
 
