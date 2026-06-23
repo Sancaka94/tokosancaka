@@ -4385,7 +4385,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         try {
             $ipaymuService = app(\App\Services\IpaymuService::class);
 
-            // Karena kita hanya butuh Redirect umum, Payload TIDAK perlu dikirim paymentMethod/Channel.
+            // Payload pembuatan link pembayaran Top Up
             $payload = [
                 'product'    => ['Top Up Saldo - ' . $transaction->reference_id],
                 'qty'        => ['1'],
@@ -4419,7 +4419,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             }
 
             Log::error('LOG LOG: Gagal mendapatkan URL dari iPaymu', $response ?? []);
-            return back()->with('error', 'Gagal memproses pembayaran iPaymu. ' . ($response['Message'] ?? ($response['message'] ?? '')));
+            return back()->with('error', 'Gagal memproses pembayaran iPaymu. ' . ($response['Message'] ?? $response['message'] ?? ''));
 
         } catch (\Exception $e) {
             Log::error('LOG LOG: IPAYMU System Error: ' . $e->getMessage());
@@ -4429,7 +4429,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
     /**
      * =========================================================================
-     * HANDLER WEBHOOK IPAYMU
+     * HANDLER WEBHOOK IPAYMU (DENGAN SECURITY VALIDATION)
      * =========================================================================
      */
     public function ipaymuNotify(Request $request)
@@ -4437,25 +4437,43 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         Log::info('LOG LOG: IPAYMU NOTIFICATION HIT:', $request->all());
 
         try {
-            // Parameter standar Webhook dari iPaymu v2
-            $merchantRef = $request->input('reference_id');
-            $status      = $request->input('status');
-            $status_code = $request->input('status_code');
-            $amount      = $request->input('total');
+            $merchantRef   = $request->input('reference_id');
+            $transactionId = $request->input('transaction_id') ?? $request->input('trx_id');
+            $status        = $request->input('status');
+            $statusCode    = $request->input('status_code');
+            $amount        = $request->input('total');
 
-            if (!$merchantRef) {
+            if (!$merchantRef || !$transactionId) {
+                Log::warning("IPAYMU WEBHOOK: Data tidak lengkap.");
                 return response()->json(['message' => 'Invalid Request Data'], 400);
             }
 
-            // Normalisasi Status iPaymu ke Internal Status (PAID / FAILED)
+            // ==========================================================
+            // 🛡️ SECURITY CHECK: Validasi silang ke server iPaymu
+            // Mencegah Hacker memalsukan Webhook (Fake Callback)
+            // ==========================================================
+            $ipaymuService = app(\App\Services\IpaymuService::class);
+            $checkRes = $ipaymuService->checkTransaction($transactionId);
+
+            $isValid = $checkRes['Success'] ?? ($checkRes['success'] ?? false);
+
+            if (!$isValid) {
+                Log::critical("IPAYMU WEBHOOK FAKE DETECTED! Transaksi tidak ditemukan di server iPaymu.");
+                return response()->json(['message' => 'Unauthorized / Fake Transaction'], 401);
+            }
+
+            // Ambil status asli langsung dari server iPaymu (Bukan dari request Webhook)
+            // Untuk memastikan keaslian status
+            $realStatus = $checkRes['Data']['Status'] ?? ($checkRes['data']['status'] ?? $statusCode);
+
             $internalStatus = 'PENDING';
 
-            // Status Code 1 = Berhasil / Lunas
-            if ($status_code == 1 || strtolower($status) == 'berhasil' || strtolower($status) == 'sukses') {
+            // Status 1 atau 6 = Berhasil / Lunas di iPaymu
+            if ($realStatus == 1 || $realStatus == 6 || strtolower($status) == 'berhasil' || strtolower($status) == 'sukses') {
                 $internalStatus = 'PAID';
             }
-            // Status Code -1, -2, dll = Gagal / Expired
-            elseif ($status_code < 0 || strtolower($status) == 'gagal' || strtolower($status) == 'expired') {
+            // Status -1, -2 = Gagal / Expired
+            elseif ($realStatus < 0 || strtolower($status) == 'gagal' || strtolower($status) == 'expired') {
                 $internalStatus = 'FAILED';
             }
 
