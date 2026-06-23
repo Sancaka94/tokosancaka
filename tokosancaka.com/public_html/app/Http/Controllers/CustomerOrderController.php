@@ -2275,66 +2275,73 @@ TEXT;
     private function _getIpaymuPricing($senderDistrict, $senderRegency, $receiverDistrict, $receiverRegency, $weight, $amount)
     {
         Log::info('LOG LOG: Start iPaymu Pricing', ['origin_dist' => $senderDistrict, 'dest_dist' => $receiverDistrict]);
-
+        
         try {
             $ipaymu = app(\App\Services\IpaymuService::class);
 
-            // Helper internal untuk mencari Area ID secara progresif agar pasti ketemu
             $findAreaId = function($district, $regency) use ($ipaymu) {
-                // Bersihkan kata "Kabupaten" atau "Kota" agar pencarian lebih akurat
                 $cleanRegency = trim(str_ireplace(['kabupaten ', 'kab. ', 'kota '], '', $regency));
-
-                // Daftar antrean kata kunci pencarian (Dari yang paling spesifik ke umum)
+                
                 $queries = [
-                    $district,                           // 1. Coba "Wiyung"
-                    $district . ' ' . $cleanRegency,     // 2. Coba "Wiyung Surabaya"
-                    $cleanRegency                        // 3. Coba "Surabaya" (Jurus terakhir)
+                    $district,                           
+                    $district . ' ' . $cleanRegency,     
+                    $cleanRegency                        
                 ];
 
                 foreach ($queries as $q) {
                     if (empty($q)) continue;
-
+                    
                     $search = $ipaymu->getCodArea($q);
+                    
+                    // ==========================================================
+                    // 🐛 KODE DEBUG DITAMBAHKAN DI SINI 🐛
+                    // ==========================================================
+                    Log::info("LOG DEBUG IPAYMU: Raw Response Cek Area [{$q}]", [
+                        'response' => $search
+                    ]);
+                    // ==========================================================
 
-                    // iPaymu sering tidak konsisten antara 'Data' (D besar) dan 'data' (d kecil)
                     $id = $search['Data'][0]['id'] ?? $search['data'][0]['id'] ?? null;
-
+                    
                     if ($id) {
                         Log::info("LOG LOG: iPaymu Area Ditemukan untuk keyword [{$q}] -> ID: {$id}");
                         return $id;
                     }
                 }
-
+                
                 return null;
             };
 
-            // 1. Cari Area ID Asal dan Tujuan menggunakan Helper di atas
             $originId = $findAreaId($senderDistrict, $senderRegency);
             $destId   = $findAreaId($receiverDistrict, $receiverRegency);
 
             if ($originId && $destId) {
-                // Konversi gram ke KG (dibulatkan ke atas minimal 1 KG)
                 $weightKg = ceil($weight / 1000);
                 if ($weightKg < 1) $weightKg = 1;
 
-                // 2. Hitung Ongkir
                 $ongkirRes = $ipaymu->calculateShipping($destId, $originId, $weightKg, $amount);
+                
+                // ==========================================================
+                // 🐛 KODE DEBUG ONGKIR IPAYMU 🐛
+                // ==========================================================
+                Log::info("LOG DEBUG IPAYMU: Raw Response Cek Harga/Ongkir", [
+                    'response' => $ongkirRes
+                ]);
+                // ==========================================================
 
                 $results = [];
-                // Tangkap data dengan aman (Data vs data)
                 $couriers = $ongkirRes['Data'] ?? $ongkirRes['data'] ?? [];
 
                 if (is_array($couriers) && count($couriers) > 0) {
                     foreach ($couriers as $svc) {
                         $results[] = [
                             'service' => 'ipaymu',
-                            // Format: ipaymu-JNE, ipaymu-SICEPAT, dll
                             'service_type' => 'ipaymu-' . strtoupper($svc['courier'] ?? 'REGULAR'),
                             'cost' => $svc['price'] ?? $svc['cost'] ?? 0,
                             'distance_fees' => $svc['price'] ?? $svc['cost'] ?? 0,
                             'extra_fees' => 0,
                             'etd' => $svc['estimation'] ?? '2-3 Hari',
-                            'cod' => true // Fitur utama COD Komship
+                            'cod' => true 
                         ];
                     }
                     Log::info('LOG LOG: iPaymu Pricing Success menemukan ' . count($results) . ' kurir.');
