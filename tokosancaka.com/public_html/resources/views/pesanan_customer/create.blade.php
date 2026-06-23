@@ -1590,61 +1590,100 @@
                         else { kiriminAjaResults.push(service); }
                     });
 
-                    // Update if-else untuk merender dan memunculkan modal:
-                    if (vendorFilter === 'deliveree') {
+                  if (vendorFilter === 'deliveree') {
                         renderDelivereeModal(delivereeResults, { serviceType: serviceType });
                     } else if (vendorFilter === 'lalamove') {
                         renderLalamoveModal(lalamoveResults, { serviceType: serviceType });
                     } else if (vendorFilter === 'ipaymu') {
-                        renderIpaymuModal(ipaymuResults, { serviceType: serviceType }); // TAMBAHKAN INI
+                        renderIpaymuModal(ipaymuResults, { serviceType: serviceType });
                     } else {
+                        // JIKA FILTER "SEMUA" DIPILIH:
                         const b = $('#ongkirResultsContainer').empty();
-                        if (kiriminAjaResults.length === 0) {
-                            b.html(`<div class="alert alert-warning text-center shadow-sm">Tidak ada layanan yang tersedia.</div>`); return;
+
+                        // 1. Tampilkan KiriminAja terlebih dahulu
+                        if (kiriminAjaResults.length > 0) {
+                            b.append(`<div class="ongkir-header-row d-none d-lg-flex"><div class="ongkir-item-col col-service">Layanan</div><div class="ongkir-item-col col-etd">Estimasi</div><div class="ongkir-item-col col-cod">COD</div><div class="ongkir-item-col col-price">Tarif</div><div class="ongkir-item-col col-action"></div></div>`);
+
+                            kiriminAjaResults.forEach(i => {
+                                // ... (Sisa kode forEach KiriminAja tidak perlu diubah, biarkan seperti aslinya)
+                                const logoName = (i.service || "").toLowerCase().replace(/\s+/g, '');
+                                let logoUrl = logoName === 'gosend' ? 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png' : (logoName === 'grab' ? 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png' : `{{ asset('public/storage/logo-ekspedisi/') }}/${logoName}.png`);
+                                const safeService = (i.service || '').toString().replace(/-/g, ' ');
+                                const safeServiceTypeLabel = (i.service_type_label || '').toString().replace(/-/g, ' ');
+                                const useInsurance = $('#ansuransi').val() === 'iya';
+                                const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
+                                const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
+                                const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${codFee}`;
+                                const baseOngkirCost = parseInt(i.cost || 0) + parseInt(insuranceFeeValue || 0);
+                                const actualCodFee = parseInt(codFee || 0);
+                                const hasDiscount = i.price?.base_price && i.price.base_price > i.cost;
+                                const basePriceFmt = hasDiscount ? formatRupiah(i.price.base_price) : '';
+                                const insuranceFee = i.insurance || 0;
+                                let feeDetailsHtml = '';
+                                if (useInsurance && insuranceFee > 0) { feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFee)}</small></div>`; }
+                                if (i.cod && codFee > 0) { feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`; }
+                                let etdHtml = i.etd ? (i.is_instant ? `<span>${i.etd}</span>` : `<span>${i.etd} Hari</span>`) : '';
+                                const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}" data-shipping-cost="${parseInt(i.cost || 0)}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">Kirim Paket</button>`;
+                                b.append(`
+                                <div class="ongkir-item-card">
+                                    <div class="ongkir-item-col col-service">
+                                        <img src="${logoUrl}" class="ongkir-logo" onerror="this.style.display='none'">
+                                        <div class="service-info"><span class="service-name">${i.service_name}</span><span class="service-type">${i.service_type_label}</span></div>
+                                    </div>
+                                    <div class="ongkir-item-col col-etd"><span class="col-label">Estimasi</span>${etdHtml}</div>
+                                    <div class="ongkir-item-col col-cod"><span class="col-label">COD</span><span>${i.cod ? 'Tersedia' : '-'}</span></div>
+                                    <div class="ongkir-item-col col-price"><span class="col-label">Tarif</span>
+                                        <div class="price-value"><span class="final-price">${formatRupiah(i.cost)}</span>${hasDiscount ? `<span class="base-price text-decoration-line-through">${basePriceFmt}</span>` : ''}</div>
+                                        <div class="price-details">${feeDetailsHtml}</div>
+                                    </div>
+                                    <div class="ongkir-item-col col-action">${buttonHtml}</div>
+                                </div>`);
+                            });
                         }
 
-                        b.append(`<div class="ongkir-header-row d-none d-lg-flex"><div class="ongkir-item-col col-service">Layanan</div><div class="ongkir-item-col col-etd">Estimasi</div><div class="ongkir-item-col col-cod">COD</div><div class="ongkir-item-col col-price">Tarif</div><div class="ongkir-item-col col-action"></div></div>`);
+                        // 2. TAMBAHKAN: Tampilkan juga hasil iPaymu di modal yang sama jika filter "Semua" aktif
+                        if (ipaymuResults.length > 0) {
+                            // Tambahkan pembatas visual
+                            b.append(`<div class="w-100 my-4 text-center text-muted" style="border-top: 1px dashed #ced4da; padding-top: 10px;"><small class="fw-bold" style="color: #6f42c1;">--- LAYANAN ALTERNATIF DARI IPAYMU COD ---</small></div>`);
 
-                        kiriminAjaResults.forEach(i => {
-                            const logoName = (i.service || "").toLowerCase().replace(/\s+/g, '');
-                            let logoUrl = logoName === 'gosend' ? 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png' : (logoName === 'grab' ? 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png' : `{{ asset('public/storage/logo-ekspedisi/') }}/${logoName}.png`);
+                            ipaymuResults.forEach(i => {
+                                let rawName = i.service_type_label || '';
+                                let displayServiceType = rawName.toUpperCase().replace('IPAYMU-', '');
+                                let imgUrl = getIpaymuLogo(displayServiceType);
+                                const useInsurance = $('#ansuransi').val() === 'iya';
+                                const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
+                                const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
+                                const baseOngkirCost = parseInt(i.distance_fees || i.cost || 0);
+                                const actualCodFee = parseInt(codFee || 0);
+                                const payloadValue = `${serviceType}-${i.service_name}-${rawName}-${i.cost}-${insuranceFeeValue}-${codFee}`;
 
-                            const safeService = (i.service || '').toString().replace(/-/g, ' ');
-                            const safeServiceTypeLabel = (i.service_type_label || '').toString().replace(/-/g, ' ');
-                            const useInsurance = $('#ansuransi').val() === 'iya';
-                            const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
-                            const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
-                            const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${codFee}`;
+                                let feeDetailsHtml = '';
+                                if (useInsurance && insuranceFeeValue > 0) { feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFeeValue)}</small></div>`; }
+                                if (i.cod && codFee > 0) { feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`; }
 
-                            const baseOngkirCost = parseInt(i.cost || 0) + parseInt(insuranceFeeValue || 0);
-                            const actualCodFee = parseInt(codFee || 0);
-                            const hasDiscount = i.price?.base_price && i.price.base_price > i.cost;
-                            const basePriceFmt = hasDiscount ? formatRupiah(i.price.base_price) : '';
+                                const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" style="background-color: #6f42c1;" data-value="${payloadValue}" data-display="iPaymu - ${displayServiceType}" data-cod-supported="${i.cod}" data-shipping-cost="${baseOngkirCost}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">Pilih Kurir</button>`;
 
-                            const insuranceFee = i.insurance || 0;
-                            let feeDetailsHtml = '';
-                            if (useInsurance && insuranceFee > 0) { feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFee)}</small></div>`; }
-                            if (i.cod && codFee > 0) { feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`; }
+                                b.append(`
+                                <div class="ongkir-item-card" style="border-left: 4px solid #6f42c1;">
+                                    <div class="ongkir-item-col col-service">
+                                        <img src="${imgUrl}" class="ongkir-logo" onerror="this.src='https://tokosancaka.com/public/assets/ipaymu.jpg'">
+                                        <div class="service-info"><span class="service-name">${displayServiceType}</span><span class="service-type" style="color:#6f42c1; font-weight:bold;">iPaymu COD</span></div>
+                                    </div>
+                                    <div class="ongkir-item-col col-etd"><span class="col-label">Estimasi</span><span>${i.etd}</span></div>
+                                    <div class="ongkir-item-col col-cod"><span class="col-label">COD</span><span class="text-success fw-bold">Wajib</span></div>
+                                    <div class="ongkir-item-col col-price"><span class="col-label">Tarif</span>
+                                        <div class="price-value"><span class="final-price" style="color:#6f42c1;">${formatRupiah(i.cost)}</span></div>
+                                        <div class="price-details">${feeDetailsHtml}</div>
+                                    </div>
+                                    <div class="ongkir-item-col col-action">${buttonHtml}</div>
+                                </div>`);
+                            });
+                        }
 
-                            let etdHtml = i.etd ? (i.is_instant ? `<span>${i.etd}</span>` : `<span>${i.etd} Hari</span>`) : '';
-
-                            const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}" data-shipping-cost="${parseInt(i.cost || 0)}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">Kirim Paket</button>`;
-
-                            b.append(`
-                            <div class="ongkir-item-card">
-                                <div class="ongkir-item-col col-service">
-                                    <img src="${logoUrl}" class="ongkir-logo" onerror="this.style.display='none'">
-                                    <div class="service-info"><span class="service-name">${i.service_name}</span><span class="service-type">${i.service_type_label}</span></div>
-                                </div>
-                                <div class="ongkir-item-col col-etd"><span class="col-label">Estimasi</span>${etdHtml}</div>
-                                <div class="ongkir-item-col col-cod"><span class="col-label">COD</span><span>${i.cod ? 'Tersedia' : '-'}</span></div>
-                                <div class="ongkir-item-col col-price"><span class="col-label">Tarif</span>
-                                    <div class="price-value"><span class="final-price">${formatRupiah(i.cost)}</span>${hasDiscount ? `<span class="base-price text-decoration-line-through">${basePriceFmt}</span>` : ''}</div>
-                                    <div class="price-details">${feeDetailsHtml}</div>
-                                </div>
-                                <div class="ongkir-item-col col-action">${buttonHtml}</div>
-                            </div>`);
-                        });
+                        // Tampilkan pesan error jika sama sekali tidak ada layanan (baik dari KiriminAja maupun iPaymu)
+                        if (kiriminAjaResults.length === 0 && ipaymuResults.length === 0) {
+                            b.html(`<div class="alert alert-warning text-center shadow-sm">Tidak ada layanan yang tersedia.</div>`);
+                        }
                     }
                 },
                 error: function(jqXHR) {

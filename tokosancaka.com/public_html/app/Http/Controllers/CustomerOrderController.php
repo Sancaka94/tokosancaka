@@ -330,9 +330,10 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
         }
 
         // --- TAMBAHAN: PANGGIL LAYANAN IPAYMU (COD/KOMSHIP) ---
+        // Menggunakan sender_district (Kecamatan) sebagai prioritas utama
         $ipaymuOptions = $this->_getIpaymuPricing(
-            $validated['sender_district'] ?? $validated['sender_regency'] ?? 'Jakarta',
-            $validated['receiver_district'] ?? $validated['receiver_regency'] ?? 'Jakarta',
+            $validated['sender_district'] ?? 'Jakarta',
+            $validated['receiver_district'] ?? 'Jakarta',
             $validated['weight'],
             $itemValue
         );
