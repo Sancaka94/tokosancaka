@@ -1685,7 +1685,7 @@ Route::get('/ipaymu', function () {
     $apiKey = 'AA05770D-0816-41AF-BD92-6914BF813C2D';
 
    // PERHATIKAN: Cek Area COD iPaymu V2 menggunakan GET, parameter di URL!
-    $url    = 'https://sandbox.ipaymu.com/api/v2/cod/area?area=surabaya';
+    $url    = 'https://my.ipaymu.com/api/v2/cod/area?area=surabaya';
     $method = 'GET';
 
     // 2. Karena GET, jsonBody dibiarkan kosong (aturan iPaymu v2)
