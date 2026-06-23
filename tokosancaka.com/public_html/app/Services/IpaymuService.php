@@ -119,4 +119,45 @@ class IpaymuService
     {
         return $this->request('POST', '/api/v2/payment', $paymentData);
     }
+
+    /**
+     * 5. POST Check Transaction
+     * Berfungsi untuk mengecek status transaksi secara realtime.
+     * Sangat berguna jika webhook gagal diterima dan kamu ingin mengecek manual.
+     */
+    public function checkTransaction(string|int $transactionId)
+    {
+        $payload = [
+            'transactionId' => (string) $transactionId,
+            'account'       => $this->va, // Dokumentasi mensyaratkan VA dikirim di body
+        ];
+
+        return $this->request('POST', '/api/v2/transaction', $payload);
+    }
+
+    /**
+     * 6. POST Check Balance
+     * Berfungsi untuk mengecek saldo akun iPaymu kamu.
+     * Bisa digunakan untuk ditampilkan di Dashboard Admin.
+     */
+    public function checkBalance()
+    {
+        $payload = [
+            'account' => $this->va,
+        ];
+
+        return $this->request('POST', '/api/v2/balance', $payload);
+    }
+
+    /**
+     * 7. POST History Transaction
+     * Berfungsi untuk melihat data riwayat transaksi iPaymu.
+     */
+    public function getHistory(array $filters = [])
+    {
+        // Gabungkan VA ke dalam parameter filter
+        $filters['account'] = $this->va;
+
+        return $this->request('POST', '/api/v2/history', $filters);
+    }
 }

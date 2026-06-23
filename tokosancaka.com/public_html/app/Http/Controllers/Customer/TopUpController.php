@@ -4367,21 +4367,15 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         return back()->with('error', $message);
     }
 
-    /**
-     * =========================================================================
-     * EKSEKUTOR PEMBAYARAN IPAYMU
-     * =========================================================================
-     */
     protected function createPaymentIpaymu(Transaction $transaction, $paymentMethod)
     {
         Log::info('LOG LOG: IPAYMU START for Transaction: ' . $transaction->reference_id);
         $user = Auth::user();
 
         try {
-            // Memanggil IpaymuService yang sudah dibuat sebelumnya
             $ipaymuService = app(\App\Services\IpaymuService::class);
 
-            // Menyiapkan Payload iPaymu
+            // Karena kita hanya butuh Redirect umum, Payload TIDAK perlu dikirim paymentMethod/Channel.
             $payload = [
                 'product'    => ['Top Up Saldo - ' . $transaction->reference_id],
                 'qty'        => ['1'],
@@ -4389,29 +4383,22 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 'amount'     => $transaction->amount,
                 'returnUrl'  => route('customer.topup.show', ['topup' => $transaction->reference_id]),
                 'cancelUrl'  => route('customer.topup.show', ['topup' => $transaction->reference_id]),
-                'notifyUrl'  => url('/api/webhook/ipaymu'), // URL untuk callback Webhook
+                'notifyUrl'  => url('/api/webhook/ipaymu'),
                 'referenceId'=> $transaction->reference_id,
                 'buyerName'  => $user->nama_lengkap ?? 'Customer Sancaka',
                 'buyerEmail' => $user->email ?? 'email@kosong.com',
                 'buyerPhone' => $user->no_wa ?? '',
             ];
 
-            // Deteksi spesifik channel (misal: IPAYMU_VA_BCA, IPAYMU_QRIS)
-            $parts = explode('_', $paymentMethod);
-            if (count($parts) >= 3 && $parts[1] === 'VA') {
-                $payload['paymentMethod'] = 'va';
-                $payload['paymentChannel'] = strtolower($parts[2]);
-            } elseif (count($parts) >= 2 && $parts[1] === 'QRIS') {
-                $payload['paymentMethod'] = 'qris';
-                $payload['paymentChannel'] = 'qris';
-            }
-
             // Hit ke API iPaymu
             $response = $ipaymuService->createPayment($payload);
 
-            if (isset($response['success']) && $response['success'] == true) {
+            // Cek status keberhasilan dari iPaymu
+            $isSuccess = $response['Success'] ?? ($response['success'] ?? false);
+
+            if ($isSuccess) {
                 // Ambil URL Redirect Pembayaran
-                $paymentUrl = $response['Data']['Url'] ?? null;
+                $paymentUrl = $response['Data']['Url'] ?? ($response['data']['url'] ?? null);
 
                 if ($paymentUrl) {
                     $transaction->payment_url = $paymentUrl;
@@ -4422,7 +4409,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             }
 
             Log::error('LOG LOG: Gagal mendapatkan URL dari iPaymu', $response ?? []);
-            return back()->with('error', 'Gagal memproses pembayaran iPaymu. ' . ($response['message'] ?? ''));
+            return back()->with('error', 'Gagal memproses pembayaran iPaymu. ' . ($response['Message'] ?? ($response['message'] ?? '')));
 
         } catch (\Exception $e) {
             Log::error('LOG LOG: IPAYMU System Error: ' . $e->getMessage());
