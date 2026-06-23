@@ -37,10 +37,10 @@
 
         {{-- MAIN LAYOUT: KIRI (MENU + TOGGLE) - KANAN (FORM) --}}
         <div class="flex flex-col md:flex-row gap-8 items-start">
-            
+
             {{-- KOLOM KIRI: SIDEBAR MENU DENGAN BG PUTIH --}}
             <div class="w-full md:w-80 shrink-0 bg-white rounded-lg border border-zinc-200 shadow-sm p-3 flex flex-col gap-1.5">
-                
+
                 {{-- Menu KiriminAja --}}
                 <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
                      :class="activeTab === 'kiriminaja' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
@@ -211,6 +211,23 @@
                     </div>
                 </div>
 
+                {{-- TAMBAHAN IPAYMU: Menu iPaymu --}}
+                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                     :class="activeTab === 'ipaymu' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                     @click="activeTab = 'ipaymu'">
+                    <span class="text-sm font-semibold" :class="activeTab === 'ipaymu' ? 'text-zinc-900' : 'text-zinc-600'">iPaymu</span>
+                    <div class="flex items-center space-x-1.5" @click.stop>
+                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="ipaymuData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
+                        <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                :class="ipaymuData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                @click="ipaymuData.mode = (ipaymuData.mode === 'production' ? 'sandbox' : 'production')">
+                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                  :class="ipaymuData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                        </button>
+                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="ipaymuData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                    </div>
+                </div>
+
                 {{-- Menu Fonnte --}}
                 <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
                      :class="activeTab === 'fonnte' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
@@ -223,7 +240,7 @@
 
             {{-- KOLOM KANAN: KONTEN FORM (TOGGLE DIHAPUS DARI HEADER) --}}
             <div class="flex-1 w-full bg-white rounded-lg border border-zinc-200 shadow-sm min-h-[400px]">
-                
+
                 {{-- 1. TAB KIRIMINAJA --}}
                 <div x-show="activeTab === 'kiriminaja'" x-transition.opacity>
                     <div class="p-6 border-b border-zinc-200">
@@ -234,7 +251,7 @@
                         @csrf @method('PUT')
                         <input type="hidden" name="type" value="kiriminaja">
                         <input type="hidden" name="kiriminaja_mode" x-model="kaData.mode">
-                        
+
                         <div class="p-3 bg-zinc-50 border border-zinc-200 rounded text-xs text-zinc-600">
                             Status: <span class="font-bold text-zinc-900" x-text="kaData.mode === 'production' ? 'PRODUCTION (LIVE) - Transaksi Nyata' : 'STAGING - Mode Pengetesan'"></span>
                         </div>
@@ -263,7 +280,7 @@
                         @csrf @method('PUT')
                         <input type="hidden" name="type" value="tripay">
                         <input type="hidden" name="tripay_mode" x-model="tpData.mode">
-                        
+
                         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                             <div>
                                 <label class="block text-xs font-medium text-zinc-700 uppercase">Merchant Code</label>
@@ -384,7 +401,7 @@
                                 <label class="block text-xs font-medium text-zinc-700 uppercase">Base URL API</label>
                                 <input type="url" name="dharmawisata_base_url" x-model="dwData[dwData.mode].base_url" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border">
                             </div>
-                            
+
                             <div class="sm:col-span-2 pt-2">
                                 <h4 class="text-xs font-bold text-zinc-800 uppercase mb-2">Auto-Reconnect Auth</h4>
                             </div>
@@ -577,7 +594,7 @@
                             <label class="block text-xs font-medium text-zinc-700 uppercase">Client ID</label>
                             <input type="text" name="paypal_client_id" x-model="paypalData[paypalData.mode].client_id" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" required>
                         </div>
-                        
+
                         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                             <div>
                                 <label class="block text-xs font-medium text-zinc-700 uppercase">Secret Key 1</label>
@@ -646,6 +663,44 @@
                     </form>
                 </div>
 
+                {{-- TAMBAHAN IPAYMU: 12. TAB IPAYMU --}}
+                <div x-show="activeTab === 'ipaymu'" style="display:none;" x-transition.opacity>
+                    <div class="p-6 border-b border-zinc-200">
+                        <div class="flex items-center gap-4 mb-1">
+                            <h3 class="text-lg font-bold text-zinc-900">iPaymu</h3>
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sandbox</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': ipaymuData.mode === 'production', 'border-zinc-300': ipaymuData.mode === 'sandbox'}" @click="ipaymuData.mode = (ipaymuData.mode === 'production' ? 'sandbox' : 'production')" :checked="ipaymuData.mode === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-zinc-500">Konfigurasi API Payment Gateway iPaymu v2.</p>
+                    </div>
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="ipaymu">
+                        <input type="hidden" name="ipaymu_mode" x-model="ipaymuData.mode">
+
+                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">Virtual Account (VA)</label>
+                                <input type="text" name="ipaymu_va" x-model="ipaymuData[ipaymuData.mode].va" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">API Key</label>
+                                <input type="text" name="ipaymu_api_key" x-model="ipaymuData[ipaymuData.mode].api_key" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-4">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded hover:bg-black text-sm font-medium transition-colors">Simpan Pengaturan</button>
+                        </div>
+                    </form>
+                </div>
+
             </div>
         </div>
 
@@ -658,7 +713,7 @@
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('apiSettings', () => ({
-            activeTab: 'paypal',
+            activeTab: 'ipaymu', // Tab default langsung menampilkan iPaymu
 
             // Sinkronisasi data JSON dari Controller PHP
             kaData: @json($kiriminaja ?? ['mode' => 'sandbox']),
@@ -671,6 +726,9 @@
             lalamoveData: @json($lalamove ?? ['mode' => 'sandbox']),
             paypalData: @json($paypal ?? ['mode' => 'sandbox']),
             delivereeData: @json($deliveree ?? ['mode' => 'sandbox']),
+
+            // TAMBAHAN IPAYMU:
+            ipaymuData: @json($ipaymu ?? ['mode' => 'sandbox']),
         }))
     })
 </script>

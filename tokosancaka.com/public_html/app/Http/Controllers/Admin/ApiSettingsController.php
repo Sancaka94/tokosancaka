@@ -24,6 +24,8 @@ class ApiSettingsController extends Controller
         $lalamoveMode     = Api::getValue('LALAMOVE_MODE', 'global', 'sandbox');
         $paypalMode       = Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
         $delivereeMode    = Api::getValue('DELIVEREE_MODE', 'global', 'sandbox');
+        // --- TAMBAHAN IPAYMU ---
+        $ipaymuMode       = Api::getValue('IPAYMU_MODE', 'global', 'sandbox');
 
         $kiriminaja = [
             'mode' => $kaMode,
@@ -193,7 +195,21 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree'));
+        // --- TAMBAHAN IPAYMU ---
+        $ipaymu = [
+            'mode' => $ipaymuMode,
+            'sandbox' => [
+                'va'      => Api::getValue('IPAYMU_VA', 'sandbox'),
+                'api_key' => Api::getValue('IPAYMU_API_KEY', 'sandbox'),
+            ],
+            'production' => [
+                'va'      => Api::getValue('IPAYMU_VA', 'production'),
+                'api_key' => Api::getValue('IPAYMU_API_KEY', 'production'),
+            ]
+        ];
+
+        // Tambahkan string 'ipaymu' di dalam compact()
+        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu'));
     }
 
     public function update(Request $request)
@@ -249,15 +265,15 @@ class ApiSettingsController extends Controller
             } elseif ($type === 'dharmawisata') {
                 $env = $request->dharmawisata_mode;
                 Api::setValue('DHARMAWISATA_MODE', $env, 'dharmawisata', 'global');
-                
+
                 // Tambahan: Auto-detect default Base URL sesuai environment
                 $baseUrl = $request->dharmawisata_base_url;
                 if (empty($baseUrl)) {
-                    $baseUrl = ($env === 'production') 
-                        ? 'https://www.darmawisataindonesiah2h.co.id/' 
+                    $baseUrl = ($env === 'production')
+                        ? 'https://www.darmawisataindonesiah2h.co.id/'
                         : 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h/';
                 }
-                
+
                 Api::setValue('DHARMAWISATA_USER_ID', $request->dharmawisata_user_id, 'dharmawisata', $env);
                 Api::setValue('DHARMAWISATA_ACCESS_TOKEN', $request->dharmawisata_access_token, 'dharmawisata', $env);
                 Api::setValue('DHARMAWISATA_BASE_URL', $baseUrl, 'dharmawisata', $env);
@@ -294,22 +310,22 @@ class ApiSettingsController extends Controller
                 Api::setValue('MIDTRANS_SERVER_KEY', $request->midtrans_server_key, 'midtrans', $env);
                 Api::setValue('MIDTRANS_SNAP_CLIENT_ID', $request->midtrans_snap_client_id, 'midtrans', $env);
                 Api::setValue('MIDTRANS_SNAP_CLIENT_SECRET', $request->midtrans_snap_client_secret, 'midtrans', $env);
-            
+
             // LOG LOG
             } elseif ($type === 'lalamove') {
                 $env = $request->lalamove_mode;
                 Api::setValue('LALAMOVE_MODE', $env, 'lalamove', 'global');
                 Api::setValue('LALAMOVE_API_KEY', $request->lalamove_api_key, 'lalamove', $env);
                 Api::setValue('LALAMOVE_API_SECRET', $request->lalamove_api_secret, 'lalamove', $env);
-            
+
             } elseif ($type === 'paypal') {
                 $env = $request->paypal_mode;
-                
+
                 Api::setValue('PAYPAL_MODE', $env, 'paypal', 'global');
                 Api::setValue('PAYPAL_CLIENT_ID', $request->paypal_client_id, 'paypal', $env);
                 Api::setValue('PAYPAL_SECRET_1', $request->paypal_secret_1, 'paypal', $env);
                 Api::setValue('PAYPAL_SECRET_2', $request->paypal_secret_2, 'paypal', $env);
-                
+
                 if ($request->has('paypal_webhook_id')) {
                     Api::setValue('PAYPAL_WEBHOOK_ID', $request->paypal_webhook_id, 'paypal', $env);
                 }
@@ -320,12 +336,12 @@ class ApiSettingsController extends Controller
                 Api::setValue('DELIVEREE_MODE', $env, 'deliveree', 'global');
                 Api::setValue('DELIVEREE_COMPANY_ID', $request->deliveree_company_id, 'deliveree', $env);
                 Api::setValue('DELIVEREE_API_KEY', $request->deliveree_api_key, 'deliveree', $env);
-                
+
                 // Set Base URL dinamis. Jika form dikosongkan, gunakan default v10 dari dokumentasi.
                 $baseUrl = $request->deliveree_base_url;
                 if (empty($baseUrl)) {
-                    $baseUrl = ($env === 'production') 
-                        ? 'https://api.deliveree.com/public_api/v10' 
+                    $baseUrl = ($env === 'production')
+                        ? 'https://api.deliveree.com/public_api/v10'
                         : 'https://api.sandbox.deliveree.com/public_api/v10';
                 }
                 Api::setValue('DELIVEREE_BASE_URL', $baseUrl, 'deliveree', $env);
@@ -333,6 +349,13 @@ class ApiSettingsController extends Controller
                 if ($request->has('deliveree_webhook_url')) {
                     Api::setValue('DELIVEREE_WEBHOOK_URL', $request->deliveree_webhook_url, 'deliveree', $env);
                 }
+
+            // --- TAMBAHAN IPAYMU ---
+            } elseif ($type === 'ipaymu') {
+                $env = $request->ipaymu_mode;
+                Api::setValue('IPAYMU_MODE', $env, 'ipaymu', 'global');
+                Api::setValue('IPAYMU_VA', $request->ipaymu_va, 'ipaymu', $env);
+                Api::setValue('IPAYMU_API_KEY', $request->ipaymu_api_key, 'ipaymu', $env);
             }
 
             return back()->with('success', 'Konfigurasi ' . strtoupper($type) . ' berhasil diperbarui untuk mode ' . strtoupper($request->input("{$type}_mode") ?? 'GLOBAL') . '.');
@@ -357,7 +380,8 @@ class ApiSettingsController extends Controller
                 $targetMidtrans     = 'sandbox';
                 $targetLalamove     = 'sandbox';
                 $targetPaypal       = 'sandbox';
-                $targetDeliveree    = 'sandbox'; // TAMBAHAN DELIVEREE
+                $targetDeliveree    = 'sandbox';
+                $targetIpaymu       = 'sandbox'; // --- TAMBAHAN IPAYMU ---
                 $label              = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
                 $targetKA           = 'production';
@@ -369,7 +393,8 @@ class ApiSettingsController extends Controller
                 $targetMidtrans     = 'production';
                 $targetLalamove     = 'production';
                 $targetPaypal       = 'production';
-                $targetDeliveree    = 'production'; // TAMBAHAN DELIVEREE
+                $targetDeliveree    = 'production';
+                $targetIpaymu       = 'production'; // --- TAMBAHAN IPAYMU ---
                 $label              = 'PRODUCTION (LIVE)';
             }
 
@@ -380,8 +405,9 @@ class ApiSettingsController extends Controller
             Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global');
             Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
             Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
-            Api::setValue('DELIVEREE_MODE', $targetDeliveree, 'deliveree', 'global'); // TAMBAHAN DELIVEREE
-            
+            Api::setValue('DELIVEREE_MODE', $targetDeliveree, 'deliveree', 'global');
+            Api::setValue('IPAYMU_MODE', $targetIpaymu, 'ipaymu', 'global'); // --- TAMBAHAN IPAYMU ---
+
             // LOG LOG
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
             Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
@@ -406,11 +432,12 @@ class ApiSettingsController extends Controller
                 $targetDoku         = 'production';
                 $targetIAK          = 'production';
                 $targetDharmawisata = 'production';
-                $targetDana         = '1'; 
+                $targetDana         = '1';
                 $targetMidtrans     = 'production';
                 $targetLalamove     = 'production';
                 $targetPaypal       = 'production';
-                $targetDeliveree    = 'production'; // TAMBAHAN DELIVEREE
+                $targetDeliveree    = 'production';
+                $targetIpaymu       = 'production'; // --- TAMBAHAN IPAYMU ---
                 $label              = 'PRODUCTION (LIVE)';
             } else {
                 $targetKA           = 'staging';
@@ -418,11 +445,12 @@ class ApiSettingsController extends Controller
                 $targetDoku         = 'sandbox';
                 $targetIAK          = 'development';
                 $targetDharmawisata = 'development';
-                $targetDana         = '0'; 
+                $targetDana         = '0';
                 $targetMidtrans     = 'sandbox';
                 $targetLalamove     = 'sandbox';
                 $targetPaypal       = 'sandbox';
-                $targetDeliveree    = 'sandbox'; // TAMBAHAN DELIVEREE
+                $targetDeliveree    = 'sandbox';
+                $targetIpaymu       = 'sandbox'; // --- TAMBAHAN IPAYMU ---
                 $label              = 'SANDBOX / MAINTENANCE';
             }
 
@@ -433,8 +461,9 @@ class ApiSettingsController extends Controller
             Api::setValue('DHARMAWISATA_MODE', $targetDharmawisata, 'dharmawisata', 'global');
             Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
             Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
-            Api::setValue('DELIVEREE_MODE', $targetDeliveree, 'deliveree', 'global'); // TAMBAHAN DELIVEREE
-            
+            Api::setValue('DELIVEREE_MODE', $targetDeliveree, 'deliveree', 'global');
+            Api::setValue('IPAYMU_MODE', $targetIpaymu, 'ipaymu', 'global'); // --- TAMBAHAN IPAYMU ---
+
             // LOG LOG
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
             Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
