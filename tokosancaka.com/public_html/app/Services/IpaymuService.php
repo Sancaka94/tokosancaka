@@ -14,9 +14,17 @@ class IpaymuService
 
     public function __construct()
     {
-        $this->va      = config('ipaymu.va');
-        $this->apiKey  = config('ipaymu.api_key');
-        $this->baseUrl = config('ipaymu.base_url');
+        // 1. Ambil mode yang sedang aktif dari Database
+        $mode = \App\Models\Api::getValue('IPAYMU_MODE', 'global', 'sandbox');
+
+        // 2. Ambil Kredensial spesifik sesuai mode (Sandbox/Production)
+        $this->va      = \App\Models\Api::getValue('IPAYMU_VA', $mode);
+        $this->apiKey  = \App\Models\Api::getValue('IPAYMU_API_KEY', $mode);
+
+        // 3. Tentukan Base URL otomatis berdasarkan mode
+        $this->baseUrl = ($mode === 'production')
+            ? 'https://my.ipaymu.com'
+            : 'https://sandbox.ipaymu.com';
     }
 
     /**
