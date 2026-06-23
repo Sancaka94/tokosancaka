@@ -1681,8 +1681,8 @@ Route::prefix('ppob')->group(function () {
 
 Route::get('/ipaymu', function () {
     // 1. Masukkan VA dan API Key Sandbox kamu di sini
-    $va     = '0000008819435180';
-    $apiKey = 'SANDBOXB6D22D26-9A97-4546-8D0B-9F64C25E4E6E';
+    $va     = '1179008819435180';
+    $apiKey = 'AA05770D-0816-41AF-BD92-6914BF813C2D';
 
    // PERHATIKAN: Cek Area COD iPaymu V2 menggunakan GET, parameter di URL!
     $url    = 'https://sandbox.ipaymu.com/api/v2/cod/area?area=surabaya';
