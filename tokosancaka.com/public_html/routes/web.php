@@ -1684,13 +1684,14 @@ Route::get('/ipaymu', function () {
     $va     = '0000008819435180';
     $apiKey = 'SANDBOXB6D22D26-9A97-4546-8D0B-9F64C25E4E6E';
 
+   // PERHATIKAN: Cek Area COD iPaymu V2 menggunakan GET, parameter di URL!
     $url    = 'https://sandbox.ipaymu.com/api/v2/cod/area?area=surabaya';
     $method = 'GET';
 
-    // 2. Karena metode GET, Body wajib string kosong
+    // 2. Karena GET, jsonBody dibiarkan kosong (aturan iPaymu v2)
     $jsonBody = '';
 
-    // 3. Generate Signature sesuai standar Mutlak iPaymu
+    // 3. Generate Signature Real-time
     $requestBody  = strtolower(hash('sha256', $jsonBody));
     $stringToSign = $method . ':' . $va . ':' . $requestBody . ':' . $apiKey;
     $signature    = hash_hmac('sha256', $stringToSign, $apiKey);
@@ -1719,7 +1720,5 @@ Route::get('/ipaymu', function () {
     }
 
     // Tampilkan hasil mentah ke layar browser
-    header('Content-Type: application/json');
-    echo $res;
-    exit;
+    return response($res)->header('Content-Type', 'application/json');
 });
