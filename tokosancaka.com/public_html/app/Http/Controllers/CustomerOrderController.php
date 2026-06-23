@@ -309,13 +309,15 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             }
         }
 
-        // =========================================================================
+       // =========================================================================
         // 4. BLOK IPAYMU (COD KOMSHIP)
         // =========================================================================
         if (in_array($vendorFilter, ['all', 'ipaymu'])) {
             $ipaymuOptions = $this->_getIpaymuPricing(
-                $validated['sender_district'] ?? $validated['sender_regency'] ?? 'Jakarta',
-                $validated['receiver_district'] ?? $validated['receiver_regency'] ?? 'Jakarta',
+                $validated['sender_district'] ?? null,
+                $validated['sender_regency'] ?? null,
+                $validated['receiver_district'] ?? null,
+                $validated['receiver_regency'] ?? null,
                 $validated['weight'],
                 $itemValue
             );
@@ -2265,23 +2267,50 @@ TEXT;
         return ['status' => false, 'text' => 'Gagal membuat pesanan di server Lalamove.'];
     }
 
-    /**
+   /**
      * =========================================================================
      * FUNGSI HELPER IPAYMU COD / KOMSHIP (TARIK ONGKIR & CREATE ORDER)
      * =========================================================================
      */
-    private function _getIpaymuPricing($senderArea, $receiverArea, $weight, $amount)
+    private function _getIpaymuPricing($senderDistrict, $senderRegency, $receiverDistrict, $receiverRegency, $weight, $amount)
     {
-        Log::info('LOG LOG: Start iPaymu Pricing', ['origin' => $senderArea, 'dest' => $receiverArea]);
+        Log::info('LOG LOG: Start iPaymu Pricing', ['origin_dist' => $senderDistrict, 'dest_dist' => $receiverDistrict]);
+
         try {
             $ipaymu = app(\App\Services\IpaymuService::class);
 
-            // 1. Cari Area ID Asal dan Tujuan
-            $originSearch = $ipaymu->getCodArea($senderArea);
-            $destSearch = $ipaymu->getCodArea($receiverArea);
+            // Helper internal untuk mencari Area ID secara progresif agar pasti ketemu
+            $findAreaId = function($district, $regency) use ($ipaymu) {
+                // Bersihkan kata "Kabupaten" atau "Kota" agar pencarian lebih akurat
+                $cleanRegency = trim(str_ireplace(['kabupaten ', 'kab. ', 'kota '], '', $regency));
 
-            $originId = $originSearch['data'][0]['id'] ?? null;
-            $destId = $destSearch['data'][0]['id'] ?? null;
+                // Daftar antrean kata kunci pencarian (Dari yang paling spesifik ke umum)
+                $queries = [
+                    $district,                           // 1. Coba "Wiyung"
+                    $district . ' ' . $cleanRegency,     // 2. Coba "Wiyung Surabaya"
+                    $cleanRegency                        // 3. Coba "Surabaya" (Jurus terakhir)
+                ];
+
+                foreach ($queries as $q) {
+                    if (empty($q)) continue;
+
+                    $search = $ipaymu->getCodArea($q);
+
+                    // iPaymu sering tidak konsisten antara 'Data' (D besar) dan 'data' (d kecil)
+                    $id = $search['Data'][0]['id'] ?? $search['data'][0]['id'] ?? null;
+
+                    if ($id) {
+                        Log::info("LOG LOG: iPaymu Area Ditemukan untuk keyword [{$q}] -> ID: {$id}");
+                        return $id;
+                    }
+                }
+
+                return null;
+            };
+
+            // 1. Cari Area ID Asal dan Tujuan menggunakan Helper di atas
+            $originId = $findAreaId($senderDistrict, $senderRegency);
+            $destId   = $findAreaId($receiverDistrict, $receiverRegency);
 
             if ($originId && $destId) {
                 // Konversi gram ke KG (dibulatkan ke atas minimal 1 KG)
@@ -2292,7 +2321,7 @@ TEXT;
                 $ongkirRes = $ipaymu->calculateShipping($destId, $originId, $weightKg, $amount);
 
                 $results = [];
-                // Mapping hasil kurir iPaymu
+                // Tangkap data dengan aman (Data vs data)
                 $couriers = $ongkirRes['Data'] ?? $ongkirRes['data'] ?? [];
 
                 if (is_array($couriers) && count($couriers) > 0) {
@@ -2310,9 +2339,14 @@ TEXT;
                     }
                     Log::info('LOG LOG: iPaymu Pricing Success menemukan ' . count($results) . ' kurir.');
                     return ['status' => true, 'results' => $results];
+                } else {
+                    Log::warning('LOG LOG: iPaymu API membalikkan hasil kosong untuk ongkir.', ['res' => $ongkirRes]);
                 }
             } else {
-                Log::warning('LOG LOG: Area iPaymu tidak ditemukan.', ['orig_id' => $originId, 'dest_id' => $destId]);
+                Log::warning('LOG LOG: Area iPaymu tetap gagal ditemukan.', [
+                    's_dist' => $senderDistrict, 's_reg' => $senderRegency, 'orig_id' => $originId,
+                    'r_dist' => $receiverDistrict, 'r_reg' => $receiverRegency, 'dest_id' => $destId
+                ]);
             }
         } catch (\Exception $e) {
             Log::error('LOG LOG: iPaymu Pricing Exception: ' . $e->getMessage());
