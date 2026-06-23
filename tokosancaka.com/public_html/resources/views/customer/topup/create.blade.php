@@ -106,7 +106,7 @@
                         </div>
 
                         {{-- GROUP 2: TRIPAY OTOMATIS (Looping Data API) --}}
-                        @if(isset($groupedChannels) && count($groupedChannels) > 0)
+                        {{-- @if(isset($groupedChannels) && count($groupedChannels) > 0)
                             @foreach($groupedChannels as $groupName => $channels)
                                 <div class="mt-8">
                                     <h5 class="text-sm font-extrabold text-gray-400 uppercase tracking-wider mb-4 pl-3 border-l-4 border-blue-500">
@@ -147,6 +147,10 @@
                                 </div>
                             </div>
                         @endif
+
+                        --}}
+
+                        {{-- PREVIEW METODE PEMBAYARAN OTOMATIS (Hanya Muncul Saat Input Nominal Valid) --}}
 
                     </div>
 
