@@ -53,6 +53,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'product',
             'auth/google/callback',
             'auth/google/register/callback',
+            'api/webhook/ipaymu',  // Jika route ada di api.php
+            'webhook/ipaymu',      // Jika route ada di web.php
 
             ]);
 
