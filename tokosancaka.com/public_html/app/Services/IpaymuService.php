@@ -27,7 +27,7 @@ class IpaymuService
             : 'https://sandbox.ipaymu.com';
     }
 
-    /**
+  /**
      * HTTP Request Wrapper dengan Algoritma Signature Akurat & Tahan Banting
      */
     protected function request(string $method, string $endpoint, array $data = [])
@@ -35,21 +35,23 @@ class IpaymuService
         $url = rtrim($this->baseUrl, '/') . '/' . ltrim($endpoint, '/');
         $method = strtoupper($method);
 
-        // 1. Bersihkan payload dari nilai null
         $cleanData = array_filter($data, fn($value) => $value !== null);
 
-        // 2. KUNCI PENTING IPAYMU: Encode JSON secara manual!
-        // Kita menggunakan hasil string JSON ini SEKALIGUS untuk di-hash DAN untuk dikirim.
-        // Mencegah Laravel Guzzle mengubah format JSON di tengah jalan.
-        $jsonBody = empty($cleanData) ? '' : json_encode($cleanData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        // KUNCI PENTING IPAYMU UNTUK GET vs POST:
+        // Jika GET, body yang di-hash HARUS kosong (string kosong).
+        // Jika POST, body di-encode menjadi JSON.
+        $jsonBody = '';
+        if ($method === 'POST' && !empty($cleanData)) {
+            $jsonBody = json_encode($cleanData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        }
 
-        // 3. Hash SHA256 dari String JSON Body
+        // Hash SHA256 dari String JSON Body (atau hash string kosong jika GET)
         $requestBodyHash = strtolower(hash('sha256', $jsonBody));
 
-        // 4. Susun String to Sign (Method:VA:HashBody:ApiKey)
+        // Susun String to Sign (Method:VA:HashBody:ApiKey)
         $stringToSign = $method . ':' . $this->va . ':' . $requestBodyHash . ':' . $this->apiKey;
 
-        // 5. Generate HMAC-SHA256
+        // Generate HMAC-SHA256
         $signature = hash_hmac('sha256', $stringToSign, $this->apiKey);
 
         $headers = [
@@ -62,11 +64,11 @@ class IpaymuService
 
         try {
             if ($method === 'GET') {
+                // Untuk GET, parameter dikirim di URL Query (?area=Ngawi)
                 return Http::withHeaders($headers)->get($url, $cleanData)->json();
             }
 
-            // PERBAIKAN: Gunakan withBody() alih-alih melempar array ke ->post()
-            // Menjamin Payload JSON yang dikirim 100% presisi dengan Payload yang di-Hash
+            // Untuk POST, kirim body JSON mentah yang sama persis dengan yang di-hash
             return Http::withHeaders($headers)
                         ->withBody($jsonBody, 'application/json')
                         ->post($url)
@@ -91,12 +93,12 @@ class IpaymuService
     }
 
     /**
-     * POST Area COD
-     * PERBAIKAN: iPaymu v2 mewajibkan endpoint Area menggunakan POST, BUKAN GET!
+     * GET Area COD
      */
     public function getCodArea(string $searchArea)
     {
-        return $this->request('POST', '/api/v2/cod/area', ['area' => $searchArea]);
+        // KEMBALIKAN KE GET!
+        return $this->request('GET', '/api/v2/cod/area', ['area' => $searchArea]);
     }
 
     public function calculateShipping(string|int $destinationId, string|int $pickupId, float|int $weightKg, float|int $amount)
