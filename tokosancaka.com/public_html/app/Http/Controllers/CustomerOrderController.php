@@ -331,15 +331,12 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $lalamoveOptions['results']);
         }
 
-        // --- TAMBAHAN: PANGGIL LAYANAN IPAYMU (COD/KOMSHIP) ---
-        // Menggunakan KODE POS (Postal Code) agar lebih akurat di database iPaymu
         $ipaymuOptions = $this->_getIpaymuPricing(
-            $validated['sender_postal_code'] ?? $validated['sender_district'] ?? 'Jakarta',
-            $validated['receiver_postal_code'] ?? $validated['receiver_district'] ?? 'Jakarta',
+            $validated['sender_district'] ?? $validated['sender_regency'] ?? 'Jakarta',
+            $validated['receiver_district'] ?? $validated['receiver_regency'] ?? 'Jakarta',
             $validated['weight'],
             $itemValue
         );
-
 
         if ($ipaymuOptions['status']) {
             $expressOptions['status'] = true;
@@ -560,7 +557,8 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                 $receiverAddressData = $this->_getAddressData($request, 'receiver');
 
                 // Deteksi vendor dari payload dropdown frontend
-                $expVendor = explode('-', $validatedData['expedition'])[1] ?? '';
+                // $expVendor = explode('-', $validatedData['expedition'])[1] ?? '';
+                $expVendorStr = strtolower($validatedData['expedition'] ?? '');
 
                 if (strtolower($expVendor) === 'deliveree') {
                     // Panggil helper Deliveree
@@ -2357,6 +2355,16 @@ TEXT;
                 'buyerEmail' => $data['customer_email'] ?? 'customer@tokosancaka.com',
                 'buyerPhone' => $data['receiver_phone'],
                 'paymentMethod' => 'cod', // Parameter default untuk membedakan transaksi COD
+
+                'weight'          => $weightKg,
+                'width'           => $pesanan->width ?? 10,
+                'height'          => $pesanan->height ?? 10,
+                'length'          => $pesanan->length ?? 10,
+                'deliveryAddress' => $data['receiver_address'],
+
+                // (Opsional/Sangat Disarankan) Jika API iPaymu meminta ID Area Spesifik:
+                'pickupArea'   => $originIdDariIpaymu,
+                'deliveryArea' => $destIdDariIpaymu,
             ];
 
             $paymentRes = $ipaymu->createPayment($payload);
