@@ -249,58 +249,13 @@
                             </h5>
                             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 
-                                {{-- IPAYMU QRIS --}}
+                                {{-- IPAYMU REDIRECT UMUM --}}
                                 <label class="relative cursor-pointer group">
-                                    <input type="radio" name="payment_method" value="IPAYMU_QRIS" class="peer sr-only">
+                                    <input type="radio" name="payment_method" value="IPAYMU" class="peer sr-only">
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
-                                        <img src="https://tokosancaka.com/public/assets/qris.png" class="h-12 object-contain mb-3 rounded-lg shadow-sm p-1" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/a/a2/Logo_QRIS.svg'">
-                                        <span class="text-sm font-bold text-gray-800">QRIS</span>
-                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Semua E-Wallet</span>
-                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
-                                            <i class="fas fa-check-circle text-xl"></i>
-                                        </div>
-                                    </div>
-                                </label>
-
-                                {{-- IPAYMU VA BCA --}}
-                                <label class="relative cursor-pointer group">
-                                    <input type="radio" name="payment_method" value="IPAYMU_VA_BCA" class="peer sr-only">
-                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
-                                        <div class="h-12 flex items-center justify-center mb-3">
-                                            <span class="font-black text-xl text-blue-800 tracking-tighter">BCA</span>
-                                        </div>
-                                        <span class="text-sm font-bold text-gray-800">VA BCA</span>
-                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Virtual Account</span>
-                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
-                                            <i class="fas fa-check-circle text-xl"></i>
-                                        </div>
-                                    </div>
-                                </label>
-
-                                {{-- IPAYMU VA MANDIRI --}}
-                                <label class="relative cursor-pointer group">
-                                    <input type="radio" name="payment_method" value="IPAYMU_VA_MANDIRI" class="peer sr-only">
-                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
-                                        <div class="h-12 flex items-center justify-center mb-3">
-                                            <span class="font-black text-xl text-yellow-500 tracking-tighter">MANDIRI</span>
-                                        </div>
-                                        <span class="text-sm font-bold text-gray-800">VA Mandiri</span>
-                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Virtual Account</span>
-                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
-                                            <i class="fas fa-check-circle text-xl"></i>
-                                        </div>
-                                    </div>
-                                </label>
-
-                                {{-- IPAYMU VA BNI --}}
-                                <label class="relative cursor-pointer group">
-                                    <input type="radio" name="payment_method" value="IPAYMU_VA_BNI" class="peer sr-only">
-                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
-                                        <div class="h-12 flex items-center justify-center mb-3">
-                                            <span class="font-black text-xl text-orange-600 tracking-tighter">BNI</span>
-                                        </div>
-                                        <span class="text-sm font-bold text-gray-800">VA BNI</span>
-                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Virtual Account</span>
+                                        <img src="https://tokosancaka.com/public/assets/ipaymu.jpg" class="h-12 object-contain mb-3 rounded-lg shadow-sm p-1" onerror="this.src='https://placehold.co/100x40/EFEFEF/AAAAAA?text=iPaymu'">
+                                        <span class="text-sm font-bold text-gray-800">iPaymu</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Pilih via iPaymu</span>
                                         <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
                                             <i class="fas fa-check-circle text-xl"></i>
                                         </div>
