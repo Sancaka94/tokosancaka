@@ -84,7 +84,7 @@
                             <div class="flex items-center mb-3">
                                 <img src="https://tokosancaka.com/public/storage/logo/dana.png" class="h-6 mr-2" alt="DANA">
                                 <span class="text-xs font-extrabold text-blue-800 uppercase tracking-wider">
-                                     ESTIMASI PROMO (JIKA BAYAR PAKAI DANA):
+                                      ESTIMASI PROMO (JIKA BAYAR PAKAI DANA):
                                 </span>
                             </div>
                             <div id="payment-icons" class="flex flex-wrap gap-2 mt-2">
@@ -103,7 +103,7 @@
                         </div>
                     </div>
 
-                
+
 
                     {{-- 2. PILIH METODE PEMBAYARAN (GRID VIEW) --}}
                     <div class="space-y-8 mt-6">
@@ -155,7 +155,7 @@
                             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 
                                 {{-- DANA DIRECT DEBIT --}}
-                                
+
                                 <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="DANA_DIRECT_DEBIT" class="peer sr-only">
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
@@ -167,7 +167,7 @@
                                         </div>
                                     </div>
                                 </label>
-                        
+
 
                                 {{-- DANA DIRECT GAPURA --}}
                                 <label class="relative cursor-pointer group">
@@ -239,63 +239,76 @@
                                         </div>
                                     </div>
                                 </label>
+                            </div>
+                        </div>
 
-                              {{--  <label class="relative cursor-pointer group">
-                                    <input type="radio" name="payment_method" value="OVO" class="peer sr-only">
-                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
-                                        <img src="https://cdn-activation.oss-ap-southeast-5.aliyuncs.com/common/logo/e-money/ovo.png" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm">
-                                        <span class="text-sm font-bold text-gray-800">OVO</span>
-                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Push Payment</span>
-                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transition-all">
-                                            <i class="fas fa-check-circle text-xl"></i>
-                                        </div>
-                                    </div>
-                                </label>
+                        {{-- GROUP IPAYMU --}}
+                        <div class="mt-8">
+                            <h5 class="text-sm font-extrabold text-gray-400 uppercase tracking-wider mb-4 pl-3 border-l-4 border-purple-500">
+                                iPaymu Payment
+                            </h5>
+                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 
+                                {{-- IPAYMU QRIS --}}
                                 <label class="relative cursor-pointer group">
-                                    <input type="radio" name="payment_method" value="LINKAJA" class="peer sr-only">
+                                    <input type="radio" name="payment_method" value="IPAYMU_QRIS" class="peer sr-only">
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
-                                        <img src="https://cdn-activation.oss-ap-southeast-5.aliyuncs.com/common/logo/e-money/linkaja.png" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm">
-                                        <span class="text-sm font-bold text-gray-800">LinkAja</span>
-                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">E-Money</span>
-                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transition-all">
-                                            <i class="fas fa-check-circle text-xl"></i>
-                                        </div>
-                                    </div>
-                                </label>
-
-                                <label class="relative cursor-pointer group">
-                                    <input type="radio" name="payment_method" value="JENIUS_PAY" class="peer sr-only">
-                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
-                                        <img src="https://tokosancaka.com/public/assets/jeniuspay.png" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm">
-                                        <span class="text-sm font-bold text-gray-800">Jenius Pay</span>
-                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Cashtag</span>
-                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transition-all">
-                                            <i class="fas fa-check-circle text-xl"></i>
-                                        </div>
-                                    </div>
-                                </label>
-                                --}}
-
-                                {{-- MIDTRANS --}}
-                                {{-- <label class="relative cursor-pointer group">
-                                    <input type="radio" name="payment_method" value="MIDTRANS" class="peer sr-only">
-                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
-                                        <img src="https://tokosancaka.com/public/assets/midtrans.png" class="h-12 object-contain mb-3 rounded-lg shadow-sm p-1" onerror="this.src='https://midtrans.com/assets/img/midtrans-dark.svg'">
-                                        <span class="text-sm font-bold text-gray-800">Midtrans</span>
-                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Payment Gateway</span>
+                                        <img src="https://tokosancaka.com/public/assets/qris.png" class="h-12 object-contain mb-3 rounded-lg shadow-sm p-1" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/a/a2/Logo_QRIS.svg'">
+                                        <span class="text-sm font-bold text-gray-800">QRIS</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Semua E-Wallet</span>
                                         <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
                                             <i class="fas fa-check-circle text-xl"></i>
                                         </div>
                                     </div>
                                 </label>
-                                --}}
-                                
+
+                                {{-- IPAYMU VA BCA --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="IPAYMU_VA_BCA" class="peer sr-only">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <div class="h-12 flex items-center justify-center mb-3">
+                                            <span class="font-black text-xl text-blue-800 tracking-tighter">BCA</span>
+                                        </div>
+                                        <span class="text-sm font-bold text-gray-800">VA BCA</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Virtual Account</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                {{-- IPAYMU VA MANDIRI --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="IPAYMU_VA_MANDIRI" class="peer sr-only">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <div class="h-12 flex items-center justify-center mb-3">
+                                            <span class="font-black text-xl text-yellow-500 tracking-tighter">MANDIRI</span>
+                                        </div>
+                                        <span class="text-sm font-bold text-gray-800">VA Mandiri</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Virtual Account</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                {{-- IPAYMU VA BNI --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="IPAYMU_VA_BNI" class="peer sr-only">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <div class="h-12 flex items-center justify-center mb-3">
+                                            <span class="font-black text-xl text-orange-600 tracking-tighter">BNI</span>
+                                        </div>
+                                        <span class="text-sm font-bold text-gray-800">VA BNI</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Virtual Account</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
 
                             </div>
                         </div>
-
-                        
 
                         {{-- GROUP 2: TRIPAY OTOMATIS (Looping Data API) --}}
                         @if(isset($groupedChannels) && count($groupedChannels) > 0)
@@ -335,7 +348,7 @@
                                 <i class="fas fa-exclamation-circle mt-0.5 mr-3 text-lg text-orange-500"></i>
                                 <div>
                                     <strong class="font-bold block mb-1">Gagal memuat gateway otomatis</strong>
-                                    <span>Sistem tidak dapat memuat metode pembayaran Tripay saat ini. Silakan gunakan opsi DANA, DOKU, atau Transfer Manual di atas.</span>
+                                    <span>Sistem tidak dapat memuat metode pembayaran Tripay saat ini. Silakan gunakan opsi DANA, DOKU, iPaymu, atau Transfer Manual di atas.</span>
                                 </div>
                             </div>
                         @endif
@@ -469,9 +482,9 @@
                                 let apiCode = item.option;
 
                                 let cleanName = item.method.replace(/_/g, ' ')
-                                                       .replace('VIRTUAL ACCOUNT', 'VA')
-                                                       .replace('NETWORK PAY PG', '')
-                                                       .replace('DIRECT DEBIT', '');
+                                                           .replace('VIRTUAL ACCOUNT', 'VA')
+                                                           .replace('NETWORK PAY PG', '')
+                                                           .replace('DIRECT DEBIT', '');
 
                                 let filename = logoMap[apiCode];
                                 let cardContent = '';

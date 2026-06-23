@@ -322,9 +322,9 @@ class TopUpController extends Controller
                 if (strtoupper($validated['payment_method']) === 'OVO') {
                     // Ambil dari input form 'ovo_id', jika kosong fallback ke nomor WA user
                     $ovoId = $request->ovo_id ?? preg_replace('/[^0-9]/', '', $user->no_wa);
-                    
+
                     $response = $dokuJokulService->createOvoPayment($invoiceNumber, $amount, $ovoId);
-                    
+
                     if ($response['success']) {
                         return redirect()->route('customer.topup.show', ['topup' => $invoiceNumber])
                             ->with('success', '⏳ Silakan buka aplikasi OVO Anda sekarang untuk menyelesaikan pembayaran.');
@@ -336,7 +336,7 @@ class TopUpController extends Controller
                 // --- 2. PROSES LINKAJA ---
                 elseif (strtoupper($validated['payment_method']) === 'LINKAJA') {
                     $response = $dokuJokulService->createLinkAjaPayment($invoiceNumber, $amount, $customerData, $lineItems, $redirectUrl);
-                    
+
                     if ($response['success'] && isset($response['data']['emoney_payment']['redirect_url_http'])) {
                         $transaction->payment_url = $response['data']['emoney_payment']['redirect_url_http'];
                         $transaction->save();
@@ -350,9 +350,9 @@ class TopUpController extends Controller
                 elseif (strtoupper($validated['payment_method']) === 'JENIUS_PAY') {
                     // Ambil dari input form 'jenius_cashtag', jika kosong fallback ke $namalengkap
                     $cashTag = $request->jenius_cashtag ?? '$' . strtolower(str_replace(' ', '', $user->nama_lengkap));
-                    
+
                     $response = $dokuJokulService->createJeniusPayment($invoiceNumber, $amount, $cashTag, $customerData, $lineItems, $redirectUrl);
-                    
+
                     if ($response['success']) {
                         return redirect()->route('customer.topup.show', ['topup' => $invoiceNumber])
                             ->with('success', '⏳ Tagihan telah dikirim! Silakan buka aplikasi Jenius Anda untuk menyelesaikan pembayaran.');
@@ -360,6 +360,30 @@ class TopUpController extends Controller
                         throw new Exception('DOKU Jenius Pay Gagal: ' . ($response['message'] ?? 'Unknown Error'));
                     }
                 }
+            }
+            // ==========================================================
+
+            // ==========================================================
+            // --- FITUR BARU: IPAYMU ---
+            // ==========================================================
+            elseif (\Illuminate\Support\Str::startsWith(strtoupper($validated['payment_method']), 'IPAYMU')) {
+
+                Log::info('LOG LOG: Memulai Top Up iPaymu untuk ' . $invoiceNumber);
+
+                $transaction = Transaction::create([
+                    'user_id'        => $user->id_pengguna,
+                    'reference_id'   => $invoiceNumber,
+                    'amount'         => $amount,
+                    'type'           => 'topup',
+                    'status'         => 'pending',
+                    'payment_method' => strtoupper($validated['payment_method']),
+                    'description'    => 'Top up saldo via iPaymu',
+                ]);
+
+                DB::commit();
+
+                // Arahkan ke fungsi eksekutor iPaymu
+                return $this->createPaymentIpaymu($transaction, $validated['payment_method']);
             }
             // ==========================================================
 
@@ -440,7 +464,7 @@ class TopUpController extends Controller
                     // --- PROSES VIA PAYPAL (BARU) ---
                     // ==========================================================
                     Log::info('Memulai Top Up PayPal untuk ' . $invoiceNumber);
-                    
+
                     // Panggil fungsi eksekutor PayPal TopUp yang dibuat di bawah
                     $paymentUrl = $this->createPaymentPayPalTopUp($transaction, $amount);
                     $redirectUrl = $paymentUrl;
@@ -665,7 +689,7 @@ class TopUpController extends Controller
             : 'https://m.sandbox.dana.id/d/portal/oauth';
 
         $fullUrl = $baseUrl . "?" . http_build_query($queryParams);
-        
+
         Log::info('LOG LOG: [BINDING] Redirecting User to: ' . $fullUrl);
 
         return redirect($fullUrl);
@@ -1193,9 +1217,9 @@ public function handleCallback(Request $request)
         }
 
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        
+
         // SESUAI DOKUMEN: Path tanpa .htm di belakangnya
-        $path = '/rest/v1.0/emoney/topup-status'; 
+        $path = '/rest/v1.0/emoney/topup-status';
 
         // SESUAI DOKUMEN: Body request sederhana
         $body = [
@@ -1241,11 +1265,11 @@ public function handleCallback(Request $request)
                 if ($status === '00') {
                     DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'SUCCESS']);
                     return back()->with('success', '✅ Transaksi BERHASIL (Terkonfirmasi). Saldo pelanggan telah masuk.');
-                } 
+                }
                 // 01, 02, 03 - Pending
                 elseif (in_array($status, ['01', '02', '03'])) {
                     return back()->with('warning', '⏳ Transaksi masih PENDING di sistem DANA.');
-                } 
+                }
                 // 04, 05, 06, 07 - Failed/Refunded/Not Found
                 elseif (in_array($status, ['04', '05', '06', '07'])) {
                     // TRANSAKSI GAGAL -> KEMBALIKAN SALDO USER SANCAKA
@@ -1255,13 +1279,13 @@ public function handleCallback(Request $request)
                     $desc = $result['transactionStatusDesc'] ?? 'Transaksi Gagal';
                     return back()->with('error', "❌ Transaksi DANA GAGAL ($desc). Saldo Rp " . number_format($trx->amount, 0, ',', '.') . " telah dikembalikan.");
                 }
-            } 
+            }
             // Handle: 4043901 - Transaction Not Found (Transaksi Kadaluarsa/Tidak Terdaftar)
             elseif ($resCode === '4043901') {
                 DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'FAILED']);
                 DB::table('Pengguna')->where('id_pengguna', $trx->affiliate_id)->increment('saldo', $trx->amount);
                 return back()->with('error', '❌ Transaksi tidak ditemukan di DANA. Saldo telah dikembalikan.');
-            } 
+            }
             // Handle Error Lainnya (Too Many Request, Internal Server Error, dll) -> Biarkan PENDING
             else {
                 $errMsg = $result['responseMessage'] ?? 'Unknown Error';
@@ -1284,7 +1308,7 @@ public function handleCallback(Request $request)
         // MENGGUNAKAN DATA AKUN MERCHANT DEPOSIT (DISBURSEMENT B2B)
         // Tidak perlu lagi query ke tabel Pengguna untuk mengambil token admin
         // ==============================================================
-        $merchantDepositAccount = config('services.dana.merchant_deposit_account'); 
+        $merchantDepositAccount = config('services.dana.merchant_deposit_account');
         $idToko = config('services.dana.id_toko');
 
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
@@ -1313,7 +1337,7 @@ public function handleCallback(Request $request)
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
         $hashedBody = strtolower(hash('sha256', $jsonBody));
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-        
+
         $signature = $this->generateSignature($stringToSign);
 
         try {
@@ -1373,7 +1397,7 @@ public function handleCallback(Request $request)
             }
 
             $errMsg = $result['responseMessage'] ?? 'Unknown Error';
-            
+
             if ($resCode == '4034214') $errMsg = "Saldo Merchant DANA Tidak Cukup (Isi Saldo Sancaka Dulu!)";
             if ($resCode == '4034218') $errMsg = "Akun Merchant Inactive (Hubungi Admin DANA)";
             if ($resCode == '4044201') $errMsg = "Rekening Tidak Ditemukan/Salah Bank";
@@ -1419,7 +1443,7 @@ public function handleCallback(Request $request)
         // =========================================================
         // MENGGUNAKAN TRANSACTION UNTUK MENCEGAH RACE CONDITION
         // =========================================================
-        DB::beginTransaction(); 
+        DB::beginTransaction();
 
         try {
             // POTONG SALDO DIAWAL SECARA AMAN (LOCKING DALAM TRANSACTION)
@@ -1428,7 +1452,7 @@ public function handleCallback(Request $request)
             // =========================================================
             // PERSIAPAN DATA DANA
             // =========================================================
-            $merchantDepositAccount = config('services.dana.merchant_deposit_account'); 
+            $merchantDepositAccount = config('services.dana.merchant_deposit_account');
             $idToko = config('services.dana.id_toko');
 
             $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
@@ -1440,7 +1464,7 @@ public function handleCallback(Request $request)
 
             $body = [
                 "partnerReferenceNo"       => $partnerRef,
-                "customerNumber"           => $merchantDepositAccount, 
+                "customerNumber"           => $merchantDepositAccount,
                 "beneficiaryAccountNumber" => (string) $request->account_no,
                 "beneficiaryBankCode"      => (string) $request->bank_code,
                 "amount" => [
@@ -1459,7 +1483,7 @@ public function handleCallback(Request $request)
             $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
             $hashedBody = strtolower(hash('sha256', $jsonBody));
             $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-            
+
             $signature = $this->generateSignature($stringToSign);
 
             $accessTokenB2B = $this->danaSignature->getAccessToken();
@@ -1490,7 +1514,7 @@ public function handleCallback(Request $request)
             // EVALUASI RESPON DANA
             // =========================================================
             if ($resCode == '2004300') {
-                
+
                 // TRANSAKSI BERHASIL: Simpan log dan COMMIT saldo
                 DB::table('dana_transactions')->insert([
                     'affiliate_id'     => $aff->id_pengguna,
@@ -1510,7 +1534,7 @@ public function handleCallback(Request $request)
                 return back()->with('success', $msg);
 
             } elseif (in_array($resCode, ['2024300', '4294300', '5004301'])) {
-                
+
                 // TRANSAKSI PENDING: Simpan log dan COMMIT saldo sementara
                 DB::table('dana_transactions')->insert([
                     'affiliate_id'     => $aff->id_pengguna,
@@ -1528,9 +1552,9 @@ public function handleCallback(Request $request)
                 return redirect()->route('admin.dana.transfer_bank')->with('warning', "⏳ Transaksi Sedang Diproses (Pending).\nMohon cek riwayat saldo secara berkala.");
 
             } else {
-                
+
                 // TRANSAKSI GAGAL: BATALKAN PEMOTONGAN SALDO DENGAN ROLLBACK
-                DB::rollBack(); 
+                DB::rollBack();
 
                 // Setelah rollback dipanggil, saldo user otomatis aman (tidak jadi terpotong).
                 // Sekarang kita tetap catat histori kegagalannya ke database.
@@ -1547,15 +1571,15 @@ public function handleCallback(Request $request)
 
                 $errorMsg = $result['responseMessage'] ?? 'Transaksi Gagal';
                 Log::error('[DANA TRANSFER BANK] Gagal & Refund Auto (Rollback)', ['res' => $result]);
-                
+
                 return redirect()->route('admin.dana.transfer_bank')->with('error', "Gagal: $errorMsg\n(Saldo Rp ".number_format($request->amount, 0, ',', '.')." telah dikembalikan).");
             }
 
         } catch (\Exception $e) {
-            
+
             // JIKA TERJADI ERROR KONEKSI / FATAL ERROR: BATALKAN PEMOTONGAN SALDO
-            DB::rollBack(); 
-            
+            DB::rollBack();
+
             Log::error('[DANA TRANSFER BANK] Exception', ['msg' => $e->getMessage()]);
             return redirect()->route('admin.dana.transfer_bank')->with('error', 'Sistem Error saat eksekusi: ' . $e->getMessage() . "\n(Saldo telah dikembalikan otomatis).");
         }
@@ -1712,7 +1736,7 @@ public function handleCallback(Request $request)
         Log::info('DANA START for Transaction Table: ' . $trxId); // LOG LOG dipertahankan
 
         // INI YANG SEMPAT HILANG: Deklarasi $user
-        $user = Auth::user(); 
+        $user = Auth::user();
 
         $timestamp = Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $expiryTime = Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
@@ -1840,7 +1864,7 @@ public function handleCallback(Request $request)
         // 1. CONFIGURATION (SYNC ID)
         // ====================================================================
         // Menggunakan ID Valid (2166...) untuk Header & Body agar sinkron
-        
+
         $merchantIdConf = $validId;
         $validId = config('services.dana.valid_id');
         $partnerIdConf = config('services.dana.partner_id_conf');
@@ -2079,7 +2103,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
-        
+
         $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
         $amountValue = number_format((float)$transaction->amount, 2, '.', '');
@@ -2139,14 +2163,14 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                         ]
                     ]
                 ],
-                "mcc"                        => "5732", 
+                "mcc"                        => "5732",
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "WEB" 
+                    "orderTerminalType" => "WEB"
                 ],
                 "productCode"                => "51051000100000000001",
-                "supportDeepLinkCheckoutUrl" => "true" 
+                "supportDeepLinkCheckoutUrl" => "true"
             ]
         ];
 
@@ -2160,7 +2184,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $headers = [
                 'Content-Type'           => 'application/json',
                 'Authorization'          => 'Bearer ' . $accessTokenB2B,
-                'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token, 
+                'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token,
                 'X-TIMESTAMP'            => $timestamp,
                 'X-SIGNATURE'            => $signature,
                 'ORIGIN'                 => config('services.dana.origin'),
@@ -2189,10 +2213,10 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
                 // KUNCI EXPO: HANYA AMBIL WEB URL-NYA SAJA (webRedirectUrl)
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
-                
+
                 if (!empty($redirectUrl)) {
                     Log::info('LOG LOG: [DANA BINDING] Berhasil generate URL Express Checkout.');
-                    
+
                     // =====================================================================
                     // TAHAP 2: REQUEST APPLY OTT (Agar bypass Halaman Login DANA)
                     // =====================================================================
@@ -2210,7 +2234,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
                     $headersOtt = [
                         'Content-Type'           => 'application/json',
-                        'Authorization'          => 'Bearer ' . $accessTokenB2B, 
+                        'Authorization'          => 'Bearer ' . $accessTokenB2B,
                         'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token,
                         'X-TIMESTAMP'            => $timestampOtt,
                         'X-SIGNATURE'            => $signatureOtt,
@@ -2228,14 +2252,14 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                         ->post($baseUrl . $pathOtt);
 
                     $resultOtt = $responseOtt->json();
-                    
+
                     // Jika OTT Berhasil (2004900)
                     if (isset($resultOtt['responseCode']) && $resultOtt['responseCode'] === '2004900') {
                         $ottToken = $resultOtt['userResources'][0]['value'] ?? null;
-                        
+
                         if ($ottToken) {
                             Log::info('LOG LOG: [DANA BINDING] OTT Berhasil diambil! Melakukan Append ke URL...');
-                            
+
                             // Deteksi apakah URL sudah punya query string (?) atau belum
                             $separator = str_contains($redirectUrl, '?') ? '&' : '?';
                             $redirectUrl .= $separator . 'ott=' . $ottToken;
@@ -2245,9 +2269,9 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                         Log::warning('LOG LOG: [DANA BINDING] Gagal Apply OTT, fallback ke URL Checkout biasa.', $resultOtt);
                     }
                     // =====================================================================
-                    
+
                     $transaction->update(['payment_url' => $redirectUrl]);
-                    
+
                     // Arahkan user ke halaman DANA (Sekarang URL-nya sudah bawa OTT)
                     return redirect()->away($redirectUrl);
                 }
@@ -2281,7 +2305,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
-        
+
         $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
 
         $amountValue = number_format((float)$transaction->amount, 2, '.', '');
@@ -2345,14 +2369,14 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                         ]
                     ]
                 ],
-                "mcc"                        => "5732", 
+                "mcc"                        => "5732",
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
-                    "orderTerminalType" => "WEB" 
+                    "orderTerminalType" => "WEB"
                 ],
                 "productCode"                => "51051000100000000001",
-                "supportDeepLinkCheckoutUrl" => "true" 
+                "supportDeepLinkCheckoutUrl" => "true"
             ]
         ];
 
@@ -2366,7 +2390,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $headers = [
                 'Content-Type'           => 'application/json',
                 'Authorization'          => 'Bearer ' . $accessTokenB2B,
-                'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token, 
+                'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token,
                 'X-TIMESTAMP'            => $timestamp,
                 'X-SIGNATURE'            => $signature,
                 'ORIGIN'                 => config('services.dana.origin'),
@@ -2395,10 +2419,10 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
                 // KUNCI EXPO: HANYA AMBIL WEB URL-NYA SAJA (webRedirectUrl)
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
-                
+
                 if (!empty($redirectUrl)) {
                     Log::info('LOG LOG: [DANA BINDING] Berhasil generate URL Express Checkout.');
-                    
+
                     // =====================================================================
                     // TAHAP 2: REQUEST APPLY OTT (Agar bypass Halaman Login DANA)
                     // =====================================================================
@@ -2416,7 +2440,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
                     $headersOtt = [
                         'Content-Type'           => 'application/json',
-                        'Authorization'          => 'Bearer ' . $accessTokenB2B, 
+                        'Authorization'          => 'Bearer ' . $accessTokenB2B,
                         'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token,
                         'X-TIMESTAMP'            => $timestampOtt,
                         'X-SIGNATURE'            => $signatureOtt,
@@ -2434,14 +2458,14 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                         ->post($baseUrl . $pathOtt);
 
                     $resultOtt = $responseOtt->json();
-                    
+
                     // Jika OTT Berhasil (2004900)
                     if (isset($resultOtt['responseCode']) && $resultOtt['responseCode'] === '2004900') {
                         $ottToken = $resultOtt['userResources'][0]['value'] ?? null;
-                        
+
                         if ($ottToken) {
                             Log::info('LOG LOG: [DANA BINDING] OTT Berhasil diambil! Melakukan Append ke URL...');
-                            
+
                             // Deteksi apakah URL sudah punya query string (?) atau belum
                             $separator = str_contains($redirectUrl, '?') ? '&' : '?';
                             $redirectUrl .= $separator . 'ott=' . $ottToken;
@@ -2451,9 +2475,9 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                         Log::warning('LOG LOG: [DANA BINDING] Gagal Apply OTT, fallback ke URL Checkout biasa.', $resultOtt);
                     }
                     // =====================================================================
-                    
+
                     $transaction->update(['payment_url' => $redirectUrl]);
-                    
+
                     // Arahkan user ke halaman DANA (Sekarang URL-nya sudah bawa OTT)
                     return redirect()->away($redirectUrl);
                 }
@@ -2861,7 +2885,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         // Fungsi processTopUp di bawah butuh "PAID" untuk mengeksekusi penambahan saldo.
         // =====================================================================
         $internalStatus = in_array(strtoupper($statusRaw), ['SUCCESS', 'PAID', '00']) ? 'PAID' : 'FAILED';
-        
+
         Log::info('LOG LOG: [UAT DANA TESTING] Status DANA RAW: ' . $statusRaw . ' dinormalisasi menjadi Internal Status: ' . $internalStatus);
 
         try {
@@ -2968,7 +2992,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                         $message = 'Top up Anda sebesar Rp ' . number_format($transaction->amount, 0, ',', '.') . ' telah berhasil.';
                         event(new \App\Events\SaldoUpdated($user->id_pengguna, $transaction->amount, $user->saldo, $message));
                     } catch (\Exception $e) { Log::error('Gagal broadcast SaldoUpdated: ' . $e->getMessage()); }
-                    
+
                     // B. Kirim notifikasi DB ke Customer
                     try {
                         $dataNotifCustomer = [
@@ -3080,7 +3104,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         // ==============================================================
         // 3. IDENTITAS CORPORATE (DISBURSEMENT B2B)
         // ==============================================================
-        $merchantDepositAccount = config('services.dana.merchant_deposit_account'); 
+        $merchantDepositAccount = config('services.dana.merchant_deposit_account');
         $idToko = config('services.dana.id_toko');
 
         $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
@@ -3113,7 +3137,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
         $hashedBody   = strtolower(hash('sha256', $jsonBody));
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-        
+
         $signature    = $this->generateSignature($stringToSign);
 
         try {
@@ -3160,7 +3184,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 // --- PERBAIKAN UNTUK UAT DANA ---
                 $danaRef = $result['referenceNo'] ?? '-';
                 $trxDate = $result['transactionDate'] ?? $timestamp;
-                
+
                 $msg = "✅ Top Up Berhasil!\n\n" .
                        "No. Ref Sancaka: $partnerRef\n" .
                        "No. Ref DANA: $danaRef\n" .
@@ -3184,7 +3208,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 ]);
 
                 return back()->with('warning', '⏳ Transaksi sedang diproses (Pending) oleh DANA. Mohon tunggu.');
-            
+
             } else {
                 // GAGAL - Kembalikan saldo pengguna
                 DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
@@ -3216,7 +3240,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             // Sistem Error - Kembalikan saldo pengguna
             DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
             Log::error('[DANA TOPUP] Exception: ' . $e->getMessage());
-            
+
             return back()->with('error', 'Koneksi terputus. Saldo Anda telah dikembalikan.');
         } finally {
             Log::info('========== [DANA TOPUP CORPORATE END] ==========');
@@ -3251,7 +3275,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
         $hashedBody = strtolower(hash('sha256', $jsonBody));
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-        
+
         $signature = $this->generateSignature($stringToSign);
 
         try {
@@ -3278,7 +3302,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             Log::info('[DANA DISBURSEMENT STATUS CHECK] Respon:', $result);
 
             $resCode = $result['responseCode'] ?? '500';
-            
+
             // 3. Evaluasi Berdasarkan Dokumentasi (ResponseCode = 2000000)
             if ($resCode === '2000000' || $resCode === '2004400') {
                 $status = $result['latestTransactionStatus'] ?? null;
@@ -3287,11 +3311,11 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 if ($status === '00') {
                     DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'SUCCESS']);
                     return back()->with('success', '✅ Transaksi BERHASIL. Dana sudah masuk ke rekening tujuan.');
-                } 
+                }
                 // 01, 02, 03 - Pending
                 elseif (in_array($status, ['01', '02', '03'])) {
                     return back()->with('warning', '⏳ Transaksi masih berstatus PENDING di antrean bank. Silakan cek lagi nanti.');
-                } 
+                }
                 // 04, 05, 06, 07 - Failed/Refunded/Not Found
                 elseif (in_array($status, ['04', '05', '06', '07'])) {
                     // TRANSAKSI GAGAL -> KEMBALIKAN SALDO USER
@@ -3301,7 +3325,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                     $desc = $result['transactionStatusDesc'] ?? 'Gagal / Dibatalkan';
                     return back()->with('error', "❌ Transaksi dinyatakan GAGAL ($desc). Saldo Rp " . number_format($trx->amount, 0, ',', '.') . " telah dikembalikan.");
                 }
-            } 
+            }
             // 4. Handle Error API (4040001 = Transaction Not Found)
             elseif ($resCode === '4040001') {
                 DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'FAILED']);
@@ -3353,7 +3377,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
     public function searchPengguna(Request $request)
     {
         $search = $request->get('q');
-        
+
         $query = DB::table('Pengguna')
             // Tambahkan kolom bank_name, bank_account_name, dan bank_account_number
             ->select('id_pengguna', 'nama_lengkap', 'no_wa', 'store_name', 'bank_name', 'bank_account_name', 'bank_account_number')
@@ -3376,7 +3400,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 'id' => $item->id_pengguna,
                 'text' => "{$item->nama_lengkap} ({$item->no_wa}){$store}",
                 'phone' => $item->no_wa,
-                
+
                 // Kirim data bank ke Frontend (UI)
                 'bank_account_number' => $item->bank_account_number,
                 'bank_account_name' => $item->bank_account_name,
@@ -3393,7 +3417,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
     public function bulkDestroyTransaction(Request $request)
     {
         $ids = $request->input('ids');
-        
+
         if (empty($ids)) {
             return back()->with('error', 'Pilih minimal satu transaksi untuk dihapus.');
         }
@@ -3432,7 +3456,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         }
 
         // Persiapan Data DANA
-        $merchantDepositAccount = config('services.dana.merchant_deposit_account'); 
+        $merchantDepositAccount = config('services.dana.merchant_deposit_account');
         $idToko = config('services.dana.id_toko');
 
         $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
@@ -3444,8 +3468,8 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
         $body = [
             "partnerReferenceNo" => $refNo,
-            "customerNumber"     => $merchantDepositAccount, 
-            "beneficiaryAccountNumber" => $request->account_no, 
+            "customerNumber"     => $merchantDepositAccount,
+            "beneficiaryAccountNumber" => $request->account_no,
             "amount" => [
                 "value"    => number_format((float)$request->amount, 2, '.', ''),
                 "currency" => "IDR"
@@ -3454,14 +3478,14 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
                 "beneficiaryBankCode"    => (string) $request->bank_code,
                 "beneficiaryAccountName" => "",
-                "merchantId"             => $idToko 
+                "merchantId"             => $idToko
             ]
         ];
 
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
         $hashedBody = strtolower(hash('sha256', $jsonBody));
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-        
+
         try {
             $signature = $this->generateSignature($stringToSign);
             $accessTokenB2B = $this->danaSignature->getAccessToken();
@@ -3531,7 +3555,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         } catch (\Exception $e) {
             Log::error('[API BANK INQUIRY ERROR] ' . $e->getMessage());
             return response()->json([
-                'success' => false, 
+                'success' => false,
                 'message' => 'Sistem Error saat cek rekening.'
             ], 500);
         }
@@ -3559,14 +3583,14 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
         // 2. Cek Pengguna & Saldo
         $aff = DB::table('Pengguna')->where('id_pengguna', $request->affiliate_id)->first();
-        
+
         if (!$aff) {
             return response()->json(['success' => false, 'message' => 'Pengguna tidak ditemukan.'], 404);
         }
 
         if ($aff->saldo < $amount) {
             return response()->json([
-                'success' => false, 
+                'success' => false,
                 'message' => 'Saldo pengguna tidak mencukupi. Sisa: Rp ' . number_format($aff->saldo, 0, ',', '.')
             ], 400);
         }
@@ -3580,7 +3604,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         // =========================================================
         // MENGGUNAKAN TRANSACTION UNTUK MENCEGAH RACE CONDITION
         // =========================================================
-        DB::beginTransaction(); 
+        DB::beginTransaction();
 
         try {
             // POTONG SALDO DIAWAL SECARA AMAN
@@ -3589,7 +3613,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             // =========================================================
             // PERSIAPAN DATA DANA
             // =========================================================
-            $merchantDepositAccount = config('services.dana.merchant_deposit_account'); 
+            $merchantDepositAccount = config('services.dana.merchant_deposit_account');
             $idToko = config('services.dana.id_toko');
 
             $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
@@ -3601,7 +3625,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
             $body = [
                 "partnerReferenceNo"       => $partnerRef,
-                "customerNumber"           => $merchantDepositAccount, 
+                "customerNumber"           => $merchantDepositAccount,
                 "beneficiaryAccountNumber" => (string) $request->account_no,
                 "beneficiaryBankCode"      => (string) $request->bank_code,
                 "amount" => [
@@ -3620,7 +3644,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
             $hashedBody = strtolower(hash('sha256', $jsonBody));
             $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-            
+
             $signature = $this->generateSignature($stringToSign);
             $accessTokenB2B = $this->danaSignature->getAccessToken();
 
@@ -3653,7 +3677,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             // EVALUASI RESPON DANA
             // =========================================================
             if ($resCode === '2004300') {
-                
+
                 // TRANSAKSI BERHASIL: Simpan log dan COMMIT saldo
                 DB::table('dana_transactions')->insert([
                     'affiliate_id'     => $aff->id_pengguna,
@@ -3676,7 +3700,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 ]);
 
             } elseif (in_array($resCode, ['2024300', '4294300', '5004301'])) {
-                
+
                 // TRANSAKSI PENDING: Simpan log dan COMMIT saldo sementara
                 DB::table('dana_transactions')->insert([
                     'affiliate_id'     => $aff->id_pengguna,
@@ -3698,9 +3722,9 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 ]);
 
             } else {
-                
+
                 // TRANSAKSI GAGAL: BATALKAN PEMOTONGAN SALDO DENGAN ROLLBACK
-                DB::rollBack(); 
+                DB::rollBack();
 
                 DB::table('dana_transactions')->insert([
                     'affiliate_id'     => $aff->id_pengguna,
@@ -3715,7 +3739,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
                 $errorMsg = $result['responseMessage'] ?? 'Transaksi Gagal';
                 Log::error('LOG LOG: [API DANA TRANSFER BANK] Gagal & Refund Auto (Rollback)', ['res' => $result]);
-                
+
                 return response()->json([
                     'success' => false,
                     'message' => "Gagal: $errorMsg (Saldo telah dikembalikan)",
@@ -3724,10 +3748,10 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             }
 
         } catch (\Exception $e) {
-            
+
             // JIKA TERJADI ERROR KONEKSI / FATAL ERROR: BATALKAN PEMOTONGAN SALDO
-            DB::rollBack(); 
-            
+            DB::rollBack();
+
             Log::error('LOG LOG: [API DANA TRANSFER BANK] Exception', ['msg' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
@@ -3757,7 +3781,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 'success' => true,
                 'data'    => $transactions
             ]);
-            
+
         } catch (\Exception $e) {
             Log::error('LOG LOG: [API EXPO DANA HISTORY] Error: ' . $e->getMessage());
             return response()->json([
@@ -3775,7 +3799,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
     public function apiSearchPengguna(Request $request)
     {
         $search = $request->get('q');
-        
+
         $query = DB::table('Pengguna')
             ->select('id_pengguna', 'nama_lengkap', 'no_wa', 'store_name', 'bank_name', 'bank_account_name', 'bank_account_number')
             ->where('status', 'Aktif');
@@ -3890,16 +3914,16 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $result = $response->getData(true);
 
             if (isset($result['success']) && $result['success'] === true && $result['status'] === 'COMPLETED') {
-                
+
                 // Panggil prosesor utama top up untuk menambah saldo & catat mutasi DB
                 self::processTopUp($invoice, 'PAID', $result);
-                
+
                 return redirect()->route('customer.topup.index')
                     ->with('success', 'Top Up via PayPal Berhasil! Saldo Anda telah bertambah.');
             }
 
             return redirect()->route('customer.topup.create')->with('error', 'Dana belum berhasil ditarik oleh PayPal.');
-            
+
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("PayPal Capture Error (TopUp): " . $e->getMessage());
             return redirect()->route('customer.topup.create')->with('error', 'Terjadi kesalahan saat memverifikasi PayPal.');
@@ -3929,10 +3953,10 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             // 3. Susun Body Request
             $body = [
                 "originalPartnerReferenceNo" => $orderId,
-                "serviceCode"                => "54", 
+                "serviceCode"                => "54",
                 "merchantId"                 => $merchantId
             ];
-            
+
             $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
 
             // 4. Generate Signature
@@ -3957,25 +3981,25 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
             $result = $response->json();
             $responseCode = $result['responseCode'] ?? 'UNKNOWN';
-            
+
             // 7. Evaluasi Respon untuk AJAX
             if ($responseCode === '2005500') {
                 $status = $result['latestTransactionStatus'] ?? null;
-                
+
                 if ($status === '00') {
                     // --- PENTING: Update database lokal jika status di DANA Lunas ---
                     if ($transaction->status !== 'success') {
                         // Panggil prosesor utama agar saldo user otomatis ditambah
                         self::processTopUp($orderId, 'PAID', $transaction->amount);
                     }
-                    
+
                     // Kembalikan JSON Sukses ke SweetAlert
                     return response()->json(['success' => true, 'status' => 'PAID']);
-                    
+
                 } elseif (in_array($status, ['01', '02'])) {
                     // Status masih pending / belum dibayar
                     return response()->json(['success' => true, 'status' => 'PENDING']);
-                    
+
                 } else {
                     // Status gagal, expired, cancel
                     return response()->json(['success' => false, 'message' => 'Transaksi gagal/dibatalkan di sistem DANA.']);
@@ -3984,7 +4008,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
             // Jika gagal menembak API DANA (Error Gateway)
             return response()->json([
-                'success' => false, 
+                'success' => false,
                 'message' => $result['responseMessage'] ?? 'Terjadi kesalahan dari gateway DANA.'
             ]);
 
@@ -4007,13 +4031,13 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         Log::info('LOG LOG: [DANA CUSTOM CHECKOUT BALANCE] Memulai request Create Order untuk: ' . $trxId);
 
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-        
+
         // Aturan Sandbox: validUpTo harus <= 30 menit dari request time
         $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP');
-        
+
         // Aturan Value: Harus memiliki 2 angka desimal di belakang koma (misal: 10000.00)
         $amountValue = number_format((float)$transaction->amount, 2, '.', '');
-        
+
         $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
 
         // PAYLOAD SESUAI DOKUMENTASI "Request Sample Gapura Custom Checkout - BALANCE"
@@ -4055,7 +4079,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                     // Untuk Custom Checkout, scenario diatur sebagai "API"
                     "scenario"   => "API"
                 ],
-                "mcc"     => "5732", 
+                "mcc"     => "5732",
                 "envInfo" => [
                     "sourcePlatform" => "IPG",
                     "terminalType"   => "SYSTEM"
@@ -4096,11 +4120,11 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
                 // Mengambil URL Checkout
                 $redirectUrl = $result['webRedirectUrl'] ?? null;
-                
+
                 if (!empty($redirectUrl)) {
                     Log::info('LOG LOG: [DANA CUSTOM CHECKOUT BALANCE] Berhasil generate URL Checkout.');
                     $transaction->update(['payment_url' => $redirectUrl]);
-                    
+
                     // Arahkan user ke halaman web checkout DANA
                     return redirect()->away($redirectUrl);
                 }
@@ -4142,11 +4166,11 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
     private function processDanaCancel($orderId, $path)
     {
         Log::info('LOG LOG: [DANA CANCEL] Memulai proses Cancel untuk Order ID: ' . $orderId . ' via ' . $path);
-        
+
         DB::beginTransaction();
         try {
             $transaction = \App\Models\Transaction::where('reference_id', $orderId)->lockForUpdate()->first();
-            
+
             if (!$transaction) {
                 DB::rollBack();
                 return $this->respondError('Transaksi tidak ditemukan.', 404);
@@ -4173,7 +4197,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 "originalPartnerReferenceNo" => (string) $orderId,
                 "merchantId"                 => (string) $merchantId
             ];
-            
+
             $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
             $accessToken = $this->danaSignature->getAccessToken();
             $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
@@ -4195,17 +4219,17 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
             $result = $response->json();
             Log::info('LOG LOG: [DANA CANCEL] Response DANA: ', $result ?? ['raw' => $response->body()]);
-            
+
             if (($result['responseCode'] ?? '') === '2005700') {
-                $transaction->update(['status' => 'failed']); 
-                DB::commit(); 
+                $transaction->update(['status' => 'failed']);
+                DB::commit();
                 Log::info('LOG LOG: [DANA CANCEL] Berhasil dibatalkan di DANA dan Database.');
                 return $this->respondSuccess('Pesanan berhasil dibatalkan secara permanen di DANA.');
             }
 
             DB::rollBack();
             return $this->respondError('Gagal membatalkan pesanan: ' . ($result['responseMessage'] ?? 'Unknown Error'), 400);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('LOG LOG: [DANA CANCEL] Exception Error: ' . $e->getMessage());
@@ -4231,11 +4255,11 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
     private function processDanaRefund($orderId, $path)
     {
         Log::info('LOG LOG: [DANA REFUND] Memulai proses Refund untuk Order ID: ' . $orderId . ' via ' . $path);
-        
+
         DB::beginTransaction();
         try {
             $transaction = \App\Models\Transaction::where('reference_id', $orderId)->lockForUpdate()->first();
-            
+
             if (!$transaction) {
                 DB::rollBack();
                 return $this->respondError('Transaksi tidak ditemukan.', 404);
@@ -4257,8 +4281,8 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $this->applyDynamicConfig();
             $merchantId = config('services.dana.merchant_id');
             $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
-            
-            $partnerRefundNo = date('YmdHis') . mt_rand(10000, 99999); 
+
+            $partnerRefundNo = date('YmdHis') . mt_rand(10000, 99999);
             $refundAmountValue = number_format((float)$transaction->amount, 2, '.', '');
 
             $body = [
@@ -4270,7 +4294,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                     "currency" => "IDR"
                 ]
             ];
-            
+
             $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
             $accessToken = $this->danaSignature->getAccessToken();
             $signature   = $this->danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
@@ -4292,15 +4316,15 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
             $result = $response->json();
             Log::info('LOG LOG: [DANA REFUND] Response DANA: ', $result ?? ['raw' => $response->body()]);
-            
+
             if (($result['responseCode'] ?? '') === '2005800') {
                 $user = \App\Models\User::find($transaction->user_id);
                 if ($user) {
                     $user->decrement('saldo', $transaction->amount);
                 }
 
-                $transaction->update(['status' => 'refunded']); 
-                DB::commit(); 
+                $transaction->update(['status' => 'refunded']);
+                DB::commit();
 
                 Log::info('LOG LOG: [DANA REFUND] Berhasil di-refund! Saldo ditarik.');
                 return $this->respondSuccess('Dana berhasil dikembalikan ke akun DANA pelanggan.');
@@ -4308,7 +4332,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
 
             DB::rollBack();
             return $this->respondError('Gagal memproses refund: ' . ($result['responseMessage'] ?? 'Unknown Error'), 400);
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('LOG LOG: [DANA REFUND] Exception Error: ' . $e->getMessage());
@@ -4341,6 +4365,110 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             ], $statusCode);
         }
         return back()->with('error', $message);
+    }
+
+    /**
+     * =========================================================================
+     * EKSEKUTOR PEMBAYARAN IPAYMU
+     * =========================================================================
+     */
+    protected function createPaymentIpaymu(Transaction $transaction, $paymentMethod)
+    {
+        Log::info('LOG LOG: IPAYMU START for Transaction: ' . $transaction->reference_id);
+        $user = Auth::user();
+
+        try {
+            // Memanggil IpaymuService yang sudah dibuat sebelumnya
+            $ipaymuService = app(\App\Services\IpaymuService::class);
+
+            // Menyiapkan Payload iPaymu
+            $payload = [
+                'product'    => ['Top Up Saldo - ' . $transaction->reference_id],
+                'qty'        => ['1'],
+                'price'      => [$transaction->amount],
+                'amount'     => $transaction->amount,
+                'returnUrl'  => route('customer.topup.show', ['topup' => $transaction->reference_id]),
+                'cancelUrl'  => route('customer.topup.show', ['topup' => $transaction->reference_id]),
+                'notifyUrl'  => url('/api/webhook/ipaymu'), // URL untuk callback Webhook
+                'referenceId'=> $transaction->reference_id,
+                'buyerName'  => $user->nama_lengkap ?? 'Customer Sancaka',
+                'buyerEmail' => $user->email ?? 'email@kosong.com',
+                'buyerPhone' => $user->no_wa ?? '',
+            ];
+
+            // Deteksi spesifik channel (misal: IPAYMU_VA_BCA, IPAYMU_QRIS)
+            $parts = explode('_', $paymentMethod);
+            if (count($parts) >= 3 && $parts[1] === 'VA') {
+                $payload['paymentMethod'] = 'va';
+                $payload['paymentChannel'] = strtolower($parts[2]);
+            } elseif (count($parts) >= 2 && $parts[1] === 'QRIS') {
+                $payload['paymentMethod'] = 'qris';
+                $payload['paymentChannel'] = 'qris';
+            }
+
+            // Hit ke API iPaymu
+            $response = $ipaymuService->createPayment($payload);
+
+            if (isset($response['success']) && $response['success'] == true) {
+                // Ambil URL Redirect Pembayaran
+                $paymentUrl = $response['Data']['Url'] ?? null;
+
+                if ($paymentUrl) {
+                    $transaction->payment_url = $paymentUrl;
+                    $transaction->save();
+
+                    return redirect()->away($paymentUrl);
+                }
+            }
+
+            Log::error('LOG LOG: Gagal mendapatkan URL dari iPaymu', $response ?? []);
+            return back()->with('error', 'Gagal memproses pembayaran iPaymu. ' . ($response['message'] ?? ''));
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: IPAYMU System Error: ' . $e->getMessage());
+            return back()->with('error', 'Koneksi ke iPaymu terputus: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * =========================================================================
+     * HANDLER WEBHOOK IPAYMU
+     * =========================================================================
+     */
+    public function ipaymuNotify(Request $request)
+    {
+        Log::info('LOG LOG: IPAYMU NOTIFICATION HIT:', $request->all());
+
+        try {
+            // Parameter standar Webhook dari iPaymu v2
+            $merchantRef = $request->input('reference_id');
+            $status      = $request->input('status');
+            $status_code = $request->input('status_code');
+            $amount      = $request->input('total');
+
+            if (!$merchantRef) {
+                return response()->json(['message' => 'Invalid Request Data'], 400);
+            }
+
+            // Normalisasi Status iPaymu ke Internal Status (PAID / FAILED)
+            $internalStatus = 'PENDING';
+
+            // Status Code 1 = Berhasil / Lunas
+            if ($status_code == 1 || strtolower($status) == 'berhasil' || strtolower($status) == 'sukses') {
+                $internalStatus = 'PAID';
+            }
+            // Status Code -1, -2, dll = Gagal / Expired
+            elseif ($status_code < 0 || strtolower($status) == 'gagal' || strtolower($status) == 'expired') {
+                $internalStatus = 'FAILED';
+            }
+
+            // Teruskan ke Prosesor Inti Top Up yang sudah ada
+            return self::processTopUp($merchantRef, $internalStatus, $amount);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: IPAYMU NOTIFY ERROR: ' . $e->getMessage());
+            return response()->json(['message' => 'System Error'], 500);
+        }
     }
 
 

@@ -61,6 +61,10 @@ use App\Http\Controllers\LalamoveApiController;
 
 
 
+// Pastikan diluar middleware auth agar iPaymu bisa menembak URL ini tanpa login
+Route::post('/webhook/ipaymu', [TopUpController::class, 'ipaymuNotify']);
+
+
 // Route untuk menerima webhook dari Lalamove
 Route::post('/webhook/lalamove', [LalamoveApiController::class, 'handleWebhook']);
 
