@@ -14,21 +14,17 @@ class IpaymuService
 
     public function __construct()
     {
-        // 1. Ambil mode yang sedang aktif dari Database
         $mode = \App\Models\Api::getValue('IPAYMU_MODE', 'global', 'sandbox');
 
-        // 2. Ambil Kredensial spesifik sesuai mode (Sandbox/Production)
         $this->va      = \App\Models\Api::getValue('IPAYMU_VA', $mode);
         $this->apiKey  = \App\Models\Api::getValue('IPAYMU_API_KEY', $mode);
-
-        // 3. Tentukan Base URL otomatis berdasarkan mode
         $this->baseUrl = ($mode === 'production')
             ? 'https://my.ipaymu.com'
             : 'https://sandbox.ipaymu.com';
     }
 
-  /**
-     * HTTP Request Wrapper dengan Algoritma Signature Akurat & Tahan Banting
+    /**
+     * HTTP Request Wrapper dengan Algoritma Signature 100% Sesuai Sample iPaymu
      */
     protected function request(string $method, string $endpoint, array $data = [])
     {
@@ -37,42 +33,41 @@ class IpaymuService
 
         $cleanData = array_filter($data, fn($value) => $value !== null);
 
-        // KUNCI PENTING IPAYMU UNTUK GET vs POST:
-        // Jika GET, body yang di-hash HARUS kosong (string kosong).
-        // Jika POST, body di-encode menjadi JSON.
+        // 1. ATURAN BODY (Sesuai Sample Code iPaymu)
         $jsonBody = '';
-        if ($method === 'POST' && !empty($cleanData)) {
-            $jsonBody = json_encode($cleanData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if ($method === 'POST') {
+            // Jika POST, encode body. Wajib menggunakan JSON_UNESCAPED_SLASHES
+            // Gunakan (object) jika array kosong agar menjadi {} bukan []
+            $jsonBody = empty($cleanData) ? json_encode((object)[], JSON_UNESCAPED_SLASHES) : json_encode($cleanData, JSON_UNESCAPED_SLASHES);
         }
+        // Jika GET, $jsonBody dibiarkan kosong ('') karena parameter akan dikirim via URL, bukan Body.
 
-        // Hash SHA256 dari String JSON Body (atau hash string kosong jika GET)
-        $requestBodyHash = strtolower(hash('sha256', $jsonBody));
-
-        // Susun String to Sign (Method:VA:HashBody:ApiKey)
-        $stringToSign = $method . ':' . $this->va . ':' . $requestBodyHash . ':' . $this->apiKey;
-
-        // Generate HMAC-SHA256
-        $signature = hash_hmac('sha256', $stringToSign, $this->apiKey);
+        // 2. GENERATE SIGNATURE (Persis seperti Sample Code iPaymu)
+        $requestBody  = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = $method . ':' . $this->va . ':' . $requestBody . ':' . $this->apiKey;
+        $signature    = hash_hmac('sha256', $stringToSign, $this->apiKey);
+        $timestamp    = date('YmdHis');
 
         $headers = [
+            'Accept'       => 'application/json',
+            'Content-Type' => 'application/json',
             'va'           => $this->va,
             'signature'    => $signature,
-            'timestamp'    => date('YmdHis'),
-            'Content-Type' => 'application/json',
-            'Accept'       => 'application/json',
+            'timestamp'    => $timestamp,
         ];
 
         try {
             if ($method === 'GET') {
-                // Untuk GET, parameter dikirim di URL Query (?area=Ngawi)
+                // Untuk GET, cleanData dikirim sebagai Query String di URL (?area=Ngawi)
                 return Http::withHeaders($headers)->get($url, $cleanData)->json();
             }
 
-            // Untuk POST, kirim body JSON mentah yang sama persis dengan yang di-hash
+            // Untuk POST, kirim jsonBody mentah agar tidak dimodifikasi oleh Laravel Guzzle
             return Http::withHeaders($headers)
                         ->withBody($jsonBody, 'application/json')
                         ->post($url)
                         ->json();
+
         } catch (Exception $e) {
             Log::error("iPaymu Request Exception: " . $e->getMessage());
             return [
@@ -92,12 +87,9 @@ class IpaymuService
         return $this->request('POST', '/api/v2/payment', $paymentData);
     }
 
-    /**
-     * GET Area COD
-     */
     public function getCodArea(string $searchArea)
     {
-        // KEMBALIKAN KE GET!
+        // IPAYMU AREA MENGGUNAKAN GET
         return $this->request('GET', '/api/v2/cod/area', ['area' => $searchArea]);
     }
 
