@@ -824,12 +824,11 @@
                         </div>
                     </li>
 
-                    {{-- OPSI IPAYMU (COD / PAYMENT) --}}
                     <li class="list-group-item list-group-item-action d-flex align-items-center gateway-option" data-value="IPAYMU" data-label="iPaymu">
                         <img src="https://tokosancaka.com/public/assets/ipaymu.jpg" class="me-3 border rounded p-1 bg-white" style="width: 40px; height: 40px; object-fit: contain;" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=IP'">
                         <div>
-                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">iPaymu (COD / Reguler)</div>
-                            <div class="text-muted" style="font-size: 0.75rem;">Diarahkan ke Checkout iPaymu</div>
+                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">iPaymu (Virtual Account & QRIS)</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">Transfer Bank, E-Wallet, Retail (Alfamart/Indomaret)</div>
                         </div>
                     </li>
 
