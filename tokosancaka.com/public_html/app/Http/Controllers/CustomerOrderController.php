@@ -191,11 +191,13 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             'sender_district' => 'nullable|string',
             'sender_regency' => 'nullable|string',
             'sender_province' => 'nullable|string',
+            'sender_postal_code' => 'nullable|string', // <-- TAMBAHKAN INI
 
             'receiver_village' => 'nullable|string',
             'receiver_district' => 'nullable|string',
             'receiver_regency' => 'nullable|string',
             'receiver_province' => 'nullable|string',
+            'receiver_postal_code' => 'nullable|string', // <-- TAMBAHKAN INI
         ]);
 
         $senderLat = $validated['sender_lat'] ?? null;
