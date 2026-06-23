@@ -145,10 +145,15 @@ class TrackingController extends Controller
             // ==========================================================
             if (str_contains($expeditionRaw, 'deliveree')) {
                 $result = $this->trackDeliveree($pesanan);
-            } 
+            }
 
             elseif (str_contains($expeditionRaw, 'lalamove')) {
                 $result = $this->trackLalamove($pesanan);
+            }
+
+            // --- TAMBAHAN TRACKING IPAYMU / KOMSHIP ---
+            elseif (str_contains($expeditionRaw, 'ipaymu') || str_contains($expeditionRaw, 'komship')) {
+                $result = $this->trackIpaymu($pesanan);
             }
 
             // ==========================================================
@@ -353,7 +358,7 @@ class TrackingController extends Controller
                 // =========================================================
                 // 🔥 KODE TAMBAHAN: INJECT STATUS RACIK RSUD KE TIMELINE 🔥
                 // =========================================================
-                
+
                 // Tambahkan Status Apotek Saat Ini
                 $result['histories'][] = (object)[
                     'status' => 'Status Apotek: ' . $rsudOrder->status_racik,
@@ -498,7 +503,7 @@ class TrackingController extends Controller
         // ==========================================================
         if (!$pesanan) {
             $cleanedResi = str_replace('SCK-', '', $resi); // Bersihkan prefix jika ada
-            
+
             $rsudOrder = \App\Models\RsudOrderObat::where('kode_booking', $cleanedResi)
                 ->orWhere('resi', $resi)
                 ->first();
@@ -530,11 +535,11 @@ class TrackingController extends Controller
                     'shipping_cost' => $rsudOrder->shipping_cost ?? 0,
                     'ongkir' => $rsudOrder->shipping_cost ?? 0,
                     'insurance_cost' => 0,
-                    
+
                     // Cek jika ada flag COD
                     'total_cod' => in_array(strtoupper($rsudOrder->payment_method), ['COD', 'CODBARANG']) ? $rsudOrder->total_price : 0,
                     'cod_amount' => in_array(strtoupper($rsudOrder->payment_method), ['COD', 'CODBARANG']) ? $rsudOrder->total_price : 0,
-                    
+
                     'item_description' => $rsudOrder->item_description ?? 'Pengiriman Obat RSUD',
                     'length' => 10, 'width' => 10, 'height' => 10,
                     'expedition' => 'Sancaka Express', // Atau ambil dari $rsudOrder->expedition jika ada
@@ -628,9 +633,9 @@ class TrackingController extends Controller
         $mode = \App\Models\Api::getValue('DELIVEREE_MODE', 'global', 'sandbox');
         $baseUrl = \App\Models\Api::getValue('DELIVEREE_BASE_URL', $mode, 'https://api.sandbox.deliveree.com/public_api/v10');
         $apiKey = \App\Models\Api::getValue('DELIVEREE_API_KEY', $mode);
-        
+
         // Asumsi $pesanan->resi berisi ID Booking Deliveree (contoh: 82128)
-        $delivereeId = $pesanan->resi; 
+        $delivereeId = $pesanan->resi;
         $histories = collect([]);
         $statusText = 'Menunggu Kurir';
         $jasaEkspedisi = 'Deliveree';
@@ -645,7 +650,7 @@ class TrackingController extends Controller
                 if ($response->successful()) {
                     $data = $response->json();
                     $statusRaw = $data['status'] ?? '';
-                    
+
                     // Terjemahkan Status Deliveree
                     $statusMap = [
                         'locating_driver' => 'Mencari Pengemudi / Kurir',
@@ -712,7 +717,7 @@ class TrackingController extends Controller
         // Timeline Default: "Pesanan Dibuat"
         if ($pesanan->created_at) {
             $waktuDibuat = \Carbon\Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta');
-            
+
             // Cek lokasi pengirim untuk tampilan
             $lokasiAkun = strtoupper($pesanan->sender_regency ?? 'NGAWI');
             if (!empty($pesanan->sender_district)) {
@@ -754,7 +759,7 @@ class TrackingController extends Controller
     private function trackLalamove($pesanan)
     {
         // Asumsi $pesanan->resi menyimpan Order ID Lalamove (contoh: 3516154960524399292)
-        $orderId = $pesanan->resi; 
+        $orderId = $pesanan->resi;
         $histories = collect([]);
         $statusText = 'Menunggu Kurir';
         $jasaEkspedisi = 'Lalamove';
@@ -766,7 +771,7 @@ class TrackingController extends Controller
                 if ($response && $response->successful()) {
                     $data = $response->json('data');
                     $statusRaw = $data['status'] ?? '';
-                    
+
                     // Terjemahkan Status Lalamove
                     $statusMap = [
                         'ASSIGNING_DRIVER' => 'Mencari Driver / Kurir',
@@ -781,7 +786,7 @@ class TrackingController extends Controller
 
                     // Ekstrak URL Live Tracking
                     $shareLink = $data['shareLink'] ?? null;
-                    
+
                     $keterangan = "<b>Status Terkini:</b> " . $statusText;
                     if ($shareLink) {
                         $keterangan .= "<br><a href='$shareLink' target='_blank' class='btn btn-sm mt-2 fw-bold text-white' style='background:#f27024; border:none;'><i class='fas fa-map-marker-alt'></i> Lacak Live Map Lalamove</a>";
@@ -799,8 +804,8 @@ class TrackingController extends Controller
                     if (!empty($data['stops']) && is_array($data['stops'])) {
                         foreach ($data['stops'] as $stop) {
                             if (!empty($stop['POD']['status']) && $stop['POD']['status'] === 'DELIVERED') {
-                                $waktuTerkirim = !empty($stop['POD']['deliveredAt']) 
-                                    ? \Carbon\Carbon::parse($stop['POD']['deliveredAt'])->timezone('Asia/Jakarta') 
+                                $waktuTerkirim = !empty($stop['POD']['deliveredAt'])
+                                    ? \Carbon\Carbon::parse($stop['POD']['deliveredAt'])->timezone('Asia/Jakarta')
                                     : \Carbon\Carbon::now()->timezone('Asia/Jakarta');
 
                                 $histories->push((object)[
@@ -824,7 +829,7 @@ class TrackingController extends Controller
         // Timeline Default: "Pesanan Dibuat"
         if ($pesanan->created_at) {
             $waktuDibuat = \Carbon\Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta');
-            
+
             // Cek lokasi pengirim untuk tampilan
             $lokasiAkun = strtoupper($pesanan->sender_regency ?? 'NGAWI');
             if (!empty($pesanan->sender_district)) {
@@ -876,7 +881,7 @@ class TrackingController extends Controller
 
         $timestamp = round(microtime(true) * 1000);
         $bodyStr = ''; // Method GET tidak memiliki body request
-        
+
         $rawSignature = "{$timestamp}\r\n{$method}\r\n{$path}\r\n\r\n{$bodyStr}";
         $signature = hash_hmac('sha256', $rawSignature, $apiSecret);
         $token = "{$apiKey}:{$timestamp}:{$signature}";
@@ -892,5 +897,111 @@ class TrackingController extends Controller
 
         return Http::withHeaders($headers)->get($baseUrl . $path);
     }
-    
+
+    /**
+     * =========================================================================
+     * HELPER EKSTRAKSI TRACKING IPAYMU (COD / KOMSHIP)
+     * =========================================================================
+     */
+    private function trackIpaymu($pesanan)
+    {
+        // Parameter tracking iPaymu membutuhkan AWB dan Transaction ID.
+        // Kita asumsikan Transaction ID disimpan di nomor_invoice atau resi_aktual.
+        $awb = $pesanan->resi_aktual ?? $pesanan->resi;
+        $trxId = $pesanan->nomor_invoice ?? $pesanan->resi;
+
+        $histories = collect([]);
+        $statusText = 'Diproses (Menunggu Ekspedisi)';
+        $jasaEkspedisi = 'iPaymu COD (Komship)';
+
+        if (!empty($awb)) {
+            try {
+                // Memanggil Service iPaymu yang sudah kita buat sebelumnya
+                $ipaymuService = app(\App\Services\IpaymuService::class);
+                $response = $ipaymuService->trackCodPackage($awb, $trxId);
+
+                // Jika iPaymu mengembalikan data JSON (Meski di docs tertulis No Body, kita antisipasi jika ada balasan array)
+                if (is_array($response) && !empty($response)) {
+                    $statusText = $response['Status'] ?? $response['status'] ?? 'Sedang Dalam Pengiriman';
+
+                    // Jika ada data history dari iPaymu, masukkan ke array
+                    if (isset($response['Data']['history']) && is_array($response['Data']['history'])) {
+                        foreach ($response['Data']['history'] as $h) {
+                            $histories->push((object)[
+                                'status' => $h['status'] ?? 'Update Pengiriman',
+                                'lokasi' => $h['city'] ?? 'Ekspedisi iPaymu',
+                                'keterangan' => $h['note'] ?? $h['desc'] ?? '-',
+                                'created_at' => \Carbon\Carbon::parse($h['date'] ?? now())->timezone('Asia/Jakarta')
+                            ]);
+                        }
+                    } else {
+                        // Jika respon tidak memuat array history secara eksplisit
+                        $histories->push((object)[
+                            'status' => 'Status iPaymu: ' . $statusText,
+                            'lokasi' => 'Sistem iPaymu',
+                            'keterangan' => 'Paket sedang dilacak melalui integrasi iPaymu COD.',
+                            'created_at' => \Carbon\Carbon::now()->timezone('Asia/Jakarta')
+                        ]);
+                    }
+                } else {
+                    // Berdasarkan Dokumentasi resmi: "No response body".
+                    // Jika benar-benar kosong, kita tampilkan status default.
+                    $histories->push((object)[
+                        'status' => 'Data Diterima iPaymu',
+                        'lokasi' => 'Sistem Terintegrasi',
+                        'keterangan' => 'Request tracking ke iPaymu berhasil (Menunggu sinkronisasi status kurir).',
+                        'created_at' => \Carbon\Carbon::now()->timezone('Asia/Jakarta')
+                    ]);
+                }
+
+            } catch (\Exception $e) {
+                Log::error('iPaymu Tracking Error: ' . $e->getMessage());
+                $statusText = 'Gagal Melacak';
+                $histories->push((object)[
+                    'status' => 'Error Lacak iPaymu',
+                    'lokasi' => 'Sistem',
+                    'keterangan' => 'Koneksi ke server iPaymu gagal saat ini.',
+                    'created_at' => \Carbon\Carbon::now()->timezone('Asia/Jakarta')
+                ]);
+            }
+        }
+
+        // Timeline Default: "Pesanan Dibuat"
+        if ($pesanan->created_at) {
+            $waktuDibuat = \Carbon\Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta');
+
+            $lokasiAkun = strtoupper($pesanan->sender_regency ?? 'NGAWI');
+            if (!empty($pesanan->sender_district)) {
+                $lokasiAkun = strtoupper($pesanan->sender_district) . ', ' . $lokasiAkun;
+            }
+
+            $histories->push((object)[
+                'status' => 'Pesanan Dibuat Oleh TOKOSANCAKA.COM',
+                'lokasi' => $lokasiAkun,
+                'keterangan' => 'Pesanan berhasil dibuat di sistem SANCAKA EXPRESS. Menggunakan integrasi iPaymu COD.',
+                'created_at' => $waktuDibuat,
+            ]);
+        }
+
+        // Urutkan dari yang terbaru
+        $sortedHistories = $histories->sortByDesc('created_at')->values();
+
+        return [
+            'is_pesanan' => true,
+            'resi' => $pesanan->resi,
+            'resi_aktual' => $awb,
+            'pengirim' => $pesanan->sender_name ?? 'N/A',
+            'alamat_pengirim' => $pesanan->sender_address ?? 'N/A',
+            'no_pengirim' => $pesanan->sender_phone ?? 'N/A',
+            'penerima' => $pesanan->receiver_name ?? 'N/A',
+            'alamat_penerima' => $pesanan->receiver_address ?? 'N/A',
+            'no_penerima' => $pesanan->receiver_phone ?? 'N/A',
+            'status' => $statusText,
+            'tanggal_dibuat' => $pesanan->created_at,
+            'histories' => $sortedHistories,
+            'jasa_ekspedisi_aktual' => $jasaEkspedisi,
+            'logo_ekspedisi' => 'https://tokosancaka.com/public/assets/ipaymu.jpg', // Tampilkan logo iPaymu
+        ];
+    }
+
 }

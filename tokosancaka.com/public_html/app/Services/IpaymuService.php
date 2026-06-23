@@ -160,4 +160,39 @@ class IpaymuService
 
         return $this->request('POST', '/api/v2/history', $filters);
     }
+
+    /**
+     * POST Tracking Package COD
+     * Berfungsi untuk melacak status pengiriman (resi/AWB) untuk transaksi COD.
+     */
+    public function trackCodPackage(string $awb, string|int $transactionId)
+    {
+        $payload = [
+            'awb'            => $awb,
+            'transaction_id' => (string) $transactionId,
+        ];
+
+        return $this->request('POST', '/api/v2/cod/tracking', $payload);
+    }
+
+    /**
+     * POST Request Pickup COD
+     * Berfungsi untuk menjadwalkan penjemputan paket COD oleh kurir ke alamat toko.
+     *
+     * @param string|int $transactionId ID Transaksi iPaymu
+     * @param string $pickupDate Format: Y-m-d (WIB), contoh: 2024-07-10
+     * @param string $pickupTime Format: H:i (WIB), contoh: 14:00
+     * @param string $vehicle Jenis kendaraan: "Motor" atau "Mobil"
+     */
+    public function requestCodPickup(string|int $transactionId, string $pickupDate, string $pickupTime, string $vehicle = 'Motor')
+    {
+        $payload = [
+            'transaction_id' => (string) $transactionId,
+            'pickup_date'    => $pickupDate,
+            'pickup_time'    => $pickupTime,
+            'pickup_vehicle' => $vehicle,
+        ];
+
+        return $this->request('POST', '/api/v2/cod/pickup', $payload);
+    }
 }

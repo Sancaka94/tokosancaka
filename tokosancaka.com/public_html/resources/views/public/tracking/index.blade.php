@@ -139,7 +139,7 @@ if (!function_exists('maskText')) {
         if ($length <= 4) {
             return substr($text, 0, 1) . str_repeat('*', $length - 1);
         }
-        
+
         if ($length <= ($keepFirst + $keepLast)) {
             $keepFirst = 1;
             $keepLast = 1;
@@ -176,7 +176,7 @@ if (!function_exists('maskText')) {
                     </form>
                 </div>
             </div>
-            
+
 
             {{-- HASIL PELACAKAN --}}
             @if (isset($result))
@@ -194,8 +194,8 @@ if (!function_exists('maskText')) {
                                     <span class="fw-bold text-nowrap">Hasil untuk Resi:</span>
                                     <span class="badge bg-primary fs-6 d-inline-flex align-items-center gap-2 pe-2">
                                         {{ $result['summary']['awb'] ?? request('resi') }}
-                                        <span onclick="copyResi('{{ $result['summary']['awb'] ?? request('resi') }}', this)" 
-                                            style="cursor: pointer; padding-left: 5px; border-left: 1px solid rgba(255,255,255,0.3);" 
+                                        <span onclick="copyResi('{{ $result['summary']['awb'] ?? request('resi') }}', this)"
+                                            style="cursor: pointer; padding-left: 5px; border-left: 1px solid rgba(255,255,255,0.3);"
                                             title="Salin Resi">
                                             <i class="far fa-copy fa-fw"></i>
                                         </span>
@@ -281,8 +281,8 @@ if (!function_exists('maskText')) {
                                     <span class="fw-bold text-nowrap">Hasil untuk Resi:</span>
                                     <span class="badge bg-primary fs-6 d-inline-flex align-items-center gap-2 pe-2">
                                         {{ $result['resi'] }}
-                                        <span onclick="copyResi('{{ $result['resi'] }}', this)" 
-                                            style="cursor: pointer; padding-left: 5px; border-left: 1px solid rgba(255,255,255,0.3);" 
+                                        <span onclick="copyResi('{{ $result['resi'] }}', this)"
+                                            style="cursor: pointer; padding-left: 5px; border-left: 1px solid rgba(255,255,255,0.3);"
                                             title="Salin Resi">
                                             <i class="far fa-copy fa-fw"></i>
                                         </span>
@@ -323,7 +323,12 @@ if (!function_exists('maskText')) {
                         <hr class="my-4">
 
                         @if(!empty($result['jasa_ekspedisi_aktual']))
-                        <div class="mb-4">
+                        <div class="mb-4 d-flex align-items-center">
+                            {{-- TAMBAHAN: Tampilkan logo ekspedisi jika ada --}}
+                            @if(!empty($result['logo_ekspedisi']))
+                                <img src="{{ $result['logo_ekspedisi'] }}" alt="{{ $result['jasa_ekspedisi_aktual'] }}" class="img-fluid rounded me-3 shadow-sm border" style="max-height: 40px; background-color: white;">
+                            @endif
+
                             <span class="badge bg-info text-dark p-2 fs-6 text-wrap text-start" style="line-height: 1.5;">
                                 <i class="fas fa-truck me-2"></i>Layanan: {{ $result['jasa_ekspedisi_aktual'] }}
                             </span>
