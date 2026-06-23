@@ -53,6 +53,7 @@ class IpaymuService
         $headers = [
             'va'           => $this->va,
             'signature'    => $this->generateSignature($method, $bodyForSignature),
+            'timestamp'    => date('YmdHis'), // Wajib untuk keamanan API iPaymu
             'Content-Type' => 'application/json',
             'Accept'       => 'application/json',
         ];
@@ -77,7 +78,15 @@ class IpaymuService
     // =================================================================
 
     /**
-     * 1. GET Area COD (Min. 3 Karakter)
+     * POST Create Payment (Redirect / VA) - Fitur Utama iPaymu
+     */
+    public function createPayment(array $paymentData)
+    {
+        return $this->request('POST', '/api/v2/payment', $paymentData);
+    }
+
+    /**
+     * GET Area COD (Min. 3 Karakter)
      */
     public function getCodArea(string $searchArea)
     {
@@ -85,7 +94,7 @@ class IpaymuService
     }
 
     /**
-     * 2. POST Hitung Ongkir COD
+     * POST Hitung Ongkir COD
      */
     public function calculateShipping(string|int $destinationId, string|int $pickupId, float|int $weightKg, float|int $amount)
     {
@@ -97,68 +106,6 @@ class IpaymuService
         ];
 
         return $this->request('POST', '/api/v2/cod/shipping-calculate', $payload);
-    }
-
-    /**
-     * 3. POST Tracking Paket COD
-     */
-    public function trackPackage(string $awb, string $transactionId)
-    {
-        $payload = [
-            'awb'            => $awb,
-            'transaction_id' => $transactionId,
-        ];
-
-        return $this->request('POST', '/api/v2/cod/tracking', $payload);
-    }
-
-    /**
-     * 4. BONUS: POST Create Payment (Redirect / VA) - Fitur Utama iPaymu
-     */
-    public function createPayment(array $paymentData)
-    {
-        return $this->request('POST', '/api/v2/payment', $paymentData);
-    }
-
-    /**
-     * 5. POST Check Transaction
-     * Berfungsi untuk mengecek status transaksi secara realtime.
-     * Sangat berguna jika webhook gagal diterima dan kamu ingin mengecek manual.
-     */
-    public function checkTransaction(string|int $transactionId)
-    {
-        $payload = [
-            'transactionId' => (string) $transactionId,
-            'account'       => $this->va, // Dokumentasi mensyaratkan VA dikirim di body
-        ];
-
-        return $this->request('POST', '/api/v2/transaction', $payload);
-    }
-
-    /**
-     * 6. POST Check Balance
-     * Berfungsi untuk mengecek saldo akun iPaymu kamu.
-     * Bisa digunakan untuk ditampilkan di Dashboard Admin.
-     */
-    public function checkBalance()
-    {
-        $payload = [
-            'account' => $this->va,
-        ];
-
-        return $this->request('POST', '/api/v2/balance', $payload);
-    }
-
-    /**
-     * 7. POST History Transaction
-     * Berfungsi untuk melihat data riwayat transaksi iPaymu.
-     */
-    public function getHistory(array $filters = [])
-    {
-        // Gabungkan VA ke dalam parameter filter
-        $filters['account'] = $this->va;
-
-        return $this->request('POST', '/api/v2/history', $filters);
     }
 
     /**
@@ -194,5 +141,44 @@ class IpaymuService
         ];
 
         return $this->request('POST', '/api/v2/cod/pickup', $payload);
+    }
+
+    /**
+     * POST Check Transaction
+     * Berfungsi untuk mengecek status transaksi secara realtime.
+     * Sangat berguna jika webhook gagal diterima dan kamu ingin mengecek manual.
+     */
+    public function checkTransaction(string|int $transactionId)
+    {
+        $payload = [
+            'transactionId' => (string) $transactionId,
+            'account'       => $this->va,
+        ];
+
+        return $this->request('POST', '/api/v2/transaction', $payload);
+    }
+
+    /**
+     * POST Check Balance
+     * Berfungsi untuk mengecek saldo akun iPaymu kamu.
+     */
+    public function checkBalance()
+    {
+        $payload = [
+            'account' => $this->va,
+        ];
+
+        return $this->request('POST', '/api/v2/balance', $payload);
+    }
+
+    /**
+     * POST History Transaction
+     * Berfungsi untuk melihat data riwayat transaksi iPaymu.
+     */
+    public function getHistory(array $filters = [])
+    {
+        $filters['account'] = $this->va;
+
+        return $this->request('POST', '/api/v2/history', $filters);
     }
 }

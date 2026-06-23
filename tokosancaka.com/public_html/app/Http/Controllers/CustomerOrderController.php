@@ -312,9 +312,9 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             $senderLat, $senderLng, $receiverLat, $receiverLng, $validated['weight'],
             $senderFullAddress, $receiverFullAddress, $senderSimpleAddress, $receiverSimpleAddress
         );
-        
+
         if ($delivereeOptions['status']) {
-            $expressOptions['status'] = true; 
+            $expressOptions['status'] = true;
             $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $delivereeOptions['results']);
         }
 
@@ -322,11 +322,24 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
         $lalamoveOptions = $this->_getLalamovePricing(
             $senderLat, $senderLng, $receiverLat, $receiverLng, $senderFullAddress, $receiverFullAddress
         );
-        
+
         if ($lalamoveOptions['status']) {
-            $expressOptions['status'] = true; 
+            $expressOptions['status'] = true;
             // Pindahkan Lalamove ke array 'results' (sejajar dengan Deliveree)
             $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $lalamoveOptions['results']);
+        }
+
+        // --- TAMBAHAN: PANGGIL LAYANAN IPAYMU (COD/KOMSHIP) ---
+        $ipaymuOptions = $this->_getIpaymuPricing(
+            $validated['sender_district'] ?? $validated['sender_regency'] ?? 'Jakarta',
+            $validated['receiver_district'] ?? $validated['receiver_regency'] ?? 'Jakarta',
+            $validated['weight'],
+            $itemValue
+        );
+
+        if ($ipaymuOptions['status']) {
+            $expressOptions['status'] = true;
+            $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $ipaymuOptions['results']);
         }
 
         // --- 3. GABUNGKAN HASIL ---
@@ -554,7 +567,7 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                     if (($delivereeResponse['status'] ?? false) !== true) {
                         throw new Exception($delivereeResponse['text'] ?? 'Gagal membuat order di Deliveree.');
                     }
-                    
+
                     $pesanan->status = 'Menunggu Pickup';
                     $pesanan->status_pesanan = 'Menunggu Pickup';
                     $pesanan->resi = $delivereeResponse['resi'] ?? null; // URL Tracking masuk ke Resi
@@ -568,10 +581,26 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                     if (($lalamoveResponse['status'] ?? false) !== true) {
                         throw new Exception($lalamoveResponse['text'] ?? 'Gagal membuat order di Lalamove.');
                     }
-                    
+
                     $pesanan->status = 'Menunggu Pickup';
                     $pesanan->status_pesanan = 'Menunggu Pickup';
                     $pesanan->resi = $lalamoveResponse['resi'] ?? null;
+
+                } elseif (strtolower($expVendor) === 'ipaymu' || strtolower($expVendor) === 'komship') {
+
+                    // Panggil helper iPaymu COD
+                    $ipaymuResponse = $this->_createIpaymuOrder(
+                        $validatedData, $pesanan, $cod_value
+                    );
+
+                    if (($ipaymuResponse['status'] ?? false) !== true) {
+                        throw new Exception($ipaymuResponse['text'] ?? 'Gagal membuat order COD di iPaymu.');
+                    }
+
+                    $pesanan->status = 'Menunggu Pickup';
+                    $pesanan->status_pesanan = 'Menunggu Pickup';
+                    // Kita gunakan Transaction ID iPaymu sebagai Resi sementara
+                    $pesanan->resi = $ipaymuResponse['resi'] ?? null;
 
                 } else {
                     // Panggil _createKiriminAjaOrder (Logika lama Sancaka tetap aman)
@@ -743,10 +772,10 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
         'kontak_pengirim_id' => $validatedData['pengirim_id'] ?? null,
         'kontak_penerima_id' => $validatedData['penerima_id'] ?? null,
         'total_harga_barang' => $validatedData['item_price'],
-        'nama_pembeli' => $validatedData['receiver_name'], 
-        'telepon_pembeli' => $validatedData['receiver_phone'], 
-        'alamat_pengiriman' => $validatedData['receiver_address'], 
-        'tujuan' => $validatedData['receiver_regency'], 
+        'nama_pembeli' => $validatedData['receiver_name'],
+        'telepon_pembeli' => $validatedData['receiver_phone'],
+        'alamat_pengiriman' => $validatedData['receiver_address'],
+        'tujuan' => $validatedData['receiver_regency'],
     ]);
 }
 
@@ -1875,7 +1904,7 @@ TEXT;
             $geo = $this->geocode($queryGeocode);
             if ($geo) { $senderLat = $geo['lat']; $senderLng = $geo['lng']; }
         }
-        
+
         if (empty($receiverLat) || empty($receiverLng)) {
             $queryGeocode = !empty($receiverSimple) ? $receiverSimple : $receiverAddress;
             Log::info("LOG LOG: Mencoba Geocode Penerima Deliveree: {$queryGeocode}");
@@ -1895,13 +1924,13 @@ TEXT;
         if (empty($apiKey)) return ['status' => false, 'results' => []];
 
         try {
-            // PERBAIKAN: Masukkan pickup_location ke dalam API Vehicle Types. 
+            // PERBAIKAN: Masukkan pickup_location ke dalam API Vehicle Types.
             // Cache disesuaikan dengan koordinat spesifik agar akurat per daerah.
             $cacheKey = 'deliveree_vehicles_' . md5($senderLat . $senderLng) . '_' . $mode;
-            
+
             $vehicleMap = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 24, function() use ($baseUrl, $apiKey, $senderLat, $senderLng) {
                 $resp = Http::withHeaders([
-                    'Authorization' => $apiKey, 
+                    'Authorization' => $apiKey,
                     'Accept-Language' => 'id'
                 ])->get($baseUrl . '/vehicle_types', [
                     'pickup_location' => [
@@ -1958,7 +1987,7 @@ TEXT;
                     $results[] = [
                         'service' => 'deliveree',
                         // PERBAIKAN: Sisipkan ID kendaraan di dalam string agar tidak hilang
-                        'service_type' => $vName . '#' . $vId, 
+                        'service_type' => $vName . '#' . $vId,
                         'cost' => $quote['total_fees'],
                         'distance_fees' => $quote['distance_fees'] ?? $quote['total_fees'], // Tangkap Jarak Murni
                         'extra_fees' => $quote['extra_fees'] ?? 0, // Tangkap Biaya Helper
@@ -1974,7 +2003,7 @@ TEXT;
         } catch (\Exception $e) {
             Log::error('LOG LOG: Deliveree Get Quote Error: ' . $e->getMessage());
         }
-        
+
         return ['status' => false, 'results' => []];
     }
 
@@ -1986,10 +2015,10 @@ TEXT;
 
         // Ekstrak ID kendaraan dari payload frontend (Contoh: regular-deliveree-Mobil XL#202-736500)
         $expeditionParts = explode('-', $data['expedition']);
-        $vehicleString = $expeditionParts[2] ?? ''; 
-        
+        $vehicleString = $expeditionParts[2] ?? '';
+
         $vehicleIdParts = explode('#', $vehicleString);
-        $vehicleTypeId = $vehicleIdParts[1] ?? 21; 
+        $vehicleTypeId = $vehicleIdParts[1] ?? 21;
 
         // START LOGIKA BARU: Menyusun payload extra_services secara dinamis
         $extraServicesPayload = [];
@@ -2045,18 +2074,18 @@ TEXT;
 
             if ($response->successful()) {
                 $respData = $response->json();
-                
+
                 // PERBAIKAN LOGIKA: Deliveree hanya return 'booking_id' tanpa object 'data'
                 $bookingId = $respData['booking_id'] ?? null;
-                
+
                 if (!$bookingId) {
                     Log::error('LOG LOG: Deliveree Create Order - Struktur tidak sesuai', ['res' => $respData]);
                     return ['status' => false, 'text' => 'Respons API tidak mengandung data booking_id.'];
                 }
-                
+
                 // Kita kembalikan booking_id sebagai 'resi'
                 return ['status' => true, 'resi' => (string) $bookingId];
-                
+
             } else {
                 // PERBAIKAN SYNTAX: Ini adalah penutup if dan menangani request gagal (else)
                 Log::error('LOG LOG: Deliveree Create Order HTTP Error', ['res' => $response->body()]);
@@ -2077,7 +2106,7 @@ TEXT;
         $apiKey = \App\Models\Api::getValue('DELIVEREE_API_KEY', $mode);
 
         $url = $baseUrl . '/vehicle_types/' . $vehicle_id . '/extra_services?time_type=now';
-        
+
         // KODE LOG LOG: Mencatat ke file laravel.log
         Log::info("LOG LOG: Request Extra Service Deliveree ke URL: " . $url);
 
@@ -2089,7 +2118,7 @@ TEXT;
 
             // KODE LOG LOG: Mencatat Response API
             Log::info("LOG LOG: Response Extra Service Deliveree:", $response->json() ?? []);
-            
+
             return response()->json($response->json());
         } catch (\Exception $e) {
             Log::error("LOG LOG: Exception Extra Service Deliveree: " . $e->getMessage());
@@ -2118,7 +2147,7 @@ TEXT;
 
         $timestamp = round(microtime(true) * 1000);
         $bodyStr = empty($data) ? '' : json_encode(['data' => $data]);
-        
+
         $rawSignature = "{$timestamp}\r\n{$method}\r\n{$path}\r\n\r\n{$bodyStr}";
         $signature = hash_hmac('sha256', $rawSignature, $apiSecret);
         $token = "{$apiKey}:{$timestamp}:{$signature}";
@@ -2149,9 +2178,9 @@ TEXT;
             return ['status' => false, 'results' => []];
         }
 
-        // Lalamove menggunakan tipe kendaraan seperti MOTORCYCLE, SEDAN, VAN, dll. 
+        // Lalamove menggunakan tipe kendaraan seperti MOTORCYCLE, SEDAN, VAN, dll.
         // Array ini bisa Anda kembangkan sesuai kebutuhan.
-        $vehicleTypes = ['MOTORCYCLE', 'SEDAN']; 
+        $vehicleTypes = ['MOTORCYCLE', 'SEDAN'];
         $results = [];
 
         foreach ($vehicleTypes as $vehicle) {
@@ -2171,12 +2200,12 @@ TEXT;
                 $results[] = [
                     'service' => 'lalamove',
                     // Menyisipkan ID Quotation ke dalam nama agar bisa digunakan saat proses Order
-                    'service_type' => $vehicle . '#' . $resData['quotationId'], 
+                    'service_type' => $vehicle . '#' . $resData['quotationId'],
                     'cost' => $resData['priceBreakdown']['total'],
                     'distance_fees' => $resData['priceBreakdown']['total'],
                     'extra_fees' => 0,
                     'etd' => 'Instant',
-                    'cod' => false 
+                    'cod' => false
                 ];
             } else {
                 Log::error("LOG LOG: Gagal tarik harga Lalamove untuk $vehicle", ['res' => $response ? $response->json() : null]);
@@ -2237,7 +2266,7 @@ TEXT;
         if ($orderResponse && $orderResponse->successful()) {
             $orderData = $orderResponse->json('data');
             Log::info("LOG LOG: Lalamove Create Order Berhasil. ID: {$orderData['orderId']}");
-            
+
             return [
                 'status' => true,
                 // Menggabungkan Order ID & Sharelink untuk disimpan di tabel Resi (opsional, bisa dipisah sesuai format front-end)
@@ -2249,6 +2278,117 @@ TEXT;
         return ['status' => false, 'text' => 'Gagal membuat pesanan di server Lalamove.'];
     }
 
+    /**
+     * =========================================================================
+     * FUNGSI HELPER IPAYMU COD / KOMSHIP (TARIK ONGKIR & CREATE ORDER)
+     * =========================================================================
+     */
+    private function _getIpaymuPricing($senderArea, $receiverArea, $weight, $amount)
+    {
+        Log::info('LOG LOG: Start iPaymu Pricing', ['origin' => $senderArea, 'dest' => $receiverArea]);
+        try {
+            $ipaymu = app(\App\Services\IpaymuService::class);
+
+            // 1. Cari Area ID Asal dan Tujuan
+            $originSearch = $ipaymu->getCodArea($senderArea);
+            $destSearch = $ipaymu->getCodArea($receiverArea);
+
+            $originId = $originSearch['data'][0]['id'] ?? null;
+            $destId = $destSearch['data'][0]['id'] ?? null;
+
+            if ($originId && $destId) {
+                // Konversi gram ke KG (dibulatkan ke atas minimal 1 KG)
+                $weightKg = ceil($weight / 1000);
+                if ($weightKg < 1) $weightKg = 1;
+
+                // 2. Hitung Ongkir
+                $ongkirRes = $ipaymu->calculateShipping($destId, $originId, $weightKg, $amount);
+
+                $results = [];
+                // Mapping hasil kurir iPaymu
+                $couriers = $ongkirRes['Data'] ?? $ongkirRes['data'] ?? [];
+
+                if (is_array($couriers) && count($couriers) > 0) {
+                    foreach ($couriers as $svc) {
+                        $results[] = [
+                            'service' => 'ipaymu',
+                            // Format: ipaymu-JNE, ipaymu-SICEPAT, dll
+                            'service_type' => 'ipaymu-' . strtoupper($svc['courier'] ?? 'REGULAR'),
+                            'cost' => $svc['price'] ?? $svc['cost'] ?? 0,
+                            'distance_fees' => $svc['price'] ?? $svc['cost'] ?? 0,
+                            'extra_fees' => 0,
+                            'etd' => $svc['estimation'] ?? '2-3 Hari',
+                            'cod' => true // Fitur utama COD Komship
+                        ];
+                    }
+                    Log::info('LOG LOG: iPaymu Pricing Success menemukan ' . count($results) . ' kurir.');
+                    return ['status' => true, 'results' => $results];
+                }
+            } else {
+                Log::warning('LOG LOG: Area iPaymu tidak ditemukan.', ['orig_id' => $originId, 'dest_id' => $destId]);
+            }
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: iPaymu Pricing Exception: ' . $e->getMessage());
+        }
+
+        return ['status' => false, 'results' => []];
+    }
+
+    private function _createIpaymuOrder($data, $pesanan, $cod_value)
+    {
+        try {
+            $ipaymu = app(\App\Services\IpaymuService::class);
+
+            // 1. Buat Pembayaran / Invoice COD di iPaymu
+            $payload = [
+                'product'    => ['Paket COD - ' . $pesanan->nomor_invoice],
+                'qty'        => ['1'],
+                'price'      => [$cod_value],
+                'amount'     => $cod_value,
+                'returnUrl'  => route('pesanan.public.success'),
+                'cancelUrl'  => route('pesanan.public.create'),
+                'notifyUrl'  => url('/api/webhook/ipaymu'),
+                'referenceId'=> $pesanan->nomor_invoice,
+                'buyerName'  => $data['receiver_name'],
+                'buyerEmail' => $data['customer_email'] ?? 'customer@tokosancaka.com',
+                'buyerPhone' => $data['receiver_phone'],
+                'paymentMethod' => 'cod', // Parameter default untuk membedakan transaksi COD
+            ];
+
+            $paymentRes = $ipaymu->createPayment($payload);
+
+            $isSuccess = $paymentRes['Success'] ?? $paymentRes['success'] ?? false;
+
+            if (!$isSuccess) {
+                Log::error('LOG LOG: Gagal Create Payment iPaymu COD', ['res' => $paymentRes]);
+                return ['status' => false, 'text' => 'Gagal membuat invoice COD di iPaymu: ' . ($paymentRes['Message'] ?? $paymentRes['message'] ?? '')];
+            }
+
+            // Dapatkan Transaction ID dari respons iPaymu
+            $trxId = $paymentRes['Data']['TransactionId'] ?? $paymentRes['data']['transaction_id'] ?? $paymentRes['Data']['SessionID'] ?? null;
+
+            if (!$trxId) {
+                return ['status' => false, 'text' => 'Transaction ID tidak ditemukan dari iPaymu.'];
+            }
+
+            // 2. Request Pickup Otomatis
+            // Menjadwalkan kurir menjemput 1 Jam setelah order dibuat (dalam waktu WIB)
+            $pickupDate = \Carbon\Carbon::now()->timezone('Asia/Jakarta')->format('Y-m-d');
+            $pickupTime = \Carbon\Carbon::now()->timezone('Asia/Jakarta')->addHours(1)->format('H:i');
+
+            $pickupRes = $ipaymu->requestCodPickup($trxId, $pickupDate, $pickupTime, 'Motor');
+            Log::info("LOG LOG: iPaymu Pickup Requested", ['res' => $pickupRes]);
+
+            return [
+                'status' => true,
+                'resi' => (string) $trxId // Gunakan ID Transaksi sebagai Resi sementara
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: Exception iPaymu Order: ' . $e->getMessage());
+            return ['status' => false, 'text' => 'Exception iPaymu: ' . $e->getMessage()];
+        }
+    }
 
 }
 

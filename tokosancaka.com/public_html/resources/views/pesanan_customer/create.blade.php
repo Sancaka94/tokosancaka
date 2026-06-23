@@ -323,7 +323,7 @@
         transform: translateY(-2px);
         border-color: var(--primary-color);
     }
-    
+
     /* Card Khusus Deliveree Hover */
     .deliveree-card:hover {
         box-shadow: 0 10px 20px rgba(25, 135, 84, 0.15) !important;
@@ -533,7 +533,7 @@
                                         <option value="lalamove" class="fw-bold" style="color: #f27024;">Lalamove</option>
                                     </select>
                             </div>
-                            
+
                            <div class="col-12">
                                 <label for="ansuransi" class="form-label">Asuransi</label>
                                 <div class="input-group">
@@ -557,7 +557,7 @@
                             <div class="col-12 d-none" id="deliveree_extra_section">
                                 <div class="p-3 mt-2 rounded border border-success" style="background-color: #f4f7f6;">
                                     <h6 class="fw-bold text-success mb-2"><i class="fas fa-star me-1"></i> Layanan Tambahan (Deliveree)</h6>
-                                    
+
                                     <!-- Driver Preferences -->
                                     <label class="form-label text-muted small mb-1">Preferensi Pengemudi</label>
                                     <select name="driver_preference" id="driver_preference" class="form-select form-select-sm mb-3">
@@ -589,7 +589,7 @@
                                 <label for="selected_expedition_display" class="form-label">Pilih Ekspedisi</label>
                                 <input type="text" id="selected_expedition_display" class="form-control text-start fw-bold" placeholder="Lengkapi data & klik di sini untuk Cek Tarif" readonly required style="cursor:pointer; background-color: #f8f9fa;">
                                 <input type="hidden" name="expedition" id="expedition" required>
-                                
+
                                 <input type="hidden" id="selected_shipping_cost" value="0">
                                 <input type="hidden" id="selected_insurance_cost" value="0">
                                 <input type="hidden" id="selected_cod_fee" value="0">
@@ -805,6 +805,15 @@
                         </div>
                     </li>
 
+                    {{-- OPSI IPAYMU (COD / PAYMENT) --}}
+                    <li class="list-group-item list-group-item-action d-flex align-items-center gateway-option" data-value="IPAYMU" data-label="iPaymu">
+                        <img src="https://tokosancaka.com/public/assets/ipaymu.jpg" class="me-3 border rounded p-1 bg-white" style="width: 40px; height: 40px; object-fit: contain;" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=IP'">
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">iPaymu (COD / Reguler)</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">Diarahkan ke Checkout iPaymu</div>
+                        </div>
+                    </li>
+
                     {{-- 5. OPSI TRIPAY (DIMUAT DINAMIS MELALUI API) --}}
                     <li class="list-group-item bg-light fw-bold text-muted border-top border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">
                         Saluran Pembayaran Lainnya (Tripay)
@@ -901,7 +910,7 @@
                }
            );
        }
-       
+
         function validateStep(stepCardId) {
             let isValid = true;
             $(`#${stepCardId} [required]`).each(function() {
@@ -987,7 +996,7 @@
             let codFee = parseInt($('#selected_cod_fee').val()) || 0;
             let helperDriverFee = parseInt($('#selected_helper_driver_fee').val()) || 0;
             let helperExtraFee = parseInt($('#selected_helper_extra_fee').val()) || 0;
-            
+
             let paymentMethod = $('#payment_method').val();
 
             // Kalkulasi Total Akurat
@@ -1112,7 +1121,7 @@
                         $(`#${prefix}_postal_code`).val(parts[4] || data.postal_code).trigger('change');
                         $(`#${prefix}_district_id`).val(item.district_id).trigger('change');
                         $(`#${prefix}_subdistrict_id`).val(item.subdistrict_id).trigger('change');
-                        
+
                         let lat = parseFloat(item.lat);
                         let lon = parseFloat(item.lon);
                         if (!lat || !lon || lat === 0 || lon === 0) {
@@ -1210,7 +1219,7 @@
                             $(`#${prefix}_postal_code`).val(p[4] || '').trigger('change');
                             $(`#${prefix}_district_id`).val(i.district_id).trigger('change');
                             $(`#${prefix}_subdistrict_id`).val(i.subdistrict_id).trigger('change');
-                            
+
                             let lat = parseFloat(i.lat);
                             let lon = parseFloat(i.lon);
                             if (!lat || !lon || lat === 0 || lon === 0) {
@@ -1233,7 +1242,7 @@
         function getDelivereeVehicleImage(name) {
             const lowerName = name.toLowerCase();
             const baseUrl = 'https://tokosancaka.com/storage/logo-ekspedisi/armada_deliveree';
-            
+
             if (lowerName.includes('trailer')) return `${baseUrl}/Trailer.png`;
             if (lowerName.includes('tronton')) return `${baseUrl}/TrontonB.png`;
             if (lowerName.includes('fuso')) return `${baseUrl}/Fuso_Heavy.png`;
@@ -1242,7 +1251,7 @@
             if (lowerName.includes('small box') || lowerName.includes('box kecil')) return `${baseUrl}/Small_Box.png`;
             if (lowerName.includes('pickup')) return `${baseUrl}/Pickup.png`;
             if (lowerName.includes('van')) return `${baseUrl}/Van.png`;
-            if (lowerName.includes('xl') || lowerName.includes('suv')) return `${baseUrl}/carxl-longer_(1).png`; 
+            if (lowerName.includes('xl') || lowerName.includes('suv')) return `${baseUrl}/carxl-longer_(1).png`;
             if (lowerName.includes('mobil') || lowerName.includes('car') || lowerName.includes('economy') || lowerName.includes('ekonomi') || lowerName.includes('city')) return `${baseUrl}/Economy.png`;
             return `https://placehold.co/300x200/e2e8f0/10b981?text=${encodeURIComponent(name)}`;
         }
@@ -1267,10 +1276,10 @@
                 const useInsurance = $('#ansuransi').val() === 'iya';
                 const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
                 const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
-                
-                const baseOngkirCost = parseInt(i.distance_fees || i.cost || 0); 
+
+                const baseOngkirCost = parseInt(i.distance_fees || i.cost || 0);
                 const actualCodFee = parseInt(codFee || 0);
-                
+
                 const payloadValue = `${baseParams.serviceType}-${i.service_name}-${rawName}-${i.cost}-${insuranceFeeValue}-${codFee}`;
                 let etdHtml = i.etd ? `<span>${i.etd} Hari</span>` : '<span>Langsung (Charter)</span>';
 
@@ -1289,10 +1298,10 @@
                                 data-value="${payloadValue}"
                                 data-display="Deliveree - ${displayServiceType}"
                                 data-cod-supported="${i.cod}"
-                                data-vehicle-id="${i.vehicle_type_id}" data-shipping-cost="${baseOngkirCost}" 
+                                data-vehicle-id="${i.vehicle_type_id}" data-shipping-cost="${baseOngkirCost}"
                                 data-insurance-cost="${insuranceFeeValue}"
                                 data-cod-fee="${actualCodFee}">
-                                <i class="fas fa-check-circle me-1">Pilih Armada</i> 
+                                <i class="fas fa-check-circle me-1">Pilih Armada</i>
                             </button>
                         </div>
                     </div>
@@ -1309,12 +1318,12 @@
             const baseUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/lalamove';
 
             // Pengecekan dimulai dari Armada Besar hingga Kecil
-            
+
             // 1. Wingbox
             if (lowerName.includes('wingbox') || lowerName.includes('wing box')) {
                 return `${baseUrl}/wingbox.png`;
             }
-            
+
             // 2. Fuso
             if (lowerName.includes('fuso bak')) {
                 return `${baseUrl}/fusobak.jpg`;
@@ -1322,7 +1331,7 @@
             if (lowerName.includes('fuso')) {
                 return `${baseUrl}/fusotruck.png`;
             }
-            
+
             // 3. Truk CDD
             if (lowerName.includes('cdd box')) {
                 return `${baseUrl}/cddbox.png`;
@@ -1374,14 +1383,14 @@
 
         function renderLalamoveModal(results, baseParams) {
             const container = $('#lalamoveResultsContainer').empty();
-            
+
             // Jika tidak ada hasil, tampilkan pesan error dan HENTIKAN eksekusi
             if (!results || results.length === 0) {
                 container.html(`<div class="col-12"><div class="alert alert-warning text-center shadow-sm">Armada Lalamove tidak tersedia untuk rute ini.</div></div>`);
                 return;
             }
 
-            // PERBAIKAN RESPONSIVITAS: 
+            // PERBAIKAN RESPONSIVITAS:
             // Jika hasilnya cuma 1 atau 2, kita buat lebar kolomnya agak besar (col-md-6)
             // Jika lebih dari 2, kita buat agak kecil agar muat banyak (col-md-4)
             let colClass = results.length <= 2 ? 'col-sm-6' : 'col-sm-6 col-md-4';
@@ -1400,10 +1409,10 @@
                 const useInsurance = $('#ansuransi').val() === 'iya';
                 const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
                 const codFee = 0; // Lalamove tidak mendukung COD bawaan
-                
-                const baseOngkirCost = parseInt(i.distance_fees || i.cost || 0); 
+
+                const baseOngkirCost = parseInt(i.distance_fees || i.cost || 0);
                 const actualCodFee = 0;
-                
+
                 // Format ID yang dikirim ke Backend persis seperti Deliveree & KiriminAja
                 const payloadValue = `${baseParams.serviceType}-${i.service_name}-${rawName}-${i.cost}-${insuranceFeeValue}-${codFee}`;
 
@@ -1422,7 +1431,7 @@
                                 data-value="${payloadValue}"
                                 data-display="Lalamove - ${displayServiceType}"
                                 data-cod-supported="false"
-                                data-vehicle-id="" data-shipping-cost="${baseOngkirCost}" 
+                                data-vehicle-id="" data-shipping-cost="${baseOngkirCost}"
                                 data-insurance-cost="${insuranceFeeValue}"
                                 data-cod-fee="${actualCodFee}">
                                 <i class="fas fa-check-circle me-1"></i> Pilih Armada
@@ -1447,8 +1456,8 @@
             $('#ongkirResultsContainer').html(`<div class="text-center p-5"><div class="spinner-border text-danger"></div><p class="mt-2 text-muted">Memuat semua tarif...</p></div>`);
             $('#delivereeResultsContainer').html(`<div class="col-12"><div class="text-center p-5"><div class="spinner-border text-success"></div><p class="mt-2 text-muted">Mencari Armada Deliveree di sekitar lokasi...</p></div></div>`);
             $('#lalamoveResultsContainer').html(`<div class="col-12"><div class="text-center p-5"><div class="spinner-border" style="color:#f27024;"></div><p class="mt-2 text-muted">Mencari Armada Lalamove terdekat...</p></div></div>`);
-            
-            
+
+
             const vendorFilter = $('#vendor_filter').val();
             if (vendorFilter === 'deliveree') {
                 delivereeModal.show();
@@ -1501,7 +1510,7 @@
 
                     allResults.forEach(service => {
                         let logoName = (service.service || "").toLowerCase().replace(/\s+/g, '');
-                        if (logoName === 'deliveree') { delivereeResults.push(service); } 
+                        if (logoName === 'deliveree') { delivereeResults.push(service); }
                         else if (logoName === 'lalamove') { lalamoveResults.push(service); }
                         else { kiriminAjaResults.push(service); }
                     });
@@ -1568,26 +1577,26 @@
         }
 
         const fieldsThatAffectShipping = '#sender_district_id, #receiver_district_id, #item_price, #weight, #length, #width, #height, #ansuransi, #service_type, #vendor_filter';
-        
+
         $(document).on('change', fieldsThatAffectShipping, function() {
             $('#expedition').val('');
             $('#selected_expedition_display').val('Data berubah, klik untuk cek ulang ongkir').removeClass('is-valid');
             $('.cod-payment-option').hide();
 
             $('#selected_shipping_cost').val('0');
-            $('#selected_insurance_cost').val('0'); 
+            $('#selected_insurance_cost').val('0');
 
             $('#payment_method').val('');
             $('#selectedPaymentName').text('Pilih Pembayaran...');
             $('#selectedPaymentLogo').addClass('d-none').attr('src', '');
             $('#defaultPaymentIcon').removeClass('d-none');
 
-            // Reset Toggle Helper 
+            // Reset Toggle Helper
             if ($('#vendor_filter').val() === 'deliveree') {
                 $('#deliveree_extra_section').removeClass('d-none');
             } else {
                 $('#deliveree_extra_section').addClass('d-none');
-                $('#extra_helper_driver, #extra_helper_extra').prop('checked', false).trigger('change'); 
+                $('#extra_helper_driver, #extra_helper_extra').prop('checked', false).trigger('change');
             }
 
             updateTotalSummary();
@@ -1630,18 +1639,18 @@
             if (isDeliveree && vehicleId) {
                 $('#helper_driver_price_text').text('(Mengecek...)').removeClass('text-success text-muted').addClass('text-warning');
                 $('#helper_extra_price_text').text('(Mengecek...)').removeClass('text-success text-muted').addClass('text-warning');
-                
+
                 $.get('/api/deliveree/extra-services/' + vehicleId, function(res) {
-                    console.log("LOG LOG: Hasil Response API:", res); 
-                    
+                    console.log("LOG LOG: Hasil Response API:", res);
+
                     if (res.data) {
                         let helperDriver = res.data.find(s => s.name.toLowerCase().includes('pengemudi'));
                         let helperExtra = res.data.find(s => s.name.toLowerCase().includes('tambahan'));
-                        
+
                         console.log("LOG LOG: Layanan Helper yang cocok:", {driver: helperDriver, extra: helperExtra});
-                        
+
                         if (helperDriver && helperDriver.unit_price > 0) {
-                            $('#deliveree_helper_driver_id').val(helperDriver.id); 
+                            $('#deliveree_helper_driver_id').val(helperDriver.id);
                             $('#extra_helper_driver').data('price', helperDriver.unit_price).prop('disabled', false);
                             $('#helper_driver_price_text').text('+ ' + formatRupiah(helperDriver.unit_price)).removeClass('text-warning text-muted').addClass('text-success');
                         } else {
@@ -1651,7 +1660,7 @@
                         }
 
                         if (helperExtra && helperExtra.unit_price > 0) {
-                            $('#deliveree_helper_extra_id').val(helperExtra.id); 
+                            $('#deliveree_helper_extra_id').val(helperExtra.id);
                             $('#extra_helper_extra').data('price', helperExtra.unit_price).prop('disabled', false);
                             $('#helper_extra_price_text').text('+ ' + formatRupiah(helperExtra.unit_price)).removeClass('text-warning text-muted').addClass('text-success');
                         } else {
@@ -1659,8 +1668,8 @@
                             $('#extra_helper_extra').data('price', 0).prop('checked', false).prop('disabled', true);
                             $('#helper_extra_price_text').text('(Tidak tersedia)').removeClass('text-warning text-success').addClass('text-muted');
                         }
-                        
-                        $('#extra_helper_driver, #extra_helper_extra').trigger('change'); 
+
+                        $('#extra_helper_driver, #extra_helper_extra').trigger('change');
                     }
                 }).fail(function(err) {
                     $('#helper_driver_price_text').text('(Gagal cek API)').addClass('text-danger');
@@ -1706,9 +1715,9 @@
 
        function applyGatewayMinimumLimit() {
             let shippingCost = parseInt($('#selected_shipping_cost').val()) || 0;
-            let totalTransaksi = shippingCost; 
+            let totalTransaksi = shippingCost;
 
-            if (totalTransaksi < 10000 && totalTransaksi > 0) { 
+            if (totalTransaksi < 10000 && totalTransaksi > 0) {
                 $('.gateway-option').addClass('disabled').css({ 'pointer-events': 'none', 'opacity': '0.3', 'background-color': '#f3f4f6' });
 
                 let alertMsg = `<i class="fas fa-exclamation-triangle me-1"></i> Total Ongkir (Rp ${totalTransaksi.toLocaleString('id-ID')}) di bawah minimum Rp 10.000. Payment Gateway dimatikan.`;
