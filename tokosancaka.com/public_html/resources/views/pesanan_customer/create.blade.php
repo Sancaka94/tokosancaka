@@ -1517,182 +1517,227 @@
         }
 
         function runCekOngkir() {
-            let formData = $('#orderForm').serializeArray();
-            formData.forEach((item, index) => { let realVal = $(`#${item.name.replace(/\[/g, '\\[').replace(/\]/g, '\\]')}`).attr('data-real-value'); if (realVal) formData[index].value = realVal; });
+    let formData = $('#orderForm').serializeArray();
 
-            let tempForm = $('<form>').append($.map(formData, item => $('<input>').attr({type: 'hidden', name: item.name, value: item.value})));
+    // Unmask data untuk dikirim ke backend
+    formData.forEach((item, index) => {
+        let realVal = $(`#${item.name.replace(/\[/g, '\\[').replace(/\]/g, '\\]')}`).attr('data-real-value');
+        if (realVal) formData[index].value = realVal;
+    });
 
-            const required = { 'sender_district_id': 'Alamat Pengirim', 'receiver_district_id': 'Alamat Penerima', 'item_price': 'Harga Barang', 'weight': 'Berat' };
-            let missing = Object.keys(required).filter(s => !tempForm.find(`[name="${s.replace('#','')}"]`).val());
-            if (missing.length > 0) { Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => required[s]).join(', '), 'warning'); return; }
+    let tempForm = $('<form>').append($.map(formData, item => $('<input>').attr({type: 'hidden', name: item.name, value: item.value})));
 
-            $('#ongkirResultsContainer').html(`<div class="text-center p-5"><div class="spinner-border text-danger"></div><p class="mt-2 text-muted">Memuat semua tarif...</p></div>`);
-            $('#delivereeResultsContainer').html(`<div class="col-12"><div class="text-center p-5"><div class="spinner-border text-success"></div><p class="mt-2 text-muted">Mencari Armada Deliveree di sekitar lokasi...</p></div></div>`);
-            $('#lalamoveResultsContainer').html(`<div class="col-12"><div class="text-center p-5"><div class="spinner-border" style="color:#f27024;"></div><p class="mt-2 text-muted">Mencari Armada Lalamove terdekat...</p></div></div>`);
-            $('#ipaymuResultsContainer').html(`<div class="col-12"><div class="text-center p-5"><div class="spinner-border" style="color:#6f42c1;"></div><p class="mt-2 text-muted">Mencari Kurir iPaymu...</p></div></div>`);
+    const vendorFilter = $('#vendor_filter').val();
 
-            const vendorFilter = $('#vendor_filter').val();
-            if (vendorFilter === 'deliveree') {
-                delivereeModal.show();
-            } else if (vendorFilter === 'lalamove') {
-                lalamoveModal.show();
-            } else {
-                ongkirModal.show();
+    // [PERBAIKAN 1]: Sisipkan vendor_filter ke payload agar Backend lebih spesifik mengeksekusi API
+    tempForm.append($('<input>').attr({type: 'hidden', name: 'vendor_filter', value: vendorFilter}));
+
+    const required = { 'sender_district_id': 'Alamat Pengirim', 'receiver_district_id': 'Alamat Penerima', 'item_price': 'Harga Barang', 'weight': 'Berat' };
+    let missing = Object.keys(required).filter(s => !tempForm.find(`[name="${s.replace('#','')}"]`).val());
+    if (missing.length > 0) {
+        Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => required[s]).join(', '), 'warning');
+        return;
+    }
+
+    // Set UI menjadi status Loading
+    $('#ongkirResultsContainer').html(`<div class="text-center p-5"><div class="spinner-border text-danger"></div><p class="mt-2 text-muted">Memuat semua tarif...</p></div>`);
+    $('#delivereeResultsContainer').html(`<div class="col-12"><div class="text-center p-5"><div class="spinner-border text-success"></div><p class="mt-2 text-muted">Mencari Armada Deliveree di sekitar lokasi...</p></div></div>`);
+    $('#lalamoveResultsContainer').html(`<div class="col-12"><div class="text-center p-5"><div class="spinner-border" style="color:#f27024;"></div><p class="mt-2 text-muted">Mencari Armada Lalamove terdekat...</p></div></div>`);
+    $('#ipaymuResultsContainer').html(`<div class="col-12"><div class="text-center p-5"><div class="spinner-border" style="color:#6f42c1;"></div><p class="mt-2 text-muted">Mencari Kurir iPaymu...</p></div></div>`);
+
+    // [PERBAIKAN 2]: Tampilkan Modal yang tepat berdasarkan Pilihan Ekspedisi
+    if (vendorFilter === 'deliveree') {
+        delivereeModal.show();
+    } else if (vendorFilter === 'lalamove') {
+        lalamoveModal.show();
+    } else if (vendorFilter === 'ipaymu') {
+        ipaymuModal.show();
+    } else {
+        ongkirModal.show();
+    }
+
+    const serviceType = $('#service_type').val();
+
+    $.ajax({
+        url: "{{ route('kirimaja.cekongkir') }}",
+        type: "GET",
+        data: tempForm.serialize(),
+        timeout: 15000, // [PERBAIKAN 3]: Batas waktu tunggu maksimal 15 detik
+        success: function(res) {
+            let allResults = [];
+
+            // Validasi format kembalian
+            if (typeof res !== 'object' || res === null) {
+                let errHtml = '<div class="alert alert-danger text-center w-100">Format respons tidak valid dari sistem ekspedisi.</div>';
+                $('#ongkirResultsContainer, #delivereeResultsContainer, #lalamoveResultsContainer, #ipaymuResultsContainer').html(errHtml);
+                return;
             }
 
-            const serviceType = $('#service_type').val();
+            const hasData = (res.result && Array.isArray(res.result)) || (res.results && Array.isArray(res.results));
 
-            $.ajax({
-                url: "{{ route('kirimaja.cekongkir') }}",
-                type: "GET",
-                data: tempForm.serialize(),
-                success: function(res) {
-                    let allResults = [];
-                    if (typeof res !== 'object' || res === null) {
-                        $('#ongkirResultsContainer, #delivereeResultsContainer').html('<div class="alert alert-danger text-center">Format respons tidak valid dari sistem ekspedisi.</div>');
-                        return;
-                    }
-                    const hasData = (res.result && Array.isArray(res.result)) || (res.results && Array.isArray(res.results));
-                    if (!hasData || (res.status === false && !hasData)) {
-                        let errorMessage = res.message || res.text || 'Layanan pengiriman tidak ditemukan.';
-                        const errHtml = `<div class="alert alert-warning text-center shadow-sm">${errorMessage}</div>`;
-                        $('#ongkirResultsContainer').html(errHtml);
-                        $('#delivereeResultsContainer').html(`<div class="col-12">${errHtml}</div>`);
-                        return;
-                    }
+            if (!hasData || (res.status === false && !hasData)) {
+                let errorMessage = res.message || res.text || 'Layanan pengiriman tidak ditemukan untuk rute ini.';
+                const errHtml = `<div class="alert alert-warning text-center shadow-sm w-100">${errorMessage}</div>`;
 
-                    if (res.result && Array.isArray(res.result)) {
-                        const fromResult = res.result.flatMap(provider => {
-                            let providerNameForLogo = provider.name === 'grab_express' ? 'grab' : provider.name;
-                            return provider.costs.map(cost => ({
-                                ...cost, service: providerNameForLogo, service_name: `${provider.name.toUpperCase()}`, service_type_label: `${cost.service_type}`,
-                                cost: cost.price.total_price, price: cost.price, etd: cost.estimation || '-', setting: cost.setting || {},
-                                insurance: cost.price.insurance_fee || 0, cod: cost.cod_available ?? false, is_instant: true
-                            }));
-                        });
-                        allResults.push(...fromResult);
-                    }
+                // Tampilkan pesan tidak ditemukan ke semua kontainer modal
+                $('#ongkirResultsContainer').html(errHtml);
+                $('#delivereeResultsContainer').html(`<div class="col-12">${errHtml}</div>`);
+                $('#lalamoveResultsContainer').html(`<div class="col-12">${errHtml}</div>`);
+                $('#ipaymuResultsContainer').html(`<div class="col-12">${errHtml}</div>`);
+                return;
+            }
 
-                    if (res.results && Array.isArray(res.results)) {
-                        const fromResults = res.results.map(service => ({ ...service, cost: service.cost, price: { base_price: service.cost, total_price: service.cost }, insurance: service.insurance || 0, cod: service.cod, service_name: `${service.service.toUpperCase()}`, service_type_label: `${service.service_type}`, is_instant: false}));
-                        allResults.push(...fromResults);
-                    }
+            // Normalisasi data dari API KiriminAja (Sameday/Instant)
+            if (res.result && Array.isArray(res.result)) {
+                const fromResult = res.result.flatMap(provider => {
+                    let providerNameForLogo = provider.name === 'grab_express' ? 'grab' : provider.name;
+                    return provider.costs.map(cost => ({
+                        ...cost, service: providerNameForLogo, service_name: `${provider.name.toUpperCase()}`, service_type_label: `${cost.service_type}`,
+                        cost: cost.price.total_price, price: cost.price, etd: cost.estimation || '-', setting: cost.setting || {},
+                        insurance: cost.price.insurance_fee || 0, cod: cost.cod_available ?? false, is_instant: true
+                    }));
+                });
+                allResults.push(...fromResult);
+            }
 
-                    allResults.sort((a, b) => a.cost - b.cost);
-                    // Ubah deklarasi awalnya:
-                    let kiriminAjaResults = [], delivereeResults = [], lalamoveResults = [], ipaymuResults = [];
+            // Normalisasi data dari Ekspedisi Regular / Cargo / Deliveree / Lalamove / iPaymu
+            if (res.results && Array.isArray(res.results)) {
+                const fromResults = res.results.map(service => ({
+                    ...service, cost: service.cost, price: { base_price: service.cost, total_price: service.cost },
+                    insurance: service.insurance || 0, cod: service.cod, service_name: `${service.service.toUpperCase()}`,
+                    service_type_label: `${service.service_type}`, is_instant: false
+                }));
+                allResults.push(...fromResults);
+            }
 
-                    allResults.forEach(service => {
-                        let logoName = (service.service || "").toLowerCase().replace(/\s+/g, '');
-                        if (logoName === 'deliveree') { delivereeResults.push(service); }
-                        else if (logoName === 'lalamove') { lalamoveResults.push(service); }
-                        else if (logoName === 'ipaymu') { ipaymuResults.push(service); } // TAMBAHKAN INI
-                        else { kiriminAjaResults.push(service); }
-                    });
+            // Sortir harga dari yang termurah
+            allResults.sort((a, b) => a.cost - b.cost);
 
-                  if (vendorFilter === 'deliveree') {
-                        renderDelivereeModal(delivereeResults, { serviceType: serviceType });
-                    } else if (vendorFilter === 'lalamove') {
-                        renderLalamoveModal(lalamoveResults, { serviceType: serviceType });
-                    } else if (vendorFilter === 'ipaymu') {
-                        renderIpaymuModal(ipaymuResults, { serviceType: serviceType });
-                    } else {
-                        // JIKA FILTER "SEMUA" DIPILIH:
-                        const b = $('#ongkirResultsContainer').empty();
+            // Pisahkan data per vendor
+            let kiriminAjaResults = [], delivereeResults = [], lalamoveResults = [], ipaymuResults = [];
 
-                        // 1. Tampilkan KiriminAja terlebih dahulu
-                        if (kiriminAjaResults.length > 0) {
-                            b.append(`<div class="ongkir-header-row d-none d-lg-flex"><div class="ongkir-item-col col-service">Layanan</div><div class="ongkir-item-col col-etd">Estimasi</div><div class="ongkir-item-col col-cod">COD</div><div class="ongkir-item-col col-price">Tarif</div><div class="ongkir-item-col col-action"></div></div>`);
-
-                            kiriminAjaResults.forEach(i => {
-                                // ... (Sisa kode forEach KiriminAja tidak perlu diubah, biarkan seperti aslinya)
-                                const logoName = (i.service || "").toLowerCase().replace(/\s+/g, '');
-                                let logoUrl = logoName === 'gosend' ? 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png' : (logoName === 'grab' ? 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png' : `{{ asset('public/storage/logo-ekspedisi/') }}/${logoName}.png`);
-                                const safeService = (i.service || '').toString().replace(/-/g, ' ');
-                                const safeServiceTypeLabel = (i.service_type_label || '').toString().replace(/-/g, ' ');
-                                const useInsurance = $('#ansuransi').val() === 'iya';
-                                const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
-                                const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
-                                const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${codFee}`;
-                                const baseOngkirCost = parseInt(i.cost || 0) + parseInt(insuranceFeeValue || 0);
-                                const actualCodFee = parseInt(codFee || 0);
-                                const hasDiscount = i.price?.base_price && i.price.base_price > i.cost;
-                                const basePriceFmt = hasDiscount ? formatRupiah(i.price.base_price) : '';
-                                const insuranceFee = i.insurance || 0;
-                                let feeDetailsHtml = '';
-                                if (useInsurance && insuranceFee > 0) { feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFee)}</small></div>`; }
-                                if (i.cod && codFee > 0) { feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`; }
-                                let etdHtml = i.etd ? (i.is_instant ? `<span>${i.etd}</span>` : `<span>${i.etd} Hari</span>`) : '';
-                                const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}" data-shipping-cost="${parseInt(i.cost || 0)}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">Kirim Paket</button>`;
-                                b.append(`
-                                <div class="ongkir-item-card">
-                                    <div class="ongkir-item-col col-service">
-                                        <img src="${logoUrl}" class="ongkir-logo" onerror="this.style.display='none'">
-                                        <div class="service-info"><span class="service-name">${i.service_name}</span><span class="service-type">${i.service_type_label}</span></div>
-                                    </div>
-                                    <div class="ongkir-item-col col-etd"><span class="col-label">Estimasi</span>${etdHtml}</div>
-                                    <div class="ongkir-item-col col-cod"><span class="col-label">COD</span><span>${i.cod ? 'Tersedia' : '-'}</span></div>
-                                    <div class="ongkir-item-col col-price"><span class="col-label">Tarif</span>
-                                        <div class="price-value"><span class="final-price">${formatRupiah(i.cost)}</span>${hasDiscount ? `<span class="base-price text-decoration-line-through">${basePriceFmt}</span>` : ''}</div>
-                                        <div class="price-details">${feeDetailsHtml}</div>
-                                    </div>
-                                    <div class="ongkir-item-col col-action">${buttonHtml}</div>
-                                </div>`);
-                            });
-                        }
-
-                        // 2. TAMBAHKAN: Tampilkan juga hasil iPaymu di modal yang sama jika filter "Semua" aktif
-                        if (ipaymuResults.length > 0) {
-                            // Tambahkan pembatas visual
-                            b.append(`<div class="w-100 my-4 text-center text-muted" style="border-top: 1px dashed #ced4da; padding-top: 10px;"><small class="fw-bold" style="color: #6f42c1;">--- LAYANAN ALTERNATIF DARI IPAYMU COD ---</small></div>`);
-
-                            ipaymuResults.forEach(i => {
-                                let rawName = i.service_type_label || '';
-                                let displayServiceType = rawName.toUpperCase().replace('IPAYMU-', '');
-                                let imgUrl = getIpaymuLogo(displayServiceType);
-                                const useInsurance = $('#ansuransi').val() === 'iya';
-                                const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
-                                const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
-                                const baseOngkirCost = parseInt(i.distance_fees || i.cost || 0);
-                                const actualCodFee = parseInt(codFee || 0);
-                                const payloadValue = `${serviceType}-${i.service_name}-${rawName}-${i.cost}-${insuranceFeeValue}-${codFee}`;
-
-                                let feeDetailsHtml = '';
-                                if (useInsurance && insuranceFeeValue > 0) { feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFeeValue)}</small></div>`; }
-                                if (i.cod && codFee > 0) { feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`; }
-
-                                const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" style="background-color: #6f42c1;" data-value="${payloadValue}" data-display="iPaymu - ${displayServiceType}" data-cod-supported="${i.cod}" data-shipping-cost="${baseOngkirCost}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">Pilih Kurir</button>`;
-
-                                b.append(`
-                                <div class="ongkir-item-card" style="border-left: 4px solid #6f42c1;">
-                                    <div class="ongkir-item-col col-service">
-                                        <img src="${imgUrl}" class="ongkir-logo" onerror="this.src='https://tokosancaka.com/public/assets/ipaymu.jpg'">
-                                        <div class="service-info"><span class="service-name">${displayServiceType}</span><span class="service-type" style="color:#6f42c1; font-weight:bold;">iPaymu COD</span></div>
-                                    </div>
-                                    <div class="ongkir-item-col col-etd"><span class="col-label">Estimasi</span><span>${i.etd}</span></div>
-                                    <div class="ongkir-item-col col-cod"><span class="col-label">COD</span><span class="text-success fw-bold">Wajib</span></div>
-                                    <div class="ongkir-item-col col-price"><span class="col-label">Tarif</span>
-                                        <div class="price-value"><span class="final-price" style="color:#6f42c1;">${formatRupiah(i.cost)}</span></div>
-                                        <div class="price-details">${feeDetailsHtml}</div>
-                                    </div>
-                                    <div class="ongkir-item-col col-action">${buttonHtml}</div>
-                                </div>`);
-                            });
-                        }
-
-
-                        // Tampilkan pesan error jika sama sekali tidak ada layanan (baik dari KiriminAja maupun iPaymu)
-                        if (kiriminAjaResults.length === 0 && ipaymuResults.length === 0) {
-                            b.html(`<div class="alert alert-warning text-center shadow-sm">Tidak ada layanan yang tersedia.</div>`);
-                        }
-                    }
-                },
-                error: function(jqXHR) {
-                    let errorMsg = jqXHR.responseJSON?.message || 'Gagal mengambil data ongkir.';
-                    $('#ongkirResultsContainer, #delivereeResultsContainer').html(`<div class="alert alert-danger text-center shadow-sm">${errorMsg}</div>`);
-                }
+            allResults.forEach(service => {
+                let logoName = (service.service || "").toLowerCase().replace(/\s+/g, '');
+                if (logoName === 'deliveree') { delivereeResults.push(service); }
+                else if (logoName === 'lalamove') { lalamoveResults.push(service); }
+                else if (logoName === 'ipaymu') { ipaymuResults.push(service); }
+                else { kiriminAjaResults.push(service); }
             });
+
+            // Eksekusi fungsi render ke modal berdasarkan filter
+            if (vendorFilter === 'deliveree') {
+                renderDelivereeModal(delivereeResults, { serviceType: serviceType });
+            } else if (vendorFilter === 'lalamove') {
+                renderLalamoveModal(lalamoveResults, { serviceType: serviceType });
+            } else if (vendorFilter === 'ipaymu') {
+                renderIpaymuModal(ipaymuResults, { serviceType: serviceType });
+            } else {
+                // JIKA FILTER "SEMUA" DIPILIH: Render Gabungan KiriminAja + iPaymu
+                const b = $('#ongkirResultsContainer').empty();
+
+                // Render KiriminAja
+                if (kiriminAjaResults.length > 0) {
+                    b.append(`<div class="ongkir-header-row d-none d-lg-flex"><div class="ongkir-item-col col-service">Layanan</div><div class="ongkir-item-col col-etd">Estimasi</div><div class="ongkir-item-col col-cod">COD</div><div class="ongkir-item-col col-price">Tarif</div><div class="ongkir-item-col col-action"></div></div>`);
+
+                    kiriminAjaResults.forEach(i => {
+                        const logoName = (i.service || "").toLowerCase().replace(/\s+/g, '');
+                        let logoUrl = logoName === 'gosend' ? 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png' : (logoName === 'grab' ? 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png' : `{{ asset('public/storage/logo-ekspedisi/') }}/${logoName}.png`);
+                        const safeService = (i.service || '').toString().replace(/-/g, ' ');
+                        const safeServiceTypeLabel = (i.service_type_label || '').toString().replace(/-/g, ' ');
+                        const useInsurance = $('#ansuransi').val() === 'iya';
+                        const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
+                        const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
+                        const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${codFee}`;
+                        const baseOngkirCost = parseInt(i.cost || 0) + parseInt(insuranceFeeValue || 0);
+                        const actualCodFee = parseInt(codFee || 0);
+                        const hasDiscount = i.price?.base_price && i.price.base_price > i.cost;
+                        const basePriceFmt = hasDiscount ? formatRupiah(i.price.base_price) : '';
+                        const insuranceFee = i.insurance || 0;
+                        let feeDetailsHtml = '';
+                        if (useInsurance && insuranceFee > 0) { feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFee)}</small></div>`; }
+                        if (i.cod && codFee > 0) { feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`; }
+                        let etdHtml = i.etd ? (i.is_instant ? `<span>${i.etd}</span>` : `<span>${i.etd} Hari</span>`) : '';
+                        const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}" data-shipping-cost="${parseInt(i.cost || 0)}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">Kirim Paket</button>`;
+
+                        b.append(`
+                        <div class="ongkir-item-card">
+                            <div class="ongkir-item-col col-service">
+                                <img src="${logoUrl}" class="ongkir-logo" onerror="this.style.display='none'">
+                                <div class="service-info"><span class="service-name">${i.service_name}</span><span class="service-type">${i.service_type_label}</span></div>
+                            </div>
+                            <div class="ongkir-item-col col-etd"><span class="col-label">Estimasi</span>${etdHtml}</div>
+                            <div class="ongkir-item-col col-cod"><span class="col-label">COD</span><span>${i.cod ? 'Tersedia' : '-'}</span></div>
+                            <div class="ongkir-item-col col-price"><span class="col-label">Tarif</span>
+                                <div class="price-value"><span class="final-price">${formatRupiah(i.cost)}</span>${hasDiscount ? `<span class="base-price text-decoration-line-through">${basePriceFmt}</span>` : ''}</div>
+                                <div class="price-details">${feeDetailsHtml}</div>
+                            </div>
+                            <div class="ongkir-item-col col-action">${buttonHtml}</div>
+                        </div>`);
+                    });
+                }
+
+                // Render iPaymu di bawah list KiriminAja
+                if (ipaymuResults.length > 0) {
+                    b.append(`<div class="w-100 my-4 text-center text-muted" style="border-top: 1px dashed #ced4da; padding-top: 10px;"><small class="fw-bold" style="color: #6f42c1;">--- LAYANAN ALTERNATIF DARI IPAYMU COD ---</small></div>`);
+
+                    ipaymuResults.forEach(i => {
+                        let rawName = i.service_type_label || '';
+                        let displayServiceType = rawName.toUpperCase().replace('IPAYMU-', '');
+                        let imgUrl = getIpaymuLogo(displayServiceType);
+                        const useInsurance = $('#ansuransi').val() === 'iya';
+                        const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
+                        const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
+                        const baseOngkirCost = parseInt(i.distance_fees || i.cost || 0);
+                        const actualCodFee = parseInt(codFee || 0);
+                        const payloadValue = `${serviceType}-${i.service_name}-${rawName}-${i.cost}-${insuranceFeeValue}-${codFee}`;
+
+                        let feeDetailsHtml = '';
+                        if (useInsurance && insuranceFeeValue > 0) { feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFeeValue)}</small></div>`; }
+                        if (i.cod && codFee > 0) { feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`; }
+
+                        const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" style="background-color: #6f42c1;" data-value="${payloadValue}" data-display="iPaymu - ${displayServiceType}" data-cod-supported="${i.cod}" data-shipping-cost="${baseOngkirCost}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">Pilih Kurir</button>`;
+
+                        b.append(`
+                        <div class="ongkir-item-card" style="border-left: 4px solid #6f42c1;">
+                            <div class="ongkir-item-col col-service">
+                                <img src="${imgUrl}" class="ongkir-logo" onerror="this.src='https://tokosancaka.com/public/assets/ipaymu.jpg'">
+                                <div class="service-info"><span class="service-name">${displayServiceType}</span><span class="service-type" style="color:#6f42c1; font-weight:bold;">iPaymu COD</span></div>
+                            </div>
+                            <div class="ongkir-item-col col-etd"><span class="col-label">Estimasi</span><span>${i.etd}</span></div>
+                            <div class="ongkir-item-col col-cod"><span class="col-label">COD</span><span class="text-success fw-bold">Wajib</span></div>
+                            <div class="ongkir-item-col col-price"><span class="col-label">Tarif</span>
+                                <div class="price-value"><span class="final-price" style="color:#6f42c1;">${formatRupiah(i.cost)}</span></div>
+                                <div class="price-details">${feeDetailsHtml}</div>
+                            </div>
+                            <div class="ongkir-item-col col-action">${buttonHtml}</div>
+                        </div>`);
+                    });
+                }
+
+                // Kosong semua layanan
+                if (kiriminAjaResults.length === 0 && ipaymuResults.length === 0) {
+                    b.html(`<div class="alert alert-warning text-center shadow-sm">Tidak ada layanan reguler yang tersedia untuk rute ini.</div>`);
+                }
+            }
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+            // [PERBAIKAN 4]: Penangkapan error Timeout / Internal Server Error yang menyapu bersih semua loader
+            let errorMsg = jqXHR.responseJSON?.message || 'Gagal mengambil data ongkir dari server.';
+
+            if (textStatus === 'timeout') {
+                errorMsg = 'Waktu habis (Timeout). Server API ekspedisi merespons terlalu lambat atau sedang bermasalah.';
+            }
+
+            const errHtml = `<div class="col-12"><div class="alert alert-danger text-center shadow-sm w-100"><i class="fas fa-exclamation-triangle me-2"></i> ${errorMsg}</div></div>`;
+
+            // Hapus animasi loading di seluruh modal dan tampilkan pesan error
+            $('#ongkirResultsContainer').html(errHtml);
+            $('#delivereeResultsContainer').html(errHtml);
+            $('#lalamoveResultsContainer').html(errHtml);
+            $('#ipaymuResultsContainer').html(errHtml);
         }
+    });
+}
 
         const fieldsThatAffectShipping = '#sender_district_id, #receiver_district_id, #item_price, #weight, #length, #width, #height, #ansuransi, #service_type, #vendor_filter';
 

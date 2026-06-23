@@ -161,7 +161,7 @@ class CustomerOrderController extends Controller
 
 /**
  * Cek ongkir (Sinkronisasi dari Admin/Customer)
- * [FUNGSI DIPERBAIKI: PANGGIL SEMUA LAYANAN]
+ * [FUNGSI DIPERBAIKI: PANGGIL LAYANAN SESUAI FILTER & OPTIMASI KECEPATAN]
  */
 public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
 {
@@ -191,13 +191,15 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             'sender_district' => 'nullable|string',
             'sender_regency' => 'nullable|string',
             'sender_province' => 'nullable|string',
-            'sender_postal_code' => 'nullable|string', // <-- TAMBAHKAN INI
+            'sender_postal_code' => 'nullable|string',
 
             'receiver_village' => 'nullable|string',
             'receiver_district' => 'nullable|string',
             'receiver_regency' => 'nullable|string',
             'receiver_province' => 'nullable|string',
-            'receiver_postal_code' => 'nullable|string', // <-- TAMBAHKAN INI
+            'receiver_postal_code' => 'nullable|string',
+
+            'vendor_filter' => 'nullable|string', // <-- TANGKAP VENDOR FILTER
         ]);
 
         $senderLat = $validated['sender_lat'] ?? null;
@@ -208,142 +210,125 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
         $useInsurance = ($validated['ansuransi'] == 'iya') ? 1 : 0;
         $itemValue = $validated['item_price'];
 
+        // Default ke 'all' jika tidak dikirim dari frontend
+        $vendorFilter = strtolower($validated['vendor_filter'] ?? 'all');
+
         $instantOptions = ['status' => false, 'result' => []];
         $expressOptions = ['status' => false, 'results' => []];
 
-        // --- 1. PANGGIL LAYANAN INSTANT/SAMEDAY ---
-        if (in_array($validated['service_type'], ['instant', 'sameday'])) {
+        // =========================================================================
+        // 1. BLOK KIRIMINAJA (Jalan jika filter "all" atau tidak ada spesifik vendor)
+        // =========================================================================
+        if (in_array($vendorFilter, ['all', ''])) {
 
-            if (empty($senderLat) || empty($senderLng)) {
-                $senderFullAddress = implode(', ', array_filter([
-                    $validated['sender_village'] ?? null,
-                    $validated['sender_district'] ?? null
-                ]));
+            // --- PANGGIL LAYANAN INSTANT/SAMEDAY ---
+            if (in_array($validated['service_type'], ['instant', 'sameday'])) {
+                if (empty($senderLat) || empty($senderLng)) {
+                    $senderFullAddress = implode(', ', array_filter([$validated['sender_village'] ?? null, $validated['sender_district'] ?? null]));
+                    Log::info('Mencoba geocode fallback (SIMPLE) untuk Pengirim: ' . $senderFullAddress);
+                    $geo = $this->geocode($senderFullAddress);
+                    if ($geo) { $senderLat = $geo['lat']; $senderLng = $geo['lng']; }
+                }
 
-                Log::info('Mencoba geocode fallback (SIMPLE) untuk Pengirim: ' . $senderFullAddress);
-                $geo = $this->geocode($senderFullAddress);
-                if ($geo) {
-                    $senderLat = $geo['lat'];
-                    $senderLng = $geo['lng'];
+                if (empty($receiverLat) || empty($receiverLng)) {
+                    $receiverFullAddress = implode(', ', array_filter([$validated['receiver_village'] ?? null, $validated['receiver_district'] ?? null]));
+                    Log::info('Mencoba geocode fallback (SIMPLE) untuk Penerima: ' . $receiverFullAddress);
+                    $geo = $this->geocode($receiverFullAddress);
+                    if ($geo) { $receiverLat = $geo['lat']; $receiverLng = $geo['lng']; }
+                }
+
+                if (empty($senderLat) || empty($senderLng) || empty($receiverLat) || empty($receiverLng)) {
+                    Log::warning('Geocode tetap gagal, melewati instant KiriminAja.');
+                } else {
+                    $instantOptions = $kirimaja->getInstantPricing(
+                        $senderLat, $senderLng, $validated['sender_address'],
+                        $receiverLat, $receiverLng, $validated['receiver_address'],
+                        $validated['weight'], $itemValue, 'motor'
+                    );
+
+                    if (!is_array($instantOptions)) {
+                        Log::warning('getInstantPricing return non-array (null?). Asumsi > 40km.');
+                        return response()->json([
+                            'status' => false,
+                            'message' => 'Layanan Instant/Sameday tidak tersedia. Jarak pengiriman kemungkinan melebihi 40KM.'
+                        ], 404);
+                    }
                 }
             }
 
-            if (empty($receiverLat) || empty($receiverLng)) {
-                $receiverFullAddress = implode(', ', array_filter([
-                    $validated['receiver_village'] ?? null,
-                    $validated['receiver_district'] ?? null
-                ]));
+            // --- PANGGIL EXPRESS/REGULAR/CARGO ---
+            if (in_array($validated['service_type'], ['regular', 'express', 'cargo'])) {
+                $category = $validated['service_type'] === 'cargo' ? 'trucking' : 'regular';
+                $length = $request->input('length', 1);
+                $width = $request->input('width', 1);
+                $height = $request->input('height', 1);
 
-                Log::info('Mencoba geocode fallback (SIMPLE) untuk Penerima: ' . $receiverFullAddress);
-                $geo = $this->geocode($receiverFullAddress);
-                if ($geo) {
-                    $receiverLat = $geo['lat'];
-                    $receiverLng = $geo['lng'];
-                }
-            }
-
-            if (empty($senderLat) || empty($senderLng) || empty($receiverLat) || empty($receiverLng)) {
-                Log::warning('Geocode tetap gagal, melewati instant.', [
-                    'slat' => $senderLat,
-                    'slng' => $senderLng,
-                    'rlat' => $receiverLat,
-                    'rlng' => $receiverLng
-                ]);
-            } else {
-                $instantOptions = $kirimaja->getInstantPricing(
-                    $senderLat,
-                    $senderLng,
-                    $validated['sender_address'],
-                    $receiverLat,
-                    $receiverLng,
-                    $validated['receiver_address'],
-                    $validated['weight'],
-                    $itemValue,
-                    'motor'
+                $expressOptions = $kirimaja->getExpressPricing(
+                    $validated['sender_district_id'], $validated['sender_subdistrict_id'],
+                    $validated['receiver_district_id'], $validated['receiver_subdistrict_id'],
+                    $validated['weight'], $length, $width, $height, $itemValue, null, $category, $useInsurance
                 );
-
-                // PERBAIKAN 40KM
-                if (!is_array($instantOptions)) {
-                    Log::warning('getInstantPricing return non-array (null?). Asumsi > 40km.', [
-                        'response' => $instantOptions
-                    ]);
-
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'Layanan Instant/Sameday tidak tersedia. Jarak pengiriman kemungkinan melebihi 40KM.'
-                    ], 404);
-                }
             }
         }
 
-        // --- 2. PANGGIL EXPRESS/REGULAR/CARGO ---
-        if (in_array($validated['service_type'], ['regular', 'express', 'cargo'])) {
-            $category = $validated['service_type'] === 'cargo' ? 'trucking' : 'regular';
-
-            $length = $request->input('length', 1);
-            $width = $request->input('width', 1);
-            $height = $request->input('height', 1);
-
-            $expressOptions = $kirimaja->getExpressPricing(
-                $validated['sender_district_id'],
-                $validated['sender_subdistrict_id'],
-                $validated['receiver_district_id'],
-                $validated['receiver_subdistrict_id'],
-                $validated['weight'],
-                $length,
-                $width,
-                $height,
-                $itemValue,
-                null,
-                $category,
-                $useInsurance
-            );
-        }
-
-        // --- TAMBAHAN: PANGGIL LAYANAN DELIVEREE ---
-        // 1. Alamat Lengkap (Untuk dikirim ke Deliveree API & Fonnte)
+        // =========================================================================
+        // PERSIAPAN ALAMAT UNTUK VENDOR API LAINNYA (Deliveree, Lalamove)
+        // =========================================================================
         $senderFullAddress = implode(', ', array_filter([$validated['sender_address'] ?? null, $validated['sender_village'] ?? null, $validated['sender_district'] ?? null, $validated['sender_regency'] ?? null]));
         $receiverFullAddress = implode(', ', array_filter([$validated['receiver_address'] ?? null, $validated['receiver_village'] ?? null, $validated['receiver_district'] ?? null, $validated['receiver_regency'] ?? null]));
 
-        // 2. Alamat Simple (HANYA untuk pencarian koordinat Peta Nominatim agar tidak error)
         $senderSimpleAddress = implode(', ', array_filter([$validated['sender_village'] ?? null, $validated['sender_district'] ?? null, $validated['sender_regency'] ?? null]));
         $receiverSimpleAddress = implode(', ', array_filter([$validated['receiver_village'] ?? null, $validated['receiver_district'] ?? null, $validated['receiver_regency'] ?? null]));
 
-        // Kirim keempat variabel alamat tersebut ke Helper
-        $delivereeOptions = $this->_getDelivereePricing(
-            $senderLat, $senderLng, $receiverLat, $receiverLng, $validated['weight'],
-            $senderFullAddress, $receiverFullAddress, $senderSimpleAddress, $receiverSimpleAddress
-        );
+        // =========================================================================
+        // 2. BLOK DELIVEREE
+        // =========================================================================
+        if (in_array($vendorFilter, ['all', 'deliveree'])) {
+            $delivereeOptions = $this->_getDelivereePricing(
+                $senderLat, $senderLng, $receiverLat, $receiverLng, $validated['weight'],
+                $senderFullAddress, $receiverFullAddress, $senderSimpleAddress, $receiverSimpleAddress
+            );
 
-        if ($delivereeOptions['status']) {
-            $expressOptions['status'] = true;
-            $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $delivereeOptions['results']);
+            if ($delivereeOptions['status']) {
+                $expressOptions['status'] = true;
+                $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $delivereeOptions['results']);
+            }
         }
 
-        // --- TAMBAHAN: PANGGIL LAYANAN LALAMOVE ---
-        $lalamoveOptions = $this->_getLalamovePricing(
-            $senderLat, $senderLng, $receiverLat, $receiverLng, $senderFullAddress, $receiverFullAddress
-        );
+        // =========================================================================
+        // 3. BLOK LALAMOVE
+        // =========================================================================
+        if (in_array($vendorFilter, ['all', 'lalamove'])) {
+            $lalamoveOptions = $this->_getLalamovePricing(
+                $senderLat, $senderLng, $receiverLat, $receiverLng, $senderFullAddress, $receiverFullAddress
+            );
 
-        if ($lalamoveOptions['status']) {
-            $expressOptions['status'] = true;
-            // Pindahkan Lalamove ke array 'results' (sejajar dengan Deliveree)
-            $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $lalamoveOptions['results']);
+            if ($lalamoveOptions['status']) {
+                $expressOptions['status'] = true;
+                $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $lalamoveOptions['results']);
+            }
         }
 
-        $ipaymuOptions = $this->_getIpaymuPricing(
-            $validated['sender_district'] ?? $validated['sender_regency'] ?? 'Jakarta',
-            $validated['receiver_district'] ?? $validated['receiver_regency'] ?? 'Jakarta',
-            $validated['weight'],
-            $itemValue
-        );
+        // =========================================================================
+        // 4. BLOK IPAYMU (COD KOMSHIP)
+        // =========================================================================
+        if (in_array($vendorFilter, ['all', 'ipaymu'])) {
+            $ipaymuOptions = $this->_getIpaymuPricing(
+                $validated['sender_district'] ?? $validated['sender_regency'] ?? 'Jakarta',
+                $validated['receiver_district'] ?? $validated['receiver_regency'] ?? 'Jakarta',
+                $validated['weight'],
+                $itemValue
+            );
 
-        if ($ipaymuOptions['status']) {
-            $expressOptions['status'] = true;
-            $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $ipaymuOptions['results']);
+            if ($ipaymuOptions['status']) {
+                $expressOptions['status'] = true;
+                $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $ipaymuOptions['results']);
+            }
         }
 
-        // --- 3. GABUNGKAN HASIL ---
+        // =========================================================================
+        // 5. GABUNGKAN DAN KEMBALIKAN HASIL FINAL
+        // =========================================================================
         $finalResults = [
             'status' => true,
             'text' => 'OK',
@@ -376,7 +361,7 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
 
         return response()->json([
             'status' => false,
-            'message' => 'Terjadi kesalahan internal: ' . $e->getMessage()
+            'message' => 'Terjadi kesalahan internal saat menarik data ekspedisi.'
         ], 500);
     }
 }
