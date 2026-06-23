@@ -1718,7 +1718,6 @@ Route::get('/ipaymu', function () {
     if ($err) {
         return "Error cURL: " . $err;
     }
-
     // Tampilkan hasil mentah ke layar browser
     return response($res)->header('Content-Type', 'application/json');
 });
