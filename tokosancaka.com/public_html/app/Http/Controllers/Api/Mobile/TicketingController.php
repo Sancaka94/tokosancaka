@@ -936,6 +936,21 @@ class TicketingController extends BaseController
 
             // Ekstrak data jadwal PULANG (Jika RoundTrip)
             $dwReturnDetailSchedule = is_array($scheduleData) && isset($scheduleData['returnRef']) ? $scheduleData['returnRef'] : "";
+
+            // --- TAMBAHAN BARU: Ambil Flight Number Pulang dari JSON atau String Ref ---
+            $dwReturnFlightNumber = "";
+            if (is_array($scheduleData) && !empty($scheduleData['returnFn'])) {
+                $dwReturnFlightNumber = $scheduleData['returnFn'];
+            } else if (!empty($dwReturnDetailSchedule)) {
+                 // Fallback: Ekstrak dari string reference Darmawisata
+                 // Contoh: "0~O~~O~RGFR~~1~X|QG~ 811~ ~~CGK..." -> "811"
+                 preg_map('/\|[A-Z0-9]{2}~\s*([A-Z0-9]+)~/i', $dwReturnDetailSchedule, $matches);
+                 if (isset($matches[1])) {
+                     $dwReturnFlightNumber = trim($matches[1]);
+                 }
+            }
+            // -----------------------------------------------------------------------------
+
             $dwReturnDepartTime     = is_array($scheduleData) && isset($scheduleData['returnDepTime']) ? $scheduleData['returnDepTime'] : "";
             $dwReturnArrivalTime    = is_array($scheduleData) && isset($scheduleData['returnArrTime']) ? $scheduleData['returnArrTime'] : "";
 
@@ -964,15 +979,14 @@ class TicketingController extends BaseController
             if ($isRoundTrip && !empty($dwReturnDetailSchedule)) {
                 $schReturnsArray = [
                     [
-                        // Kita asumsikan maskapai yang sama untuk pergi dan pulang
                         'airlineCode'    => $order->airline_id,
-                        'flightNumber'   => "", // DW kadang memaafkan FN kosong pada schReturns jika reference valid
-                        'schOrigin'      => $order->destination, // Dibalik
-                        'schDestination' => $order->origin, // Dibalik
+                        'flightNumber'   => $dwReturnFlightNumber, // <--- SUDAH TERISI DI SINI
+                        'schOrigin'      => $order->destination,
+                        'schDestination' => $order->origin,
                         'detailSchedule' => $dwReturnDetailSchedule,
                         'schDepartTime'  => $dwReturnDepartTime,
                         'schArrivalTime' => $dwReturnArrivalTime,
-                        'flightClass'    => $order->flight_class // Asumsikan kelas sama
+                        'flightClass'    => $order->flight_class
                     ]
                 ];
             }
