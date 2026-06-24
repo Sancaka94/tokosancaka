@@ -1079,7 +1079,7 @@ class TicketingController extends BaseController
             }
 
             // Susun Array schDeparts
-            $schDepartsArray = [
+            /* $schDepartsArray = [
                 [
                     'airlineCode'    => $order->airline_id,
                     'flightNumber'   => $dwFlightNumber,
@@ -1107,6 +1107,11 @@ class TicketingController extends BaseController
                         'flightClass'    => $order->flight_class
                     ]
                 ];
+            } */
+
+            $returnDatePayload = "0001-01-01T00:00:00";
+            if ($isRoundTrip && !empty($schReturnsArray) && isset($schReturnsArray[0]['schDepartTime'])) {
+                $returnDatePayload = explode('T', $schReturnsArray[0]['schDepartTime'])[0] . "T00:00:00";
             }
 
             // 3. Rakit Payload Final untuk Darmawisata
