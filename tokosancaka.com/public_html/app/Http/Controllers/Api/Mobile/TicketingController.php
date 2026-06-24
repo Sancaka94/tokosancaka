@@ -496,19 +496,34 @@ class TicketingController extends BaseController
                 ]);
 
            } else {
-                // TAMBAHKAN LOGIKA DETEKSI SALDO HABIS
                 $message = $json['respMessage'] ?? 'Maskapai menolak penerbitan tiket.';
 
+                // =================================================================
+                // 🛡️ UX FIX: CEGAT STATUS 'PROCESSED' AGAR TIDAK MENJADI ERROR FATAL
+                // =================================================================
+                $isProcessed = (isset($json['bookingStatus']) && strtoupper($json['bookingStatus']) === 'PROCESSED')
+                            || str_contains(strtoupper($message), 'PROCESSED');
+
+                if ($isProcessed) {
+                    Log::info("LOG LOG: PNR {$pnr} masih PROCESSED, menunggu antrean maskapai.");
+                    return response()->json([
+                        'status'  => 'PROCESSED', // <-- Kita buat status baru khusus untuk Frontend
+                        'message' => 'Pesanan sedang dalam antrean maskapai. Silakan tunggu 10-30 detik lalu tekan tombol "Cetak Tiket" lagi.'
+                    ]);
+                }
+                // =================================================================
+
+                // TAMBAHKAN LOGIKA DETEKSI SALDO HABIS
                 if (str_contains(strtolower($message), 'insufficient balance')) {
                     Log::error("LOG LOG: Gagal Issued karena Saldo H2H Habis!");
                     return response()->json([
-                        'status' => 'FAILED',
+                        'status'  => 'FAILED',
                         'message' => 'Tiket gagal diterbitkan: Saldo deposit pusat tidak cukup. Silakan hubungi admin.'
                     ]);
                 }
 
                 return response()->json([
-                    'status' => 'FAILED',
+                    'status'  => 'FAILED',
                     'message' => 'Gagal dari Darmawisata: ' . $message
                 ]);
             }
