@@ -962,8 +962,7 @@ class TicketingController extends BaseController
                         foreach ($parsedAddOns as $ao) {
                             $safeMeals = [];
 
-                            // Ekstrak meals dan pastikan HANYA berbentuk array of string murni (["NPCB"])
-                            if (isset($ao['meals']) && is_array($ao['meals'])) {
+                           if (isset($ao['meals']) && is_array($ao['meals'])) {
                                 foreach ($ao['meals'] as $m) {
                                     if (is_string($m)) {
                                         $safeMeals[] = $m;
@@ -971,14 +970,20 @@ class TicketingController extends BaseController
                                 }
                             }
 
-                            $cleanAddOns[] = [
-                                'aoOrigin'      => $ao['aoOrigin'] ?? $order->origin,
-                                'aoDestination' => $ao['aoDestination'] ?? $order->destination,
-                                'seat'          => empty($ao['seat']) ? "" : $ao['seat'],
-                                'compartment'   => $ao['compartment'] ?? "Y",
-                                'baggageString' => empty($ao['baggageString']) ? "" : $ao['baggageString'],
-                                'meals'         => $safeMeals // <- Format ini dijamin valid!
-                            ];
+                            $seat = empty($ao['seat']) ? "" : $ao['seat'];
+                            $baggage = empty($ao['baggageString']) ? "" : $ao['baggageString'];
+
+                            // 🛡️ FIX: Hanya push ke array jika ada data Add-Ons yang valid
+                            if (!empty($seat) || !empty($baggage) || !empty($safeMeals)) {
+                                $cleanAddOns[] = [
+                                    'aoOrigin'      => $ao['aoOrigin'] ?? $order->origin,
+                                    'aoDestination' => $ao['aoDestination'] ?? $order->destination,
+                                    'seat'          => $seat,
+                                    'compartment'   => $ao['compartment'] ?? "Y",
+                                    'baggageString' => $baggage,
+                                    'meals'         => $safeMeals
+                                ];
+                            }
                         }
                     }
                 }
