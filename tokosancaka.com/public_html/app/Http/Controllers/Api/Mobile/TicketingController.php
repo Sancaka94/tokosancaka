@@ -927,35 +927,55 @@ class TicketingController extends BaseController
                 }
                 $addedPaxKeys[] = $uniqueKey;
 
-                $addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
+             $addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
                 $addOns = [];
 
-                if ($addonsDb && !empty($addonsDb->meals_data)) {
-                    $parsedAddOns = json_decode($addonsDb->meals_data, true);
-                    if (is_array($parsedAddOns)) {
-                        $addOns = $parsedAddOns;
-                    }
-                }
-
                 if ($addonsDb) {
-                    $addOns[] = [
-                        'aoOrigin'      => $order->origin,
-                        'aoDestination' => $order->destination,
-                        'seat'          => $addonsDb->seat_code ?? "",
-                        'compartment'   => $addonsDb->compartment ?? "Y",
-                        'baggageString' => $addonsDb->baggage_string ?? "",
-                        'meals'         => !empty($addonsDb->meals_data) ? json_decode($addonsDb->meals_data, true) : []
-                    ];
+                    $seat = $addonsDb->seat_code ?? "";
+                    $baggage = $addonsDb->baggage_string ?? "";
+                    $safeMeals = [];
 
-                    if ($isRoundTrip) {
+                    // Sanitasi ketat: Cegah object nyasar ke dalam meals
+                    if (!empty($addonsDb->meals_data)) {
+                        $parsedAddOns = json_decode($addonsDb->meals_data, true);
+                        if (is_array($parsedAddOns)) {
+                            foreach ($parsedAddOns as $ao) {
+                                if (isset($ao['meals']) && is_array($ao['meals'])) {
+                                    foreach ($ao['meals'] as $m) {
+                                        if (is_string($m)) {
+                                            $safeMeals[] = $m;
+                                        }
+                                    }
+                                }
+                                // Ambil baggageString dari JSON jika ada (prioritas)
+                                if (empty($baggage) && !empty($ao['baggageString']) && is_string($ao['baggageString'])) {
+                                    $baggage = $ao['baggageString'];
+                                }
+                            }
+                        }
+                    }
+
+                    // HANYA buat addOns jika memang ada isinya (Mencegah pengiriman null / empty object)
+                    if (!empty($seat) || !empty($baggage) || !empty($safeMeals)) {
                         $addOns[] = [
-                            'aoOrigin'      => $order->destination,
-                            'aoDestination' => $order->origin,
-                            'seat'          => "",
-                            'compartment'   => "Y",
-                            'baggageString' => $addonsDb->baggage_string ?? "",
-                            'meals'         => []
+                            'aoOrigin'      => $order->origin,
+                            'aoDestination' => $order->destination,
+                            'seat'          => $seat,
+                            'compartment'   => $addonsDb->compartment ?? "Y",
+                            'baggageString' => $baggage,
+                            'meals'         => $safeMeals
                         ];
+
+                        if ($isRoundTrip) {
+                            $addOns[] = [
+                                'aoOrigin'      => $order->destination,
+                                'aoDestination' => $order->origin,
+                                'seat'          => "",
+                                'compartment'   => "Y",
+                                'baggageString' => $baggage,
+                                'meals'         => []
+                            ];
+                        }
                     }
                 }
 
@@ -1057,10 +1077,12 @@ class TicketingController extends BaseController
             }
 
             // Ekstrak data jadwal PERGI
-            $dwDetailSchedule = is_array($scheduleData) ? $scheduleData['ref'] : $order->detail_schedule;
-            $dwFlightNumber   = is_array($scheduleData) ? $scheduleData['fn'] : $order->flight_number;
-            $dwDepartTime     = is_array($scheduleData) ? $scheduleData['depTime'] : "";
-            $dwArrivalTime    = is_array($scheduleData) ? $scheduleData['arrTime'] : "";
+            $dwDetailSchedule = is_array($scheduleData) && isset($scheduleData['ref']) ? $scheduleData['ref'] : $order->detail_schedule;
+            $dwFlightNumber   = is_array($scheduleData) && isset($scheduleData['fn']) ? $scheduleData['fn'] : $order->flight_number;
+
+            // 🛡️ FIX: Beri fallback ke order->depart_date jika JSON kosong
+            $dwDepartTime     = (is_array($scheduleData) && !empty($scheduleData['depTime'])) ? $scheduleData['depTime'] : date('Y-m-d\TH:i:s', strtotime($order->depart_date));
+            $dwArrivalTime    = (is_array($scheduleData) && !empty($scheduleData['arrTime'])) ? $scheduleData['arrTime'] : date('Y-m-d\TH:i:s', strtotime($order->depart_date));
 
             // Ekstrak data jadwal PULANG (Jika RoundTrip)
             $dwReturnDetailSchedule = is_array($scheduleData) && isset($scheduleData['returnRef']) ? $scheduleData['returnRef'] : "";
