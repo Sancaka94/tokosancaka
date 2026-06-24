@@ -1077,12 +1077,10 @@ class TicketingController extends BaseController
             }
 
             // Ekstrak data jadwal PERGI
-            $dwDetailSchedule = is_array($scheduleData) && isset($scheduleData['ref']) ? $scheduleData['ref'] : $order->detail_schedule;
-            $dwFlightNumber   = is_array($scheduleData) && isset($scheduleData['fn']) ? $scheduleData['fn'] : $order->flight_number;
-
-            // 🛡️ FIX: Beri fallback ke order->depart_date jika JSON kosong
-            $dwDepartTime     = (is_array($scheduleData) && !empty($scheduleData['depTime'])) ? $scheduleData['depTime'] : date('Y-m-d\TH:i:s', strtotime($order->depart_date));
-            $dwArrivalTime    = (is_array($scheduleData) && !empty($scheduleData['arrTime'])) ? $scheduleData['arrTime'] : date('Y-m-d\TH:i:s', strtotime($order->depart_date));
+            $dwDetailSchedule = is_array($scheduleData) ? $scheduleData['ref'] : $order->detail_schedule;
+            $dwFlightNumber   = is_array($scheduleData) ? $scheduleData['fn'] : $order->flight_number;
+            $dwDepartTime     = is_array($scheduleData) ? $scheduleData['depTime'] : "";
+            $dwArrivalTime    = is_array($scheduleData) ? $scheduleData['arrTime'] : "";
 
             // Ekstrak data jadwal PULANG (Jika RoundTrip)
             $dwReturnDetailSchedule = is_array($scheduleData) && isset($scheduleData['returnRef']) ? $scheduleData['returnRef'] : "";
