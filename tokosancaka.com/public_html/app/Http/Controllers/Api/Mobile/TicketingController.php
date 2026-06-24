@@ -831,7 +831,7 @@ class TicketingController extends BaseController
         }
     }
 
-    /**
+  /**
      * POST Airline/ProcessBooking
      * Membaca data dari DB lalu merakit Payload untuk dikirim ke Darmawisata
      */
@@ -854,6 +854,8 @@ class TicketingController extends BaseController
                 throw new \Exception("Data order tidak ditemukan di database.");
             }
 
+            $isRoundTrip = $order->trip_type === 'RoundTrip';
+
             // 2. Ambil data Penumpang & Kursi
             $passengers = DB::table('flight_passengers')->where('order_id', $orderId)->get();
             $paxDetails = [];
@@ -870,6 +872,7 @@ class TicketingController extends BaseController
                 $addOns = [];
 
                 if ($addonsDb) {
+                    // Masukkan AddOns untuk keberangkatan
                     $addOns[] = [
                         'aoOrigin'      => $order->origin,
                         'aoDestination' => $order->destination,
@@ -878,6 +881,18 @@ class TicketingController extends BaseController
                         'baggageString' => $addonsDb->baggage_string ?? "",
                         'meals'         => []
                     ];
+
+                    // JIKA ROUNDTRIP: Duplikasi AddOns untuk rute kepulangan (Bisa disesuaikan nanti jika user bisa milih beda)
+                    if ($isRoundTrip) {
+                        $addOns[] = [
+                            'aoOrigin'      => $order->destination, // Dibalik
+                            'aoDestination' => $order->origin, // Dibalik
+                            'seat'          => "", // Reset seat karena mapping kursi beda
+                            'compartment'   => "Y",
+                            'baggageString' => $addonsDb->baggage_string ?? "", // Samakan bagasi
+                            'meals'         => []
+                        ];
+                    }
                 }
 
                 $paxDetails[] = [
@@ -896,35 +911,71 @@ class TicketingController extends BaseController
                     'Email'               => "",
                     'batikMilesNo'        => "",
                     'garudaFrequentFlyer' => "",
-                    // Jika addons tidak ada sama sekali, kirim null sesuai dokumen
                     'addOns'              => empty($addOns) ? null : $addOns
                 ];
             }
 
-            // Pecah kode area HP secara sederhana
+            // Pecah kode area HP
             $phone = $order->contact_phone;
             $countryCode = "62";
-            $areaCode = substr(str_replace('62', '', $phone), 0, 2); // Ambil 2 digit awal (misal 81)
+            $areaCode = substr(str_replace('62', '', $phone), 0, 2);
             $remainingPhone = substr(str_replace('62', '', $phone), 2);
 
-            // --- TAMBAHKAN BLOK KODE INI ---
-            // Buka bungkusan JSON dari detail_schedule untuk mengakali TrimStrings Laravel
+            // Buka bungkusan JSON dari detail_schedule
             $scheduleData = json_decode($order->detail_schedule, true);
-
-            // Ambil data dari JSON (Jika bukan JSON/data lama, gunakan fallback)
-            // $dwDetailSchedule = is_array($scheduleData) ? $scheduleData['ref'] : $order->detail_schedule;
-            $dwDetailSchedule = is_array($scheduleData) ? $scheduleData['ref'] : $order->detail_schedule;
-
-            // --- TAMBAHAN SAPU JAGAT ---
-            // Jika ternyata isi $dwDetailSchedule masih berupa string JSON lagi, bongkar sekali lagi!
-            $innerCheck = json_decode($dwDetailSchedule, true);
+            $innerCheck = is_string($scheduleData) ? json_decode($scheduleData, true) : null;
             if (is_array($innerCheck) && isset($innerCheck['ref'])) {
-                $dwDetailSchedule = $innerCheck['ref'];
+                $scheduleData = $innerCheck;
             }
+
+            // Ekstrak data jadwal PERGI
+            $dwDetailSchedule = is_array($scheduleData) ? $scheduleData['ref'] : $order->detail_schedule;
             $dwFlightNumber   = is_array($scheduleData) ? $scheduleData['fn'] : $order->flight_number;
             $dwDepartTime     = is_array($scheduleData) ? $scheduleData['depTime'] : "";
             $dwArrivalTime    = is_array($scheduleData) ? $scheduleData['arrTime'] : "";
-            // -------------------------------
+
+            // Ekstrak data jadwal PULANG (Jika RoundTrip)
+            $dwReturnDetailSchedule = is_array($scheduleData) && isset($scheduleData['returnRef']) ? $scheduleData['returnRef'] : "";
+            $dwReturnDepartTime     = is_array($scheduleData) && isset($scheduleData['returnDepTime']) ? $scheduleData['returnDepTime'] : "";
+            $dwReturnArrivalTime    = is_array($scheduleData) && isset($scheduleData['returnArrTime']) ? $scheduleData['returnArrTime'] : "";
+
+            // Format Tanggal Kepulangan untuk Payload Utama
+            $returnDatePayload = "0001-01-01T00:00:00";
+            if ($isRoundTrip && !empty($dwReturnDepartTime)) {
+                $returnDatePayload = explode('T', $dwReturnDepartTime)[0] . "T00:00:00";
+            }
+
+            // Susun Array schDeparts
+            $schDepartsArray = [
+                [
+                    'airlineCode'    => $order->airline_id,
+                    'flightNumber'   => $dwFlightNumber,
+                    'schOrigin'      => $order->origin,
+                    'schDestination' => $order->destination,
+                    'detailSchedule' => $dwDetailSchedule,
+                    'schDepartTime'  => $dwDepartTime,
+                    'schArrivalTime' => $dwArrivalTime,
+                    'flightClass'    => $order->flight_class
+                ]
+            ];
+
+            // Susun Array schReturns
+            $schReturnsArray = [];
+            if ($isRoundTrip && !empty($dwReturnDetailSchedule)) {
+                $schReturnsArray = [
+                    [
+                        // Kita asumsikan maskapai yang sama untuk pergi dan pulang
+                        'airlineCode'    => $order->airline_id,
+                        'flightNumber'   => "", // DW kadang memaafkan FN kosong pada schReturns jika reference valid
+                        'schOrigin'      => $order->destination, // Dibalik
+                        'schDestination' => $order->origin, // Dibalik
+                        'detailSchedule' => $dwReturnDetailSchedule,
+                        'schDepartTime'  => $dwReturnDepartTime,
+                        'schArrivalTime' => $dwReturnArrivalTime,
+                        'flightClass'    => $order->flight_class // Asumsikan kelas sama
+                    ]
+                ];
+            }
 
             // 3. Rakit Payload Final untuk Darmawisata
             $dwPayload = [
@@ -933,7 +984,7 @@ class TicketingController extends BaseController
                 'destination'             => $order->destination,
                 'tripType'                => $order->trip_type,
                 'departDate'              => date('Y-m-d\T00:00:00', strtotime($order->depart_date)),
-                'returnDate'              => "0001-01-01T00:00:00",
+                'returnDate'              => $returnDatePayload, // <-- FIX
                 'paxAdult'                => $paxAdult,
                 'paxChild'                => $paxChild,
                 'paxInfant'               => $paxInfant,
@@ -947,52 +998,40 @@ class TicketingController extends BaseController
                 'paxDetails'              => $paxDetails,
                 'insurance'               => false,
                 'userID'                  => $this->darmawisataUserId,
-                'accessToken'             => $order->dw_access_token, // GUNAKAN TOKEN BARU DARI DB
-                // --- UBAH BAGIAN schDeparts MENJADI SEPERTI INI ---
-                'schDeparts'              => [
-                    [
-                        'airlineCode'    => $order->airline_id,
-                        'flightNumber'   => $dwFlightNumber, // <--- Menggunakan variabel aman
-                        'schOrigin'      => $order->origin,
-                        'schDestination' => $order->destination,
-                        'detailSchedule' => $dwDetailSchedule, // <--- Menggunakan variabel aman
-                        'schDepartTime'  => $dwDepartTime, // <--- Menggunakan variabel aman
-                        'schArrivalTime' => $dwArrivalTime, // <--- Menggunakan variabel aman
-                        'flightClass'    => $order->flight_class
-                    ]
-                ],
-                'schReturns'              => []
+                'accessToken'             => $order->dw_access_token,
+                'schDeparts'              => $schDepartsArray, // <-- FIX
+                'schReturns'              => $schReturnsArray  // <-- FIX
             ];
 
             Log::info("LOG LOG: Memulai proses booking dari DB untuk Order ID: {$orderId}");
 
             // =========================================================================
-            // 3.5. SYARAT WAJIB DARMAWISATA & AUTO-FILL BAGASI
+            // 3.5. SYARAT WAJIB DARMAWISATA & AUTO-FILL BAGASI (FIXED ROUNDTRIP)
             // =========================================================================
             $addonsPayload = [
-                'airlineID'               => $dwPayload['airlineID'],
-                'origin'                  => $dwPayload['origin'],
-                'destination'             => $dwPayload['destination'],
-                'tripType'                => $dwPayload['tripType'],
-                'departDate'              => $dwPayload['departDate'],
-                'returnDate'              => $dwPayload['returnDate'],
-                'schDepart'               => $dwDetailSchedule,
-                'schReturn'               => "",
-                'paxAdult'                => $dwPayload['paxAdult'],
-                'paxChild'                => $dwPayload['paxChild'],
-                'paxInfant'               => $dwPayload['paxInfant'],
-                'contactFirstName'        => $dwPayload['contactFirstName'],
-                'contactLastName'         => $dwPayload['contactLastName'],
-                'contactTitle'            => $dwPayload['contactTitle'],
-                'contactCountryCodePhone' => $dwPayload['contactCountryCodePhone'],
-                'contactAreaCodePhone'    => $dwPayload['contactAreaCodePhone'],
-                'contactRemainingPhoneNo' => $dwPayload['contactRemainingPhoneNo'],
-                'contactEmail'            => $dwPayload['contactEmail'],
-                'paxDetails'              => $dwPayload['paxDetails'],
+                'airlineID'                   => $dwPayload['airlineID'],
+                'origin'                      => $dwPayload['origin'],
+                'destination'                 => $dwPayload['destination'],
+                'tripType'                    => $dwPayload['tripType'],
+                'departDate'                  => $dwPayload['departDate'],
+                'returnDate'                  => $dwPayload['returnDate'], // <-- FIX
+                'schDepart'                   => $dwDetailSchedule,
+                'schReturn'                   => $dwReturnDetailSchedule, // <-- FIX
+                'paxAdult'                    => $dwPayload['paxAdult'],
+                'paxChild'                    => $dwPayload['paxChild'],
+                'paxInfant'                   => $dwPayload['paxInfant'],
+                'contactFirstName'            => $dwPayload['contactFirstName'],
+                'contactLastName'             => $dwPayload['contactLastName'],
+                'contactTitle'                => $dwPayload['contactTitle'],
+                'contactCountryCodePhone'     => $dwPayload['contactCountryCodePhone'],
+                'contactAreaCodePhone'        => $dwPayload['contactAreaCodePhone'],
+                'contactRemainingPhoneNo'     => $dwPayload['contactRemainingPhoneNo'],
+                'contactEmail'                => $dwPayload['contactEmail'],
+                'paxDetails'                  => $dwPayload['paxDetails'],
                 'departureAirlineSegmentCode' => "",
                 'departureFareBasisCode'      => $order->flight_class,
-                'userID'                  => $this->darmawisataUserId,
-                'accessToken'             => $order->dw_access_token
+                'userID'                      => $this->darmawisataUserId,
+                'accessToken'                 => $order->dw_access_token
             ];
 
             // Tembak AddOns untuk mendapatkan denah Bagasi
@@ -1004,14 +1043,13 @@ class TicketingController extends BaseController
             $defaultBaggage = "";
 
             if (!$isEnableNoBaggage && !empty($addonsJson['baggageAddOns'])) {
-                // Cari string bagasi default (utamakan yang harganya 0 / gratis bawaan)
                 foreach ($addonsJson['baggageAddOns'] as $routeBaggage) {
                     if (!empty($routeBaggage['infos'])) {
                         foreach ($routeBaggage['infos'] as $info) {
                             if (isset($info['baggageString'])) {
                                 $defaultBaggage = $info['baggageString'];
                                 if (($info['price'] ?? 1) == 0) {
-                                    break 2; // Nemu yang gratis, langsung ambil dan stop cari
+                                    break 2;
                                 }
                             }
                         }
@@ -1022,9 +1060,7 @@ class TicketingController extends BaseController
             // SUNTIKKAN STRING BAGASI KE SEMUA PENUMPANG DEWASA & ANAK
             if (!$isEnableNoBaggage && $defaultBaggage !== "") {
                 foreach ($dwPayload['paxDetails'] as &$pax) {
-                    if ($pax['type'] == 0 || $pax['type'] == 1) { // 0 = Adult, 1 = Child
-
-                        // Jika penumpang belum punya addons sama sekali
+                    if ($pax['type'] == 0 || $pax['type'] == 1) {
                         if (empty($pax['addOns'])) {
                             $pax['addOns'] = [
                                 [
@@ -1032,57 +1068,57 @@ class TicketingController extends BaseController
                                     'aoDestination' => $order->destination,
                                     'seat'          => "",
                                     'compartment'   => "Y",
-                                    'baggageString' => $defaultBaggage, // Suntik bagasi di sini
+                                    'baggageString' => $defaultBaggage,
                                     'meals'         => []
                                 ]
                             ];
+                            // Suntik Bagasi Rute Pulang jika RoundTrip
+                            if ($isRoundTrip) {
+                                $pax['addOns'][] = [
+                                    'aoOrigin'      => $order->destination,
+                                    'aoDestination' => $order->origin,
+                                    'seat'          => "",
+                                    'compartment'   => "Y",
+                                    'baggageString' => $defaultBaggage,
+                                    'meals'         => []
+                                ];
+                            }
                         } else {
-                            // Jika penumpang sudah milih kursi (seperti di Order ID 4: Seat 6A)
-                            // Kita cukup timpa baggageString-nya yang tadinya kosong
+                            // Timpa baggageString
                             $pax['addOns'][0]['baggageString'] = $defaultBaggage;
+                            if ($isRoundTrip && isset($pax['addOns'][1])) {
+                                $pax['addOns'][1]['baggageString'] = $defaultBaggage;
+                            }
                         }
                     }
                 }
-                unset($pax); // Hapus referensi memori array
-                Log::info("LOG LOG: Maskapai mewajibkan bagasi. Sistem otomatis menyuntikkan bagasi: " . $defaultBaggage);
+                unset($pax);
+                Log::info("LOG LOG: Sistem otomatis menyuntikkan bagasi (RoundTrip Handle): " . $defaultBaggage);
             }
             // =========================================================================
 
-            /* return response()->json([
-                'status' => 'FAILED', // Sengaja dibuat FAILED agar masuk ke blok error di HP
-                'message' => 'DEBUG MODE AKTIF: Periksa payload di terminal/log',
-                'debug_payload' => $dwPayload, // Ini isi lengkap keranjang sebelum dikirim
-                'debug_addons' => $addonsPayload ?? 'Tidak ada addons' // Sekalian cek addons
-            ]);
-            */
-
-            // =====================================================================
-
-           // 4. Hit Darmawisata (Booking)
+            // 4. Hit Darmawisata (Booking)
             $response = $this->forwardRequest('Airline/Booking', $dwPayload);
             $json = json_decode($response->getContent(), true);
 
             // 5. EVALUASI HASIL BOOKING & GENERATE PEMBAYARAN
             if (isset($json['status']) && $json['status'] === 'SUCCESS') {
                 $pnr = $json['bookingCode'];
-                $amount = (float) $json['ticketPrice']; // Gunakan harga asli maskapai
+                $amount = (float) $json['ticketPrice'];
                 $paymentMethod = strtoupper($request->payment_method ?? 'SALDO');
 
                 // Update order jadi BOOKED/HOLD
                 DB::table('flight_orders')->where('id', $orderId)->update([
-                    'status'       => 'HOLD',
-                    'booking_code' => $pnr,
+                    'status'         => 'HOLD',
+                    'booking_code'   => $pnr,
                     'payment_method' => $paymentMethod,
-                    'total_fare'   => $amount,
-                    'updated_at'   => now()
+                    'total_fare'     => $amount,
+                    'updated_at'     => now()
                 ]);
 
                 $user = $request->user();
                 $isSaldo = in_array($paymentMethod, ['SALDO', 'POTONG SALDO', 'CASH']);
 
-                // ========================================================
-                // JALUR 1: PEMBAYARAN SALDO (KEMBALI KE MANUAL)
-                // ========================================================
                 if ($isSaldo) {
                     if ($user->saldo < $amount) {
                         return response()->json([
@@ -1091,7 +1127,6 @@ class TicketingController extends BaseController
                         ]);
                     }
 
-                    // Hanya return SUCCESS biasa (Status di DB sudah otomatis HOLD)
                     return response()->json([
                         'status' => 'SUCCESS',
                         'bookingCode' => $pnr,
@@ -1099,9 +1134,6 @@ class TicketingController extends BaseController
                     ]);
                 }
 
-                // ========================================================
-                // JALUR 2: TRIPAY
-                // ========================================================
                 if ($paymentMethod === 'TRIPAY') {
                     $tripayMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
                     $apiKey = \App\Models\Api::getValue('TRIPAY_API_KEY', $tripayMode);
@@ -1113,7 +1145,7 @@ class TicketingController extends BaseController
                     $signature = hash_hmac('sha256', $merchantCode.$merchantRef.$amount, $privateKey);
 
                     $responseTripay = Http::withHeaders(['Authorization' => 'Bearer ' . trim($apiKey)])->post($tripayUrl, [
-                        'method'         => 'BRIVA', // Bisa dinamis atau kosong untuk memunculkan semua metode
+                        'method'         => 'BRIVA',
                         'merchant_ref'   => $merchantRef,
                         'amount'         => $amount,
                         'customer_name'  => $user->nama_lengkap ?? $order->contact_first_name,
@@ -1136,9 +1168,6 @@ class TicketingController extends BaseController
                     }
                 }
 
-                // ========================================================
-                // JALUR 3: DOKU JOKUL
-                // ========================================================
                 if ($paymentMethod === 'DOKU') {
                     $merchantRef = 'FLT-' . $orderId . '-' . $pnr;
                     try {
@@ -1156,7 +1185,6 @@ class TicketingController extends BaseController
                     }
                 }
 
-                // Jika DANA atau gateway gagal, fallback ke SUCCESS dasar dengan PNR
                 return response()->json([
                     'status' => 'SUCCESS',
                     'bookingCode' => $pnr,
@@ -1168,7 +1196,7 @@ class TicketingController extends BaseController
                     'status'     => 'FAILED',
                     'updated_at' => now()
                 ]);
-                return $response; // Return raw Darmawisata Error
+                return $response;
             }
 
         } catch (\Exception $e) {
