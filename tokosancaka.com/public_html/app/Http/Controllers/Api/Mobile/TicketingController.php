@@ -917,14 +917,13 @@ class TicketingController extends BaseController
                     }
                 }
 
-                $parentRef = "";
+               $parentRef = "";
                 $idNumberToSend = trim($pax->id_number);
                 $titleToSend = strtoupper($pax->title);
 
                 // ==============================================================
-                // SANITASI KHUSUS ANAK & BAYI
+                // 1. SANITASI TITEL ANAK & BAYI
                 // ==============================================================
-                // 1. Sanitasi Titel
                 if ($pax->pax_type == 1 || $pax->pax_type == 2) {
                     if ($pax->gender === 'Female' && in_array($titleToSend, ['MRS', 'MS', 'MR'])) {
                         $titleToSend = 'MISS';
@@ -933,14 +932,19 @@ class TicketingController extends BaseController
                     }
                 }
 
-                // 🔥 CHEAT CODE 1: NIK TIDAK BOLEH KOSONG!
-                if (empty($idNumberToSend)) {
-                    // Buatkan NIK Dummy 16 digit dari Tanggal Lahir untuk Anak/Bayi
-                    $idNumberToSend = date('dmy', strtotime($pax->birth_date)) . '0000000001';
+                // ==============================================================
+                // 2. CEGAH NIK KOSONG (API MENOLAK STRING "")
+                // ==============================================================
+                if (empty($idNumberToSend) || strlen($idNumberToSend) < 5) {
+                    // Generate NIK Dummy dari Tgl Lahir + Angka Random
+                    $idNumberToSend = date('dmy', strtotime($pax->birth_date)) . rand(1000000000, 9999999999);
                 }
 
-                // 2. Logika Pemetaan Bayi
+                // ==============================================================
+                // 3. PEMETAAN PARENT BAYI (SESUAI UAT)
+                // ==============================================================
                 if ($pax->pax_type == 2) {
+                    // UAT Poin 2: Infant dipangku oleh Dewasa ke-2
                     $adultIndexToUse = (count($adultsNIK) > 1) ? 1 : 0;
 
                     if (isset($adultsNIK[$adultIndexToUse])) {
@@ -948,11 +952,7 @@ class TicketingController extends BaseController
                     } else if (count($adultsNIK) > 0) {
                         $parentRef = $adultsNIK[0];
                     }
-
-                    // 🔥 CHEAT CODE 2: NIK Bayi WAJIB = NIK Dewasa yang memangkunya
-                    $idNumberToSend = $parentRef;
                 }
-                // ==============================================================
 
                 $paxDetails[] = [
                     'IDNumber'            => $idNumberToSend,
@@ -970,15 +970,46 @@ class TicketingController extends BaseController
                     'Email'               => "",
                     'batikMilesNo'        => "",
                     'garudaFrequentFlyer' => "",
-                    // 🛑 Pastikan AddOns Dihapus Total Khusus Untuk Bayi
+                    // ==========================================================
+                    // 4. BAYI TIDAK BOLEH MEMILIKI ADDONS BAGASI
+                    // ==========================================================
                     'addOns'              => ($pax->pax_type == 2) ? null : (empty($addOns) ? null : $addOns)
                 ];
-            }
+            } // <-- Ini adalah penutup foreach ($passengers as $pax)
 
             // ==============================================================
-            // 🛑 RE-SEQUENCE ARRAY (ATURAN KETAT NAVITAIRE)
+            // 5. RE-SEQUENCE (URUTKAN ULANG) ARRAY PENUMPANG
+            // Aturan Navitaire: Objek Bayi wajib berada tepat di bawah Dewasa pemangkunya
             // ==============================================================
             $sortedPaxDetails = [];
+            $infantsData = [];
+
+            // Pisahkan data bayi terlebih dahulu
+            foreach ($paxDetails as $p) {
+                if ($p['type'] == 2) {
+                    $infantsData[] = $p;
+                }
+            }
+
+            // Susun ulang urutan array
+            foreach ($paxDetails as $p) {
+                if ($p['type'] != 2) {
+                    $sortedPaxDetails[] = $p; // Masukkan Dewasa atau Anak
+
+                    // Jika ini Dewasa, cek apakah ada bayi yang NIK Parent-nya cocok
+                    if ($p['type'] == 0) {
+                        foreach ($infantsData as $infant) {
+                            if ($infant['parent'] === $p['IDNumber']) {
+                                $sortedPaxDetails[] = $infant; // Sisipkan bayi
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Timpa array payload dengan array yang sudah diurutkan
+            $paxDetails = $sortedPaxDetails;
+            // ==============================================================
             $infantsData = [];
 
             // Pisahkan bayi
