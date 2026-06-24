@@ -917,18 +917,20 @@ class TicketingController extends BaseController
                     }
                 }
 
-                // LOGIKA UAT POINT 2: Bayi dipangku dewasa ke-2
+                // --- LOGIKA UAT POINT 2: Bayi dipangku dewasa ke-2 (VERSI LEBIH AMAN) ---
                 $parentRef = "";
                 if ($pax->pax_type == 2) { // Jika penumpang adalah Bayi
-                    if (count($adultsNIK) > 1 && $infantIndex == 0) {
-                        // Jika ada lebih dari 1 orang dewasa, bayi pertama nempel ke Dewasa ke-2 (Index 1)
-                        $parentRef = $adultsNIK[1];
-                    } else {
-                        // Jika orang dewasa cuma 1, nempel ke Dewasa ke-1
-                        $parentRef = $adultsNIK[$infantIndex % max(count($adultsNIK), 1)] ?? "";
+                    // Kita cari NIK penumpang dewasa yang memiliki index 1 (Dewasa ke-2)
+                    // Jika hanya ada 1 dewasa, kita terpaksa pakai index 0
+                    $adultIndexToUse = (count($adultsNIK) > 1) ? 1 : 0;
+
+                    if (isset($adultsNIK[$adultIndexToUse])) {
+                        $parentRef = $adultsNIK[$adultIndexToUse];
+                    } else if (count($adultsNIK) > 0) {
+                        $parentRef = $adultsNIK[0];
                     }
-                    $infantIndex++;
                 }
+                // -------------------------------------------------------------
 
                 $paxDetails[] = [
                     'IDNumber'            => $pax->id_number,
@@ -941,7 +943,7 @@ class TicketingController extends BaseController
                     'birthCountry'        => "ID",
                     'DocType'             => $pax->doc_type,
                     'type'                => $pax->pax_type,
-                    'parent'              => $parentRef, // <--- SUDAH OTOMATIS CERDAS!
+                    'parent'              => (string)$parentRef, // Pastikan dikirim sebagai string
                     'passportNumber'      => "",
                     'Email'               => "",
                     'batikMilesNo'        => "",
