@@ -951,14 +951,13 @@ class TicketingController extends BaseController
                     $idNumberToSend = date('dmy', strtotime($pax->birth_date)) . rand(1000000000, 9999999999);
                 }
 
-                // 3. Pemetaan Parent Bayi (Sesuai UAT Poin 2)
+               // 3. Pemetaan Parent Bayi (Sesuai UAT Poin 2)
                 if ($pax->pax_type == 2) {
-                    $adultIndexToUse = (count($adultsNIK) > 1) ? 1 : 0;
-                    if (isset($adultsNIK[$adultIndexToUse])) {
-                        $parentRef = $adultsNIK[$adultIndexToUse];
-                    } else if (count($adultsNIK) > 0) {
-                        $parentRef = $adultsNIK[0];
-                    }
+                    // 🔥 KUNCI RAHASIA: Gunakan Nomor Urut (1 atau 2), BUKAN NIK Dewasa!
+                    // Sistem Navitaire membaca "1" untuk Dewasa pertama, "2" untuk Dewasa kedua.
+                    $adultSequence = (count($adultsNIK) > 1) ? "2" : "1";
+
+                    $parentRef = $adultSequence; // <-- Pastikan ini berisi "2"
                 }
 
                 $paxDetails[] = [
