@@ -813,7 +813,7 @@ class TicketingController extends BaseController
                         'gender'     => $pax['gender'],
                         'birth_date' => $pax['birthDate'],
                         'doc_type'   => $pax['docType'],
-                        'id_number'  => $pax['idNumber'],
+                        'id_number'  => $pax['idNumber'] ?? "",
                     ]);
 
                     // 3. Simpan kursi ATAU bagasi jika user memilihnya
