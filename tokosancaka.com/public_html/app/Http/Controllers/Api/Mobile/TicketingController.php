@@ -889,8 +889,7 @@ class TicketingController extends BaseController
                 }
             }
 
-            // --- LOOPING KEDUA: Merakit payload dan memetakan Bayi ---
-            $infantIndex = 0;
+           // --- LOOPING KEDUA: Merakit payload dan memetakan Bayi ---
             $paxDetails = [];
             foreach ($passengers as $pax) {
                 $addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
@@ -918,15 +917,15 @@ class TicketingController extends BaseController
                     }
                 }
 
-              $parentRef = "";
-                $idNumberToSend = $pax->id_number; // Default pakai NIK asli
-                $titleToSend = strtoupper($pax->title); // Pastikan kapital
+                $parentRef = "";
+                $idNumberToSend = trim($pax->id_number);
+                $titleToSend = strtoupper($pax->title);
 
                 // ==============================================================
-                // SANITASI KHUSUS ANAK & BAYI (Mencegah salah input dari UI Mobile)
+                // SANITASI KHUSUS ANAK & BAYI
                 // ==============================================================
+                // 1. Sanitasi Titel
                 if ($pax->pax_type == 1 || $pax->pax_type == 2) {
-                    // Titel tidak boleh MR/MRS untuk anak di bawah umur
                     if ($pax->gender === 'Female' && in_array($titleToSend, ['MRS', 'MS', 'MR'])) {
                         $titleToSend = 'MISS';
                     } elseif ($pax->gender === 'Male' && in_array($titleToSend, ['MRS', 'MS', 'MR'])) {
@@ -934,8 +933,14 @@ class TicketingController extends BaseController
                     }
                 }
 
-                if ($pax->pax_type == 2) { // KHUSUS BAYI (INFANT)
-                    // 1. Pemetaan Parent Sesuai UAT (Dewasa ke-2)
+                // 🔥 CHEAT CODE 1: NIK TIDAK BOLEH KOSONG!
+                if (empty($idNumberToSend)) {
+                    // Buatkan NIK Dummy 16 digit dari Tanggal Lahir untuk Anak/Bayi
+                    $idNumberToSend = date('dmy', strtotime($pax->birth_date)) . '0000000001';
+                }
+
+                // 2. Logika Pemetaan Bayi
+                if ($pax->pax_type == 2) {
                     $adultIndexToUse = (count($adultsNIK) > 1) ? 1 : 0;
 
                     if (isset($adultsNIK[$adultIndexToUse])) {
@@ -944,68 +949,63 @@ class TicketingController extends BaseController
                         $parentRef = $adultsNIK[0];
                     }
 
-                    // 2. KUNCI RAHASIA: IDNumber Bayi WAJIB KOSONG
-                    $idNumberToSend = "";
+                    // 🔥 CHEAT CODE 2: NIK Bayi WAJIB = NIK Dewasa yang memangkunya
+                    $idNumberToSend = $parentRef;
                 }
                 // ==============================================================
-
-               // ==============================================================
 
                 $paxDetails[] = [
                     'IDNumber'            => $idNumberToSend,
                     'title'               => $titleToSend,
-                    'firstName'           => $pax->first_name,
-                    'lastName'            => $pax->last_name,
+                    'firstName'           => strtoupper($pax->first_name),
+                    'lastName'            => strtoupper($pax->last_name),
                     'birthDate'           => date('Y-m-d\T00:00:00', strtotime($pax->birth_date)),
                     'gender'              => $pax->gender,
                     'nationality'         => "ID",
                     'birthCountry'        => "ID",
-                    'DocType'             => $pax->doc_type,
+                    'DocType'             => "KTP",
                     'type'                => $pax->pax_type,
                     'parent'              => (string)$parentRef,
                     'passportNumber'      => "",
                     'Email'               => "",
                     'batikMilesNo'        => "",
                     'garudaFrequentFlyer' => "",
-                    // 🛑 PERBAIKAN 1: Paksa addOns jadi null KHUSUS untuk Bayi
+                    // 🛑 Pastikan AddOns Dihapus Total Khusus Untuk Bayi
                     'addOns'              => ($pax->pax_type == 2) ? null : (empty($addOns) ? null : $addOns)
                 ];
-            } // <-- Ini penutup foreach ($passengers as $pax)
+            }
 
             // ==============================================================
-            // 🛑 PERBAIKAN 2: RE-SEQUENCE ARRAY (ATURAN KETAT NAVITAIRE)
-            // Sistem H2H Citilink mewajibkan objek Bayi berada TEPAT DI BAWAH Dewasa pemangkunya.
-            // Jika terhalang oleh Anak (Index 2), koneksi parent-nya dianggap putus!
+            // 🛑 RE-SEQUENCE ARRAY (ATURAN KETAT NAVITAIRE)
             // ==============================================================
             $sortedPaxDetails = [];
             $infantsData = [];
 
-            // Pisahkan data bayi ke array sementara
+            // Pisahkan bayi
             foreach ($paxDetails as $p) {
                 if ($p['type'] == 2) {
                     $infantsData[] = $p;
                 }
             }
 
-            // Susun ulang urutan array
+            // Susun ulang urutan (Bayi menempel di bawah Parent)
             foreach ($paxDetails as $p) {
                 if ($p['type'] != 2) {
-                    $sortedPaxDetails[] = $p; // Masukkan Dewasa / Anak ke barisan
+                    $sortedPaxDetails[] = $p;
 
-                    // Jika ini Dewasa, cek apakah ada bayi yang harus dipangku oleh NIK ini
                     if ($p['type'] == 0) {
                         foreach ($infantsData as $infant) {
                             if ($infant['parent'] === $p['IDNumber']) {
-                                $sortedPaxDetails[] = $infant; // Sisipkan bayi tepat di bawah orang tuanya
+                                $sortedPaxDetails[] = $infant;
                             }
                         }
                     }
                 }
             }
 
-            // Timpa $paxDetails lama dengan array yang sudah tersusun rapi sesuai standar maskapai
+            // Timpa array dengan hasil sorting final
             $paxDetails = $sortedPaxDetails;
-            // ==============================================================
+            // ============================================================
 
             // Pecah kode area HP
             $phone = $order->contact_phone;
