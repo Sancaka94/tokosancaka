@@ -74,20 +74,22 @@ class TicketingController extends BaseController
         return $response;
     }
 
-   /**
-     * POST Airline/PriceAllAirline
-     * Endpoint modern pasangan dari ScheduleAllAirline
-     */
-    public function airlinePriceAllAirline(Request $request)
+   public function airlinePriceAllAirline(Request $request)
     {
         // 1. Validasi parameter wajib sesuai dokumen Darmawisata
         $validator = Validator::make($request->all(), [
             'airlineID'              => 'required|string',
             'origin'                 => 'required|string',
             'destination'            => 'required|string',
-            'tripType'               => 'required|string',
+            'tripType'               => 'required|string|in:OneWay,RoundTrip',
             'departDate'             => 'required|string',
-            'journeyDepartReference' => 'required|string'
+            'journeyDepartReference' => 'required|string',
+            // Tambahkan validasi ini: Wajib ada jika tripType adalah RoundTrip
+            'journeyReturnReference' => 'required_if:tripType,RoundTrip|string',
+            'schReturns'             => 'required_if:tripType,RoundTrip|array'
+        ], [
+            'journeyReturnReference.required_if' => 'Referensi penerbangan pulang wajib diisi untuk tiket RoundTrip.',
+            'schReturns.required_if'             => 'Data jadwal pulang wajib dikirim untuk tiket RoundTrip.'
         ]);
 
         if ($validator->fails()) {
@@ -104,7 +106,10 @@ class TicketingController extends BaseController
         // Kita pastikan parameter string kosong dikirim sebagai string "" (bukan null)
         // Karena middleware Laravel suka mengubah "" menjadi null
         $payload['airlineAccessCode']      = $payload['airlineAccessCode'] ?? "";
+
+        // Untuk OneWay tetap aman karena otomatis diisi string kosong jika tidak ada di request
         $payload['journeyReturnReference'] = $payload['journeyReturnReference'] ?? "";
+        $payload['schReturns']             = $payload['schReturns'] ?? [];
 
         // 3. Eksekusi Request ke Darmawisata
         $response = $this->forwardRequest('Airline/PriceAllAirline', $payload);
