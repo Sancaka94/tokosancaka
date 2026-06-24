@@ -804,8 +804,6 @@ class TicketingController extends BaseController
                     'depart_date'        => $request->departDate,
                     'flight_class'       => $request->flightClass,
                     'detail_schedule'    => $request->detailSchedule,
-                    'sch_departs_json'   => $request->schDepartsJson ?? null,
-                    'sch_returns_json'   => $request->schReturnsJson ?? null,
                     'base_fare'          => $request->baseFare,
                     'tax'                => $request->tax,
                     'total_fare'         => $request->totalFare,
@@ -833,16 +831,14 @@ class TicketingController extends BaseController
                         'id_number'  => $pax['idNumber'] ?? "",
                     ]);
 
-                    // 3. Simpan kursi ATAU bagasi/makanan jika user memilihnya
-                    if (!empty($pax['seat']) || !empty($pax['addOns'])) {
+                    // 3. Simpan kursi ATAU bagasi jika user memilihnya
+                    if (!empty($pax['seat']) || !empty($pax['baggage'])) {
                         DB::table('flight_addons')->insert([
                             'order_id'       => $orderId,
                             'passenger_id'   => $paxId,
                             'seat_code'      => !empty($pax['seat']) ? $pax['seat'] : "",
                             'compartment'    => 'Y',
-                            'baggage_string' => "", // Dikosongkan karena sudah include di meals_data
-                            // Simpan array addOns dari React Native (sudah memuat transit & meal) sebagai JSON
-                            'meals_data'     => !empty($pax['addOns']) ? json_encode($pax['addOns']) : null
+                            'baggage_string' => !empty($pax['baggage']) ? $pax['baggage'] : ""
                         ]);
                     }
                 }
@@ -927,55 +923,28 @@ class TicketingController extends BaseController
                 }
                 $addedPaxKeys[] = $uniqueKey;
 
-             $addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
+                $addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
                 $addOns = [];
 
                 if ($addonsDb) {
-                    $seat = $addonsDb->seat_code ?? "";
-                    $baggage = $addonsDb->baggage_string ?? "";
-                    $safeMeals = [];
+                    $addOns[] = [
+                        'aoOrigin'      => $order->origin,
+                        'aoDestination' => $order->destination,
+                        'seat'          => $addonsDb->seat_code ?? "",
+                        'compartment'   => $addonsDb->compartment ?? "Y",
+                        'baggageString' => $addonsDb->baggage_string ?? "",
+                        'meals'         => []
+                    ];
 
-                    // Sanitasi ketat: Cegah object nyasar ke dalam meals
-                    if (!empty($addonsDb->meals_data)) {
-                        $parsedAddOns = json_decode($addonsDb->meals_data, true);
-                        if (is_array($parsedAddOns)) {
-                            foreach ($parsedAddOns as $ao) {
-                                if (isset($ao['meals']) && is_array($ao['meals'])) {
-                                    foreach ($ao['meals'] as $m) {
-                                        if (is_string($m)) {
-                                            $safeMeals[] = $m;
-                                        }
-                                    }
-                                }
-                                // Ambil baggageString dari JSON jika ada (prioritas)
-                                if (empty($baggage) && !empty($ao['baggageString']) && is_string($ao['baggageString'])) {
-                                    $baggage = $ao['baggageString'];
-                                }
-                            }
-                        }
-                    }
-
-                    // HANYA buat addOns jika memang ada isinya (Mencegah pengiriman null / empty object)
-                    if (!empty($seat) || !empty($baggage) || !empty($safeMeals)) {
+                    if ($isRoundTrip) {
                         $addOns[] = [
-                            'aoOrigin'      => $order->origin,
-                            'aoDestination' => $order->destination,
-                            'seat'          => $seat,
-                            'compartment'   => $addonsDb->compartment ?? "Y",
-                            'baggageString' => $baggage,
-                            'meals'         => $safeMeals
+                            'aoOrigin'      => $order->destination,
+                            'aoDestination' => $order->origin,
+                            'seat'          => "",
+                            'compartment'   => "Y",
+                            'baggageString' => $addonsDb->baggage_string ?? "",
+                            'meals'         => []
                         ];
-
-                        if ($isRoundTrip) {
-                            $addOns[] = [
-                                'aoOrigin'      => $order->destination,
-                                'aoDestination' => $order->origin,
-                                'seat'          => "",
-                                'compartment'   => "Y",
-                                'baggageString' => $baggage,
-                                'meals'         => []
-                            ];
-                        }
                     }
                 }
 
@@ -1063,66 +1032,84 @@ class TicketingController extends BaseController
             $paxDetails = $sortedPaxDetails;
             // ==============================================================
 
-          // Pecah kode area HP
+            // Pecah kode area HP
             $phone = $order->contact_phone;
             $countryCode = "62";
             $areaCode = substr(str_replace('62', '', $phone), 0, 2);
             $remainingPhone = substr(str_replace('62', '', $phone), 2);
 
-            // ==============================================================
-            // 3. TARIK DATA JADWAL (MENGGUNAKAN JSON MURNI DARI FRONTEND)
-            // ==============================================================
-            $schDepartsArray = json_decode($order->sch_departs_json ?? '[]', true) ?: [];
-            $schReturnsArray = json_decode($order->sch_returns_json ?? '[]', true) ?: [];
-
-            // 🛡️ SANITASI JADWAL PERGI (Fix Bug Bulan '00' & Cegah Jam Kosong)
-            if (!empty($schDepartsArray)) {
-                foreach ($schDepartsArray as &$dep) {
-                    if (isset($dep['detailSchedule'])) {
-                        $dep['detailSchedule'] = str_replace(['~00/', '/00/'], ['~07/', '/07/'], $dep['detailSchedule']);
-                    }
-                    if (empty($dep['schDepartTime'])) {
-                        $dep['schDepartTime'] = date('Y-m-d\TH:i:s', strtotime($order->depart_date));
-                    }
-                    if (empty($dep['schArrivalTime'])) {
-                        $dep['schArrivalTime'] = date('Y-m-d\TH:i:s', strtotime($order->depart_date));
-                    }
-                }
-                unset($dep);
+            // Buka bungkusan JSON dari detail_schedule
+            $scheduleData = json_decode($order->detail_schedule, true);
+            $innerCheck = is_string($scheduleData) ? json_decode($scheduleData, true) : null;
+            if (is_array($innerCheck) && isset($innerCheck['ref'])) {
+                $scheduleData = $innerCheck;
             }
 
-            // 🛡️ SANITASI JADWAL PULANG (Jika RoundTrip)
-            if ($isRoundTrip && !empty($schReturnsArray)) {
-                foreach ($schReturnsArray as &$ret) {
-                    if (isset($ret['detailSchedule'])) {
-                        $ret['detailSchedule'] = str_replace(['~00/', '/00/'], ['~07/', '/07/'], $ret['detailSchedule']);
-                    }
-                    if (empty($ret['schDepartTime'])) {
-                        $ret['schDepartTime'] = date('Y-m-d\TH:i:s', strtotime($order->depart_date));
-                    }
-                    if (empty($ret['schArrivalTime'])) {
-                        $ret['schArrivalTime'] = date('Y-m-d\TH:i:s', strtotime($order->depart_date));
-                    }
-                }
-                unset($ret);
-            }
+            // Ekstrak data jadwal PERGI
+            $dwDetailSchedule = is_array($scheduleData) ? $scheduleData['ref'] : $order->detail_schedule;
+            $dwFlightNumber   = is_array($scheduleData) ? $scheduleData['fn'] : $order->flight_number;
+            $dwDepartTime     = is_array($scheduleData) ? $scheduleData['depTime'] : "";
+            $dwArrivalTime    = is_array($scheduleData) ? $scheduleData['arrTime'] : "";
 
-            // Tentukan returnDate dinamis
+            // Ekstrak data jadwal PULANG (Jika RoundTrip)
+            $dwReturnDetailSchedule = is_array($scheduleData) && isset($scheduleData['returnRef']) ? $scheduleData['returnRef'] : "";
+
+            // --- TAMBAHAN BARU: Ambil Flight Number Pulang dari JSON atau String Ref ---
+            $dwReturnFlightNumber = "";
+            if (is_array($scheduleData) && !empty($scheduleData['returnFn'])) {
+                $dwReturnFlightNumber = $scheduleData['returnFn'];
+            } else if (!empty($dwReturnDetailSchedule)) {
+                 // Fallback: Ekstrak dari string reference Darmawisata
+                 // Contoh: "0~O~~O~RGFR~~1~X|QG~ 811~ ~~CGK..." -> "811"
+                 // BENAR
+                    preg_match('/\|[A-Z0-9]{2}~\s*([A-Z0-9]+)~/i', $dwReturnDetailSchedule, $matches);
+                 if (isset($matches[1])) {
+                     $dwReturnFlightNumber = trim($matches[1]);
+                 }
+            }
+            // -----------------------------------------------------------------------------
+
+            $dwReturnDepartTime     = is_array($scheduleData) && isset($scheduleData['returnDepTime']) ? $scheduleData['returnDepTime'] : "";
+            $dwReturnArrivalTime    = is_array($scheduleData) && isset($scheduleData['returnArrTime']) ? $scheduleData['returnArrTime'] : "";
+
+            // Format Tanggal Kepulangan untuk Payload Utama
             $returnDatePayload = "0001-01-01T00:00:00";
-            if ($isRoundTrip && !empty($schReturnsArray) && isset($schReturnsArray[0]['schDepartTime'])) {
-                $returnDatePayload = explode('T', $schReturnsArray[0]['schDepartTime'])[0] . "T00:00:00";
+            if ($isRoundTrip && !empty($dwReturnDepartTime)) {
+                $returnDatePayload = explode('T', $dwReturnDepartTime)[0] . "T00:00:00";
             }
 
-            // Deklarasikan variabel darurat untuk AddOns di bawahnya agar tidak error
-            $dwDetailSchedule = str_replace(['~00/', '/00/'], ['~07/', '/07/'], $order->detail_schedule);
-            $dwReturnDetailSchedule = "";
-            if ($isRoundTrip && !empty($schReturnsArray) && isset($schReturnsArray[0]['detailSchedule'])) {
-                $dwReturnDetailSchedule = $schReturnsArray[0]['detailSchedule'];
+            // Susun Array schDeparts
+            $schDepartsArray = [
+                [
+                    'airlineCode'    => $order->airline_id,
+                    'flightNumber'   => $dwFlightNumber,
+                    'schOrigin'      => $order->origin,
+                    'schDestination' => $order->destination,
+                    'detailSchedule' => $dwDetailSchedule,
+                    'schDepartTime'  => $dwDepartTime,
+                    'schArrivalTime' => $dwArrivalTime,
+                    'flightClass'    => $order->flight_class
+                ]
+            ];
+
+            // Susun Array schReturns
+            $schReturnsArray = [];
+            if ($isRoundTrip && !empty($dwReturnDetailSchedule)) {
+                $schReturnsArray = [
+                    [
+                        'airlineCode'    => $order->airline_id,
+                        'flightNumber'   => $dwReturnFlightNumber, // <--- SUDAH TERISI DI SINI
+                        'schOrigin'      => $order->destination,
+                        'schDestination' => $order->origin,
+                        'detailSchedule' => $dwReturnDetailSchedule,
+                        'schDepartTime'  => $dwReturnDepartTime,
+                        'schArrivalTime' => $dwReturnArrivalTime,
+                        'flightClass'    => $order->flight_class
+                    ]
+                ];
             }
 
-            // ==============================================================
-            // 4. RAKIT PAYLOAD FINAL
-            // ==============================================================
+            // 3. Rakit Payload Final untuk Darmawisata
             $dwPayload = [
                 'airlineID'               => $order->airline_id,
                 'origin'                  => $order->origin,
