@@ -74,22 +74,16 @@ class TicketingController extends BaseController
         return $response;
     }
 
-   public function airlinePriceAllAirline(Request $request)
+  public function airlinePriceAllAirline(Request $request)
     {
-        // 1. Validasi parameter wajib sesuai dokumen Darmawisata
+        // 1. Validasi parameter dasar saja
         $validator = Validator::make($request->all(), [
             'airlineID'              => 'required|string',
             'origin'                 => 'required|string',
             'destination'            => 'required|string',
             'tripType'               => 'required|string|in:OneWay,RoundTrip',
             'departDate'             => 'required|string',
-            'journeyDepartReference' => 'required|string',
-            // Tambahkan validasi ini: Wajib ada jika tripType adalah RoundTrip
-            'journeyReturnReference' => 'required_if:tripType,RoundTrip|string',
-            'schReturns'             => 'required_if:tripType,RoundTrip|array'
-        ], [
-            'journeyReturnReference.required_if' => 'Referensi penerbangan pulang wajib diisi untuk tiket RoundTrip.',
-            'schReturns.required_if'             => 'Data jadwal pulang wajib dikirim untuk tiket RoundTrip.'
+            'journeyDepartReference' => 'required|string'
         ]);
 
         if ($validator->fails()) {
@@ -100,21 +94,22 @@ class TicketingController extends BaseController
             ], 422);
         }
 
-        // 2. Siapkan Data Payload
+        // 2. Validasi Dinamis Khusus RoundTrip (Agar OneWay tidak ikut error)
+        if ($request->tripType === 'RoundTrip' && empty($request->journeyReturnReference)) {
+            return response()->json([
+                'status'  => 'FAILED',
+                'message' => 'Referensi penerbangan pulang wajib diisi untuk tiket RoundTrip.'
+            ], 422);
+        }
+
+        // 3. Siapkan Data Payload
         $payload = $request->all();
-
-        // Kita pastikan parameter string kosong dikirim sebagai string "" (bukan null)
-        // Karena middleware Laravel suka mengubah "" menjadi null
         $payload['airlineAccessCode']      = $payload['airlineAccessCode'] ?? "";
-
-        // Untuk OneWay tetap aman karena otomatis diisi string kosong jika tidak ada di request
         $payload['journeyReturnReference'] = $payload['journeyReturnReference'] ?? "";
         $payload['schReturns']             = $payload['schReturns'] ?? [];
 
-        // 3. Eksekusi Request ke Darmawisata
+        // 4. Eksekusi Request ke Darmawisata
         $response = $this->forwardRequest('Airline/PriceAllAirline', $payload);
-
-        // Cetak Log Response dari Darmawisata
         Log::info("\nLOG LOG: Response dari Darmawisata (Airline/PriceAllAirline):\n" . json_encode(json_decode($response->getContent()), JSON_PRETTY_PRINT));
 
         return $response;
@@ -876,23 +871,31 @@ class TicketingController extends BaseController
 
             $isRoundTrip = $order->trip_type === 'RoundTrip';
 
-            // 2. Ambil data Penumpang & Kursi
+           // 2. Ambil data Penumpang & Kursi
             $passengers = DB::table('flight_passengers')->where('order_id', $orderId)->get();
             $paxDetails = [];
             $paxAdult = 0; $paxChild = 0; $paxInfant = 0;
 
+            // --- SMART MAPPING: Kumpulkan Data Orang Dewasa Dulu ---
+            $adultsNIK = [];
             foreach ($passengers as $pax) {
-                // Hitung jumlah pax
-                if ($pax->pax_type == 0) $paxAdult++;
-                elseif ($pax->pax_type == 1) $paxChild++;
-                elseif ($pax->pax_type == 2) $paxInfant++;
+                if ($pax->pax_type == 0) { // 0 = Adult
+                    $adultsNIK[] = $pax->id_number;
+                    $paxAdult++;
+                } elseif ($pax->pax_type == 1) {
+                    $paxChild++;
+                } elseif ($pax->pax_type == 2) {
+                    $paxInfant++;
+                }
+            }
 
-                // Ambil data AddOns dari database
+            // --- LOOPING KEDUA: Merakit payload dan memetakan Bayi ---
+            $infantIndex = 0;
+            foreach ($passengers as $pax) {
                 $addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
                 $addOns = [];
 
                 if ($addonsDb) {
-                    // Masukkan AddOns untuk keberangkatan
                     $addOns[] = [
                         'aoOrigin'      => $order->origin,
                         'aoDestination' => $order->destination,
@@ -902,17 +905,29 @@ class TicketingController extends BaseController
                         'meals'         => []
                     ];
 
-                    // JIKA ROUNDTRIP: Duplikasi AddOns untuk rute kepulangan (Bisa disesuaikan nanti jika user bisa milih beda)
                     if ($isRoundTrip) {
                         $addOns[] = [
-                            'aoOrigin'      => $order->destination, // Dibalik
-                            'aoDestination' => $order->origin, // Dibalik
-                            'seat'          => "", // Reset seat karena mapping kursi beda
+                            'aoOrigin'      => $order->destination,
+                            'aoDestination' => $order->origin,
+                            'seat'          => "",
                             'compartment'   => "Y",
-                            'baggageString' => $addonsDb->baggage_string ?? "", // Samakan bagasi
+                            'baggageString' => $addonsDb->baggage_string ?? "",
                             'meals'         => []
                         ];
                     }
+                }
+
+                // LOGIKA UAT POINT 2: Bayi dipangku dewasa ke-2
+                $parentRef = "";
+                if ($pax->pax_type == 2) { // Jika penumpang adalah Bayi
+                    if (count($adultsNIK) > 1 && $infantIndex == 0) {
+                        // Jika ada lebih dari 1 orang dewasa, bayi pertama nempel ke Dewasa ke-2 (Index 1)
+                        $parentRef = $adultsNIK[1];
+                    } else {
+                        // Jika orang dewasa cuma 1, nempel ke Dewasa ke-1
+                        $parentRef = $adultsNIK[$infantIndex % max(count($adultsNIK), 1)] ?? "";
+                    }
+                    $infantIndex++;
                 }
 
                 $paxDetails[] = [
@@ -926,7 +941,7 @@ class TicketingController extends BaseController
                     'birthCountry'        => "ID",
                     'DocType'             => $pax->doc_type,
                     'type'                => $pax->pax_type,
-                    'parent'              => "",
+                    'parent'              => $parentRef, // <--- SUDAH OTOMATIS CERDAS!
                     'passportNumber'      => "",
                     'Email'               => "",
                     'batikMilesNo'        => "",
