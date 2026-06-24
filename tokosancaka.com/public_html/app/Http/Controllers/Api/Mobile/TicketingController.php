@@ -891,6 +891,7 @@ class TicketingController extends BaseController
 
             // --- LOOPING KEDUA: Merakit payload dan memetakan Bayi ---
             $infantIndex = 0;
+            $paxDetails = [];
             foreach ($passengers as $pax) {
                 $addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
                 $addOns = [];
@@ -917,11 +918,24 @@ class TicketingController extends BaseController
                     }
                 }
 
-                $parentRef = "";
-                $idNumberToSend = $pax->id_number; // Ambil NIK asli dari DB
+              $parentRef = "";
+                $idNumberToSend = $pax->id_number; // Default pakai NIK asli
+                $titleToSend = strtoupper($pax->title); // Pastikan kapital
 
-                if ($pax->pax_type == 2) { // Jika penumpang adalah Bayi (Infant)
-                    // Logika UAT Anda yang cerdas tetap dipertahankan
+                // ==============================================================
+                // SANITASI KHUSUS ANAK & BAYI (Mencegah salah input dari UI Mobile)
+                // ==============================================================
+                if ($pax->pax_type == 1 || $pax->pax_type == 2) {
+                    // Titel tidak boleh MR/MRS untuk anak di bawah umur
+                    if ($pax->gender === 'Female' && in_array($titleToSend, ['MRS', 'MS', 'MR'])) {
+                        $titleToSend = 'MISS';
+                    } elseif ($pax->gender === 'Male' && in_array($titleToSend, ['MRS', 'MS', 'MR'])) {
+                        $titleToSend = 'MSTR';
+                    }
+                }
+
+                if ($pax->pax_type == 2) { // KHUSUS BAYI (INFANT)
+                    // 1. Pemetaan Parent Sesuai UAT (Dewasa ke-2)
                     $adultIndexToUse = (count($adultsNIK) > 1) ? 1 : 0;
 
                     if (isset($adultsNIK[$adultIndexToUse])) {
@@ -930,14 +944,14 @@ class TicketingController extends BaseController
                         $parentRef = $adultsNIK[0];
                     }
 
-                    // 🔥 KUNCI RAHASIA: Paksa IDNumber bayi menjadi KOSONG
-                    // Sistem H2H akan otomatis mengikatkan identitas bayi ke NIK Parent-nya
+                    // 2. KUNCI RAHASIA: IDNumber Bayi WAJIB KOSONG
                     $idNumberToSend = "";
                 }
+                // ==============================================================
 
                 $paxDetails[] = [
-                    'IDNumber'            => $idNumberToSend, // <-- Gunakan variabel hasil filter ini
-                    'title'               => $pax->title,
+                    'IDNumber'            => $idNumberToSend, // <-- Gunakan variabel hasil sanitasi
+                    'title'               => $titleToSend,    // <-- Gunakan titel hasil sanitasi
                     'firstName'           => $pax->first_name,
                     'lastName'            => $pax->last_name,
                     'birthDate'           => date('Y-m-d\T00:00:00', strtotime($pax->birth_date)),
