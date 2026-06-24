@@ -1240,36 +1240,30 @@ class TicketingController extends BaseController
         }
     }
 
-    /**
+   /**
      * GET Airline/LocalOrders
      * Mengambil daftar keranjang / riwayat booking (Dengan Logika Akses Admin & User)
      */
     public function getLocalOrders(Request $request)
     {
         try {
-            // 1. Dapatkan data user yang sedang login
             $user = $request->user();
-            $userId = $user->id_pengguna;
-
-            // Opsional: Jika tabelmu punya kolom 'role', gunakan ini juga
+            $userId = $user->id_pengguna ?? $user->id;
             $userRole = strtolower($user->role ?? 'pelanggan');
 
-            // 2. Tentukan logika Query
-            // Jika ID-nya 4 (Admin Sancaka) ATAU rolenya 'admin', ambil semua order!
+            // 1. Logika Query
             if ($userId == 4 || $userRole == 'admin') {
                 $orders = \Illuminate\Support\Facades\DB::table('flight_orders')
                             ->orderBy('created_at', 'desc')
                             ->get();
-            }
-            // Jika BUKAN Admin, hanya ambil order miliknya sendiri
-            else {
+            } else {
                 $orders = \Illuminate\Support\Facades\DB::table('flight_orders')
                             ->where('user_id', $userId)
                             ->orderBy('created_at', 'desc')
                             ->get();
             }
 
-            // 3. Looping untuk mengambil data tambahan (Penumpang, Bagasi, dll)
+            // 2. Looping data
             foreach ($orders as $order) {
                 $passengers = \Illuminate\Support\Facades\DB::table('flight_passengers')
                                 ->where('order_id', $order->id)
@@ -1286,20 +1280,50 @@ class TicketingController extends BaseController
 
                 $order->passengers = $passengers;
 
-                // Buka bungkusan JSON untuk mengambil jam keberangkatan & kedatangan
+                // ==============================================================
+                // 3. PARSING DATA JADWAL (TIKET PERGI DAN TIKET PULANG)
+                // ==============================================================
                 $schedule = json_decode($order->detail_schedule, true);
-                $order->depTime = is_array($schedule) && isset($schedule['depTime']) ? date('H:i', strtotime($schedule['depTime'])) : '';
-                $order->arrTime = is_array($schedule) && isset($schedule['arrTime']) ? date('H:i', strtotime($schedule['arrTime'])) : '';
-                // --- FIX: TAMBAHKAN TANGGAL & JAM LENGKAP UNTUK RUTE PULANG ---
-                $order->returnDepTime = (is_array($schedule) && !empty($schedule['returnDepTime'])) ? date('H:i', strtotime($schedule['returnDepTime'])) : '--:--';
-                $order->returnArrTime = (is_array($schedule) && !empty($schedule['returnArrTime'])) ? date('H:i', strtotime($schedule['returnArrTime'])) : '--:--';
-                $order->return_date   = (is_array($schedule) && !empty($schedule['returnDepTime'])) ? $schedule['returnDepTime'] : null;
 
-                // TAMBAHKAN 1 BARIS INI:
-                $order->return_flight_number = (is_array($schedule) && !empty($schedule['returnFn'])) ? $schedule['returnFn'] : '--';
-
-
+                // Antisipasi format JSON string yang ter-encode dua kali
+                if (is_string($schedule)) {
+                    $innerSchedule = json_decode($schedule, true);
+                    if (is_array($innerSchedule)) {
+                        $schedule = $innerSchedule;
+                    }
                 }
+
+                // Set nilai default agar aplikasi tidak error jika data kosong
+                $order->depTime = '--:--';
+                $order->arrTime = '--:--';
+                $order->returnDepTime = '--:--';
+                $order->returnArrTime = '--:--';
+                $order->return_date = null;
+                $order->return_flight_number = '--';
+
+                // Timpa dengan data asli jika tersedia di Database
+                if (is_array($schedule)) {
+                    // Ekstrak Rute Pergi
+                    if (!empty($schedule['depTime'])) {
+                        $order->depTime = date('H:i', strtotime($schedule['depTime']));
+                    }
+                    if (!empty($schedule['arrTime'])) {
+                        $order->arrTime = date('H:i', strtotime($schedule['arrTime']));
+                    }
+
+                    // Ekstrak Rute Pulang (Hanya ada jika RoundTrip)
+                    if (!empty($schedule['returnDepTime'])) {
+                        $order->returnDepTime = date('H:i', strtotime($schedule['returnDepTime']));
+                        $order->return_date = $schedule['returnDepTime']; // Kirim tanggal utuh ke React Native
+                    }
+                    if (!empty($schedule['returnArrTime'])) {
+                        $order->returnArrTime = date('H:i', strtotime($schedule['returnArrTime']));
+                    }
+                    if (!empty($schedule['returnFn'])) {
+                        $order->return_flight_number = $schedule['returnFn'];
+                    }
+                }
+            }
 
             return response()->json([
                 'status' => 'SUCCESS',
