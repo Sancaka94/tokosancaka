@@ -418,25 +418,53 @@ class TicketingController extends BaseController
             $env = \App\Models\Api::getValue('DARMAWISATA_MODE', 'global', 'development');
             $dwUserId = \App\Models\Api::getValue('DARMAWISATA_USERID', $env);
 
-            // --- TAMBAHAN BARU: EKSTRAK TANGGAL PULANG DARI DATABASE ---
-            $isRoundTrip = ($order->trip_type === 'RoundTrip');
-            $returnDatePayload = "0001-01-01T00:00:00"; // Default untuk OneWay
+            // ==============================================================
+            // AMBIL JSON ASLI DARI DATABASE (KIRIMAN DARI FRONTEND)
+            // ==============================================================
+            $schDepartsArray = json_decode($order->sch_departs_json ?? '[]', true) ?: [];
+            $schReturnsArray = json_decode($order->sch_returns_json ?? '[]', true) ?: [];
 
-            if ($isRoundTrip) {
-                // Buka bungkusan JSON dari detail_schedule
-                $scheduleData = json_decode($order->detail_schedule, true);
-                $innerCheck = is_string($scheduleData) ? json_decode($scheduleData, true) : null;
-                if (is_array($innerCheck) && isset($innerCheck['ref'])) {
-                    $scheduleData = $innerCheck;
+            // 🛡️ SANITASI JADWAL PERGI (PERBAIKI BULAN '00' & CEGAH JAM KOSONG)
+            if (!empty($schDepartsArray)) {
+                foreach ($schDepartsArray as &$dep) {
+                    // Paksa ubah bulan 00 menjadi 07 (Juli) secara darurat
+                    if (isset($dep['detailSchedule'])) {
+                        $dep['detailSchedule'] = str_replace(['~00/', '/00/'], ['~07/', '/07/'], $dep['detailSchedule']);
+                    }
+                    // Jika Frontend gagal kirim jam, gunakan fallback dari order
+                    if (empty($dep['schDepartTime'])) {
+                        $dep['schDepartTime'] = date('Y-m-d\TH:i:s', strtotime($order->depart_date));
+                    }
+                    if (empty($dep['schArrivalTime'])) {
+                        $dep['schArrivalTime'] = date('Y-m-d\TH:i:s', strtotime($order->depart_date));
+                    }
                 }
-
-                $dwReturnDepartTime = is_array($scheduleData) && isset($scheduleData['returnDepTime']) ? $scheduleData['returnDepTime'] : "";
-
-                if (!empty($dwReturnDepartTime)) {
-                    $returnDatePayload = explode('T', $dwReturnDepartTime)[0] . "T00:00:00";
-                }
+                unset($dep);
             }
-            // -------------------------------------------------------------
+
+            // 🛡️ SANITASI JADWAL PULANG (JIKA ROUNDTRIP)
+            if ($isRoundTrip && !empty($schReturnsArray)) {
+                foreach ($schReturnsArray as &$ret) {
+                    if (isset($ret['detailSchedule'])) {
+                        $ret['detailSchedule'] = str_replace(['~00/', '/00/'], ['~07/', '/07/'], $ret['detailSchedule']);
+                    }
+                    // Ambil waktu dari JSON jika kosong (Failsafe)
+                    if (empty($ret['schDepartTime']) || empty($ret['schArrivalTime'])) {
+                        $scheduleData = json_decode($order->detail_schedule, true);
+                        $innerCheck = is_string($scheduleData) ? json_decode($scheduleData, true) : $scheduleData;
+
+                        $ret['schDepartTime']  = $innerCheck['returnDepTime'] ?? "0001-01-01T00:00:00";
+                        $ret['schArrivalTime'] = $innerCheck['returnArrTime'] ?? "0001-01-01T00:00:00";
+                    }
+                }
+                unset($ret);
+            }
+
+            // Set returnDate dinamis untuk Payload Utama
+            $returnDatePayload = "0001-01-01T00:00:00";
+            if ($isRoundTrip && !empty($schReturnsArray) && isset($schReturnsArray[0]['schDepartTime'])) {
+                $returnDatePayload = explode('T', $schReturnsArray[0]['schDepartTime'])[0] . "T00:00:00";
+            }
 
             // 6. RAKIT PAYLOAD MURNI (Sesuai Dokumentasi Resmi)
             $payloadIssued = [
