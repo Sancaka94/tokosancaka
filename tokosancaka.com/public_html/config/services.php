@@ -146,6 +146,13 @@ return [
             'password'     => env('DARMAWISATA_PROD_ACCESS_TOKEN', 'M2E4FGCWUC'), 
         ]
     ],
+
+    // --- Konfigurasi IPAYMU ---
+    'ipaymu' => [
+        'mode'    => env('IPAYMU_MODE', env('IPAYMU_ENV', 'sandbox')),
+        'va'      => env('IPAYMU_VA'),
+        'api_key' => env('IPAYMU_API_KEY'),
+    ],
     
 
 ];
