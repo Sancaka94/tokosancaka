@@ -917,11 +917,11 @@ class TicketingController extends BaseController
                     }
                 }
 
-                // --- LOGIKA UAT POINT 2: Bayi dipangku dewasa ke-2 (VERSI LEBIH AMAN) ---
                 $parentRef = "";
-                if ($pax->pax_type == 2) { // Jika penumpang adalah Bayi
-                    // Kita cari NIK penumpang dewasa yang memiliki index 1 (Dewasa ke-2)
-                    // Jika hanya ada 1 dewasa, kita terpaksa pakai index 0
+                $idNumberToSend = $pax->id_number; // Ambil NIK asli dari DB
+
+                if ($pax->pax_type == 2) { // Jika penumpang adalah Bayi (Infant)
+                    // Logika UAT Anda yang cerdas tetap dipertahankan
                     $adultIndexToUse = (count($adultsNIK) > 1) ? 1 : 0;
 
                     if (isset($adultsNIK[$adultIndexToUse])) {
@@ -929,12 +929,14 @@ class TicketingController extends BaseController
                     } else if (count($adultsNIK) > 0) {
                         $parentRef = $adultsNIK[0];
                     }
+
+                    // 🔥 KUNCI RAHASIA: Paksa IDNumber bayi menjadi KOSONG
+                    // Sistem H2H akan otomatis mengikatkan identitas bayi ke NIK Parent-nya
+                    $idNumberToSend = "";
                 }
 
-                // -------------------------------------------------------------
-
                 $paxDetails[] = [
-                    'IDNumber'            => $pax->id_number,
+                    'IDNumber'            => $idNumberToSend, // <-- Gunakan variabel hasil filter ini
                     'title'               => $pax->title,
                     'firstName'           => $pax->first_name,
                     'lastName'            => $pax->last_name,
@@ -944,7 +946,7 @@ class TicketingController extends BaseController
                     'birthCountry'        => "ID",
                     'DocType'             => $pax->doc_type,
                     'type'                => $pax->pax_type,
-                    'parent'              => (string)$parentRef, // Pastikan dikirim sebagai string
+                    'parent'              => (string)$parentRef,
                     'passportNumber'      => "",
                     'Email'               => "",
                     'batikMilesNo'        => "",
