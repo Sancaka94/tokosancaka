@@ -1072,12 +1072,6 @@ class TicketingController extends BaseController
             $dwReturnDepartTime     = is_array($scheduleData) && isset($scheduleData['returnDepTime']) ? $scheduleData['returnDepTime'] : "";
             $dwReturnArrivalTime    = is_array($scheduleData) && isset($scheduleData['returnArrTime']) ? $scheduleData['returnArrTime'] : "";
 
-            // Format Tanggal Kepulangan untuk Payload Utama
-            $returnDatePayload = "0001-01-01T00:00:00";
-            if ($isRoundTrip && !empty($dwReturnDepartTime)) {
-                $returnDatePayload = explode('T', $dwReturnDepartTime)[0] . "T00:00:00";
-            }
-
             // Susun Array schDeparts
             /* $schDepartsArray = [
                 [
@@ -1109,12 +1103,90 @@ class TicketingController extends BaseController
                 ];
             } */
 
+           // ==============================================================
+            // 3. TARIK DATA JADWAL (MENGGUNAKAN JSON MURNI DARI FRONTEND)
+            // ==============================================================
+            // 🛡️ PASTIKAN VARIABEL DIINISIALISASI AGAR TIDAK "UNDEFINED"
+            $schDepartsArray = [];
+            $schReturnsArray = [];
+
+            if (!empty($order->sch_departs_json)) {
+                $schDepartsArray = json_decode($order->sch_departs_json, true) ?: [];
+            }
+            if (!empty($order->sch_returns_json)) {
+                $schReturnsArray = json_decode($order->sch_returns_json, true) ?: [];
+            }
+
+            // 🛡️ SANITASI JADWAL PERGI (Fix Bug Bulan '00' & Cegah Jam Kosong)
+            if (!empty($schDepartsArray)) {
+                foreach ($schDepartsArray as &$dep) {
+                    if (isset($dep['detailSchedule'])) {
+                        $dep['detailSchedule'] = str_replace(['~00/', '/00/'], ['~07/', '/07/'], $dep['detailSchedule']);
+                    }
+                    if (empty($dep['schDepartTime'])) {
+                        $dep['schDepartTime'] = date('Y-m-d\TH:i:s', strtotime($order->depart_date));
+                    }
+                    if (empty($dep['schArrivalTime'])) {
+                        $dep['schArrivalTime'] = date('Y-m-d\TH:i:s', strtotime($order->depart_date));
+                    }
+                }
+                unset($dep);
+            } else {
+                // FALLBACK DARURAT JIKA JSON FRONTEND KOSONG
+                $schDepartsArray = [
+                    [
+                        'airlineCode'    => $order->airline_id,
+                        'flightNumber'   => str_replace(' ', '', $order->flight_number),
+                        'schOrigin'      => $order->origin,
+                        'schDestination' => $order->destination,
+                        'detailSchedule' => str_replace(['~00/', '/00/'], ['~07/', '/07/'], $order->detail_schedule),
+                        'schDepartTime'  => date('Y-m-d\TH:i:s', strtotime($order->depart_date)),
+                        'schArrivalTime' => date('Y-m-d\TH:i:s', strtotime($order->depart_date)),
+                        'flightClass'    => $order->flight_class
+                    ]
+                ];
+            }
+
+            // 🛡️ SANITASI JADWAL PULANG (Jika RoundTrip)
+            if ($isRoundTrip) {
+                if (!empty($schReturnsArray)) {
+                    foreach ($schReturnsArray as &$ret) {
+                        if (isset($ret['detailSchedule'])) {
+                            $ret['detailSchedule'] = str_replace(['~00/', '/00/'], ['~07/', '/07/'], $ret['detailSchedule']);
+                        }
+                        if (empty($ret['schDepartTime'])) {
+                            $ret['schDepartTime'] = date('Y-m-d\TH:i:s', strtotime($order->depart_date));
+                        }
+                        if (empty($ret['schArrivalTime'])) {
+                            $ret['schArrivalTime'] = date('Y-m-d\TH:i:s', strtotime($order->depart_date));
+                        }
+                    }
+                    unset($ret);
+                }
+            }
+
+            // Tentukan returnDate dinamis untuk Payload Darmawisata
             $returnDatePayload = "0001-01-01T00:00:00";
             if ($isRoundTrip && !empty($schReturnsArray) && isset($schReturnsArray[0]['schDepartTime'])) {
                 $returnDatePayload = explode('T', $schReturnsArray[0]['schDepartTime'])[0] . "T00:00:00";
             }
 
-            // 3. Rakit Payload Final untuk Darmawisata
+            // Deklarasikan variabel untuk proses Baggage/AddOns di bawahnya
+            $dwDetailSchedule = str_replace(['~00/', '/00/'], ['~07/', '/07/'], $order->detail_schedule);
+            $dwReturnDetailSchedule = "";
+            if ($isRoundTrip && !empty($schReturnsArray) && isset($schReturnsArray[0]['detailSchedule'])) {
+                $dwReturnDetailSchedule = $schReturnsArray[0]['detailSchedule'];
+            }
+
+            // Pecah kode area HP
+            $phone = $order->contact_phone;
+            $countryCode = "62";
+            $areaCode = substr(str_replace('62', '', $phone), 0, 2);
+            $remainingPhone = substr(str_replace('62', '', $phone), 2);
+
+            // ==============================================================
+            // 4. RAKIT PAYLOAD FINAL
+            // ==============================================================
             $dwPayload = [
                 'airlineID'               => $order->airline_id,
                 'origin'                  => $order->origin,
