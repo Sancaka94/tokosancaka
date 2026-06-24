@@ -1290,7 +1290,16 @@ class TicketingController extends BaseController
                 $schedule = json_decode($order->detail_schedule, true);
                 $order->depTime = is_array($schedule) && isset($schedule['depTime']) ? date('H:i', strtotime($schedule['depTime'])) : '';
                 $order->arrTime = is_array($schedule) && isset($schedule['arrTime']) ? date('H:i', strtotime($schedule['arrTime'])) : '';
-            }
+                // --- FIX: TAMBAHKAN TANGGAL & JAM LENGKAP UNTUK RUTE PULANG ---
+                $order->returnDepTime = (is_array($schedule) && !empty($schedule['returnDepTime'])) ? date('H:i', strtotime($schedule['returnDepTime'])) : '--:--';
+                $order->returnArrTime = (is_array($schedule) && !empty($schedule['returnArrTime'])) ? date('H:i', strtotime($schedule['returnArrTime'])) : '--:--';
+                $order->return_date   = (is_array($schedule) && !empty($schedule['returnDepTime'])) ? $schedule['returnDepTime'] : null;
+
+                // TAMBAHKAN 1 BARIS INI:
+                $order->return_flight_number = (is_array($schedule) && !empty($schedule['returnFn'])) ? $schedule['returnFn'] : '--';
+
+
+                }
 
             return response()->json([
                 'status' => 'SUCCESS',
