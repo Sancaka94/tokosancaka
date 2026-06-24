@@ -831,14 +831,16 @@ class TicketingController extends BaseController
                         'id_number'  => $pax['idNumber'] ?? "",
                     ]);
 
-                    // 3. Simpan kursi ATAU bagasi jika user memilihnya
-                    if (!empty($pax['seat']) || !empty($pax['baggage'])) {
+                    // 3. Simpan kursi ATAU bagasi/makanan jika user memilihnya
+                    if (!empty($pax['seat']) || !empty($pax['addOns'])) {
                         DB::table('flight_addons')->insert([
                             'order_id'       => $orderId,
                             'passenger_id'   => $paxId,
                             'seat_code'      => !empty($pax['seat']) ? $pax['seat'] : "",
                             'compartment'    => 'Y',
-                            'baggage_string' => !empty($pax['baggage']) ? $pax['baggage'] : ""
+                            'baggage_string' => "", // Dikosongkan karena sudah include di meals_data
+                            // Simpan array addOns dari React Native (sudah memuat transit & meal) sebagai JSON
+                            'meals_data'     => !empty($pax['addOns']) ? json_encode($pax['addOns']) : null
                         ]);
                     }
                 }
@@ -933,7 +935,7 @@ class TicketingController extends BaseController
                         'seat'          => $addonsDb->seat_code ?? "",
                         'compartment'   => $addonsDb->compartment ?? "Y",
                         'baggageString' => $addonsDb->baggage_string ?? "",
-                        'meals'         => []
+                        'meals'         => !empty($addonsDb->meals_data) ? json_decode($addonsDb->meals_data, true) : []
                     ];
 
                     if ($isRoundTrip) {
