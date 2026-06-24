@@ -413,15 +413,35 @@ class TicketingController extends BaseController
             // Failsafe jika tabel penumpang tidak sinkron
             if ($paxAdult == 0) { $paxAdult = 1; }
 
-          // 4. PERBAIKAN FORMAT TANGGAL (Wajib ISO 8601 pakai huruf 'T')
+         // 4. PERBAIKAN FORMAT TANGGAL (Wajib ISO 8601 pakai huruf 'T')
             $formattedDepartDate = str_replace(' ', 'T', $order->depart_date);
 
-            // Format Tanggal Booking (Bisa mengambil dari waktu order dibuat di database)
+            // Format Tanggal Booking
             $formattedBookingDate = date('Y-m-d\TH:i:s', strtotime($order->created_at));
 
             // 5. Ambil User ID Darmawisata
             $env = \App\Models\Api::getValue('DARMAWISATA_MODE', 'global', 'development');
             $dwUserId = \App\Models\Api::getValue('DARMAWISATA_USERID', $env);
+
+            // --- TAMBAHAN BARU: EKSTRAK TANGGAL PULANG DARI DATABASE ---
+            $isRoundTrip = ($order->trip_type === 'RoundTrip');
+            $returnDatePayload = "0001-01-01T00:00:00"; // Default untuk OneWay
+
+            if ($isRoundTrip) {
+                // Buka bungkusan JSON dari detail_schedule
+                $scheduleData = json_decode($order->detail_schedule, true);
+                $innerCheck = is_string($scheduleData) ? json_decode($scheduleData, true) : null;
+                if (is_array($innerCheck) && isset($innerCheck['ref'])) {
+                    $scheduleData = $innerCheck;
+                }
+
+                $dwReturnDepartTime = is_array($scheduleData) && isset($scheduleData['returnDepTime']) ? $scheduleData['returnDepTime'] : "";
+
+                if (!empty($dwReturnDepartTime)) {
+                    $returnDatePayload = explode('T', $dwReturnDepartTime)[0] . "T00:00:00";
+                }
+            }
+            // -------------------------------------------------------------
 
             // 6. RAKIT PAYLOAD MURNI (Sesuai Dokumentasi Resmi)
             $payloadIssued = [
@@ -430,10 +450,10 @@ class TicketingController extends BaseController
                 "destination"       => $order->destination,
                 "tripType"          => $order->trip_type ?? "OneWay",
                 "departDate"        => $formattedDepartDate,
-                "returnDate"        => "0001-01-01T00:00:00",
+                "returnDate"        => $returnDatePayload, // <--- KINI SUDAH DINAMIS
                 "bookingCode"       => $pnr,
-                "bookingDate"       => $formattedBookingDate, // <--- INI PARAMETER YANG HILANG!
-                "airlineAccessCode" => "", // Opsional tapi lebih aman dikirim kosong
+                "bookingDate"       => $formattedBookingDate,
+                "airlineAccessCode" => "",
                 "userID"            => $dwUserId,
                 "accessToken"       => $order->dw_access_token
             ];
