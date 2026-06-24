@@ -928,6 +928,13 @@ class TicketingController extends BaseController
                 $addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
                 $addOns = [];
 
+                if ($addonsDb && !empty($addonsDb->meals_data)) {
+                    $parsedAddOns = json_decode($addonsDb->meals_data, true);
+                    if (is_array($parsedAddOns)) {
+                        $addOns = $parsedAddOns;
+                    }
+                }
+
                 if ($addonsDb) {
                     $addOns[] = [
                         'aoOrigin'      => $order->origin,
