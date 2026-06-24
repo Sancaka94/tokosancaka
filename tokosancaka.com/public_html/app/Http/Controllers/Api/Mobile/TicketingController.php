@@ -949,9 +949,11 @@ class TicketingController extends BaseController
                 }
                 // ==============================================================
 
+               // ==============================================================
+
                 $paxDetails[] = [
-                    'IDNumber'            => $idNumberToSend, // <-- Gunakan variabel hasil sanitasi
-                    'title'               => $titleToSend,    // <-- Gunakan titel hasil sanitasi
+                    'IDNumber'            => $idNumberToSend,
+                    'title'               => $titleToSend,
                     'firstName'           => $pax->first_name,
                     'lastName'            => $pax->last_name,
                     'birthDate'           => date('Y-m-d\T00:00:00', strtotime($pax->birth_date)),
@@ -965,9 +967,45 @@ class TicketingController extends BaseController
                     'Email'               => "",
                     'batikMilesNo'        => "",
                     'garudaFrequentFlyer' => "",
-                    'addOns'              => empty($addOns) ? null : $addOns
+                    // 🛑 PERBAIKAN 1: Paksa addOns jadi null KHUSUS untuk Bayi
+                    'addOns'              => ($pax->pax_type == 2) ? null : (empty($addOns) ? null : $addOns)
                 ];
+            } // <-- Ini penutup foreach ($passengers as $pax)
+
+            // ==============================================================
+            // 🛑 PERBAIKAN 2: RE-SEQUENCE ARRAY (ATURAN KETAT NAVITAIRE)
+            // Sistem H2H Citilink mewajibkan objek Bayi berada TEPAT DI BAWAH Dewasa pemangkunya.
+            // Jika terhalang oleh Anak (Index 2), koneksi parent-nya dianggap putus!
+            // ==============================================================
+            $sortedPaxDetails = [];
+            $infantsData = [];
+
+            // Pisahkan data bayi ke array sementara
+            foreach ($paxDetails as $p) {
+                if ($p['type'] == 2) {
+                    $infantsData[] = $p;
+                }
             }
+
+            // Susun ulang urutan array
+            foreach ($paxDetails as $p) {
+                if ($p['type'] != 2) {
+                    $sortedPaxDetails[] = $p; // Masukkan Dewasa / Anak ke barisan
+
+                    // Jika ini Dewasa, cek apakah ada bayi yang harus dipangku oleh NIK ini
+                    if ($p['type'] == 0) {
+                        foreach ($infantsData as $infant) {
+                            if ($infant['parent'] === $p['IDNumber']) {
+                                $sortedPaxDetails[] = $infant; // Sisipkan bayi tepat di bawah orang tuanya
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Timpa $paxDetails lama dengan array yang sudah tersusun rapi sesuai standar maskapai
+            $paxDetails = $sortedPaxDetails;
+            // ==============================================================
 
             // Pecah kode area HP
             $phone = $order->contact_phone;
