@@ -873,31 +873,38 @@ class TicketingController extends BaseController
 
            // 2. Ambil data Penumpang & Kursi
             $passengers = DB::table('flight_passengers')->where('order_id', $orderId)->get();
-            $paxDetails = [];
-            $paxAdult = 0; $paxChild = 0; $paxInfant = 0;
 
-            // --- SMART MAPPING: Kumpulkan Data Orang Dewasa Dulu ---
+            $paxAdult = 0; $paxChild = 0; $paxInfant = 0;
             $adultsNIK = [];
+            $addedPaxKeys = []; // 🛡️ FILTER ANTI-DUPLIKAT (Mencegah Array Ganda)
+
+            // --- SMART MAPPING: Hitung Pax & Ambil NIK Dewasa ---
             foreach ($passengers as $pax) {
-                if ($pax->pax_type == 0) { // 0 = Adult
-                    $adultsNIK[] = $pax->id_number;
+                // Buat Kunci Unik: Tipe + Nama Depan + Nama Belakang
+                $uniqueKey = $pax->pax_type . '_' . strtoupper($pax->first_name) . '_' . strtoupper($pax->last_name);
+                if (in_array($uniqueKey, $addedPaxKeys)) {
+                    continue; // Jika ada penumpang ganda di DB, abaikan!
+                }
+                $addedPaxKeys[] = $uniqueKey;
+
+                if ($pax->pax_type == 0) { // Adult
+                    $adultsNIK[] = trim($pax->id_number);
                     $paxAdult++;
-                } elseif ($pax->pax_type == 1) {
+                } elseif ($pax->pax_type == 1) { // Child
                     $paxChild++;
-                } elseif ($pax->pax_type == 2) {
+                } elseif ($pax->pax_type == 2) { // Infant
                     $paxInfant++;
                 }
             }
 
-          // --- LOOPING KEDUA: Merakit payload dan memetakan Bayi ---
+            // --- LOOPING KEDUA: Merakit payload PaxDetails ---
             $paxDetails = [];
-            $addedPaxKeys = []; // 🛡️ FILTER ANTI-DUPLIKAT
+            $addedPaxKeys = []; // Reset filter untuk looping kedua
 
             foreach ($passengers as $pax) {
-                // 🛡️ Mencegah duplikasi penumpang jika database error terinput ganda
                 $uniqueKey = $pax->pax_type . '_' . strtoupper($pax->first_name) . '_' . strtoupper($pax->last_name);
                 if (in_array($uniqueKey, $addedPaxKeys)) {
-                    continue; // Jika duplikat, lewati!
+                    continue; // Abaikan duplikat!
                 }
                 $addedPaxKeys[] = $uniqueKey;
 
@@ -930,9 +937,6 @@ class TicketingController extends BaseController
                 $idNumberToSend = trim($pax->id_number);
                 $titleToSend = strtoupper($pax->title);
 
-                // ==============================================================
-                // SANITASI KHUSUS ANAK & BAYI
-                // ==============================================================
                 // 1. Sanitasi Titel
                 if ($pax->pax_type == 1 || $pax->pax_type == 2) {
                     if ($pax->gender === 'Female' && in_array($titleToSend, ['MRS', 'MS', 'MR'])) {
@@ -942,12 +946,12 @@ class TicketingController extends BaseController
                     }
                 }
 
-                // 2. CHEAT CODE: NIK TIDAK BOLEH KOSONG (API MENOLAK STRING "")
+                // 2. Cegah NIK Kosong (Gunakan NIK Dummy untuk Anak/Bayi)
                 if (empty($idNumberToSend) || strlen($idNumberToSend) < 5) {
                     $idNumberToSend = date('dmy', strtotime($pax->birth_date)) . rand(1000000000, 9999999999);
                 }
 
-                // 3. PEMETAAN PARENT BAYI (SESUAI UAT: Dipangku Dewasa ke-2)
+                // 3. Pemetaan Parent Bayi (Sesuai UAT Poin 2)
                 if ($pax->pax_type == 2) {
                     $adultIndexToUse = (count($adultsNIK) > 1) ? 1 : 0;
                     if (isset($adultsNIK[$adultIndexToUse])) {
@@ -956,7 +960,6 @@ class TicketingController extends BaseController
                         $parentRef = $adultsNIK[0];
                     }
                 }
-                // ==============================================================
 
                 $paxDetails[] = [
                     'IDNumber'            => $idNumberToSend,
@@ -974,25 +977,23 @@ class TicketingController extends BaseController
                     'Email'               => "",
                     'batikMilesNo'        => "",
                     'garudaFrequentFlyer' => "",
-                    // 🛑 BAYI TIDAK BOLEH MEMILIKI ADDONS BAGASI
+                    // KUNCI: Bayi dilarang keras membawa bagasi di Darmawisata
                     'addOns'              => ($pax->pax_type == 2) ? null : (empty($addOns) ? null : $addOns)
                 ];
-            } // <-- Akhir foreach
+            }
 
             // ==============================================================
-            // 🛑 RE-SEQUENCE ARRAY (ATURAN KETAT NAVITAIRE)
+            // RE-SEQUENCE ARRAY (Urutkan Bayi tepat di bawah Parent-nya)
             // ==============================================================
             $sortedPaxDetails = [];
             $infantsData = [];
 
-            // Pisahkan data bayi
             foreach ($paxDetails as $p) {
                 if ($p['type'] == 2) {
                     $infantsData[] = $p;
                 }
             }
 
-            // Susun ulang urutan (Bayi menempel tepat di bawah Parent NIK-nya)
             foreach ($paxDetails as $p) {
                 if ($p['type'] != 2) {
                     $sortedPaxDetails[] = $p;
@@ -1000,42 +1001,15 @@ class TicketingController extends BaseController
                     if ($p['type'] == 0) {
                         foreach ($infantsData as $infant) {
                             if ($infant['parent'] === $p['IDNumber']) {
-                                $sortedPaxDetails[] = $infant;
+                                $sortedPaxDetails[] = $infant; // Sisipkan bayi
                             }
                         }
                     }
                 }
             }
 
-            // Timpa array payload dengan array yang sudah diurutkan & bebas duplikat!
+            // Timpa array payload dengan data yang sudah difilter & diurutkan
             $paxDetails = $sortedPaxDetails;
-            $infantsData = [];
-
-            // Pisahkan bayi
-            foreach ($paxDetails as $p) {
-                if ($p['type'] == 2) {
-                    $infantsData[] = $p;
-                }
-            }
-
-            // Susun ulang urutan (Bayi menempel di bawah Parent)
-            foreach ($paxDetails as $p) {
-                if ($p['type'] != 2) {
-                    $sortedPaxDetails[] = $p;
-
-                    if ($p['type'] == 0) {
-                        foreach ($infantsData as $infant) {
-                            if ($infant['parent'] === $p['IDNumber']) {
-                                $sortedPaxDetails[] = $infant;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Timpa array dengan hasil sorting final
-            $paxDetails = $sortedPaxDetails;
-            // ============================================================
 
             // Pecah kode area HP
             $phone = $order->contact_phone;
