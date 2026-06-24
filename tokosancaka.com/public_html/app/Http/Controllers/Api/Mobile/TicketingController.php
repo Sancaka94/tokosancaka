@@ -981,34 +981,41 @@ class TicketingController extends BaseController
                 ];
             }
 
-            // ==============================================================
+           // ==============================================================
             // RE-SEQUENCE ARRAY (Urutkan Bayi tepat di bawah Parent-nya)
             // ==============================================================
             $sortedPaxDetails = [];
             $infantsData = [];
 
+            // 1. Pisahkan data bayi
             foreach ($paxDetails as $p) {
                 if ($p['type'] == 2) {
                     $infantsData[] = $p;
                 }
             }
 
+            $adultCounter = 1; // Mulai hitungan urutan Dewasa dari 1
+
+            // 2. Susun ulang urutan
             foreach ($paxDetails as $p) {
                 if ($p['type'] != 2) {
-                    $sortedPaxDetails[] = $p;
+                    $sortedPaxDetails[] = $p; // Masukkan Dewasa atau Anak
 
-                    if ($p['type'] == 0) {
+                    if ($p['type'] == 0) { // Jika yang baru dimasukkan adalah Dewasa
+                        // Cek apakah ada bayi yang parent-nya merujuk ke nomor urut dewasa ini
                         foreach ($infantsData as $infant) {
-                            if ($infant['parent'] === $p['IDNumber']) {
-                                $sortedPaxDetails[] = $infant; // Sisipkan bayi
+                            if ($infant['parent'] === (string)$adultCounter) {
+                                $sortedPaxDetails[] = $infant; // Sisipkan bayi tepat di bawahnya
                             }
                         }
+                        $adultCounter++; // Lanjut ke urutan Dewasa berikutnya
                     }
                 }
             }
 
-            // Timpa array payload dengan data yang sudah difilter & diurutkan
+            // Timpa array payload dengan data yang sudah diurutkan & tidak ada yang hilang!
             $paxDetails = $sortedPaxDetails;
+            // ==============================================================
 
             // Pecah kode area HP
             $phone = $order->contact_phone;
