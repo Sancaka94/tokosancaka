@@ -944,7 +944,8 @@ class TicketingController extends BaseController
             } else if (!empty($dwReturnDetailSchedule)) {
                  // Fallback: Ekstrak dari string reference Darmawisata
                  // Contoh: "0~O~~O~RGFR~~1~X|QG~ 811~ ~~CGK..." -> "811"
-                 preg_map('/\|[A-Z0-9]{2}~\s*([A-Z0-9]+)~/i', $dwReturnDetailSchedule, $matches);
+                 // BENAR
+                    preg_match('/\|[A-Z0-9]{2}~\s*([A-Z0-9]+)~/i', $dwReturnDetailSchedule, $matches);
                  if (isset($matches[1])) {
                      $dwReturnFlightNumber = trim($matches[1]);
                  }
