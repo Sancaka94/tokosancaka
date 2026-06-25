@@ -902,13 +902,13 @@ class TicketingController extends BaseController
         }
     }
 
-    /**
+   /**
      * POST Airline/ProcessBooking
      * Membaca data dari DB lalu merakit Payload untuk dikirim ke Darmawisata
      */
     public function processBooking(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
             'order_id' => 'required|integer'
         ]);
 
@@ -918,14 +918,14 @@ class TicketingController extends BaseController
 
         try {
             $orderId = $request->order_id;
+            $order = \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->first();
 
-            $order = DB::table('flight_orders')->where('id', $orderId)->first();
             if (!$order) {
                 throw new \Exception("Data order tidak ditemukan di database.");
             }
 
             $isRoundTrip = $order->trip_type === 'RoundTrip';
-            $passengers = DB::table('flight_passengers')->where('order_id', $orderId)->get();
+            $passengers = \Illuminate\Support\Facades\DB::table('flight_passengers')->where('order_id', $orderId)->get();
 
             $paxAdult = 0; $paxChild = 0; $paxInfant = 0;
             $adultsNIK = [];
@@ -949,13 +949,11 @@ class TicketingController extends BaseController
                 if (in_array($uniqueKey, $addedPaxKeys)) continue;
                 $addedPaxKeys[] = $uniqueKey;
 
-                $addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
+                $addonsDb = \Illuminate\Support\Facades\DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
                 $addOns = [];
 
                 if ($addonsDb) {
                     $bagVal = trim($addonsDb->baggage_string ?? "");
-
-                    // DEKODE JSON ARRAY ADDONS (BAGASI/MEALS/SEAT) DARI FRONTEND
                     $decodedAddons = json_decode($bagVal, true);
 
                     if (is_array($decodedAddons) && count($decodedAddons) > 0) {
@@ -964,7 +962,6 @@ class TicketingController extends BaseController
                             $hasMeals   = !empty($ao['meals']) && count($ao['meals']) > 0;
                             $hasSeat    = ($idx == 0 && !empty($addonsDb->seat_code)) ? $addonsDb->seat_code : ($ao['seat'] ?? "");
 
-                            // HANYA MASUKKAN ADDONS JIKA ADA ISINYA
                             if ($hasBaggage || $hasMeals || !empty($hasSeat)) {
                                 $addOns[] = [
                                     'aoOrigin'      => $ao['aoOrigin'] ?? $order->origin,
@@ -977,7 +974,6 @@ class TicketingController extends BaseController
                             }
                         }
                     } else {
-                        // FALLBACK JIKA STRING BIASA
                         $seatVal = trim($addonsDb->seat_code ?? "");
                         if (!empty($seatVal) || !empty($bagVal)) {
                             $addOns[] = [
@@ -1029,7 +1025,6 @@ class TicketingController extends BaseController
                     'Email'               => "",
                     'batikMilesNo'        => "",
                     'garudaFrequentFlyer' => "",
-                    // JIKA KOSONG, PASTIKAN JADI NULL (BUKAN ARRAY KOSONG [])
                     'addOns'              => ($pax->pax_type == 2) ? null : (empty($addOns) ? null : $addOns)
                 ];
             }
@@ -1045,7 +1040,6 @@ class TicketingController extends BaseController
             foreach ($paxDetails as $p) {
                 if ($p['type'] != 2) {
                     $sortedPaxDetails[] = $p;
-
                     if ($p['type'] == 0) {
                         foreach ($infantsData as $infant) {
                             if ($infant['parent'] === (string)$adultCounter) {
@@ -1063,7 +1057,6 @@ class TicketingController extends BaseController
             $areaCode = substr(str_replace('62', '', $phone), 0, 2);
             $remainingPhone = substr(str_replace('62', '', $phone), 2);
 
-            // Buka bungkusan JSON Transit dari detail_schedule
             $scheduleData = json_decode($order->detail_schedule, true);
             $innerCheck = is_string($scheduleData) ? json_decode($scheduleData, true) : null;
             if (is_array($innerCheck) && isset($innerCheck['ref'])) {
@@ -1072,7 +1065,6 @@ class TicketingController extends BaseController
 
             $dwDetailSchedule = is_array($scheduleData) ? $scheduleData['ref'] : $order->detail_schedule;
 
-            // BACA ARRAY SCHDEPARTS LANGSUNG DARI JSON (MENDUKUNG TRANSIT)
             $schDepartsArray = (is_array($scheduleData) && !empty($scheduleData['schDeparts']))
                                ? $scheduleData['schDeparts']
                                : [
@@ -1125,155 +1117,40 @@ class TicketingController extends BaseController
                 'schReturns'              => $schReturnsArray
             ];
 
-            Log::info("LOG LOG: Memulai proses booking dari DB untuk Order ID: {$orderId}");
-
-            // SYARAT WAJIB DARMAWISATA & AUTO-FILL BAGASI
-            $addonsPayload = [
-                'airlineID'                   => $dwPayload['airlineID'],
-                'origin'                      => $dwPayload['origin'],
-                'destination'                 => $dwPayload['destination'],
-                'tripType'                    => $dwPayload['tripType'],
-                'departDate'                  => $dwPayload['departDate'],
-                'returnDate'                  => $dwPayload['returnDate'],
-                'schDepart'                   => $dwDetailSchedule,
-                'schReturn'                   => is_array($scheduleData) && isset($scheduleData['returnRef']) ? $scheduleData['returnRef'] : "",
-                'paxAdult'                    => $dwPayload['paxAdult'],
-                'paxChild'                    => $dwPayload['paxChild'],
-                'paxInfant'                   => $dwPayload['paxInfant'],
-                'contactFirstName'            => $dwPayload['contactFirstName'],
-                'contactLastName'             => $dwPayload['contactLastName'],
-                'contactTitle'                => $dwPayload['contactTitle'],
-                'contactCountryCodePhone'     => $dwPayload['contactCountryCodePhone'],
-                'contactAreaCodePhone'        => $dwPayload['contactAreaCodePhone'],
-                'contactRemainingPhoneNo'     => $dwPayload['contactRemainingPhoneNo'],
-                'contactEmail'                => $dwPayload['contactEmail'],
-                'paxDetails'                  => $dwPayload['paxDetails'],
-                'departureAirlineSegmentCode' => "",
-                'departureFareBasisCode'      => $order->flight_class,
-                'userID'                      => $this->darmawisataUserId,
-                'accessToken'                 => $order->dw_access_token
-            ];
-
-            $addonsRes = $this->forwardRequest('Airline/BaggageAndMeal', $addonsPayload);
-            $addonsJson = json_decode($addonsRes->getContent(), true);
-
-            $isEnableNoBaggage = $addonsJson['isEnableNoBaggage'] ?? true;
-            $defaultBaggage = "";
-
-            if (!$isEnableNoBaggage && !empty($addonsJson['baggageAddOns'])) {
-                foreach ($addonsJson['baggageAddOns'] as $routeBaggage) {
-                    if (!empty($routeBaggage['infos'])) {
-                        foreach ($routeBaggage['infos'] as $info) {
-                            if (isset($info['baggageString'])) {
-                                $defaultBaggage = $info['baggageString'];
-                                if (($info['price'] ?? 1) == 0) {
-                                    break 2;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (!$isEnableNoBaggage && $defaultBaggage !== "") {
-                foreach ($dwPayload['paxDetails'] as &$pax) {
-                    if ($pax['type'] == 0 || $pax['type'] == 1) {
-                        if (empty($pax['addOns'])) {
-                            $pax['addOns'] = [];
-                            foreach ($dwPayload['schDeparts'] as $seg) {
-                                $pax['addOns'][] = [
-                                    'aoOrigin'      => $seg['schOrigin'],
-                                    'aoDestination' => $seg['schDestination'],
-                                    'seat'          => "",
-                                    'compartment'   => "Y",
-                                    'baggageString' => $defaultBaggage,
-                                    'meals'         => []
-                                ];
-                            }
-                            if ($isRoundTrip && !empty($dwPayload['schReturns'])) {
-                                foreach ($dwPayload['schReturns'] as $seg) {
-                                    $pax['addOns'][] = [
-                                        'aoOrigin'      => $seg['schOrigin'],
-                                        'aoDestination' => $seg['schDestination'],
-                                        'seat'          => "",
-                                        'compartment'   => "Y",
-                                        'baggageString' => $defaultBaggage,
-                                        'meals'         => []
-                                    ];
-                                }
-                            }
-                        } else {
-                            $pax['addOns'][0]['baggageString'] = $defaultBaggage;
-                            if ($isRoundTrip && isset($pax['addOns'][1])) {
-                                $pax['addOns'][1]['baggageString'] = $defaultBaggage;
-                            }
-                        }
-                    }
-                }
-                unset($pax);
-                Log::info("LOG LOG: Sistem otomatis menyuntikkan bagasi (RoundTrip Handle): " . $defaultBaggage);
-            }
-
-            // =========================================================================
-
-
-          // =========================================================================
-            // 3.8. MANAJEMEN CACHE & SMART PREVIEW AIRASIA (QZ & XT)
-            // =========================================================================
             $isAirAsia = in_array(strtoupper($dwPayload['airlineID']), ['QZ', 'XT']);
 
-            // 1. TAHAP PREVIEW (HANYA DIEKSEKUSI SAAT TOMBOL "PREVIEW TIKET" DITEKAN)
+            // =========================================================================
+            // BLOK 1: HANYA UNTUK PREVIEW TIKET (is_preview_only = true)
+            // =========================================================================
             if ($request->is_preview_only) {
+                \Illuminate\Support\Facades\Log::info("LOG LOG: Mode Preview diaktifkan. Mengecek Auto-Baggage...");
 
-                // Panggil BaggageAndMeal HANYA di tahap Preview untuk auto-inject bagasi gratis (jika ada)
-                $addonsPayload = [
-                    'airlineID'                   => $dwPayload['airlineID'],
-                    'origin'                      => $dwPayload['origin'],
-                    'destination'                 => $dwPayload['destination'],
-                    'tripType'                    => $dwPayload['tripType'],
-                    'departDate'                  => $dwPayload['departDate'],
-                    'returnDate'                  => $dwPayload['returnDate'],
-                    'schDepart'                   => $dwDetailSchedule,
-                    'schReturn'                   => is_array($scheduleData) && isset($scheduleData['returnRef']) ? $scheduleData['returnRef'] : "",
-                    'paxAdult'                    => $dwPayload['paxAdult'],
-                    'paxChild'                    => $dwPayload['paxChild'],
-                    'paxInfant'                   => $dwPayload['paxInfant'],
-                    'contactFirstName'            => $dwPayload['contactFirstName'],
-                    'contactLastName'             => $dwPayload['contactLastName'],
-                    'contactTitle'                => $dwPayload['contactTitle'],
-                    'contactCountryCodePhone'     => $dwPayload['contactCountryCodePhone'],
-                    'contactAreaCodePhone'        => $dwPayload['contactAreaCodePhone'],
-                    'contactRemainingPhoneNo'     => $dwPayload['contactRemainingPhoneNo'],
-                    'contactEmail'                => $dwPayload['contactEmail'],
-                    'paxDetails'                  => $dwPayload['paxDetails'],
-                    'departureAirlineSegmentCode' => "",
-                    'departureFareBasisCode'      => $order->flight_class,
-                    'userID'                      => $this->darmawisataUserId,
-                    'accessToken'                 => $order->dw_access_token
-                ];
+                // Panggil BaggageAndMeal HANYA di tahap Preview
+                $addonsPayload = $dwPayload;
+                $addonsPayload['schDepart'] = $dwDetailSchedule;
+                $addonsPayload['schReturn'] = is_array($scheduleData) && isset($scheduleData['returnRef']) ? $scheduleData['returnRef'] : "";
+                $addonsPayload['departureAirlineSegmentCode'] = "";
+                $addonsPayload['departureFareBasisCode'] = $order->flight_class;
 
                 $addonsRes = $this->forwardRequest('Airline/BaggageAndMeal', $addonsPayload);
                 $addonsJson = json_decode($addonsRes->getContent(), true);
 
+                // Auto inject bagasi gratis jika tidak ada bagasi yang dipilih
                 $isEnableNoBaggage = $addonsJson['isEnableNoBaggage'] ?? true;
                 $defaultBaggage = "";
-
                 if (!$isEnableNoBaggage && !empty($addonsJson['baggageAddOns'])) {
                     foreach ($addonsJson['baggageAddOns'] as $routeBaggage) {
                         if (!empty($routeBaggage['infos'])) {
                             foreach ($routeBaggage['infos'] as $info) {
                                 if (isset($info['baggageString'])) {
                                     $defaultBaggage = $info['baggageString'];
-                                    if (($info['price'] ?? 1) == 0) {
-                                        break 2;
-                                    }
+                                    if (($info['price'] ?? 1) == 0) break 2;
                                 }
                             }
                         }
                     }
                 }
 
-                // Auto inject bagasi gratis HANYA JIKA user tidak memilih bagasi
                 if (!$isEnableNoBaggage && $defaultBaggage !== "") {
                     foreach ($dwPayload['paxDetails'] as &$pax) {
                         if ($pax['type'] == 0 || $pax['type'] == 1) {
@@ -1290,7 +1167,7 @@ class TicketingController extends BaseController
                                     ];
                                 }
                             } else {
-                                // PERBAIKAN: Jangan timpa (overwrite) bagasi berbayar yang sudah dipilih user!
+                                // Jangan timpa jika user sudah beli ekstra bagasi berbayar
                                 if (empty($pax['addOns'][0]['baggageString'])) {
                                     $pax['addOns'][0]['baggageString'] = $defaultBaggage;
                                 }
@@ -1300,71 +1177,44 @@ class TicketingController extends BaseController
                     unset($pax);
                 }
 
-                // LAKUKAN PREVIEW MASKAPAI
+                // Eksekusi Preview jika maskapai AirAsia
                 if ($isAirAsia) {
-                    Log::info("LOG LOG: Request Preview Maskapai AirAsia (QZ/XT) terdeteksi.");
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: Mengeksekusi Airline/Preview untuk mengunci Seat...");
                     $previewRes = $this->forwardRequest('Airline/Preview', $dwPayload);
                     $previewJson = json_decode($previewRes->getContent(), true);
 
                     if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
-                        DB::table('flight_orders')->where('id', $orderId)->update([
-                            'status'     => 'FAILED',
-                            'updated_at' => now()
+                        \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update([
+                            'status' => 'FAILED', 'updated_at' => now()
                         ]);
                         return response()->json([
                             'status'  => 'FAILED',
-                            'message' => 'Gagal di tahap Preview: ' . ($previewJson['respMessage'] ?? 'Sistem AirAsia menolak.')
+                            'message' => 'Gagal Preview: ' . ($previewJson['respMessage'] ?? 'Maskapai menolak.')
                         ]);
                     }
 
-                    // Update harga valid dari Darmawisata
                     if (isset($previewJson['ticketPrice']) && $previewJson['ticketPrice'] > 0) {
-                        DB::table('flight_orders')->where('id', $orderId)->update([
-                            'total_fare' => $previewJson['ticketPrice'],
-                            'updated_at' => now()
+                        \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update([
+                            'total_fare' => $previewJson['ticketPrice'], 'updated_at' => now()
                         ]);
                     }
 
-                    Log::info("LOG LOG: Airline/Preview sukses. Mengunci Session Darmawisata.");
-
-                    // STOP EKSEKUSI DI SINI! JANGAN LANJUT KE BOOKING!
                     return response()->json([
                         'status'     => 'SUCCESS',
                         'message'    => 'Preview sukses, harga valid.',
                         'total_fare' => $previewJson['ticketPrice'] ?? $order->total_fare
                     ]);
                 } else {
-                    // Bypass untuk maskapai Non-AirAsia
-                    return response()->json([
-                        'status'     => 'SUCCESS',
-                        'total_fare' => $order->total_fare
-                    ]);
+                    return response()->json(['status' => 'SUCCESS', 'total_fare' => $order->total_fare]);
                 }
             }
 
             // =========================================================================
-            // 2. TAHAP FINAL BOOKING (Tombol "Lanjutkan Booking" di Frontend)
+            // BLOK 2: FINAL BOOKING (is_preview_only = false)
+            // KITA LANGSUNG TEMBAK BOOKING TANPA INTERUPSI APAPUN. JANGAN ADA API LAIN.
             // =========================================================================
-            // KITA SKIP SELURUH PEMANGGILAN `BaggageAndMeal` ATAU `Preview` DI SINI!
-            // Endpoint tersebut sudah dipanggil pada detik sebelumnya, sehingga sesi
-            // di server Darmawisata dipastikan masih terkunci dengan aman.
+            \Illuminate\Support\Facades\Log::info("LOG LOG: Mengeksekusi Final Booking untuk Order ID: {$orderId} secara langsung (Bypass Session Clean).");
 
-            Log::info("LOG LOG: Mengeksekusi Final Booking untuk Order ID: {$orderId}");
-            $response = $this->forwardRequest('Airline/Booking', $dwPayload);
-            $json = json_decode($response->getContent(), true);
-
-                if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
-                    return response()->json([
-                        'status'  => 'FAILED',
-                        'message' => 'Gagal di tahap Final Preview: ' . ($previewJson['respMessage'] ?? 'Sistem Maskapai menolak.')
-                    ]);
-                }
-
-                // Berikan jeda 2 detik agar Darmawisata selesai mengunci kursi di sistem AirAsia
-                sleep(2);
-            }
-
-            Log::info("LOG LOG: Mengeksekusi Final Booking untuk Order ID: {$orderId}");
             $response = $this->forwardRequest('Airline/Booking', $dwPayload);
             $json = json_decode($response->getContent(), true);
 
@@ -1373,7 +1223,7 @@ class TicketingController extends BaseController
                 $amount = (float) $json['ticketPrice'];
                 $paymentMethod = strtoupper($request->payment_method ?? 'SALDO');
 
-                DB::table('flight_orders')->where('id', $orderId)->update([
+                \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update([
                     'status'         => 'HOLD',
                     'booking_code'   => $pnr,
                     'payment_method' => $paymentMethod,
@@ -1388,14 +1238,13 @@ class TicketingController extends BaseController
                     if ($user->saldo < $amount) {
                         return response()->json([
                             'status' => 'FAILED',
-                            'message' => 'Booking sukses (PNR: '.$pnr.'), tapi saldo Anda tidak cukup. Segera top-up.'
+                            'message' => 'Booking sukses (PNR: '.$pnr.'), tapi saldo Anda tidak cukup.'
                         ]);
                     }
-
                     return response()->json([
                         'status' => 'SUCCESS',
                         'bookingCode' => $pnr,
-                        'message' => 'Tiket berhasil di-HOLD. Silakan cek detail maskapai.'
+                        'message' => 'Tiket berhasil di-HOLD.'
                     ]);
                 }
 
@@ -1409,63 +1258,61 @@ class TicketingController extends BaseController
                     $tripayUrl = $tripayMode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
                     $signature = hash_hmac('sha256', $merchantCode.$merchantRef.$amount, $privateKey);
 
-                    $responseTripay = Http::withHeaders(['Authorization' => 'Bearer ' . trim($apiKey)])->post($tripayUrl, [
+                    $responseTripay = \Illuminate\Support\Facades\Http::withHeaders(['Authorization' => 'Bearer ' . trim($apiKey)])->post($tripayUrl, [
                         'method'         => 'BRIVA',
                         'merchant_ref'   => $merchantRef,
                         'amount'         => $amount,
                         'customer_name'  => $user->nama_lengkap ?? $order->contact_first_name,
                         'customer_email' => $user->email ?? $order->contact_email,
                         'customer_phone' => $user->no_hp ?? $order->contact_phone,
-                        'order_items'    => [['sku' => 'TIKET-PESAWAT', 'name' => 'Tiket Pesawat PNR: '.$pnr, 'price' => $amount, 'quantity' => 1]],
+                        'order_items'    => [['sku' => 'TIKET', 'name' => 'Tiket PNR: '.$pnr, 'price' => $amount, 'quantity' => 1]],
                         'return_url'     => env('FRONTEND_URL', url('/')) . '/riwayattiket',
                         'signature'      => $signature
                     ]);
 
                     $resTripay = $responseTripay->json();
                     if ($responseTripay->successful() && isset($resTripay['success']) && $resTripay['success']) {
-                        DB::table('flight_orders')->where('id', $orderId)->update(['payment_url' => $resTripay['data']['checkout_url']]);
+                        \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update(['payment_url' => $resTripay['data']['checkout_url']]);
                         return response()->json([
                             'status' => 'SUCCESS',
                             'bookingCode' => $pnr,
-                            'payment_url' => $resTripay['data']['checkout_url'],
-                            'message' => 'Silakan selesaikan pembayaran.'
+                            'payment_url' => $resTripay['data']['checkout_url']
                         ]);
                     }
                 }
 
                 if ($paymentMethod === 'DOKU') {
-                    $merchantRef = 'FLT-' . $orderId . '-' . $pnr;
                     try {
+                        $merchantRef = 'FLT-' . $orderId . '-' . $pnr;
                         $dokuService = new \App\Services\DokuJokulService();
                         $paymentUrl = $dokuService->createPayment($merchantRef, $amount);
 
-                        DB::table('flight_orders')->where('id', $orderId)->update(['payment_url' => $paymentUrl]);
+                        \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update(['payment_url' => $paymentUrl]);
                         return response()->json([
                             'status' => 'SUCCESS',
                             'bookingCode' => $pnr,
                             'payment_url' => $paymentUrl
                         ]);
                     } catch (\Exception $e) {
-                        Log::error('DOKU Error: ' . $e->getMessage());
+                        \Illuminate\Support\Facades\Log::error('DOKU Error: ' . $e->getMessage());
                     }
                 }
 
                 return response()->json([
                     'status' => 'SUCCESS',
                     'bookingCode' => $pnr,
-                    'message' => 'Tiket berhasil di-HOLD, namun pembuatan link bayar gagal. Cek riwayat.'
+                    'message' => 'Tiket berhasil di-HOLD, link bayar gagal dibuat.'
                 ]);
 
             } else {
-                DB::table('flight_orders')->where('id', $orderId)->update([
-                    'status'     => 'FAILED',
-                    'updated_at' => now()
+                \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update([
+                    'status' => 'FAILED', 'updated_at' => now()
                 ]);
-                return $response;
+                return response()->json(['status' => 'FAILED', 'message' => $json['respMessage'] ?? 'Maskapai menolak.']);
             }
 
         } catch (\Exception $e) {
-            Log::error("Proses Booking Gagal: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("Proses Booking Gagal: " . $e->getMessage());
             return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
         }
     }
