@@ -1197,17 +1197,19 @@ class TicketingController extends BaseController
             if (!$isEnableNoBaggage && $defaultBaggage !== "") {
                 foreach ($dwPayload['paxDetails'] as &$pax) {
                     if ($pax['type'] == 0 || $pax['type'] == 1) {
-                        if (empty($pax['addOns'])) {
-                            $pax['addOns'] = [
-                                [
-                                    'aoOrigin'      => $order->origin,
-                                    'aoDestination' => $order->destination,
-                                    'seat'          => "",
-                                    'compartment'   => "Y",
-                                    'baggageString' => $defaultBaggage,
-                                    'meals'         => []
-                                ]
+                       if (empty($pax['addOns'])) {
+                        $pax['addOns'] = [];
+                        // Looping berdasarkan segment riil yang akan dilalui
+                        foreach ($dwPayload['schDeparts'] as $seg) {
+                            $pax['addOns'][] = [
+                                'aoOrigin'      => $seg['schOrigin'],
+                                'aoDestination' => $seg['schDestination'],
+                                'seat'          => "",
+                                'compartment'   => "Y",
+                                'baggageString' => $defaultBaggage,
+                                'meals'         => []
                             ];
+                        }
                             // Suntik Bagasi Rute Pulang jika RoundTrip
                             if ($isRoundTrip) {
                                 $pax['addOns'][] = [
