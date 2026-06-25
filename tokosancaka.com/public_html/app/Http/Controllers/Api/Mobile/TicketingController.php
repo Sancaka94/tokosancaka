@@ -1097,7 +1097,6 @@ class TicketingController extends BaseController
                 }
             }
 
-            // Disesuaikan presisi parameter berdasarkan Dokumentasi CS
             $dwPayload = [
                 'airlineID'               => $order->airline_id,
                 'origin'                  => $order->origin,
@@ -1204,7 +1203,7 @@ class TicketingController extends BaseController
                 } else {
                     return response()->json(['status' => 'SUCCESS', 'total_fare' => $order->total_fare]);
                 }
-            } // Akhir Tahap Preview
+            }
 
             // =========================================================================
             // 2. TAHAP FINAL BOOKING (Frontend: Tombol "Lanjutkan Booking" Ditekan)
@@ -1222,10 +1221,9 @@ class TicketingController extends BaseController
                 }
                 $baseUrl = rtrim($baseUrl, '/');
 
-                // INISIALISASI GUZZLE DENGAN SISTEM COOKIE OTOMATIS (MEMORI INTERNAL)
                 $client = new \GuzzleHttp\Client([
                     'base_uri' => $baseUrl . '/',
-                    'cookies'  => true, // KUNCI KEBERHASILAN: Menjaga sesi AirAsia
+                    'cookies'  => true,
                     'headers'  => [
                         'Content-Type' => 'application/json',
                         'Accept'       => 'application/json'
@@ -1234,23 +1232,31 @@ class TicketingController extends BaseController
                 ]);
 
                 try {
-                    // 1. TEMBAK RE-PREVIEW UNTUK MENDAPATKAN SESI BARU YANG FRESH
+                    // 1. TEMBAK RE-PREVIEW
                     \Illuminate\Support\Facades\Log::info("LOG LOG: [1/2] Menembak Re-Preview ke Darmawisata...");
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: REQ BODY PREVIEW: " . json_encode($dwPayload));
+
                     $previewResponse = $client->post('Airline/Preview', ['json' => $dwPayload]);
                     $previewJson = json_decode($previewResponse->getBody()->getContents(), true);
+
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: RESP BODY PREVIEW: " . json_encode($previewJson));
 
                     if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
                         \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update(['status' => 'FAILED', 'updated_at' => now()]);
                         return response()->json(['status' => 'FAILED', 'message' => 'Gagal mengunci sesi AirAsia: ' . ($previewJson['respMessage'] ?? 'Coba lagi.')]);
                     }
 
-                    // Memberikan jeda waktu ke sistem H2H
+                    // Jeda aman
                     sleep(1);
 
-                    // 2. TEMBAK BOOKING (SESI PREVIEW DARI REQUEST SEBELUMNYA TERBAWA OTOMATIS OLEH GUZZLE)
+                    // 2. TEMBAK BOOKING
                     \Illuminate\Support\Facades\Log::info("LOG LOG: [2/2] Menembak Booking ke Darmawisata...");
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: REQ BODY BOOKING: " . json_encode($dwPayload));
+
                     $bookingResponse = $client->post('Airline/Booking', ['json' => $dwPayload]);
                     $json = json_decode($bookingResponse->getBody()->getContents(), true);
+
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: RESP BODY BOOKING: " . json_encode($json));
 
                 } catch (\Exception $e) {
                     \Illuminate\Support\Facades\Log::error("Stateful Guzzle Error: " . $e->getMessage());
