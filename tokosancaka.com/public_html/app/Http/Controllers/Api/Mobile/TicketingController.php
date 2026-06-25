@@ -1391,7 +1391,7 @@ class TicketingController extends BaseController
 
                 $order->passengers = $passengers;
 
-                // ==============================================================
+               // ==============================================================
                 // 3. PARSING DATA JADWAL (TIKET PERGI DAN TIKET PULANG)
                 // ==============================================================
                 $schedule = json_decode($order->detail_schedule, true);
@@ -1414,27 +1414,52 @@ class TicketingController extends BaseController
 
                 // Timpa dengan data asli jika tersedia di Database
                 if (is_array($schedule)) {
-                    // Ekstrak Rute Pergi
-                    if (!empty($schedule['depTime'])) {
-                        $order->depTime = date('H:i', strtotime($schedule['depTime']));
-                    }
-                    if (!empty($schedule['arrTime'])) {
-                        $order->arrTime = date('H:i', strtotime($schedule['arrTime']));
+
+                    // --- 3A. EKSTRAK RUTE PERGI (DEPART) ---
+                    if (!empty($schedule['schDeparts']) && is_array($schedule['schDeparts'])) {
+                        // Ambil penerbangan paling pertama
+                        $firstSeg = $schedule['schDeparts'][0];
+                        // Ambil penerbangan paling terakhir (Berguna jika Transit)
+                        $lastSeg = end($schedule['schDeparts']);
+
+                        if (!empty($firstSeg['schDepartTime'])) {
+                            $order->depTime = date('H:i', strtotime($firstSeg['schDepartTime']));
+                        }
+                        if (!empty($lastSeg['schArrivalTime'])) {
+                            $order->arrTime = date('H:i', strtotime($lastSeg['schArrivalTime']));
+                        }
+                    } else {
+                        // Fallback sistem lama
+                        if (!empty($schedule['depTime'])) $order->depTime = date('H:i', strtotime($schedule['depTime']));
+                        if (!empty($schedule['arrTime'])) $order->arrTime = date('H:i', strtotime($schedule['arrTime']));
                     }
 
-                    // Ekstrak Rute Pulang (Hanya ada jika RoundTrip)
-                    if (!empty($schedule['returnDepTime'])) {
-                        $order->returnDepTime = date('H:i', strtotime($schedule['returnDepTime']));
-                        $order->return_date = $schedule['returnDepTime']; // Kirim tanggal utuh ke React Native
-                    }
-                    if (!empty($schedule['returnArrTime'])) {
-                        $order->returnArrTime = date('H:i', strtotime($schedule['returnArrTime']));
-                    }
-                    if (!empty($schedule['returnFn'])) {
-                        $order->return_flight_number = $schedule['returnFn'];
+                    // --- 3B. EKSTRAK RUTE PULANG (RETURN) - KHUSUS ROUNDTRIP ---
+                    if (!empty($schedule['schReturns']) && is_array($schedule['schReturns'])) {
+                        $firstRetSeg = $schedule['schReturns'][0];
+                        $lastRetSeg = end($schedule['schReturns']);
+
+                        if (!empty($firstRetSeg['schDepartTime'])) {
+                            $order->returnDepTime = date('H:i', strtotime($firstRetSeg['schDepartTime']));
+                            $order->return_date = $firstRetSeg['schDepartTime']; // Kirim tanggal utuh ke React Native
+                        }
+                        if (!empty($lastRetSeg['schArrivalTime'])) {
+                            $order->returnArrTime = date('H:i', strtotime($lastRetSeg['schArrivalTime']));
+                        }
+                        if (!empty($firstRetSeg['flightNumber'])) {
+                            $order->return_flight_number = $firstRetSeg['flightNumber'];
+                        }
+                    } else {
+                        // Fallback sistem lama
+                        if (!empty($schedule['returnDepTime'])) {
+                            $order->returnDepTime = date('H:i', strtotime($schedule['returnDepTime']));
+                            $order->return_date = $schedule['returnDepTime'];
+                        }
+                        if (!empty($schedule['returnArrTime'])) $order->returnArrTime = date('H:i', strtotime($schedule['returnArrTime']));
+                        if (!empty($schedule['returnFn'])) $order->return_flight_number = $schedule['returnFn'];
                     }
                 }
-            }
+            } // <-- Ini tutup kurung kurawal penutup foreach ($orders as $order)
 
             return response()->json([
                 'status' => 'SUCCESS',
