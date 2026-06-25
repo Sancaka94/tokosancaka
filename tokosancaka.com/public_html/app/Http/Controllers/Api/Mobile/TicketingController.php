@@ -430,10 +430,19 @@ class TicketingController extends BaseController
                     $scheduleData = $innerCheck;
                 }
 
-                $dwReturnDepartTime = is_array($scheduleData) && isset($scheduleData['returnDepTime']) ? $scheduleData['returnDepTime'] : "";
-
-                if (!empty($dwReturnDepartTime)) {
-                    $returnDatePayload = explode('T', $dwReturnDepartTime)[0] . "T00:00:00";
+                // 1. BACA DARI FORMAT JSON BARU (schReturns Array)
+                if (is_array($scheduleData) && !empty($scheduleData['schReturns'])) {
+                    $dwReturnDepartTime = $scheduleData['schReturns'][0]['schDepartTime'] ?? "";
+                    if (!empty($dwReturnDepartTime)) {
+                        $returnDatePayload = explode('T', $dwReturnDepartTime)[0] . "T00:00:00";
+                    }
+                }
+                // 2. FALLBACK KE FORMAT LAMA (Untuk order lawas di database)
+                else {
+                    $dwReturnDepartTime = is_array($scheduleData) && isset($scheduleData['returnDepTime']) ? $scheduleData['returnDepTime'] : "";
+                    if (!empty($dwReturnDepartTime)) {
+                        $returnDatePayload = explode('T', $dwReturnDepartTime)[0] . "T00:00:00";
+                    }
                 }
             }
             // -------------------------------------------------------------
