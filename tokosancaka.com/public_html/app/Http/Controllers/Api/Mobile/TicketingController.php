@@ -43,7 +43,7 @@ class TicketingController extends BaseController
         $payload = $request->all();
 
         // Parameter wajib untuk loop Darmawisata
-        $payload['cacheType'] = 2;
+        $payload['cacheType'] = 3;
         $payload['isShowEachAirline'] = true;
 
         // 3. Eksekusi Request ke Darmawisata melalui BaseController
@@ -703,7 +703,7 @@ class TicketingController extends BaseController
 
         // Sesuai dokumentasi, ada parameter wajib khusus untuk LowFare
         // cacheType: 0 (FullCache), 1 (FullLive), 2 (Mix)
-        $payload['cacheType']         = $payload['cacheType'] ?? 2;
+        $payload['cacheType']         = $payload['cacheType'] ?? 3;
         // isShowEachAirline: wajib true jika ingin me-loop request (standar darmawisata)
         $payload['isShowEachAirline'] = $payload['isShowEachAirline'] ?? true;
 
