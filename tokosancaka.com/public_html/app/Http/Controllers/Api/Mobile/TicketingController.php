@@ -968,8 +968,8 @@ class TicketingController extends BaseController
                                     'aoDestination' => $ao['aoDestination'] ?? $order->destination,
                                     'seat'          => $hasSeat,
                                     'compartment'   => $ao['compartment'] ?? "Y",
-                                    'baggageString' => $hasBaggage ? $ao['baggageString'] : "",
-                                    'meals'         => $hasMeals ? $ao['meals'] : []
+                                    'baggageString' => $hasBaggage ? $ao['baggageString'] : null,
+                                    'meals'         => $hasMeals ? $ao['meals'] : null
                                 ];
                             }
                         }
@@ -982,7 +982,7 @@ class TicketingController extends BaseController
                                 'seat'          => $seatVal,
                                 'compartment'   => $addonsDb->compartment ?? "Y",
                                 'baggageString' => $bagVal,
-                                'meals'         => []
+                                'meals'         => null
                             ];
                         }
                     }
@@ -1021,13 +1021,13 @@ class TicketingController extends BaseController
                     'DocType'                => "KTP",
                     'type'                   => $pax->pax_type,
                     'parent'                 => (string)$parentRef,
-                    'passportNumber'         => "",
-                    'passportIssuedCountry'  => "",
+                    'passportNumber'         => null,
+                    'passportIssuedCountry'  => null,
                     'passportIssuedDate'     => "0001-01-01T00:00:00",
                     'passportExpiredDate'    => "0001-01-01T00:00:00",
-                    'Email'                  => "",
-                    'batikMilesNo'           => "",
-                    'garudaFrequentFlyer'    => "",
+                    'Email'                  => null,
+                    'batikMilesNo'           => null,
+                    'garudaFrequentFlyer'    => null,
                     'addOns'                 => ($pax->pax_type == 2) ? null : (empty($addOns) ? null : $addOns)
                 ];
             }
@@ -1115,9 +1115,9 @@ class TicketingController extends BaseController
                 'contactRemainingPhoneNo' => $remainingPhone,
                 'contactEmail'            => $order->contact_email,
                 'paxDetails'              => $paxDetails,
-                'searchKey'               => "",
+                'searchKey'               => null,
                 'insurance'               => false,
-                'promoCode'               => "",
+                'promoCode'               => null,
                 'userID'                  => $this->darmawisataUserId,
                 'accessToken'             => $order->dw_access_token,
                 'schDeparts'              => $schDepartsArray,
@@ -1126,8 +1126,31 @@ class TicketingController extends BaseController
 
             $isAirAsia = in_array(strtoupper($dwPayload['airlineID']), ['QZ', 'XT']);
 
+            // CEK METODE PEMBAYARAN DAN SALDO
+            $paymentMethod = strtoupper($request->payment_method ?? 'SALDO');
+            $isSaldo = in_array($paymentMethod, ['SALDO', 'POTONG SALDO', 'CASH']);
+            $user = $request->user();
+
             // =========================================================================
-            // 1. TAHAP PREVIEW TIKET (Frontend: Tombol "Preview Tiket" Ditekan)
+            // 0. SAFETY CHECK KHUSUS AIRASIA (KARENA LANGSUNG ISSUED)
+            // =========================================================================
+            if ($isAirAsia && !$request->is_preview_only) {
+                if (!$isSaldo) {
+                    return response()->json([
+                        'status' => 'FAILED',
+                        'message' => 'Maskapai AirAsia tidak mendukung sistem HOLD/Bayar Nanti. Silakan ubah metode pembayaran menggunakan Saldo.'
+                    ]);
+                }
+                if ($user->saldo < $order->total_fare) {
+                    return response()->json([
+                        'status' => 'FAILED',
+                        'message' => 'Saldo Anda tidak mencukupi untuk melakukan Issued AirAsia secara instan.'
+                    ]);
+                }
+            }
+
+            // =========================================================================
+            // 1. TAHAP PREVIEW TIKET
             // =========================================================================
             if ($request->is_preview_only) {
                 \Illuminate\Support\Facades\Log::info("LOG LOG: Mode Preview diaktifkan. Mengecek Auto-Baggage...");
@@ -1135,7 +1158,7 @@ class TicketingController extends BaseController
                 $addonsPayload = $dwPayload;
                 $addonsPayload['schDepart'] = $dwDetailSchedule;
                 $addonsPayload['schReturn'] = is_array($scheduleData) && isset($scheduleData['returnRef']) ? $scheduleData['returnRef'] : "";
-                $addonsPayload['departureAirlineSegmentCode'] = "";
+                $addonsPayload['departureAirlineSegmentCode'] = null;
                 $addonsPayload['departureFareBasisCode'] = $order->flight_class;
 
                 $addonsRes = $this->forwardRequest('Airline/BaggageAndMeal', $addonsPayload);
@@ -1206,61 +1229,115 @@ class TicketingController extends BaseController
             }
 
             // =========================================================================
-            // 2. TAHAP FINAL BOOKING (Frontend: Tombol "Lanjutkan Booking" Ditekan)
+            // 2. TAHAP FINAL BOOKING
             // =========================================================================
 
             if ($isAirAsia) {
-                \Illuminate\Support\Facades\Log::info("LOG LOG: Melakukan Silent Re-Preview AirAsia sebelum Booking Final...");
+                \Illuminate\Support\Facades\Log::info("LOG LOG: Memulai Guzzle Session (cookies => true) untuk Final Booking AirAsia...");
 
-                // KITA KEMBALI MENGGUNAKAN FORWARD REQUEST AGAR LOG TERCETAK RAPI
-                $previewResponse = $this->forwardRequest('Airline/Preview', $dwPayload);
-                $previewJson = json_decode($previewResponse->getContent(), true);
+                $env = \App\Models\Api::getValue('DARMAWISATA_MODE', 'global', 'development');
+                $baseUrl = \App\Models\Api::getValue('DARMAWISATA_BASE_URL', $env);
+                if (empty($baseUrl)) {
+                    $baseUrl = ($env === 'production')
+                        ? 'https://www.darmawisataindonesiah2h.co.id/h2h'
+                        : 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h';
+                }
+                $baseUrl = rtrim($baseUrl, '/');
 
-                if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
-                    \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update(['status' => 'FAILED', 'updated_at' => now()]);
-                    return response()->json(['status' => 'FAILED', 'message' => 'Gagal mengamankan sesi AirAsia: ' . ($previewJson['respMessage'] ?? 'Coba lagi.')]);
+                $client = new \GuzzleHttp\Client([
+                    'base_uri' => $baseUrl . '/',
+                    'cookies'  => true,
+                    'headers'  => [
+                        'Content-Type' => 'application/json',
+                        'Accept'       => 'application/json'
+                    ],
+                    'verify'   => false,
+                    'http_errors' => false
+                ]);
+
+                try {
+                    // 1. RE-PREVIEW
+                    $previewUrl = $baseUrl . '/Airline/Preview';
+                    \Illuminate\Support\Facades\Log::info("\n==================== [DARMAWISATA REQUEST] ====================");
+                    \Illuminate\Support\Facades\Log::info("ENDPOINT : POST " . $previewUrl);
+                    \Illuminate\Support\Facades\Log::info("PAYLOAD  : " . json_encode($dwPayload));
+
+                    $previewResponse = $client->post('Airline/Preview', ['json' => $dwPayload]);
+                    $previewStatus = $previewResponse->getStatusCode();
+                    $previewBody = $previewResponse->getBody()->getContents();
+                    $previewJson = json_decode($previewBody, true);
+
+                    \Illuminate\Support\Facades\Log::info("STATUS   : " . $previewStatus);
+                    \Illuminate\Support\Facades\Log::info("RESPONSE : " . $previewBody);
+                    \Illuminate\Support\Facades\Log::info("===============================================================\n");
+
+                    if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
+                        \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update(['status' => 'FAILED', 'updated_at' => now()]);
+                        return response()->json(['status' => 'FAILED', 'message' => 'Gagal mengunci sesi AirAsia: ' . ($previewJson['respMessage'] ?? 'Coba lagi.')]);
+                    }
+
+                    sleep(1);
+
+                    // 2. BOOKING ISSUED KHUSUS AIRASIA
+                    $bookingUrl = $baseUrl . '/Airline/BookingIssued'; // ENDPOINT KHUSUS SESUAI INSTRUKSI CS
+                    \Illuminate\Support\Facades\Log::info("\n==================== [DARMAWISATA REQUEST] ====================");
+                    \Illuminate\Support\Facades\Log::info("ENDPOINT : POST " . $bookingUrl);
+                    \Illuminate\Support\Facades\Log::info("PAYLOAD  : " . json_encode($dwPayload));
+
+                    $bookingResponse = $client->post('Airline/BookingIssued', ['json' => $dwPayload]);
+                    $bookingStatus = $bookingResponse->getStatusCode();
+                    $bookingBody = $bookingResponse->getBody()->getContents();
+                    $json = json_decode($bookingBody, true);
+
+                    \Illuminate\Support\Facades\Log::info("STATUS   : " . $bookingStatus);
+                    \Illuminate\Support\Facades\Log::info("RESPONSE : " . $bookingBody);
+                    \Illuminate\Support\Facades\Log::info("===============================================================\n");
+
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Stateful Guzzle Error: " . $e->getMessage());
+                    return response()->json(['status' => 'FAILED', 'message' => 'Koneksi H2H Darmawisata Terputus: ' . $e->getMessage()]);
                 }
 
-                // Memberikan jeda waktu ke sistem H2H
-                sleep(2);
+            } else {
+                // Proses normal untuk maskapai selain AirAsia
+                \Illuminate\Support\Facades\Log::info("LOG LOG: Mengeksekusi Final Booking Normal...");
+                $response = $this->forwardRequest('Airline/Booking', $dwPayload);
+                $json = json_decode($response->getContent(), true);
             }
-
-            \Illuminate\Support\Facades\Log::info("LOG LOG: Mengeksekusi Final Booking untuk Order ID: {$orderId}");
-
-            // KITA KEMBALI MENGGUNAKAN FORWARD REQUEST AGAR LOG TERCETAK RAPI
-            $response = $this->forwardRequest('Airline/Booking', $dwPayload);
-            $json = json_decode($response->getContent(), true);
 
             // =========================================================================
             // 3. PROSES RESPON BOOKING (Update DB & Generate Link Bayar)
             // =========================================================================
             if (isset($json['status']) && $json['status'] === 'SUCCESS') {
-                $pnr = $json['bookingCode'];
-                $amount = (float) $json['ticketPrice'];
-                $paymentMethod = strtoupper($request->payment_method ?? 'SALDO');
+                $pnr = $json['bookingCode'] ?? $json['bookingCodeAirline'] ?? 'PENDING';
+                $amount = (float) ($json['ticketPrice'] ?? $order->total_fare);
+
+                // Khusus AirAsia status tiket akan langsung ISSUED
+                $statusFinal = $isAirAsia ? 'ISSUED' : 'HOLD';
 
                 \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update([
-                    'status'         => 'HOLD',
+                    'status'         => $statusFinal,
                     'booking_code'   => $pnr,
                     'payment_method' => $paymentMethod,
                     'total_fare'     => $amount,
                     'updated_at'     => now()
                 ]);
 
-                $user = $request->user();
-                $isSaldo = in_array($paymentMethod, ['SALDO', 'POTONG SALDO', 'CASH']);
+                // POTONG SALDO SECARA REAL-TIME JIKA AIRASIA (karena langsung ISSUED)
+                if ($isAirAsia && $isSaldo) {
+                    \Illuminate\Support\Facades\DB::table('Pengguna')
+                        ->where('id_pengguna', $user->id_pengguna)
+                        ->decrement('saldo', $amount);
+
+                    // Opsional: Potong Saldo Agen Darmawisata Utama (ID 4) seperti di airlineIssued
+                    \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', 4)->decrement('balance_iak', $amount);
+                }
 
                 if ($isSaldo) {
-                    if ($user->saldo < $amount) {
-                        return response()->json([
-                            'status' => 'FAILED',
-                            'message' => 'Booking sukses (PNR: '.$pnr.'), tapi saldo Anda tidak cukup.'
-                        ]);
-                    }
                     return response()->json([
                         'status' => 'SUCCESS',
                         'bookingCode' => $pnr,
-                        'message' => 'Tiket berhasil di-HOLD.'
+                        'message' => $isAirAsia ? 'Tiket AirAsia Berhasil Di-Issued & Saldo Terpotong.' : 'Tiket berhasil di-HOLD.'
                     ]);
                 }
 
@@ -1317,7 +1394,7 @@ class TicketingController extends BaseController
                 return response()->json([
                     'status' => 'SUCCESS',
                     'bookingCode' => $pnr,
-                    'message' => 'Tiket berhasil di-HOLD, link bayar gagal dibuat.'
+                    'message' => 'Tiket berhasil, link bayar gagal dibuat.'
                 ]);
 
             } else {
@@ -1332,7 +1409,6 @@ class TicketingController extends BaseController
             return response()->json(['status' => 'FAILED', 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
         }
     }
-
 
    /**
      * GET Airline/LocalOrders
