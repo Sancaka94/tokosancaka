@@ -1217,20 +1217,20 @@ class TicketingController extends BaseController
             // =========================================================================
 
 
-            // =========================================================================
+          // =========================================================================
             // 3.8. SMART PREVIEW AIRASIA (QZ & XT)
             // =========================================================================
             $isAirAsia = in_array(strtoupper($dwPayload['airlineID']), ['QZ', 'XT']);
 
-            // JIKA REQUEST ADALAH TAHAP PREVIEW (DARI TOMBOL PREVIEW FRONTEND)
+            // 1. JIKA REQUEST DARI TOMBOL "PREVIEW TIKET" DI FRONTEND
             if ($request->is_preview_only) {
                 if ($isAirAsia) {
-                    Log::info("LOG LOG: Request Preview Maskapai AirAsia (".$dwPayload['airlineID'].") terdeteksi.");
+                    Log::info("LOG LOG: Request Preview Maskapai AirAsia (" . $dwPayload['airlineID'] . ") terdeteksi.");
+
                     $previewRes = $this->forwardRequest('Airline/Preview', $dwPayload);
                     $previewJson = json_decode($previewRes->getContent(), true);
 
                     if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
-                        // Batalkan pesanan lokal jika harga berubah / kursi habis
                         DB::table('flight_orders')->where('id', $orderId)->update([
                             'status'     => 'FAILED',
                             'updated_at' => now()
@@ -1239,28 +1239,26 @@ class TicketingController extends BaseController
                         Log::error("LOG LOG: Airline/Preview Gagal: " . ($previewJson['respMessage'] ?? ''));
                         return response()->json([
                             'status'  => 'FAILED',
-                            'message' => 'Gagal di tahap Preview: ' . ($previewJson['respMessage'] ?? 'Sistem Maskapai menolak.')
+                            'message' => 'Gagal di tahap Preview Maskapai: ' . ($previewJson['respMessage'] ?? 'Sistem AirAsia menolak.')
                         ]);
                     }
 
-                    // Update database lokal jika ada perubahan harga dari Darmawisata
-                    if (!empty($previewJson['ticketPrice'])) {
+                    // Update harga di DB Lokal jika ada penyesuaian harga final dari Darmawisata
+                    if (isset($previewJson['ticketPrice']) && $previewJson['ticketPrice'] > 0) {
                         DB::table('flight_orders')->where('id', $orderId)->update([
                             'total_fare' => $previewJson['ticketPrice'],
                             'updated_at' => now()
                         ]);
                     }
 
-                    Log::info("LOG LOG: Airline/Preview sukses. Mengembalikan data ke frontend.");
-
-                    // KEMBALIKAN RESPONSE (Putus eksekusi di sini, JANGAN lanjut ke Booking)
+                    Log::info("LOG LOG: Airline/Preview sukses. Mengembalikan respon ke frontend untuk memberikan jeda.");
                     return response()->json([
                         'status'     => 'SUCCESS',
                         'message'    => 'Preview sukses, harga valid.',
                         'total_fare' => $previewJson['ticketPrice'] ?? $order->total_fare
                     ]);
                 } else {
-                    // Bypass langsung sukses jika maskapai bukan AirAsia namun frontend mengirim flag preview
+                    // Bypass untuk maskapai selain AirAsia
                     return response()->json([
                         'status'     => 'SUCCESS',
                         'total_fare' => $order->total_fare
@@ -1268,12 +1266,28 @@ class TicketingController extends BaseController
                 }
             }
 
-            // Jika eksekusi lolos ke baris ini, berarti is_preview_only = false (Lanjutkan Booking).
-            // Backend TIDAK PERLU melakukan Preview lagi karena sudah dipicu sebelumnya oleh User.
-            // =========================================================================
+            // 2. JIKA REQUEST DARI TOMBOL "LANJUTKAN BOOKING" DI FRONTEND
+            // Karena sebelum baris ini sistem Anda memanggil Airline/BaggageAndMeal,
+            // sesi "Preview" di server Darmawisata menjadi ter-reset.
+            // SOLUSI: Kita panggil Preview SEKALI LAGI khusus sebelum eksekusi Final Booking.
+            if ($isAirAsia && !$request->is_preview_only) {
+                Log::info("LOG LOG: Re-Preview AirAsia sebelum Final Booking untuk mengamankan session...");
 
-            // 4. Hit Darmawisata (Booking)
-            Log::info("LOG LOG: Eksekusi Final Booking untuk Order ID: {$orderId}");
+                $previewRes = $this->forwardRequest('Airline/Preview', $dwPayload);
+                $previewJson = json_decode($previewRes->getContent(), true);
+
+                if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
+                    return response()->json([
+                        'status'  => 'FAILED',
+                        'message' => 'Gagal di tahap Final Preview: ' . ($previewJson['respMessage'] ?? 'Sistem Maskapai menolak.')
+                    ]);
+                }
+
+                // Berikan jeda 2 detik agar Darmawisata selesai mengunci kursi di sistem AirAsia
+                sleep(2);
+            }
+
+            Log::info("LOG LOG: Mengeksekusi Final Booking untuk Order ID: {$orderId}");
             $response = $this->forwardRequest('Airline/Booking', $dwPayload);
             $json = json_decode($response->getContent(), true);
 
