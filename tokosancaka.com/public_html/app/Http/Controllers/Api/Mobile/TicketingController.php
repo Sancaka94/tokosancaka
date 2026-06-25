@@ -43,7 +43,7 @@ class TicketingController extends BaseController
         $payload = $request->all();
 
         // Parameter wajib untuk loop Darmawisata
-        $payload['cacheType'] = 3;
+        $payload['cacheType'] = 1;
         $payload['isShowEachAirline'] = true;
 
         // 3. Eksekusi Request ke Darmawisata melalui BaseController
@@ -703,7 +703,7 @@ class TicketingController extends BaseController
 
         // Sesuai dokumentasi, ada parameter wajib khusus untuk LowFare
         // cacheType: 0 (FullCache), 1 (FullLive), 2 (Mix)
-        $payload['cacheType']         = $payload['cacheType'] ?? 3;
+        $payload['cacheType']         = $payload['cacheType'] ?? 1;
         // isShowEachAirline: wajib true jika ingin me-loop request (standar darmawisata)
         $payload['isShowEachAirline'] = $payload['isShowEachAirline'] ?? true;
 
@@ -923,31 +923,34 @@ class TicketingController extends BaseController
                     continue; // Abaikan duplikat!
                 }
                 $addedPaxKeys[] = $uniqueKey;
-
-               $addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
+$addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
                 $addOns = [];
 
-                // BACA DATA JSON YANG DIKIRIM DARI FRONTEND
-                if ($addonsDb && !empty($addonsDb->baggage_string)) {
-                    $decodedAddons = json_decode($addonsDb->baggage_string, true);
+                if ($addonsDb) {
+                    $seatVal = trim($addonsDb->seat_code ?? "");
+                    $bagVal = trim($addonsDb->baggage_string ?? "");
                     
-                    if (is_array($decodedAddons)) {
-                        foreach ($decodedAddons as $ao) {
-                            $hasBaggage = !empty($ao['baggageString']);
-                            $hasMeals   = !empty($ao['meals']) && count($ao['meals']) > 0;
-                            $hasSeat    = !empty($addonsDb->seat_code);
+                    // KUNCI UTAMA: Hanya isi $addOns jika benar-benar ada data. 
+                    // Jika kosong, abaikan agar otomatis menjadi `null` di payload final.
+                    if (!empty($seatVal) || !empty($bagVal)) {
+                        $addOns[] = [
+                            'aoOrigin'      => $order->origin,
+                            'aoDestination' => $order->destination,
+                            'seat'          => $seatVal,
+                            'compartment'   => $addonsDb->compartment ?? "Y",
+                            'baggageString' => $bagVal,
+                            'meals'         => []
+                        ];
 
-                            // SYARAT NAVITAIRE: JANGAN KIRIM OBJECT KOSONG
-                            if ($hasBaggage || $hasMeals || $hasSeat) {
-                                $addOns[] = [
-                                    'aoOrigin'      => $ao['aoOrigin'], // Mengambil kode segment riil (contoh: BTH)
-                                    'aoDestination' => $ao['aoDestination'], 
-                                    'seat'          => $hasSeat ? $addonsDb->seat_code : "",
-                                    'compartment'   => "Y",
-                                    'baggageString' => $hasBaggage ? $ao['baggageString'] : "",
-                                    'meals'         => $hasMeals ? $ao['meals'] : []
-                                ];
-                            }
+                        if ($isRoundTrip) {
+                            $addOns[] = [
+                                'aoOrigin'      => $order->destination,
+                                'aoDestination' => $order->origin,
+                                'seat'          => "",
+                                'compartment'   => "Y",
+                                'baggageString' => $bagVal,
+                                'meals'         => []
+                            ];
                         }
                     }
                 }
