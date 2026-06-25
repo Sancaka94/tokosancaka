@@ -789,35 +789,66 @@ class TicketingController extends BaseController
     public function saveToDatabase(Request $request)
     {
         try {
-            // Gunakan Transaction agar jika salah satu tabel gagal, semua proses insert dibatalkan
+            // Gunakan Transaction agar jika salah satu tabel gagal, semua proses dibatalkan
             $orderId = DB::transaction(function () use ($request) {
 
-                // 1. Simpan ke tabel flight_orders
-                $orderId = DB::table('flight_orders')->insertGetId([
-                    'user_id'            => $request->userID ?? $request->user()?->id_pengguna ?? 'GUEST',
-                    'dw_access_token'    => $request->accessToken, // Token fresh dari App
-                    'airline_id'         => $request->airlineID,
-                    'flight_number'      => $request->flightNumber,
-                    'origin'             => $request->origin,
-                    'destination'        => $request->destination,
-                    'trip_type'          => $request->tripType,
-                    'depart_date'        => $request->departDate,
-                    'flight_class'       => $request->flightClass,
-                    'detail_schedule'    => $request->detailSchedule,
-                    'base_fare'          => $request->baseFare,
-                    'tax'                => $request->tax,
-                    'total_fare'         => $request->totalFare,
-                    'contact_title'      => $request->contact['title'],
-                    'contact_first_name' => $request->contact['firstName'],
-                    'contact_last_name'  => $request->contact['lastName'],
-                    'contact_phone'      => $request->contact['phone'],
-                    'contact_email'      => $request->contact['email'],
-                    'status'             => 'DRAFT',
-                    'created_at'         => now(),
-                    'updated_at'         => now(),
-                ]);
+                // =========================================================
+                // 1. CEK: Apakah ini UPDATE pesanan, atau INSERT pesanan baru?
+                // =========================================================
+                if (!empty($request->order_id)) {
+                    $orderId = $request->order_id;
+                    
+                    // 1A. UPDATE Data Order Utama
+                    DB::table('flight_orders')->where('id', $orderId)->update([
+                        'dw_access_token'    => $request->accessToken,
+                        'base_fare'          => $request->baseFare,
+                        'tax'                => $request->tax,
+                        'total_fare'         => $request->totalFare,
+                        'contact_title'      => $request->contact['title'],
+                        'contact_first_name' => $request->contact['firstName'],
+                        'contact_last_name'  => $request->contact['lastName'],
+                        'contact_phone'      => $request->contact['phone'],
+                        'contact_email'      => $request->contact['email'],
+                        'updated_at'         => now(),
+                    ]);
 
-                // 2. Simpan semua penumpang
+                    // 1B. BERSIHKAN Data Penumpang & Fasilitas Lama (Mencegah Duplikat)
+                    $oldPaxIds = DB::table('flight_passengers')->where('order_id', $orderId)->pluck('id');
+                    if ($oldPaxIds->isNotEmpty()) {
+                        DB::table('flight_addons')->whereIn('passenger_id', $oldPaxIds)->delete();
+                    }
+                    DB::table('flight_passengers')->where('order_id', $orderId)->delete();
+
+                } else {
+                    // 1C. INSERT Data Order Baru
+                    $orderId = DB::table('flight_orders')->insertGetId([
+                        'user_id'            => $request->userID ?? $request->user()?->id_pengguna ?? 'GUEST',
+                        'dw_access_token'    => $request->accessToken,
+                        'airline_id'         => $request->airlineID,
+                        'flight_number'      => $request->flightNumber,
+                        'origin'             => $request->origin,
+                        'destination'        => $request->destination,
+                        'trip_type'          => $request->tripType,
+                        'depart_date'        => $request->departDate,
+                        'flight_class'       => $request->flightClass,
+                        'detail_schedule'    => $request->detailSchedule,
+                        'base_fare'          => $request->baseFare,
+                        'tax'                => $request->tax,
+                        'total_fare'         => $request->totalFare,
+                        'contact_title'      => $request->contact['title'],
+                        'contact_first_name' => $request->contact['firstName'],
+                        'contact_last_name'  => $request->contact['lastName'],
+                        'contact_phone'      => $request->contact['phone'],
+                        'contact_email'      => $request->contact['email'],
+                        'status'             => 'DRAFT',
+                        'created_at'         => now(),
+                        'updated_at'         => now(),
+                    ]);
+                }
+
+                // =========================================================
+                // 2. INSERT (atau RE-INSERT) Data Penumpang
+                // =========================================================
                 foreach ($request->passengers as $pax) {
                     $paxId = DB::table('flight_passengers')->insertGetId([
                         'order_id'   => $orderId,
@@ -831,14 +862,15 @@ class TicketingController extends BaseController
                         'id_number'  => $pax['idNumber'] ?? "",
                     ]);
 
-                    // 3. Simpan kursi ATAU bagasi jika user memilihnya
-                    if (!empty($pax['seat']) || !empty($pax['baggage'])) {
+                    // =========================================================
+                    // 3. INSERT (atau RE-INSERT) Fasilitas Kursi & Bagasi
+                    // =========================================================
+                    if (!empty($pax['seat']) || !empty($pax['addOns'])) {
                         DB::table('flight_addons')->insert([
                             'order_id'       => $orderId,
                             'passenger_id'   => $paxId,
                             'seat_code'      => !empty($pax['seat']) ? $pax['seat'] : "",
                             'compartment'    => 'Y',
-                            //'baggage_string' => !empty($pax['baggage']) ? $pax['baggage'] : ""
                             'baggage_string' => !empty($pax['addOns']) ? json_encode($pax['addOns']) : ""
                         ]);
                     }
