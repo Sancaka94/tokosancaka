@@ -1214,6 +1214,36 @@ class TicketingController extends BaseController
                 Log::info("LOG LOG: Sistem otomatis menyuntikkan bagasi (RoundTrip Handle): " . $defaultBaggage);
             }
 
+            // =========================================================================
+
+            // =========================================================================
+            // 3.8. FIX AIRASIA (QZ): WAJIB HIT PREVIEW SEBELUM BOOKING
+            // =========================================================================
+            if (strtoupper($dwPayload['airlineID']) === 'QZ') {
+                Log::info("LOG LOG: Maskapai AirAsia (QZ) terdeteksi. Menjalankan Airline/Preview...");
+
+                // Payload Preview sama persis 100% dengan Payload Booking
+                $previewRes = $this->forwardRequest('Airline/Preview', $dwPayload);
+                $previewJson = json_decode($previewRes->getContent(), true);
+
+                if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
+                    // Jika gagal di tahap preview (misal harga berubah), batalkan transaksi
+                    DB::table('flight_orders')->where('id', $orderId)->update([
+                        'status'     => 'FAILED',
+                        'updated_at' => now()
+                    ]);
+
+                    Log::error("LOG LOG: Airline/Preview Gagal: " . ($previewJson['respMessage'] ?? ''));
+                    return response()->json([
+                        'status'  => 'FAILED',
+                        'message' => 'Gagal di tahap Preview Maskapai: ' . ($previewJson['respMessage'] ?? 'Sistem AirAsia menolak.')
+                    ]);
+                }
+
+                Log::info("LOG LOG: Airline/Preview sukses. Melanjutkan ke Airline/Booking.");
+            }
+            // =========================================================================
+
             // 4. Hit Darmawisata (Booking)
             $response = $this->forwardRequest('Airline/Booking', $dwPayload);
             $json = json_decode($response->getContent(), true);
