@@ -838,7 +838,8 @@ class TicketingController extends BaseController
                             'passenger_id'   => $paxId,
                             'seat_code'      => !empty($pax['seat']) ? $pax['seat'] : "",
                             'compartment'    => 'Y',
-                            'baggage_string' => !empty($pax['baggage']) ? $pax['baggage'] : ""
+                            //'baggage_string' => !empty($pax['baggage']) ? $pax['baggage'] : ""
+                            'baggage_string' => !empty($pax['addOns']) ? json_encode($pax['addOns']) : ""
                         ]);
                     }
                 }
@@ -923,28 +924,31 @@ class TicketingController extends BaseController
                 }
                 $addedPaxKeys[] = $uniqueKey;
 
-                $addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
+               $addonsDb = DB::table('flight_addons')->where('passenger_id', $pax->id)->first();
                 $addOns = [];
 
-                if ($addonsDb) {
-                    $addOns[] = [
-                        'aoOrigin'      => $order->origin,
-                        'aoDestination' => $order->destination,
-                        'seat'          => $addonsDb->seat_code ?? "",
-                        'compartment'   => $addonsDb->compartment ?? "Y",
-                        'baggageString' => $addonsDb->baggage_string ?? "",
-                        'meals'         => []
-                    ];
+                // BACA DATA JSON YANG DIKIRIM DARI FRONTEND
+                if ($addonsDb && !empty($addonsDb->baggage_string)) {
+                    $decodedAddons = json_decode($addonsDb->baggage_string, true);
+                    
+                    if (is_array($decodedAddons)) {
+                        foreach ($decodedAddons as $ao) {
+                            $hasBaggage = !empty($ao['baggageString']);
+                            $hasMeals   = !empty($ao['meals']) && count($ao['meals']) > 0;
+                            $hasSeat    = !empty($addonsDb->seat_code);
 
-                    if ($isRoundTrip) {
-                        $addOns[] = [
-                            'aoOrigin'      => $order->destination,
-                            'aoDestination' => $order->origin,
-                            'seat'          => "",
-                            'compartment'   => "Y",
-                            'baggageString' => $addonsDb->baggage_string ?? "",
-                            'meals'         => []
-                        ];
+                            // SYARAT NAVITAIRE: JANGAN KIRIM OBJECT KOSONG
+                            if ($hasBaggage || $hasMeals || $hasSeat) {
+                                $addOns[] = [
+                                    'aoOrigin'      => $ao['aoOrigin'], // Mengambil kode segment riil (contoh: BTH)
+                                    'aoDestination' => $ao['aoDestination'], 
+                                    'seat'          => $hasSeat ? $addonsDb->seat_code : "",
+                                    'compartment'   => "Y",
+                                    'baggageString' => $hasBaggage ? $ao['baggageString'] : "",
+                                    'meals'         => $hasMeals ? $ao['meals'] : []
+                                ];
+                            }
+                        }
                     }
                 }
 
