@@ -1340,13 +1340,53 @@ class TicketingController extends BaseController
                                 ->where('order_id', $order->id)
                                 ->get();
 
-                foreach ($passengers as $pax) {
+               foreach ($passengers as $pax) {
                     $addon = \Illuminate\Support\Facades\DB::table('flight_addons')
                                 ->where('passenger_id', $pax->id)
                                 ->first();
 
-                    $pax->baggage = $addon && $addon->baggage_string ? $addon->baggage_string : 'Tidak ada ekstra bagasi';
                     $pax->seat = $addon && $addon->seat_code ? $addon->seat_code : '-';
+                    $pax->baggage = 'Tidak ada ekstra bagasi';
+                    $pax->meals = 'Tidak ada makanan tambahan'; // Tambahan info meals
+
+                    if ($addon && !empty($addon->baggage_string)) {
+                        // Coba decode JSON-nya
+                        $decoded = json_decode($addon->baggage_string, true);
+
+                        // Jika berhasil menjadi array (Artinya ini data JSON rute Transit / AddOns Baru)
+                        if (is_array($decoded)) {
+                            $bagList = [];
+                            $mealList = [];
+
+                            foreach ($decoded as $ao) {
+                                // Ekstrak rutenya (Contoh: CGK-BTH)
+                                $rute = ($ao['aoOrigin'] ?? '') . '-' . ($ao['aoDestination'] ?? '');
+
+                                // Jika ada bagasi di rute ini
+                                if (!empty($ao['baggageString'])) {
+                                    $bagList[] = $ao['baggageString'] . " (" . $rute . ")";
+                                }
+
+                                // Jika ada makanan di rute ini
+                                if (!empty($ao['meals']) && is_array($ao['meals'])) {
+                                    foreach ($ao['meals'] as $mealCode) {
+                                        $mealList[] = $mealCode . " (" . $rute . ")";
+                                    }
+                                }
+                            }
+
+                            if (count($bagList) > 0) {
+                                $pax->baggage = implode(', ', $bagList);
+                            }
+                            if (count($mealList) > 0) {
+                                $pax->meals = implode(', ', $mealList);
+                            }
+
+                        } else {
+                            // FALLBACK: Jika isinya cuma teks biasa dari database lama
+                            $pax->baggage = $addon->baggage_string;
+                        }
+                    }
                 }
 
                 $order->passengers = $passengers;
