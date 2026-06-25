@@ -1120,12 +1120,11 @@ class TicketingController extends BaseController
             $isAirAsia = in_array(strtoupper($dwPayload['airlineID']), ['QZ', 'XT']);
 
             // =========================================================================
-            // 1. TAHAP PREVIEW TIKET (Saat ditekan "Preview Tiket" di Frontend)
+            // 1. TAHAP PREVIEW TIKET (DIPANGGIL SAAT TOMBOL "PREVIEW" FRONTEND DITEKAN)
             // =========================================================================
             if ($request->is_preview_only) {
                 \Illuminate\Support\Facades\Log::info("LOG LOG: Mode Preview diaktifkan. Mengecek Auto-Baggage...");
 
-                // Ambil info bagasi untuk disuntikkan
                 $addonsPayload = $dwPayload;
                 $addonsPayload['schDepart'] = $dwDetailSchedule;
                 $addonsPayload['schReturn'] = is_array($scheduleData) && isset($scheduleData['returnRef']) ? $scheduleData['returnRef'] : "";
@@ -1181,6 +1180,9 @@ class TicketingController extends BaseController
                     $previewJson = json_decode($previewRes->getContent(), true);
 
                     if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
+                        \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update([
+                            'status' => 'FAILED', 'updated_at' => now()
+                        ]);
                         return response()->json([
                             'status'  => 'FAILED',
                             'message' => 'Gagal Preview: ' . ($previewJson['respMessage'] ?? 'Maskapai menolak.')
@@ -1201,26 +1203,31 @@ class TicketingController extends BaseController
                 } else {
                     return response()->json(['status' => 'SUCCESS', 'total_fare' => $order->total_fare]);
                 }
-            }
+            } // TUTUP BLOK IF PREVIEW_ONLY
 
             // =========================================================================
-            // 2. TAHAP FINAL BOOKING (Saat ditekan "Lanjutkan Booking")
+            // 2. TAHAP FINAL BOOKING (DIPANGGIL SAAT TOMBOL "LANJUTKAN BOOKING" DITEKAN)
             // =========================================================================
-            // Lakukan Silent Re-Preview sesaat sebelum Booking khusus AirAsia
+
+            // JIKA MASKAPAI AIRASIA (QZ/XT), KITA SECARA DIAM-DIAM MELAKUKAN PREVIEW ULANG
+            // SEBELUM MELAKUKAN BOOKING UNTUK MENGAKALI CACHE SERVER YANG KEDALUWARSA.
             if ($isAirAsia) {
-                \Illuminate\Support\Facades\Log::info("LOG LOG: Melakukan Silent Re-Preview AirAsia agar sesi Darmawisata fresh...");
+                \Illuminate\Support\Facades\Log::info("LOG LOG: Silent Re-Preview AirAsia untuk menyegarkan Session Cache Darmawisata...");
                 $previewRes = $this->forwardRequest('Airline/Preview', $dwPayload);
                 $previewJson = json_decode($previewRes->getContent(), true);
 
                 if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
                     return response()->json([
                         'status'  => 'FAILED',
-                        'message' => 'Gagal merefresh kursi: ' . ($previewJson['respMessage'] ?? '')
+                        'message' => 'Sistem gagal mengamankan kursi di Maskapai: ' . ($previewJson['respMessage'] ?? 'Coba ulangi.')
                     ]);
                 }
+
+                // Berikan jeda 1 detik agar H2H Darmawisata siap menerima request booking
+                sleep(1);
             }
 
-            \Illuminate\Support\Facades\Log::info("LOG LOG: Tembak Final Booking Order ID: {$orderId}");
+            \Illuminate\Support\Facades\Log::info("LOG LOG: Mengeksekusi Final Booking untuk Order ID: {$orderId}");
             $response = $this->forwardRequest('Airline/Booking', $dwPayload);
             $json = json_decode($response->getContent(), true);
 
