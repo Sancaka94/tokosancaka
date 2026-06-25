@@ -1092,6 +1092,7 @@ class TicketingController extends BaseController
                 }
             }
 
+            // Memastikan searchKey dan promoCode (meski kosong) terkirim untuk kesempurnaan Payload Booking
             $dwPayload = [
                 'airlineID'               => $order->airline_id,
                 'origin'                  => $order->origin,
@@ -1110,7 +1111,9 @@ class TicketingController extends BaseController
                 'contactRemainingPhoneNo' => $remainingPhone,
                 'contactEmail'            => $order->contact_email,
                 'paxDetails'              => $paxDetails,
+                'searchKey'               => "",
                 'insurance'               => false,
+                'promoCode'               => "",
                 'userID'                  => $this->darmawisataUserId,
                 'accessToken'             => $order->dw_access_token,
                 'schDeparts'              => $schDepartsArray,
@@ -1118,14 +1121,25 @@ class TicketingController extends BaseController
             ];
 
             $isAirAsia = in_array(strtoupper($dwPayload['airlineID']), ['QZ', 'XT']);
-            $baseUrl = rtrim($this->darmawisataBaseUrl, '/');
+
+            // Tentukan URL Darmawisata
+            $env = \App\Models\Api::getValue('DARMAWISATA_MODE', 'global', 'development');
+            $baseUrl = \App\Models\Api::getValue('DARMAWISATA_BASE_URL', $env);
+            if (empty($baseUrl)) {
+                $baseUrl = ($env === 'production')
+                    ? 'https://www.darmawisataindonesiah2h.co.id/h2h'
+                    : 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h';
+            }
+            $baseUrl = rtrim($baseUrl, '/');
+
 
             // =========================================================================
-            // 1. TAHAP PREVIEW (SIMPAN COOKIE KE DATABASE / CACHE)
+            // 1. TAHAP PREVIEW (Ditekan saat tombol "Preview Tiket" di Frontend)
             // =========================================================================
             if ($request->is_preview_only) {
-                \Illuminate\Support\Facades\Log::info("LOG LOG: Mode Preview diaktifkan. Mengecek Auto-Baggage...");
+                \Illuminate\Support\Facades\Log::info("LOG LOG: Mode Preview diaktifkan.");
 
+                // Cek & Inject Auto Baggage
                 $addonsPayload = $dwPayload;
                 $addonsPayload['schDepart'] = $dwDetailSchedule;
                 $addonsPayload['schReturn'] = is_array($scheduleData) && isset($scheduleData['returnRef']) ? $scheduleData['returnRef'] : "";
@@ -1175,31 +1189,22 @@ class TicketingController extends BaseController
                     unset($pax);
                 }
 
-                // Eksekusi Preview & TANGKAP COOKIE-NYA
                 if ($isAirAsia) {
-                    \Illuminate\Support\Facades\Log::info("LOG LOG: Eksekusi Preview & Menangkap Darmawisata Cookie...");
-
-                    $previewRes = \Illuminate\Support\Facades\Http::withHeaders([
-                        'Content-Type' => 'application/json',
-                        'Accept'       => 'application/json'
-                    ])->post($baseUrl . '/Airline/Preview', $dwPayload);
-
-                    $previewJson = $previewRes->json();
-
-                    // SIMPAN COOKIE KE LARAVEL CACHE SELAMA 30 MENIT (Ide Brilian Anda!)
-                    $cookies = $previewRes->headers()['Set-Cookie'] ?? null;
-                    if ($cookies) {
-                        \Illuminate\Support\Facades\Cache::put('dw_cookie_order_' . $orderId, $cookies, now()->addMinutes(30));
-                        \Illuminate\Support\Facades\Log::info("LOG LOG: Cookie Darmawisata Berhasil Disimpan ke Cache.");
-                    }
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: Mengeksekusi Airline/Preview Normal...");
+                    $previewRes = $this->forwardRequest('Airline/Preview', $dwPayload);
+                    $previewJson = json_decode($previewRes->getContent(), true);
 
                     if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
-                        \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update(['status' => 'FAILED', 'updated_at' => now()]);
-                        return response()->json(['status' => 'FAILED', 'message' => 'Gagal Preview: ' . ($previewJson['respMessage'] ?? 'Maskapai menolak.')]);
+                        return response()->json([
+                            'status'  => 'FAILED',
+                            'message' => 'Gagal Preview: ' . ($previewJson['respMessage'] ?? 'Maskapai menolak.')
+                        ]);
                     }
 
                     if (isset($previewJson['ticketPrice']) && $previewJson['ticketPrice'] > 0) {
-                        \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update(['total_fare' => $previewJson['ticketPrice'], 'updated_at' => now()]);
+                        \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update([
+                            'total_fare' => $previewJson['ticketPrice'], 'updated_at' => now()
+                        ]);
                     }
 
                     return response()->json([
@@ -1213,39 +1218,55 @@ class TicketingController extends BaseController
             } // TUTUP BLOK PREVIEW
 
             // =========================================================================
-            // 2. TAHAP FINAL BOOKING (MENGGUNAKAN COOKIE DARI DATABASE/CACHE)
+            // 2. TAHAP FINAL BOOKING (Ditekan saat tombol "Lanjutkan Booking")
             // =========================================================================
-            \Illuminate\Support\Facades\Log::info("LOG LOG: Mengeksekusi Final Booking untuk Order ID: {$orderId}");
-
             if ($isAirAsia) {
-                // SUNTIKKAN COOKIE KE DALAM HEADER AGAR SERVER MENGENALI SESI KITA
-                $req = \Illuminate\Support\Facades\Http::withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Accept'       => 'application/json'
+                \Illuminate\Support\Facades\Log::info("LOG LOG: Memulai Koneksi TCP Keep-Alive khusus AirAsia...");
+
+                // Inisialisasi Guzzle dengan fitur 'Connection: keep-alive' untuk mempertahankan TCP State di Load Balancer
+                $client = new \GuzzleHttp\Client([
+                    'base_uri' => $baseUrl . '/',
+                    'headers' => [
+                        'Content-Type' => 'application/json',
+                        'Accept'       => 'application/json',
+                        'Connection'   => 'keep-alive'
+                    ],
+                    'verify' => false // Bypass SSL untuk UAT
                 ]);
 
-                $cachedCookies = \Illuminate\Support\Facades\Cache::get('dw_cookie_order_' . $orderId);
+                try {
+                    // PREVIEW & BOOKING DALAM 1 KONEKSI TCP YANG SAMA
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: [1/2] Menembakkan Preview TCP Stateful...");
+                    $previewResponse = $client->post('Airline/Preview', [
+                        'body' => json_encode($dwPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                    ]);
+                    $previewJson = json_decode($previewResponse->getBody()->getContents(), true);
 
-                if ($cachedCookies) {
-                    $cookieArray = is_array($cachedCookies) ? $cachedCookies : [$cachedCookies];
-                    $cookieStrings = [];
-                    foreach ($cookieArray as $c) {
-                        $parts = explode(';', $c);
-                        $cookieStrings[] = trim($parts[0]); // Ambil key=value
+                    if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
+                        \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update(['status' => 'FAILED', 'updated_at' => now()]);
+                        return response()->json(['status' => 'FAILED', 'message' => 'Gagal di tahap Secure Preview: ' . ($previewJson['respMessage'] ?? 'Sistem AirAsia menolak.')]);
                     }
-                    $req->withHeaders(['Cookie' => implode('; ', $cookieStrings)]);
-                    \Illuminate\Support\Facades\Log::info("LOG LOG: Mengirim Request dengan Cookie -> " . implode('; ', $cookieStrings));
-                } else {
-                    \Illuminate\Support\Facades\Log::warning("LOG LOG: Cookie Darmawisata hilang dari Cache. Melanjutkan tanpa Cookie...");
-                }
 
-                $bookingRes = $req->post($baseUrl . '/Airline/Booking', $dwPayload);
-                $json = $bookingRes->json();
+                    // Beri jeda sepersekian detik agar Darmawisata LoadBalancer siap
+                    usleep(500000); // 0.5 detik
+
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: [2/2] Menembakkan Booking TCP Stateful...");
+                    $bookingResponse = $client->post('Airline/Booking', [
+                        'body' => json_encode($dwPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                    ]);
+                    $json = json_decode($bookingResponse->getBody()->getContents(), true);
+
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error("Stateful Guzzle Error: " . $e->getMessage());
+                    return response()->json(['status' => 'FAILED', 'message' => 'Koneksi H2H Darmawisata Terputus: ' . $e->getMessage()]);
+                }
             } else {
-                // Normal Request untuk Garuda / Lion / dll
+                // Booking biasa untuk Garuda/Lion
+                \Illuminate\Support\Facades\Log::info("LOG LOG: Mengeksekusi Final Booking Normal...");
                 $response = $this->forwardRequest('Airline/Booking', $dwPayload);
                 $json = json_decode($response->getContent(), true);
             }
+
 
             // =========================================================================
             // 3. PROSES RESPON BOOKING (Update DB & Generate Link Bayar)
