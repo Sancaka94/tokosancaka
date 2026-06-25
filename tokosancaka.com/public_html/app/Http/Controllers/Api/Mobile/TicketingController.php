@@ -1210,65 +1210,26 @@ class TicketingController extends BaseController
             // =========================================================================
 
             if ($isAirAsia) {
-                \Illuminate\Support\Facades\Log::info("LOG LOG: Memulai Guzzle Session (cookies => true) untuk Final Booking AirAsia...");
+                \Illuminate\Support\Facades\Log::info("LOG LOG: Melakukan Silent Re-Preview AirAsia sebelum Booking Final...");
 
-                $env = \App\Models\Api::getValue('DARMAWISATA_MODE', 'global', 'development');
-                $baseUrl = \App\Models\Api::getValue('DARMAWISATA_BASE_URL', $env);
-                if (empty($baseUrl)) {
-                    $baseUrl = ($env === 'production')
-                        ? 'https://www.darmawisataindonesiah2h.co.id/h2h'
-                        : 'https://uat-backup.darmawisataindonesiah2h.co.id:7080/h2h';
-                }
-                $baseUrl = rtrim($baseUrl, '/');
+                // KITA KEMBALI MENGGUNAKAN FORWARD REQUEST AGAR LOG TERCETAK RAPI
+                $previewResponse = $this->forwardRequest('Airline/Preview', $dwPayload);
+                $previewJson = json_decode($previewResponse->getContent(), true);
 
-                $client = new \GuzzleHttp\Client([
-                    'base_uri' => $baseUrl . '/',
-                    'cookies'  => true,
-                    'headers'  => [
-                        'Content-Type' => 'application/json',
-                        'Accept'       => 'application/json'
-                    ],
-                    'verify'   => false
-                ]);
-
-                try {
-                    // 1. TEMBAK RE-PREVIEW
-                    \Illuminate\Support\Facades\Log::info("LOG LOG: [1/2] Menembak Re-Preview ke Darmawisata...");
-                    \Illuminate\Support\Facades\Log::info("LOG LOG: REQ BODY PREVIEW: " . json_encode($dwPayload));
-
-                    $previewResponse = $client->post('Airline/Preview', ['json' => $dwPayload]);
-                    $previewJson = json_decode($previewResponse->getBody()->getContents(), true);
-
-                    \Illuminate\Support\Facades\Log::info("LOG LOG: RESP BODY PREVIEW: " . json_encode($previewJson));
-
-                    if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
-                        \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update(['status' => 'FAILED', 'updated_at' => now()]);
-                        return response()->json(['status' => 'FAILED', 'message' => 'Gagal mengunci sesi AirAsia: ' . ($previewJson['respMessage'] ?? 'Coba lagi.')]);
-                    }
-
-                    // Jeda aman
-                    sleep(1);
-
-                    // 2. TEMBAK BOOKING
-                    \Illuminate\Support\Facades\Log::info("LOG LOG: [2/2] Menembak Booking ke Darmawisata...");
-                    \Illuminate\Support\Facades\Log::info("LOG LOG: REQ BODY BOOKING: " . json_encode($dwPayload));
-
-                    $bookingResponse = $client->post('Airline/Booking', ['json' => $dwPayload]);
-                    $json = json_decode($bookingResponse->getBody()->getContents(), true);
-
-                    \Illuminate\Support\Facades\Log::info("LOG LOG: RESP BODY BOOKING: " . json_encode($json));
-
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error("Stateful Guzzle Error: " . $e->getMessage());
-                    return response()->json(['status' => 'FAILED', 'message' => 'Koneksi H2H Darmawisata Terputus: ' . $e->getMessage()]);
+                if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
+                    \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update(['status' => 'FAILED', 'updated_at' => now()]);
+                    return response()->json(['status' => 'FAILED', 'message' => 'Gagal mengamankan sesi AirAsia: ' . ($previewJson['respMessage'] ?? 'Coba lagi.')]);
                 }
 
-            } else {
-                // Proses normal untuk maskapai selain AirAsia
-                \Illuminate\Support\Facades\Log::info("LOG LOG: Mengeksekusi Final Booking Normal...");
-                $response = $this->forwardRequest('Airline/Booking', $dwPayload);
-                $json = json_decode($response->getContent(), true);
+                // Memberikan jeda waktu ke sistem H2H
+                sleep(2);
             }
+
+            \Illuminate\Support\Facades\Log::info("LOG LOG: Mengeksekusi Final Booking untuk Order ID: {$orderId}");
+
+            // KITA KEMBALI MENGGUNAKAN FORWARD REQUEST AGAR LOG TERCETAK RAPI
+            $response = $this->forwardRequest('Airline/Booking', $dwPayload);
+            $json = json_decode($response->getContent(), true);
 
             // =========================================================================
             // 3. PROSES RESPON BOOKING (Update DB & Generate Link Bayar)
