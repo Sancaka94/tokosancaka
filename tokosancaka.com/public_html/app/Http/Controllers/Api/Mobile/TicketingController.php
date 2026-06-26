@@ -1021,13 +1021,13 @@ class TicketingController extends BaseController
                     'DocType'                => "KTP",
                     'type'                   => $pax->pax_type,
                     'parent'                 => (string)$parentRef,
-                    'passportNumber'         => null,
-                    'passportIssuedCountry'  => null,
+                    'passportNumber'         => "",
+                    'passportIssuedCountry'  => "",
                     'passportIssuedDate'     => "0001-01-01T00:00:00",
                     'passportExpiredDate'    => "0001-01-01T00:00:00",
-                    'Email'                  => null,
-                    'batikMilesNo'           => null,
-                    'garudaFrequentFlyer'    => null,
+                    'Email'                  => "",
+                    'batikMilesNo'           => "",
+                    'garudaFrequentFlyer'    => "",
                     'addOns'                 => ($pax->pax_type == 2) ? null : (empty($addOns) ? null : $addOns)
                 ];
             }
@@ -1097,8 +1097,10 @@ class TicketingController extends BaseController
                 }
             }
 
+            $actualAirlineID = !empty($schDepartsArray[0]['airlineCode']) ? $schDepartsArray[0]['airlineCode'] : $order->airline_id;
+
             $dwPayload = [
-                'airlineID'               => $order->airline_id,
+                'airlineID'               => $actualAirlineID, // Gunakan variabel yang sudah divalidasi
                 'origin'                  => $order->origin,
                 'destination'             => $order->destination,
                 'tripType'                => $order->trip_type,
