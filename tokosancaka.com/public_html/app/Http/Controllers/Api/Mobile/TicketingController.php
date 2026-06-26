@@ -346,22 +346,6 @@ class TicketingController extends BaseController
         // 2. Siapkan Payload
         $payload = $request->all();
 
-        // --- MASUKKAN KODE INI DI SINI ---
-        if (isset($payload['paxDetails']) && is_array($payload['paxDetails'])) {
-            foreach ($payload['paxDetails'] as &$pax) {
-                $pax['IDNumber']              = (string)($pax['IDNumber'] ?? "");
-                $pax['passportNumber']        = $pax['passportNumber'] ?? "";
-                $pax['passportIssuedCountry'] = $pax['passportIssuedCountry'] ?? "";
-                $pax['passportIssuedDate']    = $pax['passportIssuedDate'] ?? "0001-01-01T00:00:00";
-                $pax['passportExpiredDate']   = $pax['passportExpiredDate'] ?? "0001-01-01T00:00:00";
-                $pax['Email']                 = $pax['Email'] ?? "";
-                $pax['batikMilesNo']          = $pax['batikMilesNo'] ?? "";
-                $pax['garudaFrequentFlyer']   = $pax['garudaFrequentFlyer'] ?? "";
-                $pax['parent']                = (string)($pax['parent'] ?? "");
-            }
-            unset($pax);
-        }
-        // ---------------------------------
 
         // Mapping parameter opsional agar tidak null
         $payload['returnDate'] = $payload['returnDate'] ?? "";
