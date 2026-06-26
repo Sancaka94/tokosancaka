@@ -1028,7 +1028,7 @@ class TicketingController extends BaseController
                     'Email'                  => "",
                     'batikMilesNo'           => "",
                     'garudaFrequentFlyer'    => "",
-                    'addOns'                 => ($pax->pax_type == 2) ? null : (empty($addOns) ? null : $addOns)
+                    'addOns'                 => ($pax->pax_type == 2) ? [] : (empty($addOns) ? [] : $addOns)
                 ];
             }
 
@@ -1098,7 +1098,7 @@ class TicketingController extends BaseController
             }
 
             $dwPayload = [
-                'airlineID'               => $order->airline_id, // KEMBALIKAN KE SINI (Akan mengirim "JT")
+                'airlineID'               => $order->airline_id, // Tetap gunakan JT untuk Lion Group
                 'origin'                  => $order->origin,
                 'destination'             => $order->destination,
                 'tripType'                => $order->trip_type,
@@ -1115,9 +1115,12 @@ class TicketingController extends BaseController
                 'contactRemainingPhoneNo' => $remainingPhone,
                 'contactEmail'            => $order->contact_email,
                 'paxDetails'              => $paxDetails,
-                'searchKey'               => null,
+
+                // PERBAIKAN: Ganti null dengan string kosong ""
+                'searchKey'               => "",
                 'insurance'               => false,
-                'promoCode'               => null,
+                'promoCode'               => "",
+
                 'userID'                  => $this->darmawisataUserId,
                 'accessToken'             => $order->dw_access_token,
                 'schDeparts'              => $schDepartsArray,
