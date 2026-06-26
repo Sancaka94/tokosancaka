@@ -1097,6 +1097,19 @@ class TicketingController extends BaseController
                 }
             }
 
+            // 1. TAMBAHKAN INI PASTIKAN TEPAT SEBELUM $dwPayload
+            foreach ($schDepartsArray as &$dep) {
+                $dep['garudaNumber']       = $dep['garudaNumber'] ?? "";
+                $dep['garudaAvailability'] = $dep['garudaAvailability'] ?? "";
+            }
+            unset($dep);
+
+            foreach ($schReturnsArray as &$ret) {
+                $ret['garudaNumber']       = $ret['garudaNumber'] ?? "";
+                $ret['garudaAvailability'] = $ret['garudaAvailability'] ?? "";
+            }
+            unset($ret);
+
             $dwPayload = [
                 'airlineID'               => $order->airline_id, // Tetap gunakan JT untuk Lion Group
                 'origin'                  => $order->origin,
