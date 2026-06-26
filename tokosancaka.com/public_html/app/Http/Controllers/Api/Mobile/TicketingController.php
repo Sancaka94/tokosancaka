@@ -927,7 +927,12 @@ class TicketingController extends BaseController
             }
 
             $isRoundTrip = $order->trip_type === 'RoundTrip';
-            $passengers = \Illuminate\Support\Facades\DB::table('flight_passengers')->where('order_id', $orderId)->get();
+            // $passengers = \Illuminate\Support\Facades\DB::table('flight_passengers')->where('order_id', $orderId)->get();
+
+            $passengers = \Illuminate\Support\Facades\DB::table('flight_passengers')
+                ->where('order_id', $orderId)
+                ->orderBy('id', 'asc') // <--- WAJIB DITAMBAHKAN
+                ->get();
 
             $paxAdult = 0; $paxChild = 0; $paxInfant = 0;
             $adultsNIK = [];
@@ -1038,7 +1043,7 @@ class TicketingController extends BaseController
                 ];
             }
 
-            $sortedPaxDetails = [];
+            /* $sortedPaxDetails = [];
             $infantsData = [];
 
             foreach ($paxDetails as $p) {
@@ -1060,6 +1065,7 @@ class TicketingController extends BaseController
                 }
             }
             $paxDetails = $sortedPaxDetails;
+            */
 
             $phone = $order->contact_phone;
             $countryCode = "62";
