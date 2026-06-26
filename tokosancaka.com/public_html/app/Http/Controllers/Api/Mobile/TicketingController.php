@@ -872,6 +872,7 @@ class TicketingController extends BaseController
                         'birth_date' => $pax['birthDate'],
                         'doc_type'   => $pax['docType'],
                         'id_number'  => $pax['idNumber'] ?? "",
+                        'parent_ref' => $pax['parent'] ?? "",
                     ]);
 
                     if (!empty($pax['seat']) || !empty($pax['addOns'])) {
@@ -1005,10 +1006,14 @@ class TicketingController extends BaseController
                     $idNumberToSend = date('dmy', strtotime($pax->birth_date)) . rand(1000000000, 9999999999);
                 }
 
+                /*
                 if ($pax->pax_type == 2) {
                     $adultSequence = (count($adultsNIK) > 1) ? "2" : "1";
                     $parentRef = $adultSequence;
                 }
+                */
+
+                $parentRef = $pax->parent_ref ?? "";
 
                 $paxDetails[] = [
                     'IDNumber'               => $idNumberToSend,
