@@ -1115,12 +1115,9 @@ class TicketingController extends BaseController
                 'contactRemainingPhoneNo' => $remainingPhone,
                 'contactEmail'            => $order->contact_email,
                 'paxDetails'              => $paxDetails,
-
-                // PERBAIKAN: Ganti null dengan string kosong ""
                 'searchKey'               => "",
                 'insurance'               => false,
                 'promoCode'               => "",
-
                 'userID'                  => $this->darmawisataUserId,
                 'accessToken'             => $order->dw_access_token,
                 'schDeparts'              => $schDepartsArray,
