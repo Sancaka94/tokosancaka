@@ -1097,10 +1097,8 @@ class TicketingController extends BaseController
                 }
             }
 
-            $actualAirlineID = !empty($schDepartsArray[0]['airlineCode']) ? $schDepartsArray[0]['airlineCode'] : $order->airline_id;
-
             $dwPayload = [
-                'airlineID'               => $actualAirlineID, // Gunakan variabel yang sudah divalidasi
+                'airlineID'               => $order->airline_id, // KEMBALIKAN KE SINI (Akan mengirim "JT")
                 'origin'                  => $order->origin,
                 'destination'             => $order->destination,
                 'tripType'                => $order->trip_type,
