@@ -1077,13 +1077,15 @@ class TicketingController extends BaseController
                 }
             }
 
-            foreach ($schDepartsArray as &$dep) {
+           foreach ($schDepartsArray as &$dep) {
+                $dep['airlineCode']        = $order->airline_id; // <--- TAMBAHKAN BARIS INI
                 $dep['garudaNumber']       = $dep['garudaNumber'] ?? "";
                 $dep['garudaAvailability'] = $dep['garudaAvailability'] ?? "";
             }
             unset($dep);
 
             foreach ($schReturnsArray as &$ret) {
+                $ret['airlineCode']        = $order->airline_id; // <--- TAMBAHKAN BARIS INI
                 $ret['garudaNumber']       = $ret['garudaNumber'] ?? "";
                 $ret['garudaAvailability'] = $ret['garudaAvailability'] ?? "";
             }
