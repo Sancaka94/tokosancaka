@@ -904,7 +904,7 @@ class TicketingController extends BaseController
         }
     }
 
- /**
+/**
      * POST Airline/ProcessBooking
      * Membaca data dari DB lalu merakit Payload untuk dikirim ke Darmawisata
      */
@@ -927,11 +927,10 @@ class TicketingController extends BaseController
             }
 
             $isRoundTrip = $order->trip_type === 'RoundTrip';
-            // $passengers = \Illuminate\Support\Facades\DB::table('flight_passengers')->where('order_id', $orderId)->get();
 
             $passengers = \Illuminate\Support\Facades\DB::table('flight_passengers')
                 ->where('order_id', $orderId)
-                ->orderBy('id', 'asc') // <--- WAJIB DITAMBAHKAN
+                ->orderBy('id', 'asc') // <--- WAJIB
                 ->get();
 
             $paxAdult = 0; $paxChild = 0; $paxInfant = 0;
@@ -975,8 +974,9 @@ class TicketingController extends BaseController
                                     'aoDestination' => $ao['aoDestination'] ?? $order->destination,
                                     'seat'          => $hasSeat,
                                     'compartment'   => $ao['compartment'] ?? "Y",
-                                    'baggageString' => $hasBaggage ? $ao['baggageString'] : null,
-                                    'meals'         => $hasMeals ? $ao['meals'] : null
+                                    // PERBAIKAN 3: Hindari null, pakai string/array kosong
+                                    'baggageString' => $hasBaggage ? $ao['baggageString'] : "",
+                                    'meals'         => $hasMeals ? $ao['meals'] : []
                                 ];
                             }
                         }
@@ -989,13 +989,13 @@ class TicketingController extends BaseController
                                 'seat'          => $seatVal,
                                 'compartment'   => $addonsDb->compartment ?? "Y",
                                 'baggageString' => $bagVal,
-                                'meals'         => null
+                                'meals'         => []
                             ];
                         }
                     }
                 }
 
-                $parentRef = "";
+                $parentRef = $pax->parent_ref ?? "";
                 $idNumberToSend = trim($pax->id_number);
                 $titleToSend = strtoupper($pax->title);
 
@@ -1011,15 +1011,6 @@ class TicketingController extends BaseController
                     $idNumberToSend = date('dmy', strtotime($pax->birth_date)) . rand(1000000000, 9999999999);
                 }
 
-                /*
-                if ($pax->pax_type == 2) {
-                    $adultSequence = (count($adultsNIK) > 1) ? "2" : "1";
-                    $parentRef = $adultSequence;
-                }
-                */
-
-                $parentRef = $pax->parent_ref ?? "";
-
                 $paxDetails[] = [
                     'IDNumber'               => $idNumberToSend,
                     'title'                  => $titleToSend,
@@ -1029,7 +1020,8 @@ class TicketingController extends BaseController
                     'gender'                 => $pax->gender,
                     'nationality'            => "ID",
                     'birthCountry'           => "ID",
-                    'DocType'                => "KTP",
+                    // PERBAIKAN 1: Tipe Dokumen Dinamis dari Database
+                    'DocType'                => !empty($pax->doc_type) ? $pax->doc_type : "KTP",
                     'type'                   => $pax->pax_type,
                     'parent'                 => (string)$parentRef,
                     'passportNumber'         => "",
@@ -1042,30 +1034,6 @@ class TicketingController extends BaseController
                     'addOns'                 => ($pax->pax_type == 2) ? [] : (empty($addOns) ? [] : $addOns)
                 ];
             }
-
-            /* $sortedPaxDetails = [];
-            $infantsData = [];
-
-            foreach ($paxDetails as $p) {
-                if ($p['type'] == 2) { $infantsData[] = $p; }
-            }
-
-            $adultCounter = 1;
-            foreach ($paxDetails as $p) {
-                if ($p['type'] != 2) {
-                    $sortedPaxDetails[] = $p;
-                    if ($p['type'] == 0) {
-                        foreach ($infantsData as $infant) {
-                            if ($infant['parent'] === (string)$adultCounter) {
-                                $sortedPaxDetails[] = $infant;
-                            }
-                        }
-                        $adultCounter++;
-                    }
-                }
-            }
-            $paxDetails = $sortedPaxDetails;
-            */
 
             $phone = $order->contact_phone;
             $countryCode = "62";
@@ -1092,8 +1060,8 @@ class TicketingController extends BaseController
                                        'schDepartTime'      => date('Y-m-d\TH:i:s', strtotime($order->depart_date)),
                                        'schArrivalTime'     => date('Y-m-d\TH:i:s', strtotime($order->depart_date)),
                                        'flightClass'        => $order->flight_class,
-                                       'garudaNumber'       => null,
-                                       'garudaAvailability' => null
+                                       'garudaNumber'       => "",
+                                       'garudaAvailability' => ""
                                    ]
                                ];
 
@@ -1109,7 +1077,6 @@ class TicketingController extends BaseController
                 }
             }
 
-            // 1. TAMBAHKAN INI PASTIKAN TEPAT SEBELUM $dwPayload
             foreach ($schDepartsArray as &$dep) {
                 $dep['garudaNumber']       = $dep['garudaNumber'] ?? "";
                 $dep['garudaAvailability'] = $dep['garudaAvailability'] ?? "";
@@ -1123,7 +1090,7 @@ class TicketingController extends BaseController
             unset($ret);
 
             $dwPayload = [
-                'airlineID'               => $order->airline_id, // Tetap gunakan JT untuk Lion Group
+                'airlineID'               => $order->airline_id,
                 'origin'                  => $order->origin,
                 'destination'             => $order->destination,
                 'tripType'                => $order->trip_type,
@@ -1150,15 +1117,10 @@ class TicketingController extends BaseController
             ];
 
             $isAirAsia = in_array(strtoupper($dwPayload['airlineID']), ['QZ', 'XT']);
-
-            // CEK METODE PEMBAYARAN DAN SALDO
             $paymentMethod = strtoupper($request->payment_method ?? 'SALDO');
             $isSaldo = in_array($paymentMethod, ['SALDO', 'POTONG SALDO', 'CASH']);
             $user = $request->user();
 
-            // =========================================================================
-            // 0. SAFETY CHECK KHUSUS AIRASIA (KARENA LANGSUNG ISSUED)
-            // =========================================================================
             if ($isAirAsia && !$request->is_preview_only) {
                 if (!$isSaldo) {
                     return response()->json([
@@ -1209,7 +1171,9 @@ class TicketingController extends BaseController
                         if ($pax['type'] == 0 || $pax['type'] == 1) {
                             if (empty($pax['addOns'])) {
                                 $pax['addOns'] = [];
-                                foreach ($dwPayload['schDeparts'] as $seg) {
+                                // PERBAIKAN 2: Gabungkan Rute Pergi dan Rute Pulang untuk Auto-Baggage
+                                $allSegments = array_merge($dwPayload['schDeparts'], $dwPayload['schReturns']);
+                                foreach ($allSegments as $seg) {
                                     $pax['addOns'][] = [
                                         'aoOrigin'      => $seg['schOrigin'],
                                         'aoDestination' => $seg['schDestination'],
@@ -1230,7 +1194,7 @@ class TicketingController extends BaseController
                 }
 
                 if ($isAirAsia) {
-                    \Illuminate\Support\Facades\Log::info("LOG LOG: Mengeksekusi Airline/Preview...");
+                    \Illuminate\Support\Facades\Log::info("\nLOG LOG: [FINAL PAYLOAD PREVIEW AIRASIA] \n" . json_encode($dwPayload, JSON_PRETTY_PRINT));
                     $previewRes = $this->forwardRequest('Airline/Preview', $dwPayload);
                     $previewJson = json_decode($previewRes->getContent(), true);
 
@@ -1257,6 +1221,8 @@ class TicketingController extends BaseController
             // 2. TAHAP FINAL BOOKING
             // =========================================================================
 
+            \Illuminate\Support\Facades\Log::info("\n================ LOG LOG: [FINAL PAYLOAD BOOKING] ================\n" . json_encode($dwPayload, JSON_PRETTY_PRINT) . "\n==================================================================");
+
             if ($isAirAsia) {
                 \Illuminate\Support\Facades\Log::info("LOG LOG: Memulai Guzzle Session (cookies => true) untuk Final Booking AirAsia...");
 
@@ -1281,20 +1247,8 @@ class TicketingController extends BaseController
                 ]);
 
                 try {
-                    // 1. RE-PREVIEW
-                    $previewUrl = $baseUrl . '/Airline/Preview';
-                    \Illuminate\Support\Facades\Log::info("\n==================== [DARMAWISATA REQUEST] ====================");
-                    \Illuminate\Support\Facades\Log::info("ENDPOINT : POST " . $previewUrl);
-                    \Illuminate\Support\Facades\Log::info("PAYLOAD  : " . json_encode($dwPayload));
-
                     $previewResponse = $client->post('Airline/Preview', ['json' => $dwPayload]);
-                    $previewStatus = $previewResponse->getStatusCode();
-                    $previewBody = $previewResponse->getBody()->getContents();
-                    $previewJson = json_decode($previewBody, true);
-
-                    \Illuminate\Support\Facades\Log::info("STATUS   : " . $previewStatus);
-                    \Illuminate\Support\Facades\Log::info("RESPONSE : " . $previewBody);
-                    \Illuminate\Support\Facades\Log::info("===============================================================\n");
+                    $previewJson = json_decode($previewResponse->getBody()->getContents(), true);
 
                     if (isset($previewJson['status']) && $previewJson['status'] === 'FAILED') {
                         \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update(['status' => 'FAILED', 'updated_at' => now()]);
@@ -1303,20 +1257,8 @@ class TicketingController extends BaseController
 
                     sleep(1);
 
-                    // 2. BOOKING ISSUED KHUSUS AIRASIA
-                    $bookingUrl = $baseUrl . '/Airline/BookingIssued'; // ENDPOINT KHUSUS SESUAI INSTRUKSI CS
-                    \Illuminate\Support\Facades\Log::info("\n==================== [DARMAWISATA REQUEST] ====================");
-                    \Illuminate\Support\Facades\Log::info("ENDPOINT : POST " . $bookingUrl);
-                    \Illuminate\Support\Facades\Log::info("PAYLOAD  : " . json_encode($dwPayload));
-
                     $bookingResponse = $client->post('Airline/BookingIssued', ['json' => $dwPayload]);
-                    $bookingStatus = $bookingResponse->getStatusCode();
-                    $bookingBody = $bookingResponse->getBody()->getContents();
-                    $json = json_decode($bookingBody, true);
-
-                    \Illuminate\Support\Facades\Log::info("STATUS   : " . $bookingStatus);
-                    \Illuminate\Support\Facades\Log::info("RESPONSE : " . $bookingBody);
-                    \Illuminate\Support\Facades\Log::info("===============================================================\n");
+                    $json = json_decode($bookingResponse->getBody()->getContents(), true);
 
                 } catch (\Exception $e) {
                     \Illuminate\Support\Facades\Log::error("Stateful Guzzle Error: " . $e->getMessage());
@@ -1324,11 +1266,12 @@ class TicketingController extends BaseController
                 }
 
             } else {
-                // Proses normal untuk maskapai selain AirAsia
                 \Illuminate\Support\Facades\Log::info("LOG LOG: Mengeksekusi Final Booking Normal...");
                 $response = $this->forwardRequest('Airline/Booking', $dwPayload);
                 $json = json_decode($response->getContent(), true);
             }
+
+            \Illuminate\Support\Facades\Log::info("\n================ LOG LOG: [RESPONSE DARI MASKAPAI] ================\n" . json_encode($json, JSON_PRETTY_PRINT) . "\n===================================================================");
 
             // =========================================================================
             // 3. PROSES RESPON BOOKING (Update DB & Generate Link Bayar)
@@ -1337,7 +1280,6 @@ class TicketingController extends BaseController
                 $pnr = $json['bookingCode'] ?? $json['bookingCodeAirline'] ?? 'PENDING';
                 $amount = (float) ($json['ticketPrice'] ?? $order->total_fare);
 
-                // Khusus AirAsia status tiket akan langsung ISSUED
                 $statusFinal = $isAirAsia ? 'ISSUED' : 'HOLD';
 
                 \Illuminate\Support\Facades\DB::table('flight_orders')->where('id', $orderId)->update([
@@ -1348,13 +1290,11 @@ class TicketingController extends BaseController
                     'updated_at'     => now()
                 ]);
 
-                // POTONG SALDO SECARA REAL-TIME JIKA AIRASIA (karena langsung ISSUED)
                 if ($isAirAsia && $isSaldo) {
                     \Illuminate\Support\Facades\DB::table('Pengguna')
                         ->where('id_pengguna', $user->id_pengguna)
                         ->decrement('saldo', $amount);
 
-                    // Opsional: Potong Saldo Agen Darmawisata Utama (ID 4) seperti di airlineIssued
                     \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', 4)->decrement('balance_iak', $amount);
                 }
 
