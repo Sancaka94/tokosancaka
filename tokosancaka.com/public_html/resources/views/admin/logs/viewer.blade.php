@@ -304,6 +304,7 @@ window.deleteSingleLog = function(id) {
     deletePermanentFromBackend(log.full_texts);
 }
 
+// 4. Bulk Delete Grup Permanen
 document.getElementById('bulkDeleteBtn').addEventListener('click', function() {
     const checkedBoxes = document.querySelectorAll('.log-checkbox:checked');
     const selectedIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
@@ -313,7 +314,8 @@ document.getElementById('bulkDeleteBtn').addEventListener('click', function() {
     selectedIds.forEach(id => {
         const log = parsedLogs.find(l => l.id === id);
         if(log) {
-            allTextsToDelete.push(...log.full_texts); 
+            // PERBAIKAN: Ganti spread operator (...) dengan concat() agar aman dari error minifier
+            allTextsToDelete = allTextsToDelete.concat(log.full_texts); 
             document.getElementById(`log-card-${id}`).remove();
         }
     });
