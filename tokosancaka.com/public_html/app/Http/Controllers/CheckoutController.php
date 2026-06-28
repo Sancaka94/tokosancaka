@@ -1723,7 +1723,7 @@ class CheckoutController extends Controller
         // -----------------------------------------------------------
         // 3. PROSES UTAMA (LUNAS)
         // -----------------------------------------------------------
-        if ($status === 'PAID') {
+        if ($status === 'PAID' || $status === 'SUCCESS') { // <-- Tambahkan kondisi SUCCESS di sini
 
             // A. Update Status Database
             $order->status = 'paid';
@@ -2165,17 +2165,98 @@ class CheckoutController extends Controller
             $this->kirimNotifikasiPesananLengkap($order, 'Lunas');
             $this->_sendExpoPushNotification($order);
 
-            // ==========================================================
+          // ==========================================================
             // 🔥 TAMBAHAN EMAIL KE USER (SEMUA GATEWAY & SALDO MASUK KESINI)
             // ==========================================================
-            if ($order->user && !empty($order->user->email)) {
-                $this->sendTransactionSuccessEmail(
-                    $order->user->email,
-                    $order->user->nama_lengkap,
-                    $order->invoice_number,
-                    'Pesanan Marketplace Sancaka',
-                    $order->total_amount
-                );
+            try {
+                if ($order->user && !empty($order->user->email)) {
+
+                    // 1. Kumpulkan aset produk digital (URL, File Download, atau Gambar)
+                    $rincianDigitalHtml = "";
+                    $adaProdukDigital = false;
+
+                    foreach ($order->items as $item) {
+                        $katObj = $item->product ? $item->product->category()->first() : null;
+                        $catGroup = $katObj ? strtolower($katObj->category_group ?? '') : '';
+                        $isItemDigital = ($item->product && $item->product->is_digital) ||
+                                         in_array($catGroup, ['produk_digital', 'jasa']) ||
+                                         str_contains(strtolower($item->type ?? ''), 'digital');
+
+                        if ($isItemDigital && $item->product) {
+                            $adaProdukDigital = true;
+                            $namaProduk = $item->product->name;
+                            $aksesLink = "";
+
+                            // Prioritas penarikan aset: URL Eksternal -> Path File Upload -> Link Backup -> Gambar Produk
+                            if (!empty($item->product->digital_url)) {
+                                $aksesLink = $item->product->digital_url;
+                            } elseif (!empty($item->product->digital_file_path)) {
+                                $aksesLink = asset('public/storage/' . $item->product->digital_file_path);
+                            } elseif (!empty($item->download_link)) {
+                                $aksesLink = $item->download_link;
+                            } elseif (!empty($item->product->image)) {
+                                $aksesLink = asset('public/storage/' . $item->product->image);
+                            }
+
+                            // Rakit HTML List
+                            if (!empty($aksesLink)) {
+                                $rincianDigitalHtml .= "<li style='margin-bottom: 15px;'>
+                                    <strong style='font-size: 16px;'>{$namaProduk}</strong> (x{$item->quantity})<br>
+                                    <a href='{$aksesLink}' target='_blank' style='display: inline-block; margin-top: 5px; padding: 8px 15px; background-color: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 4px; font-size: 14px;'>📥 Unduh / Akses Produk</a>
+                                </li>";
+                            } else {
+                                $rincianDigitalHtml .= "<li style='margin-bottom: 15px;'>
+                                    <strong style='font-size: 16px;'>{$namaProduk}</strong> (x{$item->quantity})<br>
+                                    <i style='color: #6b7280; font-size: 14px;'>Akses file/link sedang disiapkan oleh penjual. Anda akan dihubungi lebih lanjut.</i>
+                                </li>";
+                            }
+                        }
+                    }
+
+                    // 2. Eksekusi Pengiriman Email Berdasarkan Tipe Produk
+                    if ($adaProdukDigital && !empty($rincianDigitalHtml)) {
+                        // Jika ADA produk digital: Gunakan EmailController untuk mengirim custom HTML berisi link
+                        $emailData = [
+                            'to' => $order->user->email,
+                            'subject' => 'Akses Produk Digital Anda (LUNAS): ' . $order->invoice_number,
+                            'body' => "
+                                <div style='font-family: Helvetica, Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto;'>
+                                    <h2 style='color: #4f46e5; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;'>Pembayaran Berhasil! 🎉</h2>
+                                    <p>Halo <b>{$order->user->nama_lengkap}</b>,</p>
+                                    <p>Terima kasih! Pembayaran untuk pesanan <b>{$order->invoice_number}</b> senilai <b>Rp " . number_format($order->total_amount, 0, ',', '.') . "</b> telah berhasil dikonfirmasi.</p>
+                                    <p>Berikut adalah akses eksklusif ke produk digital yang Anda beli:</p>
+
+                                    <ul style='background-color: #f9fafb; padding: 20px 20px 20px 40px; border-radius: 6px; border-left: 5px solid #4f46e5; list-style-type: none;'>
+                                        {$rincianDigitalHtml}
+                                    </ul>
+
+                                    <p style='margin-top: 20px; font-size: 13px; color: #6b7280;'>Simpan email ini sebagai bukti transaksi. Jika Anda mengalami kendala saat mengakses file atau URL di atas, silakan hubungi penjual terkait di platform Sancaka.</p>
+                                    <p>Salam hangat,<br><b>Tim Sancaka Express</b></p>
+                                </div>
+                            "
+                        ];
+
+                        $emailController = app(\App\Http\Controllers\Admin\EmailController::class);
+                        $emailRequest = new \Illuminate\Http\Request();
+                        $emailRequest->replace($emailData);
+                        $emailController->send($emailRequest);
+
+                        \Illuminate\Support\Facades\Log::info("Email link/file produk digital terkirim ke: " . $order->user->email);
+
+                    } else {
+                        // Jika TIDAK ADA produk digital (Pesanan Fisik), gunakan Trait bawaan
+                        $this->sendTransactionSuccessEmail(
+                            $order->user->email,
+                            $order->user->nama_lengkap,
+                            $order->invoice_number,
+                            'Pesanan Marketplace Sancaka',
+                            $order->total_amount
+                        );
+                    }
+                }
+            } catch (\Exception $e) {
+                // Kalau email gagal/lemot, database order tetap aman tersimpan
+                \Illuminate\Support\Facades\Log::error("Gagal kirim email lunas: " . $e->getMessage());
             }
             // ==========================================================
 
