@@ -4,17 +4,8 @@
     <meta charset="UTF-8">
     <title>Invoice #{{ $order->invoice_number }}</title>
     <style>
-        @page {
-            margin: 25px 30px; 
-            size: a4 portrait;
-        }
-        body { 
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-            font-size: 13px; 
-            color: #333; 
-            line-height: 1.4; 
-            margin: 0; padding: 0;
-        }
+        @page { margin: 25px 30px; size: a4 portrait; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; color: #333; line-height: 1.4; margin: 0; padding: 0; }
         .container { width: 100%; margin: 0 auto; page-break-after: avoid; }
         .header { width: 100%; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
         .header table { width: 100%; border-collapse: collapse; }
@@ -80,20 +71,15 @@
         </div>
 
         @php
-            $isDigitalOrder = false;
-            foreach($order->items as $itm) {
-                $katObj = $itm->product ? $itm->product->category()->first() : null;
-                if (($katObj && in_array($katObj->category_group, ['produk_digital', 'jasa'])) || str_contains(strtolower($order->shipping_method), 'digital')) {
-                    $isDigitalOrder = true; break;
-                }
-            }
+            $isPureDigitalShipping = str_contains(strtolower($order->shipping_method), 'digital');
         @endphp
+        
         <div class="info-section">
             <table>
                 <tr>
                     <td style="width: 48%; padding-right: 2%; vertical-align: top;">
                         <div class="info-box">
-                            <div class="info-title">Penerima Tagihan & Pengiriman</div>
+                            <div class="info-title">{{ $isPureDigitalShipping ? 'Informasi Penerima' : 'Penerima & Pengiriman' }}</div>
                             <p style="font-weight: bold; margin: 0 0 3px 0;">{{ $order->receiver_name ?? ($order->user->nama_lengkap ?? 'Guest / Tamu') }}</p>
                             <p style="margin: 0 0 3px 0;">{{ $order->receiver_phone ?? ($order->user->no_wa ?? '-') }}</p>
                             <p style="margin: 0;">{{ $order->shipping_address ?? 'Alamat tidak tersedia' }}</p>
@@ -102,20 +88,20 @@
                     <td style="width: 48%; padding-left: 2%; vertical-align: top;">
                         <div class="info-box">
                             <div class="info-title">Detail Pengiriman</div>
-                            @php
-                                $kurir = explode('-', $order->shipping_method);
-                                $namaKurir = $isDigitalOrder ? 'PRODUK DIGITAL / E-TICKET' : strtoupper(($kurir[1] ?? 'KURIR') . ' - ' . ($kurir[2] ?? ''));
-                            @endphp
-                            <p style="margin: 0 0 3px 0;">Kurir: <strong>{{ $namaKurir }}</strong></p>
-
-                            @if(in_array(strtolower($order->status), ['paid', 'processing', 'shipped', 'completed']))
-                                @if($isDigitalOrder)
-                                    <p style="margin: 0; color: #e74c3c;"><strong>Akses: Lihat QR Code di tabel produk.</strong></p>
-                                @else
-                                    <p style="margin: 0;">No. Resi: <strong>{{ !empty($order->shipping_reference) && $order->shipping_reference !== '-' ? $order->shipping_reference : 'Menunggu Update Penjual' }}</strong></p>
-                                @endif
+                            @if($isPureDigitalShipping)
+                                <p style="margin: 0 0 3px 0;">Sistem: <strong>Pengiriman Otomatis (E-Ticket)</strong></p>
                             @else
-                                <p style="margin: 0; color: #7f8c8d; font-style: italic;">Akses/Resi muncul setelah lunas</p>
+                                @php
+                                    $kurir = explode('-', $order->shipping_method);
+                                    $namaKurir = strtoupper(($kurir[1] ?? 'KURIR') . ' - ' . ($kurir[2] ?? ''));
+                                @endphp
+                                <p style="margin: 0 0 3px 0;">Kurir: <strong>{{ $namaKurir }}</strong></p>
+                                
+                                @if(in_array(strtolower($order->status), ['paid', 'processing', 'shipped', 'completed']))
+                                    <p style="margin: 0;">No. Resi: <strong>{{ !empty($order->shipping_reference) && $order->shipping_reference !== '-' && $order->shipping_reference !== 'Menunggu Penjual' ? $order->shipping_reference : 'Menunggu Update Kurir' }}</strong></p>
+                                @else
+                                    <p style="margin: 0; color: #7f8c8d; font-style: italic;">Resi muncul setelah lunas</p>
+                                @endif
                             @endif
                         </div>
                     </td>
@@ -134,6 +120,10 @@
             </thead>
             <tbody>
                 @foreach($order->items as $item)
+                @php
+                    $katObj = $item->product ? $item->product->category()->first() : null;
+                    $isItemDigital = ($katObj && in_array($katObj->category_group, ['produk_digital', 'jasa'])) || $isPureDigitalShipping;
+                @endphp
                 <tr>
                     <td>
                         <strong style="font-size: 13px;">{{ $item->product->name ?? 'Produk Dihapus' }}</strong>
@@ -141,8 +131,8 @@
                             <br><span style="font-size: 10px; color: #7f8c8d;">Varian: {{ $item->variant->name }}</span>
                         @endif
 
-                        {{-- LOGIKA QR CODE DIGITAL --}}
-                        @if($isDigitalOrder && in_array(strtolower($order->status), ['paid', 'processing', 'completed']))
+                        {{-- LOGIKA QR CODE DIGITAL (Hanya untuk item berjenis digital) --}}
+                        @if($isItemDigital && in_array(strtolower($order->status), ['paid', 'processing', 'completed', 'shipped']))
                             @php
                                 $qrDataContent = null;
                                 if ($item->product) {
@@ -150,20 +140,14 @@
                                         $qrDataContent = $item->product->digital_url;
                                     } elseif (!empty($item->product->digital_file_path)) {
                                         $qrDataContent = asset('public/storage/' . $item->product->digital_file_path);
-                                    } elseif (!empty($item->product->digital_sn_list)) {
-                                        $qrDataContent = $item->product->digital_sn_list; 
+                                    } elseif (!empty($order->shipping_reference) && $order->shipping_reference !== 'Menunggu Penjual' && $isPureDigitalShipping) {
+                                        $qrDataContent = $order->shipping_reference;
                                     }
-                                }
-                                
-                                // Fallback jika tidak ada di tabel produk
-                                if (!$qrDataContent && !empty($order->shipping_reference) && $order->shipping_reference !== 'Menunggu Penjual') {
-                                    $qrDataContent = $order->shipping_reference;
                                 }
 
                                 $qrSrcItem = '';
                                 if ($qrDataContent && $qrDataContent !== 'Menunggu Penjual') {
                                     try {
-                                        // Panggil API QR Code
                                         $qrUrlItem = "https://api.qrserver.com/v1/create-qr-code/?size=90x90&margin=1&data=" . urlencode($qrDataContent);
                                         $qrDataItem = base64_encode(file_get_contents($qrUrlItem));
                                         $qrSrcItem = 'data:image/png;base64,' . $qrDataItem;
@@ -173,7 +157,7 @@
                             
                             @if($qrSrcItem)
                                 <div style="margin-top: 10px;">
-                                    <div style="font-size: 9px; font-weight: bold; color: #e74c3c; margin-bottom: 3px;">SCAN PRODUK DISINI:</div>
+                                    <div style="font-size: 9px; font-weight: bold; color: #27ae60; margin-bottom: 3px;">SCAN AKSES PRODUK INI:</div>
                                     <img src="{{ $qrSrcItem }}" style="width: 65px; height: 65px; border: 1px solid #ccc; padding: 3px; border-radius: 4px;">
                                 </div>
                             @endif
@@ -193,10 +177,12 @@
                     <td>Subtotal</td>
                     <td class="right">Rp {{ number_format($order->subtotal, 0, ',', '.') }}</td>
                 </tr>
+                @if($order->shipping_cost > 0)
                 <tr>
                     <td>Ongkos Kirim</td>
                     <td class="right">Rp {{ number_format($order->shipping_cost, 0, ',', '.') }}</td>
                 </tr>
+                @endif
                 @if($order->cod_fee > 0)
                 <tr>
                     <td>Biaya Layanan COD</td>
