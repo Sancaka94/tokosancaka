@@ -40,7 +40,8 @@
 </div>
 
 {{-- CONTAINER TOMBOL SCROLL Cepat (UP & DOWN) --}}
-<div class="fixed bottom-8 right-8 flex flex-col space-y-3 z-50">
+{{-- PERBAIKAN: Posisi diubah dari right-8 ke right-24 agar tidak tertutup tab samping, dan z-index dinaikkan --}}
+<div class="fixed bottom-10 right-24 flex flex-col space-y-3 z-[9999]">
     <button id="scrollTopBtn" class="hidden bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition duration-200 focus:outline-none" title="Scroll ke Atas">
         <i class="fas fa-arrow-up text-xl"></i>
     </button>
@@ -53,10 +54,8 @@
 
 @push('scripts')
 <script>
-// Global array untuk menyimpan data log yang sudah diparsing
 let parsedLogs = [];
 
-// Konfigurasi Toast Alert Otomatis OK di Pojok Kanan Atas
 const Toast = Swal.mixin({
     toast: true,
     position: 'top-end',
@@ -75,49 +74,39 @@ document.addEventListener('DOMContentLoaded', function() {
     const selectAllCheckbox = document.getElementById('selectAll');
     const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
     
-    // Regex untuk mendeteksi waktu log: [YYYY-MM-DD HH:mm:ss]
     const logPattern = /\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\] ([\s\S]*?)(?=\n\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\]|$)/g;
     
     let match;
     let index = 0;
-    
-    // Objek sementara untuk mengelompokkan (Grouping)
     let tempGroups = {};
 
-    // Proses Parsing Text -> Grouping Object (Per 5 Menit)
     while ((match = logPattern.exec(rawText)) !== null) {
-        let fullTimeStr = match[1]; // "2026-06-27 12:57:33"
-        let fullText = match[0];    // Seluruh teks mentah dari satu log (termasuk tag waktu)
+        let fullTimeStr = match[1]; 
+        let fullText = match[0];    
         
-        // Memecah waktu untuk mengambil Jam dan Menit
         let timeParts = fullTimeStr.split(':'); 
-        let hourStr = timeParts[0];          // "2026-06-27 12"
-        let minute = parseInt(timeParts[1]); // 57
+        let hourStr = timeParts[0];          
+        let minute = parseInt(timeParts[1]); 
         
-        // Menghitung interval 5 menit (contoh: 57 -> 55, 13 -> 10, 04 -> 00)
         let bucketMin = Math.floor(minute / 5) * 5;
         let bucketMinStr = bucketMin.toString().padStart(2, '0');
-        let bucketEndMinStr = (bucketMin + 4).toString().padStart(2, '0'); // Akhir interval (+4 menit)
+        let bucketEndMinStr = (bucketMin + 4).toString().padStart(2, '0'); 
         
-        // Label Judul Card (Contoh: "2026-06-27 12:55 - 12:59")
         let groupKey = `${hourStr}:${bucketMinStr} - ${hourStr}:${bucketEndMinStr}`;
         
-        // Buat Grup baru jika belum ada
         if (!tempGroups[groupKey]) {
             tempGroups[groupKey] = {
                 id: index++,
                 timeLabel: groupKey,
                 content: '',
-                full_texts: [] // Array untuk menampung teks mentah agar hapus permanen tetap akurat
+                full_texts: [] 
             };
         }
         
-        // Masukkan log ke dalam grup tersebut
-        tempGroups[groupKey].content += fullText + "\n"; // Tambah ke tampilan visual
-        tempGroups[groupKey].full_texts.push(fullText);  // Tambah ke array sistem hapus
+        tempGroups[groupKey].content += fullText + "\n"; 
+        tempGroups[groupKey].full_texts.push(fullText);  
     }
 
-    // Ubah Objek kembali menjadi Array agar bisa di-looping
     parsedLogs = Object.values(tempGroups);
 
     if(parsedLogs.length > 0) {
@@ -127,11 +116,9 @@ document.addEventListener('DOMContentLoaded', function() {
         container.innerHTML = `<div class="bg-gray-800 border border-gray-700 p-4 rounded-lg text-center text-gray-400">Log kosong atau tidak ada format waktu yang terdeteksi.</div>`;
     }
 
-    // Fungsi Render HTML Card
     function renderCards() {
         container.innerHTML = '';
         
-        // Render dari index terakhir agar yang terbaru di atas (opsional, karena file log biasanya sudah urut)
         parsedLogs.forEach(log => {
             const card = document.createElement('div');
             card.className = "bg-gray-800 border border-gray-700 rounded-lg shadow-sm transition hover:border-gray-500 log-card-item";
@@ -154,12 +141,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
                 
-                {{-- Area Konten Log dengan fitur Read More --}}
                 <div id="log-content-${log.id}" class="p-3 overflow-hidden text-green-300 max-h-32 transition-all duration-300 relative" style="font-family: monospace; font-size: 13px;">
                     <pre class="whitespace-pre-wrap break-words">${log.content}</pre>
                 </div>
                 
-                {{-- Tombol Read More (Disembunyikan via JS jika teks pendek) --}}
                 <div id="btn-container-${log.id}" class="px-3 pb-2 pt-1 bg-gray-900 rounded-b-lg border-t border-gray-700 text-center">
                     <button onclick="toggleReadMore(${log.id})" id="btn-readmore-${log.id}" class="text-xs text-blue-400 hover:text-blue-300 font-semibold focus:outline-none">
                         <i class="fas fa-chevron-down mr-1"></i> Tampilkan Lebih Banyak
@@ -171,9 +156,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         attachCheckboxListeners();
         checkAndHideReadMoreButtons();
+        
+        // PERBAIKAN: Paksa pengecekan posisi scroll setelah card dimuat
+        setTimeout(checkScrollPosition, 200);
     }
 
-    // Fungsi menyembunyikan tombol Read More jika log-nya pendek
     function checkAndHideReadMoreButtons() {
         setTimeout(() => {
             parsedLogs.forEach(log => {
@@ -186,7 +173,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 100);
     }
 
-    // Logic Checkbox & Select All
     function attachCheckboxListeners() {
         const checkboxes = document.querySelectorAll('.log-checkbox');
         
@@ -223,13 +209,18 @@ const scrollTopBtn = document.getElementById('scrollTopBtn');
 const scrollBottomBtn = document.getElementById('scrollBottomBtn');
 
 function checkScrollPosition() {
-    if (window.scrollY > 300) {
+    // Gunakan window.scrollY atau fallback ke penampung scroll dokumen
+    const currentScroll = window.scrollY || document.documentElement.scrollTop;
+    const documentHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+    const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+
+    if (currentScroll > 300) {
         scrollTopBtn.classList.remove('hidden');
     } else {
         scrollTopBtn.classList.add('hidden');
     }
 
-    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100) {
+    if ((windowHeight + currentScroll) >= documentHeight - 100) {
         scrollBottomBtn.classList.add('hidden');
     } else {
         scrollBottomBtn.classList.remove('hidden');
@@ -237,14 +228,15 @@ function checkScrollPosition() {
 }
 
 window.addEventListener('scroll', checkScrollPosition);
-window.addEventListener('load', checkScrollPosition);
+window.addEventListener('resize', checkScrollPosition);
 
 scrollTopBtn.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'instant' }); 
+    window.scrollTo({ top: 0, behavior: 'smooth' }); 
 });
 
 scrollBottomBtn.addEventListener('click', () => {
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }); 
+    const documentHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+    window.scrollTo({ top: documentHeight, behavior: 'smooth' }); 
 });
 
 window.toggleReadMore = function(id) {
@@ -260,17 +252,18 @@ window.toggleReadMore = function(id) {
         contentDiv.classList.add('max-h-32');
         btn.innerHTML = '<i class="fas fa-chevron-down mr-1"></i> Tampilkan Lebih Banyak';
     }
+    
+    // Cek ulang scrollbar karena tinggi dokumen berubah setelah Read More diklik
+    setTimeout(checkScrollPosition, 300);
 }
 
 // ==========================================
 // ACTION FUNCTIONS (COPY, DELETE, BULK, ALL)
 // ==========================================
 
-// 1. Copy Log Grup
 window.copyLog = function(id) {
     const log = parsedLogs.find(l => l.id === id);
     if(log) {
-        // Menggabungkan kembali array teks mentah menjadi string utuh
         navigator.clipboard.writeText(log.full_texts.join('\n')).then(() => {
             Toast.fire({ icon: 'success', title: 'Grup log disalin!' });
         }).catch(err => {
@@ -279,7 +272,6 @@ window.copyLog = function(id) {
     }
 }
 
-// 2. Fungsi Komunikasi Hapus Fisik ke Controller
 function deletePermanentFromBackend(textsArray) {
     fetch('{{ route('admin.logs.destroy.selected') }}', {
         method: 'POST',
@@ -293,6 +285,7 @@ function deletePermanentFromBackend(textsArray) {
     .then(data => {
         if (data.status === 'success') {
             Toast.fire({ icon: 'success', title: data.message });
+            setTimeout(checkScrollPosition, 100);
         } else {
             Toast.fire({ icon: 'error', title: data.message || 'Gagal menghapus permanen.' });
         }
@@ -303,29 +296,24 @@ function deletePermanentFromBackend(textsArray) {
     });
 }
 
-// 3. Single Delete Grup Permanen
 window.deleteSingleLog = function(id) {
     const log = parsedLogs.find(l => l.id === id);
     if(!log) return;
 
     document.getElementById(`log-card-${id}`).remove();
-    
-    // Kirim seluruh array baris dari grup tersebut ke Controller
     deletePermanentFromBackend(log.full_texts);
 }
 
-// 4. Bulk Delete Grup Permanen
 document.getElementById('bulkDeleteBtn').addEventListener('click', function() {
     const checkedBoxes = document.querySelectorAll('.log-checkbox:checked');
     const selectedIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
     
     let allTextsToDelete = [];
     
-    // Kumpulkan seluruh teks baris dari card grup yang dicentang
     selectedIds.forEach(id => {
         const log = parsedLogs.find(l => l.id === id);
         if(log) {
-            allTextsToDelete.push(...log.full_texts); // Gunakan spread operator untuk menggabungkan array
+            allTextsToDelete.push(...log.full_texts); 
             document.getElementById(`log-card-${id}`).remove();
         }
     });
@@ -336,7 +324,6 @@ document.getElementById('bulkDeleteBtn').addEventListener('click', function() {
     deletePermanentFromBackend(allTextsToDelete);
 });
 
-// 5. Delete All (Clear Logs Bawaan)
 document.getElementById('clearLogsBtn').addEventListener('click', function() {
     fetch('{{ route('admin.logs.clear') }}', {
         method: 'POST',
