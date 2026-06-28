@@ -1736,5 +1736,5 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
 });
 
-Route::post('/admin/settings/api/toggle-debug', [ApiSettingsController::class, 'toggleAppDebug'])
-    ->name('admin.settings.api.toggleDebug');
+// Route::post('/admin/settings/api/toggle-debug', [ApiSettingsController::class, 'toggleAppDebug'])
+    //->name('admin.settings.api.toggleDebug');
