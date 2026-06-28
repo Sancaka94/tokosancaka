@@ -866,8 +866,8 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::resource('reviews', AdminReviewController::class);
     Route::post('reviews/{review}/reply', [AdminReviewController::class, 'reply'])->name('reviews.reply');
 
-    Route::get('/logs', [AdminLogController::class, 'showLogs'])->name('logs.show');
-    Route::post('/logs/clear', [AdminLogController::class, 'clearLogs'])->name('logs.clear');
+    //Route::get('/logs', [AdminLogController::class, 'showLogs'])->name('logs.show');
+    //Route::post('/logs/clear', [AdminLogController::class, 'clearLogs'])->name('logs.clear');
 
     // 1. Route Export (Wajib ditaruh DI ATAS resource)
     Route::get('keuangan/laba-rugi', [App\Http\Controllers\Admin\LabaRugiController::class, 'index'])->name('keuangan.laba_rugi');
@@ -1720,4 +1720,18 @@ Route::get('/ipaymu', function () {
     }
     // Tampilkan hasil mentah ke layar browser
     return response($res)->header('Content-Type', 'application/json');
+});
+
+// Pastikan ini berada di dalam group route Admin Anda
+Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
+    
+    // (Route untuk menampilkan halaman log Anda saat ini)
+    Route::get('/logs', [AdminLogController::class, 'showLogs'])->name('logs.viewer');
+
+    // Route untuk Hapus Semua Log (Clear All)
+    Route::post('/logs/clear', [AdminLogController::class, 'clearLogs'])->name('logs.clear');
+
+    // Route untuk Hapus Spesifik/Bulk (Hapus Permanen)
+    Route::post('/logs/destroy-selected', [AdminLogController::class, 'destroySelected'])->name('logs.destroy.selected');
+    
 });
