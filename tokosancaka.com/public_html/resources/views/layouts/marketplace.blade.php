@@ -20,10 +20,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+
     <!-- AlpineJS for mobile menu interactivity -->
     <script src="https://cdn.jsdelivr.net/gh/alpinejs/alpine@v2.x.x/dist/alpine.min.js" defer></script>
-
 
     <!-- Custom Styles -->
     <style>
@@ -42,8 +41,8 @@
         <div class="container mx-auto px-4">
             <div class="flex justify-between items-center h-20">
                 <!-- Logo -->
-                <a href="{{ url('/etalase') }}" class="flex-shrink-0">
-                    <img src="{{ asset('public/storage/' . $weblogo) }}" alt="SANCAKA STORE" class="h-12">
+                <a href="{{ url('/etalase') }}" class="flex-shrink-0 pr-2">
+                    <img src="{{ asset('public/storage/' . $weblogo) }}" alt="SANCAKA STORE" class="h-10 md:h-12 w-auto max-w-[140px] md:max-w-[200px] object-contain">
                 </a>
 
                 <!-- Search Bar (Desktop) - Desain Baru -->
@@ -64,19 +63,16 @@
                             <span class="absolute top-0 right-0 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">{{ count((array) session('cart')) }}</span>
                         @endif
                     </a>
-                    
-                    {{-- ✅ PERBAIKAN: Logika dinamis untuk tombol otentikasi --}}
+
+                    {{-- Logika dinamis untuk tombol otentikasi --}}
                     @auth
-                        {{-- Jika pengguna sudah login --}}
                         @if (Auth::user()->role === 'Admin')
-                            {{-- Jika yang login adalah Admin --}}
                             <a href="{{ route('admin.dashboard') }}" class="px-5 py-2 text-sm font-semibold text-gray-700 border border-gray-300 rounded-full hover:bg-gray-100 transition-colors">Dashboard</a>
                             <form action="{{ route('admin.logout') }}" method="POST">
                                 @csrf
                                 <button type="submit" class="px-5 py-2 text-sm font-semibold text-white bg-gray-700 rounded-full hover:bg-gray-800 transition-colors">LOGOUT</button>
                             </form>
                         @else
-                            {{-- Jika yang login adalah Pelanggan --}}
                             <a href="{{ route('customer.dashboard') }}" class="px-5 py-2 text-sm font-semibold text-gray-700 border border-gray-300 rounded-full hover:bg-gray-100 transition-colors">Dashboard</a>
                             <form action="{{ route('logout') }}" method="POST">
                                 @csrf
@@ -84,30 +80,46 @@
                             </form>
                         @endif
                     @else
-                        {{-- Jika pengguna adalah tamu (belum login) --}}
                         <a href="{{ route('login') }}" class="px-5 py-2 text-sm font-semibold text-red-500 border border-red-500 rounded-full hover:bg-red-50 transition-colors">LOGIN</a>
                         <a href="{{ route('register') }}" class="px-5 py-2 text-sm font-semibold text-white bg-red-500 rounded-full hover:bg-red-600 transition-colors">DAFTAR</a>
                     @endauth
                 </div>
 
-                <!-- Mobile Menu Button -->
-                <button @click="mobileMenuOpen = !mobileMenuOpen" class="md:hidden text-gray-600 hover:text-red-500">
-                    <i class="fas fa-bars text-2xl"></i>
-                </button>
+                <!-- ========================================== -->
+                <!-- PERBAIKAN: MOBILE MENU & KERANJANG DI HP   -->
+                <!-- ========================================== -->
+                <div class="flex items-center space-x-3 md:hidden flex-shrink-0">
+                    <!-- Keranjang Belanja Mobile -->
+                    <a href="{{ route('cart.index') }}" class="relative text-gray-600 hover:text-red-500 p-1.5 flex items-center justify-center">
+                        <i class="fas fa-shopping-cart text-[22px]"></i>
+                        @if(session('cart') && count(session('cart')) > 0)
+                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white">
+                                {{ count((array) session('cart')) }}
+                            </span>
+                        @endif
+                    </a>
+
+                    <!-- Tombol Burger Mobile -->
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-gray-600 hover:text-red-500 p-1.5 focus:outline-none flex items-center justify-center">
+                        <i class="fas fa-bars text-[24px]"></i>
+                    </button>
+                </div>
+                <!-- ========================================== -->
+
             </div>
         </div>
 
-        <!-- Mobile Menu -->
-        <div x-show="mobileMenuOpen" @click.away="mobileMenuOpen = false" class="md:hidden bg-white border-t border-gray-200" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0">
+        <!-- Mobile Menu Dropdown -->
+        <div x-show="mobileMenuOpen" @click.away="mobileMenuOpen = false" class="md:hidden bg-white border-t border-gray-200" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" style="display: none;">
             <div class="p-4 space-y-4">
-                <!-- Mobile Search - Desain Baru -->
+                <!-- Mobile Search -->
                 <form action="{{ route('etalase.index') }}" method="GET" class="w-full flex border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-red-400">
                     <input type="search" name="search" placeholder="Cari produk..." class="w-full py-2.5 px-5 text-sm border-none focus:outline-none focus:ring-0">
-                    <button type="submit" class="px-6 py-2 bg-red-500 text-white hover:bg-red-600 transition-colors">
+                    <button type="submit" class="px-6 py-2 bg-red-500 text-white hover:bg-red-600 transition-colors flex-shrink-0">
                         <i class="fas fa-search"></i>
                     </button>
                 </form>
-                
+
                 <!-- Mobile Links -->
                 @auth
                     @if (Auth::user()->role === 'Admin')
@@ -182,33 +194,6 @@
     <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    {{-- SweetAlert untuk Notifikasi --}}
-    {{-- @if(session('success'))
-    <script>
-        Swal.fire({
-            title: 'Berhasil!',
-            text: "{{ session('success') }}",
-            imageUrl: "{{ asset('public/assets/logo.jpg') }}", 
-            imageWidth: 80,
-            imageHeight: 80,
-            confirmButtonColor: '#16a34a',
-        });
-    </script>
-    @endif
-
-    @if(session('error'))
-    <script>
-        Swal.fire({
-            title: 'Gagal!',
-            text: "{{ session('error') }}",
-            imageUrl: "{{ asset('public/assets/logo.jpg') }}", 
-            imageWidth: 80,
-            imageHeight: 80,
-            confirmButtonColor: '#dc2626',
-        });
-    </script>
-    @endif --}}
-    
     <script>
         // Inisialisasi AOS
         AOS.init({
@@ -266,4 +251,3 @@
 
 </body>
 </html>
-
