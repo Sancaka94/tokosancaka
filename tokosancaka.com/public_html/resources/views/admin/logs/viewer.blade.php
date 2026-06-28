@@ -44,7 +44,7 @@
     <button id="scrollTopBtn" class="hidden bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition duration-200 focus:outline-none" title="Scroll ke Atas">
         <i class="fas fa-arrow-up text-xl"></i>
     </button>
-    <button id="scrollBottomBtn" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition duration-200 focus:outline-none" title="Scroll ke Bawah">
+    <button id="scrollBottomBtn" class="hidden bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition duration-200 focus:outline-none" title="Scroll ke Bawah">
         <i class="fas fa-arrow-down text-xl"></i>
     </button>
 </div>
@@ -209,13 +209,24 @@ function checkScrollPosition() {
     const documentHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
     const windowHeight = window.innerHeight || document.documentElement.clientHeight;
 
+    // JIKA HALAMAN PENDEK DAN TIDAK BISA DI-SCROLL
+    // Tambahkan toleransi sedikit (misal 10px) untuk mencegah bug ukuran browser
+    if (documentHeight <= windowHeight + 10) {
+        scrollTopBtn.classList.add('hidden');
+        scrollBottomBtn.classList.add('hidden');
+        return; // Hentikan fungsi di sini
+    }
+
+    // LOGIKA TOMBOL KE ATAS
     if (currentScroll > 300) {
         scrollTopBtn.classList.remove('hidden');
     } else {
         scrollTopBtn.classList.add('hidden');
     }
 
-    if ((windowHeight + currentScroll) >= documentHeight - 100) {
+    // LOGIKA TOMBOL KE BAWAH
+    // Mengurangi toleransi dari 100px menjadi 50px agar lebih presisi
+    if ((windowHeight + currentScroll) >= documentHeight - 50) {
         scrollBottomBtn.classList.add('hidden');
     } else {
         scrollBottomBtn.classList.remove('hidden');
