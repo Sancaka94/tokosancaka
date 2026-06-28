@@ -217,34 +217,20 @@ class DokuWebhookController extends Controller
                 }
 
                 // =================================================================
-                // A.3 LOGIKA UNTUK PESANAN UMUM (SCK-) -> TOKO UTAMA, EKSPEDISI & MARKETPLACE
+                // A.3 LOGIKA UNTUK PESANAN UMUM (SCK-) -> SMART HYBRID SEARCH & DIGITAL EMAIL
                 // =================================================================
                 else if (Str::startsWith($orderId, 'SCK-')) {
                     Log::info("🛍️ LOG TRX (SCK-): Webhook DOKU Masuk untuk Order: $orderId");
 
-                    // 1. CEK DI DATABASE EKSPEDISI (MAIN DB - Tabel Pesanan)
-                    $pesananEkspedisi = \App\Models\Pesanan::where('nomor_invoice', $orderId)->first();
+                    // 1. CARI DI DATABASE KEDUA (MARKETPLACE / TENANT - mysql_second) DULU
+                    $percetakanDB = DB::connection('mysql_second');
+                    $orderMarketplace = $percetakanDB->table('orders')->where('order_number', $orderId)->first();
 
-                    // 2. CEK DI DATABASE TOKO UTAMA (MAIN DB - Tabel Orders)
-                    $pesananTokoUtama = \App\Models\Order::where('invoice_number', $orderId)->first();
-
-                    if ($pesananEkspedisi) {
-                        Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Sancaka Express/Mobile.");
-                        return App::make(\App\Http\Controllers\Admin\PesananController::class)->handleDokuCallback($data);
-                    }
-                    else if ($pesananTokoUtama) {
-                        Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Toko Utama (Checkout Sancaka).");
-                        // Arahkan ke CheckoutController agar status di database utama (tokq3391_db) terupdate
-                        return App::make(\App\Http\Controllers\CheckoutController::class)->handleDokuCallback($data);
-                    }
-                    // 3. JIKA TIDAK DITEMUKAN DI KEDUANYA, BERARTI INI PESANAN MARKETPLACE (DB SECOND)
-                    else {
+                    if ($orderMarketplace) {
                         Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Marketplace (mysql_second).");
-                        try {
-                            $percetakanDB = DB::connection('mysql_second');
-                            $orderMarketplace = $percetakanDB->table('orders')->where('order_number', $orderId)->first();
 
-                            if ($orderMarketplace && $orderMarketplace->payment_status !== 'paid') {
+                        try {
+                            if ($orderMarketplace->payment_status !== 'paid') {
                                 $updateData = [
                                     'payment_status' => 'paid',
                                     'status'         => 'processing',
@@ -282,7 +268,7 @@ class DokuWebhookController extends Controller
                                                 'packages'     => [[
                                                     'order_id'                 => $orderId,
                                                     'item_name'                => 'Produk Marketplace',
-                                                    'package_type_id'          => 1, // Umum
+                                                    'package_type_id'          => 1,
                                                     'destination_name'         => $orderMarketplace->customer_name,
                                                     'destination_phone'        => $orderMarketplace->customer_phone,
                                                     'destination_address'      => $orderMarketplace->destination_address,
@@ -315,7 +301,7 @@ class DokuWebhookController extends Controller
                                             }
                                         }
                                     } else {
-                                        Log::error("❌ GAGAL NEMBAK KA: Kolom shipping_ref kosong atau bukan JSON. Pastikan proses Checkout sudah menyimpan JSON.", ['shipping_ref' => $orderMarketplace->shipping_ref]);
+                                        Log::error("❌ GAGAL NEMBAK KA: Kolom shipping_ref kosong atau bukan JSON.", ['shipping_ref' => $orderMarketplace->shipping_ref]);
                                     }
                                 } else {
                                     $tenantOwner = $percetakanDB->table('users')->where('tenant_id', $orderMarketplace->tenant_id)->first();
@@ -325,10 +311,120 @@ class DokuWebhookController extends Controller
                                 }
 
                                 $percetakanDB->table('orders')->where('id', $orderMarketplace->id)->update($updateData);
-                                Log::info("✅ Selesai memproses Webhook untuk $orderId");
+                                Log::info("✅ Status order $orderId di mysql_second diupdate jadi paid & processing.");
+
+                                // ==========================================================
+                                // 🔥 TAMBAHAN EMAIL DIGITAL PRODUK UNTUK MARKETPLACE (mysql_second)
+                                // ==========================================================
+                                try {
+                                    $customerEmail = $orderMarketplace->customer_email ?? null;
+                                    $customerName = $orderMarketplace->customer_name ?? 'Pelanggan';
+                                    $totalAmount = $orderMarketplace->total_price ?? 0;
+
+                                    if (!empty($customerEmail)) {
+                                        // Cari data item via Query Builder dengan Join ke tabel products
+                                        $orderItems = $percetakanDB->table('order_items')
+                                            ->leftJoin('products', 'order_items.product_id', '=', 'products.id')
+                                            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                                            ->select('order_items.*', 'products.name as product_name', 'products.is_digital', 'products.digital_url', 'products.digital_file_path', 'products.image', 'categories.category_group')
+                                            ->where('order_items.order_id', $orderMarketplace->id)
+                                            ->get();
+
+                                        $rincianDigitalHtml = "";
+                                        $adaProdukDigital = false;
+
+                                        foreach ($orderItems as $item) {
+                                            $isItemDigital = ($item->is_digital == 1) ||
+                                                             in_array(strtolower($item->category_group ?? ''), ['produk_digital', 'jasa']) ||
+                                                             str_contains(strtolower($item->type ?? ''), 'digital');
+
+                                            if ($isItemDigital) {
+                                                $adaProdukDigital = true;
+                                                $aksesLink = "";
+
+                                                if (!empty($item->digital_url)) {
+                                                    $aksesLink = $item->digital_url;
+                                                } elseif (!empty($item->digital_file_path)) {
+                                                    $aksesLink = asset('public/storage/' . $item->digital_file_path);
+                                                } elseif (!empty($item->image)) {
+                                                    $aksesLink = asset('public/storage/' . $item->image);
+                                                }
+
+                                                if (!empty($aksesLink)) {
+                                                    $rincianDigitalHtml .= "<li style='margin-bottom: 15px;'>
+                                                        <strong style='font-size: 16px;'>{$item->product_name}</strong> (x{$item->quantity})<br>
+                                                        <a href='{$aksesLink}' target='_blank' style='display: inline-block; margin-top: 5px; padding: 8px 15px; background-color: #4f46e5; color: #ffffff; text-decoration: none; border-radius: 4px; font-size: 14px;'>📥 Unduh / Akses Produk</a>
+                                                    </li>";
+                                                } else {
+                                                    $rincianDigitalHtml .= "<li style='margin-bottom: 15px;'>
+                                                        <strong style='font-size: 16px;'>{$item->product_name}</strong> (x{$item->quantity})<br>
+                                                        <i style='color: #6b7280; font-size: 14px;'>Akses file/link sedang disiapkan oleh penjual. Anda akan dihubungi lebih lanjut.</i>
+                                                    </li>";
+                                                }
+                                            }
+                                        }
+
+                                        // Eksekusi Pengiriman Email
+                                        if ($adaProdukDigital && !empty($rincianDigitalHtml)) {
+                                            $emailData = [
+                                                'to' => $customerEmail,
+                                                'subject' => 'Akses Produk Digital Anda (LUNAS): ' . $orderId,
+                                                'body' => "
+                                                    <div style='font-family: Helvetica, Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto;'>
+                                                        <h2 style='color: #4f46e5; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;'>Pembayaran Berhasil! 🎉</h2>
+                                                        <p>Halo <b>{$customerName}</b>,</p>
+                                                        <p>Terima kasih! Pembayaran untuk pesanan <b>{$orderId}</b> senilai <b>Rp " . number_format($totalAmount, 0, ',', '.') . "</b> telah berhasil dikonfirmasi.</p>
+                                                        <p>Berikut adalah akses eksklusif ke produk digital yang Anda beli:</p>
+                                                        <ul style='background-color: #f9fafb; padding: 20px 20px 20px 40px; border-radius: 6px; border-left: 5px solid #4f46e5; list-style-type: none;'>
+                                                            {$rincianDigitalHtml}
+                                                        </ul>
+                                                        <p style='margin-top: 20px; font-size: 13px; color: #6b7280;'>Simpan email ini sebagai bukti transaksi. Jika Anda mengalami kendala saat mengakses file atau URL di atas, silakan hubungi penjual terkait.</p>
+                                                        <p>Salam hangat,<br><b>Tim Sancaka Marketplace</b></p>
+                                                    </div>
+                                                "
+                                            ];
+
+                                            $emailController = app(\App\Http\Controllers\Admin\EmailController::class);
+                                            $emailRequest = new \Illuminate\Http\Request();
+                                            $emailRequest->replace($emailData);
+                                            $emailController->send($emailRequest);
+
+                                            Log::info("✅ Email link/file produk digital terkirim ke: " . $customerEmail);
+                                        } else {
+                                            // Fallback Email Reguler jika barangnya fisik
+                                            $checkoutController = app(\App\Http\Controllers\CheckoutController::class);
+                                            if (method_exists($checkoutController, 'sendTransactionSuccessEmail')) {
+                                                $checkoutController->sendTransactionSuccessEmail($customerEmail, $customerName, $orderId, 'Pesanan Marketplace Sancaka', $totalAmount);
+                                                Log::info("✅ Email resi fisik terkirim ke: " . $customerEmail);
+                                            }
+                                        }
+                                    }
+                                } catch (\Exception $e) {
+                                    Log::error("❌ Gagal kirim email lunas produk digital: " . $e->getMessage());
+                                }
+                                // ==========================================================
+                            } else {
+                                Log::info("⚠️ Order $orderId sudah berstatus paid sebelumnya.");
                             }
                         } catch (\Exception $e) {
                             Log::error("❌ CRITICAL ERROR WEBHOOK MARKETPLACE:", ['msg' => $e->getMessage()]);
+                        }
+                    }
+                    // 2. JIKA TIDAK ADA DI MARKETPLACE, BARU CARI DI MAIN DB (TOKO UTAMA / EKSPEDISI)
+                    else {
+                        $pesananTokoUtama = \App\Models\Order::where('invoice_number', $orderId)->first();
+                        $pesananEkspedisi = \App\Models\Pesanan::where('nomor_invoice', $orderId)->first();
+
+                        if ($pesananTokoUtama) {
+                            Log::info("➡️ Order $orderId terdeteksi di Toko Utama (mysql). Lempar ke CheckoutController.");
+                            return App::make(\App\Http\Controllers\CheckoutController::class)->handleDokuCallback($data);
+                        }
+                        else if ($pesananEkspedisi) {
+                            Log::info("➡️ Order $orderId terdeteksi di Ekspedisi/Mobile (mysql). Lempar ke PesananController.");
+                            return App::make(\App\Http\Controllers\Admin\PesananController::class)->handleDokuCallback($data);
+                        }
+                        else {
+                            Log::error("❌ WEBHOOK GAGAL: Order $orderId tidak ditemukan di mysql_second maupun mysql!");
                         }
                     }
                 }
