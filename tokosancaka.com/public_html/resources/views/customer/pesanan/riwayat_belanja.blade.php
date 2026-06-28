@@ -132,7 +132,6 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                                 
                                 @php 
                                     $shippingMethodLow = strtolower($order->shipping_method ?? '');
-                                    // Tambahkan 'jasa' agar deteksi E-Ticket / Digital merata
                                     $isDigital = str_contains($shippingMethodLow, 'digital') || str_contains($shippingMethodLow, 'eticket') || str_contains($shippingMethodLow, 'jasa');
                                     $resiOrToken = $order->shipping_resi ?? ($order->shipping_reference ?? null);
                                 @endphp
