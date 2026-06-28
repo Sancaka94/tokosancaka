@@ -1921,12 +1921,10 @@ class CheckoutController extends Controller
                     $destDistId   = $order->receiver_district_id;
                     $destSubId    = $order->receiver_subdistrict_id;
 
-                    if (!$destDistId || !$destSubId) {
-                        Log::error("Wilayah tujuan kosong! Tidak bisa booking KiriminAja.");
-                        goto skip_kiriminaja;
-                    }
+                    $packagesPayload = [];
+                    $totalWeight = 0;
 
-                        foreach($order->items as $item) {
+                    foreach($order->items as $item) {
                         // 1. Cek apakah ini produk digital / E-ticket
                         $katObj = $item->product ? $item->product->category()->first() : null;
                         $catGroup = $katObj ? strtolower($katObj->category_group ?? '') : '';
@@ -1936,7 +1934,7 @@ class CheckoutController extends Controller
                                         str_contains(strtolower($item->type ?? ''), 'digital');
 
                         if ($isItemDigital) {
-                            // Amankan link download ke tabel order_items (opsional)
+                            // Amankan link download
                             $digitalAccess = $item->product->digital_url ??
                                             ($item->product->digital_file_path ? asset('public/storage/' . $item->product->digital_file_path) : null);
                             $item->download_link = $digitalAccess;
@@ -1945,7 +1943,7 @@ class CheckoutController extends Controller
                             continue; // LOMPATI BARANG INI AGAR TIDAK DIKIRIM KE KIRIMINAJA
                         }
 
-                        // 2. Jika bukan digital, masukkan ke payload fisik KiriminAja
+                        // 2. Masukkan ke payload fisik KiriminAja
                         $w = $item->product->weight ?? 1000;
                         $jenisBarang = $item->product->jenis_barang ?? 1;
                         $totalWeight += ($w * $item->quantity);
@@ -1958,9 +1956,7 @@ class CheckoutController extends Controller
                             'destination_kecamatan_id' => $destDistId,
                             'destination_kelurahan_id' => $destSubId,
                             'weight'                   => $w * $item->quantity,
-                            'width'                    => 10,
-                            'height'                   => 10,
-                            'length'                   => 10,
+                            'width'                    => 10, 'height' => 10, 'length' => 10,
                             'item_value'               => $item->price * $item->quantity,
                             'item_name'                => $item->product->name,
                             'service'                  => $courier,
@@ -1972,8 +1968,14 @@ class CheckoutController extends Controller
                         ];
                     }
 
-                    // 3. PENCEGAHAN CRASH: Jika ternyata keranjang ISINYA DIGITAL SEMUA (Array Fisik Kosong)
+                    // 3. PENCEGAHAN CRASH JIKA ISINYA DIGITAL SEMUA
                     if (empty($packagesPayload)) {
+                        goto skip_kiriminaja;
+                    }
+
+                    // 4. CEK WILAYAH HANYA JIKA ADA BARANG FISIK
+                    if (!$destDistId || !$destSubId) {
+                        Log::error("Wilayah tujuan kosong! Tidak bisa booking KiriminAja.");
                         goto skip_kiriminaja;
                     }
 

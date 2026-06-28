@@ -123,14 +123,30 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                                             <h5 class="text-sm font-bold text-gray-900 line-clamp-2">{{ $item->product?->name ?? 'Produk Dihapus' }}</h5>
                                             @if($item->variant) <p class="text-xs text-gray-500 mt-1">Varian: {{ $item->variant->sku_code ?? 'Default' }}</p> @endif
                                             <p class="text-xs text-gray-700 font-medium mt-2">{{ $item->quantity }} x Rp {{ number_format($item->price, 0, ',', '.') }}</p>
+
+                                            {{-- 🔥 TOMBOL DOWNLOAD DIGITAL PER ITEM 🔥 --}}
+                                            @php
+                                                $katObj = $item->product ? $item->product->category()->first() : null;
+                                                $catGroup = $katObj ? strtolower($katObj->category_group ?? '') : '';
+                                                $isItemDigital = ($item->product && $item->product->is_digital) || in_array($catGroup, ['produk_digital', 'jasa']);
+                                                $isLunas = in_array(strtolower($order->status), ['paid', 'processing', 'completed', 'shipped', 'lunas', 'sukses']);
+                                                $aksesUrl = $item->download_link ?? ($item->product->digital_url ?? ($item->product->digital_file_path ? asset('public/storage/'.$item->product->digital_file_path) : null));
+                                            @endphp
+
+                                            @if($isItemDigital && $isLunas && $aksesUrl)
+                                                <a href="{{ $aksesUrl }}" target="_blank" class="inline-flex items-center px-3 py-1.5 mt-2 bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold rounded shadow-sm transition">
+                                                    <i class="fas fa-download mr-1.5"></i> Download File
+                                                </a>
+                                            @endif
+
                                         </div>
                                     </div>
                                 @endforeach
                             </div>
 
                            <div class="flex flex-col justify-between border-t md:border-t-0 md:border-l border-gray-100 md:pl-8 pt-4 md:pt-0">
-                                
-                                @php 
+
+                                @php
                                     $shippingMethodLow = strtolower($order->shipping_method ?? '');
                                     $isDigital = str_contains($shippingMethodLow, 'digital') || str_contains($shippingMethodLow, 'eticket') || str_contains($shippingMethodLow, 'jasa');
                                     $resiOrToken = $order->shipping_resi ?? ($order->shipping_reference ?? null);
@@ -140,7 +156,7 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                                     <p class="text-xs text-gray-500 uppercase font-bold mb-2 tracking-wider">
                                         {{ $isDigital ? 'INFORMASI PENGIRIMAN DIGITAL' : 'KURIR PENGIRIMAN' }}
                                     </p>
-                                    
+
                                     <div class="flex items-center gap-3">
                                         @if($isDigital)
                                             <div class="w-12 h-auto bg-blue-50 rounded border border-blue-200 p-2 flex items-center justify-center text-blue-500">
@@ -174,7 +190,7 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                                             $isPaid = in_array(strtolower($status), ['paid', 'processing', 'completed', 'shipped', 'lunas', 'sukses', 'success', 'selesai']);
                                             $assetLink = null;
                                             $assetType = null;
-                                            
+
                                             // 1. Prioritas Pertama: Cari file / url langsung dari tabel Master Produk
                                             if ($isPaid) {
                                                 foreach($order->items as $itm) {
@@ -189,14 +205,14 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                                                     }
                                                 }
                                             }
-                                            
+
                                             // 2. Prioritas Kedua: Jika produk master kosong, cari dari Resi/Token Checkout
                                             if (!$assetLink && !empty($resiOrToken) && $resiOrToken !== 'NULL' && !str_contains(strtolower($resiOrToken), 'menunggu') && !str_starts_with($resiOrToken, 'DIGITAL-')) {
                                                 $assetLink = $resiOrToken;
                                                 $assetType = filter_var($assetLink, FILTER_VALIDATE_URL) ? 'url' : 'text';
                                             }
                                         @endphp
-                                        
+
                                         {{-- Tampilkan Tombol Berdasarkan Tipe Aset yang Ditemukan --}}
                                         @if($assetLink)
                                             @if($assetType === 'url' || $assetType === 'file')
@@ -610,7 +626,7 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
 
         if (btnElement && btnElement.hasAttribute('data-retur')) {
             const dataRetur = JSON.parse(btnElement.getAttribute('data-retur')); // TAMBAHKAN BARIS INI
-            
+
             // JIKA PRODUK DIGITAL, JANGAN TAMPILKAN TOMBOL INPUT RESI RETUR
             if (dataRetur.is_digital) {
                 newBtnReturChat.style.display = 'none';
