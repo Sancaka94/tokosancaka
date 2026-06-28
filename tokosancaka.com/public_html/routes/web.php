@@ -1726,7 +1726,7 @@ Route::get('/ipaymu', function () {
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
     
     // (Route untuk menampilkan halaman log Anda saat ini)
-    Route::get('/logs', [AdminLogController::class, 'showLogs'])->name('logs.viewer');
+    Route::get('/logs', [AdminLogController::class, 'showLogs'])->name('logs.show');
 
     // Route untuk Hapus Semua Log (Clear All)
     Route::post('/logs/clear', [AdminLogController::class, 'clearLogs'])->name('logs.clear');
