@@ -2652,7 +2652,7 @@ TEXT;
      * PENERIMA WEBHOOK DANA UNTUK CHECKOUT MARKETPLACE
      * =========================================================================
      */
-    public function handleDanaCallback(array $data)
+    /* public function handleDanaCallback(array $data)
     {
         $merchantRef = $data['order']['invoice_number'] ?? null;
         $status = $data['transaction']['status'] ?? null;
@@ -2686,6 +2686,72 @@ TEXT;
             return response()->json(['message' => 'Webhook DANA processed successfully.'], 200);
         } catch (\Exception $e) {
             Log::error("LOG LOG: Webhook CheckoutController Error: " . $e->getMessage());
+            return response()->json(['message' => 'Internal server error.'], 500);
+        }
+    }*/
+
+    /**
+     * =========================================================================
+     * PENERIMA WEBHOOK DANA UNTUK CHECKOUT MARKETPLACE
+     * =========================================================================
+     */
+    public function handleDanaCallback(array $data)
+    {
+        $merchantRef = $data['order']['invoice_number'] ?? null;
+        $status = $data['transaction']['status'] ?? null;
+
+        Log::info('LOG LOG: CheckoutController menerima Webhook DANA', ['ref' => $merchantRef, 'status' => $status]);
+
+        if (!$merchantRef || !$status) {
+            return response()->json(['message' => 'Invalid data'], 400);
+        }
+
+        $internalStatus = ($status === 'SUCCESS') ? 'PAID' : 'FAILED';
+
+        DB::beginTransaction();
+        try {
+            // === LOGIKA TANGKAP TAGIHAN INDUK (PARENT INVOICE) ===
+            if (\Illuminate\Support\Str::startsWith($merchantRef, 'SCK-PAY-') || \Illuminate\Support\Str::startsWith($merchantRef, 'INV-PAY-')) {
+                Log::info('Routing DANA callback to Process Parent Invoice', ['ref' => $merchantRef]);
+
+                if ($internalStatus === 'PAID') {
+                    // HYBRID SEARCH: Cari anak order di database utama (mysql)
+                    $anakOrders = \App\Models\Order::on('mysql')->where('parent_invoice', $merchantRef)->get();
+
+                    // Jika tidak ketemu, cari di database kedua (mysql_second)
+                    if ($anakOrders->isEmpty()) {
+                        $anakOrders = \App\Models\Order::on('mysql_second')->where('parent_invoice', $merchantRef)->get();
+                    }
+
+                    if ($anakOrders->isEmpty()) {
+                        Log::warning("DANA Callback: Order anak untuk Parent Invoice {$merchantRef} tidak ditemukan di database mana pun.");
+                    }
+
+                    // Proses satu per satu anak order yang ditemukan
+                    foreach ($anakOrders as $anak) {
+                        Log::info("Memproses Order Anak DANA: {$anak->invoice_number} dari Parent: {$merchantRef}");
+                        $this->processOrderCallback($anak->invoice_number, 'PAID', $data);
+                    }
+                } else {
+                    // Update status gagal di KEDUA database sekaligus untuk memastikan data sinkron
+                    \App\Models\Order::on('mysql')->where('parent_invoice', $merchantRef)->update(['status' => 'failed']);
+                    \App\Models\Order::on('mysql_second')->where('parent_invoice', $merchantRef)->update(['status' => 'failed']);
+                }
+
+                DB::commit();
+                return response()->json(['message' => 'Webhook DANA parent invoice processed successfully.'], 200);
+            }
+
+            // === LOGIKA ROUTING UNTUK INVOICE TUNGGAL ===
+            Log::info("LOG LOG: Meneruskan Webhook DANA $merchantRef ke processOrderCallback (Single)");
+            $this->processOrderCallback($merchantRef, $internalStatus, $data);
+
+            DB::commit();
+            return response()->json(['message' => 'Webhook DANA processed successfully.'], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("LOG LOG: Webhook DANA Error: " . $e->getMessage());
             return response()->json(['message' => 'Internal server error.'], 500);
         }
     }
@@ -3086,7 +3152,7 @@ TEXT;
      * =========================================================================
      * Ketika user klik "Approve" di PayPal, mereka dilempar ke sini
      */
-    public function capturePaypalReturn(Request $request, $invoice)
+    /* public function capturePaypalReturn(Request $request, $invoice)
     {
         $token = $request->query('token'); // Order ID dari PayPal
 
@@ -3103,6 +3169,59 @@ TEXT;
 
                 // MENGAKALI RACE CONDITION: Tembak KiriminAja dari sini jika webhook terlambat
                 $this->processOrderCallback($invoice, 'PAID', $result);
+
+                return redirect()->route('customer.pesanan.riwayat_belanja')
+                    ->with('success', 'Pembayaran via PayPal Berhasil! Pesanan sedang diproses dan kurir KiriminAja telah dipanggil.');
+            }
+
+            return redirect()->route('checkout.index')->with('error', 'Dana belum berhasil ditarik oleh PayPal.');
+        } catch (\Exception $e) {
+            Log::error("PayPal Capture Error: " . $e->getMessage());
+            return redirect()->route('checkout.index')->with('error', 'Terjadi kesalahan saat memverifikasi PayPal.');
+        }
+    }*/
+
+    /**
+     * =========================================================================
+     * 2. PENERIMA REDIRECT PAYPAL (DARI FRONTEND)
+     * =========================================================================
+     * Ketika user klik "Approve" di PayPal, mereka dilempar ke sini
+     */
+    public function capturePaypalReturn(Request $request, $invoice)
+    {
+        $token = $request->query('token'); // Order ID dari PayPal
+
+        if (!$token) {
+            return redirect()->route('checkout.index')->with('error', 'Sesi PayPal tidak valid.');
+        }
+
+        try {
+            $paypalService = app(\App\Http\Controllers\Api\PayPalGatewayController::class);
+            $response = $paypalService->captureOrder($token);
+            $result = $response->getData(true);
+
+            if ($result['success'] === true && $result['status'] === 'COMPLETED') {
+
+                // === LOGIKA TANGKAP TAGIHAN INDUK (PARENT INVOICE) ===
+                if (\Illuminate\Support\Str::startsWith($invoice, 'SCK-PAY-') || \Illuminate\Support\Str::startsWith($invoice, 'INV-PAY-')) {
+                    Log::info('Routing PayPal capture to Process Parent Invoice', ['ref' => $invoice]);
+
+                    // HYBRID SEARCH
+                    $anakOrders = \App\Models\Order::on('mysql')->where('parent_invoice', $invoice)->get();
+                    if ($anakOrders->isEmpty()) {
+                        $anakOrders = \App\Models\Order::on('mysql_second')->where('parent_invoice', $invoice)->get();
+                    }
+
+                    foreach ($anakOrders as $anak) {
+                        Log::info("Memproses Order Anak PayPal: {$anak->invoice_number} dari Parent: {$invoice}");
+                        $this->processOrderCallback($anak->invoice_number, 'PAID', $result);
+                    }
+                }
+                // === LOGIKA INVOICE TUNGGAL ===
+                else {
+                    // MENGAKALI RACE CONDITION: Tembak KiriminAja dari sini
+                    $this->processOrderCallback($invoice, 'PAID', $result);
+                }
 
                 return redirect()->route('customer.pesanan.riwayat_belanja')
                     ->with('success', 'Pembayaran via PayPal Berhasil! Pesanan sedang diproses dan kurir KiriminAja telah dipanggil.');

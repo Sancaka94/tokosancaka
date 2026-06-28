@@ -39,6 +39,26 @@
         <div class="flex flex-col md:flex-row gap-8 items-start">
 
             {{-- KOLOM KIRI: SIDEBAR MENU DENGAN BG PUTIH --}}
+            <div class="w-full md:w-80 shrink-0 flex flex-col gap-4">
+
+                {{-- KARTU APP DEBUG (BARU) --}}
+                <div class="bg-white rounded-lg border border-zinc-200 shadow-sm p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-sm font-bold text-zinc-900">App Debug</h3>
+                            <p class="text-[10px] text-zinc-500">Mode Developer Laravel</p>
+                        </div>
+                        <button type="button"
+                                class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                :class="appDebug ? 'bg-green-500' : 'bg-zinc-300'"
+                                @click="toggleDebug()">
+                            <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                :class="appDebug ? 'translate-x-4' : 'translate-x-0'"></span>
+                        </button>
+                    </div>
+                </div>
+
+            {{-- KOLOM KIRI: SIDEBAR MENU DENGAN BG PUTIH --}}
             <div class="w-full md:w-80 shrink-0 bg-white rounded-lg border border-zinc-200 shadow-sm p-3 flex flex-col gap-1.5">
 
                 {{-- Menu KiriminAja --}}

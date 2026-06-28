@@ -7,12 +7,14 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use App\Events\SystemModeUpdated;
 use App\Models\Api;
+use Illuminate\Support\Facades\Artisan;
 
 class ApiSettingsController extends Controller
 {
     public function index()
     {
         // 1. Ambil Mode Global yang sedang aktif
+        $appDebug         = config('app.debug');
         $kaMode           = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
         $tripayMode       = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
         $dokuEnv          = Api::getValue('DOKU_ENV', 'global', 'sandbox');
@@ -209,7 +211,7 @@ class ApiSettingsController extends Controller
         ];
 
         // Tambahkan string 'ipaymu' di dalam compact()
-        return view('admin.settings.api_settings', compact('kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu'));
+        return view('admin.settings.api_settings', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu'));
     }
 
     public function update(Request $request)
@@ -498,6 +500,67 @@ class ApiSettingsController extends Controller
                 'success' => false,
                 'message' => 'Gagal mengambil status sistem'
             ], 500);
+        }
+    }
+
+    /**
+     * PRIVATE HELPER: Fungsi untuk mengubah nilai di file .env
+     */
+    private function setEnvValue($key, $value)
+    {
+        $path = base_path('.env');
+
+        if (file_exists($path)) {
+            // Ubah boolean PHP menjadi string 'true' atau 'false'
+            $valueString = $value ? 'true' : 'false';
+
+            $envContent = file_get_contents($path);
+
+            // Regex untuk mencari baris konfigurasi dan mengganti nilainya
+            $envContent = preg_replace("/^{$key}=.*/m", "{$key}={$valueString}", $envContent);
+
+            // Simpan kembali ke file .env
+            file_put_contents($path, $envContent);
+        }
+    }
+
+    /**
+     * FUNGSI KHUSUS UNTUK MENGUBAH APP_DEBUG (TRUE / FALSE)
+     */
+    public function toggleAppDebug(Request $request)
+    {
+        try {
+            // Ambil input dari frontend (misal dari form atau AJAX)
+            // Bisa menerima string "true"/"false" atau boolean asli
+            $isDebug = filter_var($request->input('app_debug'), FILTER_VALIDATE_BOOLEAN);
+
+            // 1. Ubah file .env
+            $this->setEnvValue('APP_DEBUG', $isDebug);
+
+            // 2. Clear Config Cache agar perubahan langsung terbaca oleh Laravel
+            Artisan::call('config:clear');
+
+            $statusLabel = $isDebug ? 'AKTIF (TRUE)' : 'MATI (FALSE)';
+
+            // Jika dipanggil lewat AJAX
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Laravel Debugger berhasil diubah menjadi $statusLabel"
+                ], 200);
+            }
+
+            // Jika dipanggil lewat form submit biasa
+            return back()->with('success', "Laravel Debugger berhasil diubah menjadi $statusLabel");
+
+        } catch (\Exception $e) {
+            if ($request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal mengubah APP_DEBUG: ' . $e->getMessage()
+                ], 500);
+            }
+            return back()->with('error', 'Gagal mengubah APP_DEBUG: ' . $e->getMessage());
         }
     }
 }
