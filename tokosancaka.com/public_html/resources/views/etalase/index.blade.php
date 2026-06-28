@@ -82,6 +82,8 @@
 @section('title', 'Sancaka Marketplace')
 
 @push('styles')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <style>
     :root {
         --primary-red: #d0011b;
@@ -698,14 +700,10 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // --- LOGIKA COUNTDOWN 24 JAM ---
     function startFlashSaleCountdown() {
-        // Durasi 24 Jam dalam milidetik
-        const duration = 24 * 60 * 60 * 1000; 
-        
-        // Cek apakah sudah ada waktu akhir yang tersimpan
+        const duration = 24 * 60 * 60 * 1000;
         let storedEndTime = localStorage.getItem('sancakaFlashSaleEnd');
         let endTime;
 
-        // Jika tidak ada atau waktu sudah lewat, setel ulang 24 jam dari SEKARANG
         if (!storedEndTime || new Date().getTime() > storedEndTime) {
             endTime = new Date().getTime() + duration;
             localStorage.setItem('sancakaFlashSaleEnd', endTime);
@@ -713,216 +711,178 @@ document.addEventListener('DOMContentLoaded', function () {
             endTime = parseInt(storedEndTime);
         }
 
-        // Fungsi update setiap detik
         const timerInterval = setInterval(function() {
             const now = new Date().getTime();
             const distance = endTime - now;
 
-            // Jika waktu habis, reset lagi ke 24 jam (Looping)
             if (distance < 0) {
                 endTime = new Date().getTime() + duration;
                 localStorage.setItem('sancakaFlashSaleEnd', endTime);
                 return;
             }
 
-            // Hitung Jam, Menit, Detik
             const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-            // Tampilkan ke elemen HTML (tambah angka 0 di depan jika satuan)
             const elHours = document.getElementById('fs-hours');
             const elMinutes = document.getElementById('fs-minutes');
             const elSeconds = document.getElementById('fs-seconds');
-
+            
             if(elHours) elHours.innerText = hours < 10 ? "0" + hours : hours;
             if(elMinutes) elMinutes.innerText = minutes < 10 ? "0" + minutes : minutes;
             if(elSeconds) elSeconds.innerText = seconds < 10 ? "0" + seconds : seconds;
-
         }, 1000);
     }
-
-    // Jalankan fungsi
     startFlashSaleCountdown();
-    
-    // ... script swiper flash sale yang sudah ada ...
 
-    // Best Seller Swiper (Baru)
+    // --- INISIALISASI SWIPER ---
     new Swiper(".bestSellerSwiper", { 
-        slidesPerView: 2.2, // Mobile
-        spaceBetween: 10, 
-        navigation: { 
-            nextEl: ".bestseller-next", // Class tombol unique
-            prevEl: ".bestseller-prev" 
-        }, 
-        breakpoints: { 
-            640: { slidesPerView: 3, spaceBetween: 10 }, 
-            768: { slidesPerView: 4, spaceBetween: 15 }, 
-            1024: { slidesPerView: 6, spaceBetween: 15 } 
-        } 
+        slidesPerView: 2.2, spaceBetween: 10, 
+        navigation: { nextEl: ".bestseller-next", prevEl: ".bestseller-prev" }, 
+        breakpoints: { 640: { slidesPerView: 3, spaceBetween: 10 }, 768: { slidesPerView: 4, spaceBetween: 15 }, 1024: { slidesPerView: 6, spaceBetween: 15 } } 
     });
-    
-    // Hero Slider
+
     new Swiper(".heroSwiper", { 
-        loop: true, 
-        effect: "fade", 
-        autoplay: { delay: 4000, disableOnInteraction: false }, 
+        loop: true, effect: "fade", autoplay: { delay: 4000, disableOnInteraction: false }, 
         pagination: { el: ".swiper-pagination", clickable: true }, 
         navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" } 
     });
 
-   // Flash Sale Swiper (UPDATE INI)
     new Swiper(".flashSaleSwiper", { 
-        slidesPerView: 2.2, // <--- INI YANG BIKIN GAMBAR BESAR DI HP
-        spaceBetween: 10, 
-        pagination: { 
-            el: ".swiper-pagination", 
-            clickable: true 
-        },
-        breakpoints: { 
-            640: { slidesPerView: 3, spaceBetween: 10 }, // Tablet
-            768: { slidesPerView: 4, spaceBetween: 15 }, // Laptop Kecil
-            1024: { slidesPerView: 6, spaceBetween: 15 } // Desktop Besar
-        } 
-    });
-
-    // Categories
-    new Swiper(".categoriesSwiper", { 
-        loop: false, 
-        slidesPerView: 1, 
+        slidesPerView: 2.2, spaceBetween: 10, 
         pagination: { el: ".swiper-pagination", clickable: true },
+        breakpoints: { 640: { slidesPerView: 3, spaceBetween: 10 }, 768: { slidesPerView: 4, spaceBetween: 15 }, 1024: { slidesPerView: 6, spaceBetween: 15 } } 
     });
-});
 
- // 2. Logic Tabs (Prabayar vs Pascabayar) - SESUAI DESAIN BARU
-    function switchTab(type) {
-        const btnPre = document.getElementById('tab-prepaid');
-        const btnPost = document.getElementById('tab-postpaid');
-        const conPre = document.getElementById('content-prepaid');
-        const conPost = document.getElementById('content-postpaid');
+    new Swiper(".categoriesSwiper", { 
+        loop: false, slidesPerView: 1, pagination: { el: ".swiper-pagination", clickable: true },
+    });
 
-        if(type === 'prepaid') {
-            btnPre.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition hover:bg-gray-50 flex items-center justify-center gap-2";
-            btnPost.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition hover:bg-gray-50 flex items-center justify-center gap-2";
-            
-            conPre.classList.remove('hidden');
-            conPost.classList.add('hidden');
-        } else {
-            btnPost.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition hover:bg-gray-50 flex items-center justify-center gap-2";
-            btnPre.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition hover:bg-gray-50 flex items-center justify-center gap-2";
-
-            conPost.classList.remove('hidden');
-            conPre.classList.add('hidden');
+    // --- KONFIGURASI TOAST SWEETALERT ---
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
         }
-    }
+    });
 
-    // 3. Logic "Lihat Semua" (Expand Grid)
-    function toggleExpand(type) {
-        const wrapper = document.getElementById('grid-' + type + '-wrapper');
-        const btn = document.getElementById('btn-expand-' + type);
-        const items = wrapper.querySelectorAll('.menu-item-' + type);
-        const isExpanded = btn.getAttribute('data-expanded') === 'true';
+    // --- INTERCEPT FORM ADD TO CART (AJAX) ---
+    document.querySelectorAll('.form-add-to-cart').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); // Mencegah browser reload
 
-        items.forEach((item, index) => {
-            if (index >= 16) {
-                if (isExpanded) item.classList.add('hidden');
-                else item.classList.remove('hidden');
-            }
-        });
+            const formData = new FormData(this);
+            const actionUrl = this.getAttribute('action');
+            const btn = this.querySelector('button[type="submit"]');
+            const originalBtnText = btn.innerHTML;
 
-        if (isExpanded) {
-            btn.innerHTML = '<span>Lihat Semua Layanan</span> <i class="fas fa-chevron-down text-[10px]"></i>';
-            btn.setAttribute('data-expanded', 'false');
-        } else {
-            btn.innerHTML = '<span>Sembunyikan</span> <i class="fas fa-chevron-up text-[10px]"></i>';
-            btn.setAttribute('data-expanded', 'true');
-        }
-    }
+            // Efek Loading di Tombol
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Proses...';
+            btn.disabled = true;
 
-    // Default: Set active tab berdasarkan halaman (Jika halaman pascabayar, buka tab pascabayar)
-    @if($isPostpaid) switchTab('postpaid'); @endif
+            // Tembak Data via AJAX
+            fetch(actionUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Kembalikan tombol seperti semula
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
 
-    // 1. Konfigurasi Toast Alert
-const Toast = Swal.mixin({
-    toast: true,
-    position: 'top-end',
-    showConfirmButton: false,
-    timer: 3000,
-    timerProgressBar: true,
-    didOpen: (toast) => {
-        toast.addEventListener('mouseenter', Swal.stopTimer)
-        toast.addEventListener('mouseleave', Swal.resumeTimer)
-    }
-});
-
-// 2. Intercept (Tangkap) Form Submit Keranjang
-document.querySelectorAll('.form-add-to-cart').forEach(form => {
-    form.addEventListener('submit', function(e) {
-        e.preventDefault(); // Mencegah browser me-reload halaman
-
-        const formData = new FormData(this);
-        const actionUrl = this.getAttribute('action');
-        const btn = this.querySelector('button[type="submit"]');
-        const originalBtnText = btn.innerHTML;
-
-        // Ubah tombol jadi status loading
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Proses...';
-        btn.disabled = true;
-
-        // Tembak data ke server via AJAX
-        fetch(actionUrl, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest' // Memberitahu Laravel ini adalah request AJAX
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Kembalikan tombol ke kondisi semula
-            btn.innerHTML = originalBtnText;
-            btn.disabled = false;
-
-           // Munculkan Toast (Sesuaikan pengecekan 'success' ini dengan output JSON dari Controller Anda)
-            if (data.status === 'success' || data.success) { 
+                if (data.status === 'success' || data.success) { 
+                    
+                    // --- LOGIKA UPDATE ANGKA KERANJANG REALTIME ---
+                    const cartBadges = document.querySelectorAll('.cart-badge-count');
+                    cartBadges.forEach(badge => {
+                        badge.innerText = data.cart_count; // Set angka baru
+                        if (data.cart_count > 0) {
+                            badge.classList.remove('hidden'); // Munculkan badge
+                            badge.classList.add('scale-125', 'transition-transform');
+                            setTimeout(() => badge.classList.remove('scale-125'), 300);
+                        }
+                    });
+                    
+                    // Munculkan Toast Sukses
+                    Toast.fire({
+                        icon: 'success',
+                        title: data.message || 'Berhasil masuk keranjang!'
+                    });
+                } else {
+                    // Munculkan Toast Gagal
+                    Toast.fire({
+                        icon: 'error',
+                        title: data.message || 'Gagal menambahkan produk.'
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('AJAX Error:', error);
+                btn.innerHTML = originalBtnText;
+                btn.disabled = false;
                 
-                // --- KODE BARU: UPDATE ANGKA KERANJANG REAL-TIME ---
-                const cartBadges = document.querySelectorAll('.cart-badge-count');
-                cartBadges.forEach(badge => {
-                    badge.innerText = data.cart_count; // Timpa angkanya dengan jumlah terbaru
-                    if (data.cart_count > 0) {
-                        badge.classList.remove('hidden'); // Munculkan badge merah
-                        badge.classList.add('scale-125', 'transition-transform'); // Kasih efek kedip
-                        setTimeout(() => badge.classList.remove('scale-125'), 300);
-                    } else {
-                        badge.classList.add('hidden'); // Sembunyikan kalau keranjang kosong
-                    }
-                });
-                // ---------------------------------------------------
-
-                Toast.fire({
-                    icon: 'success',
-                    title: data.message || 'Berhasil masuk keranjang!'
-                });
-            } else {
                 Toast.fire({
                     icon: 'error',
-                    title: data.message || 'Gagal menambahkan produk.'
+                    title: 'Terjadi kesalahan server. Coba lagi.'
                 });
-            }
-        })
-        .catch(error => {
-            console.error('AJAX Error:', error);
-            btn.innerHTML = originalBtnText;
-            btn.disabled = false;
-            
-            Toast.fire({
-                icon: 'error',
-                title: 'Terjadi kesalahan server. Coba lagi.'
             });
         });
     });
+
 });
 
+// --- LOGIC TABS (Di luar DOMContentLoaded agar bisa dipanggil onclick HTML) ---
+function switchTab(type) {
+    const btnPre = document.getElementById('tab-prepaid');
+    const btnPost = document.getElementById('tab-postpaid');
+    const conPre = document.getElementById('content-prepaid');
+    const conPost = document.getElementById('content-postpaid');
+    if(type === 'prepaid') {
+        btnPre.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition hover:bg-gray-50 flex items-center justify-center gap-2";
+        btnPost.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition hover:bg-gray-50 flex items-center justify-center gap-2";
+        conPre.classList.remove('hidden');
+        conPost.classList.add('hidden');
+    } else {
+        btnPost.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition hover:bg-gray-50 flex items-center justify-center gap-2";
+        btnPre.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition hover:bg-gray-50 flex items-center justify-center gap-2";
+        conPost.classList.remove('hidden');
+        conPre.classList.add('hidden');
+    }
+}
+
+function toggleExpand(type) {
+    const wrapper = document.getElementById('grid-' + type + '-wrapper');
+    const btn = document.getElementById('btn-expand-' + type);
+    const items = wrapper.querySelectorAll('.menu-item-' + type);
+    const isExpanded = btn.getAttribute('data-expanded') === 'true';
+    items.forEach((item, index) => {
+        if (index >= 16) {
+            if (isExpanded) item.classList.add('hidden');
+            else item.classList.remove('hidden');
+        }
+    });
+    if (isExpanded) {
+        btn.innerHTML = '<span>Lihat Semua Layanan</span> <i class="fas fa-chevron-down text-[10px]"></i>';
+        btn.setAttribute('data-expanded', 'false');
+    } else {
+        btn.innerHTML = '<span>Sembunyikan</span> <i class="fas fa-chevron-up text-[10px]"></i>';
+        btn.setAttribute('data-expanded', 'true');
+    }
+}
+
+// Set active tab berdasarkan halaman
+@if($isPostpaid) 
+    switchTab('postpaid'); 
+@endif
 </script>
 @endpush
