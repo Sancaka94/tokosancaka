@@ -222,9 +222,22 @@
 
     @stack('scripts')
 
-    @if(session('success'))
+  <style>
+    /* Menggeser kontainer toast SweetAlert ke bawah header */
+    .swal2-container.swal2-top-end {
+        margin-top: 80px !important; /* Sesuaikan dengan tinggi header desktop */
+    }
+
+    /* Penyesuaian untuk layar HP (Mobile) */
+    @media (max-width: 768px) {
+        .swal2-container.swal2-top-end {
+            margin-top: 64px !important; /* Sesuaikan dengan tinggi header h-16 */
+        }
+    }
+</style>
+
+@if(session('success'))
     <script>
-        // Contoh menggunakan SweetAlert2 Toast (Pastikan CDN SweetAlert2 sudah dipasang)
         Swal.fire({
             toast: true,
             position: 'top-end',
