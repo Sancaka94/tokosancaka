@@ -496,14 +496,14 @@
                 </li>
                 @endauth
 
-                {{-- 2. OPSI KHUSUS (DOKU) --}}
-                <!-- <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
+                {{-- 1. OPSI KHUSUS (DOKU) --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
                     data-value="DOKU_JOKUL"
                     data-label="Doku (Kartu Kredit, E-Wallet, dll)"
                     data-img="{{ asset('public/assets/doku.png') }}">
                     <img src="{{ asset('public/assets/doku.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Rekomendasi Sancaka (Kartu Kredit, E-Wallet, dll)</span>
-                </li> -->
+                </li>
 
                 {{-- ========================================================== --}}
                 {{-- 2. OPSI DOKU DIRECT (VIRTUAL ACCOUNT, RETAIL, QRIS, DLL) --}}

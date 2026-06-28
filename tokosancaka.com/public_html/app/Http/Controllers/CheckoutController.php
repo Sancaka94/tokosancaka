@@ -934,7 +934,7 @@ class CheckoutController extends Controller
                 // ==========================================================
                 // PROSES VIA DOKU
                 // ==========================================================
-                /* elseif ($paymentGateway === 'doku') {
+                elseif ($paymentGateway === 'doku_jokul') {
                     Log::info('Memulai proses DOKU (Jokul) Marketplace untuk ' . $order->invoice_number);
 
                     $targetSacId = null; // DANA SELALU MASUK KE ADMIN DULU
@@ -972,7 +972,7 @@ class CheckoutController extends Controller
                     }
 
                     $order->payment_url = $paymentUrl;
-                } */
+                }
 
                // ==========================================================
                 // PROSES VIA DOKU (CHECKOUT API DENGAN REDIRECT)
