@@ -156,8 +156,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         attachCheckboxListeners();
         checkAndHideReadMoreButtons();
-        
-        // PERBAIKAN: Paksa pengecekan posisi scroll setelah card dimuat
         setTimeout(checkScrollPosition, 200);
     }
 
@@ -202,14 +200,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ==========================================
-// SCROLL TO TOP, SCROLL TO BOTTOM & READ MORE LOGIC
+// SCROLL & READ MORE LOGIC
 // ==========================================
-
 const scrollTopBtn = document.getElementById('scrollTopBtn');
 const scrollBottomBtn = document.getElementById('scrollBottomBtn');
 
 function checkScrollPosition() {
-    // Gunakan window.scrollY atau fallback ke penampung scroll dokumen
     const currentScroll = window.scrollY || document.documentElement.scrollTop;
     const documentHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
     const windowHeight = window.innerHeight || document.documentElement.clientHeight;
@@ -230,10 +226,7 @@ function checkScrollPosition() {
 window.addEventListener('scroll', checkScrollPosition);
 window.addEventListener('resize', checkScrollPosition);
 
-scrollTopBtn.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' }); 
-});
-
+scrollTopBtn.addEventListener('click', () => { window.scrollTo({ top: 0, behavior: 'smooth' }); });
 scrollBottomBtn.addEventListener('click', () => {
     const documentHeight = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
     window.scrollTo({ top: documentHeight, behavior: 'smooth' }); 
@@ -252,15 +245,12 @@ window.toggleReadMore = function(id) {
         contentDiv.classList.add('max-h-32');
         btn.innerHTML = '<i class="fas fa-chevron-down mr-1"></i> Tampilkan Lebih Banyak';
     }
-    
-    // Cek ulang scrollbar karena tinggi dokumen berubah setelah Read More diklik
     setTimeout(checkScrollPosition, 300);
 }
 
 // ==========================================
-// ACTION FUNCTIONS (COPY, DELETE, BULK, ALL)
+// ACTION FUNCTIONS
 // ==========================================
-
 window.copyLog = function(id) {
     const log = parsedLogs.find(l => l.id === id);
     if(log) {
@@ -299,12 +289,11 @@ function deletePermanentFromBackend(textsArray) {
 window.deleteSingleLog = function(id) {
     const log = parsedLogs.find(l => l.id === id);
     if(!log) return;
-
     document.getElementById(`log-card-${id}`).remove();
     deletePermanentFromBackend(log.full_texts);
 }
 
-// 4. Bulk Delete Grup Permanen
+// PERBAIKAN: Menggunakan .concat() yang dijamin 100% bebas dari error syntax minifier
 document.getElementById('bulkDeleteBtn').addEventListener('click', function() {
     const checkedBoxes = document.querySelectorAll('.log-checkbox:checked');
     const selectedIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
@@ -314,7 +303,6 @@ document.getElementById('bulkDeleteBtn').addEventListener('click', function() {
     selectedIds.forEach(id => {
         const log = parsedLogs.find(l => l.id === id);
         if(log) {
-            // PERBAIKAN: Ganti spread operator (...) dengan concat() agar aman dari error minifier
             allTextsToDelete = allTextsToDelete.concat(log.full_texts); 
             document.getElementById(`log-card-${id}`).remove();
         }
