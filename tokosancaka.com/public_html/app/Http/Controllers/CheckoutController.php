@@ -974,14 +974,14 @@ class CheckoutController extends Controller
                     $order->payment_url = $paymentUrl;
                 } */
 
-                // ==========================================================
+               // ==========================================================
                 // PROSES VIA DOKU (CHECKOUT API DENGAN REDIRECT)
                 // ==========================================================
                 elseif ($paymentGateway === 'doku') {
                     Log::info('Memulai proses DOKU Checkout API Marketplace untuk ' . $order->invoice_number);
 
                     $targetSacId = !empty($store->doku_sac_id) ? $store->doku_sac_id : null;
-                    $dokuService = new DokuJokulService();
+                    $dokuService = new \App\Services\DokuJokulService();
 
                     $customerData = [
                         'name'  => $custName,
@@ -1006,7 +1006,7 @@ class CheckoutController extends Controller
                         // Simpan URL Kasir DOKU ke database
                         $order->payment_url = $dokuResult['payment_url'];
                     } else {
-                        throw new Exception($dokuResult['message']);
+                        throw new \Exception($dokuResult['message']);
                     }
                 }
 

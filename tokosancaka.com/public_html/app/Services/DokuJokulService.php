@@ -710,7 +710,7 @@ class DokuJokulService
         $endpoint = '/checkout/v1/payment';
         $url = $this->baseUrlCheckout . $endpoint;
 
-        // 1. Mapping dari value frontend Blade ke "payment_method_types" DOKU
+        // 1. Mapping dari value frontend Blade ke "payment_method_types" DOKU Checkout
         $methodMapping = [
             'DOKU_BCA_VA'     => ['VIRTUAL_ACCOUNT_BCA'],
             'DOKU_MANDIRI_VA' => ['VIRTUAL_ACCOUNT_BANK_MANDIRI'],
@@ -726,7 +726,7 @@ class DokuJokulService
             'DOKU_OVO'        => ['EMONEY_OVO'],
             'DOKU_SHOPEEPAY'  => ['EMONEY_SHOPEE_PAY'],
             'DOKU_CREDIT_CARD'=> ['CREDIT_CARD'],
-            'DOKU_JOKUL'      => [] // Jika kosong, DOKU akan menampilkan semua opsi
+            'DOKU_JOKUL'      => [] // Menampilkan semua opsi
         ];
 
         $paymentMethodTypes = $methodMapping[$paymentMethodRaw] ?? [];
@@ -740,6 +740,7 @@ class DokuJokulService
             'customer' => [
                 'name' => substr($customerData['name'] ?? 'Customer', 0, 255),
                 'email' => $customerData['email'] ?? 'customer@tokosancaka.com',
+                // Ubah prefix 0 menjadi 62 untuk nomor telepon
                 'phone' => preg_replace('/^0/', '62', $customerData['phone'] ?? '081111111111'),
             ],
             'payment' => [
@@ -767,7 +768,7 @@ class DokuJokulService
             ];
         }
 
-        // 3. Eksekusi menggunakan mekanisme Signature bawaan
+        // 3. Eksekusi menggunakan mekanisme Signature Checkout bawaan
         $requestId = (string) \Illuminate\Support\Str::uuid();
         $requestTimestamp = now()->utc()->format('Y-m-d\TH:i:s\Z');
         $jsonPayload = json_encode($requestBody);
