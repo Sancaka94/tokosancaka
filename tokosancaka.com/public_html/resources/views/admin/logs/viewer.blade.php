@@ -39,10 +39,15 @@
     <pre id="rawLogsData">{!! e($logs) !!}</pre>
 </div>
 
-{{-- TOMBOL SCROLL KE ATAS Cepat --}}
-<button id="scrollTopBtn" class="hidden fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition duration-200 z-50 focus:outline-none" title="Scroll ke Atas">
-    <i class="fas fa-arrow-up text-xl"></i>
-</button>
+{{-- CONTAINER TOMBOL SCROLL Cepat (UP & DOWN) --}}
+<div class="fixed bottom-8 right-8 flex flex-col space-y-3 z-50">
+    <button id="scrollTopBtn" class="hidden bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition duration-200 focus:outline-none" title="Scroll ke Atas">
+        <i class="fas fa-arrow-up text-xl"></i>
+    </button>
+    <button id="scrollBottomBtn" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition duration-200 focus:outline-none" title="Scroll ke Bawah">
+        <i class="fas fa-arrow-down text-xl"></i>
+    </button>
+</div>
 
 @endsection
 
@@ -75,16 +80,45 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let match;
     let index = 0;
+    
+    // Objek sementara untuk mengelompokkan (Grouping)
+    let tempGroups = {};
 
-    // Proses Parsing Text -> Object (Card)
+    // Proses Parsing Text -> Grouping Object (Per 5 Menit)
     while ((match = logPattern.exec(rawText)) !== null) {
-        parsedLogs.push({
-            id: index++,
-            time: match[1],
-            content: match[2].trim(),
-            full_text: match[0]
-        });
+        let fullTimeStr = match[1]; // "2026-06-27 12:57:33"
+        let fullText = match[0];    // Seluruh teks mentah dari satu log (termasuk tag waktu)
+        
+        // Memecah waktu untuk mengambil Jam dan Menit
+        let timeParts = fullTimeStr.split(':'); 
+        let hourStr = timeParts[0];          // "2026-06-27 12"
+        let minute = parseInt(timeParts[1]); // 57
+        
+        // Menghitung interval 5 menit (contoh: 57 -> 55, 13 -> 10, 04 -> 00)
+        let bucketMin = Math.floor(minute / 5) * 5;
+        let bucketMinStr = bucketMin.toString().padStart(2, '0');
+        let bucketEndMinStr = (bucketMin + 4).toString().padStart(2, '0'); // Akhir interval (+4 menit)
+        
+        // Label Judul Card (Contoh: "2026-06-27 12:55 - 12:59")
+        let groupKey = `${hourStr}:${bucketMinStr} - ${hourStr}:${bucketEndMinStr}`;
+        
+        // Buat Grup baru jika belum ada
+        if (!tempGroups[groupKey]) {
+            tempGroups[groupKey] = {
+                id: index++,
+                timeLabel: groupKey,
+                content: '',
+                full_texts: [] // Array untuk menampung teks mentah agar hapus permanen tetap akurat
+            };
+        }
+        
+        // Masukkan log ke dalam grup tersebut
+        tempGroups[groupKey].content += fullText + "\n"; // Tambah ke tampilan visual
+        tempGroups[groupKey].full_texts.push(fullText);  // Tambah ke array sistem hapus
     }
+
+    // Ubah Objek kembali menjadi Array agar bisa di-looping
+    parsedLogs = Object.values(tempGroups);
 
     if(parsedLogs.length > 0) {
         document.getElementById('selectAllContainer').classList.remove('hidden');
@@ -96,6 +130,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fungsi Render HTML Card
     function renderCards() {
         container.innerHTML = '';
+        
+        // Render dari index terakhir agar yang terbaru di atas (opsional, karena file log biasanya sudah urut)
         parsedLogs.forEach(log => {
             const card = document.createElement('div');
             card.className = "bg-gray-800 border border-gray-700 rounded-lg shadow-sm transition hover:border-gray-500 log-card-item";
@@ -105,13 +141,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="flex justify-between items-center p-3 border-b border-gray-700 bg-gray-900 rounded-t-lg">
                     <div class="flex items-center space-x-3">
                         <input type="checkbox" class="log-checkbox w-4 h-4 cursor-pointer rounded" value="${log.id}">
-                        <span class="text-sm font-semibold text-blue-400"><i class="far fa-clock mr-1"></i> ${log.time}</span>
+                        <span class="text-sm font-semibold text-blue-400"><i class="far fa-clock mr-1"></i> ${log.timeLabel}</span>
+                        <span class="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full ml-2">${log.full_texts.length} Logs</span>
                     </div>
                     <div class="flex space-x-4">
-                        <button onclick="copyLog(${log.id})" class="text-gray-400 hover:text-green-400 transition" title="Copy Log">
+                        <button onclick="copyLog(${log.id})" class="text-gray-400 hover:text-green-400 transition" title="Copy Log Grup Ini">
                             <i class="far fa-copy text-lg"></i>
                         </button>
-                        <button onclick="deleteSingleLog(${log.id})" class="text-gray-400 hover:text-red-500 transition" title="Hapus Log Ini">
+                        <button onclick="deleteSingleLog(${log.id})" class="text-gray-400 hover:text-red-500 transition" title="Hapus Semua Log di Grup Ini">
                             <i class="fas fa-trash-alt text-lg"></i>
                         </button>
                     </div>
@@ -142,7 +179,6 @@ document.addEventListener('DOMContentLoaded', function() {
             parsedLogs.forEach(log => {
                 const contentDiv = document.getElementById(`log-content-${log.id}`);
                 const btnContainer = document.getElementById(`btn-container-${log.id}`);
-                // Jika tinggi teks aslinya lebih kecil atau sama dengan tinggi max-h-32 (128px), sembunyikan tombol
                 if (contentDiv && contentDiv.scrollHeight <= 128) {
                     btnContainer.classList.add('hidden');
                 }
@@ -172,7 +208,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const checkedCount = document.querySelectorAll('.log-checkbox:checked').length;
         if(checkedCount > 0) {
             bulkDeleteBtn.classList.remove('hidden');
-            bulkDeleteBtn.innerHTML = `<i class="fas fa-trash mr-2"></i> Hapus Terpilih (${checkedCount})`;
+            bulkDeleteBtn.innerHTML = `<i class="fas fa-trash mr-2"></i> Hapus Terpilih (${checkedCount} Grup)`;
         } else {
             bulkDeleteBtn.classList.add('hidden');
         }
@@ -180,35 +216,46 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ==========================================
-// SCROLL TO TOP & READ MORE LOGIC
+// SCROLL TO TOP, SCROLL TO BOTTOM & READ MORE LOGIC
 // ==========================================
 
-// Fitur Scroll Cepat
 const scrollTopBtn = document.getElementById('scrollTopBtn');
-window.addEventListener('scroll', () => {
+const scrollBottomBtn = document.getElementById('scrollBottomBtn');
+
+function checkScrollPosition() {
     if (window.scrollY > 300) {
         scrollTopBtn.classList.remove('hidden');
     } else {
         scrollTopBtn.classList.add('hidden');
     }
-});
+
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 100) {
+        scrollBottomBtn.classList.add('hidden');
+    } else {
+        scrollBottomBtn.classList.remove('hidden');
+    }
+}
+
+window.addEventListener('scroll', checkScrollPosition);
+window.addEventListener('load', checkScrollPosition);
 
 scrollTopBtn.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: 'instant' }); // 'instant' agar naik ke atas dengan sangat cepat
+    window.scrollTo({ top: 0, behavior: 'instant' }); 
 });
 
-// Fitur Read More Toggle
+scrollBottomBtn.addEventListener('click', () => {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }); 
+});
+
 window.toggleReadMore = function(id) {
     const contentDiv = document.getElementById(`log-content-${id}`);
     const btn = document.getElementById(`btn-readmore-${id}`);
     
     if (contentDiv.classList.contains('max-h-32')) {
-        // Expand
         contentDiv.classList.remove('max-h-32');
         contentDiv.classList.add('max-h-full');
         btn.innerHTML = '<i class="fas fa-chevron-up mr-1"></i> Tampilkan Lebih Sedikit';
     } else {
-        // Collapse
         contentDiv.classList.remove('max-h-full');
         contentDiv.classList.add('max-h-32');
         btn.innerHTML = '<i class="fas fa-chevron-down mr-1"></i> Tampilkan Lebih Banyak';
@@ -219,12 +266,13 @@ window.toggleReadMore = function(id) {
 // ACTION FUNCTIONS (COPY, DELETE, BULK, ALL)
 // ==========================================
 
-// 1. Copy Log
+// 1. Copy Log Grup
 window.copyLog = function(id) {
     const log = parsedLogs.find(l => l.id === id);
     if(log) {
-        navigator.clipboard.writeText(log.full_text).then(() => {
-            Toast.fire({ icon: 'success', title: 'Log berhasil disalin!' });
+        // Menggabungkan kembali array teks mentah menjadi string utuh
+        navigator.clipboard.writeText(log.full_texts.join('\n')).then(() => {
+            Toast.fire({ icon: 'success', title: 'Grup log disalin!' });
         }).catch(err => {
             Toast.fire({ icon: 'error', title: 'Gagal menyalin log' });
         });
@@ -246,44 +294,46 @@ function deletePermanentFromBackend(textsArray) {
         if (data.status === 'success') {
             Toast.fire({ icon: 'success', title: data.message });
         } else {
-            Toast.fire({ icon: 'error', title: data.message || 'Gagal menghapus secara permanen.' });
+            Toast.fire({ icon: 'error', title: data.message || 'Gagal menghapus permanen.' });
         }
     })
     .catch(error => {
         console.error('AJAX Error:', error);
-        Toast.fire({ icon: 'error', title: 'Terjadi kesalahan saat menghapus di server.' });
+        Toast.fire({ icon: 'error', title: 'Kesalahan saat menghapus di server.' });
     });
 }
 
-// 3. Single Delete Permanen
+// 3. Single Delete Grup Permanen
 window.deleteSingleLog = function(id) {
     const log = parsedLogs.find(l => l.id === id);
     if(!log) return;
 
-    // Hapus Card dari antarmuka layar
     document.getElementById(`log-card-${id}`).remove();
     
-    // Panggil Controller untuk hapus permanen dari file laravel.log
-    deletePermanentFromBackend([log.full_text]);
+    // Kirim seluruh array baris dari grup tersebut ke Controller
+    deletePermanentFromBackend(log.full_texts);
 }
 
-// 4. Bulk Delete Permanen
+// 4. Bulk Delete Grup Permanen
 document.getElementById('bulkDeleteBtn').addEventListener('click', function() {
     const checkedBoxes = document.querySelectorAll('.log-checkbox:checked');
     const selectedIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
-    const textsToDelete = selectedIds.map(id => parsedLogs.find(l => l.id === id).full_text);
     
-    // Hapus Card dari antarmuka layar
+    let allTextsToDelete = [];
+    
+    // Kumpulkan seluruh teks baris dari card grup yang dicentang
     selectedIds.forEach(id => {
-        document.getElementById(`log-card-${id}`).remove();
+        const log = parsedLogs.find(l => l.id === id);
+        if(log) {
+            allTextsToDelete.push(...log.full_texts); // Gunakan spread operator untuk menggabungkan array
+            document.getElementById(`log-card-${id}`).remove();
+        }
     });
 
-    // Reset status UI
     document.getElementById('selectAll').checked = false;
     this.classList.add('hidden');
 
-    // Panggil Controller untuk hapus permanen kumpulan log tersebut dari file
-    deletePermanentFromBackend(textsToDelete);
+    deletePermanentFromBackend(allTextsToDelete);
 });
 
 // 5. Delete All (Clear Logs Bawaan)
@@ -311,6 +361,5 @@ document.getElementById('clearLogsBtn').addEventListener('click', function() {
         Toast.fire({ icon: 'error', title: 'Terjadi kesalahan server.' });
     });
 });
-
 </script>
 @endpush
