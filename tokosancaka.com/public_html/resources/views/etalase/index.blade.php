@@ -663,7 +663,7 @@
                 </div>
 
                 {{-- TOMBOL KERANJANG (BARU) --}}
-                <form action="{{ route('cart.add') }}" method="POST" class="mt-2">
+                <form action="{{ route('cart.add') }}" method="POST" class="mt-2 form-add-to-cart">
                     @csrf
                     <input type="hidden" name="product_id" value="{{ $product->id }}">
                     <input type="hidden" name="quantity" value="1">
@@ -841,6 +841,73 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Default: Set active tab berdasarkan halaman (Jika halaman pascabayar, buka tab pascabayar)
     @if($isPostpaid) switchTab('postpaid'); @endif
+
+    // 1. Konfigurasi Toast Alert
+const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer)
+        toast.addEventListener('mouseleave', Swal.resumeTimer)
+    }
+});
+
+// 2. Intercept (Tangkap) Form Submit Keranjang
+document.querySelectorAll('.form-add-to-cart').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault(); // Mencegah browser me-reload halaman
+
+        const formData = new FormData(this);
+        const actionUrl = this.getAttribute('action');
+        const btn = this.querySelector('button[type="submit"]');
+        const originalBtnText = btn.innerHTML;
+
+        // Ubah tombol jadi status loading
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Proses...';
+        btn.disabled = true;
+
+        // Tembak data ke server via AJAX
+        fetch(actionUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest' // Memberitahu Laravel ini adalah request AJAX
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Kembalikan tombol ke kondisi semula
+            btn.innerHTML = originalBtnText;
+            btn.disabled = false;
+
+            // Munculkan Toast (Sesuaikan pengecekan 'success' ini dengan output JSON dari Controller Anda)
+            if (data.status === 'success' || data.success) { 
+                Toast.fire({
+                    icon: 'success',
+                    title: data.message || 'Berhasil masuk keranjang!'
+                });
+            } else {
+                Toast.fire({
+                    icon: 'error',
+                    title: data.message || 'Gagal menambahkan produk.'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('AJAX Error:', error);
+            btn.innerHTML = originalBtnText;
+            btn.disabled = false;
+            
+            Toast.fire({
+                icon: 'error',
+                title: 'Terjadi kesalahan server. Coba lagi.'
+            });
+        });
+    });
+});
 
 </script>
 @endpush
