@@ -1572,48 +1572,72 @@ class CheckoutController extends Controller
 
    /**
      * =========================================================================
-     * 1. HANDLER WEBHOOK DOKU (JOKUL) - FULL VERSION
+     * HANDLER WEBHOOK DOKU (JOKUL) - FULL VERSION DENGAN HYBRID DATABASE
      * =========================================================================
      */
     public function handleDokuCallback(array $data)
     {
-        // Ambil data referensi & status
-        $merchantRef = $data['order']['invoice_number'];
-        $status = $data['transaction']['status'];
+        // 1. Ambil data referensi & status dari payload DOKU
+        $merchantRef = $data['order']['invoice_number'] ?? null;
+        $status = $data['transaction']['status'] ?? null;
+
+        // Validasi dasar jika payload tidak lengkap
+        if (!$merchantRef || !$status) {
+            Log::warning('DOKU Callback: Data tidak lengkap', $data);
+            return response()->json(['message' => 'Invalid payload data'], 400);
+        }
 
         Log::info('Processing DOKU Callback...', ['ref' => $merchantRef, 'status' => $status]);
 
-        // Mapping status
+        // 2. Mapping status DOKU ke status Internal
         $internalStatus = ($status === 'SUCCESS') ? 'PAID' : 'FAILED';
 
         DB::beginTransaction();
         try {
+            // === LOGIKA TANGKAP TAGIHAN INDUK (PARENT INVOICE) ===
+            if (\Illuminate\Support\Str::startsWith($merchantRef, 'SCK-PAY-') || \Illuminate\Support\Str::startsWith($merchantRef, 'INV-PAY-')) {
+                Log::info('Routing DOKU callback to Process Parent Invoice', ['ref' => $merchantRef]);
 
-            if (Str::startsWith($merchantRef, 'INV-PAY-')) {
-                    Log::info('Routing DOKU callback to Process Parent Invoice', ['ref' => $merchantRef]);
-                    if ($internalStatus === 'PAID') {
-                        $anakOrders = Order::where('parent_invoice', $merchantRef)->get();
-                        foreach ($anakOrders as $anak) {
-                            $this->processOrderCallback($anak->invoice_number, 'PAID', $data);
-                        }
-                    } else {
-                        Order::where('parent_invoice', $merchantRef)->update(['status' => 'failed']);
+                if ($internalStatus === 'PAID') {
+                    // HYBRID SEARCH: Cari anak order di database utama (mysql)
+                    $anakOrders = \App\Models\Order::on('mysql')->where('parent_invoice', $merchantRef)->get();
+
+                    // Jika tidak ketemu, cari di database kedua (mysql_second)
+                    if ($anakOrders->isEmpty()) {
+                        $anakOrders = \App\Models\Order::on('mysql_second')->where('parent_invoice', $merchantRef)->get();
                     }
-                    DB::commit();
-                    return response()->json(['message' => 'Webhook processed successfully.'], 200);
+
+                    if ($anakOrders->isEmpty()) {
+                        Log::warning("DOKU Callback: Order anak untuk Parent Invoice {$merchantRef} tidak ditemukan di database mana pun.");
+                    }
+
+                    // Proses satu per satu anak order yang ditemukan
+                    foreach ($anakOrders as $anak) {
+                        Log::info("Memproses Order Anak: {$anak->invoice_number} dari Parent: {$merchantRef}");
+                        $this->processOrderCallback($anak->invoice_number, 'PAID', $data);
+                    }
+                } else {
+                    // Update status gagal di KEDUA database sekaligus untuk memastikan data sinkron
+                    \App\Models\Order::on('mysql')->where('parent_invoice', $merchantRef)->update(['status' => 'failed']);
+                    \App\Models\Order::on('mysql_second')->where('parent_invoice', $merchantRef)->update(['status' => 'failed']);
                 }
-            // Routing berdasarkan prefix
-            if (Str::startsWith($merchantRef, 'TOPUP-')) {
+
+                DB::commit();
+                return response()->json(['message' => 'Webhook parent invoice processed successfully.'], 200);
+            }
+
+            // === LOGIKA ROUTING UNTUK INVOICE TUNGGAL LAINNYA ===
+            if (\Illuminate\Support\Str::startsWith($merchantRef, 'TOPUP-')) {
                 Log::info('Routing DOKU callback to TopUpController', ['ref' => $merchantRef]);
-                TopUpController::processTopUpCallback($merchantRef, $internalStatus, $data['order']['amount'], $data);
+                \App\Http\Controllers\Customer\TopUpController::processTopUpCallback($merchantRef, $internalStatus, $data['order']['amount'] ?? 0, $data);
 
-            } elseif (Str::startsWith($merchantRef, 'DANATOPUP-')) {
+            } elseif (\Illuminate\Support\Str::startsWith($merchantRef, 'DANATOPUP-')) {
                 Log::info('Routing DOKU callback to TopupDanaController', ['ref' => $merchantRef]);
-                return app(\App\Http\Controllers\Customer\TopupDanaController::class)->handleDokuCallback($data);
+                app(\App\Http\Controllers\Customer\TopupDanaController::class)->handleDokuCallback($data);
 
-            } elseif (Str::startsWith($merchantRef, 'ORD-') || Str::startsWith($merchantRef, 'SCK-ORD-') || Str::startsWith($merchantRef, 'SCK-')) {
-                Log::info('Routing DOKU callback to processOrderCallback', ['ref' => $merchantRef]);
-                // Panggil fungsi prosesor lengkap
+            } elseif (\Illuminate\Support\Str::startsWith($merchantRef, 'ORD-') || \Illuminate\Support\Str::startsWith($merchantRef, 'SCK-ORD-') || \Illuminate\Support\Str::startsWith($merchantRef, 'SCK-')) {
+                Log::info('Routing DOKU callback to processOrderCallback (Single)', ['ref' => $merchantRef]);
+                // Langsung lempar ke fungsi prosesor utama
                 $this->processOrderCallback($merchantRef, $internalStatus, $data);
 
             } else {
@@ -1623,18 +1647,18 @@ class CheckoutController extends Controller
             DB::commit();
             return response()->json(['message' => 'Webhook processed successfully.'], 200);
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("DOKU Callback Exception", ['ref' => $merchantRef, 'error' => $e->getMessage()]);
+            Log::error("DOKU Callback Exception", [
+                'ref' => $merchantRef,
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
             return response()->json(['message' => 'Internal server error.'], 500);
         }
     }
 
-    /**
-     * =========================================================================
-     * 2. FUNGSI PROSESOR UTAMA (LENGKAP DENGAN AUTO RETRY & NOTIF CUSTOMER)
-     * =========================================================================
-     */
     public function processOrderCallback($merchantRef, $status, $callbackData)
     {
         Log::info('Processing Order Callback (ORD-/SCK-)...', ['ref' => $merchantRef, 'status' => $status]);
@@ -1642,36 +1666,53 @@ class CheckoutController extends Controller
         $cleanRef = trim($merchantRef);
 
         // -----------------------------------------------------------
-        // 1. PENCARIAN HYBRID
+        // 1. PENCARIAN HYBRID SUPER LENGKAP (2 MODEL, 2 DATABASE)
         // -----------------------------------------------------------
         $isLegacy = false;
+        $order = null;
+        $dbConnection = 'mysql'; // Default connection fallback
 
-        // Cari di Orders (Baru)
-        $order = Order::with('items.product.store.user', 'items.variant', 'user')
-                    ->where('invoice_number', $cleanRef)
-                    ->lockForUpdate()
-                    ->first();
+        $connections = ['mysql', 'mysql_second']; // Array database yang akan dicek
 
-        // Cari di Pesanan (Lama)
-        if (!$order) {
-            Log::info("Order tidak ditemukan di tabel 'orders', mencari di tabel 'Pesanan'...", ['ref' => $cleanRef]);
-            if (class_exists(\App\Models\Pesanan::class)) {
-                $order = \App\Models\Pesanan::where('nomor_invoice', $cleanRef)
-                            ->lockForUpdate()
+        foreach ($connections as $conn) {
+            // A. Coba cari di model Order (Tabel Baru)
+            $order = Order::on($conn)->with('items.product.store.user', 'items.variant', 'user')
+                        ->where('invoice_number', $cleanRef)
+                        ->first();
+
+            if ($order) {
+                $dbConnection = $conn;
+                Log::info("➡️ Order {$cleanRef} ditemukan di tabel Orders ({$conn}).");
+                break; // Hentikan pencarian jika ketemu
+            }
+
+            // B. Coba cari di model Pesanan (Tabel Lama / Legacy)
+            if (!$order && class_exists(\App\Models\Pesanan::class)) {
+                $order = \App\Models\Pesanan::on($conn)
+                            ->where('nomor_invoice', $cleanRef)
                             ->first();
-                $isLegacy = true;
+
+                if ($order) {
+                    $isLegacy = true;
+                    $dbConnection = $conn;
+                    Log::info("➡️ Order {$cleanRef} ditemukan di tabel Pesanan ({$conn}).");
+                    break; // Hentikan pencarian jika ketemu
+                }
             }
         }
 
+        // Jika sudah dicari di semua koneksi dan tabel tapi tetap kosong
         if (!$order) {
-            Log::error('FATAL: Order tidak ditemukan.', ['ref' => $cleanRef]);
+            Log::error('FATAL: Order tidak ditemukan di semua database.', ['ref' => $cleanRef]);
             return;
         }
+
+        // Mengunci koneksi model saat ini agar fungsi $order->save() di bawahnya masuk ke DB yang tepat
+        $order->setConnection($dbConnection);
 
         // -----------------------------------------------------------
         // 2. VALIDASI STATUS
         // -----------------------------------------------------------
-        // TAMBAHKAN 'paid' dan 'processing' ke dalam array $statusBoleh
         $statusBoleh = ['pending', 'menunggu pembayaran', 'unpaid', 'menunggu_pembayaran', 'paid', 'processing'];
 
         if (!in_array(strtolower($order->status), $statusBoleh)) {
