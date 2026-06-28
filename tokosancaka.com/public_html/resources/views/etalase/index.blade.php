@@ -883,8 +883,23 @@ document.querySelectorAll('.form-add-to-cart').forEach(form => {
             btn.innerHTML = originalBtnText;
             btn.disabled = false;
 
-            // Munculkan Toast (Sesuaikan pengecekan 'success' ini dengan output JSON dari Controller Anda)
+           // Munculkan Toast (Sesuaikan pengecekan 'success' ini dengan output JSON dari Controller Anda)
             if (data.status === 'success' || data.success) { 
+                
+                // --- KODE BARU: UPDATE ANGKA KERANJANG REAL-TIME ---
+                const cartBadges = document.querySelectorAll('.cart-badge-count');
+                cartBadges.forEach(badge => {
+                    badge.innerText = data.cart_count; // Timpa angkanya dengan jumlah terbaru
+                    if (data.cart_count > 0) {
+                        badge.classList.remove('hidden'); // Munculkan badge merah
+                        badge.classList.add('scale-125', 'transition-transform'); // Kasih efek kedip
+                        setTimeout(() => badge.classList.remove('scale-125'), 300);
+                    } else {
+                        badge.classList.add('hidden'); // Sembunyikan kalau keranjang kosong
+                    }
+                });
+                // ---------------------------------------------------
+
                 Toast.fire({
                     icon: 'success',
                     title: data.message || 'Berhasil masuk keranjang!'
