@@ -183,7 +183,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     {{-- SweetAlert untuk Notifikasi --}}
-    @if(session('success'))
+    {{-- @if(session('success'))
     <script>
         Swal.fire({
             title: 'Berhasil!',
@@ -207,7 +207,7 @@
             confirmButtonColor: '#dc2626',
         });
     </script>
-    @endif
+    @endif --}}
     
     <script>
         // Inisialisasi AOS
