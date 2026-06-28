@@ -616,7 +616,7 @@ class DokuJokulService
             Log::info('DEBUG DOKU OVO: Menggunakan Secret Key (Prefix) -> ' . substr($this->secretKey, 0, 5) . '...');
 
             // Timeout diperpanjang hingga 75s karena DOKU menginstruksikan tunggu 70s untuk OVO
-            $response = Http::timeout(75) 
+            $response = Http::timeout(75)
                 ->withBody(json_encode($body), 'application/json')
                 ->post($url);
 
@@ -627,7 +627,7 @@ class DokuJokulService
                 return ['success' => true, 'data' => $responseData];
             } else {
                 return [
-                    'success' => false, 
+                    'success' => false,
                     'message' => $responseData['ovo_payment']['response_code'] ?? 'OVO Payment Failed'
                 ];
             }
@@ -689,5 +689,98 @@ class DokuJokulService
         ];
 
         return $this->sendRequest('POST', $endpoint, $body);
+    }
+
+    public function createDirectPayment($invoiceNumber, $amount, $customerData, $paymentMethod, $targetSacId = null, $redirectUrl = null)
+    {
+        $endpoint = '';
+        $body = [
+            'order' => [
+                'invoice_number' => $invoiceNumber,
+                'amount' => (int) $amount,
+            ],
+            'customer' => [
+                'name' => $customerData['name'] ?? 'Customer Sancaka',
+                'email' => $customerData['email'] ?? 'customer@tokosancaka.com',
+                'phone' => $customerData['phone'] ?? '081111111111',
+            ]
+        ];
+
+        // 1. Tentukan Endpoint dan Body berdasarkan Bank/Metode
+        if ($paymentMethod === 'DOKU_BCA_VA') {
+            $endpoint = '/bca-virtual-account/v2/payment-code';
+            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+        } elseif ($paymentMethod === 'DOKU_MANDIRI_VA') {
+            $endpoint = '/mandiri-virtual-account/v2/payment-code';
+            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+        } elseif ($paymentMethod === 'DOKU_BSI_VA') {
+            $endpoint = '/bsm-virtual-account/v2/payment-code';
+            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+        } elseif ($paymentMethod === 'DOKU_BRI_VA') {
+            $endpoint = '/bri-virtual-account/v2/payment-code';
+            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+        } elseif ($paymentMethod === 'DOKU_BNI_VA') {
+            $endpoint = '/bni-virtual-account/v2/payment-code';
+            $body['virtual_account_info'] = ['description' => 'Pembayaran Sancaka'];
+        } elseif ($paymentMethod === 'DOKU_PERMATA_VA') {
+            $endpoint = '/permata-virtual-account/v2/payment-code';
+            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+        } elseif ($paymentMethod === 'DOKU_CIMB_VA') {
+            $endpoint = '/cimb-virtual-account/v2/payment-code';
+            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+        } elseif ($paymentMethod === 'DOKU_DANAMON_VA') {
+            $endpoint = '/danamon-virtual-account/v2/payment-code';
+            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+        } elseif ($paymentMethod === 'DOKU_DOKU_VA') {
+            $endpoint = '/doku-virtual-account/v2/payment-code';
+            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+        } elseif ($paymentMethod === 'DOKU_ALFAMART') {
+            $endpoint = '/alfa-online-to-offline/v2/payment-code';
+            $body['online_to_offline_info'] = ['info1' => 'Sancaka'];
+        } elseif ($paymentMethod === 'DOKU_QRIS') {
+            $endpoint = '/qris/v2/payment';
+        } else {
+            // JIKA E-WALLET (OVO, SHOPEE) ATAU CC: Arahkan ke Checkout Page DOKU
+            // Karena E-Wallet & CC wajib membuka Applikasi/Halaman 3D Secure Bank
+            $redirectBasedMethods = [
+                'DOKU_SHOPEEPAY' => ['EMONEY_SHOPEE_PAY'],
+                'DOKU_OVO' => ['EMONEY_OVO'],
+                'DOKU_CREDIT_CARD' => ['CREDIT_CARD']
+            ];
+
+            if (array_key_exists($paymentMethod, $redirectBasedMethods)) {
+                $body['payment'] = [
+                    'payment_due_date' => 60,
+                    'payment_method_types' => $redirectBasedMethods[$paymentMethod]
+                ];
+                if ($redirectUrl) $body['payment']['redirect_url'] = $redirectUrl;
+                $endpoint = '/checkout/v1/payment';
+            } else {
+                return ['success' => false, 'message' => "Metode DOKU ($paymentMethod) belum dikonfigurasi."];
+            }
+        }
+
+        // 2. Jika transaksi ini untuk Sub Account (Marketplace)
+        if (!empty($targetSacId)) {
+            $body['additional_info'] = ['account' => ['id' => $targetSacId]];
+        }
+
+        // 3. Tembak API
+        $response = $this->sendRequest('POST', $endpoint, $body);
+
+        if ($response['success']) {
+            $data = $response['data'];
+
+            // 4. Deteksi apakah Doku membalas Code, QR, atau URL Redirect
+            return [
+                'success'    => true,
+                'pay_code'   => $data['virtual_account_info']['virtual_account_number']
+                                ?? $data['online_to_offline_info']['payment_code'] ?? null,
+                'qr_string'  => $data['qr_code'] ?? null,
+                'payment_url'=> $data['response']['payment']['url'] ?? null
+            ];
+        }
+
+        return $response;
     }
 }

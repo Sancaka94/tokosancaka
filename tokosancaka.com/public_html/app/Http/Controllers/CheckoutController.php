@@ -686,7 +686,7 @@ class CheckoutController extends Controller
 
                 $orderFisik = new Order([
                     'parent_invoice'          => $parentInvoice, // PENGIKAT KE INDUK
-                    'invoice_number'          => 'SCK-PHY-' . strtoupper(Str::random(6)),
+                    'invoice_number'          => 'SCK-ORD-' . strtoupper(Str::random(6)),
                     'store_id'                => $store ? $store->id : null,
                     'user_id'                 => $user ? $user->id_pengguna : null,
                     'subtotal'                => $subtotalFisik,
@@ -911,7 +911,8 @@ class CheckoutController extends Controller
                 $paymentGateway = 'tripay'; // Default
                 $paymentMethodRaw = strtoupper($request->payment_method);
 
-                if ($paymentMethodRaw === 'DOKU_JOKUL') {
+                // Tangkap semua metode yang diawali DOKU_ (e.g., DOKU_BCA_VA, DOKU_QRIS)
+                if (\Illuminate\Support\Str::startsWith($paymentMethodRaw, 'DOKU_')) {
                     $paymentGateway = 'doku';
                 } elseif ($paymentMethodRaw === 'MIDTRANS') {
                     $paymentGateway = 'midtrans';
@@ -933,7 +934,7 @@ class CheckoutController extends Controller
                 // ==========================================================
                 // PROSES VIA DOKU
                 // ==========================================================
-                elseif ($paymentGateway === 'doku') {
+                /* elseif ($paymentGateway === 'doku') {
                     Log::info('Memulai proses DOKU (Jokul) Marketplace untuk ' . $order->invoice_number);
 
                     $targetSacId = null; // DANA SELALU MASUK KE ADMIN DULU
@@ -971,6 +972,44 @@ class CheckoutController extends Controller
                     }
 
                     $order->payment_url = $paymentUrl;
+                } */
+
+                // ==========================================================
+                // PROSES VIA DOKU (MENDUKUNG DIRECT VA, QRIS, & REDIRECT)
+                // ==========================================================
+                elseif ($paymentGateway === 'doku') {
+                    Log::info('Memulai proses DOKU Direct API Marketplace untuk ' . $gatewayOrder->invoice_number);
+
+                    $targetSacId = !empty($store->doku_sac_id) ? $store->doku_sac_id : null;
+
+                    $dokuService = new DokuJokulService();
+                    $customerData = ['name' => $custName, 'email' => $custEmail, 'phone' => $custPhone];
+
+                    // URL kembali jika user memakai E-Wallet / CC
+                    $returnUrl = url('/customer/pesanan/riwayat-belanja');
+
+                    $dokuResult = $dokuService->createDirectPayment(
+                        $gatewayOrder->invoice_number,
+                        $grand_total,
+                        $customerData,
+                        $paymentMethodRaw,
+                        $targetSacId,
+                        $returnUrl
+                    );
+
+                    if ($dokuResult['success']) {
+                        if (!empty($dokuResult['payment_url'])) {
+                            // Skenario E-Wallet / Kartu Kredit: Simpan URL agar ter-redirect ke App
+                            $gatewayOrder->payment_url = $dokuResult['payment_url'];
+                        } else {
+                            // Skenario VA, QRIS, Alfamart: Simpan Kode & Kosongkan URL
+                            $gatewayOrder->pay_code = $dokuResult['pay_code'] ?? null;
+                            $gatewayOrder->qr_url   = $dokuResult['qr_string'] ?? null;
+                            $gatewayOrder->payment_url = null;
+                        }
+                    } else {
+                        throw new Exception($dokuResult['message']);
+                    }
                 }
 
                 // ==========================================================

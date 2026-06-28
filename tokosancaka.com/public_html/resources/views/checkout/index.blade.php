@@ -155,7 +155,7 @@
                 <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-red-600">
                     <h2 class="text-lg font-bold text-gray-900 mb-4">Data Penerima (Produk Digital / E-Ticket)</h2>
                     <p class="text-sm text-gray-500 mb-4">Sistem sedang mendeteksi lokasi Anda untuk mempermudah pengisian alamat.</p>
-                    
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
@@ -235,14 +235,14 @@
                                 </div>
                             </div>
 
-                            <input type="radio" 
-                                   name="shipping_method" 
-                                   value="digital_delivery-eticket-noncod-0-0-0" 
-                                   data-cost="0" 
-                                   data-insurance="0" 
-                                   data-cod="false" 
-                                   data-cod-fee="0" 
-                                   class="hidden" 
+                            <input type="radio"
+                                   name="shipping_method"
+                                   value="digital_delivery-eticket-noncod-0-0-0"
+                                   data-cost="0"
+                                   data-insurance="0"
+                                   data-cod="false"
+                                   data-cod-fee="0"
+                                   class="hidden"
                                    checked>
 
                         @else
@@ -497,51 +497,235 @@
                 @endauth
 
                 {{-- 2. OPSI KHUSUS (DOKU) --}}
-                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
+                <!-- <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50"
                     data-value="DOKU_JOKUL"
                     data-label="Doku (Kartu Kredit, E-Wallet, dll)"
                     data-img="{{ asset('public/assets/doku.png') }}">
                     <img src="{{ asset('public/assets/doku.png') }}" class="h-8 w-8 object-contain mr-4">
                     <span class="text-sm font-medium text-gray-900">Rekomendasi Sancaka (Kartu Kredit, E-Wallet, dll)</span>
+                </li> -->
+
+                {{-- ========================================================== --}}
+                {{-- 2. OPSI DOKU DIRECT (VIRTUAL ACCOUNT, RETAIL, QRIS, DLL) --}}
+                {{-- ========================================================== --}}
+                <li class="px-2 pt-4 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Virtual Account (Transfer Bank)
                 </li>
+
+                {{-- DOKU BCA VA --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_BCA_VA"
+                    data-label="BCA Virtual Account"
+                    data-img="{{ asset('public/assets/bca.webp') }}">
+                    <img src="{{ asset('public/assets/bca.webp') }}" alt="BCA" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">BCA Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                {{-- DOKU Mandiri VA --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_MANDIRI_VA"
+                    data-label="Mandiri Virtual Account"
+                    data-img="{{ asset('public/assets/mandiri.webp') }}">
+                    <img src="{{ asset('public/assets/mandiri.webp') }}" alt="Mandiri" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">Mandiri Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                {{-- DOKU BRI VA --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_BRI_VA"
+                    data-label="BRI Virtual Account"
+                    data-img="{{ asset('public/assets/bri.webp') }}">
+                    <img src="{{ asset('public/assets/bri.webp') }}" alt="BRI" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">BRI Virtual Account (BRIVA)</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                {{-- DOKU BNI VA --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_BNI_VA"
+                    data-label="BNI Virtual Account"
+                    data-img="{{ asset('public/assets/bni.webp') }}">
+                    <img src="{{ asset('public/assets/bni.webp') }}" alt="BNI" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">BNI Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                {{-- DOKU BSI VA --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_BSI_VA"
+                    data-label="BSI Virtual Account"
+                    data-img="{{ asset('public/assets/bsi.png') }}">
+                    <img src="{{ asset('public/assets/bsi.png') }}" alt="BSI" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">BSI Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                {{-- DOKU Permata VA --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_PERMATA_VA"
+                    data-label="Permata Virtual Account"
+                    data-img="{{ asset('public/assets/permata.webp') }}">
+                    <img src="{{ asset('public/assets/permata.webp') }}" alt="Permata" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">Permata Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                {{-- DOKU CIMB VA --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_CIMB_VA"
+                    data-label="CIMB Niaga Virtual Account"
+                    data-img="{{ asset('public/assets/cimb.svg') }}">
+                    <img src="{{ asset('public/assets/cimb.svg') }}" alt="CIMB" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">CIMB Niaga Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                {{-- DOKU Danamon VA --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_DANAMON_VA"
+                    data-label="Danamon Virtual Account"
+                    data-img="{{ asset('public/assets/danamon.png') }}">
+                    <img src="{{ asset('public/assets/danamon.png') }}" alt="Danamon" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">Danamon Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                {{-- DOKU VA --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_DOKU_VA"
+                    data-label="DOKU Virtual Account"
+                    data-img="{{ asset('public/assets/doku.png') }}">
+                    <img src="{{ asset('public/assets/doku.png') }}" alt="DOKU VA" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">DOKU Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                <li class="px-2 pt-4 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Scan QRIS & Minimarket
+                </li>
+
+                {{-- QRIS --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_QRIS"
+                    data-label="QRIS (Gopay, OVO, Dana, LinkAja)"
+                    data-img="{{ asset('public/assets/qris.png') }}">
+                    <img src="{{ asset('public/assets/qris.png') }}" alt="QRIS" class="h-8 w-14 object-contain mr-3">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">QRIS (Semua E-Wallet & M-Banking)</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Scan kode barcode di halaman Invoice</span>
+                    </div>
+                </li>
+
+                {{-- Alfamart --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_ALFAMART"
+                    data-label="Alfamart / Alfamidi"
+                    data-img="{{ asset('public/assets/alfamart.webp') }}">
+                    <img src="{{ asset('public/assets/alfamart.webp') }}" alt="Alfamart" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">Alfamart / Alfamidi / Dan+Dan</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Tunjukkan kode bayar ke kasir</span>
+                    </div>
+                </li>
+
+                <li class="px-2 pt-4 pb-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    E-Wallet & Kartu Kredit
+                </li>
+
+                {{-- ShopeePay --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_SHOPEEPAY"
+                    data-label="ShopeePay"
+                    data-img="{{ asset('public/assets/shopeepay.webp') }}">
+                    <img src="{{ asset('public/assets/shopeepay.webp') }}" alt="ShopeePay" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">ShopeePay</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Akan diarahkan ke aplikasi Shopee</span>
+                    </div>
+                </li>
+
+                {{-- OVO --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_OVO"
+                    data-label="OVO"
+                    data-img="{{ asset('public/assets/ovo.webp') }}">
+                    <img src="{{ asset('public/assets/ovo.webp') }}" alt="OVO" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">OVO</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Akan diarahkan ke aplikasi OVO</span>
+                    </div>
+                </li>
+
+                {{-- Credit Card --}}
+                <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200 mt-2"
+                    data-value="DOKU_CREDIT_CARD"
+                    data-label="Kartu Kredit / Debit Online"
+                    data-img="{{ asset('public/assets/card.png') }}">
+                    <img src="{{ asset('public/assets/card.png') }}" alt="Credit Card" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">Kartu Kredit / Debit (Visa, Mastercard, JCB)</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Pembayaran aman dengan 3D Secure</span>
+                    </div>
+                </li>
+                {{-- ========================================================== --}}
 
                 {{-- OPSI PAYPAL (GLOBAL PAYMENT) --}}
                 <li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
                     data-value="PAYPAL"
                     data-label="PayPal / Credit Card"
                     data-img="https://tokosancaka.com/public/assets/paypal.png">
-                    
-                    <img src="https://tokosancaka.com/public/assets/paypal.png" 
-                         alt="PayPal" 
+
+                    <img src="https://tokosancaka.com/public/assets/paypal.png"
+                         alt="PayPal"
                          class="h-8 object-contain mr-4"
                          onerror="this.src='https://placehold.co/32x32/EFEFEF/AAAAAA?text=PP'">
-                    
+
                     <div class="flex flex-col">
                         <span class="text-sm font-bold text-gray-900">PayPal / Kartu Kredit</span>
                         <span class="text-xs text-gray-500">Pembayaran Global (Otomatis konversi USD)</span>
                     </div>
                 </li>
-                
+
 
                 {{-- OPSI MIDTRANS --}}
                 {{--<li class="payment-option cursor-pointer flex items-center p-4 border rounded-lg hover:bg-red-50 transition-colors duration-200"
                     data-value="MIDTRANS"
                     data-label="Midtrans"
                     data-img="https://tokosancaka.com/public/assets/midtrans.png">
-                    
+
                     <img src="https://tokosancaka.com/public/assets/midtrans.png"
                          alt="Midtrans"
                          class="h-8 w-8 object-contain mr-4"
                          onerror="this.src='https://midtrans.com/assets/img/midtrans-dark.svg'">
-                         
+
                     <div class="flex flex-col">
                         <span class="text-sm font-bold text-gray-900">Midtrans</span>
                         <span class="text-xs text-gray-500">Virtual Account, QRIS, E-Wallet (Otomatis)</span>
                     </div>
-                </li> 
-                
+                </li>
+
                 --}}
-            
+
 
                 {{-- ================================================================= --}}
                 {{-- OPSI DANA (GAPURA & BINDING) BERDASARKAN DATABASE PENGGUNA --}}
@@ -577,14 +761,14 @@
                         data-value="DANA_BINDING"
                         data-label="DANA Auto-Debit"
                         data-img="{{ asset('public/assets/dana.webp') }}">
-                        
+
                         <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="h-8 w-8 object-contain mr-4">
-                        
+
                         <div class="flex flex-col flex-1">
                             <span class="text-sm font-bold text-gray-900">DANA Auto-Debit</span>
                             <span class="text-xs text-gray-600 font-medium mt-0.5">Saldo Anda: <span class="text-blue-700">Rp{{ number_format($userDanaBalance, 0, ',', '.') }}</span></span>
                         </div>
-                        
+
                         <span class="ml-auto bg-blue-600 text-white text-[10px] font-semibold px-2.5 py-1 rounded shadow-sm">
                             Tersambung
                         </span>
@@ -599,7 +783,7 @@
                                 <span class="text-[11px] text-gray-400 mt-0.5">Bayar instan 1-klik tanpa PIN</span>
                             </div>
                         </div>
-                        
+
                         {{-- Sesuaikan URL href ini dengan route startBinding Anda di web.php --}}
                         <a href="{{ url('/dana/start-binding') }}" class="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-700 shadow-sm transition-colors">
                             Hubungkan
@@ -992,7 +1176,7 @@ $(document).ready(function() {
         allowClear: true,
         ajax: {
             // URL ini menembak fungsi searchAddressAjax di CheckoutController yang sudah kita buat sebelumnya
-            url: "{{ url('/checkout/search-address-ajax') }}", 
+            url: "{{ url('/checkout/search-address-ajax') }}",
             dataType: 'json',
             delay: 250, // Mencegah server jebol (delay ketikan)
             data: function (params) {
@@ -1011,24 +1195,24 @@ $(document).ready(function() {
     });
 
     $('#select2_alamat_digital').on('select2:select', function (e) {
-        const data = e.params.data; 
-        
+        const data = e.params.data;
+
         // String dari API: "Ketanggi, Ngawi, Ngawi, Jawa Timur, 63211"
         let parts = data.raw_address.split(', ');
-        
+
         // Asumsi urutan: [Kelurahan, Kecamatan, Kota, Provinsi, KodePos]
         let kelurahan = parts[0] || '';
         let kecamatan = parts[1] || '';
         let kota      = parts[2] || '';
         let provinsi  = parts[3] || '';
-        let kode_pos  = parts[4] || ''; 
+        let kode_pos  = parts[4] || '';
 
         // Masukkan ke form HTML
         $('#provinsi_penerima').val(provinsi);
         $('#kota_penerima').val(kota);
         $('#kecamatan_penerima').val(kecamatan);
         $('#kelurahan_penerima').val(kelurahan);
-        $('#kode_pos_penerima').val(kode_pos); 
+        $('#kode_pos_penerima').val(kode_pos);
 
         document.getElementById('alamat_lengkap_penerima').focus();
     });
@@ -1045,7 +1229,7 @@ function updateCardPreview() {
     // Ambil data dari form input
     let nama = $('#nama_penerima').val();
     let wa = $('#no_wa_penerima').val();
-    
+
     let alamat = $('#alamat_lengkap_penerima').val();
     let kel = $('#kelurahan_penerima').val();
     let kec = $('#kecamatan_penerima').val();
@@ -1072,7 +1256,7 @@ $(document).ready(function() {
 
     // Deteksi otomatis saat user memilih alamat dari dropdown Select2 (KiriminAja)
     $('#select2_alamat_digital').on('select2:select', function () {
-        setTimeout(updateCardPreview, 300); 
+        setTimeout(updateCardPreview, 300);
     });
 
     // Pengecekan background otomatis
