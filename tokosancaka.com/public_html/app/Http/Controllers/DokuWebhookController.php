@@ -225,10 +225,9 @@ class DokuWebhookController extends Controller
                     // 1. CARI DI DATABASE KEDUA (MARKETPLACE / TENANT - mysql_second) DULU
                     $percetakanDB = DB::connection('mysql_second');
 
-                    // CARI BERDASARKAN PARENT INVOICE ATAU INVOICE NUMBER
+                    // KEMBALI KE ASAL: Di mysql_second kolomnya bernama order_number (Tidak ada parent_invoice)
                     $orderMarketplace = $percetakanDB->table('orders')
-                        ->where('parent_invoice', $orderId)
-                        ->orWhere('invoice_number', $orderId)
+                        ->where('order_number', $orderId)
                         ->first();
 
                     if ($orderMarketplace) {
@@ -315,11 +314,8 @@ class DokuWebhookController extends Controller
                                     }
                                 }
 
-                                // UPDATE SEMUA PESANAN YANG MEMILIKI PARENT INVOICE INI
-                                $percetakanDB->table('orders')
-                                    ->where('parent_invoice', $orderId)
-                                    ->orWhere('invoice_number', $orderId)
-                                    ->update($updateData);
+                                // KEMBALI KE ASAL: Update cukup berdasarkan ID pesanan yang ketemu
+                                $percetakanDB->table('orders')->where('id', $orderMarketplace->id)->update($updateData);
 
                                 Log::info("✅ Status order $orderId di mysql_second diupdate jadi paid & processing.");
 
@@ -422,7 +418,7 @@ class DokuWebhookController extends Controller
                     }
                     // 2. JIKA TIDAK ADA DI MARKETPLACE, BARU CARI DI MAIN DB (TOKO UTAMA / EKSPEDISI)
                     else {
-                        // CARI BERDASARKAN PARENT INVOICE ATAU INVOICE NUMBER JUGA
+                        // UNTUK MYSQL UTAMA, KITA TETAP PERTAHANKAN PENCARIAN PARENT_INVOICE!
                         $pesananTokoUtama = \App\Models\Order::where('parent_invoice', $orderId)
                                                             ->orWhere('invoice_number', $orderId)
                                                             ->first();
@@ -442,8 +438,6 @@ class DokuWebhookController extends Controller
                         }
                     }
                 }
-
-
 
                 // -------------------------------------------------------------
                 // A.4 ORDER LISENSI (LISC)
