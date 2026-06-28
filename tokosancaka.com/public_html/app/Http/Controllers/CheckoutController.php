@@ -105,27 +105,35 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-        // ========================================================
-        // 1. DETEKSI DILENGKAPI: PRODUK DIGITAL & JASA DI KERANJANG
-        // ========================================================
-        $isDigital = false;
+       // Cek apakah keranjang INI 100% DIGITAL
+        $isOnlyDigital = true; 
+        
         foreach ($cart as $item) {
+            $isThisItemDigital = false;
+            
+            // Cek dari array session
             if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) { 
-                $isDigital = true;
-                break;
+                $isThisItemDigital = true;
             }
             
+            // Cek dari database category
             $productCheck = Product::find($item['product_id'] ?? null);
             if ($productCheck) {
-                // Paksa panggil method relasi () agar tidak bentrok dengan kolom string 'category'
                 $kategoriObj = $productCheck->category()->first();
-                
                 if ($kategoriObj && in_array($kategoriObj->category_group, ['produk_digital', 'jasa'])) {
-                    $isDigital = true;
-                    break;
+                    $isThisItemDigital = true;
                 }
             }
+
+            // JIKA KETEMU 1 SAJA BARANG FISIK, MAKA KERANJANG BUKAN 100% DIGITAL
+            if (!$isThisItemDigital) {
+                $isOnlyDigital = false;
+                break; 
+            }
         }
+        
+        // Tetap gunakan nama variabel $isDigital agar frontend blade tidak perlu diubah
+        $isDigital = $isOnlyDigital;
 
         // 2. BLOKIR JIKA PRODUK FISIK TAPI BELUM LOGIN
         if (!$isDigital && !Auth::check()) {
@@ -242,8 +250,15 @@ class CheckoutController extends Controller
 
             $totalWeight = (int) collect($cart)->sum(function($item) {
                 $product = Product::find($item['product_id']);
-                $weight = $product->weight ?? 1000;
-                return $weight * $item['quantity'];
+                $kategoriGroup = $product->category->category_group ?? '';
+                
+                $isItemDigital = (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) || in_array($kategoriGroup, ['produk_digital', 'jasa']);
+                
+                // Jika ini produk digital, BERATNYA 0 GRAM (Tidak ikut ditimbang)
+                if ($isItemDigital) return 0;
+                
+                // Jika fisik, timbang seperti biasa (default 1kg jika kosong)
+                return ($product->weight ?? 1000) * $item['quantity'];
             });
             $finalWeight = max(1000, $totalWeight);
 
@@ -531,7 +546,7 @@ class CheckoutController extends Controller
             }
 
             // Generate Invoice
-            do {
+            /* do {
                  $invoiceNumber = 'SCK-ORD-' . strtoupper(Str::random(8));
             } while (Order::where('invoice_number', $invoiceNumber)->exists() || Pesanan::where('nomor_invoice', $invoiceNumber)->exists());
 
@@ -612,7 +627,128 @@ class CheckoutController extends Controller
             $orderItemsPayload[] = [ 'sku' => 'SHIPPING', 'name' => 'Ongkos Kirim', 'price' => $shipping_cost, 'quantity' => 1 ];
             if($applied_insurance_cost > 0) { $orderItemsPayload[] = [ 'sku' => 'INSURANCE', 'name' => 'Asuransi', 'price' => $applied_insurance_cost, 'quantity' => 1 ]; }
             if($cod_add_cost > 0) { $orderItemsPayload[] = [ 'sku' => 'CODFEE', 'name' => 'Biaya COD', 'price' => $cod_add_cost, 'quantity' => 1 ]; }
+            */
 
+            // --- 1. BUAT INVOICE INDUK (TAGIHAN TRIPAY) ---
+            do {
+                 $parentInvoice = 'INV-PAY-' . strtoupper(Str::random(8));
+            } while (Order::where('parent_invoice', $parentInvoice)->exists());
+
+            // --- 2. MERAKIT ALAMAT LENGKAP (GUEST / USER) ---
+            $finalAddress = null;
+            if ($isDigital && !$user) {
+                $arrAlamat = array_filter([$request->alamat_lengkap_penerima, $request->kelurahan_penerima, $request->kecamatan_penerima, $request->kota_penerima, $request->provinsi_penerima, $request->kode_pos_penerima]);
+                $finalAddress = implode(', ', $arrAlamat);
+            } else {
+                $finalAddress = $user ? $user->address_detail : 'Alamat Tidak Valid';
+                if(empty($finalAddress) && $isDigital) {
+                     $arrAlamat = array_filter([$request->alamat_lengkap_penerima, $request->kelurahan_penerima, $request->kecamatan_penerima, $request->kota_penerima, $request->provinsi_penerima, $request->kode_pos_penerima]);
+                    $finalAddress = implode(', ', $arrAlamat);
+                }
+            }
+
+            // --- 3. PISAHKAN ISI KERANJANG (FISIK VS DIGITAL) ---
+            $itemsFisik = [];
+            $itemsDigital = [];
+            $orderItemsPayload = []; // Untuk payload Tripay
+
+            foreach ($cart as $cartKey => $details) {
+                // Siapkan payload untuk dikirim ke Tripay (semua item digabung)
+                $orderItemsPayload[] = [ 'sku' => $cartKey, 'name' => $details['name'], 'price' => (int) $details['price'], 'quantity' => $details['quantity'] ];
+
+                // Cek tipe produk untuk dipisah ke order anak
+                $produkCek = Product::find($details['product_id']);
+                $kategoriGroup = $produkCek->category->category_group ?? '';
+
+                if (in_array($kategoriGroup, ['produk_digital', 'jasa']) || (isset($details['type']) && in_array(strtolower($details['type']), ['eticket', 'digital', 'jasa']))) {
+                    $itemsDigital[$cartKey] = $details;
+                } else {
+                    $itemsFisik[$cartKey] = $details;
+                }
+            }
+
+            // Tambahan Biaya untuk Payload Tripay
+            $orderItemsPayload[] = [ 'sku' => 'SHIPPING', 'name' => 'Ongkos Kirim', 'price' => $shipping_cost, 'quantity' => 1 ];
+            if($applied_insurance_cost > 0) { $orderItemsPayload[] = [ 'sku' => 'INSURANCE', 'name' => 'Asuransi', 'price' => $applied_insurance_cost, 'quantity' => 1 ]; }
+            if($cod_add_cost > 0) { $orderItemsPayload[] = [ 'sku' => 'CODFEE', 'name' => 'Biaya COD', 'price' => $cod_add_cost, 'quantity' => 1 ]; }
+
+            $order = null; // Sebagai trigger variabel global di bawahnya
+
+            // --- 4. SIMPAN ORDER ANAK: FISIK ---
+            if (count($itemsFisik) > 0) {
+                $subtotalFisik = collect($itemsFisik)->sum(fn($details) => $details['price'] * $details['quantity']);
+                $totalFisik = $subtotalFisik + $shipping_cost + $applied_insurance_cost + $cod_add_cost;
+
+                $orderFisik = new Order([
+                    'parent_invoice'          => $parentInvoice, // PENGIKAT KE INDUK
+                    'invoice_number'          => 'SCK-PHY-' . strtoupper(Str::random(6)),
+                    'store_id'                => $store ? $store->id : null,
+                    'user_id'                 => $user ? $user->id_pengguna : null,
+                    'subtotal'                => $subtotalFisik,
+                    'shipping_cost'           => $shipping_cost,
+                    'insurance_cost'          => $applied_insurance_cost,
+                    'cod_fee'                 => $cod_add_cost,
+                    'total_amount'            => $totalFisik,
+                    'shipping_method'         => $request->shipping_method,
+                    'payment_method'          => $request->payment_method,
+                    'status'                  => (in_array($request->payment_method, ['cod', 'cash', 'CODBARANG'])) ? 'processing' : 'pending',
+                    'customer_latitude'       => $request->latitude ?? null,
+                    'customer_longitude'      => $request->longitude ?? null,
+                    'shipping_address'        => $finalAddress,
+                    'receiver_name'           => $request->nama_penerima ?? ($user ? $user->nama_lengkap : 'Guest Customer'),
+                    'receiver_phone'          => $request->no_wa_penerima ?? ($user ? $user->no_wa : '081234567890'),
+                    'nik_penerima'            => $request->nik_penerima ?? null,
+                    'receiver_district_id'    => $userDistrictId,
+                    'receiver_subdistrict_id' => $userSubdistrictId,
+                    'sender_district_id'      => $storeDistrictId,
+                    'sender_subdistrict_id'   => $storeSubdistrictId,
+                ]);
+                $orderFisik->save();
+
+                foreach ($itemsFisik as $cartKey => $details) {
+                    OrderItem::create([ 'order_id' => $orderFisik->id, 'product_id' => $details['product_id'], 'product_variant_id' => $details['variant_id'] ?? null, 'quantity' => $details['quantity'], 'price' => $details['price'] ]);
+                    if (!empty($details['variant_id'])) { ProductVariant::find($details['variant_id'])?->decrement('stock', $details['quantity']); } 
+                    else { Product::find($details['product_id'])?->decrement('stock', $details['quantity']); }
+                }
+
+                $order = $orderFisik; // Default order untuk dikirim ke gateway
+            }
+
+            // --- 5. SIMPAN ORDER ANAK: DIGITAL ---
+            if (count($itemsDigital) > 0) {
+                $subtotalDigital = collect($itemsDigital)->sum(fn($details) => $details['price'] * $details['quantity']);
+                
+                $orderDigital = new Order([
+                    'parent_invoice'          => $parentInvoice, // PENGIKAT KE INDUK
+                    'invoice_number'          => 'SCK-DIG-' . strtoupper(Str::random(6)),
+                    'store_id'                => $store ? $store->id : null,
+                    'user_id'                 => $user ? $user->id_pengguna : null,
+                    'subtotal'                => $subtotalDigital,
+                    'shipping_cost'           => 0, // Digital ga pake ongkir
+                    'insurance_cost'          => 0,
+                    'cod_fee'                 => 0,
+                    'total_amount'            => $subtotalDigital,
+                    'shipping_method'         => 'digital_delivery-eticket-noncod-0-0-0',
+                    'payment_method'          => $request->payment_method,
+                    'status'                  => 'pending',
+                    'shipping_address'        => 'Pengiriman Digital / E-Ticket',
+                    'receiver_name'           => $request->nama_penerima ?? ($user ? $user->nama_lengkap : 'Guest Customer'),
+                    'receiver_phone'          => $request->no_wa_penerima ?? ($user ? $user->no_wa : '081234567890'),
+                ]);
+                $orderDigital->save();
+
+                foreach ($itemsDigital as $cartKey => $details) {
+                    OrderItem::create([ 'order_id' => $orderDigital->id, 'product_id' => $details['product_id'], 'product_variant_id' => $details['variant_id'] ?? null, 'quantity' => $details['quantity'], 'price' => $details['price'] ]);
+                    if (!empty($details['variant_id'])) { ProductVariant::find($details['variant_id'])?->decrement('stock', $details['quantity']); } 
+                    else { Product::find($details['product_id'])?->decrement('stock', $details['quantity']); }
+                }
+
+                if (!$order) { $order = $orderDigital; } // Jika ga ada fisik, jadikan digital trigger utama
+            }
+
+            // Ganti nama invoice di memory (sementara) jadi parentInvoice biar Tripay nerimanya tagihan gabungan
+            $order->invoice_number = $parentInvoice; 
+            $order->total_amount = $grand_total; // Gunakan grand total asli dari kalkulasi lu sebelumnya
 
             $paymentUrl = null;
 
@@ -758,6 +894,9 @@ class CheckoutController extends Controller
             {
                 // --- 6. Logika Pembayaran Online (Midtrans, Tripay, ATAU Doku) ---
 
+                $order->invoice_number = $parentInvoice;
+                $order->total_amount = $grand_total;
+
                 $custName  = $request->nama_penerima ?? ($user ? $user->nama_lengkap : 'Guest Customer');
                 $custPhone = $request->no_wa_penerima ?? ($user ? $user->no_wa : '081234567890');
                 // Payment Gateway (DOKU/Tripay) biasanya mewajibkan email
@@ -874,7 +1013,13 @@ class CheckoutController extends Controller
             // ==========================================================
 
             // Simpan status akhir & clear session
-            $order->save();
+            // UPDATE SEMUA ANAK AGAR PUNYA PAYMENT URL YANG SAMA
+            Order::where('parent_invoice', $parentInvoice)->update([
+                'payment_url' => $order->payment_url,
+                'pay_code'    => $order->pay_code ?? null,
+                'qr_url'      => $order->qr_url ?? null,
+            ]);
+
             DB::commit();
             session()->forget('cart');
 
@@ -1200,7 +1345,31 @@ class CheckoutController extends Controller
 
         DB::beginTransaction();
         try {
-            // === PERBAIKAN LOGIKA ROUTING ===
+            // === LOGIKA BARU: TANGKAP INVOICE INDUK (PARENT INVOICE) ===
+            if (Str::startsWith($merchantRef, 'INV-PAY-')) {
+                Log::info('Routing callback to Process Parent Invoice', ['ref' => $merchantRef]);
+
+                // Jika statusnya LUNAS dari Tripay
+                if ($status === 'PAID') {
+                    // Ambil SEMUA order anak (Fisik dan Digital) yang nyantol ke Induk ini
+                    $anakOrders = Order::where('parent_invoice', $merchantRef)->get();
+
+                    foreach ($anakOrders as $anakOrder) {
+                        Log::info('Memproses Order Anak: ' . $anakOrder->invoice_number);
+                        
+                        // Lempar order anak ke fungsi andalan lu buat hit KiriminAja & Auto-Email
+                        $this->processOrderCallback($anakOrder->invoice_number, 'PAID', $data);
+                    }
+                } 
+                // Jika status gagal/expired
+                else if (in_array($status, ['EXPIRED', 'FAILED', 'UNPAID'])) {
+                    $statusGagal = ($status === 'EXPIRED') ? 'expired' : 'failed';
+                    Order::where('parent_invoice', $merchantRef)->update(['status' => $statusGagal]);
+                }
+
+                DB::commit();
+                return response()->json(['success' => true]);
+            }
 
             // 1. Prioritaskan Order Baru (Format: SCK-ORD-XXXX)
             // Ini harus dicek DULUAN sebelum 'SCK-' biasa
@@ -1377,6 +1546,20 @@ class CheckoutController extends Controller
 
         DB::beginTransaction();
         try {
+
+            if (Str::startsWith($merchantRef, 'INV-PAY-')) {
+                    Log::info('Routing DOKU callback to Process Parent Invoice', ['ref' => $merchantRef]);
+                    if ($internalStatus === 'PAID') {
+                        $anakOrders = Order::where('parent_invoice', $merchantRef)->get();
+                        foreach ($anakOrders as $anak) {
+                            $this->processOrderCallback($anak->invoice_number, 'PAID', $data);
+                        }
+                    } else {
+                        Order::where('parent_invoice', $merchantRef)->update(['status' => 'failed']);
+                    }
+                    DB::commit();
+                    return response()->json(['message' => 'Webhook processed successfully.'], 200);
+                }
             // Routing berdasarkan prefix
             if (Str::startsWith($merchantRef, 'TOPUP-')) {
                 Log::info('Routing DOKU callback to TopUpController', ['ref' => $merchantRef]);
@@ -2287,6 +2470,19 @@ TEXT;
         $internalStatus = ($status === 'SUCCESS') ? 'PAID' : 'FAILED';
 
         try {
+
+            if (Str::startsWith($merchantRef, 'INV-PAY-')) {
+                Log::info('Routing DANA callback to Process Parent Invoice', ['ref' => $merchantRef]);
+                if ($internalStatus === 'PAID') {
+                    $anakOrders = Order::where('parent_invoice', $merchantRef)->get();
+                    foreach ($anakOrders as $anak) {
+                        $this->processOrderCallback($anak->invoice_number, 'PAID', $data);
+                    }
+                } else {
+                    Order::where('parent_invoice', $merchantRef)->update(['status' => 'failed']);
+                }
+                return response()->json(['message' => 'Webhook DANA processed successfully.'], 200);
+            }
             // Langsung teruskan ke mesin utama untuk memproses KiriminAja dsb.
             Log::info("LOG LOG: Meneruskan Webhook $merchantRef ke processOrderCallback");
             $this->processOrderCallback($merchantRef, $internalStatus, $data);
