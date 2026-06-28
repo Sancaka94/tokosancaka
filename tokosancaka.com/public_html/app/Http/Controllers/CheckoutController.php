@@ -1780,10 +1780,9 @@ class CheckoutController extends Controller
                 //if (!in_array($type, $validTypes)) $type = 'regular';
                 //$service = strtoupper(trim($service));
 
-              // Tambahkan 'digital_delivery' ke dalam array validTypes
                 $validTypes = ['regular', 'cargo', 'instant', 'trucking', 'digital_delivery'];
                 if (!in_array($type, $validTypes)) $type = 'regular';
-                $service = strtoupper(trim($service));
+                $service = trim($service); // Biarkan huruf besar/kecilnya asli bawaan dari database
 
                 // ========================================================
                 // BYPASS BOOKING KURIR & EKSEKUSI AUTO-DELIVERY DIGITAL
@@ -2024,7 +2023,8 @@ class CheckoutController extends Controller
 
                         // 2. Masukkan ke payload fisik KiriminAja
                         $w = $item->product->weight ?? 1000;
-                        $jenisBarang = $item->product->jenis_barang ?? 1;
+                        // ABAIKAN jenis barang dari database, paksa selalu jadi 1 (Barang Umum) demi keamanan API
+                        $jenisBarang = 1;
                         $totalWeight += ($w * $item->quantity);
 
                         $packagesPayload[] = [
@@ -2039,7 +2039,7 @@ class CheckoutController extends Controller
                             'item_value'               => $item->price * $item->quantity,
                             'item_name'                => $item->product->name,
                             'service'                  => $courier,
-                            'service_type'             => $service,
+                            'package_type_id'          => 1,
                             'shipping_cost'            => (int) $order->shipping_cost,
                             'package_type_id'          => (int) $jenisBarang,
                             'cod'                      => 0,
