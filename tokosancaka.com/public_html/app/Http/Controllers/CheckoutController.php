@@ -2067,6 +2067,7 @@ class CheckoutController extends Controller
                         $finalBookingWeight = 10000; // Minimal 10kg untuk Kargo
                     }
 
+
                     if ($type === 'instant') {
                         $payload = [
                             'service' => $courier, 'service_type' => $service, 'vehicle' => 'motor',
