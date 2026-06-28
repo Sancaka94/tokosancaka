@@ -717,7 +717,7 @@ class DokuJokulService
             'customer' => [
                 'name' => substr($customerData['name'] ?? 'Customer Sancaka', 0, 255),
                 'email' => $customerData['email'] ?? 'customer@tokosancaka.com',
-                'phone' => $customerData['phone'] ?? '081111111111',
+                'phone' => preg_replace('/^0/', '62', $customerData['phone'] ?? '081111111111'),
             ]
         ];
 
