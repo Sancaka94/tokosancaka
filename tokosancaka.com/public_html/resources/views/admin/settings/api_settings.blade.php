@@ -41,7 +41,7 @@
             {{-- KOLOM KIRI: SIDEBAR MENU DENGAN BG PUTIH --}}
             <div class="w-full md:w-80 shrink-0 flex flex-col gap-4">
 
-                {{-- KARTU APP DEBUG (BARU) --}}
+                {{-- --- TAMBAHAN KODE APP DEBUG (BARU) --- --}}
                 <div class="bg-white rounded-lg border border-zinc-200 shadow-sm p-4">
                     <div class="flex items-center justify-between">
                         <div>
@@ -53,212 +53,215 @@
                                 :class="appDebug ? 'bg-green-500' : 'bg-zinc-300'"
                                 @click="toggleDebug()">
                             <span class="inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
-                                :class="appDebug ? 'translate-x-4' : 'translate-x-0'"></span>
+                                  :class="appDebug ? 'translate-x-4' : 'translate-x-0'"></span>
                         </button>
                     </div>
                 </div>
+                {{-- --- AKHIR TAMBAHAN KODE APP DEBUG --- --}}
 
-            {{-- KOLOM KIRI: SIDEBAR MENU DENGAN BG PUTIH --}}
-            <div class="w-full md:w-80 shrink-0 bg-white rounded-lg border border-zinc-200 shadow-sm p-3 flex flex-col gap-1.5">
+                {{-- KOTAK MENU API --}}
+                <div class="bg-white rounded-lg border border-zinc-200 shadow-sm p-3 flex flex-col gap-1.5">
 
-                {{-- Menu KiriminAja --}}
-                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
-                     :class="activeTab === 'kiriminaja' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
-                     @click="activeTab = 'kiriminaja'">
-                    <span class="text-sm font-semibold" :class="activeTab === 'kiriminaja' ? 'text-zinc-900' : 'text-zinc-600'">KiriminAja</span>
-                    <div class="flex items-center space-x-1.5" @click.stop>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="kaData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">STG</span>
-                        <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                :class="kaData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
-                                @click="kaData.mode = (kaData.mode === 'production' ? 'staging' : 'production')">
-                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
-                                  :class="kaData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
-                        </button>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="kaData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                    {{-- Menu KiriminAja --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'kiriminaja' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'kiriminaja'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'kiriminaja' ? 'text-zinc-900' : 'text-zinc-600'">KiriminAja</span>
+                        <div class="flex items-center space-x-1.5" @click.stop>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="kaData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">STG</span>
+                            <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="kaData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                    @click="kaData.mode = (kaData.mode === 'production' ? 'staging' : 'production')">
+                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                      :class="kaData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </button>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="kaData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                        </div>
                     </div>
-                </div>
 
-                {{-- Menu Tripay --}}
-                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
-                     :class="activeTab === 'tripay' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
-                     @click="activeTab = 'tripay'">
-                    <span class="text-sm font-semibold" :class="activeTab === 'tripay' ? 'text-zinc-900' : 'text-zinc-600'">Tripay</span>
-                    <div class="flex items-center space-x-1.5" @click.stop>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="tpData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
-                        <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                :class="tpData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
-                                @click="tpData.mode = (tpData.mode === 'production' ? 'sandbox' : 'production')">
-                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
-                                  :class="tpData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
-                        </button>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="tpData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                    {{-- Menu Tripay --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'tripay' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'tripay'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'tripay' ? 'text-zinc-900' : 'text-zinc-600'">Tripay</span>
+                        <div class="flex items-center space-x-1.5" @click.stop>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="tpData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
+                            <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="tpData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                    @click="tpData.mode = (tpData.mode === 'production' ? 'sandbox' : 'production')">
+                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                      :class="tpData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </button>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="tpData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                        </div>
                     </div>
-                </div>
 
-                {{-- Menu DOKU --}}
-                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
-                     :class="activeTab === 'doku' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
-                     @click="activeTab = 'doku'">
-                    <span class="text-sm font-semibold" :class="activeTab === 'doku' ? 'text-zinc-900' : 'text-zinc-600'">DOKU</span>
-                    <div class="flex items-center space-x-1.5" @click.stop>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="dokuData.env === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
-                        <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                :class="dokuData.env === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
-                                @click="dokuData.env = (dokuData.env === 'production' ? 'sandbox' : 'production')">
-                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
-                                  :class="dokuData.env === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
-                        </button>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="dokuData.env === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                    {{-- Menu DOKU --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'doku' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'doku'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'doku' ? 'text-zinc-900' : 'text-zinc-600'">DOKU</span>
+                        <div class="flex items-center space-x-1.5" @click.stop>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="dokuData.env === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
+                            <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="dokuData.env === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                    @click="dokuData.env = (dokuData.env === 'production' ? 'sandbox' : 'production')">
+                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                      :class="dokuData.env === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </button>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="dokuData.env === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                        </div>
                     </div>
-                </div>
 
-                {{-- Menu IAK PPOB --}}
-                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
-                     :class="activeTab === 'iak' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
-                     @click="activeTab = 'iak'">
-                    <span class="text-sm font-semibold" :class="activeTab === 'iak' ? 'text-zinc-900' : 'text-zinc-600'">IAK PPOB</span>
-                    <div class="flex items-center space-x-1.5" @click.stop>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="iakData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">DEV</span>
-                        <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                :class="iakData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
-                                @click="iakData.mode = (iakData.mode === 'production' ? 'development' : 'production')">
-                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
-                                  :class="iakData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
-                        </button>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="iakData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                    {{-- Menu IAK PPOB --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'iak' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'iak'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'iak' ? 'text-zinc-900' : 'text-zinc-600'">IAK PPOB</span>
+                        <div class="flex items-center space-x-1.5" @click.stop>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="iakData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">DEV</span>
+                            <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="iakData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                    @click="iakData.mode = (iakData.mode === 'production' ? 'development' : 'production')">
+                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                      :class="iakData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </button>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="iakData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                        </div>
                     </div>
-                </div>
 
-                {{-- Menu Darmawisata --}}
-                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
-                     :class="activeTab === 'dharmawisata' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
-                     @click="activeTab = 'dharmawisata'">
-                    <span class="text-sm font-semibold" :class="activeTab === 'dharmawisata' ? 'text-zinc-900' : 'text-zinc-600'">Darmawisata</span>
-                    <div class="flex items-center space-x-1.5" @click.stop>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="dwData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">DEV</span>
-                        <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                :class="dwData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
-                                @click="dwData.mode = (dwData.mode === 'production' ? 'development' : 'production')">
-                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
-                                  :class="dwData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
-                        </button>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="dwData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                    {{-- Menu Darmawisata --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'dharmawisata' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'dharmawisata'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'dharmawisata' ? 'text-zinc-900' : 'text-zinc-600'">Darmawisata</span>
+                        <div class="flex items-center space-x-1.5" @click.stop>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="dwData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">DEV</span>
+                            <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="dwData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                    @click="dwData.mode = (dwData.mode === 'production' ? 'development' : 'production')">
+                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                      :class="dwData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </button>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="dwData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                        </div>
                     </div>
-                </div>
 
-                {{-- Menu DANA --}}
-                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
-                     :class="activeTab === 'dana' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
-                     @click="activeTab = 'dana'">
-                    <span class="text-sm font-semibold" :class="activeTab === 'dana' ? 'text-zinc-900' : 'text-zinc-600'">DANA</span>
-                    <div class="flex items-center space-x-1.5" @click.stop>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="danaData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
-                        <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                :class="danaData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
-                                @click="danaData.mode = (danaData.mode === 'production' ? 'sandbox' : 'production')">
-                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
-                                  :class="danaData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
-                        </button>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="danaData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                    {{-- Menu DANA --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'dana' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'dana'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'dana' ? 'text-zinc-900' : 'text-zinc-600'">DANA</span>
+                        <div class="flex items-center space-x-1.5" @click.stop>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="danaData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
+                            <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="danaData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                    @click="danaData.mode = (danaData.mode === 'production' ? 'sandbox' : 'production')">
+                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                      :class="danaData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </button>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="danaData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                        </div>
                     </div>
-                </div>
 
-                {{-- Menu Midtrans --}}
-                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
-                     :class="activeTab === 'midtrans' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
-                     @click="activeTab = 'midtrans'">
-                    <span class="text-sm font-semibold" :class="activeTab === 'midtrans' ? 'text-zinc-900' : 'text-zinc-600'">Midtrans</span>
-                    <div class="flex items-center space-x-1.5" @click.stop>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="midtransData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
-                        <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                :class="midtransData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
-                                @click="midtransData.mode = (midtransData.mode === 'production' ? 'sandbox' : 'production')">
-                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
-                                  :class="midtransData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
-                        </button>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="midtransData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                    {{-- Menu Midtrans --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'midtrans' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'midtrans'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'midtrans' ? 'text-zinc-900' : 'text-zinc-600'">Midtrans</span>
+                        <div class="flex items-center space-x-1.5" @click.stop>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="midtransData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
+                            <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="midtransData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                    @click="midtransData.mode = (midtransData.mode === 'production' ? 'sandbox' : 'production')">
+                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                      :class="midtransData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </button>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="midtransData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                        </div>
                     </div>
-                </div>
 
-                {{-- Menu Lalamove --}}
-                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
-                     :class="activeTab === 'lalamove' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
-                     @click="activeTab = 'lalamove'">
-                    <span class="text-sm font-semibold" :class="activeTab === 'lalamove' ? 'text-zinc-900' : 'text-zinc-600'">Lalamove</span>
-                    <div class="flex items-center space-x-1.5" @click.stop>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="lalamoveData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
-                        <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                :class="lalamoveData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
-                                @click="lalamoveData.mode = (lalamoveData.mode === 'production' ? 'sandbox' : 'production')">
-                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
-                                  :class="lalamoveData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
-                        </button>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="lalamoveData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                    {{-- Menu Lalamove --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'lalamove' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'lalamove'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'lalamove' ? 'text-zinc-900' : 'text-zinc-600'">Lalamove</span>
+                        <div class="flex items-center space-x-1.5" @click.stop>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="lalamoveData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
+                            <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="lalamoveData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                    @click="lalamoveData.mode = (lalamoveData.mode === 'production' ? 'sandbox' : 'production')">
+                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                      :class="lalamoveData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </button>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="lalamoveData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                        </div>
                     </div>
-                </div>
 
-                {{-- Menu PayPal --}}
-                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
-                     :class="activeTab === 'paypal' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
-                     @click="activeTab = 'paypal'">
-                    <span class="text-sm font-semibold" :class="activeTab === 'paypal' ? 'text-zinc-900' : 'text-zinc-600'">PayPal</span>
-                    <div class="flex items-center space-x-1.5" @click.stop>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="paypalData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
-                        <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                :class="paypalData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
-                                @click="paypalData.mode = (paypalData.mode === 'production' ? 'sandbox' : 'production')">
-                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
-                                  :class="paypalData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
-                        </button>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="paypalData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                    {{-- Menu PayPal --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'paypal' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'paypal'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'paypal' ? 'text-zinc-900' : 'text-zinc-600'">PayPal</span>
+                        <div class="flex items-center space-x-1.5" @click.stop>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="paypalData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
+                            <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="paypalData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                    @click="paypalData.mode = (paypalData.mode === 'production' ? 'sandbox' : 'production')">
+                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                      :class="paypalData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </button>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="paypalData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                        </div>
                     </div>
-                </div>
 
-                {{-- Menu Deliveree --}}
-                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
-                     :class="activeTab === 'deliveree' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
-                     @click="activeTab = 'deliveree'">
-                    <span class="text-sm font-semibold" :class="activeTab === 'deliveree' ? 'text-zinc-900' : 'text-zinc-600'">Deliveree</span>
-                    <div class="flex items-center space-x-1.5" @click.stop>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="delivereeData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
-                        <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                :class="delivereeData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
-                                @click="delivereeData.mode = (delivereeData.mode === 'production' ? 'sandbox' : 'production')">
-                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
-                                  :class="delivereeData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
-                        </button>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="delivereeData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                    {{-- Menu Deliveree --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'deliveree' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'deliveree'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'deliveree' ? 'text-zinc-900' : 'text-zinc-600'">Deliveree</span>
+                        <div class="flex items-center space-x-1.5" @click.stop>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="delivereeData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
+                            <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="delivereeData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                    @click="delivereeData.mode = (delivereeData.mode === 'production' ? 'sandbox' : 'production')">
+                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                      :class="delivereeData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </button>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="delivereeData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                        </div>
                     </div>
-                </div>
 
-                {{-- TAMBAHAN IPAYMU: Menu iPaymu --}}
-                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
-                     :class="activeTab === 'ipaymu' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
-                     @click="activeTab = 'ipaymu'">
-                    <span class="text-sm font-semibold" :class="activeTab === 'ipaymu' ? 'text-zinc-900' : 'text-zinc-600'">iPaymu</span>
-                    <div class="flex items-center space-x-1.5" @click.stop>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="ipaymuData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
-                        <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                :class="ipaymuData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
-                                @click="ipaymuData.mode = (ipaymuData.mode === 'production' ? 'sandbox' : 'production')">
-                            <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
-                                  :class="ipaymuData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
-                        </button>
-                        <span class="text-[9px] font-bold uppercase tracking-wider" :class="ipaymuData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                    {{-- Menu iPaymu --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'ipaymu' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'ipaymu'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'ipaymu' ? 'text-zinc-900' : 'text-zinc-600'">iPaymu</span>
+                        <div class="flex items-center space-x-1.5" @click.stop>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="ipaymuData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
+                            <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="ipaymuData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                    @click="ipaymuData.mode = (ipaymuData.mode === 'production' ? 'sandbox' : 'production')">
+                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                      :class="ipaymuData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </button>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="ipaymuData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                        </div>
                     </div>
-                </div>
 
-                {{-- Menu Fonnte --}}
-                <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
-                     :class="activeTab === 'fonnte' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
-                     @click="activeTab = 'fonnte'">
-                    <span class="text-sm font-semibold" :class="activeTab === 'fonnte' ? 'text-zinc-900' : 'text-zinc-600'">Fonnte</span>
-                    <span class="text-[9px] font-bold text-zinc-400 bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded uppercase tracking-wider">GLOBAL</span>
+                    {{-- Menu Fonnte --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'fonnte' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'fonnte'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'fonnte' ? 'text-zinc-900' : 'text-zinc-600'">Fonnte</span>
+                        <span class="text-[9px] font-bold text-zinc-400 bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded uppercase tracking-wider">GLOBAL</span>
+                    </div>
+
                 </div>
 
             </div>
 
-            {{-- KOLOM KANAN: KONTEN FORM (TOGGLE DIHAPUS DARI HEADER) --}}
+            {{-- KOLOM KANAN: KONTEN FORM --}}
             <div class="flex-1 w-full bg-white rounded-lg border border-zinc-200 shadow-sm min-h-[400px]">
 
                 {{-- 1. TAB KIRIMINAJA --}}
@@ -592,7 +595,6 @@
                         <input type="hidden" name="type" value="paypal">
                         <input type="hidden" name="paypal_mode" x-model="paypalData.mode">
 
-                        {{-- INFO ENDPOINT URL (Dinamis berdasarkan toggle) --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="p-3 bg-zinc-50 border border-zinc-200 rounded">
                                 <p class="text-[10px] text-zinc-500 font-bold mb-1 uppercase tracking-wider">API Base URL</p>
@@ -683,7 +685,7 @@
                     </form>
                 </div>
 
-                {{-- TAMBAHAN IPAYMU: 12. TAB IPAYMU --}}
+                {{-- 12. TAB IPAYMU --}}
                 <div x-show="activeTab === 'ipaymu'" style="display:none;" x-transition.opacity>
                     <div class="p-6 border-b border-zinc-200">
                         <div class="flex items-center gap-4 mb-1">
@@ -733,7 +735,10 @@
 <script>
     document.addEventListener('alpine:init', () => {
         Alpine.data('apiSettings', () => ({
-            activeTab: 'ipaymu', // Tab default langsung menampilkan iPaymu
+            activeTab: 'ipaymu',
+
+            // --- TAMBAHAN KODE APP DEBUG (BARU) ---
+            appDebug: @json(filter_var($appDebug ?? false, FILTER_VALIDATE_BOOLEAN)),
 
             // Sinkronisasi data JSON dari Controller PHP
             kaData: @json($kiriminaja ?? ['mode' => 'sandbox']),
@@ -746,9 +751,39 @@
             lalamoveData: @json($lalamove ?? ['mode' => 'sandbox']),
             paypalData: @json($paypal ?? ['mode' => 'sandbox']),
             delivereeData: @json($deliveree ?? ['mode' => 'sandbox']),
-
-            // TAMBAHAN IPAYMU:
             ipaymuData: @json($ipaymu ?? ['mode' => 'sandbox']),
+
+            // --- FUNGSI AJAX TOGGLE APP DEBUG (BARU) ---
+            async toggleDebug() {
+                this.appDebug = !this.appDebug;
+
+                try {
+                    let response = await fetch('{{ route("admin.settings.api.toggleDebug") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            app_debug: this.appDebug
+                        })
+                    });
+
+                    let data = await response.json();
+
+                    if(data.success) {
+                        alert(data.message);
+                    } else {
+                        alert(data.message);
+                        this.appDebug = !this.appDebug; // Revert if error
+                    }
+                } catch (error) {
+                    console.error('Error toggling debug:', error);
+                    alert('Terjadi kesalahan sistem.');
+                    this.appDebug = !this.appDebug; // Revert if error
+                }
+            }
         }))
     })
 </script>
