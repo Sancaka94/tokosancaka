@@ -130,10 +130,10 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
 
                            <div class="flex flex-col justify-between border-t md:border-t-0 md:border-l border-gray-100 md:pl-8 pt-4 md:pt-0">
                                 
-                                {{-- DETEKSI PRODUK DIGITAL --}}
                                 @php 
                                     $shippingMethodLow = strtolower($order->shipping_method ?? '');
-                                    $isDigital = str_contains($shippingMethodLow, 'digital') || str_contains($shippingMethodLow, 'eticket');
+                                    // Tambahkan 'jasa' agar deteksi E-Ticket / Digital merata
+                                    $isDigital = str_contains($shippingMethodLow, 'digital') || str_contains($shippingMethodLow, 'eticket') || str_contains($shippingMethodLow, 'jasa');
                                     $resiOrToken = $order->shipping_resi ?? ($order->shipping_reference ?? null);
                                 @endphp
 
@@ -207,7 +207,8 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                                                 </div>
                                                 <i class="fas fa-copy text-green-400 group-hover:text-green-600"></i>
                                             </div>
-                                        @elseif(in_array($status, ['paid', 'processing']))
+                                        {{-- Masukkan status LUNAS, SUKSES, dsb agar notifikasi tunggu tidak hilang --}}
+                                        @elseif(in_array($status, ['paid', 'processing', 'completed', 'shipped', 'lunas', 'sukses', 'success']))
                                             <div class="mt-3 text-xs text-blue-600 bg-blue-50 p-2 rounded border border-blue-100 flex items-start gap-2">
                                                 <i class="fas fa-clock mt-0.5"></i><span>Menunggu Resi dari Penjual</span>
                                             </div>

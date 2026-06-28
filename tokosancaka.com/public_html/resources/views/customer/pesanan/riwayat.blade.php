@@ -88,28 +88,43 @@ Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
                                 Ekspedisi & Ongkir
                             </div>
                             @php
-                                // PARSING DATA DARI 'shipping_method' (cth: regular-anteraja-REG-6500-0-0)
+                                // DETEKSI DIGITAL
+                                $shippingMethodLow = strtolower($order->shipping_method ?? '');
+                                $isDigital = str_contains($shippingMethodLow, 'digital') || str_contains($shippingMethodLow, 'eticket') || str_contains($shippingMethodLow, 'jasa');
+                                
+                                // PARSING DATA EKSPEDISI
                                 $shippingParts = explode('-', $order->shipping_method);
                                 $expeditionName = ucwords($shippingParts[1] ?? 'N/A');
                                 $expeditionService = $shippingParts[2] ?? 'N/A';
                                 $logoPath = strtolower(str_replace(' ', '', $expeditionName));
                             @endphp
-                            <div class="flex items-center mb-1">
-                                {{-- PERBAIKAN PATH GAMBAR: Hapus 'public/' --}}
-                                <img src="{{ asset('public/storage/logo-ekspedisi/' . $logoPath . '.png') }}"
-                                     alt="{{ $expeditionName }} Logo"
-                                     class="w-10 h-auto mr-2"
-                                     onerror="this.style.display='none'"> {{-- Sembunyikan jika logo tdk ada --}}
-                                <span class="font-bold text-sm">{{ $expeditionName }}</span>
-                            </div>
-                            <div class="text-xs text-slate-600">{{ $expeditionService }}</div>
+                            
+                            @if($isDigital)
+                                <div class="flex items-center mb-1 text-blue-600">
+                                    <i class="fas fa-cloud-download-alt text-xl mr-2"></i>
+                                    <span class="font-bold text-sm">Produk Digital</span>
+                                </div>
+                                <div class="text-xs text-slate-600">Otomatis (Sistem)</div>
+                            @else
+                                <div class="flex items-center mb-1">
+                                    <img src="{{ asset('public/storage/logo-ekspedisi/' . $logoPath . '.png') }}"
+                                         alt="{{ $expeditionName }} Logo"
+                                         class="w-10 h-auto mr-2"
+                                         onerror="this.style.display='none'">
+                                    <span class="font-bold text-sm">{{ $expeditionName }}</span>
+                                </div>
+                                <div class="text-xs text-slate-600">{{ $expeditionService }}</div>
+                            @endif
+
                             <div class="text-sm text-slate-600 mt-2">
-                                {{-- Variabel Marketplace --}}
                                 Ongkir: <span class="font-bold text-red-600">Rp {{ number_format($order->shipping_cost ?? 0, 0, ',', '.') }}</span>
                             </div>
-                            <div class="text-xs text-slate-500 break-all font-semibold">
-                                {{-- Variabel Marketplace --}}
-                                <strong>Resi: {{ $order->shipping_resi ?? 'Menunggu' }}</strong>
+                            <div class="text-xs text-slate-500 break-all font-semibold mt-1">
+                                @if($isDigital && in_array(strtolower($order->status), ['paid', 'processing', 'completed', 'lunas', 'sukses', 'selesai']))
+                                    <strong class="text-green-600"><i class="fas fa-key mr-1"></i>Akses tersedia di Invoice</strong>
+                                @else
+                                    <strong>Resi: {{ $order->shipping_resi ?? 'Menunggu' }}</strong>
+                                @endif
                             </div>
                         </div>
 
@@ -138,16 +153,15 @@ Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
 
                         <div class="md:col-span-2 p-4 flex flex-col items-center justify-center border-t md:border-t-0 md:border-l border-slate-200">
                             <div class="md:hidden text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Status</div>
-                            @php
-                                // (Kode badge warna status biarkan saja seperti sebelumnya)
+                           @php
                                 $status = strtolower($order->status);
                                 $badgeClass = match($status) {
-                                    'paid', 'completed', 'success' => 'bg-green-100 text-green-800',
-                                    'pending'    => 'bg-yellow-100 text-yellow-800',
-                                    'failed'     => 'bg-red-100 text-red-800',
+                                    'paid', 'completed', 'success', 'lunas', 'selesai', 'sukses' => 'bg-green-100 text-green-800',
+                                    'pending', 'unpaid', 'menunggu_pembayaran' => 'bg-yellow-100 text-yellow-800',
+                                    'failed', 'batal', 'canceled' => 'bg-red-100 text-red-800',
                                     'expired'    => 'bg-gray-100 text-gray-800',
-                                    'processing' => 'bg-blue-100 text-blue-800',
-                                    default      => 'bg-blue-100 text-blue-800'
+                                    'processing', 'diproses' => 'bg-blue-100 text-blue-800',
+                                    default      => 'bg-slate-100 text-slate-800'
                                 };
                             @endphp
                             <span class="inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold leading-5 {{ $badgeClass }}">
@@ -168,20 +182,21 @@ Deskripsi: Tampilan riwayat OrderMarketplace dengan desain rinci.
                                     <span class="mt-2 text-xs text-red-400 italic">Invoice Error</span>
                                 @endif
 
-                            @elseif ($order->shipping_resi)
+                           {{-- Hanya munculkan Lacak Paket jika ADA RESI dan BUKAN DIGITAL --}}
+                            @elseif ($order->shipping_resi && !$isDigital && $order->shipping_resi !== 'Menunggu Penjual')
                                 <a href="{{ route('customer.lacak.index', ['resi' => $order->shipping_resi]) }}"
-                                   class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">
-                                   Lacak Paket
+                               class="mt-2 text-indigo-600 hover:text-indigo-900 font-semibold text-sm">
+                                   <i class="fas fa-truck mr-1"></i> Lacak Paket
                                 </a>
 
                             @else
                                 {{-- Cek apakah invoice ada isinya --}}
                                 @if(!empty($order->invoice_number))
                                     <a href="{{ route('checkout.invoice', ['invoice' => $order->invoice_number]) }}" class="mt-2 text-blue-600 hover:text-blue-900 font-semibold text-sm">
-                                       Lihat Invoice
-                                    </a>
+                                       {{ $isDigital ? 'Buka Akses / Detail' : 'Lihat Invoice' }}
+                                     </a>
                                 @else
-                                    <span class="mt-2 text-xs text-slate-400 italic">Menunggu Invoice</span>
+                                    <span class="mt-2 text-xs text-slate-400 italic">Menunggu Data</span>
                                 @endif
                             @endif
                         </div>

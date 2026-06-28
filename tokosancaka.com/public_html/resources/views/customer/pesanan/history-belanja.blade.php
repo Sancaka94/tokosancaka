@@ -85,7 +85,7 @@
             @php 
                 $resiOrToken = $order->shipping_resi ?? ($order->shipping_reference ?? null);
                 $isUrl = filter_var($resiOrToken, FILTER_VALIDATE_URL);
-                $isPaid = in_array(strtolower($order->status), ['paid', 'processing', 'completed', 'selesai', 'lunas']);
+                $isPaid = in_array(strtolower($order->status), ['paid', 'processing', 'completed', 'selesai', 'lunas', 'sukses', 'success']);
                 
                 // Cek Validasi Resi Lama
                 $isValidResiToken = (!empty($resiOrToken) && $resiOrToken !== 'NULL' && $resiOrToken !== 'Menunggu Penjual' && !str_starts_with($resiOrToken, 'DIGITAL-'));
@@ -169,7 +169,7 @@
                         @endif
 
                         {{-- 🟢 FITUR BARU: TOMBOL TERIMA PRODUK (Memicu Status Completed & Escrow Cair) --}}
-                        @if(strtolower($order->status) !== 'completed')
+                        @if(!in_array(strtolower($order->status), ['completed', 'selesai']))
                             <div class="mt-8 pt-6 border-t border-blue-200">
                                 <p class="text-xs text-blue-600 mb-3 font-medium">Apakah Anda sudah berhasil mengunduh/menyalin produk?</p>
                                 
