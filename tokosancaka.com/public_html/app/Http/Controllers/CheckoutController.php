@@ -1666,50 +1666,43 @@ class CheckoutController extends Controller
         $cleanRef = trim($merchantRef);
 
         // ====================================================================
-        // 1. PENCARIAN HYBRID CERDAS (MYSQL & MYSQL_SECOND)
+        // 1. PENCARIAN CERDAS (HANYA MYSQL UTAMA)
+        // mysql_second dihapus karena sudah dieksekusi tuntas di DokuWebhookController
         // ====================================================================
         $isLegacy = false;
         $order = null;
-        $dbConnection = 'mysql'; // Default fallback
+        $dbConnection = 'mysql';
 
-        $connections = ['mysql', 'mysql_second']; // Looping cerdas
+        // A. Coba cari di model Order (Tabel Baru) - Cari dari Invoice ATAU Parent Invoice
+        $order = Order::on('mysql')->with('items.product.store.user', 'items.variant', 'user')
+                    ->where('invoice_number', $cleanRef)
+                    ->orWhere('parent_invoice', $cleanRef) // <--- INI KUNCI PENYELAMATNYA
+                    ->first();
 
-        foreach ($connections as $conn) {
-            // A. Coba cari di model Order (Tabel Baru)
-            $order = Order::on($conn)->with('items.product.store.user', 'items.variant', 'user')
-                        ->where('invoice_number', $cleanRef)
+        if ($order) {
+            \Illuminate\Support\Facades\Log::info("LOG LOG - ➡️ Order {$cleanRef} terdeteksi di database (mysql) tabel Orders.");
+        }
+
+        // B. Coba cari di model Pesanan (Tabel Lama / Legacy)
+        if (!$order && class_exists(\App\Models\Pesanan::class)) {
+            $order = \App\Models\Pesanan::on('mysql')
+                        ->where('nomor_invoice', $cleanRef)
                         ->first();
 
             if ($order) {
-                $dbConnection = $conn;
-                \Illuminate\Support\Facades\Log::info("LOG LOG - ➡️ Order {$cleanRef} terdeteksi di database ({$conn}) tabel Orders.");
-                break; // Hentikan pencarian jika ketemu
-            }
-
-            // B. Coba cari di model Pesanan (Tabel Lama / Legacy)
-            if (!$order && class_exists(\App\Models\Pesanan::class)) {
-                $order = \App\Models\Pesanan::on($conn)
-                            ->where('nomor_invoice', $cleanRef)
-                            ->first();
-
-                if ($order) {
-                    $isLegacy = true;
-                    $dbConnection = $conn;
-                    \Illuminate\Support\Facades\Log::info("LOG LOG - ➡️ Order {$cleanRef} terdeteksi di database ({$conn}) tabel Pesanan.");
-                    break; // Hentikan pencarian jika ketemu
-                }
+                $isLegacy = true;
+                \Illuminate\Support\Facades\Log::info("LOG LOG - ➡️ Order {$cleanRef} terdeteksi di database (mysql) tabel Pesanan.");
             }
         }
 
-        // Jika sudah dicari di semua koneksi tapi tetap kosong
+        // Jika sudah dicari di koneksi utama tapi tetap kosong
         if (!$order) {
-            \Illuminate\Support\Facades\Log::error("LOG LOG - ❌ FATAL: Webhook Gagal! Order {$cleanRef} tidak ditemukan di mysql maupun mysql_second!");
+            \Illuminate\Support\Facades\Log::error("LOG LOG - ❌ FATAL: Webhook Gagal! Order {$cleanRef} tidak ditemukan di mysql!");
             return;
         }
 
         // ====================================================================
         // 2. KUNCI KONEKSI (SANGAT KRUSIAL)
-        // Agar perintah save() tidak nyasar kembali ke database default
         // ====================================================================
         $order->setConnection($dbConnection);
 
@@ -1726,7 +1719,6 @@ class CheckoutController extends Controller
         // -----------------------------------------------------------
         // 4. PROSES UTAMA (LUNAS)
         // -----------------------------------------------------------
-        // 🔥 PENYELAMATAN: Terima status 'PAID' (Internal) ATAU 'SUCCESS' (Raw DOKU)
         if ($status === 'PAID' || $status === 'SUCCESS') {
 
             // A. Update Status Database
