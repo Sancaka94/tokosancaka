@@ -1,5 +1,5 @@
 <header class="bg-white shadow-sm sticky top-0 z-50" x-data="{ mobileMenuOpen: false }">
-    <div class="container mx-auto px-4">
+    <div class="container mx-auto px-4 max-w-7xl">
         <div class="flex justify-between items-center h-16 md:h-20">
             
             {{-- LOGO --}}
