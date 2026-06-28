@@ -311,5 +311,6 @@ document.getElementById('clearLogsBtn').addEventListener('click', function() {
         Toast.fire({ icon: 'error', title: 'Terjadi kesalahan server.' });
     });
 });
+
 </script>
 @endpush
