@@ -1724,7 +1724,7 @@ Route::get('/ipaymu', function () {
 
 // Pastikan ini berada di dalam group route Admin Anda
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
-    
+
     // (Route untuk menampilkan halaman log Anda saat ini)
     Route::get('/logs', [AdminLogController::class, 'showLogs'])->name('logs.show');
 
@@ -1733,5 +1733,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
     // Route untuk Hapus Spesifik/Bulk (Hapus Permanen)
     Route::post('/logs/destroy-selected', [AdminLogController::class, 'destroySelected'])->name('logs.destroy.selected');
-    
+
 });
+
+Route::post('/admin/settings/api/toggle-debug', [ApiSettingsController::class, 'toggleAppDebug'])
+    ->name('admin.settings.api.toggleDebug');
