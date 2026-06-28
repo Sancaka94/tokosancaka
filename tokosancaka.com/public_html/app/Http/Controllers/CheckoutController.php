@@ -106,16 +106,16 @@ class CheckoutController extends Controller
         }
 
        // Cek apakah keranjang INI 100% DIGITAL
-        $isOnlyDigital = true; 
-        
+        $isOnlyDigital = true;
+
         foreach ($cart as $item) {
             $isThisItemDigital = false;
-            
+
             // Cek dari array session
-            if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) { 
+            if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) {
                 $isThisItemDigital = true;
             }
-            
+
             // Cek dari database category
             $productCheck = Product::find($item['product_id'] ?? null);
             if ($productCheck) {
@@ -128,10 +128,10 @@ class CheckoutController extends Controller
             // JIKA KETEMU 1 SAJA BARANG FISIK, MAKA KERANJANG BUKAN 100% DIGITAL
             if (!$isThisItemDigital) {
                 $isOnlyDigital = false;
-                break; 
+                break;
             }
         }
-        
+
         // Tetap gunakan nama variabel $isDigital agar frontend blade tidak perlu diubah
         $isDigital = $isOnlyDigital;
 
@@ -229,7 +229,7 @@ class CheckoutController extends Controller
             try {
                 $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
                 $userAddrRes  = $kiriminAja->searchAddress($userSearch);
-                
+
                 $storeAddr = $storeAddrRes['data'][0] ?? null;
                 $userAddr  = $userAddrRes['data'][0] ?? null;
 
@@ -251,12 +251,12 @@ class CheckoutController extends Controller
             $totalWeight = (int) collect($cart)->sum(function($item) {
                 $product = Product::find($item['product_id']);
                 $kategoriGroup = $product->category->category_group ?? '';
-                
+
                 $isItemDigital = (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) || in_array($kategoriGroup, ['produk_digital', 'jasa']);
-                
+
                 // Jika ini produk digital, BERATNYA 0 GRAM (Tidak ikut ditimbang)
                 if ($isItemDigital) return 0;
-                
+
                 // Jika fisik, timbang seperti biasa (default 1kg jika kosong)
                 return ($product->weight ?? 1000) * $item['quantity'];
             });
@@ -355,7 +355,7 @@ class CheckoutController extends Controller
                 }
                 $instantOptions['results'] = $parsedInstantOptions;
             }
-        } 
+        }
         // ========================================================
         // JIKA PRODUK DIGITAL / JASA: BERIKAN FAKE RESPONSE AGAR BLADE AMAN
         // ========================================================
@@ -409,7 +409,7 @@ class CheckoutController extends Controller
         // 🔥 ATURAN KETAT: SEMUA PRODUK TIDAK BOLEH CASH KECUALI USER ID 4 (ADMIN)
         // =========================================================================
         $paymentMethodRaw = strtoupper(trim($request->payment_method));
-        
+
         // Tentukan keyword metode pembayaran apa saja yang dianggap "Cash" di sistem Anda
         $cashMethods = ['CASH', 'COD', 'CODBARANG'];
 
@@ -426,16 +426,16 @@ class CheckoutController extends Controller
         // Deteksi ulang tipe produk di dalam fungsi store untuk bypass validasi profile
         $isDigital = false;
         foreach ($cart as $item) {
-            if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) { 
+            if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) {
                 $isDigital = true;
                 break;
             }
-            
+
             $productCheck = Product::find($item['product_id'] ?? null);
             if ($productCheck) {
                 // Paksa panggil method relasi () agar tidak bentrok dengan kolom string 'category'
                 $kategoriObj = $productCheck->category()->first();
-                
+
                 if ($kategoriObj && in_array($kategoriObj->category_group, ['produk_digital', 'jasa'])) {
                     $isDigital = true;
                     break;
@@ -565,13 +565,13 @@ class CheckoutController extends Controller
                     $request->provinsi_penerima,
                     $request->kode_pos_penerima
                 ]);
-                
+
                 // Gabungkan menjadi string: "Jalan Mawar, Margomulyo, Ngawi, Jawa Timur, 63211"
                 $finalAddress = implode(', ', $arrAlamat);
             } else {
                 // Jika Auth User, utamakan alamat dari profile
                 $finalAddress = $user ? $user->address_detail : 'Alamat Tidak Valid';
-                
+
                 // Fallback jika profile kosong tapi user isi form manual di checkout digital
                 if(empty($finalAddress) && $isDigital) {
                      $arrAlamat = array_filter([
@@ -601,13 +601,13 @@ class CheckoutController extends Controller
                  'status'                  => (in_array($request->payment_method, ['cod', 'cash', 'CODBARANG'])) ? 'processing' : 'pending',
                  'customer_latitude'       => $request->latitude ?? null,
                  'customer_longitude'      => $request->longitude ?? null,
-                 
+
                  // 🔥 MENGGUNAKAN VARIABEL YANG SUDAH DIRAKIT
                  'shipping_address'        => $finalAddress,
                  'receiver_name'           => $request->nama_penerima ?? ($user ? $user->nama_lengkap : 'Guest Customer'),
                  'receiver_phone'          => $request->no_wa_penerima ?? ($user ? $user->no_wa : '081234567890'),
                  'nik_penerima'            => $request->nik_penerima ?? null,
-                 
+
                  'receiver_district_id'    => $userDistrictId,
                  'receiver_subdistrict_id' => $userSubdistrictId,
                  'sender_district_id'      => $storeDistrictId,
@@ -707,7 +707,7 @@ class CheckoutController extends Controller
 
                 foreach ($itemsFisik as $cartKey => $details) {
                     OrderItem::create([ 'order_id' => $orderFisik->id, 'product_id' => $details['product_id'], 'product_variant_id' => $details['variant_id'] ?? null, 'quantity' => $details['quantity'], 'price' => $details['price'] ]);
-                    if (!empty($details['variant_id'])) { ProductVariant::find($details['variant_id'])?->decrement('stock', $details['quantity']); } 
+                    if (!empty($details['variant_id'])) { ProductVariant::find($details['variant_id'])?->decrement('stock', $details['quantity']); }
                     else { Product::find($details['product_id'])?->decrement('stock', $details['quantity']); }
                 }
 
@@ -717,7 +717,7 @@ class CheckoutController extends Controller
             // --- 5. SIMPAN ORDER ANAK: DIGITAL ---
             if (count($itemsDigital) > 0) {
                 $subtotalDigital = collect($itemsDigital)->sum(fn($details) => $details['price'] * $details['quantity']);
-                
+
                 $orderDigital = new Order([
                     'parent_invoice'          => $parentInvoice, // PENGIKAT KE INDUK
                     'invoice_number'          => 'SCK-DIG-' . strtoupper(Str::random(6)),
@@ -739,7 +739,7 @@ class CheckoutController extends Controller
 
                 foreach ($itemsDigital as $cartKey => $details) {
                     OrderItem::create([ 'order_id' => $orderDigital->id, 'product_id' => $details['product_id'], 'product_variant_id' => $details['variant_id'] ?? null, 'quantity' => $details['quantity'], 'price' => $details['price'] ]);
-                    if (!empty($details['variant_id'])) { ProductVariant::find($details['variant_id'])?->decrement('stock', $details['quantity']); } 
+                    if (!empty($details['variant_id'])) { ProductVariant::find($details['variant_id'])?->decrement('stock', $details['quantity']); }
                     else { Product::find($details['product_id'])?->decrement('stock', $details['quantity']); }
                 }
 
@@ -747,7 +747,7 @@ class CheckoutController extends Controller
             }
 
             // Ganti nama invoice di memory (sementara) jadi parentInvoice biar Tripay nerimanya tagihan gabungan
-            $order->invoice_number = $parentInvoice; 
+            $order->invoice_number = $parentInvoice;
             $order->total_amount = $grand_total; // Gunakan grand total asli dari kalkulasi lu sebelumnya
 
             $paymentUrl = null;
@@ -846,10 +846,10 @@ class CheckoutController extends Controller
                     // BYPASS API KIRIMINAJA UNTUK E-TICKET / JASA
                     // ======================================================
                     Log::info('Pesanan Digital/Jasa terdeteksi, bypass API KiriminAja.');
-                    
+
                     // Buat fake response agar script di bawahnya tidak error
                     $kiriminResponse = [
-                        'status' => true, 
+                        'status' => true,
                         'pickup_number' => 'DIGITAL-' . strtoupper(Str::random(6))
                     ];
                 } else {
@@ -900,12 +900,12 @@ class CheckoutController extends Controller
                 $custName  = $request->nama_penerima ?? ($user ? $user->nama_lengkap : 'Guest Customer');
                 $custPhone = $request->no_wa_penerima ?? ($user ? $user->no_wa : '081234567890');
                 // Payment Gateway (DOKU/Tripay) biasanya mewajibkan email
-                $custEmail = $user ? $user->email : 'guest@tokosancaka.com'; 
+                $custEmail = $user ? $user->email : 'guest@tokosancaka.com';
                 // ==========================================================
 
                 $paymentGateway = 'tripay'; // Default
                 $paymentMethodRaw = strtoupper($request->payment_method);
-                
+
                 if ($paymentMethodRaw === 'DOKU_JOKUL') {
                     $paymentGateway = 'doku';
                 } elseif ($paymentMethodRaw === 'MIDTRANS') {
@@ -915,7 +915,7 @@ class CheckoutController extends Controller
                 } elseif ($paymentMethodRaw === 'PAYPAL') {
                     $paymentGateway = 'paypal';
                 }
-                
+
                 // ==========================================================
                 // PROSES VIA MIDTRANS
                 // ==========================================================
@@ -924,7 +924,7 @@ class CheckoutController extends Controller
                     $paymentUrl = $this->createPaymentMidtransSnap($order); // Akan mengambil Auth::user di dalam fungsinya, tapi jika guest kita sarankan kirim parameter
                     $order->payment_url = $paymentUrl;
                 }
-                
+
                 // ==========================================================
                 // PROSES VIA DOKU
                 // ==========================================================
@@ -938,7 +938,7 @@ class CheckoutController extends Controller
                     }
 
                     $dokuService = new DokuJokulService();
-                    
+
                     // Menggunakan variabel pengaman
                     $customerData = [
                         'name'  => $custName,
@@ -966,14 +966,14 @@ class CheckoutController extends Controller
                     }
 
                     $order->payment_url = $paymentUrl;
-                } 
-                
+                }
+
                 // ==========================================================
                 // PROSES VIA TRIPAY
                 // ==========================================================
-                elseif ($paymentGateway === 'tripay') { 
+                elseif ($paymentGateway === 'tripay') {
                     Log::info('Memulai proses TRIPAY Marketplace untuk ' . $order->invoice_number);
-                
+
                     $tripayResult = $this->_createTripayTransaction(
                         $order,
                         $request->payment_method,
@@ -983,7 +983,7 @@ class CheckoutController extends Controller
                         $custPhone, // Menggunakan variabel pengaman
                         $orderItemsPayload
                     );
-                
+
                     if ($tripayResult['success']) {
                         $tripayData = $tripayResult['data'];
                         $order->payment_url = $tripayData['checkout_url'] ?? $tripayData['pay_url'] ?? null;
@@ -1005,7 +1005,7 @@ class CheckoutController extends Controller
                 }
 
             // --- 7. Selesai Semua, Commit Transaksi ---
-            
+
             }
 
             // ==========================================================
@@ -1125,8 +1125,8 @@ class CheckoutController extends Controller
         $expiryTime   = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
         $amountValue  = number_format((float)$order->total_amount, 2, '.', '');
         // 🔥 LOGIKA SMART ROUTING
-        $returnUrl = $order->user_id 
-            ? route('customer.pesanan.riwayat_belanja') 
+        $returnUrl = $order->user_id
+            ? route('customer.pesanan.riwayat_belanja')
             : route('guest.history_belanja', ['invoice' => $order->invoice_number]);
 
       // ====================================================================
@@ -1143,17 +1143,17 @@ class CheckoutController extends Controller
             "urlParams"          => [
             [
                 "url"        => $returnUrl, // <--- UBAH MENJADI VARIABLE INI
-                "type"       => "PAY_RETURN", 
+                "type"       => "PAY_RETURN",
                 "isDeeplink" => "N"
             ],
             [
-                "url"        => url('/dana/notify'), 
-                "type"       => "NOTIFICATION", 
+                "url"        => url('/dana/notify'),
+                "type"       => "NOTIFICATION",
                 "isDeeplink" => "N"
             ]
         ],
             "additionalInfo"     => [
-                "mcc" => "5732", 
+                "mcc" => "5732",
                 "envInfo" => [
                     "sourcePlatform"    => "IPG",
                     "terminalType"      => "SYSTEM",
@@ -1184,7 +1184,7 @@ class CheckoutController extends Controller
         ];
 
         $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        
+
         // ====================================================================
         // INI TERSANGKA UTAMANYA! UBAH RELATIVE PATH MENJADI SEPERTI INI:
         // ====================================================================
@@ -1356,11 +1356,11 @@ class CheckoutController extends Controller
 
                     foreach ($anakOrders as $anakOrder) {
                         Log::info('Memproses Order Anak: ' . $anakOrder->invoice_number);
-                        
+
                         // Lempar order anak ke fungsi andalan lu buat hit KiriminAja & Auto-Email
                         $this->processOrderCallback($anakOrder->invoice_number, 'PAID', $data);
                     }
-                } 
+                }
                 // Jika status gagal/expired
                 else if (in_array($status, ['EXPIRED', 'FAILED', 'UNPAID'])) {
                     $statusGagal = ($status === 'EXPIRED') ? 'expired' : 'failed';
@@ -1396,12 +1396,12 @@ class CheckoutController extends Controller
             // 4. PPOB DANA TOKOSANCAKA (Format: PPOBDANA-XXXX)
             } elseif (Str::startsWith($merchantRef, 'PPOBDANA-')) {
                 Log::info('LOG LOG - Routing callback to DanaPpobDigitalGoodsController', ['ref' => $merchantRef]);
-                
+
                 // Update status lunas di DB
                 if ($status === 'PAID') {
                     \App\Models\OrderPpobDana::where('order_id', $merchantRef)
                         ->update(['status_status' => 'PAID', 'status_message' => 'Lunas, Memproses TopUp']);
-                        
+
                     // TODO: Panggil fungsi topup otomatis ke vendor Anda di sini
                 }
 
@@ -1453,16 +1453,16 @@ class CheckoutController extends Controller
             // 6. SEMUA TRANSAKSI DARMAWISATA (PPOB, TOPUP, KAI, BUS, KAPAL)
             // ====================================================================
             } elseif (
-                Str::startsWith($merchantRef, 'PPOBD-') || 
-                Str::startsWith($merchantRef, 'TOPUPD-') || 
-                Str::startsWith($merchantRef, 'KAI-') || 
-                Str::startsWith($merchantRef, 'BUS-') || 
-                Str::startsWith($merchantRef, 'SHP-') || 
+                Str::startsWith($merchantRef, 'PPOBD-') ||
+                Str::startsWith($merchantRef, 'TOPUPD-') ||
+                Str::startsWith($merchantRef, 'KAI-') ||
+                Str::startsWith($merchantRef, 'BUS-') ||
+                Str::startsWith($merchantRef, 'SHP-') ||
                 Str::startsWith($merchantRef, 'SHPDLU-')
             ) {
                 // Hanya proses jika status dari Tripay adalah LUNAS (PAID)
                 if ($status === 'PAID') {
-                    // TRIK ADAPTER: Ubah format Tripay menyerupai format Webhook DOKU 
+                    // TRIK ADAPTER: Ubah format Tripay menyerupai format Webhook DOKU
                     // agar bisa menggunakan ulang fungsi handleDokuCallback yang sudah kita buat.
                     $mockDokuData = [
                         'order' => ['invoice_number' => $merchantRef],
@@ -1472,23 +1472,23 @@ class CheckoutController extends Controller
                     if (Str::startsWith($merchantRef, 'PPOBD-')) {
                         Log::info('Routing Tripay Callback to PpobDarmawisataController', ['ref' => $merchantRef]);
                         (new \App\Http\Controllers\Api\Mobile\PpobDarmawisataController())->handleDokuCallback($mockDokuData);
-                    
+
                     } elseif (Str::startsWith($merchantRef, 'TOPUPD-')) {
                         Log::info('Routing Tripay Callback to PpobDarmaTopupController', ['ref' => $merchantRef]);
                         (new \App\Http\Controllers\Api\Mobile\PpobDarmaTopupController())->handleDokuCallback($mockDokuData);
-                    
+
                     } elseif (Str::startsWith($merchantRef, 'KAI-')) {
                         Log::info('Routing Tripay Callback to TrainTicketingController', ['ref' => $merchantRef]);
                         (new \App\Http\Controllers\Api\Mobile\TrainTicketingController())->handleDokuCallback($mockDokuData);
-                    
+
                     } elseif (Str::startsWith($merchantRef, 'BUS-')) {
                         Log::info('Routing Tripay Callback to BusTicketingController', ['ref' => $merchantRef]);
                         (new \App\Http\Controllers\Api\Mobile\BusTicketingController())->handleDokuCallback($mockDokuData);
-                    
+
                     } elseif (Str::startsWith($merchantRef, 'SHP-')) {
                         Log::info('Routing Tripay Callback to ShipTicketingController', ['ref' => $merchantRef]);
                         (new \App\Http\Controllers\Api\Mobile\ShipTicketingController())->handleDokuCallback($mockDokuData);
-                    
+
                     } elseif (Str::startsWith($merchantRef, 'SHPDLU-')) {
                         Log::info('Routing Tripay Callback to ShipDluTicketingController', ['ref' => $merchantRef]);
                         (new \App\Http\Controllers\Api\Mobile\ShipDluTicketingController())->handleDokuCallback($mockDokuData);
@@ -1711,11 +1711,11 @@ class CheckoutController extends Controller
                 // ========================================================
                 if ($type === 'digital_delivery') {
                     Log::info("Pesanan {$order->invoice_number} adalah produk digital. Mengeksekusi pengecekan Auto-Delivery.");
-                    
+
                     // 1. Cari File / URL dari database produk yang dibeli
                     $digitalAccess = null;
                     $rincianProduk = '';
-                    
+
                     foreach($order->items as $item) {
                         $namaProduk = $item->product ? $item->product->name : 'Produk Digital';
                         if ($item->variant) {
@@ -1745,11 +1745,11 @@ class CheckoutController extends Controller
                     // 2. LOGIKA CERDAS: AUTO VS MANUAL
                     if (!empty($digitalAccess)) {
                         // [SKENARIO A] Penjual sudah siap barang -> KIRIM OTOMATIS & CAIRKAN DANA
-                        
+
                         $order->shipping_reference = $digitalAccess;
                         $order->status = 'completed'; // Selesai otomatis! Dana siap cair ke penjual.
                         $order->save();
-                        
+
                         Log::info("Auto-Delivery berhasil untuk {$order->invoice_number}. Status => COMPLETED.");
 
                         // Kirim Email E-Ticket/File ke Pembeli
@@ -1786,11 +1786,11 @@ class CheckoutController extends Controller
                         }
                     } else {
                         // [SKENARIO B] Penjual belum upload barang -> TAHAN DANA & MINTA UPLOAD MANUAL
-                        
+
                         $order->shipping_reference = 'Menunggu Penjual';
                         $order->status = 'processing'; // Dana tertahan karena status belum 'completed'
                         $order->save();
-                        
+
                         Log::info("Aset digital kosong untuk {$order->invoice_number}. Menunggu penjual upload manual. Status => PROCESSING.");
 
                         // Optional: Beritahu pembeli bahwa barang sedang disiapkan penjual
@@ -1819,7 +1819,7 @@ class CheckoutController extends Controller
                     }
 
                     // Langsung lompat ke bawah (skip_kiriminaja) untuk kirim WA "Lunas" umum
-                    goto skip_kiriminaja; 
+                    goto skip_kiriminaja;
                 }
 
                 // --- BUILD PAYLOAD BOOKING ---
@@ -1926,31 +1926,55 @@ class CheckoutController extends Controller
                         goto skip_kiriminaja;
                     }
 
-                    $packagesPayload = [];
-                    $totalWeight = 0;
+                        foreach($order->items as $item) {
+                        // 1. Cek apakah ini produk digital / E-ticket
+                        $katObj = $item->product ? $item->product->category()->first() : null;
+                        $catGroup = $katObj ? strtolower($katObj->category_group ?? '') : '';
 
-                    foreach($order->items as $item) {
+                        $isItemDigital = ($item->product && $item->product->is_digital) ||
+                                        in_array($catGroup, ['produk_digital', 'jasa']) ||
+                                        str_contains(strtolower($item->type ?? ''), 'digital');
+
+                        if ($isItemDigital) {
+                            // Amankan link download ke tabel order_items (opsional)
+                            $digitalAccess = $item->product->digital_url ??
+                                            ($item->product->digital_file_path ? asset('public/storage/' . $item->product->digital_file_path) : null);
+                            $item->download_link = $digitalAccess;
+                            $item->save();
+
+                            continue; // LOMPATI BARANG INI AGAR TIDAK DIKIRIM KE KIRIMINAJA
+                        }
+
+                        // 2. Jika bukan digital, masukkan ke payload fisik KiriminAja
                         $w = $item->product->weight ?? 1000;
                         $jenisBarang = $item->product->jenis_barang ?? 1;
                         $totalWeight += ($w * $item->quantity);
 
                         $packagesPayload[] = [
-                            'order_id' => $order->invoice_number,
-                            'destination_name' => $user->nama_lengkap,
-                            'destination_phone' => $user->no_wa,
-                            'destination_address' => $order->shipping_address,
+                            'order_id'                 => $order->invoice_number,
+                            'destination_name'         => $user->nama_lengkap,
+                            'destination_phone'        => $user->no_wa,
+                            'destination_address'      => $order->shipping_address,
                             'destination_kecamatan_id' => $destDistId,
                             'destination_kelurahan_id' => $destSubId,
-                            'weight' => $w * $item->quantity,
-                            'width' => 10, 'height' => 10, 'length' => 10,
-                            'item_value' => $item->price * $item->quantity,
-                            'item_name' => $item->product->name,
-                            'service' => $courier, 'service_type' => $service,
-                            'shipping_cost' => (int) $order->shipping_cost,
-                            'package_type_id' => (int) $jenisBarang,
-                            'cod' => 0,
-                            'insurance_amount' => ($order->insurance_cost > 0) ? ($item->price * $item->quantity) : 0,
+                            'weight'                   => $w * $item->quantity,
+                            'width'                    => 10,
+                            'height'                   => 10,
+                            'length'                   => 10,
+                            'item_value'               => $item->price * $item->quantity,
+                            'item_name'                => $item->product->name,
+                            'service'                  => $courier,
+                            'service_type'             => $service,
+                            'shipping_cost'            => (int) $order->shipping_cost,
+                            'package_type_id'          => (int) $jenisBarang,
+                            'cod'                      => 0,
+                            'insurance_amount'         => ($order->insurance_cost > 0) ? ($item->price * $item->quantity) : 0,
                         ];
+                    }
+
+                    // 3. PENCEGAHAN CRASH: Jika ternyata keranjang ISINYA DIGITAL SEMUA (Array Fisik Kosong)
+                    if (empty($packagesPayload)) {
+                        goto skip_kiriminaja;
                     }
 
                     if ($type === 'instant') {
@@ -2007,12 +2031,12 @@ class CheckoutController extends Controller
                 // --- CEK STATUS BOOKING ---
                // --- CEK STATUS BOOKING (SESUAI DOKUMENTASI KIRIMINAJA) ---
 				if (!empty($kiriminResponse['status']) && $kiriminResponse['status'] === true) {
-				    
+
 				    // ✅ AMBIL PICKUP_NUMBER SEBAGAI BOOKING REFERENCE UTAMA
-				    $bookingId = $kiriminResponse['pickup_number'] ?? 
-				                 ($kiriminResponse['details'][0]['kj_order_id'] ?? 
+				    $bookingId = $kiriminResponse['pickup_number'] ??
+				                 ($kiriminResponse['details'][0]['kj_order_id'] ??
 				                 ($kiriminResponse['details'][0]['awb'] ?? null));
-				
+
 				    if ($bookingId) {
 				        $order->shipping_reference = $bookingId;
 				        if ($isLegacy) $order->resi = $bookingId;
@@ -2284,8 +2308,8 @@ TEXT;
         $signature = hash_hmac('sha256', $merchantCode . $order->invoice_number . $amount, $privateKey);
 
         // 🔥 LOGIKA SMART ROUTING
-        $returnUrl = $order->user_id 
-            ? route('customer.pesanan.riwayat_belanja') 
+        $returnUrl = $order->user_id
+            ? route('customer.pesanan.riwayat_belanja')
             : route('guest.history_belanja', ['invoice' => $order->invoice_number]);
 
         // 6. Siapkan Payload
@@ -2486,7 +2510,7 @@ TEXT;
             // Langsung teruskan ke mesin utama untuk memproses KiriminAja dsb.
             Log::info("LOG LOG: Meneruskan Webhook $merchantRef ke processOrderCallback");
             $this->processOrderCallback($merchantRef, $internalStatus, $data);
-            
+
             return response()->json(['message' => 'Webhook DANA processed successfully.'], 200);
         } catch (\Exception $e) {
             Log::error("LOG LOG: Webhook CheckoutController Error: " . $e->getMessage());
@@ -2637,23 +2661,23 @@ TEXT;
                 // Skenario 1: Dana mengembalikan URL (Butuh PIN / Validasi tambahan)
                 if (!empty($result['webRedirectUrl'])) {
                     \Illuminate\Support\Facades\Log::info('LOG LOG: [DANA BINDING] User perlu diarahkan ke Web DANA untuk PIN.');
-                    
+
                     $order->payment_url = substr($result['webRedirectUrl'], 0, 255);
                     $order->save();
-                    
+
                     session()->forget('cart');
                     session()->put('last_dana_ref', $order->invoice_number);
-                    
+
                     return redirect()->away($result['webRedirectUrl']);
                 }
 
                 // Skenario 2: Instant Success (Auto-Debit Berhasil Seketika tanpa PIN)
                 \Illuminate\Support\Facades\Log::info('LOG LOG: [DANA BINDING] Auto-Debit Berhasil seketika! Memicu API KiriminAja...');
-                
+
                 // MENGGUNAKAN MESIN YANG SAMA DENGAN WEBHOOK AGAR AMAN & MENGHINDARI KODE BERULANG
                 // Kita panggil langsung prosesor utama seolah-olah Webhook datang duluan
                 $this->processOrderCallback($order->invoice_number, 'PAID', $result);
-                
+
                 return redirect()->route('customer.pesanan.riwayat_belanja')
                     ->with('success', 'Pembayaran via DANA Auto-Debit Berhasil! Pesanan sedang diproses.');
             }
@@ -2717,8 +2741,8 @@ TEXT;
         $validUpTo    = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP');
         $amountValue  = number_format((float)$order->total_amount, 2, '.', '');
         // 🔥 LOGIKA SMART ROUTING
-        $returnUrl = $order->user_id 
-            ? route('customer.pesanan.riwayat_belanja') 
+        $returnUrl = $order->user_id
+            ? route('customer.pesanan.riwayat_belanja')
             : route('guest.history_belanja', ['invoice' => $order->invoice_number]);
 
         // 3. BODY REQUEST (CUSTOM CHECKOUT - BALANCE)
@@ -2733,12 +2757,12 @@ TEXT;
             "urlParams"          => [
             [
                 "url"        => $returnUrl, // <--- UBAH MENJADI VARIABLE INI
-                "type"       => "PAY_RETURN", 
+                "type"       => "PAY_RETURN",
                 "isDeeplink" => "N"
             ],
             [
-                "url"        => url('/dana/notify'), 
-                "type"       => "NOTIFICATION", 
+                "url"        => url('/dana/notify'),
+                "type"       => "NOTIFICATION",
                 "isDeeplink" => "N"
             ]
         ],
@@ -2806,13 +2830,13 @@ TEXT;
                 // Custom Checkout pasti mereturn webRedirectUrl
                 if (!empty($result['webRedirectUrl'])) {
                     \Illuminate\Support\Facades\Log::info('LOG LOG: [DANA CUSTOM CHECKOUT] Berhasil! Mengarahkan user ke Web Kasir DANA.');
-                    
+
                     $order->payment_url = substr($result['webRedirectUrl'], 0, 255);
                     $order->save();
-                    
+
                     session()->forget('cart');
                     session()->put('last_dana_ref', $order->invoice_number);
-                    
+
                     return redirect()->away($result['webRedirectUrl']);
                 }
 
@@ -2845,9 +2869,9 @@ TEXT;
         try {
             $paypalService = app(\App\Http\Controllers\Api\PayPalGatewayController::class);
 
-            // PENTING: PayPal WAJIB menggunakan USD. 
+            // PENTING: PayPal WAJIB menggunakan USD.
             // Ubah IDR ke USD. Di sini kita menggunakan kurs manual statis (misal Rp 16.000)
-            $rate = 16000; 
+            $rate = 16000;
             $usdAmount = round($order->total_amount / $rate, 2);
 
             $items = [[
@@ -2861,10 +2885,10 @@ TEXT;
 
             // Panggil API PayPal
             $response = $paypalService->createOrder(
-                $items, 
-                $usdAmount, 
+                $items,
+                $usdAmount,
                 $order->invoice_number, // custom_id
-                'CAPTURE', 
+                'CAPTURE',
                 route('paypal.capture.return', ['invoice' => $order->invoice_number]), // URL Redirect sukses
                 route('checkout.index') // URL Redirect batal
             );
@@ -2904,10 +2928,10 @@ TEXT;
             $result = $response->getData(true);
 
             if ($result['success'] === true && $result['status'] === 'COMPLETED') {
-                
+
                 // MENGAKALI RACE CONDITION: Tembak KiriminAja dari sini jika webhook terlambat
                 $this->processOrderCallback($invoice, 'PAID', $result);
-                
+
                 return redirect()->route('customer.pesanan.riwayat_belanja')
                     ->with('success', 'Pembayaran via PayPal Berhasil! Pesanan sedang diproses dan kurir KiriminAja telah dipanggil.');
             }
@@ -2926,14 +2950,14 @@ TEXT;
 
         try {
             $response = $kiriminAja->searchAddress($keyword);
-            
+
             // Logika baru: Ambil data dari response['response']['data'] berdasarkan log Anda
             $data = $response['response']['data'] ?? $response['data'] ?? [];
-            
+
             $formatted = array_map(function($item) {
                 // Gunakan full_address sebagai fallback utama jika field spesifik tidak ada
                 $displayText = $item['full_address'] ?? 'Alamat Ditemukan';
-                
+
                 return [
                     'id'    => $item['subdistrict_id'] ?? $item['id'] ?? '',
                     'text'  => $displayText,
@@ -2981,7 +3005,7 @@ TEXT;
 
         // 3. Format Nama File (nama_id transaksi.pdf)
         $namaPembeli = $order->receiver_name ?? ($order->user->nama_lengkap ?? 'Guest');
-        $namaAman = \Illuminate\Support\Str::slug($namaPembeli, '_'); 
+        $namaAman = \Illuminate\Support\Str::slug($namaPembeli, '_');
         $namaFile = $namaAman . '_' . $order->invoice_number . '.pdf';
 
         // 4. Eksekusi Download
@@ -2993,17 +3017,17 @@ TEXT;
         try {
             $order = Order::with('items.product')->where('invoice_number', $invoice)->firstOrFail();
             $fonnteService = app(\App\Services\FonnteService::class);
-            
+
             // Ambil nomor WA (Prioritas dari form checkout Guest, jika tidak ada baru ambil dari User)
             $noWa = $order->receiver_phone ?? ($order->user->no_wa ?? null);
-            
+
             if (empty($noWa) || $noWa === '-' || $noWa === '081234567890') {
                 return response()->json(['success' => false, 'message' => 'Nomor WhatsApp pembeli tidak valid atau tidak ditemukan.']);
             }
 
             $namaPembeli = $order->receiver_name ?? ($order->user->nama_lengkap ?? 'Pelanggan');
             $linkAkses = route('guest.history_belanja', ['invoice' => $order->invoice_number]);
-            
+
             // Buat List Produk
             $rincian = "";
             foreach($order->items as $item) {
@@ -3026,7 +3050,7 @@ TEXT;
             $fonnteService->sendMessage($noWaFormatted, $pesan);
 
             return response()->json(['success' => true, 'message' => 'Tautan rincian belanja berhasil dikirim ke WhatsApp (' . $noWa . ') Anda.']);
-            
+
         } catch (\Exception $e) {
             Log::error('Gagal kirim resi WA Guest: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan internal.']);
@@ -3044,30 +3068,30 @@ TEXT;
 
             // Pastikan hanya pesanan yang sudah dibayar (paid/processing) yang bisa diselesaikan
             $validStatuses = ['paid', 'processing', 'lunas', 'diproses'];
-            
+
             if (in_array(strtolower($order->status), $validStatuses)) {
-                
+
                 // 1. Ubah status pesanan menjadi completed
-                $order->status = 'completed'; 
+                $order->status = 'completed';
                 $order->save();
 
                 // 2. LOGIKA PENCAIRAN ESCROW KE PENJUAL (Disesuaikan dengan Model Anda)
                 $escrow = \App\Models\Escrow::where('order_id', $order->id)->first();
-                
+
                 if ($escrow && $escrow->status_dana !== 'dicairkan') {
                     // Update status escrow dan catat waktu pencairan
                     $escrow->status_dana = 'dicairkan';
                     $escrow->dicairkan_pada = now(); // Mengisi field datetime dicairkan_pada
                     $escrow->save();
-                    
+
                     // 3. TERUSKAN DANA KE SALDO PENJUAL
                     // Mengambil data user penjual (seller) melalui relasi store
-                    $seller = $order->store->user; 
-                    
+                    $seller = $order->store->user;
+
                     if ($seller) {
                         // Tambahkan 'nominal_ditahan' ke saldo penjual
                         // NOTE: Pastikan 'saldo' adalah nama kolom yang benar di tabel 'penggunas'
-                        $seller->saldo += $escrow->nominal_ditahan; 
+                        $seller->saldo += $escrow->nominal_ditahan;
                         $seller->save();
                     }
                 }
@@ -3079,7 +3103,7 @@ TEXT;
             }
 
             return redirect()->back()->with('error', 'Gagal! Status pesanan saat ini tidak dapat diselesaikan.');
-            
+
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Error Complete Order Digital: " . $e->getMessage());
             return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat memproses penyelesaian pesanan.');
@@ -3121,7 +3145,7 @@ TEXT;
             // 1. Catat ke tabel orders_ppob_dana
             \App\Models\OrderPpobDana::create([
                 'order_id'      => $invoiceNumber,
-                'request_id'    => $invoiceNumber, 
+                'request_id'    => $invoiceNumber,
                 'product_id'    => $product->product_id,
                 'primary_param' => $request->primary_param,
                 'dana_price_value' => $grand_total,
@@ -3142,10 +3166,10 @@ TEXT;
 
                 DB::commit();
                 Log::info("LOG LOG - PPOB DANA Lunas via Saldo: {$invoiceNumber}");
-                
+
                 // TODO: Panggil fungsi di DanaPpobDigitalGoodsController untuk eksekusi top-up ke Provider (Misal Digiflazz)
                 // \App\Http\Controllers\DanaPpobDigitalGoodsController::processCallback($invoiceNumber, 'PAID');
-                
+
                 return redirect()->route('customer.pesanan.riwayat_belanja')
                     ->with('success', 'Pembayaran via Saldo Berhasil! Transaksi PPOB sedang diproses.');
             }
@@ -3176,10 +3200,10 @@ TEXT;
 
             if ($tripayResult['success']) {
                 $paymentUrl = $tripayResult['data']['checkout_url'] ?? $tripayResult['data']['pay_url'];
-                
+
                 // Simpan URL pembayaran ke kolom token (opsional)
                 \App\Models\OrderPpobDana::where('order_id', $invoiceNumber)->update(['token' => $paymentUrl]);
-                
+
                 DB::commit();
                 Log::info("LOG LOG - PPOB DANA Redirect ke Tripay: {$invoiceNumber}");
                 return redirect()->away($paymentUrl);
