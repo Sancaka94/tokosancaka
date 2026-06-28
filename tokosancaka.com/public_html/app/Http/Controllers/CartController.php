@@ -46,7 +46,7 @@ class CartController extends Controller
      * Menambahkan produk ke keranjang.
      * Tidak menggunakan Route Model Binding agar bisa handle variant_id.
      */
-    /* public function add(Request $request)
+    public function add(Request $request)
     {
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
@@ -147,122 +147,6 @@ class CartController extends Controller
 
         } catch (\Exception $e) {
             Log::error('Error adding to cart: ' . $e->getMessage() . ' - ' . $e->getFile() . ':' . $e->getLine());
-            return back()->with('error', 'Terjadi kesalahan sistem saat menambahkan produk.');
-        }
-    } */
-
-    /**
-     * Menambahkan produk ke keranjang (Mendukung AJAX/Toast).
-     * Tidak menggunakan Route Model Binding agar bisa handle variant_id.
-     */
-    public function add(Request $request)
-    {
-        $validated = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
-            // product_variant_id tidak wajib ada, tapi jika ada harus valid
-            'product_variant_id' => 'nullable|exists:product_variants,id',
-        ]);
-
-        $productId = $validated['product_id'];
-        $quantity = $validated['quantity'];
-        $variantId = $validated['product_variant_id'] ?? null;
-
-        $cart = session()->get('cart', []);
-
-        $stockToCheck = 0;
-        $itemPrice = 0;
-        $itemName = '';
-        $itemImageUrl = '';
-        $cartKey = '';
-
-        try {
-            $product = Product::find($productId);
-
-            if (!$product) {
-                // Modifikasi AJAX Check
-                if ($request->ajax()) return response()->json(['status' => 'error', 'message' => 'Produk tidak ditemukan.']);
-                return back()->with('error', 'Produk tidak ditemukan.');
-            }
-
-            if ($variantId) {
-                // --- Logika untuk Produk dengan Varian ---
-                $variant = ProductVariant::with('product')->find($variantId);
-                
-                if (!$variant || $variant->product_id != $productId) {
-                    if ($request->ajax()) return response()->json(['status' => 'error', 'message' => 'Varian produk tidak valid.']);
-                    return back()->with('error', 'Varian produk tidak valid.');
-                }
-
-                $stockToCheck = $variant->stock;
-                $itemPrice = $variant->price;
-                $itemName = $variant->product->name . ' (' . str_replace(';', ', ', $variant->combination_string) . ')';
-                $itemImageUrl = $variant->image_url ?? $variant->product->image_url;
-                $cartKey = 'variant_' . $variantId;
-
-            } else {
-                // --- Logika untuk Produk tanpa Varian ---
-                 if ($product->productVariantTypes()->exists()) {
-                     if ($request->ajax()) return response()->json(['status' => 'error', 'message' => 'Silakan pilih varian produk yang tersedia.']);
-                     return back()->with('error', 'Silakan pilih varian produk yang tersedia.');
-                 }
-
-                $stockToCheck = $product->stock;
-                $itemPrice = $product->price;
-                $itemName = $product->name;
-                $itemImageUrl = $product->image_url;
-                $cartKey = 'product_' . $productId;
-            }
-
-            // --- Validasi Kuantitas vs Stok ---
-            $currentQuantityInCart = $cart[$cartKey]['quantity'] ?? 0;
-            $newTotalQuantity = $currentQuantityInCart + $quantity;
-
-            if ($stockToCheck < $newTotalQuantity) {
-                $errorMessage = "Stok produk tidak mencukupi. Stok tersedia: {$stockToCheck}.";
-                if ($currentQuantityInCart > 0) {
-                     $errorMessage .= " Anda sudah memiliki {$currentQuantityInCart} di keranjang.";
-                } else {
-                     $errorMessage .= " Anda mencoba menambahkan {$quantity}.";
-                }
-                
-                if ($request->ajax()) return response()->json(['status' => 'error', 'message' => $errorMessage]);
-                return back()->with('error', $errorMessage);
-            }
-
-            // --- Logika Penambahan/Update ke Keranjang ---
-            if (isset($cart[$cartKey])) {
-                $cart[$cartKey]['quantity'] = $newTotalQuantity;
-            } else {
-                $cart[$cartKey] = [
-                    "product_id" => $productId, 
-                    "variant_id" => $variantId, 
-                    "name"       => $itemName,
-                    "quantity"   => $quantity,
-                    "price"      => $itemPrice,
-                    "image_url"  => $itemImageUrl, 
-                    "slug"       => $product->slug,
-                    "weight"     => $variantId ? ($variant->weight ?? $product->weight ?? 0) : ($product->weight ?? 0), 
-                ];
-            }
-
-            session()->put('cart', $cart);
-
-            // --- PERUBAHAN UTAMA: RESPONS JSON UNTUK TOAST AJAX ---
-            if ($request->ajax()) {
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Produk berhasil ditambahkan ke keranjang!'
-                ]);
-            }
-            
-            // Fallback (Jika JS dimatikan oleh user)
-            return back()->with('success', 'Produk berhasil ditambahkan ke keranjang!'); 
-
-        } catch (\Exception $e) {
-            Log::error('Error adding to cart: ' . $e->getMessage() . ' - ' . $e->getFile() . ':' . $e->getLine());
-            
-            if ($request->ajax()) return response()->json(['status' => 'error', 'message' => 'Terjadi kesalahan sistem saat menambahkan produk.']);
             return back()->with('error', 'Terjadi kesalahan sistem saat menambahkan produk.');
         }
     }

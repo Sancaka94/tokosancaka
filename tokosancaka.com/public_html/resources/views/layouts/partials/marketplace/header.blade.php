@@ -21,10 +21,11 @@
             <div class="hidden md:flex items-center space-x-4 flex-shrink-0">
                 <a href="{{ route('cart.index') }}" class="relative text-gray-600 hover:text-red-500 p-2">
                     <i class="fas fa-shopping-cart text-2xl"></i>
-                    {{-- PERBAIKAN: Gunakan class, buang @if, tambahkan kondisi hidden --}}
-                    <span class="cart-badge-count absolute top-0 right-0 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full {{ count((array) session('cart')) > 0 ? '' : 'hidden' }}">
-                        {{ count((array) session('cart')) ?: 0 }}
-                    </span>
+                    @if(session('cart') && count(session('cart')) > 0)
+                        <span class="absolute top-0 right-0 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                            {{ count((array) session('cart')) }}
+                        </span>
+                    @endif
                 </a>
                 
                 @auth
@@ -41,10 +42,11 @@
                 {{-- ICON KERANJANG MOBILE --}}
                 <a href="{{ route('cart.index') }}" class="relative text-gray-600 hover:text-red-500 p-2">
                     <i class="fas fa-shopping-cart text-2xl"></i>
-                    {{-- PERBAIKAN: Gunakan class, buang @if, tambahkan kondisi hidden --}}
-                    <span class="cart-badge-count absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white {{ count((array) session('cart')) > 0 ? '' : 'hidden' }}">
-                        {{ count((array) session('cart')) ?: 0 }}
-                    </span>
+                    @if(session('cart') && count(session('cart')) > 0)
+                        <span class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white">
+                            {{ count((array) session('cart')) }}
+                        </span>
+                    @endif
                 </a>
 
                 {{-- TOMBOL MENU BURGER --}}
@@ -69,10 +71,9 @@
             {{-- Tombol Keranjang Ekstra di Mobile (Penyelamat UX) --}}
             <a href="{{ route('cart.index') }}" class="flex justify-between items-center w-full px-5 py-2.5 font-semibold text-gray-700 border border-gray-300 rounded-full hover:bg-gray-50">
                 <span><i class="fas fa-shopping-cart mr-2 text-gray-500"></i> Keranjang Belanja</span>
-                {{-- PERBAIKAN: Gunakan class, buang @if, tambahkan kondisi hidden --}}
-                <span class="cart-badge-count bg-red-500 text-white text-xs px-2 py-1 rounded-full {{ count((array) session('cart')) > 0 ? '' : 'hidden' }}">
-                    {{ count((array) session('cart')) ?: 0 }}
-                </span>
+                @if(session('cart') && count(session('cart')) > 0)
+                    <span class="bg-red-500 text-white text-xs px-2 py-1 rounded-full">{{ count((array) session('cart')) }}</span>
+                @endif
             </a>
 
             {{-- Menu Links Mobile --}}
