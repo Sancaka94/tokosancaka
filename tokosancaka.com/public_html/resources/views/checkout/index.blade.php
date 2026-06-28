@@ -493,6 +493,84 @@
                     <span class="text-sm font-medium text-gray-900">Rekomendasi Sancaka (Semua Pembayaran via Doku)</span>
                 </li>
 
+                  {{-- ========================================================== --}}
+                {{-- DANA BINDING --}}
+                {{-- ========================================================== --}}
+                <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                    DANA Enterprise
+                </li>
+
+                @php
+                    $user = Auth::user();
+                    $userDanaToken = $user ? $user->dana_access_token : null;
+                    $userDanaBalance = $user ? ($user->dana_user_balance ?? 0) : 0;
+                    $hasDanaBinding = !empty($userDanaToken);
+                @endphp
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DANA" data-label="DANA (Web Checkout)" data-img="{{ asset('public/assets/dana.webp') }}">
+                    <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="h-8 w-8 object-contain mr-4" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">DANA Checkout</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diarahkan ke aplikasi DANA</span>
+                    </div>
+                </li>
+
+                @if($hasDanaBinding)
+                    <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
+                        data-value="DANA_BINDING" data-label="DANA Auto-Debit" data-img="{{ asset('public/assets/dana.webp') }}">
+                        <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="h-8 w-8 object-contain mr-4">
+                        <div class="flex flex-col flex-1">
+                            <span class="text-sm font-bold text-gray-900">DANA Auto-Debit</span>
+                            <span class="text-[11px] text-gray-600 font-medium mt-0.5">Saldo: <span class="text-blue-700">Rp{{ number_format($userDanaBalance, 0, ',', '.') }}</span></span>
+                        </div>
+                        <span class="ml-auto bg-blue-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded shadow-sm">
+                            Tersambung
+                        </span>
+                    </li>
+                @else
+                    <li class="col-span-1 flex items-center p-3 border border-dashed border-gray-300 rounded-lg bg-gray-50 justify-between">
+                        <div class="flex items-center">
+                            <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="h-8 w-8 object-contain mr-4 grayscale opacity-50">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-500">DANA Auto-Debit</span>
+                                <span class="text-[11px] text-gray-400 mt-0.5">Bayar instan 1-klik</span>
+                            </div>
+                        </div>
+                        <a href="{{ url('/dana/start-binding') }}" class="px-2.5 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-700 shadow-sm transition-colors">
+                            Hubungkan
+                        </a>
+                    </li>
+                @endif
+
+                {{-- ========================================================== --}}
+                {{-- COD & TRIPAY --}}
+                {{-- ========================================================== --}}
+                <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                    Lainnya
+                </li>
+
+                <li id="codPaymentOption" class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="cod" data-label="COD (Bayar Ongkir)" data-img="{{ asset('public/assets/cod.png') }}">
+                    <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <span class="text-sm font-medium text-gray-900">COD (Cash on Delivery)</span>
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="CODBARANG" data-label="COD BARANG" data-img="{{ asset('public/assets/cod.png') }}">
+                    <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
+                    <span class="text-sm font-medium text-gray-900">COD BARANG</span>
+                </li>
+
+                  <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="PAYPAL" data-label="PayPal / Credit Card" data-img="https://tokosancaka.com/public/assets/paypal.png">
+                    <img src="https://tokosancaka.com/public/assets/paypal.png" alt="PayPal" class="h-8 object-contain mr-4" onerror="this.src='https://placehold.co/32x32/EFEFEF/AAAAAA?text=PP'">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">PayPal / Kartu Kredit</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Pembayaran Global (Otomatis USD)</span>
+                    </div>
+                </li>
+
                 {{-- ========================================================== --}}
                 {{-- VIRTUAL ACCOUNT --}}
                 {{-- ========================================================== --}}
@@ -640,83 +718,10 @@
                     </div>
                 </li>
 
-                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
-                    data-value="PAYPAL" data-label="PayPal / Credit Card" data-img="https://tokosancaka.com/public/assets/paypal.png">
-                    <img src="https://tokosancaka.com/public/assets/paypal.png" alt="PayPal" class="h-8 object-contain mr-4" onerror="this.src='https://placehold.co/32x32/EFEFEF/AAAAAA?text=PP'">
-                    <div class="flex flex-col">
-                        <span class="text-sm font-bold text-gray-900">PayPal / Kartu Kredit</span>
-                        <span class="text-[11px] text-gray-500 mt-0.5">Pembayaran Global (Otomatis USD)</span>
-                    </div>
-                </li>
-
                 {{-- ========================================================== --}}
-                {{-- DANA BINDING --}}
+                {{-- TRIPAY (SEMUA METODE OTOMATIS) --}}
                 {{-- ========================================================== --}}
-                <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                    DANA Enterprise
-                </li>
 
-                @php
-                    $user = Auth::user();
-                    $userDanaToken = $user ? $user->dana_access_token : null;
-                    $userDanaBalance = $user ? ($user->dana_user_balance ?? 0) : 0;
-                    $hasDanaBinding = !empty($userDanaToken);
-                @endphp
-
-                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
-                    data-value="DANA" data-label="DANA (Web Checkout)" data-img="{{ asset('public/assets/dana.webp') }}">
-                    <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="h-8 w-8 object-contain mr-4" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
-                    <div class="flex flex-col">
-                        <span class="text-sm font-bold text-gray-900">DANA Checkout</span>
-                        <span class="text-[11px] text-gray-500 mt-0.5">Diarahkan ke aplikasi DANA</span>
-                    </div>
-                </li>
-
-                @if($hasDanaBinding)
-                    <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
-                        data-value="DANA_BINDING" data-label="DANA Auto-Debit" data-img="{{ asset('public/assets/dana.webp') }}">
-                        <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="h-8 w-8 object-contain mr-4">
-                        <div class="flex flex-col flex-1">
-                            <span class="text-sm font-bold text-gray-900">DANA Auto-Debit</span>
-                            <span class="text-[11px] text-gray-600 font-medium mt-0.5">Saldo: <span class="text-blue-700">Rp{{ number_format($userDanaBalance, 0, ',', '.') }}</span></span>
-                        </div>
-                        <span class="ml-auto bg-blue-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded shadow-sm">
-                            Tersambung
-                        </span>
-                    </li>
-                @else
-                    <li class="col-span-1 flex items-center p-3 border border-dashed border-gray-300 rounded-lg bg-gray-50 justify-between">
-                        <div class="flex items-center">
-                            <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="h-8 w-8 object-contain mr-4 grayscale opacity-50">
-                            <div class="flex flex-col">
-                                <span class="text-sm font-bold text-gray-500">DANA Auto-Debit</span>
-                                <span class="text-[11px] text-gray-400 mt-0.5">Bayar instan 1-klik</span>
-                            </div>
-                        </div>
-                        <a href="{{ url('/dana/start-binding') }}" class="px-2.5 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-700 shadow-sm transition-colors">
-                            Hubungkan
-                        </a>
-                    </li>
-                @endif
-
-                {{-- ========================================================== --}}
-                {{-- COD & TRIPAY --}}
-                {{-- ========================================================== --}}
-                <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                    Lainnya
-                </li>
-
-                <li id="codPaymentOption" class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
-                    data-value="cod" data-label="COD (Bayar Ongkir)" data-img="{{ asset('public/assets/cod.png') }}">
-                    <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">COD (Cash on Delivery)</span>
-                </li>
-
-                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
-                    data-value="CODBARANG" data-label="COD BARANG" data-img="{{ asset('public/assets/cod.png') }}">
-                    <img src="{{ asset('public/assets/cod.png') }}" class="h-8 w-8 object-contain mr-4">
-                    <span class="text-sm font-medium text-gray-900">COD BARANG</span>
-                </li>
 
                 @if(isset($tripayChannels) && count($tripayChannels) > 0)
                     <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
