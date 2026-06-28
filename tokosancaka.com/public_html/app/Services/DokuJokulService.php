@@ -700,13 +700,19 @@ class DokuJokulService
         return $this->sendRequest('POST', $endpoint, $body);
     }
 
-    public function createDirectPayment($invoiceNumber, $amount, $customerData, $paymentMethod, $targetSacId = null, $redirectUrl = null)
+   public function createDirectPayment($invoiceNumber, $amount, $customerData, $paymentMethod, $targetSacId = null, $redirectUrl = null)
     {
         $endpoint = '';
+
         $body = [
             'order' => [
                 'invoice_number' => $invoiceNumber,
                 'amount' => (int) $amount,
+            ],
+            'virtual_account_info' => [
+                'expired_time' => 60, // Wajib angka (menit)
+                'reusable_status' => false, // Wajib boolean
+                'info1' => 'Sancaka'
             ],
             'customer' => [
                 'name' => $customerData['name'] ?? 'Customer Sancaka',
@@ -715,46 +721,37 @@ class DokuJokulService
             ]
         ];
 
-        // Format standar Virtual Account DOKU
-        $vaInfo = [
-            'expired_time' => 60,
-            'reusable_status' => false,
-            'info1' => 'Sancaka'
-        ];
-
-        // 1. Tentukan Endpoint dan Body berdasarkan Bank/Metode
+        // 1. Tentukan Endpoint berdasarkan Bank/Metode
         if ($paymentMethod === 'DOKU_BCA_VA') {
             $endpoint = '/bca-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_MANDIRI_VA') {
             $endpoint = '/mandiri-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_BSI_VA') {
             $endpoint = '/bsm-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_BRI_VA') {
             $endpoint = '/bri-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_BNI_VA') {
             $endpoint = '/bni-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = ['expired_time' => 60, 'reusable_status' => false, 'description' => 'Pembayaran Sancaka'];
+            $body['virtual_account_info']['description'] = 'Pembayaran Sancaka'; // BNI butuh description
         } elseif ($paymentMethod === 'DOKU_PERMATA_VA') {
             $endpoint = '/permata-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_CIMB_VA') {
             $endpoint = '/cimb-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_DANAMON_VA') {
             $endpoint = '/danamon-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_DOKU_VA') {
             $endpoint = '/doku-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_ALFAMART') {
             $endpoint = '/alfa-online-to-offline/v2/payment-code';
-            $body['online_to_offline_info'] = ['expired_time' => 60, 'reusable_status' => false, 'info1' => 'Sancaka'];
+            unset($body['virtual_account_info']); // Buang VA info untuk Alfamart
+            $body['online_to_offline_info'] = [
+                'expired_time' => 60,
+                'reusable_status' => false,
+                'info1' => 'Sancaka'
+            ];
         } elseif ($paymentMethod === 'DOKU_QRIS') {
             $endpoint = '/qris/v2/payment';
+            unset($body['virtual_account_info']); // Buang VA info untuk QRIS
         } else {
             // E-Wallet & CC wajib buka halaman Redirect
             $redirectBasedMethods = [
@@ -764,11 +761,15 @@ class DokuJokulService
             ];
 
             if (array_key_exists($paymentMethod, $redirectBasedMethods)) {
+                unset($body['virtual_account_info']); // Hapus VA info
+
                 $body['payment'] = [
                     'payment_due_date' => 60,
                     'payment_method_types' => $redirectBasedMethods[$paymentMethod]
                 ];
-                if ($redirectUrl) $body['payment']['redirect_url'] = $redirectUrl;
+                if ($redirectUrl) {
+                    $body['payment']['redirect_url'] = $redirectUrl;
+                }
                 $endpoint = '/checkout/v1/payment';
             } else {
                 return ['success' => false, 'message' => "Metode DOKU ($paymentMethod) belum dikonfigurasi."];
@@ -780,7 +781,11 @@ class DokuJokulService
             $body['additional_info'] = ['account' => ['id' => $targetSacId]];
         }
 
-        // 3. Tembak API
+        // 3. Pastikan string JSON tidak dimanipulasi spasi oleh cURL/Guzzle
+        // Ini memastikan signature tidak rusak
+        $jsonPayload = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        // Modifikasi helper sendRequest jika diperlukan untuk menangani Payload JSON yang ketat
         $response = $this->sendRequest('POST', $endpoint, $body);
 
         if ($response['success']) {
@@ -796,6 +801,8 @@ class DokuJokulService
             ];
         }
 
-        return $response;
+        // Jika DOKU mengembalikan error
+        $errorMessage = $response['message'] ?? 'Gagal membuat tagihan DOKU.';
+        return ['success' => false, 'message' => $errorMessage];
     }
 }
