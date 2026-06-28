@@ -514,8 +514,17 @@ class DokuJokulService
         try {
             Log::info("DOKU API Request ({$endpoint})", ['url' => $url, 'body' => $body]);
 
-            if (strtoupper($method) === 'POST') {
+            /*if (strtoupper($method) === 'POST') {
                 $response = Http::withHeaders($headers)->post($url, $body);
+            } else {
+                $response = Http::withHeaders($headers)->get($url);
+            }*/
+
+            if (strtoupper($method) === 'POST') {
+                // PERBAIKAN: Gunakan withBody() agar JSON yang dikirim persis sama dengan Digest Signature
+                $response = Http::withHeaders($headers)
+                                ->withBody($bodyJson, 'application/json')
+                                ->post($url);
             } else {
                 $response = Http::withHeaders($headers)->get($url);
             }
@@ -706,42 +715,48 @@ class DokuJokulService
             ]
         ];
 
+        // Format standar Virtual Account DOKU
+        $vaInfo = [
+            'expired_time' => 60,
+            'reusable_status' => false,
+            'info1' => 'Sancaka'
+        ];
+
         // 1. Tentukan Endpoint dan Body berdasarkan Bank/Metode
         if ($paymentMethod === 'DOKU_BCA_VA') {
             $endpoint = '/bca-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_MANDIRI_VA') {
             $endpoint = '/mandiri-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_BSI_VA') {
             $endpoint = '/bsm-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_BRI_VA') {
             $endpoint = '/bri-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_BNI_VA') {
             $endpoint = '/bni-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = ['description' => 'Pembayaran Sancaka'];
+            $body['virtual_account_info'] = ['expired_time' => 60, 'reusable_status' => false, 'description' => 'Pembayaran Sancaka'];
         } elseif ($paymentMethod === 'DOKU_PERMATA_VA') {
             $endpoint = '/permata-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_CIMB_VA') {
             $endpoint = '/cimb-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_DANAMON_VA') {
             $endpoint = '/danamon-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_DOKU_VA') {
             $endpoint = '/doku-virtual-account/v2/payment-code';
-            $body['virtual_account_info'] = ['info1' => 'Sancaka'];
+            $body['virtual_account_info'] = $vaInfo;
         } elseif ($paymentMethod === 'DOKU_ALFAMART') {
             $endpoint = '/alfa-online-to-offline/v2/payment-code';
-            $body['online_to_offline_info'] = ['info1' => 'Sancaka'];
+            $body['online_to_offline_info'] = ['expired_time' => 60, 'reusable_status' => false, 'info1' => 'Sancaka'];
         } elseif ($paymentMethod === 'DOKU_QRIS') {
             $endpoint = '/qris/v2/payment';
         } else {
-            // JIKA E-WALLET (OVO, SHOPEE) ATAU CC: Arahkan ke Checkout Page DOKU
-            // Karena E-Wallet & CC wajib membuka Applikasi/Halaman 3D Secure Bank
+            // E-Wallet & CC wajib buka halaman Redirect
             $redirectBasedMethods = [
                 'DOKU_SHOPEEPAY' => ['EMONEY_SHOPEE_PAY'],
                 'DOKU_OVO' => ['EMONEY_OVO'],
@@ -771,7 +786,7 @@ class DokuJokulService
         if ($response['success']) {
             $data = $response['data'];
 
-            // 4. Deteksi apakah Doku membalas Code, QR, atau URL Redirect
+            // 4. Deteksi Data
             return [
                 'success'    => true,
                 'pay_code'   => $data['virtual_account_info']['virtual_account_number']
