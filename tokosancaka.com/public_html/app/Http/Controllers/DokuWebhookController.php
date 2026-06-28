@@ -254,6 +254,22 @@ class DokuWebhookController extends Controller
                                             $kiriminAja = new \App\Services\KiriminAjaService();
                                             $now = now()->timezone('Asia/Jakarta');
 
+                                            $serviceCode = $shipData['code'] ?? 'jne';
+                                            $serviceType = $shipData['type'] ?? '';
+
+                                            // Fallback dinamis berdasarkan jenis kurir jika type kosong
+                                            if (empty($serviceType)) {
+                                                if (in_array(strtolower($serviceCode), ['ninja', 'ninja xpress'])) {
+                                                    $serviceType = 'Standard';
+                                                } elseif (in_array(strtolower($serviceCode), ['spx', 'shopee express'])) {
+                                                    $serviceType = '1'; // Standard SPX
+                                                } elseif (strtolower($serviceCode) === 'idx') {
+                                                    $serviceType = '00';
+                                                } else {
+                                                    $serviceType = 'REG';
+                                                }
+                                            }
+
                                             if ($now->hour >= 15 || $now->isSunday()) {
                                                 $pickupSchedule = $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s');
                                             } else {
@@ -286,8 +302,8 @@ class DokuWebhookController extends Controller
                                                     'item_value'               => (int) $orderMarketplace->total_price,
                                                     'insurance_amount'         => 0,
                                                     'cod'                      => 0,
-                                                    'service'                  => $shipData['code'] ?? 'jne',
-                                                    'service_type'             => $shipData['type'] ?? 'REG',
+                                                    'service'                  => $serviceCode,
+                                                    'service_type'             => trim($serviceType),
                                                     'shipping_cost'            => (int) $orderMarketplace->shipping_cost
                                                 ]]
                                             ];

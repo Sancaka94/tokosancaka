@@ -2057,6 +2057,16 @@ class CheckoutController extends Controller
                         goto skip_kiriminaja;
                     }
 
+                    $isCargo = ($type === 'cargo' || str_contains(strtolower($service), 'gokil') || str_contains(strtolower($service), 'trc'));
+
+                    $finalBookingWeight = $totalWeight;
+                    if ($finalBookingWeight < 1000) {
+                        $finalBookingWeight = 1000; // Minimal 1kg untuk reguler
+                    }
+                    if ($isCargo && $finalBookingWeight < 10000) {
+                        $finalBookingWeight = 10000; // Minimal 10kg untuk Kargo
+                    }
+
                     if ($type === 'instant') {
                         $payload = [
                             'service' => $courier, 'service_type' => $service, 'vehicle' => 'motor',
@@ -2068,7 +2078,7 @@ class CheckoutController extends Controller
                                 'destination_lat' => $user->latitude, 'destination_long' => $user->longitude,
                                 'destination_name' => $user->nama_lengkap, 'destination_phone' => $user->no_wa,
                                 'destination_address' => $order->shipping_address,
-                                'item' => ['name' => 'Pesanan '.$order->invoice_number, 'price' => $order->subtotal, 'weight' => max(1000, $totalWeight)],
+                                'item' => ['name' => 'Pesanan '.$order->invoice_number, 'price' => $order->subtotal, 'weight' => $finalBookingWeight,],
                                 'shipping_price' => (int) $order->shipping_cost
                             ]]
                         ];
