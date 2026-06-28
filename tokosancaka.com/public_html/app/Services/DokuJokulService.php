@@ -700,98 +700,78 @@ class DokuJokulService
         return $this->sendRequest('POST', $endpoint, $body);
     }
 
-  public function createDirectPayment($invoiceNumber, $amount, $customerData, $paymentMethod, $targetSacId = null, $redirectUrl = null)
+ /**
+     * =========================================================================
+     * CHECKOUT API (Dengan Filter Spesifik Metode Pembayaran)
+     * =========================================================================
+     */
+    public function createSpecificCheckoutPayment($invoiceNumber, $amount, $customerData, $paymentMethodRaw, $targetSacId = null, $redirectUrl = null)
     {
-        $endpoint = '';
+        $endpoint = '/checkout/v1/payment';
+        $url = $this->baseUrlCheckout . $endpoint;
 
-        $body = [
+        // 1. Mapping dari value frontend Blade ke "payment_method_types" DOKU
+        $methodMapping = [
+            'DOKU_BCA_VA'     => ['VIRTUAL_ACCOUNT_BCA'],
+            'DOKU_MANDIRI_VA' => ['VIRTUAL_ACCOUNT_BANK_MANDIRI'],
+            'DOKU_BSI_VA'     => ['VIRTUAL_ACCOUNT_BANK_SYARIAH_MANDIRI'],
+            'DOKU_BRI_VA'     => ['VIRTUAL_ACCOUNT_BRI'],
+            'DOKU_BNI_VA'     => ['VIRTUAL_ACCOUNT_BNI'],
+            'DOKU_PERMATA_VA' => ['VIRTUAL_ACCOUNT_BANK_PERMATA'],
+            'DOKU_CIMB_VA'    => ['VIRTUAL_ACCOUNT_BANK_CIMB'],
+            'DOKU_DANAMON_VA' => ['VIRTUAL_ACCOUNT_BANK_DANAMON'],
+            'DOKU_DOKU_VA'    => ['VIRTUAL_ACCOUNT_DOKU'],
+            'DOKU_QRIS'       => ['QRIS'],
+            'DOKU_ALFAMART'   => ['ONLINE_TO_OFFLINE_ALFA'],
+            'DOKU_OVO'        => ['EMONEY_OVO'],
+            'DOKU_SHOPEEPAY'  => ['EMONEY_SHOPEE_PAY'],
+            'DOKU_CREDIT_CARD'=> ['CREDIT_CARD'],
+            'DOKU_JOKUL'      => [] // Jika kosong, DOKU akan menampilkan semua opsi
+        ];
+
+        $paymentMethodTypes = $methodMapping[$paymentMethodRaw] ?? [];
+
+        // 2. Siapkan Request Body Sesuai Dokumentasi DOKU Checkout
+        $requestBody = [
             'order' => [
-                'invoice_number' => $invoiceNumber,
                 'amount' => (int) $amount,
-            ],
-            'virtual_account_info' => [
-                'expired_time' => 60,
-                'reusable_status' => false,
-                'info1' => 'Sancaka'
+                'invoice_number' => $invoiceNumber,
             ],
             'customer' => [
-                'name' => substr($customerData['name'] ?? 'Customer Sancaka', 0, 255),
+                'name' => substr($customerData['name'] ?? 'Customer', 0, 255),
                 'email' => $customerData['email'] ?? 'customer@tokosancaka.com',
                 'phone' => preg_replace('/^0/', '62', $customerData['phone'] ?? '081111111111'),
+            ],
+            'payment' => [
+                'payment_due_date' => 60
             ]
         ];
 
-        // 1. Tentukan Endpoint
-        if ($paymentMethod === 'DOKU_BCA_VA') {
-            $endpoint = '/bca-virtual-account/v2/payment-code';
-        } elseif ($paymentMethod === 'DOKU_MANDIRI_VA') {
-            $endpoint = '/mandiri-virtual-account/v2/payment-code';
-        } elseif ($paymentMethod === 'DOKU_BSI_VA') {
-            $endpoint = '/bsm-virtual-account/v2/payment-code';
-        } elseif ($paymentMethod === 'DOKU_BRI_VA') {
-            $endpoint = '/bri-virtual-account/v2/payment-code';
-        } elseif ($paymentMethod === 'DOKU_BNI_VA') {
-            $endpoint = '/bni-virtual-account/v2/payment-code';
-            $body['virtual_account_info']['description'] = 'Pembayaran Sancaka';
-        } elseif ($paymentMethod === 'DOKU_PERMATA_VA') {
-            $endpoint = '/permata-virtual-account/v2/payment-code';
-        } elseif ($paymentMethod === 'DOKU_CIMB_VA') {
-            $endpoint = '/cimb-virtual-account/v2/payment-code';
-        } elseif ($paymentMethod === 'DOKU_DANAMON_VA') {
-            $endpoint = '/danamon-virtual-account/v2/payment-code';
-        } elseif ($paymentMethod === 'DOKU_DOKU_VA') {
-            $endpoint = '/doku-virtual-account/v2/payment-code';
-        } elseif ($paymentMethod === 'DOKU_ALFAMART') {
-            $endpoint = '/alfa-online-to-offline/v2/payment-code';
-            unset($body['virtual_account_info']);
-            $body['online_to_offline_info'] = [
-                'expired_time' => 60,
-                'reusable_status' => false,
-                'info1' => 'Sancaka'
-            ];
-        } elseif ($paymentMethod === 'DOKU_QRIS') {
-            $endpoint = '/qris/v2/payment';
-            unset($body['virtual_account_info']);
-        } else {
-            $redirectBasedMethods = [
-                'DOKU_SHOPEEPAY' => ['EMONEY_SHOPEE_PAY'],
-                'DOKU_OVO' => ['EMONEY_OVO'],
-                'DOKU_CREDIT_CARD' => ['CREDIT_CARD']
-            ];
-
-            if (array_key_exists($paymentMethod, $redirectBasedMethods)) {
-                unset($body['virtual_account_info']);
-                $body['payment'] = [
-                    'payment_due_date' => 60,
-                    'payment_method_types' => $redirectBasedMethods[$paymentMethod]
-                ];
-                if ($redirectUrl) {
-                    $body['payment']['redirect_url'] = $redirectUrl;
-                }
-                // Jika redirect, tembak ke URL Checkout, MENGGUNAKAN HELPER LAMA KARENA STANDARNYA BEDA
-                return $this->sendRequest('POST', '/checkout/v1/payment', $body);
-            } else {
-                return ['success' => false, 'message' => "Metode DOKU ($paymentMethod) belum dikonfigurasi."];
-            }
+        // Inject metode yang dipilih secara spesifik
+        if (!empty($paymentMethodTypes)) {
+            $requestBody['payment']['payment_method_types'] = $paymentMethodTypes;
         }
 
-        // 2. Tambahkan split settlement (SAC)
+        // Inject Return URL (agar otomatis kembali ke toko Sancaka setelah bayar)
+        if ($redirectUrl) {
+            $requestBody['order']['callback_url'] = $redirectUrl;
+            $requestBody['order']['auto_redirect'] = true;
+        }
+
+        // Jika ada Sub Account (Dompet Penjual/Marketplace)
         if (!empty($targetSacId)) {
-            $body['additional_info'] = ['account' => ['id' => $targetSacId]];
+            $requestBody['additional_info'] = [
+                'account' => [
+                    'id' => $targetSacId
+                ]
+            ];
         }
 
-        // =========================================================================
-        // 3. EKSEKUSI API LANGSUNG (INDEPENDEN) UNTUK MENCEGAH INVALID JSON
-        // =========================================================================
-
-        $url = $this->baseUrlCheckout . $endpoint;
+        // 3. Eksekusi menggunakan mekanisme Signature bawaan
         $requestId = (string) \Illuminate\Support\Str::uuid();
         $requestTimestamp = now()->utc()->format('Y-m-d\TH:i:s\Z');
+        $jsonPayload = json_encode($requestBody);
 
-        // Kunci utamanya ada di sini: Jangan biarkan function lain mengubah JSON ini
-        $jsonPayload = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-        // Buat Signature Khusus
         $signature = $this->generateSignatureCheckout(
             $jsonPayload,
             $requestId,
@@ -799,41 +779,38 @@ class DokuJokulService
             $endpoint
         );
 
-        $headers = [
-            'Client-Id' => $this->clientId,
-            'Request-Id' => $requestId,
-            'Request-Timestamp' => $requestTimestamp,
-            'Signature' => $signature,
-            'Content-Type' => 'application/json',
-        ];
-
         try {
-            \Illuminate\Support\Facades\Log::info("DOKU Direct API Request ({$endpoint})", ['url' => $url, 'body' => $body]);
+            \Illuminate\Support\Facades\Log::info("DOKU Checkout API Request", ['url' => $url, 'body' => $requestBody]);
 
-            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
-                            ->withBody($jsonPayload, 'application/json')
-                            ->post($url);
+            $response = \Illuminate\Support\Facades\Http::withHeaders([
+                'Client-Id' => $this->clientId,
+                'Request-Id' => $requestId,
+                'Request-Timestamp' => $requestTimestamp,
+                'Signature' => $signature,
+                'Content-Type' => 'application/json',
+            ])
+            ->timeout(30)
+            ->withBody($jsonPayload, 'application/json')
+            ->post($url);
 
-            $data = $response->json();
-            \Illuminate\Support\Facades\Log::info("DOKU Direct API Response ({$endpoint})", $data ?? ['raw' => $response->body()]);
+            $responseData = $response->json();
+            \Illuminate\Support\Facades\Log::info("DOKU Checkout API Response", $responseData ?? ['raw' => $response->body()]);
 
-            if ($response->successful()) {
+            // Jika sukses, DOKU akan memberikan URL Halaman Kasirnya
+            if ($response->successful() && isset($responseData['response']['payment']['url'])) {
                 return [
-                    'success'    => true,
-                    'pay_code'   => $data['virtual_account_info']['virtual_account_number']
-                                    ?? $data['online_to_offline_info']['payment_code'] ?? null,
-                    'qr_string'  => $data['qr_code'] ?? null,
-                    'payment_url'=> $data['response']['payment']['url'] ?? null
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => $data['error']['message'] ?? ($data['message'] ?? 'API Error: ' . $response->status())
+                    'success' => true,
+                    'payment_url' => $responseData['response']['payment']['url']
                 ];
             }
 
+            return [
+                'success' => false,
+                'message' => $responseData['error']['message'] ?? ($responseData['error_messages'][0] ?? 'Gagal membuat invoice DOKU.')
+            ];
+
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("DOKU Direct API Exception ({$endpoint})", ['error' => $e->getMessage()]);
+            \Illuminate\Support\Facades\Log::error("DOKU Checkout Exception", ['error' => $e->getMessage()]);
             return ['success' => false, 'message' => $e->getMessage()];
         }
     }

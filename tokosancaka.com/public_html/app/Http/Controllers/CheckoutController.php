@@ -975,20 +975,25 @@ class CheckoutController extends Controller
                 } */
 
                 // ==========================================================
-                // PROSES VIA DOKU (MENDUKUNG DIRECT VA, QRIS, & REDIRECT)
+                // PROSES VIA DOKU (CHECKOUT API DENGAN REDIRECT)
                 // ==========================================================
                 elseif ($paymentGateway === 'doku') {
-                    Log::info('Memulai proses DOKU Direct API Marketplace untuk ' . $order->invoice_number);
+                    Log::info('Memulai proses DOKU Checkout API Marketplace untuk ' . $order->invoice_number);
 
                     $targetSacId = !empty($store->doku_sac_id) ? $store->doku_sac_id : null;
-
                     $dokuService = new DokuJokulService();
-                    $customerData = ['name' => $custName, 'email' => $custEmail, 'phone' => $custPhone];
 
-                    // URL kembali jika user memakai E-Wallet / CC
+                    $customerData = [
+                        'name'  => $custName,
+                        'email' => $custEmail,
+                        'phone' => $custPhone
+                    ];
+
+                    // URL kembali otomatis ke web Sancaka jika user selesai di DOKU
                     $returnUrl = url('/customer/pesanan/riwayat-belanja');
 
-                    $dokuResult = $dokuService->createDirectPayment(
+                    // Tembak Fungsi Baru
+                    $dokuResult = $dokuService->createSpecificCheckoutPayment(
                         $order->invoice_number,
                         $grand_total,
                         $customerData,
@@ -997,16 +1002,9 @@ class CheckoutController extends Controller
                         $returnUrl
                     );
 
-                    if ($dokuResult['success']) {
-                        if (!empty($dokuResult['payment_url'])) {
-                            // Skenario E-Wallet / Kartu Kredit: Simpan URL agar ter-redirect ke App
-                            $order->payment_url = $dokuResult['payment_url'];
-                        } else {
-                            // Skenario VA, QRIS, Alfamart: Simpan Kode & Kosongkan URL
-                            $order->pay_code = $dokuResult['pay_code'] ?? null;
-                            $order->qr_url   = $dokuResult['qr_string'] ?? null;
-                            $order->payment_url = null;
-                        }
+                    if ($dokuResult['success'] && !empty($dokuResult['payment_url'])) {
+                        // Simpan URL Kasir DOKU ke database
+                        $order->payment_url = $dokuResult['payment_url'];
                     } else {
                         throw new Exception($dokuResult['message']);
                     }
@@ -1067,8 +1065,8 @@ class CheckoutController extends Controller
             DB::commit();
             session()->forget('cart');
 
-            // --- A1. JIKA METODE MIDTRANS ATAU PAYPAL (AUTO REDIRECT KE PAYMENT GATEWAY) ---
-            if (isset($paymentGateway) && in_array($paymentGateway, ['midtrans', 'paypal']) && !empty($order->payment_url)) {
+            // --- A1. JIKA METODE MIDTRANS, PAYPAL ATAU DOKU (AUTO REDIRECT KE PAYMENT GATEWAY) ---
+            if (isset($paymentGateway) && in_array($paymentGateway, ['midtrans', 'paypal', 'doku']) && !empty($order->payment_url)) {
                 return redirect()->away($order->payment_url);
             }
 
