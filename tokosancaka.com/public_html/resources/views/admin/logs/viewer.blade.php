@@ -40,8 +40,7 @@
 </div>
 
 {{-- CONTAINER TOMBOL SCROLL Cepat (UP & DOWN) --}}
-{{-- PERBAIKAN: Posisi diubah dari right-8 ke right-24 agar tidak tertutup tab samping, dan z-index dinaikkan --}}
-<div class="fixed bottom-10 right-24 flex flex-col space-y-3 z-[9999]">
+<div class="flex flex-col space-y-3" style="position: fixed; bottom: 40px; right: 90px; z-index: 999999;">
     <button id="scrollTopBtn" class="hidden bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition duration-200 focus:outline-none" title="Scroll ke Atas">
         <i class="fas fa-arrow-up text-xl"></i>
     </button>
