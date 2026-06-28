@@ -224,7 +224,12 @@ class DokuWebhookController extends Controller
 
                     // 1. CARI DI DATABASE KEDUA (MARKETPLACE / TENANT - mysql_second) DULU
                     $percetakanDB = DB::connection('mysql_second');
-                    $orderMarketplace = $percetakanDB->table('orders')->where('order_number', $orderId)->first();
+
+                    // CARI BERDASARKAN PARENT INVOICE ATAU INVOICE NUMBER
+                    $orderMarketplace = $percetakanDB->table('orders')
+                        ->where('parent_invoice', $orderId)
+                        ->orWhere('invoice_number', $orderId)
+                        ->first();
 
                     if ($orderMarketplace) {
                         Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Marketplace (mysql_second).");
@@ -310,7 +315,12 @@ class DokuWebhookController extends Controller
                                     }
                                 }
 
-                                $percetakanDB->table('orders')->where('id', $orderMarketplace->id)->update($updateData);
+                                // UPDATE SEMUA PESANAN YANG MEMILIKI PARENT INVOICE INI
+                                $percetakanDB->table('orders')
+                                    ->where('parent_invoice', $orderId)
+                                    ->orWhere('invoice_number', $orderId)
+                                    ->update($updateData);
+
                                 Log::info("✅ Status order $orderId di mysql_second diupdate jadi paid & processing.");
 
                                 // ==========================================================
@@ -412,7 +422,11 @@ class DokuWebhookController extends Controller
                     }
                     // 2. JIKA TIDAK ADA DI MARKETPLACE, BARU CARI DI MAIN DB (TOKO UTAMA / EKSPEDISI)
                     else {
-                        $pesananTokoUtama = \App\Models\Order::where('invoice_number', $orderId)->first();
+                        // CARI BERDASARKAN PARENT INVOICE ATAU INVOICE NUMBER JUGA
+                        $pesananTokoUtama = \App\Models\Order::where('parent_invoice', $orderId)
+                                                            ->orWhere('invoice_number', $orderId)
+                                                            ->first();
+
                         $pesananEkspedisi = \App\Models\Pesanan::where('nomor_invoice', $orderId)->first();
 
                         if ($pesananTokoUtama) {
