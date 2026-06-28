@@ -423,23 +423,28 @@ class CheckoutController extends Controller
         }
         // =========================================================================
 
-        // Deteksi ulang tipe produk di dalam fungsi store untuk bypass validasi profile
-        $isDigital = false;
+       // Deteksi apakah keranjang ini 100% digital atau ada barang fisiknya
+        $isDigital = true; // Asumsikan true dulu
+
         foreach ($cart as $item) {
+            $isThisItemDigital = false;
+
             if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) {
-                $isDigital = true;
-                break;
+                $isThisItemDigital = true;
             }
 
             $productCheck = Product::find($item['product_id'] ?? null);
             if ($productCheck) {
-                // Paksa panggil method relasi () agar tidak bentrok dengan kolom string 'category'
                 $kategoriObj = $productCheck->category()->first();
-
                 if ($kategoriObj && in_array($kategoriObj->category_group, ['produk_digital', 'jasa'])) {
-                    $isDigital = true;
-                    break;
+                    $isThisItemDigital = true;
                 }
+            }
+
+            // JIKA KETEMU 1 SAJA BARANG FISIK, MAKA KERANJANG BUKAN 100% DIGITAL
+            if (!$isThisItemDigital) {
+                $isDigital = false;
+                break; // Hentikan pengecekan karena sudah pasti butuh pengiriman fisik
             }
         }
 
@@ -631,7 +636,7 @@ class CheckoutController extends Controller
 
             // --- 1. BUAT INVOICE INDUK (TAGIHAN TRIPAY) ---
             do {
-                 $parentInvoice = 'INV-PAY-' . strtoupper(Str::random(8));
+                 $parentInvoice = 'SCK-ORD-' . strtoupper(Str::random(8));
             } while (Order::where('parent_invoice', $parentInvoice)->exists());
 
             // --- 2. MERAKIT ALAMAT LENGKAP (GUEST / USER) ---
