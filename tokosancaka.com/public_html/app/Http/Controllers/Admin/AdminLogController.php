@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request; // Diperlukan untuk method clearLogs
+use Illuminate\Http\Request; // Diperlukan untuk method clearLogs & destroySelected
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
@@ -70,6 +70,50 @@ class AdminLogController extends Controller
             
         } catch (\Exception $e) {
             Log::error('Gagal menghapus file log: ' . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Gagal menghapus log: ' . $e->getMessage()], 500);
+        }
+    }
+
+    // ==========================================================
+    // FUNGSI BARU: HAPUS LOG SPESIFIK (SINGLE & BULK) PERMANEN
+    // ==========================================================
+    public function destroySelected(Request $request)
+    {
+        // Pengecekan otorisasi yang sama seperti clearLogs
+        if (!auth()->check() || auth()->user()->role !== 'Admin') {
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized action.'], 403);
+        }
+
+        $textsToDelete = $request->input('texts_to_delete', []); 
+        $logPath = storage_path('logs/laravel.log');
+
+        if (empty($textsToDelete)) {
+            return response()->json(['status' => 'error', 'message' => 'Tidak ada log yang dipilih untuk dihapus.']);
+        }
+
+        if (!File::exists($logPath)) {
+            return response()->json(['status' => 'error', 'message' => 'File log tidak ditemukan di server.']);
+        }
+
+        try {
+            // Baca seluruh isi file log
+            $logContent = File::get($logPath);
+
+            // Gunting (replace) teks yang persis dikirim dari frontend menjadi kosong
+            foreach ($textsToDelete as $text) {
+                $logContent = str_replace($text, '', $logContent);
+            }
+
+            // Bersihkan baris kosong berlebih (blank lines) akibat proses replace di atas
+            $logContent = preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $logContent);
+
+            // Timpa kembali ke file log fisik
+            File::put($logPath, $logContent);
+
+            return response()->json(['status' => 'success', 'message' => count($textsToDelete) . ' Log berhasil dimusnahkan secara permanen.']);
+            
+        } catch (\Exception $e) {
+            Log::error('Gagal menghapus sebagian file log: ' . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => 'Gagal menghapus log: ' . $e->getMessage()], 500);
         }
     }
