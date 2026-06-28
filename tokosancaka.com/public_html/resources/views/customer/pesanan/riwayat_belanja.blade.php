@@ -167,32 +167,56 @@ Updated: Auto Geocoding KiriminAja + Manual Search Fallback untuk Retur + Fix Nu
                                         @endif
                                     </div>
 
-                                    {{-- TAMPILAN RESI ATAU LINK DOWNLOAD --}}
+                                   {{-- TAMPILAN RESI ATAU LINK DOWNLOAD (SMART DETECTION) --}}
                                     @if($isDigital)
-                                        @if(!empty($resiOrToken) && $resiOrToken !== 'NULL' && !str_starts_with($resiOrToken, 'DIGITAL-'))
-                                            @php
-                                                // Cek apakah token berupa Link/URL (Google Drive, PDF link, dll)
-                                                $isUrl = filter_var($resiOrToken, FILTER_VALIDATE_URL);
-                                            @endphp
+                                        @php
+                                            // Pastikan semua status bayar versi ID & EN masuk ke sini
+                                            $isPaid = in_array(strtolower($status), ['paid', 'processing', 'completed', 'shipped', 'lunas', 'sukses', 'success', 'selesai']);
+                                            $assetLink = null;
+                                            $assetType = null;
                                             
-                                            @if($isUrl)
+                                            // 1. Prioritas Pertama: Cari file / url langsung dari tabel Master Produk
+                                            if ($isPaid) {
+                                                foreach($order->items as $itm) {
+                                                    if ($itm->product) {
+                                                        if (!empty($itm->product->digital_url)) {
+                                                            $assetLink = $itm->product->digital_url; $assetType = 'url'; break;
+                                                        } elseif (!empty($itm->product->digital_file_path)) {
+                                                            $assetLink = asset('public/storage/' . $itm->product->digital_file_path); $assetType = 'file'; break;
+                                                        } elseif (!empty($itm->product->digital_sn_list)) {
+                                                            $assetLink = $itm->product->digital_sn_list; $assetType = 'text'; break;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            
+                                            // 2. Prioritas Kedua: Jika produk master kosong, cari dari Resi/Token Checkout
+                                            if (!$assetLink && !empty($resiOrToken) && $resiOrToken !== 'NULL' && !str_contains(strtolower($resiOrToken), 'menunggu') && !str_starts_with($resiOrToken, 'DIGITAL-')) {
+                                                $assetLink = $resiOrToken;
+                                                $assetType = filter_var($assetLink, FILTER_VALIDATE_URL) ? 'url' : 'text';
+                                            }
+                                        @endphp
+                                        
+                                        {{-- Tampilkan Tombol Berdasarkan Tipe Aset yang Ditemukan --}}
+                                        @if($assetLink)
+                                            @if($assetType === 'url' || $assetType === 'file')
                                                 <div class="mt-3">
-                                                    <a href="{{ $resiOrToken }}" target="_blank" class="block w-full text-center bg-blue-50 hover:bg-blue-100 border border-blue-300 text-blue-700 text-xs font-bold py-2 rounded transition">
-                                                        <i class="fas fa-external-link-alt mr-1"></i> Akses / Download File
+                                                    <a href="{{ $assetLink }}" target="_blank" class="flex items-center justify-center w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 rounded-lg transition shadow-sm">
+                                                        <i class="fas {{ $assetType === 'file' ? 'fa-download' : 'fa-external-link-alt' }} mr-2"></i> {{ $assetType === 'file' ? 'Download File' : 'Buka Link Akses' }}
                                                     </a>
                                                 </div>
                                             @else
-                                                <div class="mt-3 bg-blue-50 border border-blue-200 rounded p-2 flex justify-between items-center group cursor-pointer" onclick="navigator.clipboard.writeText('{{ $resiOrToken }}'); alert('Disalin ke clipboard!')">
+                                                <div class="mt-3 bg-blue-50 border border-blue-200 rounded p-2 flex justify-between items-center group cursor-pointer" onclick="navigator.clipboard.writeText('{{ $assetLink }}'); alert('Berhasil disalin ke clipboard!')">
                                                     <div>
-                                                        <p class="text-[10px] text-blue-700 font-bold uppercase">Kode E-Ticket / PPOB / SN</p>
-                                                        <p class="text-xs font-mono text-gray-900 font-bold break-all">{{ $resiOrToken }}</p>
+                                                        <p class="text-[10px] text-blue-700 font-bold uppercase">Kode Akses / SN</p>
+                                                        <p class="text-xs font-mono text-gray-900 font-bold break-all mt-0.5">{{ $assetLink }}</p>
                                                     </div>
                                                     <i class="fas fa-copy text-blue-400 group-hover:text-blue-600 ml-2"></i>
                                                 </div>
                                             @endif
-                                        @elseif(in_array($status, ['paid', 'processing']))
+                                        @elseif($isPaid)
                                             <div class="mt-3 text-xs text-yellow-600 bg-yellow-50 p-2 rounded border border-yellow-200 flex items-start gap-2">
-                                                <i class="fas fa-clock mt-0.5"></i><span>Menunggu penjual mengirimkan File/Tiket/SN pesanan Anda.</span>
+                                                <i class="fas fa-clock mt-0.5"></i><span>Menunggu penjual mengunggah file/akses.</span>
                                             </div>
                                         @endif
                                     @else
