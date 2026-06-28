@@ -978,7 +978,7 @@ class CheckoutController extends Controller
                 // PROSES VIA DOKU (MENDUKUNG DIRECT VA, QRIS, & REDIRECT)
                 // ==========================================================
                 elseif ($paymentGateway === 'doku') {
-                    Log::info('Memulai proses DOKU Direct API Marketplace untuk ' . $gatewayOrder->invoice_number);
+                    Log::info('Memulai proses DOKU Direct API Marketplace untuk ' . $order->invoice_number);
 
                     $targetSacId = !empty($store->doku_sac_id) ? $store->doku_sac_id : null;
 
@@ -989,7 +989,7 @@ class CheckoutController extends Controller
                     $returnUrl = url('/customer/pesanan/riwayat-belanja');
 
                     $dokuResult = $dokuService->createDirectPayment(
-                        $gatewayOrder->invoice_number,
+                        $order->invoice_number,
                         $grand_total,
                         $customerData,
                         $paymentMethodRaw,
@@ -1000,12 +1000,12 @@ class CheckoutController extends Controller
                     if ($dokuResult['success']) {
                         if (!empty($dokuResult['payment_url'])) {
                             // Skenario E-Wallet / Kartu Kredit: Simpan URL agar ter-redirect ke App
-                            $gatewayOrder->payment_url = $dokuResult['payment_url'];
+                            $order->payment_url = $dokuResult['payment_url'];
                         } else {
                             // Skenario VA, QRIS, Alfamart: Simpan Kode & Kosongkan URL
-                            $gatewayOrder->pay_code = $dokuResult['pay_code'] ?? null;
-                            $gatewayOrder->qr_url   = $dokuResult['qr_string'] ?? null;
-                            $gatewayOrder->payment_url = null;
+                            $order->pay_code = $dokuResult['pay_code'] ?? null;
+                            $order->qr_url   = $dokuResult['qr_string'] ?? null;
+                            $order->payment_url = null;
                         }
                     } else {
                         throw new Exception($dokuResult['message']);
