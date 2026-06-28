@@ -40,9 +40,12 @@
     <header class="bg-white shadow-sm sticky top-0 z-50" x-data="{ mobileMenuOpen: false }">
         <div class="container mx-auto px-4">
             <div class="flex justify-between items-center h-20">
-                <!-- Logo -->
-                <a href="{{ url('/etalase') }}" class="flex-shrink-0 pr-2">
-                    <img src="{{ asset('public/storage/' . $weblogo) }}" alt="SANCAKA STORE" class="h-10 md:h-12 w-auto max-w-[140px] md:max-w-[200px] object-contain">
+
+                <!-- ========================================== -->
+                <!-- LOGO DIKEMBALIKAN KE UKURAN BESAR          -->
+                <!-- ========================================== -->
+                <a href="{{ url('/etalase') }}" class="flex-shrink-0">
+                    <img src="{{ asset('public/storage/' . $weblogo) }}" alt="SANCAKA STORE" class="h-10 md:h-12 object-contain">
                 </a>
 
                 <!-- Search Bar (Desktop) - Desain Baru -->
@@ -64,7 +67,6 @@
                         @endif
                     </a>
 
-                    {{-- Logika dinamis untuk tombol otentikasi --}}
                     @auth
                         @if (Auth::user()->role === 'Admin')
                             <a href="{{ route('admin.dashboard') }}" class="px-5 py-2 text-sm font-semibold text-gray-700 border border-gray-300 rounded-full hover:bg-gray-100 transition-colors">Dashboard</a>
@@ -86,25 +88,21 @@
                 </div>
 
                 <!-- ========================================== -->
-                <!-- PERBAIKAN: MOBILE MENU & KERANJANG DI HP   -->
+                <!-- TOMBOL KERANJANG & MENU BURGER (KHUSUS HP) -->
                 <!-- ========================================== -->
                 <div class="flex items-center space-x-3 md:hidden flex-shrink-0">
-                    <!-- Keranjang Belanja Mobile -->
-                    <a href="{{ route('cart.index') }}" class="relative text-gray-600 hover:text-red-500 p-1.5 flex items-center justify-center">
-                        <i class="fas fa-shopping-cart text-[22px]"></i>
+                    <a href="{{ route('cart.index') }}" class="relative text-gray-600 hover:text-red-500 p-2">
+                        <i class="fas fa-shopping-cart text-2xl"></i>
                         @if(session('cart') && count(session('cart')) > 0)
-                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white">
+                            <span class="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full border border-white">
                                 {{ count((array) session('cart')) }}
                             </span>
                         @endif
                     </a>
-
-                    <!-- Tombol Burger Mobile -->
-                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-gray-600 hover:text-red-500 p-1.5 focus:outline-none flex items-center justify-center">
-                        <i class="fas fa-bars text-[24px]"></i>
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-gray-600 hover:text-red-500 p-2 focus:outline-none">
+                        <i class="fas fa-bars text-2xl"></i>
                     </button>
                 </div>
-                <!-- ========================================== -->
 
             </div>
         </div>
@@ -248,7 +246,6 @@
         });
     </script>
 @endif
-
 
 </body>
 </html>
