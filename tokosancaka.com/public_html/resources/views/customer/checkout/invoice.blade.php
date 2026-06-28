@@ -36,7 +36,9 @@
                 {{-- Left Column: Order Details --}}
                 <div class="w-full md:w-1/2 p-8">
                     @php
-                        $isPureDigital = str_contains(strtolower($order->shipping_method), 'digital');
+                        $shipMethod = strtolower($order->shipping_method ?? '');
+                        // Tambahkan deteksi eticket dan jasa
+                        $isPureDigital = str_contains($shipMethod, 'digital') || str_contains($shipMethod, 'eticket') || str_contains($shipMethod, 'jasa');
                     @endphp
                     
                     <div class="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
@@ -96,18 +98,35 @@
                                     <p class="font-medium text-gray-800">Rp {{ number_format($item->price * $item->quantity, 0, ',', '.') }}</p>
                                 </div>
 
-                                {{-- 🔥 LOGIKA AKSES PRODUK DIGITAL (CERDAS PER ITEM) 🔥 --}}
-                                @if($isItemDigital && in_array(strtolower($order->status), ['paid', 'processing', 'completed', 'shipped']))
+                               {{-- 🔥 LOGIKA AKSES PRODUK DIGITAL (CERDAS PER ITEM) 🔥 --}}
+                                @php
+                                    $katObj = $item->product ? $item->product->category()->first() : null;
+                                    $catGroup = $katObj ? strtolower($katObj->category_group ?? '') : '';
+                                    
+                                    // 1. Deteksi semua kemungkinan produk digital / PPOB
+                                    $isItemDigital = in_array($catGroup, ['produk_digital', 'jasa', 'ppob']) || $isPureDigital;
+                                    
+                                    // 2. Daftarkan status lunas versi Inggris & Indonesia
+                                    $statusValid = ['paid', 'processing', 'completed', 'shipped', 'lunas', 'sukses', 'success'];
+                                @endphp
+
+                                @if($isItemDigital && in_array(strtolower($order->status), $statusValid))
                                     @php
                                         $aksesData = null;
                                         $aksesTipe = null;
+                                        
+                                        // Cek URL dari tabel produk
                                         if (!empty($item->product->digital_url)) {
                                             $aksesData = $item->product->digital_url;
                                             $aksesTipe = 'url';
-                                        } elseif (!empty($item->product->digital_file_path)) {
+                                        } 
+                                        // Cek File Download dari tabel produk
+                                        elseif (!empty($item->product->digital_file_path)) {
                                             $aksesData = asset('public/storage/' . $item->product->digital_file_path);
                                             $aksesTipe = 'file';
-                                        } elseif (!empty($order->shipping_reference) && !str_contains($order->shipping_reference, 'Menunggu') && $isPureDigital) {
+                                        } 
+                                        // Cek Serial Number (SN) / Token PPOB dari Resi
+                                        elseif (!empty($order->shipping_reference) && !str_contains(strtolower($order->shipping_reference), 'menunggu')) {
                                             $aksesData = $order->shipping_reference;
                                             $aksesTipe = filter_var($aksesData, FILTER_VALIDATE_URL) ? 'url' : 'text';
                                         }
@@ -116,18 +135,20 @@
                                     <div class="mt-3 w-full">
                                         @if($aksesData)
                                             <div class="p-3 bg-green-50 border border-green-200 rounded-lg">
-                                                <p class="text-xs font-bold text-green-800 mb-2"><i class="fas fa-key mr-1"></i> Akses Produk Digital:</p>
+                                                <p class="text-xs font-bold text-green-800 mb-2"><i class="fas fa-key mr-1"></i> Akses Produk / Serial Number:</p>
+                                                
                                                 @if($aksesTipe === 'url' || $aksesTipe === 'file')
                                                     <a href="{{ $aksesData }}" target="_blank" class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-md shadow-sm transition">
                                                         <i class="fas {{ $aksesTipe === 'file' ? 'fa-download' : 'fa-external-link-alt' }} mr-2"></i> {{ $aksesTipe === 'file' ? 'Download File' : 'Buka Tautan Akses' }}
                                                     </a>
                                                 @else
-                                                    <code class="px-3 py-1.5 bg-white border border-green-300 text-green-800 font-mono text-sm rounded shadow-sm select-all">{{ $aksesData }}</code>
+                                                    {{-- Box khusus untuk Serial Number panjang seperti di screenshot lu --}}
+                                                    <code class="block w-full overflow-x-auto px-3 py-2 bg-white border border-green-300 text-green-800 font-mono text-sm rounded shadow-sm select-all">{{ $aksesData }}</code>
                                                 @endif
                                             </div>
-                                        @elseif($order->shipping_reference === 'Menunggu Penjual' || strtolower($order->status) === 'processing')
+                                        @else
                                             <div class="p-2 bg-yellow-50 border border-yellow-200 rounded-md">
-                                                <p class="text-xs text-yellow-700 font-medium"><i class="fas fa-clock mr-1"></i> Menunggu penjual mengunggah akses.</p>
+                                                <p class="text-xs text-yellow-700 font-medium"><i class="fas fa-clock mr-1"></i> Menunggu penjual mengunggah file/akses.</p>
                                             </div>
                                         @endif
                                     </div>
