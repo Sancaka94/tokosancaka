@@ -1665,14 +1665,14 @@ class CheckoutController extends Controller
         $fonnteService = app(FonnteService::class);
         $cleanRef = trim($merchantRef);
 
-        // -----------------------------------------------------------
-        // 1. PENCARIAN HYBRID SUPER LENGKAP (2 MODEL, 2 DATABASE)
-        // -----------------------------------------------------------
+        // ====================================================================
+        // 1. PENCARIAN HYBRID CERDAS (MYSQL & MYSQL_SECOND)
+        // ====================================================================
         $isLegacy = false;
         $order = null;
-        $dbConnection = 'mysql'; // Default connection fallback
+        $dbConnection = 'mysql'; // Default fallback
 
-        $connections = ['mysql', 'mysql_second']; // Array database yang akan dicek
+        $connections = ['mysql', 'mysql_second']; // Looping cerdas
 
         foreach ($connections as $conn) {
             // A. Coba cari di model Order (Tabel Baru)
@@ -1682,7 +1682,7 @@ class CheckoutController extends Controller
 
             if ($order) {
                 $dbConnection = $conn;
-                Log::info("➡️ Order {$cleanRef} ditemukan di tabel Orders ({$conn}).");
+                \Illuminate\Support\Facades\Log::info("LOG LOG - ➡️ Order {$cleanRef} terdeteksi di database ({$conn}) tabel Orders.");
                 break; // Hentikan pencarian jika ketemu
             }
 
@@ -1695,23 +1695,26 @@ class CheckoutController extends Controller
                 if ($order) {
                     $isLegacy = true;
                     $dbConnection = $conn;
-                    Log::info("➡️ Order {$cleanRef} ditemukan di tabel Pesanan ({$conn}).");
+                    \Illuminate\Support\Facades\Log::info("LOG LOG - ➡️ Order {$cleanRef} terdeteksi di database ({$conn}) tabel Pesanan.");
                     break; // Hentikan pencarian jika ketemu
                 }
             }
         }
 
-        // Jika sudah dicari di semua koneksi dan tabel tapi tetap kosong
+        // Jika sudah dicari di semua koneksi tapi tetap kosong
         if (!$order) {
-            Log::error('FATAL: Order tidak ditemukan di semua database.', ['ref' => $cleanRef]);
+            \Illuminate\Support\Facades\Log::error("LOG LOG - ❌ FATAL: Webhook Gagal! Order {$cleanRef} tidak ditemukan di mysql maupun mysql_second!");
             return;
         }
 
-        // Mengunci koneksi model saat ini agar fungsi $order->save() di bawahnya masuk ke DB yang tepat
+        // ====================================================================
+        // 2. KUNCI KONEKSI (SANGAT KRUSIAL)
+        // Agar perintah save() tidak nyasar kembali ke database default
+        // ====================================================================
         $order->setConnection($dbConnection);
 
         // -----------------------------------------------------------
-        // 2. VALIDASI STATUS
+        // 3. VALIDASI STATUS
         // -----------------------------------------------------------
         $statusBoleh = ['pending', 'menunggu pembayaran', 'unpaid', 'menunggu_pembayaran', 'paid', 'processing'];
 
@@ -1721,14 +1724,15 @@ class CheckoutController extends Controller
         }
 
         // -----------------------------------------------------------
-        // 3. PROSES UTAMA (LUNAS)
+        // 4. PROSES UTAMA (LUNAS)
         // -----------------------------------------------------------
-        if ($status === 'PAID' || $status === 'SUCCESS') { // <-- Tambahkan kondisi SUCCESS di sini
+        // 🔥 PENYELAMATAN: Terima status 'PAID' (Internal) ATAU 'SUCCESS' (Raw DOKU)
+        if ($status === 'PAID' || $status === 'SUCCESS') {
 
             // A. Update Status Database
             $order->status = 'paid';
             $order->save();
-            Log::info("Order {$merchantRef} PAID.");
+            \Illuminate\Support\Facades\Log::info("LOG LOG - ✅ Status pesanan {$cleanRef} berhasil diupdate menjadi PAID di database {$dbConnection}.");
 
             // ==========================================================
             // 🔥 TAMBAHAN BARU: AUTO SYNC SALDO TOKO (REALTIME) 🔥
