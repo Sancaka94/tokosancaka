@@ -2023,8 +2023,7 @@ class CheckoutController extends Controller
 
                         // 2. Masukkan ke payload fisik KiriminAja
                         $w = $item->product->weight ?? 1000;
-                        // ABAIKAN jenis barang dari database, paksa selalu jadi 1 (Barang Umum) demi keamanan API
-                        $jenisBarang = 1;
+                        $jenisBarang = $item->product->jenis_barang ?? 1;
                         $totalWeight += ($w * $item->quantity);
 
                         $packagesPayload[] = [
@@ -2039,7 +2038,7 @@ class CheckoutController extends Controller
                             'item_value'               => $item->price * $item->quantity,
                             'item_name'                => $item->product->name,
                             'service'                  => $courier,
-                            'package_type_id'          => 1,
+                            'service_type'             => $service,
                             'shipping_cost'            => (int) $order->shipping_cost,
                             'package_type_id'          => (int) $jenisBarang,
                             'cod'                      => 0,
