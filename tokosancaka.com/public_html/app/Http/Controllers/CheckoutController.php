@@ -154,13 +154,21 @@ class CheckoutController extends Controller
         }
         // ===================================================================
 
-        // 2. BLOKIR JIKA PRODUK FISIK TAPI BELUM LOGIN
-        if (!$isDigital && !Auth::check()) {
-            return redirect()->route('customer.login')
-                ->with('info', 'Anda harus login untuk melanjutkan pesanan produk fisik.');
-        }
+       $user = Auth::user();
 
-       // === [1] GANTI BAGIAN INI DI FUNCTION INDEX() ===
+        // ========================================================
+        // 2 & 3. VALIDASI HYBRID (TANPA PAKSAAN LOGIN)
+        // ========================================================
+        // JIKA user SUDAH login tapi alamatnya kosong (dan ini produk fisik), suruh lengkapi profil.
+        // JIKA user GUEST (belum login), biarkan lewat! Mereka akan isi alamat manual di form checkout.
+        if (!$isDigital && $user) {
+            if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province)) {
+                 Log::warning('Alamat user tidak lengkap', ['user_id' => $user->id_pengguna]);
+                return redirect()->route('profile.edit')
+                    ->with('warning', 'Alamat pengiriman Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
+            }
+        }
+        // ========================================================
 
         // Ambil mode dari Database (Bukan Config/Env)
         $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
