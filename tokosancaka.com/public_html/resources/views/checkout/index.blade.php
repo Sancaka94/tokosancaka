@@ -160,6 +160,7 @@
                 <!-- Kolom Kiri: Alamat, Pengiriman, Pembayaran -->
                 <div class="lg:col-span-2 space-y-8">
 
+
                     @if($hasDigital)
                     <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-red-600">
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Data Penerima {{ $hasPhysical ? '(Khusus E-Ticket)' : '(Produk Digital / E-Ticket)' }}</h2>
