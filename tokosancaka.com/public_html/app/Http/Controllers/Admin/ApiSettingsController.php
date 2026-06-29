@@ -14,20 +14,22 @@ class ApiSettingsController extends Controller
     public function index()
     {
         // 1. Ambil Mode Global yang sedang aktif
-        $appDebug         = config('app.debug');
-        $kaMode           = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
-        $tripayMode       = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
-        $dokuEnv          = Api::getValue('DOKU_ENV', 'global', 'sandbox');
-        $iakMode          = Api::getValue('IAK_MODE', 'global', 'development');
-        $dharmawisataMode = Api::getValue('DHARMAWISATA_MODE', 'global', 'development');
+        $appDebug           = config('app.debug');
+        $kaMode             = Api::getValue('KIRIMINAJA_MODE', 'global', 'staging');
+        $tripayMode         = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+        $dokuEnv            = Api::getValue('DOKU_ENV', 'global', 'sandbox');
+        $iakMode            = Api::getValue('IAK_MODE', 'global', 'development');
+        $dharmawisataMode   = Api::getValue('DHARMAWISATA_MODE', 'global', 'development');
         $danaProductionMode = Api::getValue('dana_production_mode', 'global', '0');
         $danaMode           = $danaProductionMode == '1' ? 'production' : 'sandbox';
-        $midtransMode     = Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
-        $lalamoveMode     = Api::getValue('LALAMOVE_MODE', 'global', 'sandbox');
-        $paypalMode       = Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
-        $delivereeMode    = Api::getValue('DELIVEREE_MODE', 'global', 'sandbox');
+        $midtransMode       = Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
+        $lalamoveMode       = Api::getValue('LALAMOVE_MODE', 'global', 'sandbox');
+        $paypalMode         = Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
+        $delivereeMode      = Api::getValue('DELIVEREE_MODE', 'global', 'sandbox');
         // --- TAMBAHAN IPAYMU ---
-        $ipaymuMode       = Api::getValue('IPAYMU_MODE', 'global', 'sandbox');
+        $ipaymuMode         = Api::getValue('IPAYMU_MODE', 'global', 'sandbox');
+        // --- TAMBAHAN MANDIRI ---
+        $mandiriMode        = Api::getValue('MANDIRI_MODE', 'global', 'sandbox');
 
         $kiriminaja = [
             'mode' => $kaMode,
@@ -210,8 +212,25 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        // Tambahkan string 'ipaymu' di dalam compact()
-        return view('admin.settings.api_settings', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu'));
+        // --- TAMBAHAN MANDIRI API ---
+        $mandiri = [
+            'mode' => $mandiriMode,
+            'sandbox' => [
+                'client_id'     => Api::getValue('MANDIRI_CLIENT_ID', 'sandbox'),
+                'client_secret' => Api::getValue('MANDIRI_CLIENT_SECRET', 'sandbox'),
+                'partner_id'    => Api::getValue('MANDIRI_PARTNER_ID', 'sandbox'),
+                'private_key'   => Api::getValue('MANDIRI_PRIVATE_KEY', 'sandbox'),
+            ],
+            'production' => [
+                'client_id'     => Api::getValue('MANDIRI_CLIENT_ID', 'production'),
+                'client_secret' => Api::getValue('MANDIRI_CLIENT_SECRET', 'production'),
+                'partner_id'    => Api::getValue('MANDIRI_PARTNER_ID', 'production'),
+                'private_key'   => Api::getValue('MANDIRI_PRIVATE_KEY', 'production'),
+            ]
+        ];
+
+        // Tambahkan string 'ipaymu' dan 'mandiri' di dalam compact()
+        return view('admin.settings.api_settings', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu', 'mandiri'));
     }
 
     public function update(Request $request)
@@ -358,6 +377,21 @@ class ApiSettingsController extends Controller
                 Api::setValue('IPAYMU_MODE', $env, 'ipaymu', 'global');
                 Api::setValue('IPAYMU_VA', $request->ipaymu_va, 'ipaymu', $env);
                 Api::setValue('IPAYMU_API_KEY', $request->ipaymu_api_key, 'ipaymu', $env);
+
+            // --- TAMBAHAN MANDIRI ---
+            } elseif ($type === 'mandiri') {
+                $env = $request->mandiri_mode;
+                Api::setValue('MANDIRI_MODE', $env, 'mandiri', 'global');
+
+                // Zero Trust Input Sanitization (Kecuali Private Key karena struktur .pem)
+                Api::setValue('MANDIRI_CLIENT_ID', trim(strip_tags($request->mandiri_client_id)), 'mandiri', $env);
+                Api::setValue('MANDIRI_CLIENT_SECRET', trim(strip_tags($request->mandiri_client_secret)), 'mandiri', $env);
+                Api::setValue('MANDIRI_PARTNER_ID', trim(strip_tags($request->mandiri_partner_id)), 'mandiri', $env);
+
+                // Private Key (.pem format) tidak di-strip_tags untuk mencegah corrupt pada sertifikat OpenSSL RSA
+                if ($request->has('mandiri_private_key')) {
+                    Api::setValue('MANDIRI_PRIVATE_KEY', $request->mandiri_private_key, 'mandiri', $env);
+                }
             }
 
             return back()->with('success', 'Konfigurasi ' . strtoupper($type) . ' berhasil diperbarui untuk mode ' . strtoupper($request->input("{$type}_mode") ?? 'GLOBAL') . '.');
@@ -384,6 +418,7 @@ class ApiSettingsController extends Controller
                 $targetPaypal       = 'sandbox';
                 $targetDeliveree    = 'sandbox';
                 $targetIpaymu       = 'sandbox'; // --- TAMBAHAN IPAYMU ---
+                $targetMandiri      = 'sandbox'; // --- TAMBAHAN MANDIRI ---
                 $label              = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
                 $targetKA           = 'production';
@@ -397,6 +432,7 @@ class ApiSettingsController extends Controller
                 $targetPaypal       = 'production';
                 $targetDeliveree    = 'production';
                 $targetIpaymu       = 'production'; // --- TAMBAHAN IPAYMU ---
+                $targetMandiri      = 'production'; // --- TAMBAHAN MANDIRI ---
                 $label              = 'PRODUCTION (LIVE)';
             }
 
@@ -409,6 +445,7 @@ class ApiSettingsController extends Controller
             Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
             Api::setValue('DELIVEREE_MODE', $targetDeliveree, 'deliveree', 'global');
             Api::setValue('IPAYMU_MODE', $targetIpaymu, 'ipaymu', 'global'); // --- TAMBAHAN IPAYMU ---
+            Api::setValue('MANDIRI_MODE', $targetMandiri, 'mandiri', 'global'); // --- TAMBAHAN MANDIRI ---
 
             // LOG LOG
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
@@ -440,6 +477,7 @@ class ApiSettingsController extends Controller
                 $targetPaypal       = 'production';
                 $targetDeliveree    = 'production';
                 $targetIpaymu       = 'production'; // --- TAMBAHAN IPAYMU ---
+                $targetMandiri      = 'production'; // --- TAMBAHAN MANDIRI ---
                 $label              = 'PRODUCTION (LIVE)';
             } else {
                 $targetKA           = 'staging';
@@ -453,6 +491,7 @@ class ApiSettingsController extends Controller
                 $targetPaypal       = 'sandbox';
                 $targetDeliveree    = 'sandbox';
                 $targetIpaymu       = 'sandbox'; // --- TAMBAHAN IPAYMU ---
+                $targetMandiri      = 'sandbox'; // --- TAMBAHAN MANDIRI ---
                 $label              = 'SANDBOX / MAINTENANCE';
             }
 
@@ -465,6 +504,7 @@ class ApiSettingsController extends Controller
             Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
             Api::setValue('DELIVEREE_MODE', $targetDeliveree, 'deliveree', 'global');
             Api::setValue('IPAYMU_MODE', $targetIpaymu, 'ipaymu', 'global'); // --- TAMBAHAN IPAYMU ---
+            Api::setValue('MANDIRI_MODE', $targetMandiri, 'mandiri', 'global'); // --- TAMBAHAN MANDIRI ---
 
             // LOG LOG
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
