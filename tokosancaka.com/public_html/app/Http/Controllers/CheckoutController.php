@@ -147,6 +147,8 @@ class CheckoutController extends Controller
         // Variabel khusus untuk mengunci Ongkir Rp0 (Hanya jika 100% digital)
         $isStrictlyDigital = $hasDigital && !$hasPhysical;
 
+        $isDigital = $isStrictlyDigital;
+
        $user = Auth::user();
 
        // ========================================================
@@ -507,6 +509,8 @@ class CheckoutController extends Controller
 
         // Variabel khusus untuk mengunci Ongkir Rp0 (Hanya jika 100% digital)
         $isStrictlyDigital = $hasDigital && !$hasPhysical;
+
+        $isDigital = $isStrictlyDigital;
 
         if (!$isStrictlyDigital && (!$user || empty($user->address_detail))) {
             return redirect()->route('profile.edit')->with('warning', 'Silakan lengkapi alamat pengiriman dahulu.');
