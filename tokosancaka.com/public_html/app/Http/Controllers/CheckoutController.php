@@ -399,7 +399,7 @@ class CheckoutController extends Controller
         }
 
         // PASTIKAN VARIABLE 'isDigital' DILEMPAR KE COMPACT
-        return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'isDigital'));
+        return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'hasDigital', 'hasPhysical', 'isStrictlyDigital'));
     }
 
 
