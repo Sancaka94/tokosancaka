@@ -105,10 +105,10 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-      // === PERBAIKAN PERFORMA: Eager Loading Produk (Cegah N+1 Query) ===
+        // === PERBAIKAN PERFORMA: Eager Loading Produk (Cegah N+1 Query) ===
         // Tarik semua ID produk di keranjang, query ke DB HANYA 1 KALI
         $productIds = collect($cart)->pluck('product_id')->filter()->unique()->toArray();
-        $productsCache = Product::with('category')->whereIn('id', $productIds)->get()->keyBy('id');
+        $productsCache = \App\Models\Product::with('category')->whereIn('id', $productIds)->get()->keyBy('id');
 
         $isDigital = true; // Asumsikan true dulu
 
@@ -119,12 +119,29 @@ class CheckoutController extends Controller
                 $isThisItemDigital = true;
             }
 
-            // Ambil dari cache memori, BUKAN query ke database berulang kali
+            // Ambil dari cache memori
             $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
 
             if ($productCheck) {
-                $kategoriObj = $productCheck->category;
-                if ($kategoriObj && in_array($kategoriObj->category_group, ['produk_digital', 'jasa'])) {
+                // Ambil data kategori, bisa jadi berupa Objek Relasi ATAU String kolom
+                $kategoriData = $productCheck->category;
+
+                $kategoriGrup = null;
+
+                // PROTEKSI ZERO BUGS: Cek Tipe Data Secara Dinamis
+                if (is_object($kategoriData)) {
+                    // Jika berupa objek relasi, ambil properti category_group (jika ada) atau nama kategorinya
+                    $kategoriGrup = $kategoriData->category_group ?? $kategoriData->name ?? $kategoriData->nama_kategori ?? null;
+                } elseif (is_string($kategoriData)) {
+                    // Jika berupa teks biasa langsung dari kolom tabel
+                    $kategoriGrup = $kategoriData;
+                } elseif (is_array($kategoriData)) {
+                     // Jika terlanjur ter-cast menjadi array
+                    $kategoriGrup = $kategoriData['category_group'] ?? $kategoriData['name'] ?? null;
+                }
+
+                // Cek pencocokan dengan toleransi huruf besar/kecil
+                if ($kategoriGrup && in_array(strtolower($kategoriGrup), ['produk_digital', 'jasa', 'digital', 'eticket'])) {
                     $isThisItemDigital = true;
                 }
             }
@@ -450,10 +467,10 @@ class CheckoutController extends Controller
             }
         } */
 
-        // === PERBAIKAN PERFORMA: Eager Loading Produk (Cegah N+1 Query) ===
+       // === PERBAIKAN PERFORMA: Eager Loading Produk (Cegah N+1 Query) ===
         // Tarik semua ID produk di keranjang, query ke DB HANYA 1 KALI
         $productIds = collect($cart)->pluck('product_id')->filter()->unique()->toArray();
-        $productsCache = Product::with('category')->whereIn('id', $productIds)->get()->keyBy('id');
+        $productsCache = \App\Models\Product::with('category')->whereIn('id', $productIds)->get()->keyBy('id');
 
         $isDigital = true; // Asumsikan true dulu
 
@@ -464,12 +481,29 @@ class CheckoutController extends Controller
                 $isThisItemDigital = true;
             }
 
-            // Ambil dari cache memori, BUKAN query ke database berulang kali
+            // Ambil dari cache memori
             $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
 
             if ($productCheck) {
-                $kategoriObj = $productCheck->category;
-                if ($kategoriObj && in_array($kategoriObj->category_group, ['produk_digital', 'jasa'])) {
+                // Ambil data kategori, bisa jadi berupa Objek Relasi ATAU String kolom
+                $kategoriData = $productCheck->category;
+
+                $kategoriGrup = null;
+
+                // PROTEKSI ZERO BUGS: Cek Tipe Data Secara Dinamis
+                if (is_object($kategoriData)) {
+                    // Jika berupa objek relasi, ambil properti category_group (jika ada) atau nama kategorinya
+                    $kategoriGrup = $kategoriData->category_group ?? $kategoriData->name ?? $kategoriData->nama_kategori ?? null;
+                } elseif (is_string($kategoriData)) {
+                    // Jika berupa teks biasa langsung dari kolom tabel
+                    $kategoriGrup = $kategoriData;
+                } elseif (is_array($kategoriData)) {
+                     // Jika terlanjur ter-cast menjadi array
+                    $kategoriGrup = $kategoriData['category_group'] ?? $kategoriData['name'] ?? null;
+                }
+
+                // Cek pencocokan dengan toleransi huruf besar/kecil
+                if ($kategoriGrup && in_array(strtolower($kategoriGrup), ['produk_digital', 'jasa', 'digital', 'eticket'])) {
                     $isThisItemDigital = true;
                 }
             }
