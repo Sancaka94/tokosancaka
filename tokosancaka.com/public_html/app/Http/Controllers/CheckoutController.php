@@ -237,7 +237,7 @@ class CheckoutController extends Controller
             }
         }
 
-      $expressOptions = null;
+        $expressOptions = null;
         $instantOptions = null;
 
         // ========================================================
