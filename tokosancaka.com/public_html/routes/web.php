@@ -580,15 +580,6 @@ Route::middleware(['auth', RoleMiddleware::class . ':Pelanggan'])->prefix('custo
 
     // Marketplace & Cart
     Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('marketplace.index');
-    Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-    Route::post('/cart/add/{product}', [CartController::class, 'add'])->name('cart.add');
-    Route::post('/cart/add-ppob', [CartController::class, 'addPpob'])->name('cart.addPpob');
-    Route::patch('/cart/update', [CartController::class, 'update'])->name('cart.update');
-    Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
-
-    // Checkout Barang
-    Route::get('/checkout', [CustomerCheckoutController::class, 'index'])->name('checkout.index');
-    Route::post('/checkout', [CustomerCheckoutController::class, 'store'])->name('checkout.store');
 
     // PPOB History
     Route::prefix('ppob')->name('ppob.')->group(function () {
@@ -1737,3 +1728,20 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 });
 
 Route::post('/admin/settings/api/toggle-debug', [ApiSettingsController::class, 'toggleAppDebug'])->name('admin.settings.api.toggleDebug');
+
+
+// =========================================================================
+// FITUR HYBRID CHECKOUT & CART (BEBAS AKSES TANPA LOGIN)
+// =========================================================================
+Route::prefix('customer')->name('customer.')->group(function () {
+    // Marketplace & Cart
+    Route::get('/cart', [\App\Http\Controllers\CartController::class, 'index'])->name('cart.index');
+    Route::post('/cart/add/{product}', [\App\Http\Controllers\CartController::class, 'add'])->name('cart.add');
+    Route::post('/cart/add-ppob', [\App\Http\Controllers\CartController::class, 'addPpob'])->name('cart.addPpob');
+    Route::patch('/cart/update', [\App\Http\Controllers\CartController::class, 'update'])->name('cart.update');
+    Route::delete('/cart/remove', [\App\Http\Controllers\CartController::class, 'remove'])->name('cart.remove');
+
+    // Checkout Barang
+    Route::get('/checkout', [\App\Http\Controllers\Customer\CheckoutController::class, 'index'])->name('checkout.index');
+    Route::post('/checkout', [\App\Http\Controllers\Customer\CheckoutController::class, 'store'])->name('checkout.store');
+});
