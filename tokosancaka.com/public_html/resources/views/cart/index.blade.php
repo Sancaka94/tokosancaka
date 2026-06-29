@@ -53,19 +53,20 @@
          /* Shopee Button Styles */
          .btn-shopee-outline {
              background-color: rgba(238, 77, 45, 0.1); /* EE4D2D */
-             border: 1px solid #EE4D2D;
-             color: #EE4D2D;
+             border: 1px solid #d0011b;
+             color: #d0011b;
              transition: background-color 0.2s ease;
          }
          .btn-shopee-outline:hover:not(:disabled) { /* Add :not(:disabled) */
              background-color: rgba(238, 77, 45, 0.15);
          }
          .btn-shopee-solid {
-             background-color: #EE4D2D;
-             border: 1px solid #EE4D2D;
+             background-color: #d0011b;
+             border: 1px solid #d0011b;
              color: white;
               transition: background-color 0.2s ease;
          }
+
          .btn-shopee-solid:hover:not(:disabled) { /* Add :not(:disabled) */
              background-color: #d73210; /* Slightly darker orange */
          }
@@ -194,7 +195,7 @@
                                                 // Gunakan Helper get_operator_logo
                                                 // Asumsi slug atau name menyimpan nama brand (misal: pln, telkomsel)
                                                 $imageSrc = get_operator_logo($details['slug'] ?? $details['name']);
-                                            } 
+                                            }
                                             // 2. Cek jika Produk Fisik (Ada image_url)
                                             elseif (!empty($details['image_url'])) {
                                                 // Cek apakah image_url sudah berupa URL lengkap (http/https)
