@@ -105,7 +105,7 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-        // === PERBAIKAN PERFORMA: Eager Loading Produk (Cegah N+1 Query) ===
+      // === PERBAIKAN PERFORMA: Eager Loading Produk (Cegah N+1 Query) ===
         // Tarik semua ID produk di keranjang, query ke DB HANYA 1 KALI
         $productIds = collect($cart)->pluck('product_id')->filter()->unique()->toArray();
         $productsCache = \App\Models\Product::with('category')->whereIn('id', $productIds)->get()->keyBy('id');
@@ -115,41 +115,53 @@ class CheckoutController extends Controller
         foreach ($cart as $item) {
             $isThisItemDigital = false;
 
-            if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) {
-                $isThisItemDigital = true;
+            // 1. Cek dari tipe session cart
+            if (isset($item['type'])) {
+                $typeLower = strtolower($item['type']);
+                if (str_contains($typeLower, 'digital') || in_array($typeLower, ['eticket', 'jasa'])) {
+                    $isThisItemDigital = true;
+                }
             }
 
             // Ambil dari cache memori
             $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
 
             if ($productCheck) {
-                // Ambil data kategori, bisa jadi berupa Objek Relasi ATAU String kolom
-                $kategoriData = $productCheck->category;
+                // 2. Cek dari flag is_digital di database (Penanganan krusial yang terlewat)
+                if (isset($productCheck->is_digital) && $productCheck->is_digital) {
+                    $isThisItemDigital = true;
+                }
 
+                // 3. Cek dari nama / grup kategori secara dinamis
+                $kategoriData = $productCheck->category;
                 $kategoriGrup = null;
 
-                // PROTEKSI ZERO BUGS: Cek Tipe Data Secara Dinamis
                 if (is_object($kategoriData)) {
-                    // Jika berupa objek relasi, ambil properti category_group (jika ada) atau nama kategorinya
                     $kategoriGrup = $kategoriData->category_group ?? $kategoriData->name ?? $kategoriData->nama_kategori ?? null;
                 } elseif (is_string($kategoriData)) {
-                    // Jika berupa teks biasa langsung dari kolom tabel
                     $kategoriGrup = $kategoriData;
                 } elseif (is_array($kategoriData)) {
-                     // Jika terlanjur ter-cast menjadi array
                     $kategoriGrup = $kategoriData['category_group'] ?? $kategoriData['name'] ?? null;
                 }
 
-                // Cek pencocokan dengan toleransi huruf besar/kecil
-                if ($kategoriGrup && in_array(strtolower($kategoriGrup), ['produk_digital', 'jasa', 'digital', 'eticket'])) {
-                    $isThisItemDigital = true;
+                if ($kategoriGrup) {
+                    $kategoriLower = strtolower($kategoriGrup);
+                    if (
+                        str_contains($kategoriLower, 'digital') ||
+                        str_contains($kategoriLower, 'jasa') ||
+                        str_contains($kategoriLower, 'tiket') ||
+                        str_contains($kategoriLower, 'ticket') ||
+                        str_contains($kategoriLower, 'eticket')
+                    ) {
+                        $isThisItemDigital = true;
+                    }
                 }
             }
 
             // JIKA KETEMU 1 SAJA BARANG FISIK, MAKA KERANJANG BUKAN 100% DIGITAL
             if (!$isThisItemDigital) {
                 $isDigital = false;
-                break; // Hentikan pengecekan karena sudah pasti butuh pengiriman fisik
+                break; // Hentikan pengecekan karena sudah pasti butuh pengiriman fisik via kurir
             }
         }
         // ===================================================================
@@ -473,7 +485,7 @@ class CheckoutController extends Controller
             }
         } */
 
-       // === PERBAIKAN PERFORMA: Eager Loading Produk (Cegah N+1 Query) ===
+      // === PERBAIKAN PERFORMA: Eager Loading Produk (Cegah N+1 Query) ===
         // Tarik semua ID produk di keranjang, query ke DB HANYA 1 KALI
         $productIds = collect($cart)->pluck('product_id')->filter()->unique()->toArray();
         $productsCache = \App\Models\Product::with('category')->whereIn('id', $productIds)->get()->keyBy('id');
@@ -483,41 +495,53 @@ class CheckoutController extends Controller
         foreach ($cart as $item) {
             $isThisItemDigital = false;
 
-            if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) {
-                $isThisItemDigital = true;
+            // 1. Cek dari tipe session cart
+            if (isset($item['type'])) {
+                $typeLower = strtolower($item['type']);
+                if (str_contains($typeLower, 'digital') || in_array($typeLower, ['eticket', 'jasa'])) {
+                    $isThisItemDigital = true;
+                }
             }
 
             // Ambil dari cache memori
             $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
 
             if ($productCheck) {
-                // Ambil data kategori, bisa jadi berupa Objek Relasi ATAU String kolom
-                $kategoriData = $productCheck->category;
+                // 2. Cek dari flag is_digital di database (Penanganan krusial yang terlewat)
+                if (isset($productCheck->is_digital) && $productCheck->is_digital) {
+                    $isThisItemDigital = true;
+                }
 
+                // 3. Cek dari nama / grup kategori secara dinamis
+                $kategoriData = $productCheck->category;
                 $kategoriGrup = null;
 
-                // PROTEKSI ZERO BUGS: Cek Tipe Data Secara Dinamis
                 if (is_object($kategoriData)) {
-                    // Jika berupa objek relasi, ambil properti category_group (jika ada) atau nama kategorinya
                     $kategoriGrup = $kategoriData->category_group ?? $kategoriData->name ?? $kategoriData->nama_kategori ?? null;
                 } elseif (is_string($kategoriData)) {
-                    // Jika berupa teks biasa langsung dari kolom tabel
                     $kategoriGrup = $kategoriData;
                 } elseif (is_array($kategoriData)) {
-                     // Jika terlanjur ter-cast menjadi array
                     $kategoriGrup = $kategoriData['category_group'] ?? $kategoriData['name'] ?? null;
                 }
 
-                // Cek pencocokan dengan toleransi huruf besar/kecil
-                if ($kategoriGrup && in_array(strtolower($kategoriGrup), ['produk_digital', 'jasa', 'digital', 'eticket'])) {
-                    $isThisItemDigital = true;
+                if ($kategoriGrup) {
+                    $kategoriLower = strtolower($kategoriGrup);
+                    if (
+                        str_contains($kategoriLower, 'digital') ||
+                        str_contains($kategoriLower, 'jasa') ||
+                        str_contains($kategoriLower, 'tiket') ||
+                        str_contains($kategoriLower, 'ticket') ||
+                        str_contains($kategoriLower, 'eticket')
+                    ) {
+                        $isThisItemDigital = true;
+                    }
                 }
             }
 
             // JIKA KETEMU 1 SAJA BARANG FISIK, MAKA KERANJANG BUKAN 100% DIGITAL
             if (!$isThisItemDigital) {
                 $isDigital = false;
-                break; // Hentikan pengecekan karena sudah pasti butuh pengiriman fisik
+                break; // Hentikan pengecekan karena sudah pasti butuh pengiriman fisik via kurir
             }
         }
         // ===================================================================
