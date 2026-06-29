@@ -1428,15 +1428,17 @@ class TicketingController extends BaseController
                                 // Ekstrak rutenya (Contoh: CGK-BTH)
                                 $rute = ($ao['aoOrigin'] ?? '') . '-' . ($ao['aoDestination'] ?? '');
 
-                                // Jika ada bagasi di rute ini
+                               // 1. PERBAIKAN BAGASI: Panggil 'baggageDesc' (Tonase/KG), fallback ke code
                                 if (!empty($ao['baggageString'])) {
-                                    $bagList[] = $ao['baggageString'] . " (" . $rute . ")";
+                                    $bagText = !empty($ao['baggageDesc']) ? $ao['baggageDesc'] : $ao['baggageString'];
+                                    $bagList[] = $bagText . " (" . $rute . ")";
                                 }
 
-                                // Jika ada makanan di rute ini
+                                // 2. PERBAIKAN MAKANAN (MEALS): Panggil 'mealDescs' (Teks Makanan), fallback ke code
                                 if (!empty($ao['meals']) && is_array($ao['meals'])) {
-                                    foreach ($ao['meals'] as $mealCode) {
-                                        $mealList[] = $mealCode . " (" . $rute . ")";
+                                    foreach ($ao['meals'] as $idx => $mealCode) {
+                                        $mealText = !empty($ao['mealDescs'][$idx]) ? $ao['mealDescs'][$idx] : $mealCode;
+                                        $mealList[] = $mealText . " (" . $rute . ")";
                                     }
                                 }
                             }
