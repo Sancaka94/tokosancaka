@@ -249,6 +249,23 @@
                         </div>
                     </div>
 
+                    {{-- Menu Mandiri --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'mandiri' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'mandiri'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'mandiri' ? 'text-zinc-900' : 'text-zinc-600'">Mandiri API</span>
+                        <div class="flex items-center space-x-1.5" @click.stop>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="mandiriData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">SBX</span>
+                            <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="mandiriData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                    @click="mandiriData.mode = (mandiriData.mode === 'production' ? 'sandbox' : 'production')">
+                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                      :class="mandiriData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </button>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="mandiriData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                        </div>
+                    </div>
+
                     {{-- Menu Fonnte --}}
                     <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
                          :class="activeTab === 'fonnte' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
@@ -685,6 +702,8 @@
                     </form>
                 </div>
 
+
+
                 {{-- 12. TAB IPAYMU --}}
                 <div x-show="activeTab === 'ipaymu'" style="display:none;" x-transition.opacity>
                     <div class="p-6 border-b border-zinc-200">
@@ -714,6 +733,52 @@
                             <div class="sm:col-span-2">
                                 <label class="block text-xs font-medium text-zinc-700 uppercase">API Key</label>
                                 <input type="text" name="ipaymu_api_key" x-model="ipaymuData[ipaymuData.mode].api_key" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-4">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded hover:bg-black text-sm font-medium transition-colors">Simpan Pengaturan</button>
+                        </div>
+                    </form>
+                </div>
+
+                {{-- 13. TAB MANDIRI --}}
+                <div x-show="activeTab === 'mandiri'" style="display:none;" x-transition.opacity>
+                    <div class="p-6 border-b border-zinc-200">
+                        <div class="flex items-center gap-4 mb-1">
+                            <h3 class="text-lg font-bold text-zinc-900">Mandiri API</h3>
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Sandbox</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': mandiriData.mode === 'production', 'border-zinc-300': mandiriData.mode === 'sandbox'}" @click="mandiriData.mode = (mandiriData.mode === 'production' ? 'sandbox' : 'production')" :checked="mandiriData.mode === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-zinc-500">Konfigurasi API B2B Bank Mandiri (VA & Transfer).</p>
+                    </div>
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="mandiri">
+                        <input type="hidden" name="mandiri_mode" x-model="mandiriData.mode">
+
+                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">Client ID</label>
+                                <input type="text" name="mandiri_client_id" x-model="mandiriData[mandiriData.mode].client_id" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">Client Secret</label>
+                                <input type="text" name="mandiri_client_secret" x-model="mandiriData[mandiriData.mode].client_secret" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">Partner ID</label>
+                                <input type="text" name="mandiri_partner_id" x-model="mandiriData[mandiriData.mode].partner_id" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" placeholder="Isi 'SANDBOX' jika mode Sandbox">
+                            </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">Private Key (Format .pem)</label>
+                                <textarea name="mandiri_private_key" x-model="mandiriData[mandiriData.mode].private_key" rows="6" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono text-xs whitespace-pre" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"></textarea>
                             </div>
                         </div>
 
