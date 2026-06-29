@@ -4,9 +4,9 @@
     // ================================================================
     // 1. LOGIC PHP: PEMETAAN SKU (AGAR TIDAK SALAH DETEKSI PRODUK)
     // ================================================================
-    $urlSlug = request()->segment(4); 
+    $urlSlug = request()->segment(4);
     $pageInfo = $pageInfo ?? [];
-    $currentSlug = $pageInfo['slug'] ?? $urlSlug ?? 'pulsa'; 
+    $currentSlug = $pageInfo['slug'] ?? $urlSlug ?? 'pulsa';
 
     // MAPPING: Ubah Slug URL menjadi Kode SKU API yang Benar
     $skuMap = [
@@ -25,10 +25,10 @@
         'gas-negara'         => 'pgas',
         'pln-nontaglis'      => 'plnnontaglist',
         'e-money'            => 'emoney',
-        
+
         // Kategori Prabayar (Default)
         'pulsa' => 'pulsa',
-        'pln-token' => 'pln', 
+        'pln-token' => 'pln',
         'data' => 'data',
     ];
 
@@ -37,16 +37,16 @@
     // Hapus 'emoney', 'games', 'voucher' jika ada di sini sebelumnya.
     $postpaidKeys = [
         'pln',           // Khusus PLN Tagihan (Akan kita filter di bawah agar Token tidak kena)
-        'pdam', 
-        'bpjs', 
-        'bpjstk', 
+        'pdam',
+        'bpjs',
+        'bpjstk',
         'hp',            // Kartu Halo / Xplor (Pascabayar)
         'internet',      // Indihome / Wifi ID
         'tv',            // TV Kabel Langganan
         'multifinance',  // Cicilan Leasing
-        'pbb', 
-        'samsat', 
-        'pgas', 
+        'pbb',
+        'samsat',
+        'pgas',
         'plnnontaglist'
     ];
 
@@ -72,14 +72,14 @@
     // Halaman dianggap Pascabayar JIKA:
     // (Ada di list postpaidKeys) DAN (URL-nya BUKAN termasuk kategori Prabayar)
     $isPostpaid = (
-        ($pageInfo['is_postpaid'] ?? false) || 
+        ($pageInfo['is_postpaid'] ?? false) ||
         in_array($activeSku, $postpaidKeys)
     ) && !in_array($currentSlug, $prepaidSlugs);
-    
+
     // Judul Halaman & Label Input
     $pageTitle = $pageInfo['title'] ?? ucfirst(str_replace('-', ' ', $currentSlug));
     $inputLabel = "Nomor Pelanggan";
-    
+
     // 1. DEFAULT (Untuk Pulsa/Data/E-Wallet)
     $inputPlace = "Contoh: 08123456789";
 
@@ -219,28 +219,28 @@
     {{-- SEARCH BAR SECTION --}}
     <div class="mb-6 relative" data-aos="fade-up">
         <div class="relative group">
-            <input type="text" id="menuSearch" 
+            <input type="text" id="menuSearch"
                    class="w-full border border-blue-400 rounded-2xl px-5 py-4 pl-12 font-medium text-gray-700 focus:ring-4 focus:ring-red-100 focus:border-red-500 outline-none shadow-sm transition placeholder-gray-400"
                    placeholder="Cari layanan (Contoh: Pulsa, PLN, DANA, BPJS, SAMSAT, DANA, OVO)...">
-            
+
             <div class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 transition">
                 <i class="fas fa-search text-xl"></i>
             </div>
 
             {{-- Tombol Reset (X) - Muncul saat ada ketikan --}}
-            <button id="clearSearch" onclick="document.getElementById('menuSearch').value=''; filterMenu();" 
+            <button id="clearSearch" onclick="document.getElementById('menuSearch').value=''; filterMenu();"
                     class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-300 hover:text-red-500 transition hidden">
                 <i class="fas fa-times-circle text-xl"></i>
             </button>
         </div>
-        
+
         {{-- Pesan jika tidak ditemukan --}}
         <div id="noResult" class="hidden text-center py-8 text-gray-500 bg-white rounded-xl mt-2 border border-dashed border-gray-300">
             <i class="fas fa-search-minus text-3xl mb-2 text-gray-300"></i>
             <p>Layanan tidak ditemukan.</p>
         </div>
     </div>
-    
+
     {{-- PRABAYAR --}}
     <div id="prabayar-section" class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-red-500">
         <h2 class="text-xl font-bold mb-6 text-gray-800 flex items-center border-b pb-2">
@@ -248,7 +248,7 @@
         </h2>
         <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3 sm:gap-4">
             @foreach($prepaidMenus as $menu)
-                <a href="{{ url('/etalase/ppob/digital/' . $menu['slug']) }}" 
+                <a href="{{ url('/etalase/ppob/digital/' . $menu['slug']) }}"
                    class="ppob-icon flex flex-col items-center p-3 sm:p-4 border rounded-xl hover:shadow-lg transition group bg-white hover:border-red-400 {{ $menu['style'] }} border-opacity-50">
                     <i class="fas {{ $menu['icon'] }} text-2xl sm:text-3xl mb-2 group-hover:scale-110 transition-transform duration-300"></i>
                     <span class="text-[10px] sm:text-xs font-bold text-gray-700 text-center leading-tight">{{ $menu['name'] }}</span>
@@ -264,7 +264,7 @@
         </h2>
         <div class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-3 sm:gap-4">
             @foreach($postpaidMenus as $menu)
-                <a href="{{ url('/etalase/ppob/digital/' . $menu['slug']) }}" 
+                <a href="{{ url('/etalase/ppob/digital/' . $menu['slug']) }}"
                    class="ppob-icon flex flex-col items-center p-3 sm:p-4 border rounded-xl hover:shadow-lg transition group bg-white hover:border-blue-400 {{ $menu['style'] }} border-opacity-50">
                     <i class="fas {{ $menu['icon'] }} text-2xl sm:text-3xl mb-2 group-hover:scale-110 transition-transform duration-300"></i>
                     <span class="text-[10px] sm:text-xs font-bold text-gray-700 text-center leading-tight">{{ $menu['name'] }}</span>
@@ -277,10 +277,10 @@
 {{-- MAIN CONTENT --}}
 <div class="bg-gray-50 min-h-screen py-10">
     <div class="container mx-auto px-4">
-        
+
         {{-- Breadcrumb --}}
         <div class="text-sm text-gray-500 mb-6 flex items-center gap-2">
-            <a href="https://tokosancaka.com/etalase" class="hover:text-red-500 transition">Beranda</a> 
+            <a href="https://tokosancaka.com/etalase" class="hover:text-red-500 transition">Beranda</a>
             <i class="fas fa-chevron-right text-xs text-gray-300"></i>
             <a href="{{ url('/etalase/category/e-wallet-pulsa') }}" class="hover:text-red-500 transition">Digital</a>
             <i class="fas fa-chevron-right text-xs text-gray-300"></i>
@@ -288,19 +288,19 @@
         </div>
 
         {{-- Notifications --}}
-        @if(session('success')) 
+        @if(session('success'))
             <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-sm mb-6 flex items-center">
                 <i class="fas fa-check-circle mr-2"></i> {{ session('success') }}
-            </div> 
+            </div>
         @endif
-        @if(session('error')) 
+        @if(session('error'))
             <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm mb-6 flex items-center">
                 <i class="fas fa-exclamation-circle mr-2"></i> {{ session('error') }}
-            </div> 
+            </div>
         @endif
 
         <div class="flex flex-col lg:flex-row gap-8">
-            
+
             {{-- KOLOM KIRI: INPUT NOMOR & FILTER --}}
             <div class="lg:w-1/3 space-y-6">
 
@@ -315,7 +315,7 @@
                         <div class="bg-green-100 w-12 h-12 rounded-2xl flex items-center justify-center text-green-600 shadow-sm">
                             <i class="fas fa-wallet text-xl"></i>
                         </div>
-                        
+
                         {{-- Info Saldo --}}
                         <div>
                             <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
@@ -344,7 +344,7 @@
                     </a>
                 </div>
                 @endauth
-                
+
                 {{-- Card Input --}}
                 <div class="bg-white rounded-2xl shadow-md p-6 border-t-4 border-red-500 relative overflow-hidden">
                     <div class="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
@@ -361,7 +361,7 @@
                     <div class="mb-6 relative z-10">
                         <label class="block text-xs font-bold text-gray-500 uppercase mb-2 ml-1">{{ $inputLabel }}</label>
                         <div class="relative group">
-                            <input type="text" id="customer_no" 
+                            <input type="text" id="customer_no"
                                    class="w-full border border-gray-300 rounded-xl px-4 py-4 pl-12 font-bold text-lg text-gray-700 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none shadow-sm transition"
                                    placeholder="{{ $inputPlace }}">
                             <div class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 transition">
@@ -417,7 +417,7 @@
 
                         {{-- TAMBAHKAN LOGIKA FILTER INI --}}
     @php
-        // Jika kita sedang di halaman 'pln-token', 
+        // Jika kita sedang di halaman 'pln-token',
         // tapi nama Brand mengandung kata 'Pascabayar' -> SKIP / Sembunyikan
         if ($currentSlug == 'pln-token' && stripos($brand, 'Pascabayar') !== false) {
             continue;
@@ -441,11 +441,11 @@
             {{-- KOLOM KANAN: DAFTAR PRODUK / HASIL --}}
             <div class="lg:w-2/3">
                 <div class="bg-white rounded-2xl shadow-md p-6 min-h-[600px]">
-                    
+
                     {{-- 1. MODE PRABAYAR --}}
                     @if(!$isPostpaid)
                         <div class="flex flex-col sm:flex-row justify-between items-center mb-6 pb-4 border-b border-gray-100 gap-4">
-                            
+
                             {{-- Judul Kiri --}}
                             <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2 w-full sm:w-auto">
                                 <i class="fas fa-list text-gray-400"></i> Daftar Produk
@@ -453,14 +453,14 @@
 
                             {{-- Form Pencarian Kanan (BARU) --}}
                             <div class="relative w-full sm:w-1/2 md:w-1/3 group">
-                                <input type="text" id="productSearch" 
+                                <input type="text" id="productSearch"
                                        class="w-full border border-gray-200 bg-gray-50 rounded-xl px-4 py-2 pl-10 text-sm font-medium text-gray-700 focus:bg-white focus:ring-2 focus:ring-red-100 focus:border-red-500 outline-none transition"
                                        placeholder="Cari produk...">
                                 <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-red-500 transition">
                                     <i class="fas fa-search"></i>
                                 </div>
                                 {{-- Tombol X (Clear) --}}
-                                <button id="clearProductSearch" onclick="document.getElementById('productSearch').value=''; filterProductsList();" 
+                                <button id="clearProductSearch" onclick="document.getElementById('productSearch').value=''; filterProductsList();"
                                         class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-300 hover:text-red-500 transition hidden">
                                     <i class="fas fa-times-circle"></i>
                                 </button>
@@ -495,11 +495,11 @@
                                  data-name="{{ $product->product_name }}"
                                  data-price="{{ $product->sell_price }}"
                                  onclick="selectProduct(this)">
-                                
+
                                 <div class="flex justify-between items-start mb-3">
                                     <div class="h-8 w-auto">
-                                        <img src="{{ get_operator_logo($product->brand) }}" 
-                                             alt="{{ $product->brand }}" 
+                                        <img src="{{ get_operator_logo($product->brand) }}"
+                                             alt="{{ $product->brand }}"
                                              class="h-full object-contain"
                                              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                                         <span class="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-1 rounded uppercase hidden">
@@ -515,7 +515,7 @@
 
                                 <h3 class="text-sm font-bold text-gray-800 mb-2 leading-snug group-hover:text-red-600 transition">{{ $product->product_name }}</h3>
                                 <p class="text-xs text-gray-400 mb-4 line-clamp-2 h-8">{{ $product->desc }}</p>
-                                
+
                                 <div class="flex justify-between items-end border-t border-dashed border-gray-200 pt-3">
                                     <div>
                                         <p class="text-[10px] text-gray-400 uppercase tracking-wide">Harga</p>
@@ -536,11 +536,11 @@
                             </div>
                             @endforelse
                         </div>
-                    
+
                     {{-- 2. MODE PASCABAYAR --}}
                     @else
                         <h2 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Rincian Tagihan</h2>
-                        
+
                         {{-- STATE: BELUM CEK / KOSONG --}}
                         <div id="bill_empty" class="flex flex-col items-center justify-center py-20 text-gray-400">
                             <div class="bg-gray-100 p-6 rounded-full mb-4"><i class="fas fa-file-invoice-dollar text-4xl text-gray-300"></i></div>
@@ -551,7 +551,7 @@
                         <div id="bill_result" class="hidden">
                             <div class="bg-blue-50 p-6 rounded-2xl mb-6 border border-blue-100 relative overflow-hidden">
                                 <div class="absolute -right-6 -top-6 bg-blue-100 w-24 h-24 rounded-full opacity-50"></div>
-                                
+
                                 <div class="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                     {{-- Data Utama --}}
                                     <div>
@@ -608,7 +608,7 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <button onclick="bayarTagihan()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg shadow-green-200 transition transform hover:-translate-y-1">
                                 <i class="fas fa-check-circle mr-2"></i> Bayar Sekarang
                             </button>
@@ -656,7 +656,7 @@
             {{-- DIV BUTTONS (Form dihapus, diganti Logic Checkout via JS) --}}
             <div class="bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
                 <button type="button" onclick="closeModal()" class="w-full inline-flex justify-center rounded-xl border border-gray-300 shadow-sm px-4 py-3 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:w-auto sm:text-sm transition">Batal</button>
-                
+
                 {{-- Button Baru yang memanggil processPrepaidCheckout() --}}
                 <button type="button" id="btn-confirm-pay" onclick="processPrepaidCheckout()" class="w-full inline-flex justify-center rounded-xl border border-transparent shadow-lg shadow-red-200 px-6 py-3 bg-red-600 text-base font-bold text-white hover:bg-red-700 focus:outline-none sm:text-sm transition transform hover:scale-[1.02]">Bayar Sekarang</button>
             </div>
@@ -673,19 +673,19 @@
     // ⚙️ KONFIGURASI GLOBAL
     // =================================================================
     const IS_TESTING = false;
-    const ACTIVE_SKU = "{{ $activeSku }}"; 
-    
+    const ACTIVE_SKU = "{{ $activeSku }}";
+
     // Variabel Global
     const inputNo = document.getElementById('customer_no');
-    let currentBillData = null; 
+    let currentBillData = null;
     let currentPrepaidData = null;
     let isProcessing = false; // [FIX] Flag untuk mencegah double submit
 
     // Setup Swiper
-    var swiper = new Swiper(".heroSwiper", { 
-        loop: true, autoplay: { delay: 4000 }, 
-        pagination: { el: ".swiper-pagination", clickable: true }, 
-        navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" } 
+    var swiper = new Swiper(".heroSwiper", {
+        loop: true, autoplay: { delay: 4000 },
+        pagination: { el: ".swiper-pagination", clickable: true },
+        navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" }
     });
 
     // --- HELPER: Generator Ref ID ---
@@ -755,10 +755,10 @@
             '73': { status: 'Gagal', message: 'Limit KWH terlampaui (Maksimum).', alertType: 'error' },
         };
 
-        return rcMap[rc] || { 
-            status: 'Gagal', 
-            message: `Gagal memproses transaksi (Kode RC: ${rc}).`, 
-            alertType: 'error' 
+        return rcMap[rc] || {
+            status: 'Gagal',
+            message: `Gagal memproses transaksi (Kode RC: ${rc}).`,
+            alertType: 'error'
         };
     }
 
@@ -777,7 +777,7 @@
     // =================================================================
     @if(!$isPostpaid)
         const items = document.querySelectorAll('.product-item');
-        
+
         function filterProducts(brand) {
             items.forEach(item => {
                 if (brand === 'all' || item.dataset.brand === brand) item.classList.remove('hidden');
@@ -809,10 +809,10 @@
         // Modal Pilih Produk
         function selectProduct(el) {
             const no = inputNo.value.replace(/[^0-9]/g, '');
-            let minLen = IS_TESTING ? 3 : 4; 
-            if(no.length < minLen) { 
-                triggerCustomNotification("Mohon isi nomor tujuan yang valid terlebih dahulu.", 'error'); 
-                inputNo.focus(); return; 
+            let minLen = IS_TESTING ? 3 : 4;
+            if(no.length < minLen) {
+                triggerCustomNotification("Mohon isi nomor tujuan yang valid terlebih dahulu.", 'error');
+                inputNo.focus(); return;
             }
             currentPrepaidData = {
                 sku: el.dataset.sku,
@@ -827,8 +827,8 @@
             document.getElementById('confirmModal').classList.remove('hidden');
         }
 
-        function closeModal() { 
-            document.getElementById('confirmModal').classList.add('hidden'); 
+        function closeModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
         }
 
         // [FIX] Checkout Prabayar (Mencegah Klik Ganda & Syntax Error)
@@ -867,7 +867,7 @@
                 isProcessing = false; // Reset Lock
             });
         }
-        
+
         // Cek Nama PLN Prabayar
         @if($currentSlug == 'pln-token')
         function cekPlnPrabayar() {
@@ -876,9 +876,9 @@
             const btn = document.getElementById('btn-cek-pln');
             const infoBox = document.getElementById('pln_info');
             const oriText = btn.innerHTML;
-            
+
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengecek...'; btn.disabled = true; infoBox.classList.add('hidden');
-            
+
             fetch('{{ route("ppob.check.pln.prabayar") }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
@@ -918,7 +918,7 @@
         const btn = document.getElementById('btn-cek-tagihan');
         const spinner = document.getElementById('loading-spinner');
         const text = document.getElementById('btn-text');
-        
+
         // UI Elements
         const resultDiv = document.getElementById('bill_result');
         const emptyDiv = document.getElementById('bill_empty');
@@ -938,13 +938,13 @@
         fetch('{{ route("ppob.check.bill") }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: JSON.stringify({ 
-                    customer_no: cleanNo, 
+                body: JSON.stringify({
+                    customer_no: cleanNo,
                     sku: ACTIVE_SKU,
                     // Pastikan controller juga mengembalikan parameter ini
-                    buyer_sku_code: ACTIVE_SKU, 
-                    ref_id: generateRefID(),    
-                    testing: IS_TESTING 
+                    buyer_sku_code: ACTIVE_SKU,
+                    ref_id: generateRefID(),
+                    testing: IS_TESTING
                 })
             })
             .then(res => res.json())
@@ -960,7 +960,7 @@
 
                 // --- JIKA SUKSES ---
                 if (d && (d.status === 'success' || d.status === 'Sukses' || rc === '00')) {
-                    
+
                     // 1. Ambil Data Detail
                     const desc = d.desc || {};
                     const detailArray = (desc.detail && Array.isArray(desc.detail)) ? desc.detail : [];
@@ -969,7 +969,7 @@
                     // 2. Hitung Harga Total
                     let apiSellingPrice = parseInt(d.selling_price || d.total_tagihan || 0);
                     let apiAdmin = parseInt(d.admin || d.admin_fee || d.admin_fee_modal || 0);
-                    
+
                     // Fallback hitung manual jika API return 0 (kasus langka)
                     if (apiSellingPrice === 0 && detailArray.length > 0) {
                          let totalTagihanDetail = 0;
@@ -997,7 +997,7 @@
                     // 4. [FIX KRUSIAL] Update Data Checkout dengan SKU Asli API
                     currentBillData = {
                         // Priority: SKU dari API > SKU Request > SKU Default
-                        sku: d.buyer_sku_code || ACTIVE_SKU, 
+                        sku: d.buyer_sku_code || ACTIVE_SKU,
                         // Wajib simpan SKU Asli ini (misal post641597) ke dalam 'desc' agar controller checkout bisa baca
                         buyer_sku_code: d.buyer_sku_code || ACTIVE_SKU,
                         name: "Tagihan " + ACTIVE_SKU.toUpperCase() + " - " + (d.customer_name || d.name),
@@ -1047,7 +1047,7 @@
                             let itemP = formatPeriodeID(item.periode);
                             let itemN = parseInt(item.nilai_tagihan || 0).toLocaleString('id-ID');
                             let itemAdm = parseInt(item.admin || 0).toLocaleString('id-ID');
-                            
+
                             let htmlItem = `
                                 <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 flex justify-between items-start text-sm mb-2">
                                     <div>
@@ -1102,9 +1102,9 @@
 
         fetch('{{ route("ppob.prepare") }}', {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'X-CSRF-TOKEN': '{{ csrf_token() }}' 
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
             body: JSON.stringify(currentBillData)
         })
@@ -1134,14 +1134,14 @@
     // ==========================================================
     document.addEventListener("DOMContentLoaded", function() {
         const inputField = document.getElementById('customer_no');
-        
+
         // Cek apakah input ada
         if (inputField) {
             let originalPlaceholder = inputField.getAttribute('placeholder');
-            
+
             // Tambahkan spasi di depan agar terlihat muncul dari kanan
             // Sesuaikan jumlah spasi untuk mengatur jarak jeda
-            let space = "          |          "; 
+            let space = "          |          ";
             let text = space + originalPlaceholder;
             let interval;
 
@@ -1193,7 +1193,7 @@
     const searchInput = document.getElementById('menuSearch');
     const clearBtn = document.getElementById('clearSearch');
     const noResultMsg = document.getElementById('noResult');
-    
+
     // Ambil semua item menu (Prabayar & Pascabayar)
     // Kita target class 'ppob-icon' yang ada di looping menu Anda
     const menuItems = document.querySelectorAll('.ppob-icon');
@@ -1219,7 +1219,7 @@
             const menuName = item.querySelector('span').innerText.toLowerCase();
             // Ambil link slug (opsional, buat pencarian lebih luas)
             const menuSlug = item.getAttribute('href').toLowerCase();
-            
+
             // Logika Pencarian: Cek Nama ATAU Link/Slug
             if (menuName.includes(query) || menuSlug.includes(query)) {
                 item.classList.remove('hidden'); // Tampilkan
@@ -1265,7 +1265,7 @@
         const pClearBtn = document.getElementById('clearProductSearch');
         const pNoResult = document.getElementById('productNoResult');
         const pListContainer = document.getElementById('product_list');
-        
+
         // Ambil semua item produk
         const productItems = document.querySelectorAll('.product-item');
 
@@ -1278,10 +1278,10 @@
         window.filterProductsList = function() {
             // Ambil input user & bersihkan spasi kiri kanan
             const rawQuery = pSearchInput.value.toLowerCase().trim();
-            
+
             // Query Versi Bersih (Hapus titik, koma, spasi, dash)
             // Contoh: User ketik "50.000" atau "50 000" -> jadi "50000"
-            const cleanQuery = rawQuery.replace(/[\.\,\s\-]/g, ''); 
+            const cleanQuery = rawQuery.replace(/[\.\,\s\-]/g, '');
 
             let visibleCount = 0;
 
@@ -1297,21 +1297,21 @@
                 const originalName = (item.dataset.name || '').toLowerCase();
                 const originalBrand = (item.dataset.brand || '').toLowerCase();
                 const originalPrice = (item.dataset.price || '').toLowerCase();
-                
+
                 // Buat Versi Bersih dari Data Produk juga
                 // Contoh: "PLN 50.000" -> jadi "pln50000"
                 const cleanName = originalName.replace(/[\.\,\s\-]/g, '');
-                
+
                 // --- LOGIKA PENCARIAN GANDA ---
-                
+
                 // 1. Cek Normal (Berdasarkan teks apa adanya)
                 // Biar kalau cari "PLN" tetap ketemu
-                const matchNormal = originalName.includes(rawQuery) || 
+                const matchNormal = originalName.includes(rawQuery) ||
                                     originalBrand.includes(rawQuery);
 
                 // 2. Cek Cerdas (Berdasarkan angka tanpa titik)
                 // Biar cari "50000" ketemu "50.000"
-                const matchSmart = cleanName.includes(cleanQuery) || 
+                const matchSmart = cleanName.includes(cleanQuery) ||
                                    originalPrice.includes(cleanQuery);
 
                 // Gabungkan kedua logika

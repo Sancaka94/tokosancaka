@@ -11,44 +11,44 @@
     <style>
         body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
         :root {
-            --shopee-red: #EE4D2D;
+            --shopee-red: #d0011b;
             --shopee-red-dark: #d73210;
             --shopee-red-light: rgba(255, 87, 34, 0.1);
         }
-        .thumbnail-active { 
-            outline: 2px solid var(--shopee-red); 
+        .thumbnail-active {
+            outline: 2px solid var(--shopee-red);
             outline-offset: 1px;
             border-color: var(--shopee-red) !important;
         }
-        input[type=number]::-webkit-inner-spin-button, 
-        input[type=number]::-webkit-outer-spin-button { 
-            -webkit-appearance: none; 
-            margin: 0; 
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
-        input[type=number] { 
-            -moz-appearance: textfield; 
+        input[type=number] {
+            -moz-appearance: textfield;
         }
-        button:disabled, input:disabled { 
-            opacity: 0.6; 
-            cursor: not-allowed; 
+        button:disabled, input:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
-        .btn-shopee-outline { 
-            background-color: var(--shopee-red-light); 
-            border: 1px solid var(--shopee-red); 
-            color: var(--shopee-red); 
+        .btn-shopee-outline {
+            background-color: var(--shopee-red-light);
+            border: 1px solid var(--shopee-red);
+            color: var(--shopee-red);
             transition: background-color 0.2s ease;
         }
-        .btn-shopee-outline:hover:not(:disabled) { 
-            background-color: rgba(255, 87, 34, 0.15); 
+        .btn-shopee-outline:hover:not(:disabled) {
+            background-color: rgba(255, 87, 34, 0.15);
         }
-        .btn-shopee-solid { 
-            background-color: var(--shopee-red); 
-            border: 1px solid var(--shopee-red); 
-            color: white; 
+        .btn-shopee-solid {
+            background-color: var(--shopee-red);
+            border: 1px solid var(--shopee-red);
+            color: white;
             transition: background-color 0.2s ease;
         }
-        .btn-shopee-solid:hover:not(:disabled) { 
-            background-color: var(--shopee-red-dark); 
+        .btn-shopee-solid:hover:not(:disabled) {
+            background-color: var(--shopee-red-dark);
         }
         .discount-badge {
             background-color: var(--shopee-red);
@@ -103,53 +103,53 @@
         .dark .prose-invert a { color: #60a5fa; }
 
         /* STYLE RATING INPUT (UPDATED: UKURAN LEBIH KECIL & RAPI) */
-        .rate { 
+        .rate {
             display: inline-block;
-            height: 30px; 
+            height: 30px;
             padding: 0;
             border: none;
         }
-        
+
         /* Sembunyikan radio button asli */
-        .rate:not(:checked) > input { 
-            position:absolute; 
-            top:-9999px; 
+        .rate:not(:checked) > input {
+            position:absolute;
+            top:-9999px;
         }
-        
+
         /* Tampilan Bintang (Label) */
-        .rate:not(:checked) > label { 
-            float: right; 
-            width: 1.5em; 
-            overflow: hidden; 
-            white-space: nowrap; 
-            cursor: pointer; 
+        .rate:not(:checked) > label {
+            float: right;
+            width: 1.5em;
+            overflow: hidden;
+            white-space: nowrap;
+            cursor: pointer;
             font-size: 20px; /* <-- UKURAN BINTANG DIKECILKAN DISINI (sebelumnya 30px) */
             line-height: 30px;
             color: #d1d5db; /* Abu-abu terang (Tailwind gray-300) */
             margin-bottom: 0;
         }
-        
-        .rate:not(:checked) > label:before { 
-            content: '★'; 
+
+        .rate:not(:checked) > label:before {
+            content: '★';
         }
-        
+
         /* Warna saat dipilih (Checked) */
-        .rate > input:checked ~ label { 
+        .rate > input:checked ~ label {
             color: #fbbf24; /* Kuning (Tailwind amber-400) */
         }
-        
+
         /* Warna saat di-hover */
         .rate:not(:checked) > label:hover,
-        .rate:not(:checked) > label:hover ~ label { 
-            color: #fbbf24; 
+        .rate:not(:checked) > label:hover ~ label {
+            color: #fbbf24;
         }
-        
+
         /* Warna saat di-hover ketika sudah ada yang dipilih */
         .rate > input:checked + label:hover,
         .rate > input:checked + label:hover ~ label,
         .rate > input:checked ~ label:hover,
         .rate > input:checked ~ label:hover ~ label,
-        .rate > label:hover ~ input:checked ~ label { 
+        .rate > label:hover ~ input:checked ~ label {
             color: #f59e0b; /* Kuning lebih gelap (Tailwind amber-500) */
         }
     </style>
@@ -183,12 +183,12 @@ if (!function_exists('formatWaNumber')) {
              <ol class="flex items-center space-x-2 overflow-x-auto whitespace-nowrap py-1">
                  <li><a href="{{ route('etalase.index') }}" class="hover:text-red-600">Sancaka</a></li>
                  <li><i class="fas fa-chevron-right text-xs mx-1"></i></li>
-                 
+
                  @if($product->categoryData)
                  <li><a href="{{ route('etalase.index', ['categories' => [$product->categoryData->id]]) }}" class="hover:text-red-600">{{ $product->categoryData->name }}</a></li>
                  <li><i class="fas fa-chevron-right text-xs mx-1"></i></li>
                  @endif
-                 
+
                  <li class="font-medium text-gray-700 truncate">{{ $product->name }}</li>
              </ol>
         </nav>
@@ -202,7 +202,7 @@ if (!function_exists('formatWaNumber')) {
                         // URL Gambar Utama (Default)
                         $imageUrl = $product->image_url ? asset('public/storage/' . $product->image_url) : 'https://placehold.co/600x600/EFEFEF/AAAAAA?text=Gambar+Tidak+Ada';
                     @endphp
-                    
+
                     {{-- Gambar Besar (Preview) --}}
                     <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-md shadow-sm mb-3 border border-gray-200">
                         <img id="main-product-image"
@@ -217,18 +217,18 @@ if (!function_exists('formatWaNumber')) {
                         @if($product->images && $product->images->count() > 0)
                             @foreach($product->images->sortBy('sort_order') as $media)
                                 <div class="aspect-square w-full h-full overflow-hidden rounded cursor-pointer">
-                                    <img src="{{ asset('public/storage/' . $media->path) }}" 
-                                         alt="Gambar {{ $loop->iteration }}" 
-                                         class="thumbnail-img w-full h-full object-cover border-2 {{ $loop->first ? 'thumbnail-active' : 'border-transparent' }} hover:border-red-500 transition-all duration-200" 
-                                         onclick="changeImage(this)" 
+                                    <img src="{{ asset('public/storage/' . $media->path) }}"
+                                         alt="Gambar {{ $loop->iteration }}"
+                                         class="thumbnail-img w-full h-full object-cover border-2 {{ $loop->first ? 'thumbnail-active' : 'border-transparent' }} hover:border-red-500 transition-all duration-200"
+                                         onclick="changeImage(this)"
                                          onerror="this.onerror=null;this.style.display='none';">
                                 </div>
                             @endforeach
                         @else
                             <div class="aspect-square w-full h-full overflow-hidden rounded cursor-pointer">
-                                <img src="{{ $imageUrl }}" 
-                                     alt="Thumbnail" 
-                                     class="thumbnail-img w-full h-full object-cover border-2 thumbnail-active hover:border-red-500" 
+                                <img src="{{ $imageUrl }}"
+                                     alt="Thumbnail"
+                                     class="thumbnail-img w-full h-full object-cover border-2 thumbnail-active hover:border-red-500"
                                      onclick="changeImage(this)">
                             </div>
                         @endif
@@ -242,7 +242,7 @@ if (!function_exists('formatWaNumber')) {
                     <div class="flex items-center space-x-3 mb-4 text-sm text-gray-500 border-b border-gray-100 pb-4">
                         <div class="flex items-center">
                             {{-- HITUNG RATA-RATA RATING DARI MODEL --}}
-                            @php 
+                            @php
                                 $avgRating = $product->reviews->avg('rating') ?? 0;
                                 $countRating = $product->reviews->count();
                             @endphp
@@ -308,15 +308,15 @@ if (!function_exists('formatWaNumber')) {
                                     <button id="button-minus" type="button" class="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-red-600 transition-colors disabled:text-gray-300" disabled>
                                         <i class="fas fa-minus text-xs"></i>
                                     </button>
-                                    <input type="number" id="quantity" name="quantity" class="w-12 h-9 text-center text-sm bg-transparent border-x border-gray-300 focus:outline-none focus:ring-0 disabled:bg-gray-100" 
-                                           value="1" min="1" 
-                                           max="{{ $initialStock > 0 ? $initialStock : 1 }}" 
+                                    <input type="number" id="quantity" name="quantity" class="w-12 h-9 text-center text-sm bg-transparent border-x border-gray-300 focus:outline-none focus:ring-0 disabled:bg-gray-100"
+                                           value="1" min="1"
+                                           max="{{ $initialStock > 0 ? $initialStock : 1 }}"
                                            {{ $initialStock <= 0 ? 'disabled' : '' }}>
                                     <button id="button-plus" type="button" class="w-9 h-9 flex items-center justify-center text-gray-600 hover:text-red-600 transition-colors disabled:text-gray-300" {{ $initialStock <= 1 ? 'disabled' : '' }}>
                                         <i class="fas fa-plus text-xs"></i>
                                     </button>
                                 </div>
-                                
+
                                 <span id="display-stock" class="ml-4 text-sm text-gray-500">
                                     @if($initialStock > 0)
                                         Tersisa {{ $initialStock }} buah
@@ -332,24 +332,24 @@ if (!function_exists('formatWaNumber')) {
                         <div class="mt-8 pt-6 border-t border-gray-100">
                             <div class="flex flex-col sm:flex-row items-center gap-3">
                                 <!-- Tombol Masukkan Keranjang (Outline Merah) -->
-<button id="add-to-cart-button" 
-        type="submit" 
-        name="action" 
+<button id="add-to-cart-button"
+        type="submit"
+        name="action"
         value="add_to_cart"
-        class="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-6 py-3 
-               text-sm rounded-sm font-medium 
+        class="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-6 py-3
+               text-sm rounded-sm font-medium
                border border-red-500 text-red-500 hover:bg-red-50 transition"
         {{ $initialStock <= 0 ? 'disabled' : '' }}>
     <i class="fas fa-cart-plus text-base"></i> Masukkan Keranjang
 </button>
 
 <!-- Tombol Beli Sekarang (Solid Merah) -->
-<button id="buy-now-button" 
-        type="submit" 
-        name="action" 
+<button id="buy-now-button"
+        type="submit"
+        name="action"
         value="buy_now"
-        class="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-6 py-3 
-               text-sm rounded-sm font-medium 
+        class="w-full sm:w-auto flex-1 flex items-center justify-center gap-2 px-6 py-3
+               text-sm rounded-sm font-medium
                bg-red-600 text-white hover:bg-red-700 transition"
         {{ $initialStock <= 0 ? 'disabled' : '' }}>
     Beli Sekarang
@@ -358,12 +358,12 @@ if (!function_exists('formatWaNumber')) {
                             </div>
                         </div>
                     </form>
-                    
+
                 </div>
             </div>
         </main>
 
- 
+
 @if ($product->store && $product->store->user)
 <div class="mt-8 bg-white rounded-lg shadow-sm p-4 md:p-6">
     <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -436,7 +436,7 @@ if (!function_exists('formatWaNumber')) {
         if (is_string($value) && str_starts_with(trim($value), '[')) {
             $decoded = json_decode($value, true);
             if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                return $decoded; 
+                return $decoded;
             }
         }
         return $value;
@@ -459,14 +459,14 @@ if (!function_exists('formatWaNumber')) {
             </span>
             Spesifikasi Produk
         </h2>
-        
+
         <div class="space-y-4 divide-y divide-gray-100">
             @foreach ($groupedAttributes as $name => $items)
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 py-3 first:pt-0">
                     <dt class="text-sm font-medium text-gray-500 capitalize pt-1">
                         {{ $name }}
                     </dt>
-                    
+
                     <dd class="col-span-1 sm:col-span-2 text-sm text-gray-800 font-medium">
                         @foreach ($items as $item)
                             @php $parsedVal = $parseSpecValue($item->value); @endphp
@@ -526,7 +526,7 @@ if (!function_exists('formatWaNumber')) {
                 <form action="{{ route('reviews.store') }}" method="POST">
                     @csrf
                     <input type="hidden" name="product_id" value="{{ $product->id }}">
-                    
+
                     {{-- Rating Bintang (Hanya Icon) --}}
                         <div class="mb-4">
                             <label class="block text-xs font-medium text-gray-500 mb-1">Berikan Rating</label>
@@ -534,19 +534,19 @@ if (!function_exists('formatWaNumber')) {
                                 {{-- Star 5 --}}
                                 <input type="radio" id="star5" name="rating" value="5" />
                                 <label for="star5" title="Sangat Baik"></label> {{-- Teks dihapus --}}
-                                
+
                                 {{-- Star 4 --}}
                                 <input type="radio" id="star4" name="rating" value="4" />
                                 <label for="star4" title="Baik"></label> {{-- Teks dihapus --}}
-                                
+
                                 {{-- Star 3 --}}
                                 <input type="radio" id="star3" name="rating" value="3" />
                                 <label for="star3" title="Cukup"></label> {{-- Teks dihapus --}}
-                                
+
                                 {{-- Star 2 --}}
                                 <input type="radio" id="star2" name="rating" value="2" />
                                 <label for="star2" title="Buruk"></label> {{-- Teks dihapus --}}
-                                
+
                                 {{-- Star 1 --}}
                                 <input type="radio" id="star1" name="rating" value="1" />
                                 <label for="star1" title="Sangat Buruk"></label> {{-- Teks dihapus --}}
@@ -587,16 +587,16 @@ if (!function_exists('formatWaNumber')) {
             <div class="space-y-6">
                 @forelse($product->reviews as $review)
                 <div class="flex items-start space-x-4 border-b border-gray-100 pb-6 last:border-0 last:pb-0">
-                    
+
                     {{-- PERBAIKAN: Cek apakah user ada --}}
                     @php
                         $user = $review->user; // Simpan ke variabel biar gampang dicek
                         $userName = $user ? $user->nama_lengkap : 'Pengguna Tidak Dikenal';
-                        
+
                         // Avatar Logic (Aman dari null)
-                        $avatarPath = $user->store_logo_path ?? null; 
-                        $avatarUrl = $avatarPath 
-                            ? asset('public/storage/'.$avatarPath) 
+                        $avatarPath = $user->store_logo_path ?? null;
+                        $avatarUrl = $avatarPath
+                            ? asset('public/storage/'.$avatarPath)
                             : 'https://ui-avatars.com/api/?name='.urlencode($userName).'&background=random&color=fff';
                     @endphp
 
@@ -616,7 +616,7 @@ if (!function_exists('formatWaNumber')) {
                             </div>
                             <span class="text-xs text-gray-400">{{ $review->created_at->format('d M Y') }}</span>
                         </div>
-                        
+
                         {{-- Kota & Provinsi Pembeli (Cek jika user ada) --}}
                         @if($user)
                             <div class="text-xs text-gray-500 mb-1 flex items-center">
@@ -652,29 +652,29 @@ if (!function_exists('formatWaNumber')) {
 @if($review->reply)
     <div class="mt-4 ml-4 pl-4 border-l-2 border-gray-200">
         <div class="bg-gray-50 p-4 rounded-lg">
-            
+
             <div class="flex items-start gap-3">
                 {{-- KOLOM KIRI: Foto Profil Saja --}}
                 <div class="flex-shrink-0">
                     @php
                         $sellerUser = $product->store->user;
-                        
-                        $sellerAvatarPath = $sellerUser->store_logo_path ?? null; 
+
+                        $sellerAvatarPath = $sellerUser->store_logo_path ?? null;
                         if ($sellerAvatarPath && Str::startsWith($sellerAvatarPath, 'public/')) {
                             $sellerAvatarPath = Str::remove('public/', $sellerAvatarPath);
                         }
-                        
-                        $sellerAvatarUrl = $sellerAvatarPath 
-                            ? asset('public/storage/'.$sellerAvatarPath) 
+
+                        $sellerAvatarUrl = $sellerAvatarPath
+                            ? asset('public/storage/'.$sellerAvatarPath)
                             : 'https://ui-avatars.com/api/?name='.urlencode($sellerUser->nama_lengkap).'&background=random&color=fff&size=64';
                     @endphp
-                    
+
                     <img src="{{ $sellerAvatarUrl }}" alt="{{ $sellerUser->nama_lengkap }}" class="w-10 h-10 rounded-full border border-gray-200 object-cover">
                 </div>
 
                 {{-- KOLOM KANAN: Detail Info & Balasan --}}
                 <div class="flex-grow">
-                    
+
                     {{-- Baris 1: Nama & Badge --}}
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-2">
@@ -687,15 +687,15 @@ if (!function_exists('formatWaNumber')) {
                     {{-- Baris 2: Lokasi (Di bawah Nama) dengan Pin Merah --}}
                     <div class="flex items-center text-[11px] text-gray-500 mt-0.5 mb-2">
                         <i class="fas fa-map-marker-alt text-red-500 mr-1.5"></i> {{-- Pin Merah --}}
-                        
+
                         @if($sellerUser->regency)
                             <span class="font-medium">{{ $sellerUser->regency }}</span>
                         @endif
-                        
+
                         @if($sellerUser->regency && $sellerUser->province)
                             <span class="mx-1">,</span>
                         @endif
-                        
+
                         @if($sellerUser->province)
                             <span>{{ $sellerUser->province }}</span>
                         @endif
@@ -709,7 +709,7 @@ if (!function_exists('formatWaNumber')) {
                     <div class="bg-white p-3 rounded border border-gray-100 shadow-sm relative">
                         {{-- Segitiga kecil (speech bubble effect) opsional --}}
                         <div class="absolute -top-1.5 left-4 w-3 h-3 bg-white border-t border-l border-gray-100 transform rotate-45"></div>
-                        
+
                         <p class="text-sm text-gray-700 leading-relaxed relative z-10">
                             {{ $review->reply }}
                         </p>
@@ -750,14 +750,14 @@ if (!function_exists('formatWaNumber')) {
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    
+
     // --- PENGATURAN AWAL ---
     const mainImage = document.getElementById('main-product-image');
     const quantityInput = document.getElementById('quantity');
     const minusButton = document.getElementById('button-minus');
     const plusButton = document.getElementById('button-plus');
     const toggleBtn = document.getElementById("toggle-description");
-    
+
     // Elemen Varian
     const variantGroups = document.querySelectorAll('.variant-group');
     const variantIdInput = document.getElementById('product_variant_id');
@@ -770,8 +770,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const allVariants = window.variantData.variants || [];
     const variantTypes = window.variantData.types || [];
-    let selectedOptions = {}; 
-    const initialImageUrl = mainImage.src; 
+    let selectedOptions = {};
+    const initialImageUrl = mainImage.src;
 
     function formatCurrency(number) { return 'Rp' + new Intl.NumberFormat('id-ID').format(number); }
 
@@ -789,7 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateQuantityButtonsState(maxStock = 0) {
         if (!quantityInput || !minusButton || !plusButton) return;
         try {
-            const minVal = 1; 
+            const minVal = 1;
             const maxVal = maxStock;
             let currentValue = parseInt(quantityInput.value);
 
@@ -800,7 +800,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 plusButton.disabled = true;
             } else {
                 quantityInput.disabled = false;
-                if (isNaN(currentValue) || currentValue < minVal) { quantityInput.value = minVal; } 
+                if (isNaN(currentValue) || currentValue < minVal) { quantityInput.value = minVal; }
                 else if (currentValue > maxVal) { quantityInput.value = maxVal; }
                 currentValue = parseInt(quantityInput.value);
                 minusButton.disabled = currentValue <= minVal;
@@ -853,7 +853,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateVariantUI() {
-        if (!window.hasVariants) return; 
+        if (!window.hasVariants) return;
         const allTypesSelected = Object.keys(selectedOptions).length === variantTypes.length;
         let foundVariant = null;
 

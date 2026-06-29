@@ -2,17 +2,17 @@
 
 @php
     // --- 1. SETUP DATA KATEGORI (Sesuai List Kamu) ---
-    $urlSlug = request()->segment(4); 
+    $urlSlug = request()->segment(4);
     $pageInfo = $pageInfo ?? [];
-    $currentSlug = $pageInfo['slug'] ?? $urlSlug ?? 'pulsa'; 
+    $currentSlug = $pageInfo['slug'] ?? $urlSlug ?? 'pulsa';
 
     // Daftar Slug Pascabayar untuk deteksi otomatis halaman
     $postpaidSlugs = [
-        'pln-pascabayar', 'pdam', 'bpjs-kesehatan', 'bpjs-ketenagakerjaan', 
-        'hp-pascabayar', 'internet-pascabayar', 'tv-pascabayar', 
+        'pln-pascabayar', 'pdam', 'bpjs-kesehatan', 'bpjs-ketenagakerjaan',
+        'hp-pascabayar', 'internet-pascabayar', 'tv-pascabayar',
         'multifinance', 'pbb', 'samsat', 'gas-negara', 'pln-nontaglis'
     ];
-    
+
     $isPostpaid = ($pageInfo['is_postpaid'] ?? false) || in_array($currentSlug, $postpaidSlugs);
     $pageTitle = $pageInfo['title'] ?? ucwords(str_replace('-', ' ', $currentSlug));
 
@@ -66,7 +66,7 @@
     // --- LOGIKA LABEL INPUT DINAMIS ---
     $dynamicLabel = 'Nomor Pelanggan';
     $dynamicPlaceholder = 'Masukkan Nomor...';
-    
+
     if (str_contains($currentSlug, 'game')) {
         $dynamicLabel = 'User ID / Zone ID';
         $dynamicPlaceholder = '12345678 (1234)';
@@ -159,7 +159,7 @@
             height: 40px;
         }
     }
-    
+
     /* Judul Section (Flash Sale, Kategori, dll) */
     h2 {
         font-size: 16px; /* Default mobile */
@@ -169,7 +169,7 @@
             font-size: 20px; /* Desktop lebih besar */
         }
     }
-    
+
     /* Hover Kategori Merah */
     .category-item:hover .category-icon {
         color: var(--primary-red) !important;
@@ -179,9 +179,9 @@
     .category-item:hover .category-text {
         color: var(--primary-red) !important;
     }
-    
+
     /* --- TAMBAHAN KHUSUS PAGINATION SWIPER --- */
-    
+
     /* Memberi ruang di bawah slider agar titik-titik tidak menutupi produk */
     .flashSaleSwiper, .bestSellerSwiper, .categoriesSwiper {
         padding-bottom: 40px !important;
@@ -204,14 +204,14 @@
     }
 
     /* Posisi Pagination */
-    .swiper-horizontal > .swiper-pagination-bullets, 
+    .swiper-horizontal > .swiper-pagination-bullets,
     .swiper-pagination-bullets.swiper-pagination-horizontal {
         bottom: 0px !important;
     }
 
     /* Navigasi & Pagination */
     .swiper-pagination-bullet-active { background-color: var(--primary-red) !important; }
-    
+
     /* Tombol Keranjang */
     .btn-cart {
         background-color: var(--primary-red);
@@ -232,8 +232,8 @@
     .btn-cart:hover {
         background-color: #d0011b; /* Merah lebih gelap saat hover */
     }
-    
-    
+
+
 </style>
 @endpush
 
@@ -241,7 +241,7 @@
 <div class="container mx-auto py-4 px-2 md:px-4 max-w-7xl">
 
     <section class="grid grid-cols-1 lg:grid-cols-3 gap-2 mb-4">
-        
+
         <div class="lg:col-span-2 rounded shadow-sm overflow-hidden h-full sm:h-full md:h-full w-full">
             <div class="swiper heroSwiper w-full h-full">
                 <div class="swiper-wrapper">
@@ -260,11 +260,11 @@
         </div>
 
         <div class="grid grid-cols-2 lg:grid-cols-1 lg:grid-rows-2 gap-2 h-auto lg:h-full">
-            
+
             <div class="rounded shadow-sm overflow-hidden h-full sm:h-full lg:h-full w-full">
                 <img src="{{ isset($settings['banner_2']) ? asset('public/storage/' . $settings['banner_2']) : 'https://placehold.co/400x200/ee4d2d/ffffff?text=Promo+1' }}" class="w-full h-full object-cover">
             </div>
-            
+
             <div class="rounded shadow-sm overflow-hidden h-full sm:h-full lg:h-full w-full">
                 <img src="{{ isset($settings['banner_3']) ? asset('public/storage/' . $settings['banner_3']) : 'https://placehold.co/400x200/d0011b/ffffff?text=Promo+2' }}" class="w-full h-full object-cover">
             </div>
@@ -273,11 +273,11 @@
 
     <section class="bg-white p-4 rounded shadow-sm mb-4 border-b border-gray-200">
         <h2 class="text-sm font-bold text-gray-700 mb-4 uppercase">KATEGORI</h2>
-        
+
         <div class="swiper categoriesSwiper relative pb-8">
             <div class="swiper-wrapper">
                 @php $categoryChunks = $categories->chunk(10); @endphp
-                
+
                 @forelse ($categoryChunks as $chunk)
                 <div class="swiper-slide">
                     <div class="grid grid-cols-5 gap-y-4">
@@ -311,11 +311,11 @@
     {{-- ============================================================ --}}
     {{-- ⚡ UPDATE: MENU PPOB TAMPIL PUBLIC (TANPA SYARAT) ⚡ --}}
     {{-- ============================================================ --}}
-    
+
     {{-- === KATEGORI MENU SECTION (REVISI SESUAI GAMBAR) === --}}
         <section class="mb-8" data-aos="fade-up">
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100">
-                
+
                 {{-- 1. TAB HEADER (Prabayar vs Pascabayar) --}}
                 <div class="flex border-b border-gray-200">
                     <button onclick="switchTab('prepaid')" id="tab-prepaid" class="flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-white hover:text-white transition bg-red-600 hover:bg-red-700 flex items-center justify-center gap-2">
@@ -332,25 +332,25 @@
                         <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-y-8 gap-x-4" id="grid-prepaid-wrapper">
                             @foreach($prepaidMenus as $index => $menu)
                                 {{-- Item Menu --}}
-                                <a href="{{ url('/etalase/ppob/digital/' . $menu['slug']) }}" 
+                                <a href="{{ url('/etalase/ppob/digital/' . $menu['slug']) }}"
                                    class="menu-item-prepaid group flex flex-col items-center gap-3 {{ $index >= 16 ? 'hidden' : '' }}">
-                                    
+
                                     {{-- Icon Container (Rounded) --}}
                                     <div class="w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition border {{ $menu['style'] }} {{ $currentSlug == $menu['slug'] ? 'ring-2 ring-offset-2 ring-blue-400' : 'group-hover:scale-105' }}">
                                         <i class="fas {{ $menu['icon'] }} text-xl md:text-2xl"></i>
                                     </div>
-                                    
+
                                     {{-- Text Label --}}
                                     <span class="text-[11px] md:text-xs font-medium text-gray-600 text-center leading-tight px-1">{{ $menu['name'] }}</span>
                                 </a>
                             @endforeach
                         </div>
-                        
+
                         {{-- Tombol Lihat Semua (Accordion) --}}
                         @if(count($prepaidMenus) > 16)
                             <div class="mt-8 text-center">
                                 <button onclick="toggleExpand('prepaid')" id="btn-expand-prepaid" class="inline-flex items-center gap-2 px-6 py-2 bg-red-600 text-white text-xs font-bold rounded-full hover:bg-red-700 transition">
-                                    <span>Lihat Semua Layanan</span> 
+                                    <span>Lihat Semua Layanan</span>
                                     <i class="fas fa-chevron-down text-[10px]"></i>
                                 </button>
                             </div>
@@ -378,7 +378,7 @@
   {{-- === FLASH SALE SECTION (REVISI MOBILE) === --}}
     @if($flashSaleProducts->isNotEmpty())
     <section class="mb-6 bg-white shadow-sm rounded overflow-hidden border border-gray-100">
-        
+
         {{-- Header Merah --}}
         <div class="bg-[#d0011b] p-3 flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -386,7 +386,7 @@
                     <i class="fas fa-bolt text-yellow-300"></i> FLASH SALE
                 </h2>
                 {{-- Timer --}}
-                <div class="flex items-center gap-1 font-bold text-[#ee4d2d] text-xs md:text-sm" id="flashSaleTimer">
+                <div class="flex items-center gap-1 font-bold text-[#d0011b] text-xs md:text-sm" id="flashSaleTimer">
                     <span id="fs-hours" class="bg-white px-1.5 py-0.5 rounded shadow-sm min-w-[24px] text-center">23</span>:
                     <span id="fs-minutes" class="bg-white px-1.5 py-0.5 rounded shadow-sm min-w-[24px] text-center">59</span>:
                     <span id="fs-seconds" class="bg-white px-1.5 py-0.5 rounded shadow-sm min-w-[24px] text-center">59</span>
@@ -394,7 +394,7 @@
             </div>
             <a href="#" class="text-white text-xs font-semibold hover:opacity-80 transition">Lihat Semua ></a>
         </div>
-        
+
         {{-- Konten Slider --}}
         <div class="p-3">
             <div class="swiper flashSaleSwiper">
@@ -409,21 +409,21 @@
 
                         <div class="swiper-slide h-auto">
                             {{-- KARTU PRODUK (Struktur Best Seller) --}}
-                            <div class="product-card group h-full flex flex-col hover:border-[#ee4d2d] transition-colors">
-                                
+                            <div class="product-card group h-full flex flex-col hover:border-[#d0011b] transition-colors">
+
                                 {{-- 1. Link Gambar --}}
                                 <a href="{{ url('/products/' . $product->slug) }}" class="block relative">
                                     <div class="product-img-container">
                                         <img src="{{ $imgSrc }}" alt="{{ $product->name }}" class="product-img" loading="lazy">
-                                        
+
                                         {{-- Badge Petir (Kiri) --}}
-                                        <div class="absolute top-0 left-0 bg-[#ee4d2d] text-white w-6 h-6 flex items-center justify-center rounded-br-lg shadow-sm z-10">
+                                        <div class="absolute top-0 left-0 bg-[#d0011b] text-white w-6 h-6 flex items-center justify-center rounded-br-lg shadow-sm z-10">
                                             <i class="fas fa-bolt text-[10px]"></i>
                                         </div>
 
                                         {{-- Badge Diskon (Kanan) --}}
                                         @if($hasDiscount)
-                                            <div class="absolute top-0 right-0 bg-yellow-400 text-[#ee4d2d] text-[10px] font-bold px-2 py-1 rounded-bl-lg z-10 shadow-sm">
+                                            <div class="absolute top-0 right-0 bg-yellow-400 text-[#d0011b] text-[10px] font-bold px-2 py-1 rounded-bl-lg z-10 shadow-sm">
                                                 {{ $discountPercent }}%
                                             </div>
                                         @endif
@@ -432,7 +432,7 @@
 
                                 {{-- 2. Info Produk --}}
                                 <div class="p-2 flex flex-col flex-grow justify-between bg-white">
-                                    
+
                                     {{-- Judul --}}
                                     <a href="{{ url('/products/' . $product->slug) }}" class="block">
                                         <h3 class="product-title" title="{{ $product->name }}">
@@ -452,10 +452,10 @@
                                         @endif
 
                                         {{-- Harga Utama --}}
-                                        <div class="text-[#ee4d2d] font-bold text-sm md:text-base mb-2 truncate">
+                                        <div class="text-[#d0011b] font-bold text-sm md:text-base mb-2 truncate">
                                             <span class="text-xs font-normal">Rp</span>{{ number_format($product->price, 0, ',', '.') }}
                                         </div>
-                                        
+
                                         {{-- Progress Bar Flash Sale --}}
                                         <div class="relative w-full h-3 bg-red-100 rounded-full overflow-hidden">
                                             <div class="absolute top-0 left-0 h-full bg-[#d0011b]" style="width: {{ $soldPercentage }}%"></div>
@@ -470,14 +470,14 @@
                         </div>
                     @endforeach
                 </div>
-                
+
                 {{-- Pagination --}}
                 <div class="swiper-pagination"></div>
             </div>
         </div>
     </section>
     @endif
-    
+
     {{-- === FILTER BEST SELLER (PRODUK TERLARIS) === --}}
     @php
         $bestSellerItems = $products->where('is_bestseller', true);
@@ -490,9 +490,9 @@
             <h2 class="text-lg md:text-xl font-bold text-[#d0011b] uppercase tracking-wide flex items-center gap-2">
                 <i class="fas fa-trophy text-yellow-400"></i> PRODUK TERLARIS
             </h2>
-            <a href="#" class="text-[#ee4d2d] text-xs font-semibold hover:underline">Lihat Semua ></a>
+            <a href="#" class="text-[#d0011b] text-xs font-semibold hover:underline">Lihat Semua ></a>
         </div>
-        
+
         {{-- Content --}}
         <div class="p-3">
             <div class="swiper bestSellerSwiper">
@@ -503,26 +503,26 @@
                             $discountPercent = $hasDiscount ? round((($product->original_price - $product->price) / $product->original_price) * 100) : 0;
                             $imgSrc = $product->image_url ? asset('public/storage/' . $product->image_url) : 'https://placehold.co/300x300?text=No+Image';
                         @endphp
-                        
+
                         {{-- Slide: h-auto penting agar tinggi kartu rata --}}
                         <div class="swiper-slide h-auto">
-                            
+
                             {{-- Wrapper Kartu: h-full agar mengisi tinggi slide --}}
                             <div class="product-card group h-full flex flex-col">
-                                
+
                                 {{-- 1. Gambar (Square) --}}
                                 <a href="{{ url('/products/' . $product->slug) }}" class="block relative">
                                     <div class="product-img-container">
                                         <img src="{{ $imgSrc }}" alt="{{ $product->name }}" class="product-img" loading="lazy">
-                                        
+
                                         {{-- Badge Mahkota --}}
-                                        <div class="absolute top-0 left-0 bg-[#ee4d2d] text-white w-7 h-7 flex items-center justify-center rounded-br-lg shadow-sm z-10 border-b border-r border-white/20">
+                                        <div class="absolute top-0 left-0 bg-[#d0011b] text-white w-7 h-7 flex items-center justify-center rounded-br-lg shadow-sm z-10 border-b border-r border-white/20">
                                             <i class="fas fa-crown text-xs"></i>
                                         </div>
 
                                         {{-- Badge Diskon --}}
                                         @if($hasDiscount)
-                                            <div class="absolute top-0 right-0 bg-yellow-400 text-[#ee4d2d] text-[10px] font-bold px-2 py-1 rounded-bl-lg z-10 shadow-sm">
+                                            <div class="absolute top-0 right-0 bg-yellow-400 text-[#d0011b] text-[10px] font-bold px-2 py-1 rounded-bl-lg z-10 shadow-sm">
                                                 {{ $discountPercent }}%
                                             </div>
                                         @endif
@@ -531,7 +531,7 @@
 
                                 {{-- 2. Info Produk (Flex Grow untuk mendorong harga ke bawah) --}}
                                 <div class="p-2 flex flex-col flex-grow justify-between bg-white">
-                                    
+
                                     {{-- Judul --}}
                                     <div>
                                         <a href="{{ url('/products/' . $product->slug) }}" class="block">
@@ -539,14 +539,14 @@
                                                 {{ $product->name }}
                                             </h3>
                                         </a>
-                                        
+
                                         {{-- Label Ongkir --}}
                                         <div class="flex flex-wrap gap-1 mb-2 h-4 overflow-hidden">
                                             @if($product->is_free_shipping)
                                                 <span class="bg-[#00bfa5] text-white text-[9px] px-1 font-bold rounded-[2px]">Gratis Ongkir</span>
                                             @endif
                                             @if($product->is_shipping_discount)
-                                                <span class="border border-[#ee4d2d] text-[#ee4d2d] text-[9px] px-1 rounded-[2px]">COD</span>
+                                                <span class="border border-[#d0011b] text-[#d0011b] text-[9px] px-1 rounded-[2px]">COD</span>
                                             @endif
                                         </div>
                                     </div>
@@ -564,7 +564,7 @@
 
                                         {{-- Harga Utama & Terjual --}}
                                         <div class="flex items-end justify-between mt-1">
-                                            <span class="text-[#ee4d2d] text-sm font-bold truncate">
+                                            <span class="text-[#d0011b] text-sm font-bold truncate">
                                                 <span class="text-xs">Rp</span>{{ number_format($product->price, 0, ',', '.') }}
                                             </span>
                                             <span class="text-[10px] text-gray-500 truncate ml-1">
@@ -601,7 +601,7 @@
 
     {{-- WRAPPER UTAMA GANTI JADI DIV (Bukan A lagi) --}}
     <div class="product-card group">
-        
+
         {{-- 1. Link Gambar --}}
         <a href="{{ url('/products/' . $product->slug) }}" class="block">
             <div class="product-img-container">
@@ -609,35 +609,35 @@
 
                 {{-- Badge Diskon --}}
                 @if($hasDiscount)
-                    <div class="absolute top-0 right-0 bg-yellow-400 text-[#ee4d2d] text-[10px] font-bold px-2 py-1 rounded-bl-lg z-10 shadow-sm">
+                    <div class="absolute top-0 right-0 bg-yellow-400 text-[#d0011b] text-[10px] font-bold px-2 py-1 rounded-bl-lg z-10 shadow-sm">
                         {{ $discountPercent }}%
                     </div>
                 @endif
 
                 {{-- Label --}}
                 @if($product->is_promo)
-                    <div class="absolute bottom-0 left-0 bg-[#ee4d2d] text-white text-[9px] font-bold px-1.5 py-0.5 z-10">Star+</div>
+                    <div class="absolute bottom-0 left-0 bg-[#d0011b] text-white text-[9px] font-bold px-1.5 py-0.5 z-10">Star+</div>
                 @elseif($product->is_bestseller)
-                    <div class="absolute bottom-0 left-0 bg-[#ee4d2d] text-white text-[9px] font-bold px-1.5 py-0.5 z-10">Terlaris</div>
+                    <div class="absolute bottom-0 left-0 bg-[#d0011b] text-white text-[9px] font-bold px-1.5 py-0.5 z-10">Terlaris</div>
                 @endif
             </div>
         </a>
 
         {{-- 2. Info Produk --}}
         <div class="p-2 flex flex-col flex-grow justify-between bg-white">
-            
+
             {{-- Link Judul --}}
             <a href="{{ url('/products/' . $product->slug) }}" class="block">
                 <h3 class="product-title" title="{{ $product->name }}">
                     {{ $product->name }}
                 </h3>
-                
+
                 <div class="flex flex-wrap gap-1 mb-1 h-4 overflow-hidden">
                     @if($product->is_free_shipping)
                         <span class="bg-[#00bfa5] text-white text-[9px] px-1 font-bold rounded-[2px]">Gratis Ongkir</span>
                     @endif
                     @if($product->is_shipping_discount)
-                        <span class="border border-[#ee4d2d] text-[#ee4d2d] text-[9px] px-1 rounded-[2px]">COD</span>
+                        <span class="border border-[#d0011b] text-[#d0011b] text-[9px] px-1 rounded-[2px]">COD</span>
                     @endif
                 </div>
             </a>
@@ -654,7 +654,7 @@
 
                 {{-- Harga Utama & Terjual --}}
                 <div class="flex items-end justify-between mt-1">
-                    <span class="text-[#ee4d2d] text-sm font-bold truncate">
+                    <span class="text-[#d0011b] text-sm font-bold truncate">
                         <span class="text-xs">Rp</span>{{ number_format($product->price, 0, ',', '.') }}
                     </span>
                     <span class="text-[10px] text-gray-500 truncate ml-1">
@@ -667,7 +667,7 @@
                     @csrf
                     <input type="hidden" name="product_id" value="{{ $product->id }}">
                     <input type="hidden" name="quantity" value="1">
-                    
+
                     <button type="submit" class="btn-cart">
                         <i class="fas fa-cart-plus"></i> + Keranjang
                     </button>
@@ -687,7 +687,7 @@
             {{ $products->links('pagination::tailwind') }}
         </div>
     </section>
-    
+
     <div class="h-16 md:h-0"></div>
 </div>
 @endsection
@@ -695,12 +695,12 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    
+
     // --- LOGIKA COUNTDOWN 24 JAM ---
     function startFlashSaleCountdown() {
         // Durasi 24 Jam dalam milidetik
-        const duration = 24 * 60 * 60 * 1000; 
-        
+        const duration = 24 * 60 * 60 * 1000;
+
         // Cek apakah sudah ada waktu akhir yang tersimpan
         let storedEndTime = localStorage.getItem('sancakaFlashSaleEnd');
         let endTime;
@@ -744,52 +744,52 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Jalankan fungsi
     startFlashSaleCountdown();
-    
+
     // ... script swiper flash sale yang sudah ada ...
 
     // Best Seller Swiper (Baru)
-    new Swiper(".bestSellerSwiper", { 
+    new Swiper(".bestSellerSwiper", {
         slidesPerView: 2.2, // Mobile
-        spaceBetween: 10, 
-        navigation: { 
+        spaceBetween: 10,
+        navigation: {
             nextEl: ".bestseller-next", // Class tombol unique
-            prevEl: ".bestseller-prev" 
-        }, 
-        breakpoints: { 
-            640: { slidesPerView: 3, spaceBetween: 10 }, 
-            768: { slidesPerView: 4, spaceBetween: 15 }, 
-            1024: { slidesPerView: 6, spaceBetween: 15 } 
-        } 
+            prevEl: ".bestseller-prev"
+        },
+        breakpoints: {
+            640: { slidesPerView: 3, spaceBetween: 10 },
+            768: { slidesPerView: 4, spaceBetween: 15 },
+            1024: { slidesPerView: 6, spaceBetween: 15 }
+        }
     });
-    
+
     // Hero Slider
-    new Swiper(".heroSwiper", { 
-        loop: true, 
-        effect: "fade", 
-        autoplay: { delay: 4000, disableOnInteraction: false }, 
-        pagination: { el: ".swiper-pagination", clickable: true }, 
-        navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" } 
+    new Swiper(".heroSwiper", {
+        loop: true,
+        effect: "fade",
+        autoplay: { delay: 4000, disableOnInteraction: false },
+        pagination: { el: ".swiper-pagination", clickable: true },
+        navigation: { nextEl: ".swiper-button-next", prevEl: ".swiper-button-prev" }
     });
 
    // Flash Sale Swiper (UPDATE INI)
-    new Swiper(".flashSaleSwiper", { 
+    new Swiper(".flashSaleSwiper", {
         slidesPerView: 2.2, // <--- INI YANG BIKIN GAMBAR BESAR DI HP
-        spaceBetween: 10, 
-        pagination: { 
-            el: ".swiper-pagination", 
-            clickable: true 
+        spaceBetween: 10,
+        pagination: {
+            el: ".swiper-pagination",
+            clickable: true
         },
-        breakpoints: { 
+        breakpoints: {
             640: { slidesPerView: 3, spaceBetween: 10 }, // Tablet
             768: { slidesPerView: 4, spaceBetween: 15 }, // Laptop Kecil
             1024: { slidesPerView: 6, spaceBetween: 15 } // Desktop Besar
-        } 
+        }
     });
 
     // Categories
-    new Swiper(".categoriesSwiper", { 
-        loop: false, 
-        slidesPerView: 1, 
+    new Swiper(".categoriesSwiper", {
+        loop: false,
+        slidesPerView: 1,
         pagination: { el: ".swiper-pagination", clickable: true },
     });
 });
@@ -804,7 +804,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if(type === 'prepaid') {
             btnPre.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-blue-600 text-blue-600 transition hover:bg-gray-50 flex items-center justify-center gap-2";
             btnPost.className = "flex-1 py-4 text-center font-bold text-sm md:text-base border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition hover:bg-gray-50 flex items-center justify-center gap-2";
-            
+
             conPre.classList.remove('hidden');
             conPost.classList.add('hidden');
         } else {
