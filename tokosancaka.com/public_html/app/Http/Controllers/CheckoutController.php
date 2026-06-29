@@ -157,17 +157,24 @@ class CheckoutController extends Controller
        $user = Auth::user();
 
        // ========================================================
-        // 3. VALIDASI ALAMAT (HYBRID GUEST CHECKOUT AMAN)
+        // 2 & 3. VALIDASI HYBRID (TANPA PAKSAAN LOGIN)
         // ========================================================
+        $user = \Illuminate\Support\Facades\Auth::user(); // Pastikan variabel user ditarik ulang
+
         // Hanya cek kelengkapan profil JIKA barang fisik DAN pengunjung memiliki akun (Login)
         if (!$isDigital && $user) {
             if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province)) {
-                 Log::warning('Alamat user tidak lengkap', ['user_id' => $user->id_pengguna]);
+
+                // ZERO BUGS: Gunakan Null-Safe Operator (?->) agar kebal dari error "on null"
+                \Illuminate\Support\Facades\Log::warning('Alamat user tidak lengkap', [
+                    'user_id' => $user?->id_pengguna ?? 'Guest'
+                ]);
+
                 return redirect()->route('profile.edit')
                     ->with('warning', 'Alamat pengiriman profil Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
             }
         }
-
+        // ========================================================
         // Ambil mode dari Database (Bukan Config/Env)
         $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
         $cacheKey = 'tripay_channels_list_' . $currentMode;
@@ -197,17 +204,10 @@ class CheckoutController extends Controller
 
         $user = Auth::user();
 
-        // ========================================================
-        // 3. BYPASS VALIDASI ALAMAT JIKA DIGITAL
-        // ========================================================
-        if (!$isDigital) {
-            // Pindahkan validasi kelengkapan alamat ke dalam blok ini
-            // karena produk digital (dan guest) tidak butuh alamat lengkap
-            if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province)) {
-                 Log::warning('Alamat user tidak lengkap', ['user_id' => $user->id_pengguna]);
-                return redirect()->route('profile.edit')
-                    ->with('warning', 'Alamat pengiriman Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
-            }
+        // HANYA lempar ke profil jika dia SUDAH login TAPI alamatnya belum ada.
+        // Jika dia Guest, blok ini akan dilewati dengan aman.
+        if (!$isDigital && $user && empty($user->address_detail)) {
+            return redirect()->route('profile.edit')->with('warning', 'Silakan lengkapi alamat pengiriman dahulu.');
         }
 
         $firstCartItemData = reset($cart);
