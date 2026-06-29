@@ -387,6 +387,29 @@ class TopUpController extends Controller
             }
             // ==========================================================
 
+            // ==========================================================
+            // --- FITUR BARU: MANDIRI VIRTUAL ACCOUNT ---
+            // ==========================================================
+            elseif (strtoupper($validated['payment_method']) === 'MANDIRI_VA') {
+
+                Log::info('LOG LOG: Memulai Top Up Mandiri VA untuk ' . $invoiceNumber);
+
+                $transaction = Transaction::create([
+                    'user_id'        => $user->id_pengguna,
+                    'reference_id'   => $invoiceNumber,
+                    'amount'         => $amount,
+                    'type'           => 'topup',
+                    'status'         => 'pending',
+                    'payment_method' => 'MANDIRI_VA',
+                    'description'    => 'Top up saldo via Mandiri Virtual Account',
+                ]);
+
+                DB::commit();
+
+                // Arahkan ke eksekutor Mandiri
+                return $this->createPaymentMandiriVA($transaction);
+            }
+
             // 3. Logika DOKU & TRIPAY
             else {
 
@@ -4486,5 +4509,59 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         }
     }
 
+    /**
+     * =========================================================================
+     * EKSEKUTOR PEMBAYARAN MANDIRI VIRTUAL ACCOUNT
+     * =========================================================================
+     */
+    public function createPaymentMandiriVA(Transaction $transaction)
+    {
+        Log::info('LOG LOG: [MANDIRI VA] Eksekusi pembuatan VA untuk ' . $transaction->reference_id);
+        $user = Auth::user();
+
+        try {
+            // 1. Buat Request virtual untuk dikirim ke Gateway
+            $requestData = new \Illuminate\Http\Request();
+            $requestData->replace([
+                'partner_service_id' => '89661', // Ganti sesuai Service ID Mandiri Anda
+                'customer_no'        => substr(preg_replace('/[^0-9]/', '', $user->no_wa ?? $user->id_pengguna), 0, 15),
+                'name'               => $user->nama_lengkap ?? 'Customer Sancaka',
+                'email'              => $user->email ?? 'customer@sancaka.com',
+                'phone'              => preg_replace('/[^0-9]/', '', $user->no_wa ?? '6280000000000'),
+                'amount'             => $transaction->amount,
+                'trx_id'             => $transaction->reference_id // Wajib diikat ke database agar terlacak webhook
+            ]);
+
+            // 2. Injeksi Controller Mandiri secara internal
+            $mandiriGateway = new \App\Http\Controllers\Api\MandiriGatewayController();
+            $response = $mandiriGateway->createVirtualAccount($requestData);
+
+            // Ekstrak respons API Mandiri
+            $result = json_decode($response->getContent(), true);
+
+            // 3. Tangkap Nomor VA jika sukses (Kode sukses VA Mandiri adalah 2002700)
+            if (isset($result['responseCode']) && $result['responseCode'] === '2002700') {
+                $vaNumber = $result['virtualAccountData']['virtualAccountNo'] ?? null;
+
+                if ($vaNumber) {
+                    // Karena ini VA statis, payment_url diisi dengan Nomor VA
+                    $transaction->payment_url = $vaNumber;
+                    $transaction->save();
+
+                    // Arahkan ke halaman detail transaksi (show) agar user bisa melihat VA-nya
+                    return redirect()->route('customer.topup.show', ['topup' => $transaction->reference_id])
+                                     ->with('success', 'MANDIRI VA DIBUAT. Silakan bayar ke Nomor VA Mandiri: ' . $vaNumber);
+                }
+            }
+
+            // LOG LOG
+            Log::error('LOG LOG: [MANDIRI VA] Gagal', $result);
+            return back()->with('error', 'Gagal membuat Virtual Account Mandiri: ' . ($result['responseMessage'] ?? 'Kesalahan tidak diketahui.'));
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [MANDIRI VA] Exception: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem koneksi Bank Mandiri.');
+        }
+    }
 
 }

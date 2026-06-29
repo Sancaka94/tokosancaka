@@ -257,38 +257,59 @@ class MandiriGatewayController extends Controller
         return response()->json($this->sendRequest('POST', '/openapi/transaction/v1.0/transfer-va/report', $request->all()));
     }
 
-    // 20. Notify Payment Virtual Account (WEBHOOK RECEIVER DARI MANDIRI)
+   // 20. Notify Payment Virtual Account (WEBHOOK RECEIVER DARI MANDIRI)
     public function notifyPaymentVirtualAccount(Request $request) {
         try {
-            // Asumsi: Anda memvalidasi X-SIGNATURE dari Mandiri di sini menggunakan middleware atau trait terpisah.
-            // Membalas Mandiri dengan response JSON persis sesuai standar dokumentasi.
-
+            // Bersihkan payload dari potensi XSS
             $sanitizedData = $this->sanitizePayload($request->all());
 
             // LOG LOG
             Log::info('Mandiri VA Payment Received:', $sanitizedData);
 
+            // --- TAMBAHKAN BLOK INTEGRASI SALDO INI ---
+            // Mengambil ID Transaksi internal kita yang dipantulkan kembali oleh Mandiri
+            $merchantRef = $sanitizedData['trxId'] ?? null;
+
+            // Mengambil nilai uang yang benar-benar dibayarkan pelanggan
+            $paidAmount = $sanitizedData['paidAmount']['value'] ?? 0;
+
+            // Jika ada referensi dan jumlah bayar lebih dari 0, otomatiskan tambah saldo!
+            if ($merchantRef && $paidAmount > 0) {
+                // Panggil super-method processTopUp milik TopUpController untuk mengeksekusi penambahan saldo
+                \App\Http\Controllers\Customer\TopUpController::processTopUp($merchantRef, 'PAID', $paidAmount);
+            }
+            // ------------------------------------------
+
+            // Sesuai standar dokumentasi Mandiri, kita WAJIB membalas dengan status JSON 2002500 - Successful
+            // beserta gema (echo) dari data yang mereka kirimkan dibungkus dalam 'virtualAccountData'
             return response()->json([
                 "responseCode" => "2002500",
                 "responseMessage" => "Successful",
                 "virtualAccountData" => [
-                    "partnerServiceId" => $sanitizedData['partnerServiceId'] ?? "",
-                    "customerNo"       => $sanitizedData['customerNo'] ?? "",
-                    "virtualAccountNo" => $sanitizedData['virtualAccountNo'] ?? "",
-                    "virtualAccountName"=> $sanitizedData['virtualAccountName'] ?? "",
-                    "virtualAccountEmail"=> $sanitizedData['virtualAccountEmail'] ?? "",
-                    "virtualAccountPhone"=> $sanitizedData['virtualAccountPhone'] ?? "",
-                    "trxId"            => $sanitizedData['trxId'] ?? "",
-                    "paymentRequestId" => $sanitizedData['paymentRequestId'] ?? "",
+                    "partnerServiceId"      => $sanitizedData['partnerServiceId'] ?? "",
+                    "customerNo"            => $sanitizedData['customerNo'] ?? "",
+                    "virtualAccountNo"      => $sanitizedData['virtualAccountNo'] ?? "",
+                    "virtualAccountName"    => $sanitizedData['virtualAccountName'] ?? "",
+                    "virtualAccountEmail"   => $sanitizedData['virtualAccountEmail'] ?? "",
+                    "virtualAccountPhone"   => $sanitizedData['virtualAccountPhone'] ?? "",
+                    "trxId"                 => $sanitizedData['trxId'] ?? "",
+                    "paymentRequestId"      => $sanitizedData['paymentRequestId'] ?? "",
                     "hashedSourceAccountNo" => $sanitizedData['hashedSourceAccountNo'] ?? "",
-                    "paidAmount"       => $sanitizedData['paidAmount'] ?? [],
-                    "trxDateTime"      => $sanitizedData['trxDateTime'] ?? date('Ymd\THisO')
+                    "paidAmount"            => $sanitizedData['paidAmount'] ?? [
+                        "value" => "0.00",
+                        "currency" => "IDR"
+                    ],
+                    "trxDateTime"           => $sanitizedData['trxDateTime'] ?? date('Ymd\THisO')
                 ]
             ], 200);
 
         } catch (Exception $e) {
+            // LOG LOG
             Log::error('Mandiri VA Webhook Error: ' . $e->getMessage());
-            return response()->json(['responseCode' => '5000000', 'responseMessage' => 'General Error'], 500);
+            return response()->json([
+                'responseCode' => '5000000',
+                'responseMessage' => 'General Error'
+            ], 500);
         }
     }
 
