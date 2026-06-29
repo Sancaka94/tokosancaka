@@ -73,9 +73,9 @@ return [
         'id_toko'                  => env('DANA_ID_TOKO'),
         'valid_id'                 => env('DANA_VALID_ID'),
         'partner_id_conf'          => env('DANA_PARTNER_ID_CONF'),
-        
+
         'dana_env'            => env('DANA_ENV', 'SANDBOX'),
-        
+
         'base_url'            => env('DANA_ENV', 'SANDBOX') === 'PRODUCTION'
                                     ? 'https://api.saas.dana.id' // <--- Ganti di sini juga
                                     : 'https://api.sandbox.dana.id',
@@ -83,7 +83,7 @@ return [
 
     'midtrans' => [
         'is_production' => env('MIDTRANS_IS_PRODUCTION', false),
-        
+
         // General Core API
         'merchant_id'   => env('MIDTRANS_MERCHANT_ID'),
         'client_key'    => env('MIDTRANS_CLIENT_KEY'),
@@ -92,7 +92,7 @@ return [
         // BI-SNAP Credentials
         'snap_client_id'     => env('MIDTRANS_SNAP_CLIENT_ID'),
         'snap_client_secret' => env('MIDTRANS_SNAP_CLIENT_SECRET'),
-        
+
         // Path to Key Files
         'merchant_private_key_path' => env('MIDTRANS_MERCHANT_PRIVATE_KEY_PATH'),
         'midtrans_public_key_path'  => env('MIDTRANS_PUBLIC_KEY_PATH'),
@@ -143,7 +143,7 @@ return [
         'production' => [
             'base_url'     => env('DARMAWISATA_PROD_API_URL', 'https://www.darmawisataindonesiah2h.co.id/'),
             'user_id'      => env('DARMAWISATA_PROD_USER_ID', 'WSA63IU2QM'),
-            'password'     => env('DARMAWISATA_PROD_ACCESS_TOKEN', 'M2E4FGCWUC'), 
+            'password'     => env('DARMAWISATA_PROD_ACCESS_TOKEN', 'M2E4FGCWUC'),
         ]
     ],
 
@@ -153,6 +153,22 @@ return [
         'va'      => env('IPAYMU_VA'),
         'api_key' => env('IPAYMU_API_KEY'),
     ],
-    
+
+    // --- Konfigurasi MANDIRI API ---
+    'mandiri' => [
+        'mode' => env('MANDIRI_MODE', 'sandbox'),
+        'sandbox' => [
+            'client_id'     => env('MANDIRI_CLIENT_ID_SANDBOX'),
+            'client_secret' => env('MANDIRI_CLIENT_SECRET_SANDBOX'),
+            'partner_id'    => env('MANDIRI_PARTNER_ID_SANDBOX', 'SANDBOX'), // Default 'SANDBOX' dari dokumentasi
+            'private_key'   => env('MANDIRI_PRIVATE_KEY_SANDBOX'),
+        ],
+        'production' => [
+            'client_id'     => env('MANDIRI_CLIENT_ID_PRODUCTION'),
+            'client_secret' => env('MANDIRI_CLIENT_SECRET_PRODUCTION'),
+            'partner_id'    => env('MANDIRI_PARTNER_ID_PRODUCTION'),
+            'private_key'   => env('MANDIRI_PRIVATE_KEY_PRODUCTION'),
+        ],
+    ],
 
 ];
