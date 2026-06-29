@@ -236,7 +236,7 @@
                     <div class="bg-white rounded-xl shadow-md p-6">
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Pilih Metode Pengiriman</h2>
 
-                        @if($isDigital)
+                        @if($isStrictlyDigital)
                             <div class="p-4 bg-green-50 border border-green-200 rounded-lg flex items-start mb-4">
                                 <i class="fas fa-bolt text-green-500 text-2xl mr-4 mt-1"></i>
                                 <div>
