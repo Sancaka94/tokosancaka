@@ -152,24 +152,23 @@ class CheckoutController extends Controller
        $user = Auth::user();
 
        // ========================================================
-        // 2 & 3. VALIDASI HYBRID (TANPA PAKSAAN LOGIN)
+        // 2 & 3. VALIDASI PENGIRIMAN FISIK & HYBRID
         // ========================================================
-        $user = \Illuminate\Support\Facades\Auth::user(); // Pastikan variabel user ditarik ulang
+        $user = \Illuminate\Support\Facades\Auth::user();
 
-        // Hanya cek kelengkapan profil JIKA barang fisik DAN pengunjung memiliki akun (Login)
-        if (!$isDigital && $user) {
-            if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province)) {
+        // Jika ada barang fisik (Artinya Hybrid atau 100% Fisik)
+        if (!$isDigital) {
+            // 1. Wajib Login
+            if (!$user) {
+                return redirect()->route('login')->with('warning', 'Keranjang Anda berisi produk fisik. Silakan login untuk memilih opsi pengiriman kurir.');
+            }
 
-                // ZERO BUGS: Gunakan Null-Safe Operator (?->) agar kebal dari error "on null"
-                \Illuminate\Support\Facades\Log::warning('Alamat user tidak lengkap', [
-                    'user_id' => $user?->id_pengguna ?? 'Guest'
-                ]);
-
+            // 2. Wajib Lengkapi Alamat Profil
+            if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province) || empty($user->address_detail)) {
                 return redirect()->route('profile.edit')
-                    ->with('warning', 'Alamat pengiriman profil Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
+                    ->with('warning', 'Alamat pengiriman Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu agar sistem dapat menghitung ongkos kirim.');
             }
         }
-        // ========================================================
         // Ambil mode dari Database (Bukan Config/Env)
         $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
         $cacheKey = 'tripay_channels_list_' . $currentMode;
@@ -199,10 +198,13 @@ class CheckoutController extends Controller
 
         $user = Auth::user();
 
-        // HANYA lempar ke profil jika dia SUDAH login TAPI alamatnya belum ada.
-        // Jika dia Guest, blok ini akan dilewati dengan aman.
-        if (!$isDigital && $user && empty($user->address_detail)) {
-            return redirect()->route('profile.edit')->with('warning', 'Silakan lengkapi alamat pengiriman dahulu.');
+        if (!$isDigital) {
+            if (!$user) {
+                return redirect()->route('login')->with('error', 'Akses ditolak. Silakan login terlebih dahulu untuk checkout produk fisik.');
+            }
+            if (empty($user->address_detail) || empty($user->village)) {
+                return redirect()->route('profile.edit')->with('warning', 'Silakan lengkapi alamat pengiriman Anda dahulu.');
+            }
         }
 
         $firstCartItemData = reset($cart);

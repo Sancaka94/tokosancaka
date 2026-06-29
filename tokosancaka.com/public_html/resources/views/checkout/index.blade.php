@@ -161,7 +161,7 @@
                 <div class="lg:col-span-2 space-y-8">
 
 
-                    @if($hasDigital)
+                    @if($isStrictlyDigital)
                     <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-red-600">
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Data Penerima {{ $hasPhysical ? '(Khusus E-Ticket)' : '(Produk Digital / E-Ticket)' }}</h2>
                             <p class="text-sm text-gray-500 mb-4">Sistem sedang mendeteksi lokasi Anda untuk mempermudah pengisian alamat.</p>
