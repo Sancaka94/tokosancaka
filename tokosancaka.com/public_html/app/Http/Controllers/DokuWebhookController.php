@@ -45,7 +45,7 @@ class DokuWebhookController extends Controller
         // =================================================================
         // 1. LOGGING & BYPASS VALIDASI
         // =================================================================
-        Log::info('=== WEBHOOK DOKU MASUK (BYPASS MODE) ===');
+        /*Log::info('=== WEBHOOK DOKU MASUK (BYPASS MODE) ===');
         Log::info('Headers:', $request->headers->all());
 
         $content = $request->getContent();
@@ -58,6 +58,32 @@ class DokuWebhookController extends Controller
             Log::warning("⚠️ Transaksi TETAP DILANJUTKAN karena dalam Mode Debugging.");
         } else {
             Log::info("✅ Client ID Cocok.");
+        } */
+
+        // =================================================================
+        // 1. LOGGING & VALIDASI ZERO TRUST (KETAT)
+        // =================================================================
+        Log::info('=== WEBHOOK DOKU MASUK ===');
+        $content = $request->getContent();
+
+        $incomingId = $request->header('Client-Id') ?? $request->header('client-id');
+        $myId = config('doku.client_id');
+
+        // Tarik Header untuk Validasi Signature
+        $signatureHeader = $request->header('Signature') ?? $request->header('signature');
+        $requestId = $request->header('Request-Id') ?? $request->header('request-id');
+        $requestTimestamp = $request->header('Request-Timestamp') ?? $request->header('request-timestamp');
+        $requestTarget = $request->getRequestUri();
+
+        // Buat ekspektasi signature dari sisi server kita
+        $expectedSignature = $this->_generateSignatureForWebhook($myId, $requestId, $requestTimestamp, $requestTarget, $content, config('doku.secret_key'));
+
+        // Jika Client ID salah ATAU Signature tidak cocok, langsung TOLAK!
+        if ($incomingId !== $myId || $signatureHeader !== $expectedSignature) {
+            Log::warning("⚠️ ALERT: Autentikasi Webhook DOKU Gagal! Signature atau Client-ID tidak valid. Potensi serangan!");
+            return response()->json(['message' => 'Unauthorized Access'], 401);
+        } else {
+            Log::info("✅ Client ID dan Signature Cocok. Akses aman.");
         }
 
         // =================================================================
@@ -662,7 +688,7 @@ class DokuWebhookController extends Controller
         return "HMACSHA256=" . $signature;
     }
 
-    private function _sendFonnteNotification($subdomain)
+    /* private function _sendFonnteNotification($subdomain)
     {
         try {
             $percetakanDB = \Illuminate\Support\Facades\DB::connection('mysql_second');
@@ -702,6 +728,59 @@ class DokuWebhookController extends Controller
 
     private function _sendFonnteMessage($target, $message)
     {
+        $token = env('FONNTE_API_KEY') ?? env('FONNTE_KEY');
+        if (!$token) return;
+
+        \Illuminate\Support\Facades\Http::withHeaders([
+            'Authorization' => $token
+        ])->post('https://api.fonnte.com/send', [
+            'target' => $target,
+            'message' => $message
+        ]);
+    } */
+
+    private function _sendFonnteNotification($subdomain, $tipe = 'Aktivasi')
+    {
+        try {
+            $percetakanDB = \Illuminate\Support\Facades\DB::connection('mysql_second');
+            $tenant = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
+
+            if (!$tenant || empty($tenant->whatsapp)) {
+                Log::warning("LOG LOG: Gagal kirim WA, nomor WA tenant tidak ditemukan.");
+                return;
+            }
+
+            $phone = $tenant->whatsapp;
+            $phone = preg_replace('/[^0-9]/', '', $phone);
+
+            if (str_starts_with($phone, '62')) {
+                $phone = '0' . substr($phone, 2);
+            } elseif (str_starts_with($phone, '8')) {
+                $phone = '0' . $phone;
+            }
+
+            // Ambil nomor admin dari ENV, jangan di-hardcode
+            $adminPhone = env('ADMIN_PHONE_NUMBER', '081234567890');
+            $msg = "💰 *PEMBAYARAN TERKONFIRMASI*\n\n" .
+                   "Halo Owner *{$subdomain}*,\n" .
+                   "Pembayaran sewa Anda telah kami terima.\n\n" .
+                   "Status: *ACTIVE* ✅\n" .
+                   "Sistem: *Database SancakaPOS*\n" .
+                   "Link Login: https://{$subdomain}.tokosancaka.com/login\n\n" .
+                   "_Pesanan Anda sudah bisa diakses. Terima kasih!_";
+
+            $this->_sendFonnteMessage($phone, $msg);
+            $this->_sendFonnteMessage($adminPhone, "INFO: Tenant *{$subdomain}* baru saja aktif otomatis via Webhook.");
+
+            Log::info("LOG LOG: Notifikasi WA Aktivasi Tenant $subdomain dikirim ke $phone.");
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: Gagal kirim WA Notif: " . $e->getMessage());
+        }
+    }
+
+    private function _sendFonnteMessage($target, $message)
+    {
+        // Ambil token dari ENV, jangan ditaruh di dalam string kode
         $token = env('FONNTE_API_KEY') ?? env('FONNTE_KEY');
         if (!$token) return;
 

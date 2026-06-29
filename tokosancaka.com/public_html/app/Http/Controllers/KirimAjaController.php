@@ -83,22 +83,27 @@ class KirimAjaController extends Controller
                 // =========================================================================
                 // 🔥 LOGIKA TANGKAP RESI RETUR
                 // =========================================================================
+                // PERBAIKAN 1: Sanitasi Input Mencegah SQL Injection di KirimAjaController
+                // Lokasi: function handle()
                 if (strpos($orderId, '-RTR-') !== false || strpos($orderId, 'RTR-') !== false) {
                     if ($awb) {
+                        // Sanitasi $awb untuk keamanan Anti-Hacker
+                        $safeAwb = preg_replace('/[^a-zA-Z0-9-]/', '', $awb);
+
                         $returnOrder = \App\Models\ReturnOrder::where('new_resi', 'PROSES-PICKUP')->latest()->first();
                         if ($returnOrder) {
                             $oldResiFallback = $returnOrder->new_resi;
-                            $returnOrder->update(['new_resi' => $awb]);
+                            $returnOrder->update(['new_resi' => $safeAwb]);
 
                             if ($oldResiFallback === 'PROSES-PICKUP') {
                                 DB::table('complain_chats')
                                     ->where('invoice_number', $returnOrder->invoice_number)
                                     ->where('message', 'LIKE', '%PROSES-PICKUP%')
                                     ->update([
-                                        'message' => DB::raw("REPLACE(message, 'PROSES-PICKUP', '{$awb}')")
+                                        'message' => DB::raw("REPLACE(message, 'PROSES-PICKUP', '{$safeAwb}')")
                                     ]);
                             }
-                            Log::info("[WEBHOOK-KA] ✅ Resi Retur Diperbarui | Invoice: {$returnOrder->invoice_number} | AWB Asli: {$awb}");
+                            Log::info("[WEBHOOK-KA] ✅ Resi Retur Diperbarui | Invoice: {$returnOrder->invoice_number} | AWB Asli: {$safeAwb}");
                         }
                     }
                     continue;

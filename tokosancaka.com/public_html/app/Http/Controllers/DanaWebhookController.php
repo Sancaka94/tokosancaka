@@ -38,6 +38,22 @@ class DanaWebhookController extends Controller
         $statusDana = $request->input('latestTransactionStatus');
         $amountValue = $request->input('amount.value') ?? 0;
 
+        $danaSignature = app(\App\Services\DanaSignatureService::class);
+        $incomingSignature = $request->header('X-SIGNATURE');
+        $incomingTimestamp = $request->header('X-TIMESTAMP');
+        $requestBody = $request->getContent();
+        $targetPath = $request->getRequestUri();
+
+        $expectedSignature = $danaSignature->generateSignature('POST', $targetPath, $requestBody, $incomingTimestamp);
+
+        if (!hash_equals($expectedSignature, $incomingSignature ?? '')) {
+            Log::warning("⚠️ ALERT: Autentikasi Webhook DANA Gagal! Signature tidak valid. Potensi injeksi webhook.");
+            return response()->json([
+                'responseCode' => '4015600',
+                'responseMessage' => 'Unauthorized'
+            ], 401)->withHeaders(['X-TIMESTAMP' => \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP')]);
+        }
+
         // --- MENGEMBALIKAN STRIP (-) PADA INVOICE ---
         if ($orderId) {
             $orderId = $this->normalizeReference($orderId);
@@ -201,9 +217,9 @@ class DanaWebhookController extends Controller
 
                                 if ($affected) {
                                     Log::info("💰 SALDO POS BERTAMBAH: User ID {$transactionPos->affiliate_id} +{$transactionPos->amount}");
-                                
+
                                     $this->sendExpoPaymentNotification($orderId);
-                                
+
                                     } else {
                                     Log::error("❌ Gagal Update Saldo User ID {$transactionPos->affiliate_id} di DB Second.");
                                 }
@@ -233,38 +249,38 @@ class DanaWebhookController extends Controller
                     }
                     else if ($pesananTokoUtama) {
 					    Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Toko Utama (Tabel orders).");
-					    
+
 					    // 1. UPDATE STATUS JADI PAID SEBELUM HIT API
 					    if ($pesananTokoUtama->status !== 'paid' && $pesananTokoUtama->status !== 'processing') {
 					        $pesananTokoUtama->status = 'paid';
 					        $pesananTokoUtama->save();
 					    }
-					
+
 					    // 2. HIT API KIRIMINAJA JIKA BELUM ADA RESI / MASIH MOCK
 					    if (empty($pesananTokoUtama->shipping_reference) || Str::startsWith($pesananTokoUtama->shipping_reference, 'MOCK-')) {
 					        Log::info("🚀 Menyiapkan Payload API KiriminAja untuk Order: $orderId");
-					
+
 					        try {
 					            $kiriminAja = new \App\Services\KiriminAjaService();
 					            $now = now()->timezone('Asia/Jakarta');
-					            $pickupSchedule = ($now->hour >= 15 || $now->isSunday()) 
-					                ? $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s') 
+					            $pickupSchedule = ($now->hour >= 15 || $now->isSunday())
+					                ? $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s')
 					                : $now->addHours(1)->format('Y-m-d H:i:s');
-					
+
 					            // Ekstrak Courier & Service dari shipping_method (Contoh: regular-spx-1-6000-0-0)
 					            $shipParts = explode('-', $pesananTokoUtama->shipping_method);
 					            $shipType = $shipParts[0] ?? 'regular';
 					            $courier = $shipParts[1] ?? 'jne';
 					            $service = $shipParts[2] ?? 'REG';
-					
+
 					            $weight = max(1000, (int) $pesananTokoUtama->weight);
 					            $category = ($shipType == 'cargo' || $weight >= 30000) ? 'trucking' : 'regular';
-					
+
 					            // Ambil data subdistrict pengirim dari tabel Store (karena tidak ada di tabel orders)
 					            $store = \App\Models\Store::find($pesananTokoUtama->store_id);
 					            $originDistId = $pesananTokoUtama->sender_district_id ?? ($store->district_id ?? 4354);
-					            $originSubId  = $pesananTokoUtama->sender_subdistrict_id ?? ($store->subdistrict_id ?? 40343); 
-					
+					            $originSubId  = $pesananTokoUtama->sender_subdistrict_id ?? ($store->subdistrict_id ?? 40343);
+
 					            $payloadKA = [
 					                'address'      => $pesananTokoUtama->sender_address ?? ($store->address_detail ?? 'Alamat Toko'),
 					                'phone'        => $pesananTokoUtama->sender_phone ?? '085745808809',
@@ -299,22 +315,22 @@ class DanaWebhookController extends Controller
 					                    'shipping_cost'            => (int) ($pesananTokoUtama->shipping_cost ?? 0)
 					                ]]
 					            ];
-					
+
 					            if ($shipType === 'instant') {
 					                $payloadInstant = [
-					                    'service' => strtolower($courier), 
-					                    'service_type' => strtoupper($service), 
+					                    'service' => strtolower($courier),
+					                    'service_type' => strtoupper($service),
 					                    'vehicle' => 'motor',
 					                    'order_prefix' => $orderId,
 					                    'packages' => [[
-					                        'origin_lat' => (float) ($store->latitude ?? 0), 
+					                        'origin_lat' => (float) ($store->latitude ?? 0),
 					                        'origin_long' => (float) ($store->longitude ?? 0),
-					                        'origin_name' => $payloadKA['name'], 
+					                        'origin_name' => $payloadKA['name'],
 					                        'origin_phone' => $payloadKA['phone'],
 					                        'origin_address' => $payloadKA['address'],
-					                        'destination_lat' => (float) ($pesananTokoUtama->customer_latitude ?? 0), 
+					                        'destination_lat' => (float) ($pesananTokoUtama->customer_latitude ?? 0),
 					                        'destination_long' => (float) ($pesananTokoUtama->customer_longitude ?? 0),
-					                        'destination_name' => $payloadKA['packages'][0]['destination_name'], 
+					                        'destination_name' => $payloadKA['packages'][0]['destination_name'],
 					                        'destination_phone' => $payloadKA['packages'][0]['destination_phone'],
 					                        'destination_address' => $payloadKA['packages'][0]['destination_address'],
 					                        'item' => ['name' => $payloadKA['packages'][0]['item_name'], 'price' => $payloadKA['packages'][0]['item_value'], 'weight' => $weight],
@@ -327,14 +343,14 @@ class DanaWebhookController extends Controller
 					                Log::info("🚀 Menembak API KiriminAja EXPRESS...", ['payload' => $payloadKA]);
 					                $kaResponse = $kiriminAja->createExpressOrder($payloadKA);
 					            }
-					
+
 					            if ($kaResponse && isset($kaResponse['status']) && $kaResponse['status'] == true) {
-    
+
 								    // ✅ SESUAIKAN DENGAN DOKUMENTASI RESMI
-								    $bookingId = $kaResponse['pickup_number'] ?? 
-								                 ($kaResponse['details'][0]['kj_order_id'] ?? 
+								    $bookingId = $kaResponse['pickup_number'] ??
+								                 ($kaResponse['details'][0]['kj_order_id'] ??
 								                 ($kaResponse['details'][0]['awb'] ?? null));
-								    
+
 								    if ($bookingId) {
 								        $pesananTokoUtama->shipping_reference = $bookingId;
 								        $pesananTokoUtama->status = 'processing';
@@ -348,7 +364,7 @@ class DanaWebhookController extends Controller
 					            Log::error("❌ CRITICAL ERROR API KA:", ['msg' => $e->getMessage()]);
 					        }
 					    }
-					
+
 					    // Notifikasi ke aplikasi/customer tetap dipanggil
 					    $this->sendExpoPaymentNotification($orderId);
 					}
@@ -523,7 +539,7 @@ class DanaWebhookController extends Controller
                         App::make(\App\Http\Controllers\CustomerOrderController::class)->handleDanaCallback($payloadData);
                     } else if (Str::startsWith($orderId, 'CVSANCAK-') || Str::startsWith($orderId, 'ORD-')) {
                         App::make(\App\Http\Controllers\CheckoutController::class)->handleDanaCallback($payloadData);
-                    } 
+                    }
 
                     else if (Str::startsWith($orderId, 'PPOBD-')) {
                         Log::info("➡️ Order $orderId didelegasikan ke PpobDarmawisataController.");
@@ -552,11 +568,11 @@ class DanaWebhookController extends Controller
                     // =========================================================
                     else if (Str::startsWith($orderId, 'DANATOPUP-')) {
                         $danaTopup = DB::table('dana_transaction_topup')->where('reference_id', $orderId)->first();
-                        
+
                         if ($danaTopup) {
                             if ($danaTopup->status !== 'SUCCESS') {
                                 DB::table('dana_transaction_topup')->where('id', $danaTopup->id)->update([
-                                    'status' => 'SUCCESS', 
+                                    'status' => 'SUCCESS',
                                     'updated_at' => now()
                                 ]);
                                 Log::info("✅ LOG LOG: Webhook Top Up DANA Pelanggan ($orderId) SUKSES.");
@@ -578,12 +594,12 @@ class DanaWebhookController extends Controller
                     else if (Str::startsWith($orderId, 'TRF') || Str::startsWith($orderId, 'TUP')) {
                         // PENANGANAN DISBURSEMENT (TRANSFER BANK / TOP UP CORPORATE)
                         $danaTrx = DB::table('dana_transactions')->where('reference_no', $orderId)->first();
-                        
+
                         if ($danaTrx) {
                             // CEK IDEMPOTENCY: Pastikan belum sukses sebelumnya
                             if ($danaTrx->status !== 'SUCCESS') {
                                 DB::table('dana_transactions')->where('id', $danaTrx->id)->update([
-                                    'status' => 'SUCCESS', 
+                                    'status' => 'SUCCESS',
                                     'updated_at' => now()
                                 ]);
                                 Log::info("✅ LOG LOG: Webhook Disbursement DANA $orderId SUKSES.");
@@ -648,26 +664,26 @@ class DanaWebhookController extends Controller
                     }
                 } elseif (Str::startsWith($orderId, 'TOPUP-') || Str::startsWith($orderId, 'ADM-')) {
                     App::make(\App\Http\Controllers\Customer\TopUpController::class)->handleDanaCallback($payloadData);
-                } 
+                }
                 // =========================================================
                 // TAMBAHKAN BLOK INI: PENANGANAN FAILED DANATOPUP (TOP UP DANA)
                 // =========================================================
                 elseif (Str::startsWith($orderId, 'DANATOPUP-')) {
                     $danaTopup = DB::table('dana_transaction_topup')->where('reference_id', $orderId)->first();
-                    
+
                     if ($danaTopup && !in_array($danaTopup->status, ['FAILED', 'FAILED_DANA'])) {
                         DB::table('dana_transaction_topup')->where('id', $danaTopup->id)->update([
-                            'status' => 'FAILED_DANA', 
+                            'status' => 'FAILED_DANA',
                             'updated_at' => now()
                         ]);
-                        
+
                         // CEK METODE PEMBAYARAN: Hanya refund jika menggunakan Potong Saldo
                         $metodeBayar = strtoupper($danaTopup->payment_method);
                         if (in_array($metodeBayar, ['POTONG SALDO', 'SALDO', 'POTONG_SALDO'])) {
                             DB::table('Pengguna')->where('id_pengguna', $danaTopup->user_id)->increment('saldo', $danaTopup->amount);
                             Log::info("❌ LOG LOG: Webhook DANATOPUP $orderId GAGAL/EXPIRED. Saldo Rp " . number_format($danaTopup->amount, 0, ',', '.') . " di-REFUND ke user ID {$danaTopup->user_id} karena metode bayar adalah: $metodeBayar.");
                         } else {
-                            // Jika pakai Payment Gateway (Tripay/DOKU), uang ada di PG. 
+                            // Jika pakai Payment Gateway (Tripay/DOKU), uang ada di PG.
                             // Kamu bisa mengatur apakah akan menambahkannya ke saldo akun atau membiarkannya untuk direfund manual.
                             // Contoh: Tetap masuk saldo akun sebagai deposit.
                             DB::table('Pengguna')->where('id_pengguna', $danaTopup->user_id)->increment('saldo', $danaTopup->amount);
@@ -679,10 +695,10 @@ class DanaWebhookController extends Controller
                 elseif (Str::startsWith($orderId, 'TRF') || Str::startsWith($orderId, 'TUP')) {
                     // PENANGANAN GAGAL DISBURSEMENT (TRANSFER BANK / TOP UP CORPORATE)
                     $danaTrx = DB::table('dana_transactions')->where('reference_no', $orderId)->first();
-                    
+
                     if ($danaTrx && $danaTrx->status !== 'FAILED') {
                         DB::table('dana_transactions')->where('id', $danaTrx->id)->update([
-                            'status' => 'FAILED', 
+                            'status' => 'FAILED',
                             'updated_at' => now()
                         ]);
                         // Refund saldo pelanggan secara otomatis
@@ -730,7 +746,7 @@ class DanaWebhookController extends Controller
     // =================================================================
     // 2. HELPER FUNCTIONS
     // =================================================================
-    private function _sendFonnteNotification($subdomain, $tipe = 'Aktivasi')
+    /*private function _sendFonnteNotification($subdomain, $tipe = 'Aktivasi')
     {
         try {
             $percetakanDB = DB::connection('mysql_second');
@@ -764,6 +780,59 @@ class DanaWebhookController extends Controller
     private function _sendFonnteMessage($target, $message)
     {
         $token = env('FONNTE_API_KEY') ?? env('FONNTE_KEY') ?? 'cC3LrEd8VwDDRuE6urcj';
+        if (!$token) return;
+
+        \Illuminate\Support\Facades\Http::withHeaders([
+            'Authorization' => $token
+        ])->post('https://api.fonnte.com/send', [
+            'target' => $target,
+            'message' => $message
+        ]);
+    } */
+
+    private function _sendFonnteNotification($subdomain, $tipe = 'Aktivasi')
+    {
+        try {
+            $percetakanDB = \Illuminate\Support\Facades\DB::connection('mysql_second');
+            $tenant = $percetakanDB->table('tenants')->where('subdomain', $subdomain)->first();
+
+            if (!$tenant || empty($tenant->whatsapp)) {
+                Log::warning("LOG LOG: Gagal kirim WA, nomor WA tenant tidak ditemukan.");
+                return;
+            }
+
+            $phone = $tenant->whatsapp;
+            $phone = preg_replace('/[^0-9]/', '', $phone);
+
+            if (str_starts_with($phone, '62')) {
+                $phone = '0' . substr($phone, 2);
+            } elseif (str_starts_with($phone, '8')) {
+                $phone = '0' . $phone;
+            }
+
+            // Ambil nomor admin dari ENV, jangan di-hardcode
+            $adminPhone = env('ADMIN_PHONE_NUMBER', '081234567890');
+            $msg = "💰 *PEMBAYARAN TERKONFIRMASI*\n\n" .
+                   "Halo Owner *{$subdomain}*,\n" .
+                   "Pembayaran sewa Anda telah kami terima.\n\n" .
+                   "Status: *ACTIVE* ✅\n" .
+                   "Sistem: *Database SancakaPOS*\n" .
+                   "Link Login: https://{$subdomain}.tokosancaka.com/login\n\n" .
+                   "_Pesanan Anda sudah bisa diakses. Terima kasih!_";
+
+            $this->_sendFonnteMessage($phone, $msg);
+            $this->_sendFonnteMessage($adminPhone, "INFO: Tenant *{$subdomain}* baru saja aktif otomatis via Webhook.");
+
+            Log::info("LOG LOG: Notifikasi WA Aktivasi Tenant $subdomain dikirim ke $phone.");
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: Gagal kirim WA Notif: " . $e->getMessage());
+        }
+    }
+
+    private function _sendFonnteMessage($target, $message)
+    {
+        // Ambil token dari ENV, jangan ditaruh di dalam string kode
+        $token = env('FONNTE_API_KEY') ?? env('FONNTE_KEY');
         if (!$token) return;
 
         \Illuminate\Support\Facades\Http::withHeaders([
@@ -859,7 +928,7 @@ class DanaWebhookController extends Controller
         if (Str::startsWith($refNo, 'BUS') && !str_contains($refNo, '-')) return 'BUS-' . substr($refNo, 3);
         if (Str::startsWith($refNo, 'SHPDLU') && !str_contains($refNo, '-')) return 'SHPDLU-' . substr($refNo, 6);
         else if (Str::startsWith($refNo, 'SHP') && !str_contains($refNo, '-')) return 'SHP-' . substr($refNo, 3);
-        
+
         if (preg_match('/^SCK(\d{8})([A-Z0-9]+)$/', $refNo, $matches)) {
             return 'SCK-' . $matches[1] . '-' . $matches[2];
         }
@@ -935,11 +1004,11 @@ class DanaWebhookController extends Controller
 
                             if ($resCode === '2005400' && in_array(strtoupper($txStatus), ['SUCCESS', 'PAID'])) {
                                 Log::info('[DANA FALLBACK] DANA mengonfirmasi LUNAS! Memicu API KiriminAja secara manual...');
-                                
+
                                 // Rakit payload palsu yang menyerupai data Webhook
                                 $payloadData = [
                                     'order' => [
-                                        'invoice_number' => $refNo, 
+                                        'invoice_number' => $refNo,
                                         'amount' => $orderUtama->total_amount
                                     ],
                                     'transaction' => [
@@ -949,7 +1018,7 @@ class DanaWebhookController extends Controller
 
                                 // Panggil CheckoutController untuk memproses status & menembak API KiriminAja
                                 app(\App\Http\Controllers\CheckoutController::class)->handleDanaCallback($payloadData);
-                                
+
                                 $statusPembayaran = 'sukses';
                             }
                         } catch (\Exception $e) {
@@ -1017,7 +1086,7 @@ class DanaWebhookController extends Controller
 
     try {
         $subject = "✅ Pembayaran Berhasil - Invoice $invoice";
-        
+
         $data = [
             'name' => $name,
             'invoice' => $invoice,
@@ -1036,7 +1105,7 @@ class DanaWebhookController extends Controller
         });
 
         Log::info("📧 [EMAIL SENT] Notifikasi sukses dikirim ke: $email untuk invoice $invoice");
-        
+
     // 3. Ubah ke \Throwable untuk menangkap FATAL ERROR dari proses render() Blade
     } catch (\Throwable $e) {
         Log::error("❌ [EMAIL FAILED] Gagal kirim email ke $email: " . $e->getMessage());
@@ -1062,7 +1131,7 @@ class DanaWebhookController extends Controller
             $privateKey = \App\Models\Api::getValue('dana_prod_private_key', 'production');
             $publicKey  = \App\Models\Api::getValue('dana_prod_public_key', 'production');
             $clientSecret = \App\Models\Api::getValue('dana_prod_client_secret', 'production');
-            $baseUrl    = 'https://api.saas.dana.id'; 
+            $baseUrl    = 'https://api.saas.dana.id';
         } else {
             $merchantId = \App\Models\Api::getValue('dana_sandbox_merchant_id', 'sandbox');
             $partnerId  = \App\Models\Api::getValue('dana_sandbox_client_id', 'sandbox');
@@ -1088,7 +1157,7 @@ class DanaWebhookController extends Controller
         $danaSignature = app(\App\Services\DanaSignatureService::class);
 
         // 3. Endpoint SNAP BI Status DANA yang benar
-        $relativePath = '/v1.0/transaction/status'; 
+        $relativePath = '/v1.0/transaction/status';
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
 
         $cleanOrderId = preg_replace('/[^a-zA-Z0-9]/', '', $orderId);
@@ -1119,7 +1188,7 @@ class DanaWebhookController extends Controller
             ])->post($baseUrl . $relativePath, $body);
 
             $result = $response->json();
-            
+
             \Illuminate\Support\Facades\Log::info('[DANA FALLBACK SNAP BI] Status Check Result:', $result ?? []);
 
             if ($result === null) {
@@ -1129,7 +1198,7 @@ class DanaWebhookController extends Controller
             // 7. Normalisasi Data B2B SNAP BI (2004700 adalah kode sukses inquiry)
             if (isset($result['responseCode']) && in_array($result['responseCode'], ['2004700', '2000000'])) {
                 $statusKode = $result['latestTransactionStatus'] ?? $result['transactionStatus'] ?? '';
-                
+
                 // Di SNAP BI DANA, "00" atau "SUCCESS" artinya Lunas
                 if ($statusKode === '00' || $statusKode === 'SUCCESS') {
                     $result['transactionStatus'] = 'SUCCESS';
@@ -1140,7 +1209,7 @@ class DanaWebhookController extends Controller
                 }
 
                 // Paksa responseCode menjadi 2005400 agar Sancaka Return Page mengenali bahwa cek status berhasil
-                $result['responseCode'] = '2005400'; 
+                $result['responseCode'] = '2005400';
             }
 
             return $result;
@@ -1181,12 +1250,12 @@ class DanaWebhookController extends Controller
     private function formatNomorHP($phone)
     {
         $phone = preg_replace('/[^0-9]/', '', $phone); // Hapus karakter non-angka
-        
+
         // Jika mulai dengan 62, ubah jadi 0
         if (substr($phone, 0, 2) == '62') {
             $phone = '0' . substr($phone, 2);
         }
-        
+
         // Jika tidak mulai dengan 0, paksa tambah 0
         if (substr($phone, 0, 1) !== '0') {
             $phone = '0' . $phone;

@@ -105,21 +105,25 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-       // Cek apakah keranjang INI 100% DIGITAL
-        $isOnlyDigital = true;
+      // === PERBAIKAN PERFORMA: Eager Loading Produk (Cegah N+1 Query) ===
+        // Tarik semua ID produk di keranjang, query ke DB HANYA 1 KALI
+        $productIds = collect($cart)->pluck('product_id')->filter()->unique()->toArray();
+        $productsCache = Product::with('category')->whereIn('id', $productIds)->get()->keyBy('id');
+
+        $isDigital = true; // Asumsikan true dulu
 
         foreach ($cart as $item) {
             $isThisItemDigital = false;
 
-            // Cek dari array session
             if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) {
                 $isThisItemDigital = true;
             }
 
-            // Cek dari database category
-            $productCheck = Product::find($item['product_id'] ?? null);
+            // Ambil dari cache memori, BUKAN query ke database berulang kali
+            $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
+
             if ($productCheck) {
-                $kategoriObj = $productCheck->category()->first();
+                $kategoriObj = $productCheck->category;
                 if ($kategoriObj && in_array($kategoriObj->category_group, ['produk_digital', 'jasa'])) {
                     $isThisItemDigital = true;
                 }
@@ -127,13 +131,11 @@ class CheckoutController extends Controller
 
             // JIKA KETEMU 1 SAJA BARANG FISIK, MAKA KERANJANG BUKAN 100% DIGITAL
             if (!$isThisItemDigital) {
-                $isOnlyDigital = false;
-                break;
+                $isDigital = false;
+                break; // Hentikan pengecekan karena sudah pasti butuh pengiriman fisik
             }
         }
-
-        // Tetap gunakan nama variabel $isDigital agar frontend blade tidak perlu diubah
-        $isDigital = $isOnlyDigital;
+        // ===================================================================
 
         // 2. BLOKIR JIKA PRODUK FISIK TAPI BELUM LOGIN
         if (!$isDigital && !Auth::check()) {
@@ -424,7 +426,7 @@ class CheckoutController extends Controller
         // =========================================================================
 
        // Deteksi apakah keranjang ini 100% digital atau ada barang fisiknya
-        $isDigital = true; // Asumsikan true dulu
+        /* $isDigital = true; // Asumsikan true dulu
 
         foreach ($cart as $item) {
             $isThisItemDigital = false;
@@ -446,7 +448,39 @@ class CheckoutController extends Controller
                 $isDigital = false;
                 break; // Hentikan pengecekan karena sudah pasti butuh pengiriman fisik
             }
+        } */
+
+        // === PERBAIKAN PERFORMA: Eager Loading Produk (Cegah N+1 Query) ===
+        // Tarik semua ID produk di keranjang, query ke DB HANYA 1 KALI
+        $productIds = collect($cart)->pluck('product_id')->filter()->unique()->toArray();
+        $productsCache = Product::with('category')->whereIn('id', $productIds)->get()->keyBy('id');
+
+        $isDigital = true; // Asumsikan true dulu
+
+        foreach ($cart as $item) {
+            $isThisItemDigital = false;
+
+            if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) {
+                $isThisItemDigital = true;
+            }
+
+            // Ambil dari cache memori, BUKAN query ke database berulang kali
+            $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
+
+            if ($productCheck) {
+                $kategoriObj = $productCheck->category;
+                if ($kategoriObj && in_array($kategoriObj->category_group, ['produk_digital', 'jasa'])) {
+                    $isThisItemDigital = true;
+                }
+            }
+
+            // JIKA KETEMU 1 SAJA BARANG FISIK, MAKA KERANJANG BUKAN 100% DIGITAL
+            if (!$isThisItemDigital) {
+                $isDigital = false;
+                break; // Hentikan pengecekan karena sudah pasti butuh pengiriman fisik
+            }
         }
+        // ===================================================================
 
         if (!$isDigital && (!$user || empty($user->address_detail))) {
             return redirect()->route('profile.edit')->with('warning', 'Silakan lengkapi alamat pengiriman dahulu.');
