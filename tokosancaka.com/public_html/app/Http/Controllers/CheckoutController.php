@@ -520,6 +520,32 @@ class CheckoutController extends Controller
             return redirect()->route('profile.edit')->with('warning', 'Silakan lengkapi alamat pengiriman dahulu.');
         }
 
+        // ====================================================================
+        // 🔥 KEAMANAN & UX: SILENT REGISTRATION UNTUK GUEST CHECKOUT DIGITAL
+        // ====================================================================
+        if (!$user && $isDigital) {
+            // Ambil data kontak dari form checkout guest
+            $emailGuest = $request->email ?? 'guest_' . time() . '@tokosancaka.com';
+            $waGuest = $request->no_wa_penerima ?? '081234567890';
+
+            // Cek apakah email atau WA sudah terdaftar sebelumnya
+            $user = \App\Models\User::where('no_wa', $waGuest)->orWhere('email', $emailGuest)->first();
+
+            if (!$user) {
+                // Zero Bugs: Buat akun diam-diam agar pesanan digital punya pemilik
+                // Sehingga fungsi pengiriman E-Ticket via Email/WA di bawah tidak crash/gagal
+                $user = \App\Models\User::create([
+                    'nama_lengkap' => $request->nama_penerima ?? 'Guest Customer',
+                    'email'        => $emailGuest,
+                    'no_wa'        => preg_replace('/[^0-9]/', '', $waGuest),
+                    'password'     => bcrypt(\Illuminate\Support\Str::random(12)),
+                    'role'         => 'Pelanggan'
+                ]);
+                Log::info("LOG LOG - Akun otomatis dibuat via Guest Checkout: {$waGuest}");
+            }
+        }
+        // ====================================================================
+
         DB::beginTransaction();
 
         try {
@@ -3491,10 +3517,36 @@ TEXT;
             return back()->with('error', 'Produk tidak tersedia saat ini.');
         }
 
+        //$user = Auth::user();
+        //if (!$user) {
+        //    return redirect()->route('customer.login')->with('info', 'Anda harus login untuk bertransaksi PPOB.');
+        // }
+
         $user = Auth::user();
+
+        // ====================================================================
+        // 🔥 FLEKSIBILITAS PPOB: SILENT REGISTRATION TANPA WAJIB LOGIN
+        // ====================================================================
         if (!$user) {
-            return redirect()->route('customer.login')->with('info', 'Anda harus login untuk bertransaksi PPOB.');
+            // Kita manfaatkan primary_param (contoh: nomor HP tujuan pulsa) sebagai nomor WA pendaftaran
+            $waGuest = $request->no_wa ?? $request->primary_param;
+            $emailGuest = $request->email ?? 'guest_' . time() . '@tokosancaka.com';
+
+            // Zero Trust: Cek apakah nomor/email ini sudah ada di database
+            $user = \App\Models\User::where('no_wa', $waGuest)->orWhere('email', $emailGuest)->first();
+
+            if (!$user) {
+                $user = \App\Models\User::create([
+                    'nama_lengkap' => $request->nama_lengkap ?? 'Guest PPOB ' . rand(100, 999),
+                    'email'        => $emailGuest,
+                    'no_wa'        => preg_replace('/[^0-9]/', '', $waGuest),
+                    'password'     => bcrypt(\Illuminate\Support\Str::random(12)),
+                    'role'         => 'Pelanggan'
+                ]);
+                Log::info("LOG LOG - Akun PPOB dibuat otomatis untuk Guest: {$waGuest}");
+            }
         }
+        // ====================================================================
 
         $grand_total = $product->price_value;
         $invoiceNumber = 'PPOBDANA-' . strtoupper(Str::random(8));
