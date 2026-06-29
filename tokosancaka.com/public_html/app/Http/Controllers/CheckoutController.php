@@ -105,66 +105,47 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-      // === PERBAIKAN PERFORMA: Eager Loading Produk (Cegah N+1 Query) ===
-        // Tarik semua ID produk di keranjang, query ke DB HANYA 1 KALI
+     // === PERBAIKAN PERFORMA & HYBRID CART ===
         $productIds = collect($cart)->pluck('product_id')->filter()->unique()->toArray();
         $productsCache = \App\Models\Product::with('category')->whereIn('id', $productIds)->get()->keyBy('id');
 
-        $isDigital = true; // Asumsikan true dulu
+        // Pisahkan menjadi 2 bendera (flags)
+        $hasDigital = false;
+        $hasPhysical = false;
 
         foreach ($cart as $item) {
             $isThisItemDigital = false;
 
-            // 1. Cek dari tipe session cart
-            if (isset($item['type'])) {
-                $typeLower = strtolower($item['type']);
-                if (str_contains($typeLower, 'digital') || in_array($typeLower, ['eticket', 'jasa'])) {
-                    $isThisItemDigital = true;
-                }
+            // 1. Cek dari session cart
+            if (isset($item['type']) && (str_contains(strtolower($item['type']), 'digital') || in_array(strtolower($item['type']), ['eticket', 'jasa']))) {
+                $isThisItemDigital = true;
             }
 
-            // Ambil dari cache memori
+            // 2. Cek dari database & kategori
             $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
-
             if ($productCheck) {
-                // 2. Cek dari flag is_digital di database (Penanganan krusial yang terlewat)
                 if (isset($productCheck->is_digital) && $productCheck->is_digital) {
                     $isThisItemDigital = true;
                 }
 
-                // 3. Cek dari nama / grup kategori secara dinamis
                 $kategoriData = $productCheck->category;
-                $kategoriGrup = null;
+                $kategoriGrup = is_object($kategoriData) ? ($kategoriData->category_group ?? $kategoriData->name ?? null) : (is_array($kategoriData) ? ($kategoriData['category_group'] ?? $kategoriData['name'] ?? null) : $kategoriData);
 
-                if (is_object($kategoriData)) {
-                    $kategoriGrup = $kategoriData->category_group ?? $kategoriData->name ?? $kategoriData->nama_kategori ?? null;
-                } elseif (is_string($kategoriData)) {
-                    $kategoriGrup = $kategoriData;
-                } elseif (is_array($kategoriData)) {
-                    $kategoriGrup = $kategoriData['category_group'] ?? $kategoriData['name'] ?? null;
-                }
-
-                if ($kategoriGrup) {
-                    $kategoriLower = strtolower($kategoriGrup);
-                    if (
-                        str_contains($kategoriLower, 'digital') ||
-                        str_contains($kategoriLower, 'jasa') ||
-                        str_contains($kategoriLower, 'tiket') ||
-                        str_contains($kategoriLower, 'ticket') ||
-                        str_contains($kategoriLower, 'eticket')
-                    ) {
-                        $isThisItemDigital = true;
-                    }
+                if ($kategoriGrup && (str_contains(strtolower($kategoriGrup), 'digital') || str_contains(strtolower($kategoriGrup), 'jasa') || str_contains(strtolower($kategoriGrup), 'tiket') || str_contains(strtolower($kategoriGrup), 'ticket') || str_contains(strtolower($kategoriGrup), 'eticket'))) {
+                    $isThisItemDigital = true;
                 }
             }
 
-            // JIKA KETEMU 1 SAJA BARANG FISIK, MAKA KERANJANG BUKAN 100% DIGITAL
-            if (!$isThisItemDigital) {
-                $isDigital = false;
-                break; // Hentikan pengecekan karena sudah pasti butuh pengiriman fisik via kurir
+            // Tentukan status komponen keranjang
+            if ($isThisItemDigital) {
+                $hasDigital = true;
+            } else {
+                $hasPhysical = true;
             }
         }
-        // ===================================================================
+
+        // Variabel khusus untuk mengunci Ongkir Rp0 (Hanya jika 100% digital)
+        $isStrictlyDigital = $hasDigital && !$hasPhysical;
 
        $user = Auth::user();
 
@@ -461,7 +442,7 @@ class CheckoutController extends Controller
         // =========================================================================
 
        // Deteksi apakah keranjang ini 100% digital atau ada barang fisiknya
-        /* $isDigital = true; // Asumsikan true dulu
+        /* $isStrictlyDigital = true; // Asumsikan true dulu
 
         foreach ($cart as $item) {
             $isThisItemDigital = false;
@@ -480,80 +461,61 @@ class CheckoutController extends Controller
 
             // JIKA KETEMU 1 SAJA BARANG FISIK, MAKA KERANJANG BUKAN 100% DIGITAL
             if (!$isThisItemDigital) {
-                $isDigital = false;
+                $isStrictlyDigital = false;
                 break; // Hentikan pengecekan karena sudah pasti butuh pengiriman fisik
             }
         } */
 
-      // === PERBAIKAN PERFORMA: Eager Loading Produk (Cegah N+1 Query) ===
-        // Tarik semua ID produk di keranjang, query ke DB HANYA 1 KALI
+      // === PERBAIKAN PERFORMA & HYBRID CART ===
         $productIds = collect($cart)->pluck('product_id')->filter()->unique()->toArray();
         $productsCache = \App\Models\Product::with('category')->whereIn('id', $productIds)->get()->keyBy('id');
 
-        $isDigital = true; // Asumsikan true dulu
+        // Pisahkan menjadi 2 bendera (flags)
+        $hasDigital = false;
+        $hasPhysical = false;
 
         foreach ($cart as $item) {
             $isThisItemDigital = false;
 
-            // 1. Cek dari tipe session cart
-            if (isset($item['type'])) {
-                $typeLower = strtolower($item['type']);
-                if (str_contains($typeLower, 'digital') || in_array($typeLower, ['eticket', 'jasa'])) {
-                    $isThisItemDigital = true;
-                }
+            // 1. Cek dari session cart
+            if (isset($item['type']) && (str_contains(strtolower($item['type']), 'digital') || in_array(strtolower($item['type']), ['eticket', 'jasa']))) {
+                $isThisItemDigital = true;
             }
 
-            // Ambil dari cache memori
+            // 2. Cek dari database & kategori
             $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
-
             if ($productCheck) {
-                // 2. Cek dari flag is_digital di database (Penanganan krusial yang terlewat)
                 if (isset($productCheck->is_digital) && $productCheck->is_digital) {
                     $isThisItemDigital = true;
                 }
 
-                // 3. Cek dari nama / grup kategori secara dinamis
                 $kategoriData = $productCheck->category;
-                $kategoriGrup = null;
+                $kategoriGrup = is_object($kategoriData) ? ($kategoriData->category_group ?? $kategoriData->name ?? null) : (is_array($kategoriData) ? ($kategoriData['category_group'] ?? $kategoriData['name'] ?? null) : $kategoriData);
 
-                if (is_object($kategoriData)) {
-                    $kategoriGrup = $kategoriData->category_group ?? $kategoriData->name ?? $kategoriData->nama_kategori ?? null;
-                } elseif (is_string($kategoriData)) {
-                    $kategoriGrup = $kategoriData;
-                } elseif (is_array($kategoriData)) {
-                    $kategoriGrup = $kategoriData['category_group'] ?? $kategoriData['name'] ?? null;
-                }
-
-                if ($kategoriGrup) {
-                    $kategoriLower = strtolower($kategoriGrup);
-                    if (
-                        str_contains($kategoriLower, 'digital') ||
-                        str_contains($kategoriLower, 'jasa') ||
-                        str_contains($kategoriLower, 'tiket') ||
-                        str_contains($kategoriLower, 'ticket') ||
-                        str_contains($kategoriLower, 'eticket')
-                    ) {
-                        $isThisItemDigital = true;
-                    }
+                if ($kategoriGrup && (str_contains(strtolower($kategoriGrup), 'digital') || str_contains(strtolower($kategoriGrup), 'jasa') || str_contains(strtolower($kategoriGrup), 'tiket') || str_contains(strtolower($kategoriGrup), 'ticket') || str_contains(strtolower($kategoriGrup), 'eticket'))) {
+                    $isThisItemDigital = true;
                 }
             }
 
-            // JIKA KETEMU 1 SAJA BARANG FISIK, MAKA KERANJANG BUKAN 100% DIGITAL
-            if (!$isThisItemDigital) {
-                $isDigital = false;
-                break; // Hentikan pengecekan karena sudah pasti butuh pengiriman fisik via kurir
+            // Tentukan status komponen keranjang
+            if ($isThisItemDigital) {
+                $hasDigital = true;
+            } else {
+                $hasPhysical = true;
             }
         }
-        // ===================================================================
 
-        if (!$isDigital && (!$user || empty($user->address_detail))) {
+        // Variabel khusus untuk mengunci Ongkir Rp0 (Hanya jika 100% digital)
+        $isStrictlyDigital = $hasDigital && !$hasPhysical;
+
+        if (!$isStrictlyDigital && (!$user || empty($user->address_detail))) {
             return redirect()->route('profile.edit')->with('warning', 'Silakan lengkapi alamat pengiriman dahulu.');
         }
 
         // ====================================================================
         // 🔥 KEAMANAN & UX: SILENT REGISTRATION UNTUK GUEST CHECKOUT DIGITAL
         // ====================================================================
-        if (!$user && $isDigital) {
+        if (!$user && $isStrictlyDigital) {
             // Ambil data kontak dari form checkout guest
             $emailGuest = $request->email ?? 'guest_' . time() . '@tokosancaka.com';
             $waGuest = $request->no_wa_penerima ?? '081234567890';
