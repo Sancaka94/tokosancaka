@@ -55,11 +55,13 @@ use App\Http\Controllers\PaymentRedirectController;
 use App\Http\Controllers\Webhook\PayPalWebhookController;
 use App\Http\Controllers\Api\DelivereeWebhookController;
 use App\Http\Controllers\LalamoveApiController;
+use App\Http\Controllers\Api\MandiriGatewayController;
 
 
 
 
-
+// Di dalam file routes/api.php
+Route::post('/webhook/mandiri/va', [\App\Http\Controllers\Api\MandiriGatewayController::class, 'notifyPaymentVirtualAccount']);
 
 // Pastikan diluar middleware auth agar iPaymu bisa menembak URL ini tanpa login
 Route::post('/webhook/ipaymu', [TopUpController::class, 'ipaymuNotify']);
