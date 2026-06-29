@@ -167,6 +167,7 @@ class CheckoutController extends Controller
                     ->with('warning', 'Alamat pengiriman profil Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
             }
         }
+
         // Ambil mode dari Database (Bukan Config/Env)
         $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
         $cacheKey = 'tripay_channels_list_' . $currentMode;
