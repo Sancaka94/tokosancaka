@@ -26,9 +26,7 @@ class ApiSettingsController extends Controller
         $lalamoveMode       = Api::getValue('LALAMOVE_MODE', 'global', 'sandbox');
         $paypalMode         = Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
         $delivereeMode      = Api::getValue('DELIVEREE_MODE', 'global', 'sandbox');
-        // --- TAMBAHAN IPAYMU ---
         $ipaymuMode         = Api::getValue('IPAYMU_MODE', 'global', 'sandbox');
-        // --- TAMBAHAN MANDIRI ---
         $mandiriMode        = Api::getValue('MANDIRI_MODE', 'global', 'sandbox');
 
         // KUNCI ANTI CRASH: Paksa ke sandbox kalau databasenya nyangkut di nilai lain
@@ -95,7 +93,6 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        // --- TAMBAHAN DARMAWISATA ---
         $dharmawisata = [
             'mode' => $dharmawisataMode,
             'development' => [
@@ -118,11 +115,14 @@ class ApiSettingsController extends Controller
             'api_key' => Api::getValue('FONNTE_API_KEY', 'global'),
         ];
 
+        // --- TAMBAHAN MAPBOX & SANCAKA EXPRESS ---
         $mapbox = [
-            'token' => Api::getValue('MAPBOX_TOKEN', 'global'),
+            'token'        => Api::getValue('MAPBOX_TOKEN', 'global'),
+            'base_fare'    => Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 5000),
+            'price_per_km' => Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 2000),
+            'price_per_kg' => Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1500),
         ];
 
-        // --- TAMBAHAN ARRAY DANA ---
         $dana = [
             'mode' => $danaMode,
             'sandbox' => [
@@ -141,7 +141,6 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        // --- TAMBAHAN ARRAY MIDTRANS ---
         $midtrans = [
             'mode' => $midtransMode,
             'sandbox' => [
@@ -160,8 +159,6 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        // --- TAMBAHAN ARRAY LALAMOVE ---
-        // LOG LOG
         $lalamove = [
             'mode' => $lalamoveMode,
             'sandbox' => [
@@ -174,7 +171,6 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        // --- TAMBAHAN ARRAY PAYPAL ---
         $paypal = [
             'mode' => $paypalMode,
             'sandbox' => [
@@ -191,24 +187,22 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        // --- TAMBAHAN ARRAY DELIVEREE ---
         $deliveree = [
             'mode' => $delivereeMode,
             'sandbox' => [
                 'company_id'  => Api::getValue('DELIVEREE_COMPANY_ID', 'sandbox'),
                 'api_key'     => Api::getValue('DELIVEREE_API_KEY', 'sandbox'),
                 'webhook_url' => Api::getValue('DELIVEREE_WEBHOOK_URL', 'sandbox'),
-                'base_url'    => Api::getValue('DELIVEREE_BASE_URL', 'sandbox'), // BARU
+                'base_url'    => Api::getValue('DELIVEREE_BASE_URL', 'sandbox'),
             ],
             'production' => [
                 'company_id'  => Api::getValue('DELIVEREE_COMPANY_ID', 'production'),
                 'api_key'     => Api::getValue('DELIVEREE_API_KEY', 'production'),
                 'webhook_url' => Api::getValue('DELIVEREE_WEBHOOK_URL', 'production'),
-                'base_url'    => Api::getValue('DELIVEREE_BASE_URL', 'production'), // BARU
+                'base_url'    => Api::getValue('DELIVEREE_BASE_URL', 'production'),
             ]
         ];
 
-        // --- TAMBAHAN IPAYMU ---
         $ipaymu = [
             'mode' => $ipaymuMode,
             'sandbox' => [
@@ -221,13 +215,6 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        // --- TAMBAHAN MANDIRI ---
-        $mandiriMode = Api::getValue('MANDIRI_MODE', 'global', 'sandbox');
-
-        // TAMBAHKAN BARIS INI: Cegah mode null/kosong biar JS ga crash
-        $mandiriMode = in_array($mandiriMode, ['sandbox', 'production']) ? $mandiriMode : 'sandbox';
-
-        // --- TAMBAHAN MANDIRI API ---
         $mandiri = [
             'mode' => $mandiriMode,
             'sandbox' => [
@@ -244,11 +231,8 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        // Tambahkan string 'ipaymu' dan 'mandiri' di dalam compact()
-
         return view('admin.settings.api_settings', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu', 'mandiri', 'mapbox'));
-
-        }
+    }
 
     public function update(Request $request)
     {
@@ -304,7 +288,6 @@ class ApiSettingsController extends Controller
                 $env = $request->dharmawisata_mode;
                 Api::setValue('DHARMAWISATA_MODE', $env, 'dharmawisata', 'global');
 
-                // Tambahan: Auto-detect default Base URL sesuai environment
                 $baseUrl = $request->dharmawisata_base_url;
                 if (empty($baseUrl)) {
                     $baseUrl = ($env === 'production')
@@ -321,8 +304,12 @@ class ApiSettingsController extends Controller
             } elseif ($type === 'fonnte') {
                 Api::setValue('FONNTE_API_KEY', $request->fonnte_api_key, 'fonnte', 'global');
 
-                } elseif ($type === 'mapbox') {
+            // --- TAMBAHAN MAPBOX & SANCAKA EXPRESS ---
+            } elseif ($type === 'mapbox') {
                 Api::setValue('MAPBOX_TOKEN', trim(strip_tags($request->mapbox_token)), 'mapbox', 'global');
+                Api::setValue('SANCAKA_EXPRESS_BASE_FARE', $request->base_fare, 'mapbox', 'global');
+                Api::setValue('SANCAKA_EXPRESS_PER_KM', $request->price_per_km, 'mapbox', 'global');
+                Api::setValue('SANCAKA_EXPRESS_PER_KG', $request->price_per_kg, 'mapbox', 'global');
 
             } elseif ($type === 'dana') {
                 $env = $request->dana_mode;
@@ -352,7 +339,6 @@ class ApiSettingsController extends Controller
                 Api::setValue('MIDTRANS_SNAP_CLIENT_ID', $request->midtrans_snap_client_id, 'midtrans', $env);
                 Api::setValue('MIDTRANS_SNAP_CLIENT_SECRET', $request->midtrans_snap_client_secret, 'midtrans', $env);
 
-            // LOG LOG
             } elseif ($type === 'lalamove') {
                 $env = $request->lalamove_mode;
                 Api::setValue('LALAMOVE_MODE', $env, 'lalamove', 'global');
@@ -361,24 +347,20 @@ class ApiSettingsController extends Controller
 
             } elseif ($type === 'paypal') {
                 $env = $request->paypal_mode;
-
                 Api::setValue('PAYPAL_MODE', $env, 'paypal', 'global');
                 Api::setValue('PAYPAL_CLIENT_ID', $request->paypal_client_id, 'paypal', $env);
                 Api::setValue('PAYPAL_SECRET_1', $request->paypal_secret_1, 'paypal', $env);
                 Api::setValue('PAYPAL_SECRET_2', $request->paypal_secret_2, 'paypal', $env);
-
                 if ($request->has('paypal_webhook_id')) {
                     Api::setValue('PAYPAL_WEBHOOK_ID', $request->paypal_webhook_id, 'paypal', $env);
                 }
 
-            // --- TAMBAHAN UPDATE DELIVEREE ---
             } elseif ($type === 'deliveree') {
                 $env = $request->deliveree_mode;
                 Api::setValue('DELIVEREE_MODE', $env, 'deliveree', 'global');
                 Api::setValue('DELIVEREE_COMPANY_ID', $request->deliveree_company_id, 'deliveree', $env);
                 Api::setValue('DELIVEREE_API_KEY', $request->deliveree_api_key, 'deliveree', $env);
 
-                // Set Base URL dinamis. Jika form dikosongkan, gunakan default v10 dari dokumentasi.
                 $baseUrl = $request->deliveree_base_url;
                 if (empty($baseUrl)) {
                     $baseUrl = ($env === 'production')
@@ -386,35 +368,25 @@ class ApiSettingsController extends Controller
                         : 'https://api.sandbox.deliveree.com/public_api/v10';
                 }
                 Api::setValue('DELIVEREE_BASE_URL', $baseUrl, 'deliveree', $env);
-
                 if ($request->has('deliveree_webhook_url')) {
                     Api::setValue('DELIVEREE_WEBHOOK_URL', $request->deliveree_webhook_url, 'deliveree', $env);
                 }
 
-            // --- TAMBAHAN IPAYMU ---
             } elseif ($type === 'ipaymu') {
                 $env = $request->ipaymu_mode;
                 Api::setValue('IPAYMU_MODE', $env, 'ipaymu', 'global');
                 Api::setValue('IPAYMU_VA', $request->ipaymu_va, 'ipaymu', $env);
                 Api::setValue('IPAYMU_API_KEY', $request->ipaymu_api_key, 'ipaymu', $env);
 
-            // --- TAMBAHAN MANDIRI ---
-           } elseif ($type === 'mandiri') {
+            } elseif ($type === 'mandiri') {
                 $env = $request->mandiri_mode;
-
-                // KUNCI ANTI NYANGKUT: Cegah status kosong saat disubmit
                 if (empty($env) || !in_array($env, ['sandbox', 'production'])) {
                     $env = 'sandbox';
                 }
-
                 Api::setValue('MANDIRI_MODE', $env, 'mandiri', 'global');
-
-                // Zero Trust Input Sanitization (Kecuali Private Key karena struktur .pem)
                 Api::setValue('MANDIRI_CLIENT_ID', trim(strip_tags($request->mandiri_client_id)), 'mandiri', $env);
                 Api::setValue('MANDIRI_CLIENT_SECRET', trim(strip_tags($request->mandiri_client_secret)), 'mandiri', $env);
                 Api::setValue('MANDIRI_PARTNER_ID', trim(strip_tags($request->mandiri_partner_id)), 'mandiri', $env);
-
-                // Private Key (.pem format) tidak di-strip_tags untuk mencegah corrupt pada sertifikat OpenSSL RSA
                 if ($request->has('mandiri_private_key')) {
                     Api::setValue('MANDIRI_PRIVATE_KEY', $request->mandiri_private_key, 'mandiri', $env);
                 }

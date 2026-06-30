@@ -799,21 +799,57 @@
                 {{-- 14. TAB MAPBOX --}}
                 <div x-show="activeTab === 'mapbox'" style="display:none;" x-transition.opacity>
                     <div class="p-6 border-b border-zinc-200">
-                        <h3 class="text-lg font-bold text-zinc-900 mb-1">Mapbox API</h3>
-                        <p class="text-sm text-zinc-500">Konfigurasi Access Token untuk layanan Peta & Rute (Berlaku Global).</p>
+                        <h3 class="text-lg font-bold text-zinc-900 mb-1">Sancaka Express & Mapbox</h3>
+                        <p class="text-sm text-zinc-500">Konfigurasi Access Token peta dan rumus tarif pengiriman internal.</p>
                     </div>
-                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="divide-y divide-zinc-200">
                         @csrf @method('PUT')
                         <input type="hidden" name="type" value="mapbox">
 
-                        <div>
-                            <label class="block text-xs font-medium text-zinc-700 uppercase">Mapbox Public Token (pk.xxx...)</label>
-                            <input type="text" name="mapbox_token" x-model="mapboxData.token" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" required placeholder="pk.eyJ1Ijoi...">
-                            <p class="text-xs text-zinc-500 mt-1">Gunakan token Mapbox yang kolom <strong>URL Restrictions</strong>-nya dikosongkan agar bisa diakses backend.</p>
+                        {{-- Section Mapbox Token (Landscape) --}}
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+                            <div class="md:col-span-1">
+                                <h4 class="text-sm font-semibold text-zinc-900">Mapbox Token</h4>
+                                <p class="text-xs text-zinc-500 mt-1">API Token diperlukan untuk menghitung rute dan jarak tempuh kurir Sancaka Express antara titik pengirim dan penerima.</p>
+                                <a href="https://account.mapbox.com/access-tokens/" target="_blank" class="inline-block mt-3 text-xs font-medium text-blue-600 hover:text-blue-700">Dapatkan Token &rarr;</a>
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-medium text-zinc-700 uppercase mb-1">Public Token (pk.xxx...)</label>
+                                <input type="text" name="mapbox_token" x-model="mapboxData.token" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" required placeholder="pk.eyJ1Ijoi...">
+                                <p class="text-[11px] text-zinc-500 mt-1.5">Gunakan token Mapbox yang kolom <strong>URL Restrictions</strong>-nya dikosongkan.</p>
+                            </div>
                         </div>
 
-                        <div class="flex justify-end pt-4">
-                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded hover:bg-black text-sm font-medium transition-colors">Simpan Pengaturan</button>
+                        {{-- Section Tarif Sancaka (Landscape) --}}
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+                            <div class="md:col-span-1">
+                                <h4 class="text-sm font-semibold text-zinc-900">Tarif Sancaka Express</h4>
+                                <p class="text-xs text-zinc-500 mt-1">Sistem akan mengkalkulasi otomatis berdasarkan jarak dan berat.</p>
+                                <div class="mt-3 p-2 bg-zinc-50 border border-zinc-200 rounded text-[10px] font-mono text-zinc-600">
+                                    Tarif Dasar + (Jarak x Harga/KM) + (Berat x Harga/KG)
+                                </div>
+                            </div>
+                            <div class="md:col-span-2 space-y-5">
+                                <div>
+                                    <label class="block text-xs font-medium text-zinc-700 uppercase mb-1">Tarif Dasar (Rp)</label>
+                                    <input type="number" name="base_fare" x-model="mapboxData.base_fare" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border" required min="0">
+                                    <p class="text-[11px] text-zinc-500 mt-1">Biaya minimal pemanggilan kurir.</p>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-zinc-700 uppercase mb-1">Harga per KM (Rp)</label>
+                                        <input type="number" name="price_per_km" x-model="mapboxData.price_per_km" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border" required min="0">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-zinc-700 uppercase mb-1">Harga per KG (Rp)</label>
+                                        <input type="number" name="price_per_kg" x-model="mapboxData.price_per_kg" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border" required min="0">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end p-6 bg-zinc-50 rounded-b-lg">
+                            <button type="submit" class="bg-zinc-900 text-white px-5 py-2 rounded shadow-sm hover:bg-zinc-800 text-sm font-medium transition-colors">Simpan Pengaturan</button>
                         </div>
                     </form>
                 </div>
@@ -848,7 +884,7 @@
             delivereeData: @json($deliveree ?? ['mode' => 'sandbox']),
             ipaymuData: @json($ipaymu ?? ['mode' => 'sandbox']),
             mandiriData: @json($mandiri ?? ['mode' => 'sandbox']),
-            mapboxData: @json($mapbox ?? ['token' => '']),
+            mapboxData: @json($mapbox ?? ['token' => '', 'base_fare' => 5000, 'price_per_km' => 2000, 'price_per_kg' => 1500]),
 
             // --- FUNGSI AJAX TOGGLE APP DEBUG (BARU) ---
             async toggleDebug() {
