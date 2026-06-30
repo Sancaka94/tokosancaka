@@ -2641,12 +2641,23 @@ TEXT;
             $totalCost = $baseFare + $costDistance + $costWeight;
             $finalCost = (int) (ceil($totalCost / 500) * 500);
 
-            // Menghitung Fee COD secara Dinamis
+             // ==========================================================
+            // 👇 PERBAIKAN: RUMUS FEE COD
+            // ==========================================================
             $codFeePercent = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_COD_FEE_PERCENT', 'global', 3);
             $codFee = 0;
-            if ($itemPrice > 0 && $codFeePercent > 0) {
-                $codFee = (int) ceil(($itemPrice * $codFeePercent) / 100);
+
+            if ($codFeePercent > 0) {
+                // OPSI 1: Dihitung dari (Harga Barang + Tarif Ongkir) -- Standar Umum COD
+                $dasarPerhitunganCOD = $itemPrice + $finalCost;
+
+                // OPSI 2: Jika Anda mau murni 3% dari Ongkir saja (seperti contoh 51.000 x 3% = 1.530)
+                // Hapus tanda // di bawah ini dan matikan Opsi 1
+                // $dasarPerhitunganCOD = $finalCost;
+
+                $codFee = (int) ceil(($dasarPerhitunganCOD * $codFeePercent) / 100);
             }
+            // ==========================================================
 
             // LOG 4: Catat rincian detail kalkulasi sebelum dibungkus ke array results
             Log::info('LOG LOG: [Sancaka Express] Rincian Kalkulasi Harga:', [
@@ -2664,12 +2675,15 @@ TEXT;
                 'Fee_COD_Nominal' => $codFee
             ]);
 
+            $totalCost = $baseFare + ($distanceKm * $pricePerKm) + ($weightKg * $pricePerKg);
+            $finalCost = (int) (ceil($totalCost / 500) * 500);
+
             $results[] = [
                 'service' => 'sancaka_express',
                 'service_type' => 'Same Day Service',
                 'cost' => $finalCost,
                 'distance_fees' => $finalCost,
-                'extra_fees' => $codFee, // Disisipkan ke sini untuk ditangkap Frontend
+                'extra_fees' => $codFee, // Sekarang fee COD sudah dihitung dengan benar
                 'etd' => $etdText,
                 'cod' => true,
                 'jarak_km' => round($distanceKm, 2),
