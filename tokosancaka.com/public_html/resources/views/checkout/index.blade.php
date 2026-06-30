@@ -161,14 +161,29 @@
                 <div class="lg:col-span-2 space-y-8">
 
 
-                    @if($isStrictlyDigital)
-                    <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-red-600">
-                        <h2 class="text-lg font-bold text-gray-900 mb-4">Data Penerima {{ $hasPhysical ? '(Khusus E-Ticket)' : '(Produk Digital / E-Ticket)' }}</h2>
-                            <p class="text-sm text-gray-500 mb-4">Sistem sedang mendeteksi lokasi Anda untuk mempermudah pengisian alamat.</p>
+                   {{-- UBAH IF INI AGAR MAKANAN LOKAL JUGA MEMUNCULKAN FORM PENERIMA --}}
+                    @if($isStrictlyDigital || (isset($isLocalFood) && $isLocalFood))
+                    <div class="bg-white rounded-xl shadow-md p-6 border-l-4 {{ (isset($isLocalFood) && $isLocalFood) ? 'border-orange-500' : 'border-red-600' }}">
+                        <h2 class="text-lg font-bold text-gray-900 mb-4">Data Penerima {{ (isset($isLocalFood) && $isLocalFood) ? '(Kurir Sancaka Lokal)' : ($hasPhysical ? '(Khusus E-Ticket)' : '(Produk Digital / E-Ticket)') }}</h2>
+                            <p class="text-sm text-gray-500 mb-4">Mohon lengkapi data di bawah ini untuk kelancaran pesanan Anda.</p>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+                                    <input type="text" name="nama_penerima" id="nama_penerima" value="{{ optional(Auth::user())->nama_lengkap }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm" required>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Nomor WhatsApp</label>
+                                    <input type="text" name="no_wa_penerima" id="no_wa_penerima" value="{{ optional(Auth::user())->no_wa }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm" required>
+                                </div>
+
+                                @if(!Auth::check())
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-gray-700">Email (Untuk Bukti Pembayaran)</label>
+                                    <input type="email" name="email" id="email" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm" required>
+                                </div>
+                                @endif
+
                                     <input type="text" name="nama_penerima" id="nama_penerima" value="{{ optional(Auth::user())->nama_lengkap }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
                                 </div>
                                 <div>
