@@ -482,7 +482,7 @@
                 <i class="fa-solid fa-money-bill-transfer fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.dana.transfer_bank') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Transfer Bank</span>
             </a>
-            
+
 
 
             {{-- ================= MANAJEMEN INVOICE ================= --}}
@@ -562,7 +562,7 @@
                                 <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
                             </a>
                         </li>
-                        
+
                         {{-- 2. Tombol Index (Admin) --}}
                         <li>
                             <a href="{{ route('nota.index') }}" wire:navigate
@@ -792,6 +792,15 @@
                 </button>
                 <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
                     <ul class="pl-9 pr-2 py-1 space-y-1">
+
+                        <li>
+                            <a href="{{ route('admin.sancaka_express.index') }}" wire:navigate
+                               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                               class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.sancaka_express.*') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                Sancaka Express & Mapbox
+                            </a>
+                        </li>
+
                         <li><a href="{{ route('admin.logs.show') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.logs.show') ? 'text-red-500 font-bold bg-red-50' : 'text-red-500 hover:text-red-700 hover:bg-gray-50' }}">Log Error</a></li>
                         <li><a href="{{ route('admin.activity-log.index') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.activity-log.index') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">Log Aktivitas</a></li>
                         <li><a href="{{ route('admin.settings.index') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.settings.index') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">Pengaturan Aplikasi</a></li>
