@@ -112,15 +112,12 @@ class MandiriGatewayController extends Controller
         return base64_encode($signature);
     }
 
-    /**
-     * ZERO-TRUST RECURSIVE SANITIZER: Membersihkan Payload secara dinamis
-     */
     private function sanitizePayload($data)
     {
         if (is_array($data)) {
             foreach ($data as $key => $value) {
-                // Abaikan sanitasi HTML tags pada base64 image (untuk RDN/RDL)
-                if (in_array($key, ['selfiePhoto'])) {
+                // Abaikan sanitasi untuk field yang sensitif terhadap format/spasi
+                if (in_array($key, ['selfiePhoto', 'partnerServiceId'])) {
                     $data[$key] = $value;
                     continue;
                 }
@@ -128,45 +125,44 @@ class MandiriGatewayController extends Controller
             }
             return $data;
         }
-        // Bersihkan string dari potensi injeksi XSS, kecuali null/boolean
-        return is_string($data) ? trim(strip_tags($data)) : $data;
+        // Hapus fungsi trim() agar spasi tidak hilang
+        return is_string($data) ? strip_tags($data) : $data;
     }
 
-    /**
-     * CORE HTTP DISPATCHER
-     */
-    private function sendRequest($httpMethod, $endpoint, $payload = [])
-    {
-        $accessToken = $this->getAccessToken();
+   private function sendRequest($httpMethod, $endpoint, $payload = [])
+{
+    $accessToken = $this->getAccessToken();
+    $url = (strpos($endpoint, '/auth/') !== false ? $this->authUrl : $this->baseUrl) . $endpoint;
+    $timestamp = date('c');
 
-        // Jika endpoint auth, gunakan authUrl, jika transaksi gunakan baseUrl
-        $url = (strpos($endpoint, '/auth/') !== false ? $this->authUrl : $this->baseUrl) . $endpoint;
+    $sanitizedPayload = $this->sanitizePayload($payload);
+    $jsonBody = empty($sanitizedPayload) ? '' : json_encode($sanitizedPayload);
 
-        $timestamp = date('c');
-        $sanitizedPayload = $this->sanitizePayload($payload);
-        $jsonBody = empty($sanitizedPayload) ? '' : json_encode($sanitizedPayload);
+    $externalId = substr(time() . rand(100000000, 999999999), 0, 19);
+    $signature = $this->generateTransactionSignature($httpMethod, $endpoint, $accessToken, $jsonBody, $timestamp);
 
-        $externalId = substr(time() . rand(100000000, 999999999), 0, 19);
-        $signature = $this->generateTransactionSignature($httpMethod, $endpoint, $accessToken, $jsonBody, $timestamp);
+    $headers = [
+        'Authorization' => 'Bearer ' . $accessToken,
+        'Content-Type'  => 'application/json',
+        'X-TIMESTAMP'   => $timestamp,
+        'X-SIGNATURE'   => $signature,
+        'X-PARTNER-ID'  => $this->partnerId,
+        'X-EXTERNAL-ID' => $externalId,
+        'CHANNEL-ID'    => '12345',
+    ];
 
-        // LOG LOG
-        $headers = [
-            'Authorization' => 'Bearer ' . $accessToken,
-            'Content-Type'  => 'application/json',
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'X-PARTNER-ID'  => $this->partnerId,
-            'X-EXTERNAL-ID' => $externalId,
-            'CHANNEL-ID'    => '12345',
-        ];
+    $request = Http::withHeaders($headers);
 
-        $request = Http::withHeaders($headers);
-        $response = strtoupper($httpMethod) === 'POST'
-            ? $request->send('POST', $url, ['body' => $jsonBody])
-            : $request->send('GET', $url);
+    // Perbaikan eksekusi HTTP Client
+    $response = strtoupper($httpMethod) === 'POST'
+        ? $request->withBody($jsonBody, 'application/json')->post($url)
+        : $request->get($url);
 
-        return $response->json();
-    }
+    // Tambahkan LOG ini untuk menangkap error asli dari API Gateway Mandiri jika masih gagal
+    Log::info('RAW RESPONSE MANDIRI:', ['body' => $response->body()]);
+
+    return $response->json();
+}
 
     /* ==============================================================================
      * 23 ENDPOINT API MANDIRI FULL INTEGRATION

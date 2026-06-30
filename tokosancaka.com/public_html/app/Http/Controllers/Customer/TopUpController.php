@@ -4527,10 +4527,16 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             $partnerServiceId = str_pad(substr(config('services.mandiri.sandbox.partner_id', '89661'), 0, 5), 8, " ", STR_PAD_LEFT);
             $serviceIdClean = trim($partnerServiceId); // Untuk menyambung nomor
 
-            // Ambil nomor HP customer, pastikan hanya angka. Batas 15 digit.
-            $rawPhone = preg_replace('/[^0-9]/', '', $user->no_wa ?? $user->id_pengguna);
-            // Sesuai standar, panjang customerNo maksimal 20 digit, berarti rawPhone max 15 digit (karena 5 digit awal adalah service ID).
+            // Ambil nomor HP customer, pastikan hanya angka.
+            $rawPhone = preg_replace('/[^0-9]/', '', $user->no_wa ?? '');
+
+            // Jika panjang nomor HP kurang dari 9 digit, gunakan nomor dummy yang valid
+            if (strlen($rawPhone) < 9) {
+                $rawPhone = '081111111111';
+            }
+
             $customerNoClean = substr($rawPhone, 0, 15);
+            // Sesuai standar, panjang customerNo maksimal 20 digit, berarti rawPhone max 15 digit (karena 5 digit awal adalah service ID).
 
             // Format wajib: partnerServiceId + customerNo
             $finalCustomerNo = $serviceIdClean . $customerNoClean;
