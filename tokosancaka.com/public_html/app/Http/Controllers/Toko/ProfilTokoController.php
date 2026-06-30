@@ -8,15 +8,15 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Http; // <-- Tambahan untuk Tembak API
-use Illuminate\Support\Facades\Log;  // <-- Tambahan untuk Log Error
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use App\Models\Store;
 use App\Models\User;
 
 class ProfilTokoController extends Controller
 {
     /**
-     * Helper Function: Tembak API untuk mengubah Alamat menjadi Koordinat
+     * Helper Function: Tembak API Nominatim OpenStreetMap
      */
     private function geocodeAddress($address)
     {
@@ -24,12 +24,13 @@ class ProfilTokoController extends Controller
 
         try {
             $response = Http::withHeaders([
-                'User-Agent' => 'SancakaApp/1.0 (support@tokosancaka.com)',
+                // Wajib menyesuaikan User-Agent sesuai aturan Nominatim
+                'User-Agent' => 'SancakaMarketplace/1.0 (support@tokosancaka.com)',
                 'Accept'     => 'application/json',
             ])->timeout(10)->get($url, [
-                'q'          => $address,
-                'format'     => 'json',
-                'limit'      => 1,
+                'q'            => $address,
+                'format'       => 'json',
+                'limit'        => 1,
                 'countrycodes' => 'id'
             ]);
 
@@ -69,32 +70,34 @@ class ProfilTokoController extends Controller
             return redirect()->route('seller.dashboard')->with('error', 'Toko tidak ditemukan.');
         }
 
-        // 1. Validasi semua input (Perhatikan: Latitude & Longitude sekarang nullable)
+        // 1. Validasi Input
         $validatedData = $request->validate([
             'name' => [
                 'required', 'string', 'max:255',
                 Rule::unique('stores')->ignore($store->id),
             ],
-            'description'     => 'nullable|string|max:1000',
-            'province'        => 'required|string|max:100',
-            'regency'         => 'required|string|max:100',
-            'district'        => 'required|string|max:100',
-            'village'         => 'required|string|max:100',
-            'address_detail'  => 'required|string|max:500',
-            'zip_code'        => 'required|string|max:10',
-            'latitude'        => 'nullable|numeric|between:-90,90',   // <-- Ubah jadi nullable
-            'longitude'       => 'nullable|numeric|between:-180,180', // <-- Ubah jadi nullable
-            'logo'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'description'    => 'nullable|string|max:1000',
+            'province'       => 'required|string|max:100',
+            'regency'        => 'required|string|max:100',
+            'district'       => 'required|string|max:100',
+            'village'        => 'required|string|max:100',
+            'address_detail' => 'required|string|max:500',
+            'zip_code'       => 'required|string|max:10',
+            'latitude'       => 'nullable|numeric|between:-90,90',
+            'longitude'      => 'nullable|numeric|between:-180,180',
+            'logo'           => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ], [
             'name.unique' => 'Nama toko ini sudah digunakan oleh toko lain.',
+            'latitude.numeric' => 'Format latitude tidak valid.',
+            'longitude.numeric' => 'Format longitude tidak valid.',
         ]);
 
-        $lat = $request->latitude;
-        $lng = $request->longitude;
+        $lat = $request->input('latitude');
+        $lng = $request->input('longitude');
 
-        // 2. LOGIKA OTOMATIS: Jika GPS HP/PC gagal (kosong), Tembak API berdasarkan Alamat!
-        if (empty($lat) || empty($lng)) {
-            // Gabungkan alamat untuk ditembak ke API
+        // 2. LOGIKA OTOMATIS: Jika Latitude/Longitude kosong, tembak dari backend
+        if (blank($lat) || blank($lng)) {
+            // Urutan pencarian dari yang paling spesifik ke umum untuk akurasi Nominatim
             $fullAddress = "{$request->village}, {$request->district}, {$request->regency}, {$request->province}";
 
             $geoData = $this->geocodeAddress($fullAddress);
@@ -104,7 +107,7 @@ class ProfilTokoController extends Controller
                 $lng = $geoData['lng'];
                 Log::info("Koordinat toko {$store->name} diisi otomatis via API: {$lat}, {$lng}");
             } else {
-                return redirect()->back()->withInput()->with('error', 'Sistem gagal menemukan koordinat dari alamat Anda. Mohon izinkan akses GPS di browser atau isi koordinat secara manual.');
+                return redirect()->back()->withInput()->with('error', 'Sistem gagal menemukan koordinat dari alamat Anda. Pastikan nama wilayah sudah benar atau isi koordinat secara manual.');
             }
         }
 
@@ -127,8 +130,8 @@ class ProfilTokoController extends Controller
         $store->village = $validatedData['village'];
         $store->address_detail = $validatedData['address_detail'];
         $store->zip_code = $validatedData['zip_code'];
-        $store->latitude = $lat;  // <-- Masukkan hasil kordinat final
-        $store->longitude = $lng; // <-- Masukkan hasil kordinat final
+        $store->latitude = $lat;
+        $store->longitude = $lng;
         $store->save();
 
         // 5. Sinkronisasi data ke User
@@ -139,8 +142,8 @@ class ProfilTokoController extends Controller
         $user->village = $validatedData['village'];
         $user->address_detail = $validatedData['address_detail'];
         $user->postal_code = $validatedData['zip_code'];
-        $user->latitude = $lat;  // <-- Masukkan hasil kordinat final
-        $user->longitude = $lng; // <-- Masukkan hasil kordinat final
+        $user->latitude = $lat;
+        $user->longitude = $lng;
 
         if (isset($path)) {
              $user->store_logo_path = $path;
