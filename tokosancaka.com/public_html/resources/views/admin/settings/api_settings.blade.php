@@ -817,6 +817,7 @@
             paypalData: @json($paypal ?? ['mode' => 'sandbox']),
             delivereeData: @json($deliveree ?? ['mode' => 'sandbox']),
             ipaymuData: @json($ipaymu ?? ['mode' => 'sandbox']),
+            mandiriData: @json($mandiri ?? ['mode' => 'sandbox']),
 
             // --- FUNGSI AJAX TOGGLE APP DEBUG (BARU) ---
             async toggleDebug() {
