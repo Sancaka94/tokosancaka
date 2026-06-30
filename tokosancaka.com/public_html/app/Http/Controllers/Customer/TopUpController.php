@@ -4509,7 +4509,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         }
     }
 
-    /**
+   /**
      * =========================================================================
      * EKSEKUTOR PEMBAYARAN MANDIRI VIRTUAL ACCOUNT
      * =========================================================================
@@ -4520,26 +4520,65 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         $user = Auth::user();
 
         try {
-            // 1. Buat Request virtual untuk dikirim ke Gateway
+            // 1. Persiapan Format Data yang Ketat (Strict Mandiri API Standard)
+            // ---------------------------------------------------------------
+
+            // Ambil Partner Service ID dari config (atau set default 89661)
+            $partnerServiceId = str_pad(substr(config('services.mandiri.sandbox.partner_id', '89661'), 0, 5), 8, " ", STR_PAD_LEFT);
+            $serviceIdClean = trim($partnerServiceId); // Untuk menyambung nomor
+
+            // Ambil nomor HP customer, pastikan hanya angka. Batas 15 digit.
+            $rawPhone = preg_replace('/[^0-9]/', '', $user->no_wa ?? $user->id_pengguna);
+            // Sesuai standar, panjang customerNo maksimal 20 digit, berarti rawPhone max 15 digit (karena 5 digit awal adalah service ID).
+            $customerNoClean = substr($rawPhone, 0, 15);
+
+            // Format wajib: partnerServiceId + customerNo
+            $finalCustomerNo = $serviceIdClean . $customerNoClean;
+            $finalVirtualAccountNo = $serviceIdClean . $customerNoClean;
+
+            // Format nilai uang harus memiliki dua angka desimal (10000.00)
+            $amountValue = number_format((float)$transaction->amount, 2, '.', '');
+
+            // Tanggal kadaluwarsa (misal 24 jam dari sekarang). Format Wajib ISO8601 (yyyy-MM-dd'T'HH:mm:ssTZD)
+            $expiredDate = \Carbon\Carbon::now('Asia/Jakarta')->addDays(1)->format('Y-m-d\TH:i:sP');
+
+
+            // 2. Susun Payload (Body) sesuai standar Mandiri
+            // ---------------------------------------------------------------
             $requestData = new \Illuminate\Http\Request();
             $requestData->replace([
-                'partner_service_id' => '89661', // Ganti sesuai Service ID Mandiri Anda
-                'customer_no'        => substr(preg_replace('/[^0-9]/', '', $user->no_wa ?? $user->id_pengguna), 0, 15),
-                'name'               => $user->nama_lengkap ?? 'Customer Sancaka',
-                'email'              => $user->email ?? 'customer@sancaka.com',
-                'phone'              => preg_replace('/[^0-9]/', '', $user->no_wa ?? '6280000000000'),
-                'amount'             => $transaction->amount,
-                'trx_id'             => $transaction->reference_id // Wajib diikat ke database agar terlacak webhook
+                'partnerServiceId'    => $partnerServiceId,
+                'customerNo'          => $finalCustomerNo,
+                'virtualAccountNo'    => $finalVirtualAccountNo,
+                'virtualAccountName'  => substr($user->nama_lengkap ?? 'Customer Sancaka', 0, 255),
+                'virtualAccountEmail' => substr($user->email ?? 'customer@sancaka.com', 0, 50),
+                'virtualAccountPhone' => '62' . ltrim($customerNoClean, '0'), // Format 62xxx
+                'trxId'               => $transaction->reference_id,
+                'totalAmount'         => [
+                    'value'    => $amountValue,
+                    'currency' => 'IDR'
+                ],
+                'billDetails'         => [
+                    [
+                        'billAmount' => [
+                            'value'    => $amountValue,
+                            'currency' => 'IDR'
+                        ]
+                    ]
+                ],
+                'expiredDate'         => $expiredDate
             ]);
 
-            // 2. Injeksi Controller Mandiri secara internal
+            // 3. Injeksi Controller Mandiri secara internal
             $mandiriGateway = new \App\Http\Controllers\Api\MandiriGatewayController();
             $response = $mandiriGateway->createVirtualAccount($requestData);
 
             // Ekstrak respons API Mandiri
             $result = json_decode($response->getContent(), true);
 
-            // 3. Tangkap Nomor VA jika sukses (Kode sukses VA Mandiri adalah 2002700)
+            Log::info('LOG LOG: [MANDIRI VA] Response dari Gateway', ['result' => $result]);
+
+            // 4. Tangkap Nomor VA jika sukses (Kode sukses VA Mandiri adalah 2002700)
             if (isset($result['responseCode']) && $result['responseCode'] === '2002700') {
                 $vaNumber = $result['virtualAccountData']['virtualAccountNo'] ?? null;
 
@@ -4554,9 +4593,9 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 }
             }
 
-            // LOG LOG
-            Log::error('LOG LOG: [MANDIRI VA] Gagal', $result);
-            return back()->with('error', 'Gagal membuat Virtual Account Mandiri: ' . ($result['responseMessage'] ?? 'Kesalahan tidak diketahui.'));
+            // Jika error dari Mandiri, tampilkan pesannya
+            Log::error('LOG LOG: [MANDIRI VA] Gagal', $result ?? []);
+            return back()->with('error', 'Gagal membuat Virtual Account Mandiri: ' . ($result['responseMessage'] ?? 'Kesalahan format (Bad Request). Pastikan nomor HP / Profil Anda valid.'));
 
         } catch (\Exception $e) {
             Log::error('LOG LOG: [MANDIRI VA] Exception: ' . $e->getMessage());
