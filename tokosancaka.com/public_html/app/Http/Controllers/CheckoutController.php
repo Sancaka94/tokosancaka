@@ -139,12 +139,12 @@ class CheckoutController extends Controller
             $kategoriName = strtolower($productCheck->category);
         }
 
-        // Logika Produk Digital / Jasa
+       // Logika Produk Digital / Jasa / Tiket
         if (
             (isset($productCheck->is_digital) && $productCheck->is_digital == 1) ||
             $kategoriFlag === 'non_fisik' ||
             str_contains($kategoriGroup, 'digital') || str_contains($kategoriGroup, 'jasa') || str_contains($kategoriGroup, 'tiket') || str_contains($kategoriGroup, 'non fisik') ||
-            str_contains($kategoriName, 'digital') || str_contains($kategoriName, 'non fisik')
+            str_contains($kategoriName, 'digital') || str_contains($kategoriName, 'non fisik') || str_contains($kategoriName, 'tiket') || str_contains($kategoriName, 'event') || str_contains($kategoriName, 'jasa')
         ) {
             $isDigital = true;
         }
@@ -460,12 +460,12 @@ class CheckoutController extends Controller
             $kategoriName = strtolower($productCheck->category);
         }
 
-        // Logika Produk Digital / Jasa
+       // Logika Produk Digital / Jasa / Tiket
         if (
             (isset($productCheck->is_digital) && $productCheck->is_digital == 1) ||
             $kategoriFlag === 'non_fisik' ||
             str_contains($kategoriGroup, 'digital') || str_contains($kategoriGroup, 'jasa') || str_contains($kategoriGroup, 'tiket') || str_contains($kategoriGroup, 'non fisik') ||
-            str_contains($kategoriName, 'digital') || str_contains($kategoriName, 'non fisik')
+            str_contains($kategoriName, 'digital') || str_contains($kategoriName, 'non fisik') || str_contains($kategoriName, 'tiket') || str_contains($kategoriName, 'event') || str_contains($kategoriName, 'jasa')
         ) {
             $isDigital = true;
         }
