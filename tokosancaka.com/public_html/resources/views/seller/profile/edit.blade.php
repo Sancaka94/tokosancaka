@@ -1,7 +1,7 @@
 @extends('layouts.customer')
 
 @push('styles')
-    {{-- CSS Select2 untuk Pencarian API KiriminAja --}}
+    {{-- CSS Select2 untuk Pencarian API  --}}
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <style>
         /* Custom Select2 ala Next.js / Vercel: Kompak, shadow halus, ring minimal */
@@ -113,7 +113,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 p-8 border-b border-gray-200">
                     <div class="md:col-span-1">
                         <h3 class="text-base font-medium text-gray-900">Alamat & Pengiriman</h3>
-                        <p class="text-sm text-gray-500 mt-1">Gunakan pencarian otomatis untuk memastikan wilayah Anda valid untuk perhitungan ongkos kirim (API KiriminAja).</p>
+                        <p class="text-sm text-gray-500 mt-1">Gunakan pencarian otomatis untuk memastikan wilayah Anda valid untuk perhitungan ongkos kirim (API ).</p>
                     </div>
 
                     <div class="md:col-span-2 space-y-6">
@@ -198,7 +198,7 @@
 <script>
 $(document).ready(function() {
     // ---------------------------------------------------------
-    // 1. Inisialisasi Pencarian Alamat KiriminAja (Select2)
+    // 1. Inisialisasi Pencarian Alamat  (Select2)
     // ---------------------------------------------------------
     $('#select2_alamat_toko').select2({
         width: '100%',
