@@ -239,6 +239,8 @@ class CheckoutController extends Controller
 
         $expressOptions = null;
         $instantOptions = null;
+        $isLocalFood = false;
+        $routeResult = null;
 
         // ========================================================
         // BLOK API KIRIMINAJA & NOMINATIM (HANYA UNTUK PRODUK FISIK)
@@ -447,8 +449,10 @@ class CheckoutController extends Controller
         }
 
         // PASTIKAN VARIABLE 'isDigital' DILEMPAR KE COMPACT
-        return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'hasDigital', 'hasPhysical', 'isStrictlyDigital'));
-    }
+        //return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'hasDigital', 'hasPhysical', 'isStrictlyDigital'));
+
+        return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'hasDigital', 'hasPhysical', 'isStrictlyDigital', 'isLocalFood', 'routeResult'));
+        }
 
 
    public function store(Request $request, KiriminAjaService $kiriminAja)
