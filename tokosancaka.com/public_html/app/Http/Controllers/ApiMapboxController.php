@@ -70,7 +70,9 @@ class ApiMapboxController extends Controller
 
         try {
             // 3. Eksekusi Request ke Mapbox API
-            $response = Http::timeout(10)->get($url, $queryParams);
+            $response = Http::withHeaders([
+                'Referer' => url('/'),
+            ])->timeout(10)->get($url, $queryParams);
             $data = $response->json();
 
             // === LOG 3: RESPON MENTAH DARI SERVER MAPBOX ===
