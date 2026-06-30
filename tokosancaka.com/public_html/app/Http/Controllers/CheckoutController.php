@@ -114,50 +114,57 @@ class CheckoutController extends Controller
         $cartHasLokal = false;
         $cartHasRegularPhysical = false;
 
-        foreach ($cart as $item) {
-            $isDigital = false;
-            $isLokal = false;
+       foreach ($cart as $item) {
+    $isDigital = false;
+    $isLokal = false;
 
-            $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
-            if ($productCheck) {
-                $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
-                $kategoriName  = strtolower($productCheck->category->name ?? '');
-                $kategoriFlag  = strtolower($productCheck->category->flag ?? ''); // Dukungan untuk 3 bendera yang baru dibuat
+    $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
 
-                // A. Deteksi Digital / Non-Fisik / Tiket / Jasa
-                if (
-                    $productCheck->is_digital ||
-                    $kategoriFlag === 'non_fisik' ||
-                    str_contains($kategoriGroup, 'digital') || str_contains($kategoriGroup, 'jasa') || str_contains($kategoriGroup, 'tiket') || str_contains($kategoriGroup, 'non fisik') ||
-                    str_contains($kategoriName, 'digital') || str_contains($kategoriName, 'non fisik') ||
-                    (isset($item['type']) && (str_contains(strtolower($item['type']), 'digital') || in_array(strtolower($item['type']), ['eticket', 'jasa'])))
-                ) {
-                    $isDigital = true;
-                }
-                // B. Deteksi Makanan / Minuman / Produk Lokal (MAPBOX)
-                elseif (
-                    $kategoriFlag === 'lokal' ||
-                    str_contains($kategoriGroup, 'food') || str_contains($kategoriGroup, 'makanan') || str_contains($kategoriGroup, 'minuman') || str_contains($kategoriGroup, 'lokal') ||
-                    str_contains($kategoriName, 'makanan') || str_contains($kategoriName, 'minuman') || str_contains($kategoriName, 'jajanan') || str_contains($kategoriName, 'lokal')
-                ) {
-                    $isLokal = true;
-                }
-            } else {
-                // Fallback dari session jika gagal nyari di DB
-                if (isset($item['type']) && (str_contains(strtolower($item['type']), 'digital') || in_array(strtolower($item['type']), ['eticket', 'jasa']))) {
-                    $isDigital = true;
-                }
-            }
+    // 1. Cek Parameter Utama dari Database
+    if ($productCheck) {
+        $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
+        $kategoriName  = strtolower($productCheck->category->name ?? '');
+        $kategoriFlag  = strtolower($productCheck->category->flag ?? '');
 
-            // Naikkan bendera sesuai jenis barangnya
-            if ($isDigital) {
-                $cartHasDigital = true;
-            } elseif ($isLokal) {
-                $cartHasLokal = true;
-            } else {
-                $cartHasRegularPhysical = true; // Barang kayak sepatu, baju, dll masuk ke sini
-            }
+        // Logika Produk Digital / Jasa
+        if (
+            $productCheck->is_digital == 1 ||
+            $kategoriFlag === 'non_fisik' ||
+            str_contains($kategoriGroup, 'digital') || str_contains($kategoriGroup, 'jasa') || str_contains($kategoriGroup, 'tiket') || str_contains($kategoriGroup, 'non fisik') ||
+            str_contains($kategoriName, 'digital') || str_contains($kategoriName, 'non fisik')
+        ) {
+            $isDigital = true;
         }
+        // Logika Produk Makanan / Lokal
+        elseif (
+            $kategoriFlag === 'lokal' ||
+            str_contains($kategoriGroup, 'food') || str_contains($kategoriGroup, 'makanan') || str_contains($kategoriGroup, 'minuman') || str_contains($kategoriGroup, 'lokal') ||
+            str_contains($kategoriName, 'makanan') || str_contains($kategoriName, 'minuman') || str_contains($kategoriName, 'jajanan') || str_contains($kategoriName, 'lokal')
+        ) {
+            $isLokal = true;
+        }
+    }
+
+    // 2. Fallback dari Session (Pastikan Lokal juga dicek di sini!)
+    if (isset($item['type'])) {
+        $typeCheck = strtolower($item['type']);
+        if (str_contains($typeCheck, 'digital') || in_array($typeCheck, ['eticket', 'jasa'])) {
+            $isDigital = true;
+        } elseif (in_array($typeCheck, ['food', 'makanan', 'minuman', 'lokal'])) {
+            $isLokal = true;
+        }
+    }
+
+    // 3. Eksekusi Bendera Akhir
+    if ($isDigital) {
+        $cartHasDigital = true;
+    } elseif ($isLokal) {
+        $cartHasLokal = true;
+    } else {
+        // Jika BUKAN digital dan BUKAN lokal, baru dipaksa jadi fisik reguler (WAJIB LOGIN)
+        $cartHasRegularPhysical = true;
+    }
+}
 
         // Variabel untuk Blade
         $isStrictlyDigital = $cartHasDigital && !$cartHasRegularPhysical && !$cartHasLokal;
@@ -403,31 +410,57 @@ class CheckoutController extends Controller
         $cartHasLokal = false;
         $cartHasRegularPhysical = false;
 
-        foreach ($cart as $item) {
-            $isDigital = false;
-            $isLokal = false;
+       foreach ($cart as $item) {
+    $isDigital = false;
+    $isLokal = false;
 
-            $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
-            if ($productCheck) {
-                $katGroup = strtolower($productCheck->category->category_group ?? '');
-                $katName  = strtolower($productCheck->category->name ?? '');
-                $katFlag  = strtolower($productCheck->category->flag ?? '');
+    $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
 
-                if ($productCheck->is_digital || $katFlag === 'non_fisik' || str_contains($katGroup, 'digital') || str_contains($katGroup, 'jasa') || str_contains($katGroup, 'tiket') || str_contains($katName, 'digital') || str_contains($katName, 'non fisik') || (isset($item['type']) && in_array(strtolower($item['type']), ['digital', 'eticket', 'jasa']))) {
-                    $isDigital = true;
-                } elseif ($katFlag === 'lokal' || str_contains($katGroup, 'food') || str_contains($katGroup, 'makanan') || str_contains($katGroup, 'minuman') || str_contains($katGroup, 'lokal') || str_contains($katName, 'makanan') || str_contains($katName, 'minuman') || str_contains($katName, 'lokal') || str_contains($katName, 'jajanan')) {
-                    $isLokal = true;
-                }
-            } else {
-                if (isset($item['type']) && in_array(strtolower($item['type']), ['digital', 'eticket', 'jasa'])) {
-                    $isDigital = true;
-                }
-            }
+    // 1. Cek Parameter Utama dari Database
+    if ($productCheck) {
+        $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
+        $kategoriName  = strtolower($productCheck->category->name ?? '');
+        $kategoriFlag  = strtolower($productCheck->category->flag ?? '');
 
-            if ($isDigital) $cartHasDigital = true;
-            elseif ($isLokal) $cartHasLokal = true;
-            else $cartHasRegularPhysical = true;
+        // Logika Produk Digital / Jasa
+        if (
+            $productCheck->is_digital == 1 ||
+            $kategoriFlag === 'non_fisik' ||
+            str_contains($kategoriGroup, 'digital') || str_contains($kategoriGroup, 'jasa') || str_contains($kategoriGroup, 'tiket') || str_contains($kategoriGroup, 'non fisik') ||
+            str_contains($kategoriName, 'digital') || str_contains($kategoriName, 'non fisik')
+        ) {
+            $isDigital = true;
         }
+        // Logika Produk Makanan / Lokal
+        elseif (
+            $kategoriFlag === 'lokal' ||
+            str_contains($kategoriGroup, 'food') || str_contains($kategoriGroup, 'makanan') || str_contains($kategoriGroup, 'minuman') || str_contains($kategoriGroup, 'lokal') ||
+            str_contains($kategoriName, 'makanan') || str_contains($kategoriName, 'minuman') || str_contains($kategoriName, 'jajanan') || str_contains($kategoriName, 'lokal')
+        ) {
+            $isLokal = true;
+        }
+    }
+
+    // 2. Fallback dari Session (Pastikan Lokal juga dicek di sini!)
+    if (isset($item['type'])) {
+        $typeCheck = strtolower($item['type']);
+        if (str_contains($typeCheck, 'digital') || in_array($typeCheck, ['eticket', 'jasa'])) {
+            $isDigital = true;
+        } elseif (in_array($typeCheck, ['food', 'makanan', 'minuman', 'lokal'])) {
+            $isLokal = true;
+        }
+    }
+
+    // 3. Eksekusi Bendera Akhir
+    if ($isDigital) {
+        $cartHasDigital = true;
+    } elseif ($isLokal) {
+        $cartHasLokal = true;
+    } else {
+        // Jika BUKAN digital dan BUKAN lokal, baru dipaksa jadi fisik reguler (WAJIB LOGIN)
+        $cartHasRegularPhysical = true;
+    }
+}
 
         // Variabel penentu alur
         $isStrictlyDigital = $cartHasDigital && !$cartHasRegularPhysical && !$cartHasLokal;
