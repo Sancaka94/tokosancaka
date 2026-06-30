@@ -114,21 +114,34 @@ class CheckoutController extends Controller
         $cartHasLokal = false;
         $cartHasRegularPhysical = false;
 
-       foreach ($cart as $item) {
+    foreach ($cart as $item) {
     $isDigital = false;
     $isLokal = false;
 
     $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
 
+    // Inisialisasi variabel supaya tidak error "undefined"
+    $kategoriName = '';
+    $kategoriFlag = '';
+    $kategoriGroup = '';
+
     // 1. Cek Parameter Utama dari Database
     if ($productCheck) {
-        $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
-        $kategoriName  = strtolower($productCheck->category->name ?? '');
-        $kategoriFlag  = strtolower($productCheck->category->flag ?? '');
+
+        // Pengecekan Aman (Anti-Crash)
+        if (is_object($productCheck->category)) {
+            // Kalau berbentuk Object, ambil semua atributnya
+            $kategoriName  = strtolower($productCheck->category->name ?? '');
+            $kategoriFlag  = strtolower($productCheck->category->flag ?? '');
+            $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
+        } elseif (is_string($productCheck->category)) {
+            // Kalau berbentuk String teks biasa, jadikan itu sebagai namanya
+            $kategoriName = strtolower($productCheck->category);
+        }
 
         // Logika Produk Digital / Jasa
         if (
-            $productCheck->is_digital == 1 ||
+            (isset($productCheck->is_digital) && $productCheck->is_digital == 1) ||
             $kategoriFlag === 'non_fisik' ||
             str_contains($kategoriGroup, 'digital') || str_contains($kategoriGroup, 'jasa') || str_contains($kategoriGroup, 'tiket') || str_contains($kategoriGroup, 'non fisik') ||
             str_contains($kategoriName, 'digital') || str_contains($kategoriName, 'non fisik')
@@ -145,7 +158,7 @@ class CheckoutController extends Controller
         }
     }
 
-    // 2. Fallback dari Session (Pastikan Lokal juga dicek di sini!)
+    // 2. Fallback dari Session
     if (isset($item['type'])) {
         $typeCheck = strtolower($item['type']);
         if (str_contains($typeCheck, 'digital') || in_array($typeCheck, ['eticket', 'jasa'])) {
@@ -155,15 +168,17 @@ class CheckoutController extends Controller
         }
     }
 
+    // 👇 LOG-NYA SUDAH DIPERBAIKI (Aman dari property on string) 👇
     \Illuminate\Support\Facades\Log::info([
-        'produk' => $productCheck?->name ?? 'Produk Tidak Ditemukan',
-        'is_digital_db' => $productCheck?->is_digital,
-        'kategori_flag' => $productCheck?->category?->flag,
-        'kategori_group' => $productCheck?->category?->category_group,
-        'kategori_name' => $productCheck?->category?->name,
-        'isDigital' => $isDigital,
-        'isLokal' => $isLokal,
+        'produk'         => $productCheck?->name ?? 'Produk Tidak Ditemukan',
+        'is_digital_db'  => $productCheck->is_digital ?? null,
+        'kategori_flag'  => $kategoriFlag,
+        'kategori_group' => $kategoriGroup,
+        'kategori_name'  => $kategoriName,
+        'isDigital'      => $isDigital,
+        'isLokal'        => $isLokal,
     ]);
+    // 👆 ======================================================== 👆
 
     // 3. Eksekusi Bendera Akhir
     if ($isDigital) {
@@ -420,21 +435,34 @@ class CheckoutController extends Controller
         $cartHasLokal = false;
         $cartHasRegularPhysical = false;
 
-       foreach ($cart as $item) {
+     foreach ($cart as $item) {
     $isDigital = false;
     $isLokal = false;
 
     $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
 
+    // Inisialisasi variabel supaya tidak error "undefined"
+    $kategoriName = '';
+    $kategoriFlag = '';
+    $kategoriGroup = '';
+
     // 1. Cek Parameter Utama dari Database
     if ($productCheck) {
-        $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
-        $kategoriName  = strtolower($productCheck->category->name ?? '');
-        $kategoriFlag  = strtolower($productCheck->category->flag ?? '');
+
+        // Pengecekan Aman (Anti-Crash)
+        if (is_object($productCheck->category)) {
+            // Kalau berbentuk Object, ambil semua atributnya
+            $kategoriName  = strtolower($productCheck->category->name ?? '');
+            $kategoriFlag  = strtolower($productCheck->category->flag ?? '');
+            $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
+        } elseif (is_string($productCheck->category)) {
+            // Kalau berbentuk String teks biasa, jadikan itu sebagai namanya
+            $kategoriName = strtolower($productCheck->category);
+        }
 
         // Logika Produk Digital / Jasa
         if (
-            $productCheck->is_digital == 1 ||
+            (isset($productCheck->is_digital) && $productCheck->is_digital == 1) ||
             $kategoriFlag === 'non_fisik' ||
             str_contains($kategoriGroup, 'digital') || str_contains($kategoriGroup, 'jasa') || str_contains($kategoriGroup, 'tiket') || str_contains($kategoriGroup, 'non fisik') ||
             str_contains($kategoriName, 'digital') || str_contains($kategoriName, 'non fisik')
@@ -451,7 +479,7 @@ class CheckoutController extends Controller
         }
     }
 
-    // 2. Fallback dari Session (Pastikan Lokal juga dicek di sini!)
+    // 2. Fallback dari Session
     if (isset($item['type'])) {
         $typeCheck = strtolower($item['type']);
         if (str_contains($typeCheck, 'digital') || in_array($typeCheck, ['eticket', 'jasa'])) {
@@ -460,6 +488,18 @@ class CheckoutController extends Controller
             $isLokal = true;
         }
     }
+
+    // 👇 LOG-NYA SUDAH DIPERBAIKI (Aman dari property on string) 👇
+    \Illuminate\Support\Facades\Log::info([
+        'produk'         => $productCheck?->name ?? 'Produk Tidak Ditemukan',
+        'is_digital_db'  => $productCheck->is_digital ?? null,
+        'kategori_flag'  => $kategoriFlag,
+        'kategori_group' => $kategoriGroup,
+        'kategori_name'  => $kategoriName,
+        'isDigital'      => $isDigital,
+        'isLokal'        => $isLokal,
+    ]);
+    // 👆 ======================================================== 👆
 
     // 3. Eksekusi Bendera Akhir
     if ($isDigital) {
