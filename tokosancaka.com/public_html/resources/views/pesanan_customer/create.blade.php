@@ -1658,7 +1658,7 @@
                         const safeServiceTypeLabel = (i.service_type_label || '').toString().replace(/-/g, ' ');
                         const useInsurance = $('#ansuransi').val() === 'iya';
                         const insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0;
-                        const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
+                        const codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : (i.extra_fees || 0);
                         const v = `${serviceType}-${safeService}-${safeServiceTypeLabel}-${i.cost}-${insuranceFeeValue}-${codFee}`;
                         const baseOngkirCost = parseInt(i.cost || 0) + parseInt(insuranceFeeValue || 0);
                         const actualCodFee = parseInt(codFee || 0);
@@ -1682,9 +1682,17 @@
                             }
                         }
 
+                        let codDisplayHtml = '-';
+                        if (i.cod) {
+                            codDisplayHtml = 'Tersedia';
+                            if (actualCodFee > 0) {
+                                // Tampilkan nominal COD merah di bawah kata "Tersedia"
+                                codDisplayHtml += `<br><small class="text-danger fw-bold">+ ${formatRupiah(actualCodFee)}</small>`;
+                            }
+                        }
+
                         const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}" data-shipping-cost="${parseInt(i.cost || 0)}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">Kirim Paket</button>`;
 
-                        // 3. PERBAIKAN HTML GAMBAR: Menghapus atribut onerror yang menyembunyikan gambar
                         b.append(`
                         <div class="ongkir-item-card">
                             <div class="ongkir-item-col col-service">
@@ -1692,7 +1700,9 @@
                                 <div class="service-info"><span class="service-name">${i.service_name.replace(/_/g, ' ')}</span><span class="service-type">${i.service_type_label}</span></div>
                             </div>
                             <div class="ongkir-item-col col-etd"><span class="col-label">Estimasi</span>${etdHtml}</div>
-                            <div class="ongkir-item-col col-cod"><span class="col-label">COD</span><span>${i.cod ? 'Tersedia' : '-'}</span></div>
+
+                            <div class="ongkir-item-col col-cod"><span class="col-label">COD</span><span>${codDisplayHtml}</span></div>
+
                             <div class="ongkir-item-col col-price"><span class="col-label">Tarif</span>
                                 <div class="price-value"><span class="final-price">${formatRupiah(i.cost)}</span>${hasDiscount ? `<span class="base-price text-decoration-line-through">${basePriceFmt}</span>` : ''}</div>
                                 <div class="price-details">${feeDetailsHtml}</div>
