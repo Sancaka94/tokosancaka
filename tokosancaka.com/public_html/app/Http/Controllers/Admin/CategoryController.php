@@ -10,11 +10,10 @@ use Illuminate\Support\Facades\Auth;
 
 class CategoryController extends Controller
 {
-    
     public function index(Request $request)
     {
         $query = Category::query();
-        
+
         // Tambahkan filter di halaman admin
         if ($request->filled('type')) {
             $query->where('type', $request->type);
@@ -23,6 +22,11 @@ class CategoryController extends Controller
         // Opsional filter berdasarkan kelompok produk/jasa
         if ($request->filled('category_group')) {
             $query->where('category_group', $request->category_group);
+        }
+
+        // TAMBAHAN: Opsional filter berdasarkan bendera (flag)
+        if ($request->filled('flag')) {
+            $query->where('flag', $request->flag);
         }
 
         $categories = $query->latest()->paginate(15);
@@ -44,8 +48,10 @@ class CategoryController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:categories,name',
-            'type' => 'required|string|in:marketplace,blog,product', // Menyesuaikan dengan data type di DB Anda
-            'category_group' => 'required|string|in:produk_fisik,produk_digital,jasa', // <-- TAMBAHAN VALIDASI BARU
+            'type' => 'required|string|in:marketplace,blog,product',
+            'category_group' => 'required|string|in:produk_fisik,produk_digital,jasa',
+            // TAMBAHAN: Validasi Flag
+            'flag' => 'required|string|in:non_fisik,fisik,lokal',
             'icon' => 'nullable|string|max:255',
         ]);
 
@@ -53,7 +59,9 @@ class CategoryController extends Controller
             'name' => $request->name,
             'slug' => Str::slug($request->name),
             'type' => $request->type,
-            'category_group' => $request->category_group, // <-- TAMBAHAN PENYIMPANAN DATA BARU
+            'category_group' => $request->category_group,
+            // TAMBAHAN: Simpan Flag
+            'flag' => $request->flag,
             'icon' => $request->icon,
             'user_id' => Auth::id(),
         ];
@@ -79,7 +87,9 @@ class CategoryController extends Controller
         $request->validate([
             'name' => 'required|string|max:255|unique:categories,name,' . $category->id,
             'type' => 'required|string|in:marketplace,blog,product',
-            'category_group' => 'required|string|in:produk_fisik,produk_digital,jasa', // <-- TAMBAHAN VALIDASI EDIT
+            'category_group' => 'required|string|in:produk_fisik,produk_digital,jasa',
+            // TAMBAHAN: Validasi Flag
+            'flag' => 'required|string|in:non_fisik,fisik,lokal',
             'icon' => 'nullable|string|max:255',
         ]);
 
@@ -87,7 +97,9 @@ class CategoryController extends Controller
             'name' => $request->name,
             'slug' => Str::slug($request->name),
             'type' => $request->type,
-            'category_group' => $request->category_group, // <-- TAMBAHAN UPDATE DATA BARU
+            'category_group' => $request->category_group,
+            // TAMBAHAN: Update Flag
+            'flag' => $request->flag,
             'icon' => $request->icon,
         ]);
 
@@ -105,7 +117,7 @@ class CategoryController extends Controller
         if ($category->type === 'blog' && $category->posts()->count() > 0) {
             return back()->with('error', 'Kategori tidak dapat dihapus karena masih digunakan oleh post.');
         }
-        
+
         $category->delete();
         return redirect()->route('admin.categories.index')->with('success', 'Kategori berhasil dihapus.');
     }
@@ -131,15 +143,19 @@ class CategoryController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255|unique:categories,name',
-            'category_group' => 'nullable|string|in:produk_fisik,produk_digital,jasa' // Validasi opsional untuk AJAX
+            'category_group' => 'nullable|string|in:produk_fisik,produk_digital,jasa',
+            // TAMBAHAN: Validasi Flag untuk AJAX
+            'flag' => 'nullable|string|in:non_fisik,fisik,lokal'
         ]);
 
         $category = Category::create([
             'name' => $request->name,
             'slug' => Str::slug($request->name),
-            'type' => 'product', 
-            'category_group' => $request->category_group ?? 'produk_fisik', // Default fallback jika request AJAX kosongan
-            'user_id' => auth()->id(), 
+            'type' => 'product',
+            'category_group' => $request->category_group ?? 'produk_fisik',
+            // TAMBAHAN: Default fallback ke 'fisik' jika request dari AJAX kosong
+            'flag' => $request->flag ?? 'fisik',
+            'user_id' => auth()->id(),
         ]);
 
         return response()->json([
@@ -148,7 +164,7 @@ class CategoryController extends Controller
             'data' => [
                 'id' => $category->id,
                 'name' => $category->name,
-                'attributes_url' => route('admin.categories.attributes', $category->id) 
+                'attributes_url' => route('admin.categories.attributes', $category->id)
             ]
         ]);
     }
@@ -156,7 +172,7 @@ class CategoryController extends Controller
     public function destroyAjax($id)
     {
         $category = Category::findOrFail($id);
-        
+
         if ($category->products()->exists()) {
             return response()->json([
                 'success' => false,
