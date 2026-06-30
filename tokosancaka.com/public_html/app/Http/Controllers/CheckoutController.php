@@ -275,8 +275,8 @@ class CheckoutController extends Controller
                     $userAddr  = $userAddrRes['data'][0] ?? null;
 
                     if ($storeAddr && $userAddr) {
-                        $storeLat = ($store && $store->latitude) ? (float) $store->latitude : null;
-                        $storeLng = ($store && $store->longitude) ? (float) $store->longitude : null;
+                        $storeLat = $store->latitude ?? ($store->user->latitude ?? null);
+                        $storeLng = $store->longitude ?? ($store->user->longitude ?? null);
                         $userLat  = ($user && $user->latitude) ? (float) $user->latitude : null;
                         $userLng  = ($user && $user->longitude) ? (float) $user->longitude : null;
 
@@ -322,8 +322,8 @@ class CheckoutController extends Controller
                 // 🔥 EKSEKUSI API MAPBOX UNTUK MAKANAN/MINUMAN/LOKAL 🔥
                 // ========================================================
                 if ($cartHasLokal) {
-                    $storeLat = ($store && $store->latitude) ? (float) $store->latitude : null;
-                    $storeLng = ($store && $store->longitude) ? (float) $store->longitude : null;
+                    $storeLat = $store->latitude ?? ($store->user->latitude ?? null);
+                    $storeLng = $store->longitude ?? ($store->user->longitude ?? null);
 
                     // Ambil koordinat dari Request (via geolokasi HP/Browser di frontend jika Guest)
                     // Atau dari database user jika login
@@ -524,8 +524,9 @@ class CheckoutController extends Controller
         $store = $firstProduct ? $firstProduct->store : null;
 
         // Dapatkan koordinat Toko untuk default
-        $storeLat = $store ? $store->latitude : '-7.3998307';
-        $storeLng = $store ? $store->longitude : '111.4511975';
+        // Dapatkan koordinat dinamis dari database (Toko -> User Penjual)
+        $storeLat = $store->latitude ?? ($store->user->latitude ?? null);
+        $storeLng = $store->longitude ?? ($store->user->longitude ?? null);
 
         // 2. ATURAN BLOKIR (HANYA CEGAT JIKA ADA BARANG FISIK REGULER)
         if ($cartHasRegularPhysical) {
@@ -871,7 +872,10 @@ class CheckoutController extends Controller
                 $storeAddr = $storeAddrRes['data'][0] ?? null; $userAddr = $userAddrRes['data'][0] ?? null;
                 $storeDistrictId = $storeAddr['district_id'] ?? null; $storeSubdistrictId = $storeAddr['subdistrict_id'] ?? null;
                 $userDistrictId = $userAddr['district_id'] ?? null; $userSubdistrictId = $userAddr['subdistrict_id'] ?? null;
-                $storeLat = $store->latitude; $storeLng = $store->longitude; $userLat = $user->latitude; $userLng = $user->longitude;
+                $storeLat = $store->latitude ?? ($store->user->latitude ?? null);
+                $storeLng = $store->longitude ?? ($store->user->longitude ?? null);
+                $userLat = $user->latitude ?? null;
+                $userLng = $user->longitude ?? null;
                 if (!$storeLat || !$storeLng) { $geo = $this->geocode($storeSearch); if ($geo) { $storeLat = $geo['lat']; $storeLng = $geo['lng']; } }
                 if (!$userLat || !$userLng) { $geo = $this->geocode($userSearch); if ($geo) { $userLat = $geo['lat']; $userLng = $geo['lng']; } }
                 $schedule = $kiriminAja->getSchedules();
@@ -2217,7 +2221,7 @@ class CheckoutController extends Controller
                             'service' => $courier, 'service_type' => $service, 'vehicle' => 'motor',
                             'order_prefix' => $order->invoice_number,
                             'packages' => [[
-                                'origin_lat' => $store->latitude, 'origin_long' => $store->longitude,
+                                'origin_lat' => $storeLat, 'origin_long' => $storeLng,
                                 'origin_name' => $store->name, 'origin_phone' => $store->user->no_wa,
                                 'origin_address' => $store->address_detail,
                                 'destination_lat' => $user->latitude, 'destination_long' => $user->longitude,
