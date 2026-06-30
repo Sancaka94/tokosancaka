@@ -1,5 +1,30 @@
 @extends('layouts.customer')
 
+@push('styles')
+    {{-- CSS Select2 untuk Pencarian API KiriminAja --}}
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        /* Custom Select2 agar menyatu dengan style Tailwind */
+        .select2-container .select2-selection--single {
+            height: 42px !important;
+            border: 1px solid #d1d5db !important;
+            border-radius: 0.5rem !important;
+            display: flex;
+            align-items: center;
+            padding-left: 0.5rem;
+            background-color: #ffffff;
+        }
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 40px !important;
+            right: 8px !important;
+        }
+        .select2-search__field:focus {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 1px #ef4444 !important;
+        }
+    </style>
+@endpush
+
 @section('content')
 <div class="py-12 bg-gray-50 min-h-screen">
     <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
@@ -54,48 +79,56 @@
                             <textarea id="description" name="description" class="block w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500 transition" rows="3" required>{{ old('description', $store->description) }}</textarea>
                         </div>
 
+                        {{-- Section API KiriminAja --}}
+                        <div class="md:col-span-2 p-5 bg-blue-50 border border-blue-100 rounded-xl">
+                            <label class="block font-bold text-sm text-blue-800 mb-2">Pencarian Wilayah Otomatis (API KiriminAja)</label>
+                            <select id="select2_alamat_toko" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500"></select>
+                            <p class="text-xs text-blue-600 mt-2"><i class="fas fa-info-circle"></i> Ketik nama Kecamatan / Kelurahan untuk mengisi otomatis form wilayah di bawah ini, dan sistem akan langsung mencari titik koordinat Anda.</p>
+                        </div>
+
+                        {{-- Input Wilayah (Dibuat Readonly agar ejaan sesuai dengan API KiriminAja) --}}
                         <div>
                             <label for="province" class="block font-semibold text-sm text-gray-700 mb-1">Provinsi</label>
-                            <input id="province" class="block w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500 transition" type="text" name="province" value="{{ old('province', $store->province) }}" required />
+                            <input id="province" class="block w-full border-gray-300 rounded-lg shadow-sm bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none" type="text" name="province" value="{{ old('province', $store->province) }}" readonly required />
                         </div>
 
                         <div>
                             <label for="regency" class="block font-semibold text-sm text-gray-700 mb-1">Kabupaten/Kota</label>
-                            <input id="regency" class="block w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500 transition" type="text" name="regency" value="{{ old('regency', $store->regency) }}" required />
+                            <input id="regency" class="block w-full border-gray-300 rounded-lg shadow-sm bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none" type="text" name="regency" value="{{ old('regency', $store->regency) }}" readonly required />
                         </div>
 
                         <div>
                             <label for="district" class="block font-semibold text-sm text-gray-700 mb-1">Kecamatan</label>
-                            <input id="district" class="block w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500 transition" type="text" name="district" value="{{ old('district', $store->district) }}" required />
+                            <input id="district" class="block w-full border-gray-300 rounded-lg shadow-sm bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none" type="text" name="district" value="{{ old('district', $store->district) }}" readonly required />
                         </div>
 
                         <div>
                             <label for="village" class="block font-semibold text-sm text-gray-700 mb-1">Desa/Kelurahan</label>
-                            <input id="village" class="block w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500 transition" type="text" name="village" value="{{ old('village', $store->village) }}" required />
-                        </div>
-
-                        <div class="md:col-span-2">
-                            <label for="address_detail" class="block font-semibold text-sm text-gray-700 mb-1">Detail Alamat (Nama Jalan, RT/RW, Blok)</label>
-                            <textarea id="address_detail" name="address_detail" class="block w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500 transition" rows="2" required>{{ old('address_detail', $store->address_detail) }}</textarea>
+                            <input id="village" class="block w-full border-gray-300 rounded-lg shadow-sm bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none" type="text" name="village" value="{{ old('village', $store->village) }}" readonly required />
                         </div>
 
                         <div>
                             <label for="zip_code" class="block font-semibold text-sm text-gray-700 mb-1">Kode Pos</label>
-                            <input id="zip_code" class="block w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500 transition" type="text" name="zip_code" value="{{ old('zip_code', $store->zip_code) }}" required />
+                            <input id="zip_code" class="block w-full border-gray-300 rounded-lg shadow-sm bg-gray-100 text-gray-600 cursor-not-allowed focus:outline-none" type="text" name="zip_code" value="{{ old('zip_code', $store->zip_code) }}" readonly required />
                         </div>
 
-                        {{-- Section Koordinat --}}
-                        <div class="md:col-span-2 p-5 bg-red-50/30 rounded-xl border border-red-100">
+                        <div class="md:col-span-2">
+                            <label for="address_detail" class="block font-semibold text-sm text-gray-700 mb-1">Detail Alamat (Nama Jalan, RT/RW, Blok)</label>
+                            <textarea id="address_detail" name="address_detail" class="block w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500 transition" rows="2" placeholder="Contoh: Jl. Sudirman No. 10, RT 01 / RW 02" required>{{ old('address_detail', $store->address_detail) }}</textarea>
+                        </div>
+
+                        {{-- Section Koordinat GPS --}}
+                        <div class="md:col-span-2 p-5 bg-red-50/50 rounded-xl border border-red-100">
                             <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-3">
                                 <div>
                                     <h4 class="text-base font-bold text-gray-800">Koordinat Peta</h4>
-                                    <p class="text-xs text-gray-500 mt-1">Klik 'Cari Koordinat' untuk mengisi Lat/Long secara otomatis berdasarkan wilayah di atas.</p>
+                                    <p class="text-xs text-gray-500 mt-1">Koordinat akan terisi otomatis saat Anda memilih wilayah dari form pencarian KiriminAja di atas.</p>
                                 </div>
                                 <button type="button" id="btn-cari-koordinat" class="inline-flex items-center justify-center px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-bold text-sm rounded-lg transition-colors shadow-sm whitespace-nowrap">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 mr-2">
                                       <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd" />
                                     </svg>
-                                    Cari Koordinat
+                                    Cari Ulang Koordinat
                                 </button>
                             </div>
 
@@ -103,13 +136,11 @@
                                 <div>
                                     <label for="latitude" class="block font-semibold text-sm text-gray-700 mb-1">Latitude</label>
                                     <input type="text" name="latitude" id="latitude" value="{{ old('latitude', $store->latitude ?? '') }}" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 bg-white" placeholder="-7.1234567">
-                                    {{-- PERBAIKAN BUG TYPO DI SINI --}}
                                     @error('latitude') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
                                 </div>
                                 <div>
                                     <label for="longitude" class="block font-semibold text-sm text-gray-700 mb-1">Longitude</label>
                                     <input type="text" name="longitude" id="longitude" value="{{ old('longitude', $store->longitude ?? '') }}" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-red-500 focus:border-red-500 bg-white" placeholder="110.1234567">
-                                    {{-- PERBAIKAN BUG TYPO DI SINI --}}
                                     @error('longitude') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
                                 </div>
                             </div>
@@ -141,32 +172,86 @@
 @endsection
 
 @push('scripts')
+{{-- Library jQuery & Select2 --}}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+$(document).ready(function() {
+    // ---------------------------------------------------------
+    // 1. Inisialisasi Pencarian Alamat KiriminAja (Select2)
+    // ---------------------------------------------------------
+    $('#select2_alamat_toko').select2({
+        width: '100%',
+        placeholder: 'Ketik min. 3 huruf (Cth: Ngawi / Margomulyo)...',
+        allowClear: true,
+        ajax: {
+            url: "{{ url('/checkout/search-address-ajax') }}",
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                return { q: params.term };
+            },
+            processResults: function (data) {
+                return { results: data.results };
+            },
+            cache: true
+        },
+        minimumInputLength: 3,
+    });
+
+    // ---------------------------------------------------------
+    // 2. Aksi Saat Wilayah Dipilih dari Dropdown Select2
+    // ---------------------------------------------------------
+    $('#select2_alamat_toko').on('select2:select', function (e) {
+        const data = e.params.data;
+
+        // Memecah format response: "Kelurahan, Kecamatan, Kota, Provinsi, Kode Pos"
+        let parts = data.raw_address.split(', ');
+
+        let kelurahan = parts[0] || '';
+        let kecamatan = parts[1] || '';
+        let kota      = parts[2] || '';
+        let provinsi  = parts[3] || '';
+        let kode_pos  = parts[4] || '';
+
+        // Auto-fill form input yang readonly
+        $('#village').val(kelurahan);
+        $('#district').val(kecamatan);
+        $('#regency').val(kota);
+        $('#province').val(provinsi);
+        $('#zip_code').val(kode_pos);
+
+        // Arahkan kursor ke input detail alamat
+        $('#address_detail').focus();
+
+        // TRIGGER OTOMATIS: Klik tombol cari koordinat
+        setTimeout(() => {
+            $('#btn-cari-koordinat').click();
+        }, 500);
+    });
+
+    // ---------------------------------------------------------
+    // 3. Logika Geocoding (Pencarian Otomatis Titik Peta API Mapbox/Nominatim)
+    // ---------------------------------------------------------
     const searchButton = document.getElementById('btn-cari-koordinat');
     const latInput = document.getElementById('latitude');
     const lonInput = document.getElementById('longitude');
     const alertBox = document.getElementById('geocode-alert');
 
-    const provinceInput = document.getElementById('province');
-    const regencyInput = document.getElementById('regency');
-    const districtInput = document.getElementById('district');
-    const villageInput = document.getElementById('village');
-
     if (searchButton) {
         searchButton.addEventListener('click', async function() {
-            const province = provinceInput.value.trim();
-            const regency = regencyInput.value.trim();
-            const district = districtInput.value.trim();
-            const village = villageInput.value.trim();
+            const province = document.getElementById('province').value.trim();
+            const regency = document.getElementById('regency').value.trim();
+            const district = document.getElementById('district').value.trim();
+            const village = document.getElementById('village').value.trim();
 
             if (!district || !regency) {
-                showAlert('Harap isi minimal **Kecamatan** dan **Kabupaten/Kota** untuk mencari koordinat.', 'error');
+                showAlert('Harap pilih wilayah dari pencarian KiriminAja di atas terlebih dahulu.', 'error');
                 return;
             }
 
-            // Membangun array pencarian, Nominatim kadang bingung jika terlalu spesifik namun namanya beda
-            // Oleh karena itu kita urutkan dari spesifik ke umum.
+            // Membangun array pencarian (diurutkan dari spesifik ke umum)
             let addressParts = [village, district, regency, province].filter(part => part !== '');
             let fullAddress = addressParts.join(', ');
 
@@ -176,11 +261,11 @@ document.addEventListener('DOMContentLoaded', function () {
             showAlert('Mencari koordinat untuk: ' + fullAddress, 'info');
 
             try {
-                // Tembak API
+                // Tembak API Nominatim OpenStreetMap
                 let response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(fullAddress)}&format=json&limit=1&countrycodes=id`);
                 let data = await response.json();
 
-                // Fallback: Jika gagal dengan Kelurahan, coba cari dengan Kecamatan + Kabupaten saja
+                // Fallback: Jika Kelurahan tidak dikenali, cari menggunakan Kecamatan + Kabupaten
                 if (data.length === 0 && village !== '') {
                     showAlert('Mencoba memperluas pencarian wilayah...', 'info');
                     let fallbackAddress = [district, regency, province].filter(part => part !== '').join(', ');
@@ -191,9 +276,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (data && data.length > 0) {
                     latInput.value = parseFloat(data[0].lat).toFixed(7);
                     lonInput.value = parseFloat(data[0].lon).toFixed(7);
-                    showAlert('Koordinat berhasil ditemukan!', 'success');
+                    showAlert('Koordinat berhasil ditemukan dan diisi otomatis!', 'success');
 
-                    // Efek visual kedip sukses pada input
+                    // Efek visual kedip sukses pada input form
                     latInput.classList.add('ring-2', 'ring-green-500');
                     lonInput.classList.add('ring-2', 'ring-green-500');
                     setTimeout(() => {
@@ -202,19 +287,20 @@ document.addEventListener('DOMContentLoaded', function () {
                     }, 2000);
 
                 } else {
-                    showAlert('Koordinat tidak ditemukan. Mohon periksa ejaan alamat, atau isi koordinat secara manual dari Google Maps.', 'error');
+                    showAlert('Koordinat tidak ditemukan secara presisi. Anda dapat mengisinya secara manual dari Google Maps.', 'error');
                 }
             } catch (error) {
                 console.error('Error fetching geocode:', error);
                 showAlert('Gagal mengambil koordinat. Periksa koneksi internet Anda.', 'error');
             } finally {
-                // Kembalikan status tombol
+                // Kembalikan status tombol pencari
                 this.disabled = false;
-                this.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 mr-2"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd" /></svg> Cari Koordinat`;
+                this.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 mr-2"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clip-rule="evenodd" /></svg> Cari Ulang Koordinat`;
             }
         });
     }
 
+    // Custom Alert Logic UI
     function showAlert(message, type = 'info') {
         alertBox.classList.remove('hidden', 'bg-red-50', 'border-red-500', 'text-red-800', 'bg-green-50', 'border-green-500', 'text-green-800', 'bg-blue-50', 'border-blue-500', 'text-blue-800');
 
