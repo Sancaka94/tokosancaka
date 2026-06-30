@@ -97,7 +97,7 @@ class CheckoutController extends Controller
     }
 
 
-    public function index(KiriminAjaService $kiriminAja)
+   public function index(KiriminAjaService $kiriminAja)
     {
         $cart = session()->get('cart', []);
         if (empty($cart)) {
@@ -105,43 +105,42 @@ class CheckoutController extends Controller
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
         }
 
-     // === PERBAIKAN PERFORMA & HYBRID CART ===
+        // === PERBAIKAN PERFORMA & HYBRID CART ===
         $productIds = collect($cart)->pluck('product_id')->filter()->unique()->toArray();
         $productsCache = \App\Models\Product::with('category')->whereIn('id', $productIds)->get()->keyBy('id');
 
-        // Pisahkan menjadi 2 bendera (flags)
-        $hasDigital = false;
-        $hasPhysical = false;
-
-       // === 1. TIGA BENDERA UTAMA HYBRID CART ===
+        // === 1. TIGA BENDERA UTAMA HYBRID CART ===
         $cartHasDigital = false;
-        $cartHasFood = false;
+        $cartHasLokal = false;
         $cartHasRegularPhysical = false;
 
         foreach ($cart as $item) {
             $isDigital = false;
-            $isFood = false;
+            $isLokal = false;
 
             $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
-
             if ($productCheck) {
                 $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
                 $kategoriName  = strtolower($productCheck->category->name ?? '');
+                $kategoriFlag  = strtolower($productCheck->category->flag ?? ''); // Dukungan untuk 3 bendera yang baru dibuat
 
-                // A. Deteksi Digital / Jasa / Tiket
+                // A. Deteksi Digital / Non-Fisik / Tiket / Jasa
                 if (
                     $productCheck->is_digital ||
-                    str_contains($kategoriGroup, 'digital') || str_contains($kategoriGroup, 'jasa') || str_contains($kategoriGroup, 'tiket') || str_contains($kategoriGroup, 'ticket') || str_contains($kategoriGroup, 'eticket') ||
+                    $kategoriFlag === 'non_fisik' ||
+                    str_contains($kategoriGroup, 'digital') || str_contains($kategoriGroup, 'jasa') || str_contains($kategoriGroup, 'tiket') || str_contains($kategoriGroup, 'non fisik') ||
+                    str_contains($kategoriName, 'digital') || str_contains($kategoriName, 'non fisik') ||
                     (isset($item['type']) && (str_contains(strtolower($item['type']), 'digital') || in_array(strtolower($item['type']), ['eticket', 'jasa'])))
                 ) {
                     $isDigital = true;
                 }
-                // B. Deteksi Makanan / Minuman
+                // B. Deteksi Makanan / Minuman / Produk Lokal (MAPBOX)
                 elseif (
-                    str_contains($kategoriGroup, 'food') || str_contains($kategoriGroup, 'makanan') || str_contains($kategoriGroup, 'minuman') ||
-                    str_contains($kategoriName, 'makanan') || str_contains($kategoriName, 'minuman') || str_contains($kategoriName, 'jajanan')
+                    $kategoriFlag === 'lokal' ||
+                    str_contains($kategoriGroup, 'food') || str_contains($kategoriGroup, 'makanan') || str_contains($kategoriGroup, 'minuman') || str_contains($kategoriGroup, 'lokal') ||
+                    str_contains($kategoriName, 'makanan') || str_contains($kategoriName, 'minuman') || str_contains($kategoriName, 'jajanan') || str_contains($kategoriName, 'lokal')
                 ) {
-                    $isFood = true;
+                    $isLokal = true;
                 }
             } else {
                 // Fallback dari session jika gagal nyari di DB
@@ -153,56 +152,37 @@ class CheckoutController extends Controller
             // Naikkan bendera sesuai jenis barangnya
             if ($isDigital) {
                 $cartHasDigital = true;
-            } elseif ($isFood) {
-                $cartHasFood = true;
+            } elseif ($isLokal) {
+                $cartHasLokal = true;
             } else {
                 $cartHasRegularPhysical = true; // Barang kayak sepatu, baju, dll masuk ke sini
             }
         }
 
-        // Variabel khusus untuk mengunci Ongkir Rp0 (Hanya jika 100% digital)
-        $isStrictlyDigital = $hasDigital && !$hasPhysical;
+        // Variabel untuk Blade
+        $isStrictlyDigital = $cartHasDigital && !$cartHasRegularPhysical && !$cartHasLokal;
+        $isLocalFood = $cartHasLokal;
+        $hasDigital = $cartHasDigital;
+        $hasPhysical = $cartHasRegularPhysical;
 
-        $isDigital = $isStrictlyDigital;
+        // === 2. ATURAN LOGIN MUTLAK ===
         $user = Auth::user();
-
-       $isLocalFood = false;
-        foreach ($cart as $item) {
-            $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
-            if ($productCheck) {
-                // Ambil nama kategori dan jadikan huruf kecil semua biar aman
-                $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
-                $kategoriName  = strtolower($productCheck->category->name ?? '');
-
-                // Deteksi kata kunci
-                if (str_contains($kategoriGroup, 'food') ||
-                    str_contains($kategoriGroup, 'makanan') ||
-                    str_contains($kategoriGroup, 'minuman') ||
-                    str_contains($kategoriName, 'makanan') ||
-                    str_contains($kategoriName, 'minuman')) {
-
-                    $isLocalFood = true;
-                }
-            }
-        }
-
-        // 2. JIKA BUKAN DIGITAL & BUKAN MAKANAN, BARU WAJIB LOGIN
-        if (!$isDigital && !$isLocalFood) {
+        // Jika ada 1 saja barang FISIK REGULER di keranjang, WAJIB LOGIN! (Digital & Lokal bablas)
+        if ($cartHasRegularPhysical) {
             if (!$user) {
-                return redirect()->route('login')->with('warning', 'Keranjang Anda berisi produk fisik reguler. Silakan login untuk memilih opsi pengiriman kurir.');
+                return redirect()->route('login')->with('warning', 'Keranjang Anda berisi produk fisik reguler. Silakan login untuk memilih kurir pengiriman.');
             }
             if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province) || empty($user->address_detail)) {
                 return redirect()->route('profile.edit')->with('warning', 'Alamat pengiriman Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
             }
         }
+
         // Ambil mode dari Database (Bukan Config/Env)
         $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
         $cacheKey = 'tripay_channels_list_' . $currentMode;
 
         // Cache list channel biar cepat loadingnya
         $tripayChannels = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 24, function () use ($currentMode) {
-
-            // Tentukan URL & Key berdasarkan mode Database
             if ($currentMode === 'production') {
                 $baseUrl = 'https://tripay.co.id/api';
                 $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
@@ -210,32 +190,12 @@ class CheckoutController extends Controller
                 $baseUrl = 'https://tripay.co.id/api-sandbox';
                 $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
             }
-
             try {
                 $response = Http::withToken($apiKey)->timeout(10)->get($baseUrl . '/merchant/payment-channel');
-                if ($response->successful()) {
-                    return $response->json()['data'] ?? [];
-                }
-            } catch (\Exception $e) {
-                // Silent error
-            }
+                if ($response->successful()) { return $response->json()['data'] ?? []; }
+            } catch (\Exception $e) {}
             return [];
         });
-
-
-        // === 2. ATURAN LOGIN MUTLAK ===
-        $user = Auth::user();
-
-        // Jika ada 1 saja barang FISIK REGULER di keranjang, WAJIB LOGIN!
-        if ($cartHasRegularPhysical) {
-            if (!$user) {
-                return redirect()->route('login')->with('warning', 'Keranjang Anda berisi produk fisik. Silakan login untuk memilih kurir pengiriman.');
-            }
-            if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province) || empty($user->address_detail)) {
-                return redirect()->route('profile.edit')->with('warning', 'Alamat pengiriman Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
-            }
-        }
-
 
         $firstCartItemData = reset($cart);
         $productId = $firstCartItemData['product_id'] ?? null;
@@ -243,68 +203,46 @@ class CheckoutController extends Controller
 
         if (!$firstProduct || !$firstProduct->store || !$firstProduct->store->user) {
             session()->forget('cart');
-
-            if (!$firstProduct) {
-                Log::warning('Checkout Index: Produk di keranjang tidak ditemukan.', ['product_id' => $productId]);
-            } else if (!$firstProduct->store) {
-                Log::warning('Checkout Index: Produk ada, tapi relasi store tidak ada.', ['product_id' => $productId]);
-            } else if (!$firstProduct->store->user) {
-                Log::warning('Checkout Index: Produk dan store ada, tapi relasi store->user tidak ada.', ['store_id' => $firstProduct->store->id]);
-            }
-
-            return redirect()->route('cart.index')
-                ->with('error', 'Produk atau data toko di keranjang Anda tidak lagi tersedia atau tidak valid. Keranjang telah dikosongkan.');
+            return redirect()->route('cart.index')->with('error', 'Produk atau data toko di keranjang Anda tidak valid. Keranjang telah dikosongkan.');
         }
 
         $store = $firstProduct->store;
 
-        // Validasi kelengkapan alamat toko (Hanya eksekusi jika produk fisik)
-        if (!$isDigital && $store) {
+        // Validasi kelengkapan alamat toko (Hanya eksekusi jika ada fisik reguler atau lokal)
+        if (($cartHasRegularPhysical || $cartHasLokal) && $store) {
             if (empty($store->village) || empty($store->district) || empty($store->regency) || empty($store->province)) {
-                 Log::error('Alamat toko tidak lengkap', ['store_id' => $store->id]);
-                return redirect()->route('cart.index')
-                    ->with('error', 'Alamat toko asal pengiriman tidak lengkap. Silakan hubungi penjual.');
+                return redirect()->route('cart.index')->with('error', 'Alamat toko asal pengiriman tidak lengkap. Silakan hubungi penjual.');
             }
         }
 
-        $expressOptions = null;
-        $instantOptions = null;
-        $isLocalFood = false;
+        $expressOptions = ['status' => true, 'results' => []];
+        $instantOptions = ['status' => true, 'results' => []];
         $routeResult = null;
+        $storeLat = null;
+        $storeLng = null;
 
         // ========================================================
-        // BLOK API KIRIMINAJA & NOMINATIM (HANYA UNTUK PRODUK FISIK)
+        // BLOK PENGIRIMAN FISIK (KIRIMINAJA & MAPBOX)
         // ========================================================
-        if (!$isDigital) {
+        if ($cartHasRegularPhysical || $cartHasLokal) {
             $storeSearch = $store ? ($store->village . ', ' . $store->district . ', ' . $store->regency . ', ' . $store->province) : '';
-
-            // Perbaikan Keamanan Zero Bugs: Cegah query string kosong
             $userSearch = '';
+
+            // Bypass error jika guest checkout untuk lokal
             if ($user && !empty($user->village)) {
                 $userSearch = $user->village . ', ' . $user->district . ', ' . $user->regency . ', ' . $user->province;
             }
 
-            // Set opsi ongkir default agar file Blade.php tidak error (Menunggu input Guest via AJAX)
-            $expressOptions = ['status' => true, 'results' => []];
-            $instantOptions = ['status' => true, 'results' => []];
-
             try {
-                // 1. Validasi Alamat Toko (Wajib)
-                $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
-                $storeAddr = $storeAddrRes['data'][0] ?? null;
-
-                if (!$storeAddr) {
-                    Log::error('Alamat Toko tidak valid', ['store_search' => $storeSearch]);
-                    return redirect()->route('cart.index')->with('error', 'Alamat toko asal pengiriman tidak dapat divalidasi oleh sistem ekspedisi.');
-                }
-
-                // 2. HANYA tembak API KiriminAja JIKA pengunjung sudah punya alamat di database
+                // HANYA tembak API KiriminAja JIKA pengunjung sudah punya alamat di database & ada barang reguler
                 $cleanSearch = trim(str_replace(',', '', $userSearch));
-                if (!empty($cleanSearch)) {
+                if (!empty($cleanSearch) && $cartHasRegularPhysical) {
+                    $storeAddrRes = $kiriminAja->searchAddress($storeSearch);
+                    $storeAddr = $storeAddrRes['data'][0] ?? null;
                     $userAddrRes  = $kiriminAja->searchAddress($userSearch);
                     $userAddr  = $userAddrRes['data'][0] ?? null;
 
-                    if ($userAddr) {
+                    if ($storeAddr && $userAddr) {
                         $storeLat = ($store && $store->latitude) ? (float) $store->latitude : null;
                         $storeLng = ($store && $store->longitude) ? (float) $store->longitude : null;
                         $userLat  = ($user && $user->latitude) ? (float) $user->latitude : null;
@@ -312,16 +250,11 @@ class CheckoutController extends Controller
 
                         $totalWeight = (int) collect($cart)->sum(function($item) {
                             $product = \App\Models\Product::find($item['product_id']);
-                            $kategoriGroup = $product->category->category_group ?? '';
-                            $isItemDigital = (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) || in_array($kategoriGroup, ['produk_digital', 'jasa']);
-                            if ($isItemDigital) return 0;
                             return ($product->weight ?? 1000) * $item['quantity'];
                         });
                         $finalWeight = max(1000, $totalWeight);
-
                         $itemValue   = (int) collect($cart)->sum(fn($item) => $item['price'] * $item['quantity']);
                         $category = $finalWeight >= 30000 ? 'trucking' : 'regular';
-
                         $defaultLength = $firstProduct->length ?? 5;
                         $defaultWidth  = $firstProduct->width  ?? 5;
                         $defaultHeight = $firstProduct->height ?? 5;
@@ -334,7 +267,6 @@ class CheckoutController extends Controller
                                  $finalWeight, $defaultLength, $defaultWidth, $defaultHeight,
                                  $itemValue, null, $category, 1
                              );
-
                              if (isset($expressRaw['status']) && $expressRaw['status'] === true && isset($expressRaw['results'])) {
                                  $cleanedExpress = [];
                                  foreach ($expressRaw['results'] as $opt) {
@@ -350,144 +282,86 @@ class CheckoutController extends Controller
                                  }
                                  $expressOptions['results'] = $cleanedExpress;
                              }
-                        } catch (Exception $e) {
-                             Log::error('Gagal mendapatkan ongkir Express/Cargo', ['error' => $e->getMessage()]);
-                        }
-
-                        // Tarik Data Instant
-                        if (!$storeLat || !$storeLng) {
-                            $geo = $this->geocode($storeSearch);
-                            if ($geo) { $storeLat = $geo['lat']; $storeLng = $geo['lng']; }
-                        }
-                        if (!$userLat || !$userLng) {
-                            $geo = $this->geocode($userSearch);
-                            if ($geo) { $userLat = $geo['lat']; $userLng = $geo['lng']; }
-                        }
-
-                        if ($storeLat && $storeLng && $userLat && $userLng) {
-                            try {
-                                 $instantRaw = $kiriminAja->getInstantPricing(
-                                     $storeLat, $storeLng, $store->address_detail ?? $storeSearch,
-                                     $userLat, $userLng, $user->address_detail ?? $userSearch,
-                                     $finalWeight, $itemValue, 'motor'
-                                 );
-
-                                 if (isset($instantRaw['status']) && $instantRaw['status'] === true && isset($instantRaw['result'])) {
-                                     $parsedInstantOptions = [];
-                                     foreach ($instantRaw['result'] as $provider) {
-                                         if (isset($provider['costs']) && is_array($provider['costs'])) {
-                                             foreach ($provider['costs'] as $cost) {
-                                                 $price = $cost['price']['total_price'] ?? 0;
-                                                 if ($price > 0) {
-                                                     $parsedInstantOptions[] = [
-                                                         'service' => $provider['name'],
-                                                         'service_name' => ucfirst($provider['name']) . ' ' . ucfirst($cost['service_type']),
-                                                         'service_type' => $cost['service_type'],
-                                                         'cost' => $cost['price']['shipping_costs'] ?? $price,
-                                                         'insurance_cost' => $cost['price']['insurance_fee'] ?? 0,
-                                                         'final_price' => $price,
-                                                         'etd' => $cost['estimation'] ?? '1-3 Jam',
-                                                         'cod_available' => false,
-                                                         'cod' => false,
-                                                         'cod_fee' => 0,
-                                                         'group' => 'instant',
-                                                     ];
-                                                 }
-                                             }
-                                         }
-                                     }
-                                     $instantOptions['results'] = $parsedInstantOptions;
-                                 }
-                            } catch (Exception $e) {
-                                 Log::error('Gagal mendapatkan ongkir Instant', ['error' => $e->getMessage()]);
-                            }
-                            // ========================================================
-                            // 🔥 TAMBAHAN 1: INJEKSI TARIF KURIR LOKAL (MAPBOX) 🔥
-                            // ========================================================
-                            // Deteksi apakah produk ini makanan/minuman lokal (Ganti keyword 'food' sesuai nama kategori di DB Anda)
-                           $kategoriGroup = $firstProduct->category->category_group ?? '';
-                            $kategoriName = $firstProduct->category->name ?? '';
-
-                            // Cek dari nama grup ATAU nama kategori langsung
-                            $isLocalFood = str_contains(strtolower($kategoriGroup), 'food')
-                                        || str_contains(strtolower($kategoriGroup), 'makanan')
-                                        || str_contains(strtolower($kategoriName), 'makanan');
-
-                            if ($isLocalFood && $storeLat && $storeLng && $userLat && $userLng) {
-                                try {
-                                    $apiMapbox = app(\App\Http\Controllers\ApiMapboxController::class);
-                                    $reqMapbox = new \Illuminate\Http\Request();
-                                    $reqMapbox->replace([
-                                        'origin_lat' => $storeLat,
-                                        'origin_lng' => $storeLng,
-                                        'dest_lat'   => $userLat,
-                                        'dest_lng'   => $userLng,
-                                    ]);
-
-                                    $routeResult = $apiMapbox->calculateRoute($reqMapbox)->getData(true);
-
-                                    if ($routeResult['success']) {
-                                        $costLocal = $routeResult['data']['estimated_cost'];
-
-                                        // Suntikkan Opsi Kurir Lokal ke dalam list Instant Options agar bisa dipilih user
-                                        $instantOptions['results'][] = [
-                                            'service' => 'sancaka_local',
-                                            'service_name' => 'Kurir Lokal Sancaka (Motor)',
-                                            'service_type' => 'FOOD',
-                                            'cost' => $costLocal,
-                                            'insurance_cost' => 0,
-                                            'final_price' => $costLocal,
-                                            'etd' => '15 - 45 Menit',
-                                            'cod_available' => true,
-                                            'cod' => true,
-                                            'cod_fee' => 0,
-                                            'group' => 'instant',
-                                        ];
-                                        $instantOptions['status'] = true;
-                                    }
-                                } catch (\Exception $e) {
-                                    Log::error('Gagal menghitung tarif kurir lokal Mapbox: ' . $e->getMessage());
-                                }
-                            }
-                            // ========================================================
-                        }
-                    } else {
-                        Log::warning('Alamat user tidak dikenali KiriminAja, wajib input manual.', ['user_search' => $userSearch]);
+                        } catch (Exception $e) {}
                     }
                 }
+
+                // ========================================================
+                // 🔥 EKSEKUSI API MAPBOX UNTUK MAKANAN/MINUMAN/LOKAL 🔥
+                // ========================================================
+                if ($cartHasLokal) {
+                    $storeLat = ($store && $store->latitude) ? (float) $store->latitude : null;
+                    $storeLng = ($store && $store->longitude) ? (float) $store->longitude : null;
+
+                    // Ambil koordinat dari Request (via geolokasi HP/Browser di frontend jika Guest)
+                    // Atau dari database user jika login
+                    $userLat = request('lat') ?? (($user && $user->latitude) ? (float) $user->latitude : null);
+                    $userLng = request('lng') ?? (($user && $user->longitude) ? (float) $user->longitude : null);
+
+                    if ($storeLat && $storeLng && $userLat && $userLng) {
+                        try {
+                            $apiMapbox = app(\App\Http\Controllers\ApiMapboxController::class);
+                            $reqMapbox = new \Illuminate\Http\Request();
+                            $reqMapbox->replace([
+                                'origin_lat' => $storeLat,
+                                'origin_lng' => $storeLng,
+                                'dest_lat'   => $userLat,
+                                'dest_lng'   => $userLng,
+                            ]);
+
+                            $routeResult = $apiMapbox->calculateRoute($reqMapbox)->getData(true);
+                            if ($routeResult['success']) {
+                                $costLocal = $routeResult['data']['estimated_cost'];
+                                $instantOptions['results'][] = [
+                                    'service' => 'sancaka_local',
+                                    'service_name' => 'Kurir Lokal Sancaka (Motor)',
+                                    'service_type' => 'FOOD/LOKAL',
+                                    'cost' => $costLocal,
+                                    'insurance_cost' => 0,
+                                    'final_price' => $costLocal,
+                                    'etd' => '15 - 45 Menit',
+                                    'cod_available' => true,
+                                    'cod' => true,
+                                    'cod_fee' => 0,
+                                    'group' => 'instant',
+                                ];
+                                $instantOptions['status'] = true;
+                            }
+                        } catch (\Exception $e) {
+                            Log::error('Mapbox Error: ' . $e->getMessage());
+                        }
+                    }
+                }
+
             } catch (Exception $e) {
-                Log::error('API Validation Bypass Executed', ['error' => $e->getMessage()]);
+                Log::error('API Error Executed', ['error' => $e->getMessage()]);
             }
         }
+
         // ========================================================
-        // JIKA PRODUK DIGITAL / JASA: BERIKAN FAKE RESPONSE AGAR BLADE AMAN
+        // JIKA PRODUK FULL DIGITAL: FAKE RESPONSE
         // ========================================================
-        else {
+        if ($isStrictlyDigital) {
             $expressOptions = [
                 'status' => true,
-                'results' => [
-                    [
-                        'service_name' => 'Pengiriman Digital / E-Ticket',
+                'results' => [[
+                        'service_name' => 'Pengiriman Digital / Non Fisik',
                         'service' => 'eticket',
                         'service_type' => 'noncod',
                         'cost' => 0,
                         'final_price' => 0,
-                        'etd' => 'Otomatis (1 Detik)',
+                        'etd' => 'Otomatis via Email/Sistem',
                         'group' => 'Digital',
                         'insurance_cost' => 0,
                         'cod_available' => false,
                         'cod_fee' => 0
-                    ]
-                ]
+                ]]
             ];
             $instantOptions = ['status' => false, 'results' => []];
         }
 
-        // PASTIKAN VARIABLE 'isDigital' DILEMPAR KE COMPACT
-        //return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'hasDigital', 'hasPhysical', 'isStrictlyDigital'));
-
         return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'hasDigital', 'hasPhysical', 'isStrictlyDigital', 'isLocalFood', 'storeLat', 'storeLng'));
-        }
+    }
 
 
    public function store(Request $request, KiriminAjaService $kiriminAja)
@@ -502,7 +376,6 @@ class CheckoutController extends Controller
             'alamat_lengkap_penerima' => 'nullable|string',
         ]);
 
-
         $cart = session()->get('cart', []);
         $user = Auth::user();
 
@@ -511,169 +384,86 @@ class CheckoutController extends Controller
         }
 
         // =========================================================================
-        // 🔥 ATURAN KETAT: SEMUA PRODUK TIDAK BOLEH CASH KECUALI USER ID 4 (ADMIN)
+        // 🔥 ATURAN KETAT: COD / CASH HANYA UNTUK ADMIN (ID 4)
         // =========================================================================
         $paymentMethodRaw = strtoupper(trim($request->payment_method));
-
-        // Tentukan keyword metode pembayaran apa saja yang dianggap "Cash" di sistem Anda
         $cashMethods = ['CASH', 'COD', 'CODBARANG'];
-
         if (in_array($paymentMethodRaw, $cashMethods)) {
-            // Cek apakah user sedang login DAN apakah ID-nya adalah 4
             if (!$user || $user->id_pengguna != 4) {
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', 'Mohon maaf, metode pembayaran Cash/COD hanya diperbolehkan khusus untuk akun Administrator Sancaka.');
+                return redirect()->back()->withInput()
+                    ->with('error', 'Metode pembayaran Cash/COD hanya diperbolehkan khusus untuk akun Administrator Sancaka.');
             }
         }
-        // =========================================================================
 
-       // Deteksi apakah keranjang ini 100% digital atau ada barang fisiknya
-        /* $isStrictlyDigital = true; // Asumsikan true dulu
-
-        foreach ($cart as $item) {
-            $isThisItemDigital = false;
-
-            if (isset($item['type']) && in_array(strtolower($item['type']), ['eticket', 'digital', 'jasa'])) {
-                $isThisItemDigital = true;
-            }
-
-            $productCheck = Product::find($item['product_id'] ?? null);
-            if ($productCheck) {
-                $kategoriObj = $productCheck->category()->first();
-                if ($kategoriObj && in_array($kategoriObj->category_group, ['produk_digital', 'jasa'])) {
-                    $isThisItemDigital = true;
-                }
-            }
-
-            // JIKA KETEMU 1 SAJA BARANG FISIK, MAKA KERANJANG BUKAN 100% DIGITAL
-            if (!$isThisItemDigital) {
-                $isStrictlyDigital = false;
-                break; // Hentikan pengecekan karena sudah pasti butuh pengiriman fisik
-            }
-        } */
-
-      // === PERBAIKAN PERFORMA & HYBRID CART ===
+        // === 1. TIGA BENDERA UTAMA HYBRID CART ===
         $productIds = collect($cart)->pluck('product_id')->filter()->unique()->toArray();
         $productsCache = \App\Models\Product::with('category')->whereIn('id', $productIds)->get()->keyBy('id');
 
-        // Pisahkan menjadi 2 bendera (flags)
-        $hasDigital = false;
-        $hasPhysical = false;
+        $cartHasDigital = false;
+        $cartHasLokal = false;
+        $cartHasRegularPhysical = false;
 
         foreach ($cart as $item) {
-            $isThisItemDigital = false;
+            $isDigital = false;
+            $isLokal = false;
 
-            // 1. Cek dari session cart
-            if (isset($item['type']) && (str_contains(strtolower($item['type']), 'digital') || in_array(strtolower($item['type']), ['eticket', 'jasa']))) {
-                $isThisItemDigital = true;
-            }
-
-            // 2. Cek dari database & kategori
             $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
             if ($productCheck) {
-                if (isset($productCheck->is_digital) && $productCheck->is_digital) {
-                    $isThisItemDigital = true;
+                $katGroup = strtolower($productCheck->category->category_group ?? '');
+                $katName  = strtolower($productCheck->category->name ?? '');
+                $katFlag  = strtolower($productCheck->category->flag ?? '');
+
+                if ($productCheck->is_digital || $katFlag === 'non_fisik' || str_contains($katGroup, 'digital') || str_contains($katGroup, 'jasa') || str_contains($katGroup, 'tiket') || str_contains($katName, 'digital') || str_contains($katName, 'non fisik') || (isset($item['type']) && in_array(strtolower($item['type']), ['digital', 'eticket', 'jasa']))) {
+                    $isDigital = true;
+                } elseif ($katFlag === 'lokal' || str_contains($katGroup, 'food') || str_contains($katGroup, 'makanan') || str_contains($katGroup, 'minuman') || str_contains($katGroup, 'lokal') || str_contains($katName, 'makanan') || str_contains($katName, 'minuman') || str_contains($katName, 'lokal') || str_contains($katName, 'jajanan')) {
+                    $isLokal = true;
                 }
-
-                $kategoriData = $productCheck->category;
-                $kategoriGrup = is_object($kategoriData) ? ($kategoriData->category_group ?? $kategoriData->name ?? null) : (is_array($kategoriData) ? ($kategoriData['category_group'] ?? $kategoriData['name'] ?? null) : $kategoriData);
-
-                if ($kategoriGrup && (str_contains(strtolower($kategoriGrup), 'digital') || str_contains(strtolower($kategoriGrup), 'jasa') || str_contains(strtolower($kategoriGrup), 'tiket') || str_contains(strtolower($kategoriGrup), 'ticket') || str_contains(strtolower($kategoriGrup), 'eticket'))) {
-                    $isThisItemDigital = true;
-                }
-            }
-
-            // Tentukan status komponen keranjang
-            if ($isThisItemDigital) {
-                $hasDigital = true;
             } else {
-                $hasPhysical = true;
-            }
-        }
-
-        // Variabel khusus untuk mengunci Ongkir Rp0 (Hanya jika 100% digital)
-        $isStrictlyDigital = $hasDigital && !$hasPhysical;
-
-        $isDigital = $isStrictlyDigital;
-
-       $isLocalFood = false;
-        foreach ($cart as $item) {
-            $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
-            if ($productCheck) {
-                // Ambil nama kategori dan jadikan huruf kecil semua biar aman
-                $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
-                $kategoriName  = strtolower($productCheck->category->name ?? '');
-
-                // Deteksi kata kunci
-                if (str_contains($kategoriGroup, 'food') ||
-                    str_contains($kategoriGroup, 'makanan') ||
-                    str_contains($kategoriGroup, 'minuman') ||
-                    str_contains($kategoriName, 'makanan') ||
-                    str_contains($kategoriName, 'minuman')) {
-
-                    $isLocalFood = true;
+                if (isset($item['type']) && in_array(strtolower($item['type']), ['digital', 'eticket', 'jasa'])) {
+                    $isDigital = true;
                 }
             }
+
+            if ($isDigital) $cartHasDigital = true;
+            elseif ($isLokal) $cartHasLokal = true;
+            else $cartHasRegularPhysical = true;
         }
 
-        // 2. UBAH ATURAN BYPASS (Izinkan Digital ATAU Makanan lolos tanpa login)
-        if (!$isStrictlyDigital && !$isLocalFood) {
+        // Variabel penentu alur
+        $isStrictlyDigital = $cartHasDigital && !$cartHasRegularPhysical && !$cartHasLokal;
+        $isLocalFood = $cartHasLokal;
+        $hasDigital = $cartHasDigital;
+        $hasPhysical = $cartHasRegularPhysical;
+        $isDigital = $isStrictlyDigital; // Alias bawaan kode lo
+
+        $firstCartItemData = reset($cart);
+        $firstProduct = Product::find($firstCartItemData['product_id'] ?? null);
+        $store = $firstProduct ? $firstProduct->store : null;
+
+        // Dapatkan koordinat Toko untuk default
+        $storeLat = $store ? $store->latitude : '-7.3998307';
+        $storeLng = $store ? $store->longitude : '111.4511975';
+
+        // 2. ATURAN BLOKIR (HANYA CEGAT JIKA ADA BARANG FISIK REGULER)
+        if ($cartHasRegularPhysical) {
             if (!$user) {
                 return redirect()->route('login')->with('warning', 'Keranjang Anda berisi produk fisik reguler. Silakan login untuk memilih opsi kurir ekspedisi.');
             }
-            if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province) || empty($user->address_detail)) {
+            if (empty($user->address_detail)) {
                 return redirect()->route('profile.edit')->with('warning', 'Alamat pengiriman Anda belum lengkap.');
             }
-        }
-
-        // Dapatkan koordinat Toko untuk dikirim ke JS Frontend
-        $storeLat = $store ? $store->latitude : '-7.3998307'; // Default koordinat Ngawi jika kosong
-        $storeLng = $store ? $store->longitude : '111.4511975';
-
-       $isStrictlyDigital = $hasDigital && !$hasPhysical;
-        $isDigital = $isStrictlyDigital;
-
-        $isLocalFood = false;
-        foreach ($cart as $item) {
-            $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
-            if ($productCheck) {
-                // Ambil nama kategori dan jadikan huruf kecil semua biar aman
-                $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
-                $kategoriName  = strtolower($productCheck->category->name ?? '');
-
-                // Deteksi kata kunci
-                if (str_contains($kategoriGroup, 'food') ||
-                    str_contains($kategoriGroup, 'makanan') ||
-                    str_contains($kategoriGroup, 'minuman') ||
-                    str_contains($kategoriName, 'makanan') ||
-                    str_contains($kategoriName, 'minuman')) {
-
-                    $isLocalFood = true;
-                }
-            }
-        }
-
-        // JIKA BUKAN DIGITAL & BUKAN MAKANAN, WAJIB ALAMAT PROFIL
-        if (!$isStrictlyDigital && !$isLocalFood && (!$user || empty($user->address_detail))) {
-            return redirect()->route('profile.edit')->with('warning', 'Silakan lengkapi alamat pengiriman dahulu.');
         }
 
         // ====================================================================
         // 🔥 KEAMANAN & UX: SILENT REGISTRATION UNTUK GUEST CHECKOUT
         // ====================================================================
-        // Izinkan Digital ATAU Makanan untuk didaftarkan diam-diam
-        if (!$user && ($isStrictlyDigital || $isLocalFood)) {
-            // Ambil data kontak dari form checkout guest
+        // Izinkan Digital ATAU Makanan/Lokal untuk didaftarkan diam-diam tanpa wajib login!
+        if (!$user && ($cartHasLokal || $cartHasDigital)) {
             $emailGuest = $request->email ?? 'guest_' . time() . '@tokosancaka.com';
             $waGuest = $request->no_wa_penerima ?? '081234567890';
 
-            // Cek apakah email atau WA sudah terdaftar sebelumnya
             $user = \App\Models\User::where('no_wa', $waGuest)->orWhere('email', $emailGuest)->first();
-
             if (!$user) {
-                // Zero Bugs: Buat akun diam-diam agar pesanan digital punya pemilik
-                // Sehingga fungsi pengiriman E-Ticket via Email/WA di bawah tidak crash/gagal
                 $user = \App\Models\User::create([
                     'nama_lengkap' => $request->nama_penerima ?? 'Guest Customer',
                     'email'        => $emailGuest,
@@ -684,7 +474,6 @@ class CheckoutController extends Controller
                 Log::info("LOG LOG - Akun otomatis dibuat via Guest Checkout: {$waGuest}");
             }
         }
-        // ====================================================================
 
         DB::beginTransaction();
 
