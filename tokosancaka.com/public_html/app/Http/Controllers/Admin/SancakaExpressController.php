@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Api; // Asumsi model Api Anda berada di sini
+use App\Models\Api;
 use Illuminate\Support\Facades\Log;
 
 class SancakaExpressController extends Controller
@@ -58,15 +58,19 @@ class SancakaExpressController extends Controller
 
     /**
      * Fungsi Helper untuk memperbarui atau membuat data di Model Api.
-     * Disesuaikan dengan struktur tabel `apis` Anda.
+     * Mengisi kolom 'key' otomatis agar tidak terjadi error MySQL
      */
     private function updateApiValue($name, $mode, $value)
     {
-        // Sesuaikan nama kolom pencarian dengan struktur database Anda
-        // Biasanya tabel API memiliki kolom: name (key), mode (global/sandbox), dan value
         Api::updateOrCreate(
-            ['name' => $name, 'mode' => $mode],
-            ['value' => $value, 'key' => $name,]
+            [
+                'name' => $name,
+                'mode' => $mode
+            ],
+            [
+                'key'   => $name, // <-- Kunci untuk menghindari error 'Field key doesn't have a default value'
+                'value' => $value
+            ]
         );
     }
 }
