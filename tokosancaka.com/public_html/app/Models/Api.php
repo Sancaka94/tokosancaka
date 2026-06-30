@@ -18,13 +18,12 @@ class Api extends Model
         'environment',
         'name',
         'mode',
-
-        ];
+    ];
 
     /**
      * Helper untuk mengambil value konfigurasi.
      * Prioritas: Ambil dari Cache -> Database -> Default.
-     * * @param string $key Nama Key (contoh: TRIPAY_API_KEY)
+     * @param string $key Nama Key (contoh: TRIPAY_API_KEY)
      * @param string $env Lingkungan (global, sandbox, production)
      */
     public static function getValue($key, $env = 'global', $default = null)
@@ -46,10 +45,15 @@ class Api extends Model
     {
         self::updateOrCreate(
             ['key' => $key, 'environment' => $env],
-            ['value' => $value, 'group' => $group]
+            [
+                'value' => $value,
+                'group' => $group,
+                'name'  => $key,  // <-- SOLUSI ERROR 1364: Otomatis isi kolom name sama dengan key
+                'mode'  => $env   // <-- Otomatis isi kolom mode sama dengan environment
+            ]
         );
 
-        // Hapus cache agar data terupdate
+        // Hapus cache agar data terupdate di frontend dan tidak nyangkut lagi
         Cache::forget("api_{$key}_{$env}");
     }
 }
