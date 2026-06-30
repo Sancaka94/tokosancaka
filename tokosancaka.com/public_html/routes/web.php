@@ -187,7 +187,8 @@ use App\Http\Controllers\Api\Mobile\TicketingController;
 use App\Http\Controllers\DanaWebhookController;
 use App\Http\Controllers\ApiMapboxController;
 
-Route::post('/calculate-delivery-route', [ApiMapboxController::class, 'calculateRoute']);
+// API Mapbox Route
+Route::get('/api/mapbox/calculate', [\App\Http\Controllers\ApiMapboxController::class, 'calculateRoute']);
 
 
 // 1. Link untuk membuka halaman form login (Tetap sama)
