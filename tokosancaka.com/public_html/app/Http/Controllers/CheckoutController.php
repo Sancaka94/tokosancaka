@@ -375,8 +375,13 @@ class CheckoutController extends Controller
                             // 🔥 TAMBAHAN 1: INJEKSI TARIF KURIR LOKAL (MAPBOX) 🔥
                             // ========================================================
                             // Deteksi apakah produk ini makanan/minuman lokal (Ganti keyword 'food' sesuai nama kategori di DB Anda)
-                            $kategoriGroup = $firstProduct->category->category_group ?? '';
-                            $isLocalFood = str_contains(strtolower($kategoriGroup), 'food') || str_contains(strtolower($kategoriGroup), 'makanan');
+                           $kategoriGroup = $firstProduct->category->category_group ?? '';
+                            $kategoriName = $firstProduct->category->name ?? '';
+
+                            // Cek dari nama grup ATAU nama kategori langsung
+                            $isLocalFood = str_contains(strtolower($kategoriGroup), 'food')
+                                        || str_contains(strtolower($kategoriGroup), 'makanan')
+                                        || str_contains(strtolower($kategoriName), 'makanan');
 
                             if ($isLocalFood && $storeLat && $storeLng && $userLat && $userLng) {
                                 try {
