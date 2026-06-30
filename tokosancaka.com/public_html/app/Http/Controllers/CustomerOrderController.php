@@ -2604,7 +2604,7 @@ TEXT;
 
             $results[] = [
                 'service' => 'sancaka_express',
-                'service_type' => 'One Day Service', // Dibuat lebih rapi untuk user
+                'service_type' => 'Same Day Service', // Dibuat lebih rapi untuk user
                 'cost' => $finalCost,
                 'distance_fees' => $finalCost,
                 'extra_fees' => 0,
