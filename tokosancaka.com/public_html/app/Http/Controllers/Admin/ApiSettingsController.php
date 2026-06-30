@@ -118,6 +118,10 @@ class ApiSettingsController extends Controller
             'api_key' => Api::getValue('FONNTE_API_KEY', 'global'),
         ];
 
+        $mapbox = [
+            'token' => Api::getValue('MAPBOX_TOKEN', 'global'),
+        ];
+
         // --- TAMBAHAN ARRAY DANA ---
         $dana = [
             'mode' => $danaMode,
@@ -241,8 +245,10 @@ class ApiSettingsController extends Controller
         ];
 
         // Tambahkan string 'ipaymu' dan 'mandiri' di dalam compact()
-        return view('admin.settings.api_settings', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu', 'mandiri'));
-    }
+
+        return view('admin.settings.api_settings', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu', 'mandiri', 'mapbox'));
+
+        }
 
     public function update(Request $request)
     {
@@ -314,6 +320,9 @@ class ApiSettingsController extends Controller
 
             } elseif ($type === 'fonnte') {
                 Api::setValue('FONNTE_API_KEY', $request->fonnte_api_key, 'fonnte', 'global');
+
+                } elseif ($type === 'mapbox') {
+                Api::setValue('MAPBOX_TOKEN', trim(strip_tags($request->mapbox_token)), 'mapbox', 'global');
 
             } elseif ($type === 'dana') {
                 $env = $request->dana_mode;

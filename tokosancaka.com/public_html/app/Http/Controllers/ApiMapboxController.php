@@ -12,8 +12,8 @@ class ApiMapboxController extends Controller
 
     public function __construct()
     {
-        // Mengambil token dari .env
-        $this->mapboxToken = env('MAPBOX_TOKEN');
+        // Ganti dari env('MAPBOX_TOKEN') menjadi panggilan database dinamis:
+        $this->mapboxToken = \App\Models\Api::getValue('MAPBOX_TOKEN', 'global');
     }
 
     /**

@@ -274,6 +274,14 @@
                         <span class="text-[9px] font-bold text-zinc-400 bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded uppercase tracking-wider">GLOBAL</span>
                     </div>
 
+                    {{-- Menu Mapbox --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'mapbox' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'mapbox'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'mapbox' ? 'text-zinc-900' : 'text-zinc-600'">Mapbox API</span>
+                        <span class="text-[9px] font-bold text-zinc-400 bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded uppercase tracking-wider">GLOBAL</span>
+                    </div>
+
                 </div>
 
             </div>
@@ -788,6 +796,28 @@
                     </form>
                 </div>
 
+                {{-- 14. TAB MAPBOX --}}
+                <div x-show="activeTab === 'mapbox'" style="display:none;" x-transition.opacity>
+                    <div class="p-6 border-b border-zinc-200">
+                        <h3 class="text-lg font-bold text-zinc-900 mb-1">Mapbox API</h3>
+                        <p class="text-sm text-zinc-500">Konfigurasi Access Token untuk layanan Peta & Rute (Berlaku Global).</p>
+                    </div>
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="mapbox">
+
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-700 uppercase">Mapbox Public Token (pk.xxx...)</label>
+                            <input type="text" name="mapbox_token" x-model="mapboxData.token" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" required placeholder="pk.eyJ1Ijoi...">
+                            <p class="text-xs text-zinc-500 mt-1">Gunakan token Mapbox yang kolom <strong>URL Restrictions</strong>-nya dikosongkan agar bisa diakses backend.</p>
+                        </div>
+
+                        <div class="flex justify-end pt-4">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded hover:bg-black text-sm font-medium transition-colors">Simpan Pengaturan</button>
+                        </div>
+                    </form>
+                </div>
+
             </div>
         </div>
 
@@ -818,6 +848,7 @@
             delivereeData: @json($deliveree ?? ['mode' => 'sandbox']),
             ipaymuData: @json($ipaymu ?? ['mode' => 'sandbox']),
             mandiriData: @json($mandiri ?? ['mode' => 'sandbox']),
+            mapboxData: @json($mapbox ?? ['token' => '']),
 
             // --- FUNGSI AJAX TOGGLE APP DEBUG (BARU) ---
             async toggleDebug() {
