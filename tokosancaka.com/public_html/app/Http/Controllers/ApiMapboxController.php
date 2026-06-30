@@ -10,16 +10,21 @@ class ApiMapboxController extends Controller
 {
     protected $mapboxToken;
 
-        public function __construct()
-        {
-            $this->mapboxToken = env('MAPBOX_TOKEN');
-        }
+    public function __construct()
+    {
+        // Mengambil token dari .env
+        $this->mapboxToken = env('MAPBOX_TOKEN');
+    }
 
     /**
      * Menghitung jarak rute, waktu tempuh, dan estimasi tarif antara Toko dan Pelanggan.
      */
     public function calculateRoute(Request $request)
     {
+        // === LOG 1: AWAL REQUEST DARI FRONTEND ===
+        Log::info('--- [MAPBOX API] MEMULAI KALKULASI RUTE ---');
+        Log::info('Input Koordinat dari Frontend:', $request->all());
+
         // 1. Validasi input koordinat
         $request->validate([
             'origin_lat' => 'required|numeric',
@@ -28,49 +33,64 @@ class ApiMapboxController extends Controller
             'dest_lng'   => 'required|numeric',
         ]);
 
+        // Cek Apakah Token Terbaca (Mencegah pengiriman request kosong ke Mapbox)
+        if (empty($this->mapboxToken)) {
+            Log::error('[MAPBOX API] GAGAL: Token Mapbox kosong atau bernilai null! Pastikan MAPBOX_TOKEN ada di .env dan jalankan php artisan config:clear');
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan konfigurasi Token Peta di server. Hubungi admin.',
+            ], 400);
+        }
+
         $originLat = $request->origin_lat;
         $originLng = $request->origin_lng;
         $destLat   = $request->dest_lat;
         $destLng   = $request->dest_lng;
 
         // 2. Setup Parameter Mapbox
-        // Profil mapbox/driving akan mencari rute mobil tercepat[cite: 10, 11].
-        // Bisa juga diganti ke 'mapbox/driving-traffic' untuk rute dengan mempertimbangkan macet[cite: 7, 8].
         $profile = 'mapbox/driving';
 
         // PENTING: Mapbox mewajibkan format {longitude},{latitude}.
         $coordinates = "{$originLng},{$originLat};{$destLng},{$destLat}";
         $url = "https://api.mapbox.com/directions/v5/{$profile}/{$coordinates}";
 
+        $queryParams = [
+            'access_token' => $this->mapboxToken,
+            'geometries'   => 'geojson',
+            'overview'     => 'simplified',
+            'steps'        => 'false',
+        ];
+
+        // === LOG 2: PAYLOAD YANG AKAN DIKIRIM KE MAPBOX ===
+        Log::info('[MAPBOX API] Mengirim Request ke Mapbox:', [
+            'url_endpoint'  => $url,
+            'coordinates'   => $coordinates,
+            'token_snippet' => '***' . substr($this->mapboxToken, -5), // Hanya tampilkan 5 huruf terakhir token demi keamanan
+        ]);
+
         try {
             // 3. Eksekusi Request ke Mapbox API
-            $response = Http::timeout(10)->get($url, [
-                'access_token' => $this->mapboxToken,
-                'geometries'   => 'geojson',    // Mengembalikan jalur untuk digambar di peta [cite: 68, 69]
-                'overview'     => 'simplified', // Mengembalikan geometri yang disederhanakan [cite: 74, 75]
-                'steps'        => 'false',      // Set ke 'true' jika Anda butuh instruksi belok kiri/kanan [cite: 86]
-            ]);
-
+            $response = Http::timeout(10)->get($url, $queryParams);
             $data = $response->json();
 
+            // === LOG 3: RESPON MENTAH DARI SERVER MAPBOX ===
+            Log::info('[MAPBOX API] Respon Diterima dari Mapbox:', [
+                'http_status' => $response->status(),
+                'body'        => $data
+            ]);
+
             // 4. Proses Respon Mapbox
-            // Mapbox mengembalikan code 'Ok' jika rute berhasil ditemukan [cite: 165]
             if ($response->successful() && isset($data['code']) && $data['code'] === 'Ok') {
 
-                // Ambil rute pertama (rute terbaik yang direkomendasikan Mapbox) [cite: 174]
                 $route = $data['routes'][0];
 
-                // Mapbox selalu mereturn distance dalam satuan Meter [cite: 366] dan duration dalam Detik [cite: 365]
                 $distanceMeters = $route['distance'];
                 $durationSeconds = $route['duration'];
 
-                // Konversi agar lebih mudah dibaca/diolah
                 $distanceKm = round($distanceMeters / 1000, 2);
                 $durationMinutes = ceil($durationSeconds / 60);
 
                 // --- [LOGIKA TARIF KURIR LOKAL SANCAKA] ---
-                // Silakan sesuaikan rumus ini dengan model bisnis Anda.
-                // Contoh: Jarak 0-2 KM (Tarif Dasar) = Rp 10.000. Jarak selanjutnya = Rp 2.500 / KM.
                 $baseFare = 10000;
                 $perKmRate = 2500;
                 $estimatedCost = $baseFare;
@@ -81,6 +101,8 @@ class ApiMapboxController extends Controller
                 }
                 // ------------------------------------------
 
+                Log::info('[MAPBOX API] SUKSES: Jarak dikalkulasi.', ['jarak_km' => $distanceKm, 'tarif' => $estimatedCost]);
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Rute berhasil dihitung.',
@@ -90,25 +112,29 @@ class ApiMapboxController extends Controller
                         'duration_seconds'  => $durationSeconds,
                         'duration_minutes'  => $durationMinutes,
                         'estimated_cost'    => round($estimatedCost),
-                        // Geometry ini bisa dikirim ke Frontend untuk menggambar garis biru rute di Peta
                         'geometry'          => $route['geometry'] ?? null,
                     ]
                 ]);
             }
 
-            // Jika Mapbox gagal menemukan jalan (Contoh: beda pulau / dipisah laut) [cite: 678, 679]
-            Log::error('Mapbox API Failed (No Route):', $data);
+            // === LOG 4: JIKA HTTP SUKSES TAPI CODE BUKAN 'Ok' ATAU SERVER MENOLAK (FORBIDDEN) ===
+            Log::error('[MAPBOX API] DITOLAK ATAU TIDAK ADA RUTE:', [
+                'http_status' => $response->status(),
+                'error_data'  => $data
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Tidak dapat menemukan rute darat untuk lokasi tersebut.',
+                'message' => 'Gagal menghitung rute (' . ($data['message'] ?? 'Alasan tidak diketahui') . ').',
             ], 400);
 
         } catch (\Exception $e) {
-            // Menangkap error jika server Mapbox down atau jaringan putus
-            Log::error('Mapbox Connection Exception: ' . $e->getMessage());
+            // === LOG 5: JIKA KONEKSI INTERNET SERVER TERPUTUS/TIMEOUT ===
+            Log::error('[MAPBOX API] Exception Connection: ' . $e->getMessage());
+
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan sistem saat menghubungi server peta.',
+                'message' => 'Terjadi kesalahan sistem saat menghubungi server peta (Timeout/Koneksi Terputus).',
             ], 500);
         }
     }
