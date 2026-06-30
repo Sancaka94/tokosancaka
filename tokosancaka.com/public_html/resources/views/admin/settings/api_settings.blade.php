@@ -860,7 +860,7 @@
     </div>
 </div>
 
-{{-- Alpine JS --}}
+// Alpine JS
 <script src="//unpkg.com/alpinejs" defer></script>
 
 <script>
@@ -869,22 +869,22 @@
             activeTab: 'ipaymu',
 
             // --- TAMBAHAN KODE APP DEBUG (BARU) ---
-            appDebug: @json(filter_var($appDebug ?? false, FILTER_VALIDATE_BOOLEAN)),
+            appDebug: @json((bool) $appDebug),
 
             // Sinkronisasi data JSON dari Controller PHP
-            kaData: @json($kiriminaja ?? ['mode' => 'sandbox']),
-            tpData: @json($tripay ?? ['mode' => 'sandbox']),
-            dokuData: @json($doku ?? ['env' => 'sandbox']),
-            iakData: @json($iak ?? ['mode' => 'development']),
-            dwData: @json($dharmawisata ?? ['mode' => 'development']),
-            danaData: @json($dana ?? ['mode' => 'sandbox']),
-            midtransData: @json($midtrans ?? ['mode' => 'sandbox']),
-            lalamoveData: @json($lalamove ?? ['mode' => 'sandbox']),
-            paypalData: @json($paypal ?? ['mode' => 'sandbox']),
-            delivereeData: @json($deliveree ?? ['mode' => 'sandbox']),
-            ipaymuData: @json($ipaymu ?? ['mode' => 'sandbox']),
-            mandiriData: @json($mandiri ?? ['mode' => 'sandbox']),
-            mapboxData: @json($mapbox ?? ['token' => '', 'base_fare' => 5000, 'price_per_km' => 2000, 'price_per_kg' => 1500]),
+            kaData: @json($kiriminaja),
+            tpData: @json($tripay),
+            dokuData: @json($doku),
+            iakData: @json($iak),
+            dwData: @json($dharmawisata),
+            danaData: @json($dana),
+            midtransData: @json($midtrans),
+            lalamoveData: @json($lalamove),
+            paypalData: @json($paypal),
+            delivereeData: @json($deliveree),
+            ipaymuData: @json($ipaymu),
+            mandiriData: @json($mandiri),
+            mapboxData: @json($mapbox),
 
             // --- FUNGSI AJAX TOGGLE APP DEBUG (BARU) ---
             async toggleDebug() {

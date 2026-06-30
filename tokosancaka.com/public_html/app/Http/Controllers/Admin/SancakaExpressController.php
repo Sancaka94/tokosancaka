@@ -43,34 +43,16 @@ class SancakaExpressController extends Controller
         ]);
 
         try {
-            // Update atau Create key API ke dalam database
-            $this->updateApiValue('MAPBOX_TOKEN', 'global', $request->mapbox_token);
-            $this->updateApiValue('SANCAKA_EXPRESS_BASE_FARE', 'global', $request->base_fare);
-            $this->updateApiValue('SANCAKA_EXPRESS_PER_KM', 'global', $request->price_per_km);
-            $this->updateApiValue('SANCAKA_EXPRESS_PER_KG', 'global', $request->price_per_kg);
+            // Gunakan method Api::setValue() agar tersinkronisasi persis dengan ApiSettingsController
+            Api::setValue('MAPBOX_TOKEN', $request->mapbox_token, 'mapbox', 'global');
+            Api::setValue('SANCAKA_EXPRESS_BASE_FARE', $request->base_fare, 'mapbox', 'global');
+            Api::setValue('SANCAKA_EXPRESS_PER_KM', $request->price_per_km, 'mapbox', 'global');
+            Api::setValue('SANCAKA_EXPRESS_PER_KG', $request->price_per_kg, 'mapbox', 'global');
 
             return redirect()->back()->with('success', 'Pengaturan Tarif & Mapbox Sancaka Express berhasil diperbarui.');
         } catch (\Exception $e) {
             Log::error('Sancaka Express Settings Error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat menyimpan pengaturan.');
         }
-    }
-
-    /**
-     * Fungsi Helper untuk memperbarui atau membuat data di Model Api.
-     * Mengisi kolom 'key' otomatis agar tidak terjadi error MySQL
-     */
-    private function updateApiValue($name, $mode, $value)
-    {
-        Api::updateOrCreate(
-            [
-                'name' => $name,
-                'mode' => $mode
-            ],
-            [
-                'key'   => $name, // <-- Kunci untuk menghindari error 'Field key doesn't have a default value'
-                'value' => $value
-            ]
-        );
     }
 }
