@@ -47,14 +47,14 @@ class MandiriGatewayController extends Controller
         );
         $this->privateKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
 
-        // 4. KOREKSI BASE URL
+        // 4. KOREKSI BASE URL (Telah diperbarui untuk Sandbox)
         $this->baseUrl      = $this->mode === 'production'
                                 ? 'https://openapi.bankmandiri.co.id'
-                                : 'https://api.sandbox.bankmandiri.co.id';
+                                : 'https://sandbox.bankmandiri.co.id'; // Hapus awalan "api."
 
         $this->authUrl      = $this->mode === 'production'
                                 ? 'https://openapi.bankmandiri.co.id'
-                                : 'https://sandbox.bankmandiri.co.id';
+                                : 'https://sandbox.bankmandiri.co.id'; // Hapus awalan "api."
     }
 
     /**
