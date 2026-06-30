@@ -148,25 +148,30 @@ class CheckoutController extends Controller
         $isStrictlyDigital = $hasDigital && !$hasPhysical;
 
         $isDigital = $isStrictlyDigital;
+        $user = Auth::user();
 
-       $user = Auth::user();
-
-       // ========================================================
-        // 2 & 3. VALIDASI PENGIRIMAN FISIK & HYBRID
-        // ========================================================
-        $user = \Illuminate\Support\Facades\Auth::user();
-
-        // Jika ada barang fisik (Artinya Hybrid atau 100% Fisik)
-        if (!$isDigital) {
-            // 1. Wajib Login
-            if (!$user) {
-                return redirect()->route('login')->with('warning', 'Keranjang Anda berisi produk fisik. Silakan login untuk memilih opsi pengiriman kurir.');
+        // 1. DETEKSI MAKANAN (LOKAL) SEBELUM VALIDASI LOGIN
+        $isLocalFood = false;
+        foreach ($cart as $item) {
+            $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
+            if ($productCheck) {
+                $kategoriGroup = $productCheck->category->category_group ?? '';
+                $kategoriName  = $productCheck->category->name ?? '';
+                if (str_contains(strtolower($kategoriGroup), 'food') ||
+                    str_contains(strtolower($kategoriGroup), 'makanan') ||
+                    str_contains(strtolower($kategoriName), 'makanan')) {
+                    $isLocalFood = true;
+                }
             }
+        }
 
-            // 2. Wajib Lengkapi Alamat Profil
+        // 2. JIKA BUKAN DIGITAL & BUKAN MAKANAN, BARU WAJIB LOGIN
+        if (!$isDigital && !$isLocalFood) {
+            if (!$user) {
+                return redirect()->route('login')->with('warning', 'Keranjang Anda berisi produk fisik reguler. Silakan login untuk memilih opsi pengiriman kurir.');
+            }
             if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province) || empty($user->address_detail)) {
-                return redirect()->route('profile.edit')
-                    ->with('warning', 'Alamat pengiriman Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu agar sistem dapat menghitung ongkos kirim.');
+                return redirect()->route('profile.edit')->with('warning', 'Alamat pengiriman Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
             }
         }
         // Ambil mode dari Database (Bukan Config/Env)
@@ -198,14 +203,14 @@ class CheckoutController extends Controller
 
         $user = Auth::user();
 
-        if (!$isDigital) {
+        /*if (!$isDigital) {
             if (!$user) {
                 return redirect()->route('login')->with('error', 'Akses ditolak. Silakan login terlebih dahulu untuk checkout produk fisik.');
             }
             if (empty($user->address_detail) || empty($user->village)) {
                 return redirect()->route('profile.edit')->with('warning', 'Silakan lengkapi alamat pengiriman Anda dahulu.');
             }
-        }
+        }*/
 
         $firstCartItemData = reset($cart);
         $productId = $firstCartItemData['product_id'] ?? null;
@@ -596,10 +601,34 @@ class CheckoutController extends Controller
         $storeLat = $store ? $store->latitude : '-7.3998307'; // Default koordinat Ngawi jika kosong
         $storeLng = $store ? $store->longitude : '111.4511975';
 
+       $isStrictlyDigital = $hasDigital && !$hasPhysical;
+        $isDigital = $isStrictlyDigital;
+
+        // DETEKSI MAKANAN (LOKAL) SAAT PROSES SIMPAN
+        $isLocalFood = false;
+        foreach ($cart as $item) {
+            $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
+            if ($productCheck) {
+                $kategoriGroup = $productCheck->category->category_group ?? '';
+                $kategoriName  = $productCheck->category->name ?? '';
+                if (str_contains(strtolower($kategoriGroup), 'food') ||
+                    str_contains(strtolower($kategoriGroup), 'makanan') ||
+                    str_contains(strtolower($kategoriName), 'makanan')) {
+                    $isLocalFood = true;
+                }
+            }
+        }
+
+        // JIKA BUKAN DIGITAL & BUKAN MAKANAN, WAJIB ALAMAT PROFIL
+        if (!$isStrictlyDigital && !$isLocalFood && (!$user || empty($user->address_detail))) {
+            return redirect()->route('profile.edit')->with('warning', 'Silakan lengkapi alamat pengiriman dahulu.');
+        }
+
         // ====================================================================
-        // 🔥 KEAMANAN & UX: SILENT REGISTRATION UNTUK GUEST CHECKOUT DIGITAL
+        // 🔥 KEAMANAN & UX: SILENT REGISTRATION UNTUK GUEST CHECKOUT
         // ====================================================================
-        if (!$user && $isStrictlyDigital) {
+        // Izinkan Digital ATAU Makanan untuk didaftarkan diam-diam
+        if (!$user && ($isStrictlyDigital || $isLocalFood)) {
             // Ambil data kontak dari form checkout guest
             $emailGuest = $request->email ?? 'guest_' . time() . '@tokosancaka.com';
             $waGuest = $request->no_wa_penerima ?? '081234567890';
