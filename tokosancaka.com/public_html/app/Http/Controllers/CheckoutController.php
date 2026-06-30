@@ -113,34 +113,50 @@ class CheckoutController extends Controller
         $hasDigital = false;
         $hasPhysical = false;
 
+       // === 1. TIGA BENDERA UTAMA HYBRID CART ===
+        $cartHasDigital = false;
+        $cartHasFood = false;
+        $cartHasRegularPhysical = false;
+
         foreach ($cart as $item) {
-            $isThisItemDigital = false;
+            $isDigital = false;
+            $isFood = false;
 
-            // 1. Cek dari session cart
-            if (isset($item['type']) && (str_contains(strtolower($item['type']), 'digital') || in_array(strtolower($item['type']), ['eticket', 'jasa']))) {
-                $isThisItemDigital = true;
-            }
-
-            // 2. Cek dari database & kategori
             $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
+
             if ($productCheck) {
-                if (isset($productCheck->is_digital) && $productCheck->is_digital) {
-                    $isThisItemDigital = true;
+                $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
+                $kategoriName  = strtolower($productCheck->category->name ?? '');
+
+                // A. Deteksi Digital / Jasa / Tiket
+                if (
+                    $productCheck->is_digital ||
+                    str_contains($kategoriGroup, 'digital') || str_contains($kategoriGroup, 'jasa') || str_contains($kategoriGroup, 'tiket') || str_contains($kategoriGroup, 'ticket') || str_contains($kategoriGroup, 'eticket') ||
+                    (isset($item['type']) && (str_contains(strtolower($item['type']), 'digital') || in_array(strtolower($item['type']), ['eticket', 'jasa'])))
+                ) {
+                    $isDigital = true;
                 }
-
-                $kategoriData = $productCheck->category;
-                $kategoriGrup = is_object($kategoriData) ? ($kategoriData->category_group ?? $kategoriData->name ?? null) : (is_array($kategoriData) ? ($kategoriData['category_group'] ?? $kategoriData['name'] ?? null) : $kategoriData);
-
-                if ($kategoriGrup && (str_contains(strtolower($kategoriGrup), 'digital') || str_contains(strtolower($kategoriGrup), 'jasa') || str_contains(strtolower($kategoriGrup), 'tiket') || str_contains(strtolower($kategoriGrup), 'ticket') || str_contains(strtolower($kategoriGrup), 'eticket'))) {
-                    $isThisItemDigital = true;
+                // B. Deteksi Makanan / Minuman
+                elseif (
+                    str_contains($kategoriGroup, 'food') || str_contains($kategoriGroup, 'makanan') || str_contains($kategoriGroup, 'minuman') ||
+                    str_contains($kategoriName, 'makanan') || str_contains($kategoriName, 'minuman') || str_contains($kategoriName, 'jajanan')
+                ) {
+                    $isFood = true;
+                }
+            } else {
+                // Fallback dari session jika gagal nyari di DB
+                if (isset($item['type']) && (str_contains(strtolower($item['type']), 'digital') || in_array(strtolower($item['type']), ['eticket', 'jasa']))) {
+                    $isDigital = true;
                 }
             }
 
-            // Tentukan status komponen keranjang
-            if ($isThisItemDigital) {
-                $hasDigital = true;
+            // Naikkan bendera sesuai jenis barangnya
+            if ($isDigital) {
+                $cartHasDigital = true;
+            } elseif ($isFood) {
+                $cartHasFood = true;
             } else {
-                $hasPhysical = true;
+                $cartHasRegularPhysical = true; // Barang kayak sepatu, baju, dll masuk ke sini
             }
         }
 
@@ -206,16 +222,19 @@ class CheckoutController extends Controller
             return [];
         });
 
+
+        // === 2. ATURAN LOGIN MUTLAK ===
         $user = Auth::user();
 
-        /*if (!$isDigital) {
+        // Jika ada 1 saja barang FISIK REGULER di keranjang, WAJIB LOGIN!
+        if ($cartHasRegularPhysical) {
             if (!$user) {
-                return redirect()->route('login')->with('error', 'Akses ditolak. Silakan login terlebih dahulu untuk checkout produk fisik.');
+                return redirect()->route('login')->with('warning', 'Keranjang Anda berisi produk fisik. Silakan login untuk memilih kurir pengiriman.');
             }
-            if (empty($user->address_detail) || empty($user->village)) {
-                return redirect()->route('profile.edit')->with('warning', 'Silakan lengkapi alamat pengiriman Anda dahulu.');
+            if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province) || empty($user->address_detail)) {
+                return redirect()->route('profile.edit')->with('warning', 'Alamat pengiriman Anda belum lengkap. Mohon lengkapi data lokasi Anda terlebih dahulu.');
             }
-        }*/
+        }
 
 
         $firstCartItemData = reset($cart);
