@@ -2591,9 +2591,9 @@ TEXT;
             // -------------------------------------
 
             // Kalkulasi Tarif Dinamis
-            $baseFare = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 5000);
-            $pricePerKm = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 2000);
-            $pricePerKg = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1500);
+            $baseFare = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 3000);
+            $pricePerKm = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 1000);
+            $pricePerKg = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1000);
 
             // Tonase (Berat)
             $weightKg = ceil($weightGram / 1000);
