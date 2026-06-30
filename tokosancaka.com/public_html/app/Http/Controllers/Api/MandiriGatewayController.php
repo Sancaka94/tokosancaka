@@ -19,29 +19,39 @@ class MandiriGatewayController extends Controller
     private $baseUrl;
     private $authUrl;
 
-    public function __construct()
+   public function __construct()
     {
-        // 1. Setup Konfigurasi Dinamis (Production / Sandbox)
-        $this->mode = config('services.mandiri.mode', 'sandbox');
-        $config = config("services.mandiri.{$this->mode}");
+        // 1. Ambil mode langsung dari Database (Bukan dari config)
+        $this->mode = \App\Models\Api::getValue('MANDIRI_MODE', 'global', 'sandbox');
 
-        if (!$config) {
-            throw new Exception("Konfigurasi Mandiri untuk mode {$this->mode} tidak ditemukan.");
+        if (!in_array($this->mode, ['sandbox', 'production'])) {
+            $this->mode = 'sandbox';
         }
 
-        $this->clientId     = $config['client_id'];
-        $this->clientSecret = $config['client_secret'];
-        $this->partnerId    = $config['partner_id'];
+        // 2. Ambil kredensial sesuai mode dari Database
+        $this->clientId     = \App\Models\Api::getValue('MANDIRI_CLIENT_ID', $this->mode);
+        $this->clientSecret = \App\Models\Api::getValue('MANDIRI_CLIENT_SECRET', $this->mode);
+        $this->partnerId    = \App\Models\Api::getValue('MANDIRI_PARTNER_ID', $this->mode);
+        $rawPrivateKey      = \App\Models\Api::getValue('MANDIRI_PRIVATE_KEY', $this->mode);
 
-        // Memastikan newline pada private key terbaca dengan benar
-        $this->privateKey   = str_replace('\n', "\n", $config['private_key']);
+        if (empty($rawPrivateKey)) {
+            throw new Exception("Private Key Mandiri belum diisi di Pengaturan API untuk mode " . strtoupper($this->mode));
+        }
 
-        // KOREKSI BASE URL SANDBOX
+        // 3. ZERO-TRUST SANITIZER: Bersihkan Private Key & Format ulang jadi PEM standar
+        // Ini mencegah error "Private Key tidak valid" akibat spasi/newline yang rusak saat disimpan ke DB
+        $cleanKey = str_replace(
+            ["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " ", "\"", "'"],
+            "",
+            $rawPrivateKey
+        );
+        $this->privateKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
+
+        // 4. KOREKSI BASE URL
         $this->baseUrl      = $this->mode === 'production'
                                 ? 'https://openapi.bankmandiri.co.id'
-                                : 'https://api.sandbox.bankmandiri.co.id'; // Default openapi routing
+                                : 'https://api.sandbox.bankmandiri.co.id';
 
-        // Sandbox Auth sering dipisah routingnya dari core API, menggunakan koreksi Anda:
         $this->authUrl      = $this->mode === 'production'
                                 ? 'https://openapi.bankmandiri.co.id'
                                 : 'https://sandbox.bankmandiri.co.id';
