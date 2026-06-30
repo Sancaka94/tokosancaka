@@ -155,6 +155,16 @@ class CheckoutController extends Controller
         }
     }
 
+    \Illuminate\Support\Facades\Log::info([
+        'produk' => $productCheck?->name ?? 'Produk Tidak Ditemukan',
+        'is_digital_db' => $productCheck?->is_digital,
+        'kategori_flag' => $productCheck?->category?->flag,
+        'kategori_group' => $productCheck?->category?->category_group,
+        'kategori_name' => $productCheck?->category?->name,
+        'isDigital' => $isDigital,
+        'isLokal' => $isLokal,
+    ]);
+
     // 3. Eksekusi Bendera Akhir
     if ($isDigital) {
         $cartHasDigital = true;
