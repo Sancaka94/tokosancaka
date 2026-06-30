@@ -1100,7 +1100,11 @@ Route::prefix('ppob')->name('ppob.')->group(function () {
 });
 
 
+    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
 
+    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+
+    Route::get('/checkout/{invoice}', [CheckoutController::class, 'invoice'])->name('checkout.invoice');
 
 
 // =========================================================================
@@ -1149,11 +1153,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Checkout Process
 
-    Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
 
-    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
-
-    Route::get('/checkout/{invoice}', [CheckoutController::class, 'invoice'])->name('checkout.invoice');
 
 
 
