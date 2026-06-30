@@ -6,9 +6,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\User; // <-- Pastikan ini ada
-use App\Models\Marketplace; // <-- PASTIKAN INI DI-IMPORT
-use App\Models\Product; // <-- PERBAIKAN: Import model Product
+use App\Models\User;
+use App\Models\Marketplace;
+use App\Models\Product;
 
 class Store extends Model
 {
@@ -24,6 +24,7 @@ class Store extends Model
         'name',
         'slug',
         'description',
+        'seller_logo', // <-- DITAMBAHKAN: Wajib agar logo bisa tersimpan
         'province',
         'regency',
         'district',
@@ -33,8 +34,6 @@ class Store extends Model
         'latitude',
         'longitude',
         'doku_sac_id',
-        
-        // --- PERBAIKAN: Tambahkan kolom baru DOKU ---
         'doku_status',
         'doku_balance_available',
         'doku_balance_pending',
@@ -47,12 +46,11 @@ class Store extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        // --- PERBAIKAN: Atur casting untuk tipe data ---
         'doku_balance_available' => 'decimal:2',
         'doku_balance_pending' => 'decimal:2',
         'doku_balance_last_updated' => 'datetime',
-        'latitude' => 'decimal:8', // Sesuaikan presisi jika perlu
-        'longitude' => 'decimal:8', // Sesuaikan presisi jika perlu
+        'latitude' => 'decimal:7',  // Standar presisi Google Maps/GPS
+        'longitude' => 'decimal:7', // Standar presisi Google Maps/GPS
     ];
 
     /**
@@ -60,10 +58,10 @@ class Store extends Model
      */
     public function user(): BelongsTo
     {
-        // ✅ DIPERBAIKI: Menyesuaikan dengan primary key kustom 'id_pengguna'
+        // Menyesuaikan dengan primary key kustom 'id_pengguna'
         return $this->belongsTo(User::class, 'user_id', 'id_pengguna');
     }
-    
+
     /**
      * Get the products associated with the store.
      */
@@ -71,7 +69,7 @@ class Store extends Model
     {
         return $this->hasMany(Product::class);
     }
-    
+
     /**
      * Get the marketplace entries associated with the store.
      */
