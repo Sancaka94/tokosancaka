@@ -334,6 +334,7 @@
                                     $firstActiveGroup = $finalGrouped->keys()->first();
                                 @endphp
 
+
                                 <div class="flex flex-wrap gap-2 mb-4">
                                     @forelse($finalGrouped as $group => $options)
                                         <button type="button"
