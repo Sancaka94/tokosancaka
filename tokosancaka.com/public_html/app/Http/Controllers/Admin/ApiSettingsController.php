@@ -306,22 +306,34 @@ class ApiSettingsController extends Controller
                 Api::setValue('FONNTE_API_KEY', $request->fonnte_api_key, 'fonnte', 'global');
 
             // --- MAPBOX & SANCAKA EXPRESS ---
+            // --- MAPBOX & SANCAKA EXPRESS ---
             } elseif ($type === 'mapbox') {
 
-                // [AUTO-FIX] Membersihkan data korup dari SancakaExpressController sebelumnya
-                // Agar tidak terjadi bentrok "Integrity constraint violation: 1062 Duplicate entry"
-                Api::whereIn('key', [
-                    'MAPBOX_TOKEN',
-                    'SANCAKA_EXPRESS_BASE_FARE',
-                    'SANCAKA_EXPRESS_PER_KM',
-                    'SANCAKA_EXPRESS_PER_KG'
-                ])->where('name', '!=', 'mapbox')->delete();
+                // Kumpulkan data yang akan disimpan
+                $dataToSave = [
+                    'MAPBOX_TOKEN'              => trim(strip_tags($request->mapbox_token)),
+                    'SANCAKA_EXPRESS_BASE_FARE' => $request->base_fare,
+                    'SANCAKA_EXPRESS_PER_KM'    => $request->price_per_km,
+                    'SANCAKA_EXPRESS_PER_KG'    => $request->price_per_kg,
+                ];
 
-                // Simpan pengaturan
-                Api::setValue('MAPBOX_TOKEN', trim(strip_tags($request->mapbox_token)), 'mapbox', 'global');
-                Api::setValue('SANCAKA_EXPRESS_BASE_FARE', $request->base_fare, 'mapbox', 'global');
-                Api::setValue('SANCAKA_EXPRESS_PER_KM', $request->price_per_km, 'mapbox', 'global');
-                Api::setValue('SANCAKA_EXPRESS_PER_KG', $request->price_per_kg, 'mapbox', 'global');
+                // Looping untuk menyimpan data secara aman & lengkap ke Database
+                foreach ($dataToSave as $keyName => $value) {
+                    Api::updateOrCreate(
+                        [
+                            // Acuan Pencarian Data (mencegah duplikat)
+                            'key'         => $keyName,
+                            'environment' => 'global'
+                        ],
+                        [
+                            // Data yang diperbarui atau dibuat baru
+                            'value'       => $value,
+                            'group'       => 'mapbox',
+                            'name'        => $keyName,   // <-- SOLUSI: Mengatasi Error 1364
+                            'mode'        => 'global'    // <-- Menjaga struktur tabel tetap aman
+                        ]
+                    );
+                }
 
                 Log::info("Pengaturan Mapbox & Sancaka Express berhasil diperbarui.");
 
