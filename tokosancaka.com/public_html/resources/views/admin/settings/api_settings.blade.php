@@ -860,7 +860,6 @@
     </div>
 </div>
 
-// Alpine JS
 <script src="//unpkg.com/alpinejs" defer></script>
 
 <script>
