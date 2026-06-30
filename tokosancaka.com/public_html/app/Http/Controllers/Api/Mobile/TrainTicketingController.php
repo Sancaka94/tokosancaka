@@ -178,6 +178,7 @@ class TrainTicketingController extends BaseController
                         "birthDate" => $pax['birthDate']
                     ];
                 }, $request->passengers),
+
                 "trainID"           => $request->trainID,
                 "userID"            => $this->darmawisataUserId,
                 "accessToken"       => $request->accessToken
