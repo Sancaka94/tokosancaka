@@ -47,9 +47,6 @@ class ProfileController extends Controller
         }
     }
 
-    /**
-     * Menampilkan form untuk mengedit profil toko.
-     */
     public function edit()
     {
         $store = Auth::user()->store;
@@ -58,8 +55,8 @@ class ProfileController extends Controller
             return redirect()->route('seller.dashboard')->with('error', 'Data profil toko Anda tidak ditemukan.');
         }
 
-        // Sesuaikan dengan letak file blade Anda, misalnya 'toko.profil.edit' atau 'seller.profile.edit'
-        return view('toko.profil.edit', compact('store'));
+        // UBAH BARIS INI: Sesuaikan dengan lokasi asli file blade Anda
+        return view('seller.profile.edit', compact('store'));
     }
 
     /**
