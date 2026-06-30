@@ -578,15 +578,20 @@ class CheckoutController extends Controller
         foreach ($cart as $item) {
             $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
             if ($productCheck) {
-                $kategoriGroup = $productCheck->category->category_group ?? '';
-                $kategoriName  = $productCheck->category->name ?? '';
-                if (str_contains(strtolower($kategoriGroup), 'food') ||
-                        str_contains(strtolower($kategoriGroup), 'makanan') ||
-                        str_contains(strtolower($kategoriName), 'makanan') ||
-                        str_contains(strtolower($kategoriName), 'minuman') || // <-- Tambahin ini
-                        str_contains(strtolower($kategoriName), 'snack')) {   // <-- Atau ini
-                        $isLocalFood = true;
-                    }
+                // Ambil nama kategori dan jadikan huruf kecil semua biar kebal case-sensitive
+                $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
+                $kategoriName  = strtolower($productCheck->category->name ?? '');
+
+                // Cek apakah ada unsur kata makanan, minuman, atau food
+                if (str_contains($kategoriGroup, 'food') ||
+                    str_contains($kategoriGroup, 'makanan') ||
+                    str_contains($kategoriGroup, 'minuman') ||
+                    str_contains($kategoriName, 'makanan') ||
+                    str_contains($kategoriName, 'minuman') ||
+                    str_contains($kategoriName, 'jajanan')) { // Tambahan opsional buat jaga-jaga
+
+                    $isLocalFood = true;
+                }
             }
         }
 
