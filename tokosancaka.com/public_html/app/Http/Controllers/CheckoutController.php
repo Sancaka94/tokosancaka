@@ -369,6 +369,50 @@ class CheckoutController extends Controller
                             } catch (Exception $e) {
                                  Log::error('Gagal mendapatkan ongkir Instant', ['error' => $e->getMessage()]);
                             }
+                            // ========================================================
+                            // 🔥 TAMBAHAN 1: INJEKSI TARIF KURIR LOKAL (MAPBOX) 🔥
+                            // ========================================================
+                            // Deteksi apakah produk ini makanan/minuman lokal (Ganti keyword 'food' sesuai nama kategori di DB Anda)
+                            $kategoriGroup = $firstProduct->category->category_group ?? '';
+                            $isLocalFood = str_contains(strtolower($kategoriGroup), 'food') || str_contains(strtolower($kategoriGroup), 'makanan');
+
+                            if ($isLocalFood && $storeLat && $storeLng && $userLat && $userLng) {
+                                try {
+                                    $apiMapbox = app(\App\Http\Controllers\ApiMapboxController::class);
+                                    $reqMapbox = new \Illuminate\Http\Request();
+                                    $reqMapbox->replace([
+                                        'origin_lat' => $storeLat,
+                                        'origin_lng' => $storeLng,
+                                        'dest_lat'   => $userLat,
+                                        'dest_lng'   => $userLng,
+                                    ]);
+
+                                    $routeResult = $apiMapbox->calculateRoute($reqMapbox)->getData(true);
+
+                                    if ($routeResult['success']) {
+                                        $costLocal = $routeResult['data']['estimated_cost'];
+
+                                        // Suntikkan Opsi Kurir Lokal ke dalam list Instant Options agar bisa dipilih user
+                                        $instantOptions['results'][] = [
+                                            'service' => 'sancaka_local',
+                                            'service_name' => 'Kurir Lokal Sancaka (Motor)',
+                                            'service_type' => 'FOOD',
+                                            'cost' => $costLocal,
+                                            'insurance_cost' => 0,
+                                            'final_price' => $costLocal,
+                                            'etd' => '15 - 45 Menit',
+                                            'cod_available' => true,
+                                            'cod' => true,
+                                            'cod_fee' => 0,
+                                            'group' => 'instant',
+                                        ];
+                                        $instantOptions['status'] = true;
+                                    }
+                                } catch (\Exception $e) {
+                                    Log::error('Gagal menghitung tarif kurir lokal Mapbox: ' . $e->getMessage());
+                                }
+                            }
+                            // ========================================================
                         }
                     } else {
                         Log::warning('Alamat user tidak dikenali KiriminAja, wajib input manual.', ['user_search' => $userSearch]);
@@ -949,6 +993,20 @@ class CheckoutController extends Controller
                         'status' => true,
                         'pickup_number' => 'DIGITAL-' . strtoupper(Str::random(6))
                     ];
+
+                    // ======================================================
+                // 🔥 TAMBAHAN 2: BYPASS API UNTUK KURIR LOKAL 🔥
+                // ======================================================
+                } elseif ($shipping_type === 'sancaka_local') {
+                    Log::info('Pesanan Kurir Lokal / Food terdeteksi, bypass API KiriminAja.');
+
+                    // Beri resi dummy sementara, status order Anda bisa diubah jadi 'mencari_driver' nanti
+                    $kiriminResponse = [
+                        'status' => true,
+                        'pickup_number' => 'LOKAL-' . strtoupper(Str::random(6))
+                    ];
+                // ======================================================
+
                 } else {
                     throw new \Exception('Tipe pengiriman tidak didukung: ' . $shipping_type);
                 }
@@ -1872,9 +1930,14 @@ class CheckoutController extends Controller
                 //if (!in_array($type, $validTypes)) $type = 'regular';
                 //$service = strtoupper(trim($service));
 
-                $validTypes = ['regular', 'cargo', 'instant', 'trucking', 'digital_delivery'];
+                //$validTypes = ['regular', 'cargo', 'instant', 'trucking', 'digital_delivery'];
+                //if (!in_array($type, $validTypes)) $type = 'regular';
+                //$service = trim($service); // Biarkan huruf besar/kecilnya asli bawaan dari database
+
+                // Tambahkan 'sancaka_local' ke dalam array $validTypes
+                $validTypes = ['regular', 'cargo', 'instant', 'trucking', 'digital_delivery', 'sancaka_local'];
                 if (!in_array($type, $validTypes)) $type = 'regular';
-                $service = trim($service); // Biarkan huruf besar/kecilnya asli bawaan dari database
+                $service = trim($service);
 
                 // ========================================================
                 // BYPASS BOOKING KURIR & EKSEKUSI AUTO-DELIVERY DIGITAL
@@ -1991,6 +2054,25 @@ class CheckoutController extends Controller
                     // Langsung lompat ke bawah (skip_kiriminaja) untuk kirim WA "Lunas" umum
                     goto skip_kiriminaja;
                 }
+
+                // ========================================================
+                // 🔥 TAMBAHAN 3: LOMPATI KIRIMINAJA UNTUK KURIR LOKAL 🔥
+                // ========================================================
+                elseif ($type === 'sancaka_local') {
+                    Log::info("Pesanan {$order->invoice_number} adalah Food Delivery. Bypass KiriminAja.");
+
+                    // Ubah referensi pengiriman jadi ID Resi Lokal
+                    $order->shipping_reference = 'LOKAL-' . strtoupper(Str::random(6));
+
+                    // TODO NANTI: Di sinilah tempat Anda akan menembak broadcast(new OrderMasukKeDriver());
+                    // $order->status = 'mencari_driver';
+
+                    $order->save();
+
+                    // Lompat ke bawah agar tidak mengeksekusi script API KiriminAja
+                    goto skip_kiriminaja;
+                }
+                // ========================================================
 
                 // --- BUILD PAYLOAD BOOKING ---
                 $payload = [];

@@ -232,11 +232,69 @@
                         </div>
                     </div>
 
-                    <!-- Pilih Metode Pengiriman -->
                     <div class="bg-white rounded-xl shadow-md p-6">
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Pilih Metode Pengiriman</h2>
 
-                        @if($isStrictlyDigital)
+                        {{-- ====================================================================== --}}
+                        {{-- 1. LOGIKA UNTUK FOOD DELIVERY (KURIR SANCAKA LOKAL / MAPBOX)         --}}
+                        {{-- ====================================================================== --}}
+                        @if(isset($isLocalFood) && $isLocalFood)
+                            <div class="p-4 bg-orange-50 border border-orange-200 rounded-lg flex items-start mb-4">
+                                <i class="fas fa-motorcycle text-orange-500 text-3xl mr-4 mt-1"></i>
+                                <div class="flex-1">
+                                    <h3 class="font-bold text-orange-800">Kurir Sancaka Lokal (Food Delivery)</h3>
+                                    <p class="text-sm text-orange-600 mt-1">Pesanan Anda akan diantar secepatnya oleh Driver Sancaka terdekat.</p>
+
+                                    @if(isset($routeResult) && $routeResult['success'])
+                                        <div class="mt-3 bg-white p-3 rounded border border-orange-100 shadow-sm flex items-center justify-between">
+                                            <div>
+                                                <span class="block text-xs font-semibold text-gray-500 uppercase">Jarak Tempuh</span>
+                                                <span class="block text-sm font-bold text-gray-900">{{ $routeResult['data']['distance_km'] }} KM</span>
+                                            </div>
+                                            <div class="text-right">
+                                                <span class="block text-xs font-semibold text-gray-500 uppercase">Estimasi Tiba</span>
+                                                <span class="block text-sm font-bold text-gray-900">{{ $routeResult['data']['duration_minutes'] }} Menit</span>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <div class="mt-3 text-red-600 text-sm font-semibold">
+                                            <i class="fas fa-exclamation-circle"></i> Titik lokasi belum akurat atau rute tidak ditemukan.
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+
+                            {{-- Hidden Input agar JS mengenali ini sebagai "sancaka_local" --}}
+                            <label class="flex items-center border border-orange-300 bg-orange-50 p-4 rounded-lg cursor-pointer mb-2">
+                                <input type="radio"
+                                    name="shipping_method"
+                                    value="sancaka_local-motor-food-{{ isset($routeResult) ? $routeResult['data']['estimated_cost'] : 0 }}-0-0"
+                                    data-cost="{{ isset($routeResult) ? $routeResult['data']['estimated_cost'] : 0 }}"
+                                    data-insurance="0"
+                                    data-cod="true"
+                                    data-cod-fee="0"
+                                    class="form-radio h-5 w-5 text-orange-600"
+                                    checked>
+
+                                <div class="ml-4 flex justify-between w-full items-center">
+                                    <div class="flex items-center gap-3">
+                                        <i class="fas fa-route text-gray-400 text-xl"></i>
+                                        <div>
+                                            <span class="text-sm font-bold text-gray-900">Pengantaran Langsung</span>
+                                            <span class="block text-xs text-gray-500">Tarif dihitung otomatis berdasarkan jarak tempuh Mapbox.</span>
+                                        </div>
+                                    </div>
+                                    <span class="text-lg font-bold text-orange-600">
+                                        Rp{{ number_format(isset($routeResult) ? $routeResult['data']['estimated_cost'] : 0, 0, ',', '.') }}
+                                    </span>
+                                </div>
+                            </label>
+
+
+                        {{-- ====================================================================== --}}
+                        {{-- 2. LOGIKA LAMA ANDA UNTUK DIGITAL / E-TICKET                           --}}
+                        {{-- ====================================================================== --}}
+                        @elseif($isStrictlyDigital)
                             <div class="p-4 bg-green-50 border border-green-200 rounded-lg flex items-start mb-4">
                                 <i class="fas fa-bolt text-green-500 text-2xl mr-4 mt-1"></i>
                                 <div>
@@ -245,16 +303,15 @@
                                 </div>
                             </div>
 
-
                             <input type="radio"
-                                   name="shipping_method"
-                                   value="digital_delivery-eticket-noncod-0-0-0"
-                                   data-cost="0"
-                                   data-insurance="0"
-                                   data-cod="false"
-                                   data-cod-fee="0"
-                                   class="hidden"
-                                   checked>
+                                name="shipping_method"
+                                value="digital_delivery-eticket-noncod-0-0-0"
+                                data-cost="0"
+                                data-insurance="0"
+                                data-cod="false"
+                                data-cod-fee="0"
+                                class="hidden"
+                                checked>
                         @else
                             <div class="space-y-4">
                                 @php
