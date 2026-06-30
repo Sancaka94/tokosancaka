@@ -116,12 +116,14 @@ class ApiSettingsController extends Controller
             'api_key' => Api::getValue('FONNTE_API_KEY', 'global'),
         ];
 
-        // --- MAPBOX & SANCAKA EXPRESS ---
+       // --- MAPBOX & SANCAKA EXPRESS ---
         $mapbox = [
-            'token'        => Api::getValue('MAPBOX_TOKEN', 'global'),
-            'base_fare'    => Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 5000),
-            'price_per_km' => Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 2000),
-            'price_per_kg' => Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1500),
+            'token'           => Api::getValue('MAPBOX_TOKEN', 'global'),
+            'base_fare'       => Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 3000),
+            'price_per_km'    => Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 1000),
+            'price_per_kg'    => Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1000),
+            'volume_divisor'  => Api::getValue('SANCAKA_EXPRESS_VOLUME_DIVISOR', 'global', 6000), // <-- BARU
+            'cod_fee_percent' => Api::getValue('SANCAKA_EXPRESS_COD_FEE_PERCENT', 'global', 3),   // <-- BARU
         ];
 
         $dana = [
@@ -312,6 +314,10 @@ class ApiSettingsController extends Controller
                 Api::setValue('SANCAKA_EXPRESS_BASE_FARE', $request->base_fare, 'mapbox', 'global');
                 Api::setValue('SANCAKA_EXPRESS_PER_KM', $request->price_per_km, 'mapbox', 'global');
                 Api::setValue('SANCAKA_EXPRESS_PER_KG', $request->price_per_kg, 'mapbox', 'global');
+
+                // --- PENYIMPANAN DINAMIS BARU ---
+                Api::setValue('SANCAKA_EXPRESS_VOLUME_DIVISOR', $request->volume_divisor, 'mapbox', 'global');
+                Api::setValue('SANCAKA_EXPRESS_COD_FEE_PERCENT', $request->cod_fee_percent, 'mapbox', 'global');
 
                 Log::info("Pengaturan Mapbox & Sancaka Express berhasil diperbarui.");
 

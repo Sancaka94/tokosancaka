@@ -824,9 +824,9 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
                             <div class="md:col-span-1">
                                 <h4 class="text-sm font-semibold text-zinc-900">Tarif Sancaka Express</h4>
-                                <p class="text-xs text-zinc-500 mt-1">Sistem akan mengkalkulasi otomatis berdasarkan jarak dan berat.</p>
+                                <p class="text-xs text-zinc-500 mt-1">Sistem akan mengkalkulasi otomatis berdasarkan jarak, berat, dan dimensi paket.</p>
                                 <div class="mt-3 p-2 bg-zinc-50 border border-zinc-200 rounded text-[10px] font-mono text-zinc-600">
-                                    Tarif Dasar + (Jarak x Harga/KM) + (Berat x Harga/KG)
+                                    Tarif Dasar + (Jarak x Harga/KM) + (Berat/Volume x Harga/KG)
                                 </div>
                             </div>
                             <div class="md:col-span-2 space-y-5">
@@ -845,6 +845,22 @@
                                         <input type="number" name="price_per_kg" x-model="mapboxData.price_per_kg" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border" required min="0">
                                     </div>
                                 </div>
+
+                                {{-- TAMBAHAN KODE: RUMUS VOLUME & FEE COD --}}
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-zinc-100 pt-4">
+                                    <div>
+                                        <label class="block text-xs font-medium text-zinc-700 uppercase mb-1">Pembagi Volume (Darat/Udara)</label>
+                                        <input type="number" name="volume_divisor" x-model="mapboxData.volume_divisor" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border" required min="1">
+                                        <p class="text-[11px] text-zinc-500 mt-1">Rumus: (P x L x T) / Pembagi. (Default: 6000)</p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-medium text-zinc-700 uppercase mb-1">Persentase Fee COD (%)</label>
+                                        <input type="number" step="0.1" name="cod_fee_percent" x-model="mapboxData.cod_fee_percent" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border" required min="0">
+                                        <p class="text-[11px] text-zinc-500 mt-1">Fee dicatat dari persentase total harga barang.</p>
+                                    </div>
+                                </div>
+                                {{-- AKHIR TAMBAHAN KODE --}}
+
                             </div>
                         </div>
 

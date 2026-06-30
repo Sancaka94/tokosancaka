@@ -332,9 +332,15 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
         // BLOK SANCAKA EXPRESS (ONE DAY SERVICE - INTERNAL KILAT)
         // =========================================================================
         if (in_array($vendorFilter, ['all', 'sancaka_express'])) {
+            // Tangkap dimensi dari request (default 0 jika tidak ada)
+            $length = $request->input('length', 0);
+            $width = $request->input('width', 0);
+            $height = $request->input('height', 0);
+
             $sancakaOptions = $this->_getSancakaExpressPricing(
                 $senderLat, $senderLng, $receiverLat, $receiverLng, $validated['weight'],
-                $senderFullAddress, $receiverFullAddress, $senderSimpleAddress, $receiverSimpleAddress
+                $senderFullAddress, $receiverFullAddress, $senderSimpleAddress, $receiverSimpleAddress,
+                $length, $width, $height, $itemValue // <-- Lempar parameter baru ke sini
             );
 
             if ($sancakaOptions['status']) {
@@ -2529,39 +2535,61 @@ TEXT;
         }
     }
 
-    /**
+  /**
      * =========================================================================
      * FUNGSI HELPER SANCAKA EXPRESS (ONE DAY SERVICE) - TARIK MAPBOX & BIAYA
      * =========================================================================
      */
-    private function _getSancakaExpressPricing($senderLat, $senderLng, $receiverLat, $receiverLng, $weightGram, $senderAddress, $receiverAddress, $senderSimple = '', $receiverSimple = '')
+    private function _getSancakaExpressPricing($senderLat, $senderLng, $receiverLat, $receiverLng, $weightGram, $senderAddress, $receiverAddress, $senderSimple = '', $receiverSimple = '', $length = 0, $width = 0, $height = 0, $itemPrice = 0)
     {
-        Log::info('LOG LOG: Start Sancaka Express Pricing');
+        // LOG 1: Tangkap semua payload yang dikirim ke fungsi ini
+        Log::info('LOG LOG: [Sancaka Express] Start Pricing - Payload Input:', [
+            'senderLat' => $senderLat, 'senderLng' => $senderLng,
+            'receiverLat' => $receiverLat, 'receiverLng' => $receiverLng,
+            'weightGram' => $weightGram,
+            'senderAddress' => $senderAddress, 'senderSimple' => $senderSimple,
+            'receiverAddress' => $receiverAddress, 'receiverSimple' => $receiverSimple,
+            'dimensi' => "{$length}x{$width}x{$height}",
+            'itemPrice' => $itemPrice
+        ]);
 
         // 1. Fallback Geocoding jika GPS kosong
+        $fallbackTriggered = false;
         if (empty($senderLat) || empty($senderLng)) {
             $geo = $this->geocode(!empty($senderSimple) ? $senderSimple : $senderAddress);
-            if ($geo) { $senderLat = $geo['lat']; $senderLng = $geo['lng']; }
+            if ($geo) { $senderLat = $geo['lat']; $senderLng = $geo['lng']; $fallbackTriggered = true; }
         }
         if (empty($receiverLat) || empty($receiverLng)) {
             $geo = $this->geocode(!empty($receiverSimple) ? $receiverSimple : $receiverAddress);
-            if ($geo) { $receiverLat = $geo['lat']; $receiverLng = $geo['lng']; }
+            if ($geo) { $receiverLat = $geo['lat']; $receiverLng = $geo['lng']; $fallbackTriggered = true; }
+        }
+
+        // LOG 2: Catat jika sistem terpaksa melakukan geocoding manual
+        if ($fallbackTriggered) {
+            Log::info('LOG LOG: [Sancaka Express] Fallback Geocode Digunakan:', [
+                'final_sender_coords' => "{$senderLat}, {$senderLng}",
+                'final_receiver_coords' => "{$receiverLat}, {$receiverLng}"
+            ]);
         }
 
         if (empty($senderLat) || empty($senderLng) || empty($receiverLat) || empty($receiverLng)) {
-            Log::warning('Sancaka Express Pricing Batal: Koordinat gagal didapat.');
+            Log::warning('LOG LOG: [Sancaka Express] Batal - Koordinat asal atau tujuan tetap gagal didapat.');
             return ['status' => false, 'results' => []];
         }
 
         // 2. Ambil Token Mapbox Dinamis
         $mapboxToken = \App\Models\Api::getValue('MAPBOX_TOKEN', 'global');
         if (empty($mapboxToken)) {
-            Log::error('Sancaka Express Batal: Token Mapbox belum diatur di database.');
+            Log::error('LOG LOG: [Sancaka Express] Batal - Token Mapbox belum diatur di database.');
             return ['status' => false, 'results' => []];
         }
 
         // 3. Tembak API Mapbox
         $url = "https://api.mapbox.com/directions/v5/mapbox/driving/{$senderLng},{$senderLat};{$receiverLng},{$receiverLat}";
+
+        // LOG 3: Catat URL Mapbox yang ditembak
+        Log::info("LOG LOG: [Sancaka Express] Menghubungi Mapbox API", ['url' => $url]);
+
         try {
             $response = Http::withHeaders([
                 'Referer' => url('/') // Header bypass anti-forbidden
@@ -2573,11 +2601,11 @@ TEXT;
             ]);
 
             if (!$response->successful() || !isset($response['routes'][0])) {
-                 Log::error('Sancaka Express Mapbox Error: ', $response->json() ?? []);
+                 Log::error('LOG LOG: [Sancaka Express] Mapbox API Error Respons:', $response->json() ?? []);
                  return ['status' => false, 'results' => []];
             }
 
-           $route = $response['routes'][0];
+            $route = $response['routes'][0];
             $distanceKm = $route['distance'] / 1000;
             $durationMin = ceil($route['duration'] / 60);
 
@@ -2595,30 +2623,67 @@ TEXT;
             $pricePerKm = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 1000);
             $pricePerKg = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1000);
 
-            // Tonase (Berat)
-            $weightKg = ceil($weightGram / 1000);
+            // Menghitung Berat Aktual & Berat Volume (Dinamis dari Admin)
+            $actualWeightKg = ceil($weightGram / 1000);
+
+            $volumeDivisor = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_VOLUME_DIVISOR', 'global', 6000);
+            $volumeWeightKg = 0;
+            if ($length > 0 && $width > 0 && $height > 0 && $volumeDivisor > 0) {
+                $volumeWeightKg = ceil(($length * $width * $height) / $volumeDivisor);
+            }
+
+            // Pilih yang paling berat antara aktual dan volumetrik
+            $weightKg = max($actualWeightKg, $volumeWeightKg);
             if ($weightKg < 1) $weightKg = 1;
 
-            $totalCost = $baseFare + ($distanceKm * $pricePerKm) + ($weightKg * $pricePerKg);
+            $costDistance = ($distanceKm * $pricePerKm);
+            $costWeight = ($weightKg * $pricePerKg);
+            $totalCost = $baseFare + $costDistance + $costWeight;
             $finalCost = (int) (ceil($totalCost / 500) * 500);
+
+            // Menghitung Fee COD secara Dinamis
+            $codFeePercent = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_COD_FEE_PERCENT', 'global', 3);
+            $codFee = 0;
+            if ($itemPrice > 0 && $codFeePercent > 0) {
+                $codFee = (int) ceil(($itemPrice * $codFeePercent) / 100);
+            }
+
+            // LOG 4: Catat rincian detail kalkulasi sebelum dibungkus ke array results
+            Log::info('LOG LOG: [Sancaka Express] Rincian Kalkulasi Harga:', [
+                'Jarak_KM' => round($distanceKm, 2),
+                'Estimasi_Waktu' => $etdText,
+                'Berat_Aktual_KG' => $actualWeightKg,
+                'Berat_Volume_KG' => $volumeWeightKg,
+                'Berat_Terpakai_KG' => $weightKg,
+                'Tarif_Dasar' => $baseFare,
+                'Biaya_Jarak' => round($costDistance, 2),
+                'Biaya_Berat' => $costWeight,
+                'Total_Mentah' => $totalCost,
+                'Total_Pembulatan' => $finalCost,
+                'Fee_COD_Persen' => $codFeePercent . '%',
+                'Fee_COD_Nominal' => $codFee
+            ]);
 
             $results[] = [
                 'service' => 'sancaka_express',
-                'service_type' => 'Same Day Service', // Dibuat lebih rapi untuk user
+                'service_type' => 'Same Day Service',
                 'cost' => $finalCost,
                 'distance_fees' => $finalCost,
-                'extra_fees' => 0,
-                'etd' => $etdText, // Menggunakan format jam/menit
+                'extra_fees' => $codFee, // Disisipkan ke sini untuk ditangkap Frontend
+                'etd' => $etdText,
                 'cod' => true,
                 'jarak_km' => round($distanceKm, 2),
                 'berat_kg' => $weightKg
             ];
 
-            Log::info("Sancaka Express Berhasil Hitung: Jarak {$distanceKm} KM, Berat {$weightKg} KG, Tarif Rp {$finalCost}");
+            // LOG 5: Sukses return final data
+            Log::info('LOG LOG: [Sancaka Express] Berhasil Selesai.', ['final_results' => $results]);
             return ['status' => true, 'results' => $results];
 
         } catch (\Exception $e) {
-            Log::error('Sancaka Express Exception: ' . $e->getMessage());
+            Log::error('LOG LOG: [Sancaka Express] Exception Crash: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
             return ['status' => false, 'results' => []];
         }
     }
