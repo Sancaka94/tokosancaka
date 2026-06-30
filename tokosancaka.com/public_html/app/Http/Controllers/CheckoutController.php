@@ -150,16 +150,21 @@ class CheckoutController extends Controller
         $isDigital = $isStrictlyDigital;
         $user = Auth::user();
 
-        // 1. DETEKSI MAKANAN (LOKAL) SEBELUM VALIDASI LOGIN
-        $isLocalFood = false;
+       $isLocalFood = false;
         foreach ($cart as $item) {
             $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
             if ($productCheck) {
-                $kategoriGroup = $productCheck->category->category_group ?? '';
-                $kategoriName  = $productCheck->category->name ?? '';
-                if (str_contains(strtolower($kategoriGroup), 'food') ||
-                    str_contains(strtolower($kategoriGroup), 'makanan') ||
-                    str_contains(strtolower($kategoriName), 'makanan')) {
+                // Ambil nama kategori dan jadikan huruf kecil semua biar aman
+                $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
+                $kategoriName  = strtolower($productCheck->category->name ?? '');
+
+                // Deteksi kata kunci
+                if (str_contains($kategoriGroup, 'food') ||
+                    str_contains($kategoriGroup, 'makanan') ||
+                    str_contains($kategoriGroup, 'minuman') ||
+                    str_contains($kategoriName, 'makanan') ||
+                    str_contains($kategoriName, 'minuman')) {
+
                     $isLocalFood = true;
                 }
             }
@@ -573,22 +578,20 @@ class CheckoutController extends Controller
 
         $isDigital = $isStrictlyDigital;
 
-       // 1. TAMBAHKAN DETEKSI MAKANAN DI SINI
-        $isLocalFood = false;
+       $isLocalFood = false;
         foreach ($cart as $item) {
             $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
             if ($productCheck) {
-                // Ambil nama kategori dan jadikan huruf kecil semua biar kebal case-sensitive
+                // Ambil nama kategori dan jadikan huruf kecil semua biar aman
                 $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
                 $kategoriName  = strtolower($productCheck->category->name ?? '');
 
-                // Cek apakah ada unsur kata makanan, minuman, atau food
+                // Deteksi kata kunci
                 if (str_contains($kategoriGroup, 'food') ||
                     str_contains($kategoriGroup, 'makanan') ||
                     str_contains($kategoriGroup, 'minuman') ||
                     str_contains($kategoriName, 'makanan') ||
-                    str_contains($kategoriName, 'minuman') ||
-                    str_contains($kategoriName, 'jajanan')) { // Tambahan opsional buat jaga-jaga
+                    str_contains($kategoriName, 'minuman')) {
 
                     $isLocalFood = true;
                 }
@@ -612,16 +615,21 @@ class CheckoutController extends Controller
        $isStrictlyDigital = $hasDigital && !$hasPhysical;
         $isDigital = $isStrictlyDigital;
 
-        // DETEKSI MAKANAN (LOKAL) SAAT PROSES SIMPAN
         $isLocalFood = false;
         foreach ($cart as $item) {
             $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
             if ($productCheck) {
-                $kategoriGroup = $productCheck->category->category_group ?? '';
-                $kategoriName  = $productCheck->category->name ?? '';
-                if (str_contains(strtolower($kategoriGroup), 'food') ||
-                    str_contains(strtolower($kategoriGroup), 'makanan') ||
-                    str_contains(strtolower($kategoriName), 'makanan')) {
+                // Ambil nama kategori dan jadikan huruf kecil semua biar aman
+                $kategoriGroup = strtolower($productCheck->category->category_group ?? '');
+                $kategoriName  = strtolower($productCheck->category->name ?? '');
+
+                // Deteksi kata kunci
+                if (str_contains($kategoriGroup, 'food') ||
+                    str_contains($kategoriGroup, 'makanan') ||
+                    str_contains($kategoriGroup, 'minuman') ||
+                    str_contains($kategoriName, 'makanan') ||
+                    str_contains($kategoriName, 'minuman')) {
+
                     $isLocalFood = true;
                 }
             }
