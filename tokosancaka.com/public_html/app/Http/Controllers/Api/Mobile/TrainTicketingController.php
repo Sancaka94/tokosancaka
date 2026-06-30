@@ -156,13 +156,23 @@ class TrainTicketingController extends BaseController
 
             // 1. Mapping ulang array penumpang agar tipe identitas terkirim
             $mappedPassengers = array_map(function($pax) {
+                $isPassport = (isset($pax['idType']) && $pax['idType'] === 'Passport');
+
                 return [
-                    "name"      => $pax['name'],
-                    "IDNumber"  => $pax['IDNumber'],
-                    "idType"    => $pax['idType'] ?? 'KTP', // <--- TERUSKAN KE DARMAWISATA
-                    "type"      => $pax['type'],
-                    "phone"     => $pax['phone'],
-                    "birthDate" => $pax['birthDate']
+                    "name"         => $pax['name'],
+                    "IDNumber"     => $pax['IDNumber'],
+
+                    // Kita tembak semua kemungkinan key yang dibaca oleh Darmawisata
+                    "idType"       => $isPassport ? 'Passport' : 'KTP',
+                    "IDType"       => $isPassport ? 'Passport' : 'KTP',
+                    "identityType" => $isPassport ? 'Passport' : 'KTP',
+
+                    // Beberapa versi API H2H KAI mewajibkan nationality 'WNA' (atau kode negara lain) agar Paspor diloloskan
+                    "nationality"  => $isPassport ? 'WNA' : 'ID',
+
+                    "type"         => $pax['type'],
+                    "phone"        => $pax['phone'],
+                    "birthDate"    => $pax['birthDate']
                 ];
             }, $request->passengers);
 
