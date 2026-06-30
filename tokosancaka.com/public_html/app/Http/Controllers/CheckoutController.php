@@ -581,10 +581,12 @@ class CheckoutController extends Controller
                 $kategoriGroup = $productCheck->category->category_group ?? '';
                 $kategoriName  = $productCheck->category->name ?? '';
                 if (str_contains(strtolower($kategoriGroup), 'food') ||
-                    str_contains(strtolower($kategoriGroup), 'makanan') ||
-                    str_contains(strtolower($kategoriName), 'makanan')) {
-                    $isLocalFood = true;
-                }
+                        str_contains(strtolower($kategoriGroup), 'makanan') ||
+                        str_contains(strtolower($kategoriName), 'makanan') ||
+                        str_contains(strtolower($kategoriName), 'minuman') || // <-- Tambahin ini
+                        str_contains(strtolower($kategoriName), 'snack')) {   // <-- Atau ini
+                        $isLocalFood = true;
+                    }
             }
         }
 
