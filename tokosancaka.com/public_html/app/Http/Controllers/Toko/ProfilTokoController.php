@@ -8,37 +8,58 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use App\Models\Store; // <-- Impor model Store
-use App\Models\User;  // <-- Impor model User
+use Illuminate\Support\Facades\Http; // <-- Tambahan untuk Tembak API
+use Illuminate\Support\Facades\Log;  // <-- Tambahan untuk Log Error
+use App\Models\Store;
+use App\Models\User;
 
 class ProfilTokoController extends Controller
 {
     /**
-     * Menampilkan halaman formulir edit profil toko.
-     * Halaman ini akan memuat data toko yang sedang login.
+     * Helper Function: Tembak API untuk mengubah Alamat menjadi Koordinat
      */
+    private function geocodeAddress($address)
+    {
+        $url = "https://nominatim.openstreetmap.org/search";
+
+        try {
+            $response = Http::withHeaders([
+                'User-Agent' => 'SancakaApp/1.0 (support@tokosancaka.com)',
+                'Accept'     => 'application/json',
+            ])->timeout(10)->get($url, [
+                'q'          => $address,
+                'format'     => 'json',
+                'limit'      => 1,
+                'countrycodes' => 'id'
+            ]);
+
+            $data = $response->json();
+
+            if ($response->successful() && !empty($data) && isset($data[0])) {
+                return [
+                    'lat' => (float) $data[0]['lat'],
+                    'lng' => (float) $data[0]['lon'],
+                ];
+            }
+            return null;
+        } catch (\Exception $e) {
+            Log::error('Geocoding Profil Toko Error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
     public function edit()
     {
         $user = Auth::user();
-        
-        // Ambil data toko yang terkait dengan user ini
-        // Asumsi relasi di model User: public function store() { return $this->hasOne(Store::class, 'user_id'); }
         $store = $user->store;
 
         if (!$store) {
-            // Jika user seller tapi data tokonya tidak ada, ini aneh.
-            // Arahkan ke dashboard seller dengan error.
-            return redirect()->route('seller.dashboard')->with('error', 'Profil toko Anda tidak ditemukan.'); 
+            return redirect()->route('seller.dashboard')->with('error', 'Profil toko Anda tidak ditemukan.');
         }
 
-        // Tampilkan view edit profil toko
-        // Pastikan nama view ini sesuai dengan file yang Anda buat
         return view('toko.profil.edit', compact('store'));
     }
 
-    /**
-     * Memperbarui data profil toko di database.
-     */
     public function update(Request $request)
     {
         $user = Auth::user();
@@ -48,13 +69,11 @@ class ProfilTokoController extends Controller
             return redirect()->route('seller.dashboard')->with('error', 'Toko tidak ditemukan.');
         }
 
-        // 1. Validasi semua input dari form
+        // 1. Validasi semua input (Perhatikan: Latitude & Longitude sekarang nullable)
         $validatedData = $request->validate([
             'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('stores')->ignore($store->id), // Pastikan nama unik, tapi abaikan toko ini
+                'required', 'string', 'max:255',
+                Rule::unique('stores')->ignore($store->id),
             ],
             'description'     => 'nullable|string|max:1000',
             'province'        => 'required|string|max:100',
@@ -62,30 +81,43 @@ class ProfilTokoController extends Controller
             'district'        => 'required|string|max:100',
             'village'         => 'required|string|max:100',
             'address_detail'  => 'required|string|max:500',
-            'zip_code'        => 'required|string|max:10', // Sesuai nama form
-            'latitude'        => 'required|numeric|between:-90,90',
-            'longitude'       => 'required|numeric|between:-180,180',
-            'logo'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // 'logo' sesuai nama form
+            'zip_code'        => 'required|string|max:10',
+            'latitude'        => 'nullable|numeric|between:-90,90',   // <-- Ubah jadi nullable
+            'longitude'       => 'nullable|numeric|between:-180,180', // <-- Ubah jadi nullable
+            'logo'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ], [
-            // Pesan error khusus
             'name.unique' => 'Nama toko ini sudah digunakan oleh toko lain.',
-            'latitude.required' => 'Latitude wajib diisi. Gunakan tombol "Cari Koordinat".',
-            'longitude.required' => 'Longitude wajib diisi. Gunakan tombol "Cari Koordinat".',
         ]);
 
-        // 2. Handle File Upload (Logo)
-        if ($request->hasFile('logo')) {
-            // Hapus logo lama jika ada
-            // Menggunakan 'seller_logo' sesuai dengan yang ada di view Anda
-            if ($store->seller_logo) { 
-                Storage::disk('public')->delete($store->seller_logo);
+        $lat = $request->latitude;
+        $lng = $request->longitude;
+
+        // 2. LOGIKA OTOMATIS: Jika GPS HP/PC gagal (kosong), Tembak API berdasarkan Alamat!
+        if (empty($lat) || empty($lng)) {
+            // Gabungkan alamat untuk ditembak ke API
+            $fullAddress = "{$request->village}, {$request->district}, {$request->regency}, {$request->province}";
+
+            $geoData = $this->geocodeAddress($fullAddress);
+
+            if ($geoData) {
+                $lat = $geoData['lat'];
+                $lng = $geoData['lng'];
+                Log::info("Koordinat toko {$store->name} diisi otomatis via API: {$lat}, {$lng}");
+            } else {
+                return redirect()->back()->withInput()->with('error', 'Sistem gagal menemukan koordinat dari alamat Anda. Mohon izinkan akses GPS di browser atau isi koordinat secara manual.');
             }
-            // Simpan logo baru
-            $path = $request->file('logo')->store('store_logos', 'public');
-            $store->seller_logo = $path; // 'seller_logo' adalah kolom di DB
         }
 
-        // 3. Update data Toko (Store)
+        // 3. Handle File Upload (Logo)
+        if ($request->hasFile('logo')) {
+            if ($store->seller_logo) {
+                Storage::disk('public')->delete($store->seller_logo);
+            }
+            $path = $request->file('logo')->store('store_logos', 'public');
+            $store->seller_logo = $path;
+        }
+
+        // 4. Update data Toko (Store)
         $store->name = $validatedData['name'];
         $store->slug = Str::slug($validatedData['name']);
         $store->description = $validatedData['description'];
@@ -94,34 +126,27 @@ class ProfilTokoController extends Controller
         $store->district = $validatedData['district'];
         $store->village = $validatedData['village'];
         $store->address_detail = $validatedData['address_detail'];
-        $store->zip_code = $validatedData['zip_code']; // Menggunakan 'zip_code'
-        $store->latitude = $validatedData['latitude'];
-        $store->longitude = $validatedData['longitude'];
+        $store->zip_code = $validatedData['zip_code'];
+        $store->latitude = $lat;  // <-- Masukkan hasil kordinat final
+        $store->longitude = $lng; // <-- Masukkan hasil kordinat final
         $store->save();
 
-        // 4. Sinkronisasi data ke User (PENTING untuk konsistensi)
-        // Ini agar data di tabel 'users' juga terupdate,
-        // sama seperti saat registrasi seller.
-        $user->store_name = $validatedData['name']; 
+        // 5. Sinkronisasi data ke User
+        $user->store_name = $validatedData['name'];
         $user->province = $validatedData['province'];
         $user->regency = $validatedData['regency'];
         $user->district = $validatedData['district'];
         $user->village = $validatedData['village'];
         $user->address_detail = $validatedData['address_detail'];
-        
-        // Sesuaikan nama kolom di tabel 'users' jika berbeda
-        $user->postal_code = $validatedData['zip_code']; 
-        $user->latitude = $validatedData['latitude'];
-        $user->longitude = $validatedData['longitude'];
-        
-        // Jika Anda juga menyimpan path logo di tabel user
+        $user->postal_code = $validatedData['zip_code'];
+        $user->latitude = $lat;  // <-- Masukkan hasil kordinat final
+        $user->longitude = $lng; // <-- Masukkan hasil kordinat final
+
         if (isset($path)) {
-             // Sesuaikan nama kolom 'store_logo_path' di tabel 'users'
-             $user->store_logo_path = $path; 
+             $user->store_logo_path = $path;
         }
         $user->save();
 
-        // 5. Redirect kembali dengan pesan sukses
-        return redirect()->back()->with('success', 'Profil toko berhasil diperbarui.');
+        return redirect()->back()->with('success', 'Profil toko dan koordinat lokasi berhasil diperbarui.');
     }
 }
