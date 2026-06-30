@@ -184,12 +184,6 @@
                                 </div>
                                 @endif
 
-                                    <input type="text" name="nama_penerima" id="nama_penerima" value="{{ optional(Auth::user())->nama_lengkap }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Nomor WhatsApp</label>
-                                    <input type="text" name="no_wa_penerima" id="no_wa_penerima" value="{{ optional(Auth::user())->no_wa }}" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
-                                </div>
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-medium text-gray-700">NIK (Opsional)</label>
                                     <input type="text" name="nik_penerima" id="nik_penerima" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm">
@@ -1033,32 +1027,6 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <!-- ====================================================== -->
-<!-- === KODE GPS (SCRIPT) DITARUH DI SINI === -->
-<!-- ====================================================== -->
-<script>
-window.addEventListener('load', function() {
-    if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-            function(position) {
-                document.getElementById('latitude').value = position.coords.latitude;
-                document.getElementById('longitude').value = position.coords.longitude;
-            },
-            function(error) {
-                console.warn('Gagal mendapatkan lokasi GPS:', error.message);
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            }
-        );
-    } else {
-        console.warn('Geolocation tidak didukung browser ini.');
-    }
-});
-</script>
-
-<!-- ====================================================== -->
 <!-- === SCRIPT PENCARIAN ALAMAT KIRIMINAJA (SELECT2) === -->
 <!-- ====================================================== -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -1146,53 +1114,64 @@ $(document).ready(function() {
 });
 </script>
 
+<!-- ====================================================== -->
+<!-- === SCRIPT GPS & MAPBOX TERPADU === -->
+<!-- ====================================================== -->
 <script>
 window.addEventListener('load', function() {
     const isLocalFood = {{ (isset($isLocalFood) && $isLocalFood) ? 'true' : 'false' }};
     const storeLat = '{{ $storeLat ?? "" }}';
     const storeLng = '{{ $storeLng ?? "" }}';
 
-    if (isLocalFood && 'geolocation' in navigator) {
+    if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
             function(position) {
                 let userLat = position.coords.latitude;
                 let userLng = position.coords.longitude;
 
-                // Set nilai ke input hidden
+                // 1. Selalu catat koordinat (Berguna untuk digital & fisik)
                 document.getElementById('latitude').value = userLat;
                 document.getElementById('longitude').value = userLng;
 
-                // Tembak API Mapbox Controller kamu
-                fetch(`/api/mapbox/calculate?origin_lat=${storeLat}&origin_lng=${storeLng}&dest_lat=${userLat}&dest_lng=${userLng}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        document.getElementById('mapbox-loading').style.display = 'none';
-                        if (data.success) {
-                            document.getElementById('mapbox-result-container').classList.remove('hidden');
+                // 2. Jika Makanan Lokal, tembak API Mapbox
+                if (isLocalFood) {
+                    fetch(`/api/mapbox/calculate?origin_lat=${storeLat}&origin_lng=${storeLng}&dest_lat=${userLat}&dest_lng=${userLng}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('mapbox-loading').style.display = 'none';
+                            if (data.success) {
+                                document.getElementById('mapbox-result-container').classList.remove('hidden');
 
-                            let cost = data.data.estimated_cost;
-                            let radioValue = `sancaka_local-motor-food-${cost}-0-0`;
+                                let cost = data.data.estimated_cost;
+                                let radioValue = `sancaka_local-motor-food-${cost}-0-0`;
 
-                            // Update DOM
-                            document.getElementById('radio_sancaka_local').value = radioValue;
-                            document.getElementById('radio_sancaka_local').dataset.cost = cost;
-                            document.getElementById('mapbox_km').innerText = data.data.distance_km;
-                            document.getElementById('mapbox_min').innerText = data.data.duration_minutes;
-                            document.getElementById('mapbox_price').innerText = 'Rp' + new Intl.NumberFormat('id-ID').format(cost);
+                                // Update DOM
+                                document.getElementById('radio_sancaka_local').value = radioValue;
+                                document.getElementById('radio_sancaka_local').dataset.cost = cost;
+                                document.getElementById('mapbox_km').innerText = data.data.distance_km;
+                                document.getElementById('mapbox_min').innerText = data.data.duration_minutes;
+                                document.getElementById('mapbox_price').innerText = 'Rp' + new Intl.NumberFormat('id-ID').format(cost);
 
-                            // Trigger kalkulasi total harga
-                            if(typeof handleShippingChange === "function") { handleShippingChange(); }
-                        } else {
-                            alert('Gagal menghitung rute: ' + data.message);
-                        }
-                    })
-                    .catch(err => console.error('Mapbox API Error:', err));
+                                // Trigger kalkulasi total harga
+                                if(typeof handleShippingChange === "function") { handleShippingChange(); }
+                            } else {
+                                alert('Gagal menghitung rute: ' + data.message);
+                            }
+                        })
+                        .catch(err => console.error('Mapbox API Error:', err));
+                }
             },
             function(error) {
-                document.getElementById('mapbox-loading').innerHTML = '<p class="text-red-500 font-bold p-3">Gagal membaca GPS. Mohon izinkan akses lokasi browser Anda.</p>';
+                console.warn('Gagal mendapatkan lokasi GPS:', error.message);
+                // Munculkan peringatan error khusus untuk Makanan Lokal
+                if (isLocalFood) {
+                    document.getElementById('mapbox-loading').innerHTML = '<p class="text-red-500 font-bold p-3">Gagal membaca GPS. Mohon izinkan akses lokasi browser Anda.</p>';
+                }
             },
-            { enableHighAccuracy: true, timeout: 10000 }
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
+    } else {
+        console.warn('Geolocation tidak didukung browser ini.');
     }
 });
 </script>
