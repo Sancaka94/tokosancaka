@@ -82,6 +82,171 @@
 
                         {{-- KODE SEMUA PAYMENT GATEWAY --}}
 
+                        {{-- Area Preview Consult Pay DANA (AJAX) - JANGAN UBAH --}}
+                        <div id="payment-methods-preview" class="mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 hidden shadow-inner">
+                            <div class="flex items-center mb-3">
+                                <img src="https://tokosancaka.com/public/storage/logo/dana.png" class="h-6 mr-2" alt="DANA">
+                                <span class="text-xs font-extrabold text-blue-800 uppercase tracking-wider">
+                                      ESTIMASI PROMO (JIKA BAYAR PAKAI DANA):
+                                </span>
+                            </div>
+                            <div id="payment-icons" class="flex flex-wrap gap-2 mt-2">
+                                {{-- Icon Logo Bank akan muncul di sini via AJAX --}}
+                            </div>
+                            <p class="text-xs text-blue-500 mt-3 flex items-center"><i class="fas fa-lightbulb mr-1.5"></i> Metode di atas akan muncul otomatis di aplikasi DANA saat pembayaran.</p>
+                        </div>
+                    </div>
+
+                    <div class="relative py-4">
+                        <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                            <div class="w-full border-t border-gray-200"></div>
+                        </div>
+                        <div class="relative flex justify-center">
+                            <span class="px-4 bg-white text-sm text-gray-400 font-medium">METODE PEMBAYARAN</span>
+                        </div>
+                    </div>
+
+
+
+                    {{-- 2. PILIH METODE PEMBAYARAN (GRID VIEW) --}}
+                    <div class="space-y-8 mt-6">
+
+                       {{-- CEK STATUS BINDING & TAMPILKAN INFO SALDO ATAU TOMBOL BINDING --}}
+                        @php
+                            $user = Auth::user();
+                            $isDanaBound = $user && !empty($user->dana_access_token);
+                        @endphp
+
+                        @if($isDanaBound)
+                            <div class="p-5 bg-gradient-to-r from-blue-50 to-white border border-blue-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between shadow-sm mb-6 gap-4">
+                                <div>
+                                    <p class="text-sm text-gray-500 font-medium mb-1"><i class="fas fa-wallet mr-1 text-blue-500"></i> Saldo DANA Terhubung:</p>
+                                    <h2 id="dana-balance-text" class="text-3xl font-extrabold text-blue-700 tracking-tight">Rp ******</h2>
+                                    <p id="dana-balance-msg" class="text-xs text-red-500 mt-1 font-medium bg-red-50 px-2 py-1 rounded inline-block" style="display:none;"></p>
+                                </div>
+                                <button type="button" id="btn-cek-saldo-dana" class="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl shadow-md transition-all flex items-center justify-center group">
+                                    <i class="fas fa-sync mr-2 group-hover:rotate-180 transition-transform duration-500"></i> Cek Saldo
+                                </button>
+                            </div>
+                        @else
+                            <div class="p-5 bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between shadow-sm mb-6 gap-4">
+                                <div>
+                                    <p class="text-base text-gray-800 font-bold mb-1"><i class="fas fa-exclamation-triangle text-yellow-500 mr-2 text-lg"></i> DANA Belum Terhubung</p>
+                                    <p class="text-sm text-gray-600">Hubungkan akun DANA Anda untuk menikmati fitur bayar instan (Auto-Debit).</p>
+                                </div>
+                                {{-- URL BINDING TANPA AFFILIATE ID --}}
+                                <a href="{{ url('/customer/dana/bind') }}" class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-sm font-bold rounded-xl shadow-md transition-all flex items-center justify-center">
+                                    <i class="fas fa-link mr-2"></i> Hubungkan Sekarang
+                                </a>
+                            </div>
+                        @endif
+
+                            <div id="dynamic-payment-fields" class="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-200 hidden">
+                        <div id="ovo-field" class="hidden">
+                            <label class="block text-sm font-bold mb-2">Nomor OVO (No. HP):</label>
+                            <input type="text" name="ovo_id" class="w-full p-3 border rounded-lg" placeholder="0812xxxxxx">
+                        </div>
+                        <div id="jenius-field" class="hidden">
+                            <label class="block text-sm font-bold mb-2">Cashtag Jenius:</label>
+                            <input type="text" name="jenius_cashtag" class="w-full p-3 border rounded-lg" placeholder="$cashtag">
+                        </div>
+                    </div>
+
+                        {{-- GROUP 1: MANUAL & GATEWAY LAIN --}}
+                        <div>
+                            <h5 class="text-sm font-extrabold text-gray-400 uppercase tracking-wider mb-4 pl-3 border-l-4 border-gray-400">Transfer & E-Wallet</h5>
+                            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+
+                                {{-- DANA DIRECT DEBIT --}}
+
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="DANA_DIRECT_DEBIT" class="peer sr-only">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <img src="{{ asset('assets/dana.webp') }}" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                                        <span class="text-sm font-bold text-gray-800">DANA BALANCE</span>
+                                        <span class="text-[10px] text-blue-500 font-semibold bg-blue-100 px-2 py-0.5 rounded mt-1">Topup Instan</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+
+                                {{-- DANA DIRECT GAPURA --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="DANA" class="peer sr-only">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <img src="{{ asset('assets/dana.webp') }}" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                                        <span class="text-sm font-bold text-gray-800">DANA</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Payment Gateway</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                {{-- TOMBOL POTONG SALDO DANA --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="DANA_BINDING" class="peer sr-only" {{ !$isDanaBound ? 'disabled' : '' }} required>
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center {{ !$isDanaBound ? 'opacity-60 cursor-not-allowed bg-gray-50 grayscale' : '' }}">
+                                        <img src="{{ asset('assets/dana.webp') }}" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                                        <span class="text-sm font-bold text-gray-800">Saldo DANA</span>
+                                        @if($isDanaBound)
+                                            <span class="text-[10px] text-green-700 font-bold mt-1 bg-green-100 px-2 py-0.5 rounded border border-green-200"><i class="fas fa-link mr-1"></i>Tersambung</span>
+                                        @else
+                                            <span class="text-[10px] text-red-600 font-bold mt-1 bg-red-100 px-2 py-0.5 rounded border border-red-200"><i class="fas fa-unlink mr-1"></i>Belum Terhubung</span>
+                                        @endif
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                {{-- TRANSFER MANUAL --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="TRANSFER_MANUAL" class="peer sr-only">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <div class="h-12 w-12 bg-gray-100 rounded-lg shadow-sm flex items-center justify-center mb-3">
+                                            <img src="https://tokosancaka.com/public/assets/saldo.png" alt="Saldo" class="w-7 h-7 opacity-80" />
+                                        </div>
+                                        <span class="text-sm font-bold text-gray-800">Transfer Bank</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Cek Manual Admin</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                {{-- DOKU --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="DOKU_JOKUL" class="peer sr-only">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <img src="https://tokosancaka.com/public/storage/logo/doku-ewallet.png" class="h-12 object-contain mb-3 rounded-lg shadow-sm p-1">
+                                        <span class="text-sm font-bold text-gray-800">DOKU</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Payment Gateway</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+
+                                {{-- PAYPAL --}}
+                                <label class="relative cursor-pointer group">
+                                    <input type="radio" name="payment_method" value="PAYPAL" class="peer sr-only">
+                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
+                                        <img src="https://tokosancaka.com/public/assets/paypal.png" class="h-12 object-contain mb-3 rounded-lg shadow-sm p-1" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=PP'">
+                                        <span class="text-sm font-bold text-gray-800">PayPal / CC</span>
+                                        <span class="text-[10px] text-gray-500 font-semibold bg-gray-100 px-2 py-0.5 rounded mt-1">Auto Konversi USD</span>
+                                        <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
+                                            <i class="fas fa-check-circle text-xl"></i>
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+
+
                         {{-- GROUP IPAYMU --}}
                         <div class="mt-8">
                             <h5 class="text-sm font-extrabold text-gray-400 uppercase tracking-wider mb-4 pl-3 border-l-4 border-purple-500">
@@ -106,7 +271,7 @@
                         </div>
 
                         {{-- GROUP 2: TRIPAY OTOMATIS (Looping Data API) --}}
-                        {{-- @if(isset($groupedChannels) && count($groupedChannels) > 0)
+                         @if(isset($groupedChannels) && count($groupedChannels) > 0)
                             @foreach($groupedChannels as $groupName => $channels)
                                 <div class="mt-8">
                                     <h5 class="text-sm font-extrabold text-gray-400 uppercase tracking-wider mb-4 pl-3 border-l-4 border-blue-500">
@@ -148,7 +313,7 @@
                             </div>
                         @endif
 
-                        --}}
+
 
                         {{-- PREVIEW METODE PEMBAYARAN OTOMATIS (Hanya Muncul Saat Input Nominal Valid) --}}
 
