@@ -4,29 +4,29 @@
     {{-- CSS Select2 untuk Pencarian API  --}}
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <style>
-        /* Custom Select2 ala Next.js / Vercel: Kompak, shadow halus, ring minimal */
+        /* Custom Select2 ala Next.js / Vercel */
         .select2-container .select2-selection--single {
             height: 38px !important;
-            border: 1px solid #e5e7eb !important; /* gray-200 */
-            border-radius: 0.375rem !important; /* rounded-md */
+            border: 1px solid #e5e7eb !important;
+            border-radius: 0.375rem !important;
             display: flex;
             align-items: center;
             padding-left: 0.5rem;
             background-color: #ffffff;
-            font-size: 0.875rem !important; /* text-sm */
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+            font-size: 0.875rem !important;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
         }
         .select2-container--default .select2-selection--single .select2-selection__arrow {
             height: 36px !important;
             right: 8px !important;
         }
         .select2-search__field:focus {
-            border-color: #ef4444 !important; /* Fokus merah Sancaka */
+            border-color: #ef4444 !important;
             box-shadow: 0 0 0 1px #ef4444 !important;
             outline: none !important;
         }
         .select2-container--default .select2-selection--single .select2-selection__rendered {
-            color: #111827 !important; /* gray-900 */
+            color: #111827 !important;
         }
     </style>
 @endpush
@@ -73,7 +73,7 @@
                 @csrf
                 @method('PUT')
 
-                {{-- BAGIAN 1: INFORMASI DASAR (Landscape Grid) --}}
+                {{-- BAGIAN 1: INFORMASI DASAR --}}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 p-8 border-b border-gray-200">
                     <div class="md:col-span-1">
                         <h3 class="text-base font-medium text-gray-900">Profil Umum</h3>
@@ -109,7 +109,7 @@
                     </div>
                 </div>
 
-                {{-- BAGIAN 2: ALAMAT & WILAYAH (Landscape Grid) --}}
+                {{-- BAGIAN 2: ALAMAT & WILAYAH --}}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 p-8 border-b border-gray-200">
                     <div class="md:col-span-1">
                         <h3 class="text-base font-medium text-gray-900">Alamat & Pengiriman</h3>
@@ -118,14 +118,12 @@
 
                     <div class="md:col-span-2 space-y-6">
 
-                        {{-- Pencarian API --}}
                         <div class="bg-gray-50/80 p-4 border border-gray-200 rounded-lg">
                             <label class="block text-sm font-medium text-gray-800 mb-2">Cari Wilayah Otomatis</label>
                             <select id="select2_alamat_toko" class="block w-full border-gray-200 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500"></select>
                             <p class="text-xs text-gray-500 mt-2">Ketik nama <b>Kecamatan</b> atau <b>Kelurahan</b>, lalu pilih dari daftar.</p>
                         </div>
 
-                        {{-- Grid Wilayah (Readonly) --}}
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label for="province" class="block text-sm font-medium text-gray-700 mb-1">Provinsi</label>
@@ -156,24 +154,47 @@
                     </div>
                 </div>
 
-                {{-- BAGIAN 3: KOORDINAT PETA (Landscape Grid) --}}
+                {{-- BAGIAN 3: KOORDINAT PETA --}}
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 p-8">
                     <div class="md:col-span-1">
                         <h3 class="text-base font-medium text-gray-900">Titik Koordinat (GPS)</h3>
-                        <p class="text-sm text-gray-500 mt-1">Koordinat ini digunakan untuk melacak pengiriman atau titik jemput kurir.</p>
-                        <button type="button" id="btn-cari-koordinat" class="mt-4 w-full inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors">
-                            <i class="fa fa-map-marker-alt mr-2 text-gray-500"></i> Cari Koordinat
-                        </button>
+                        <p class="text-sm text-gray-500 mt-1">Titik lokasi akurat digunakan untuk melacak pengiriman atau pickup kurir.</p>
+
+                        {{-- DIV PERINGATAN MERAH --}}
+                        <div class="mt-4 p-4 bg-red-50 border border-red-200 rounded-md text-sm shadow-sm">
+                            <div class="flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fa fa-info-circle text-red-500 mt-0.5"></i>
+                                </div>
+                                <div class="ml-3 text-red-700 font-medium">
+                                    <p>Jika Anda ingin koordinat lebih akurat, lebih baik setting halaman ini menggunakan HP Anda agar lebih presisi dan detail.</p>
+                                    <p class="mt-2 text-xs opacity-90"><i class="fa fa-exclamation-triangle mr-1"></i> Jangan lupa nyalakan dan izinkan GPS HP Anda saat diminta.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- TOMBOL CARI & GPS --}}
+                        <div class="mt-4 flex flex-col gap-2">
+                            <button type="button" id="btn-gps-koordinat" class="w-full inline-flex items-center justify-center px-4 py-2.5 bg-red-600 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+                                <i class="fa fa-crosshairs mr-2"></i> Ambil Koordinat GPS
+                            </button>
+                            <button type="button" id="btn-cari-koordinat" class="w-full inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors">
+                                <i class="fa fa-search-location mr-2 text-gray-500"></i> Cari via Alamat (Nominatim)
+                            </button>
+                        </div>
                     </div>
 
                     <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
                         <div>
                             <label for="latitude" class="block text-sm font-medium text-gray-700 mb-1">Latitude</label>
-                            <input type="text" name="latitude" id="latitude" value="{{ old('latitude', $store->latitude ?? '') }}" class="block w-full border-gray-200 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm py-2 px-3" placeholder="-7.1234567">
+                            <input type="text" name="latitude" id="latitude" value="{{ old('latitude', $store->latitude ?? '') }}" class="block w-full border-gray-200 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm py-2 px-3 bg-white" placeholder="-7.1234567">
                         </div>
                         <div>
                             <label for="longitude" class="block text-sm font-medium text-gray-700 mb-1">Longitude</label>
-                            <input type="text" name="longitude" id="longitude" value="{{ old('longitude', $store->longitude ?? '') }}" class="block w-full border-gray-200 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm py-2 px-3" placeholder="110.1234567">
+                            <input type="text" name="longitude" id="longitude" value="{{ old('longitude', $store->longitude ?? '') }}" class="block w-full border-gray-200 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm py-2 px-3 bg-white" placeholder="110.1234567">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <p class="text-xs text-gray-400"><i class="fa fa-question-circle mr-1"></i> Jika API atau GPS gagal, Anda bisa membuka Google Maps, tekan dan tahan pada titik lokasi toko Anda, lalu salin angka kordinatnya secara manual ke kolom di atas.</p>
                         </div>
                     </div>
                 </div>
@@ -230,18 +251,82 @@ $(document).ready(function() {
 
         $('#address_detail').focus();
 
-        // Trigger pencarian kordinat
+        // Trigger pencarian kordinat Nominatim sebagai Fallback/Otomatis
         setTimeout(() => { $('#btn-cari-koordinat').click(); }, 500);
     });
 
-    // ---------------------------------------------------------
-    // 3. Logika Geocoding (Pencarian Otomatis Titik Peta API Mapbox/Nominatim)
-    // ---------------------------------------------------------
-    const searchButton = document.getElementById('btn-cari-koordinat');
+    // Deklarasi Elemen
+    const alertBox = document.getElementById('geocode-alert');
     const latInput = document.getElementById('latitude');
     const lonInput = document.getElementById('longitude');
-    const alertBox = document.getElementById('geocode-alert');
 
+    // ---------------------------------------------------------
+    // 3A. Logika Ambil GPS Perangkat (Lebih Akurat)
+    // ---------------------------------------------------------
+    const gpsButton = document.getElementById('btn-gps-koordinat');
+    if (gpsButton) {
+        gpsButton.addEventListener('click', function() {
+            if (!navigator.geolocation) {
+                showAlert('Browser Anda tidak mendukung fitur lokasi GPS.', 'error');
+                return;
+            }
+
+            // Visual Loading
+            let originalText = this.innerHTML;
+            this.disabled = true;
+            this.innerHTML = `<i class="fa fa-spinner fa-spin mr-2"></i> Mengakses GPS...`;
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    // Sukses mendapatkan lokasi
+                    latInput.value = position.coords.latitude.toFixed(7);
+                    lonInput.value = position.coords.longitude.toFixed(7);
+
+                    showAlert('Koordinat berhasil diambil dari GPS perangkat Anda!', 'success');
+
+                    // Efek visual sukses
+                    latInput.classList.add('ring-1', 'ring-green-500', 'border-green-500');
+                    lonInput.classList.add('ring-1', 'ring-green-500', 'border-green-500');
+                    setTimeout(() => {
+                        latInput.classList.remove('ring-1', 'ring-green-500', 'border-green-500');
+                        lonInput.classList.remove('ring-1', 'ring-green-500', 'border-green-500');
+                    }, 2000);
+
+                    // Reset tombol
+                    gpsButton.disabled = false;
+                    gpsButton.innerHTML = originalText;
+                },
+                function(error) {
+                    // Gagal atau ditolak
+                    let errorMsg = 'Gagal mengambil GPS.';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMsg = "Izin GPS ditolak. Silakan izinkan akses lokasi di pengaturan browser/HP Anda.";
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMsg = "Informasi lokasi GPS tidak tersedia saat ini.";
+                            break;
+                        case error.TIMEOUT:
+                            errorMsg = "Waktu pencarian GPS habis (Timeout).";
+                            break;
+                    }
+                    showAlert(errorMsg, 'error');
+                    gpsButton.disabled = false;
+                    gpsButton.innerHTML = originalText;
+                },
+                {
+                    enableHighAccuracy: true, // Memaksa mencari lokasi paling akurat (GPS satelit)
+                    timeout: 10000,           // Batas tunggu 10 detik
+                    maximumAge: 0             // Jangan gunakan cache
+                }
+            );
+        });
+    }
+
+    // ---------------------------------------------------------
+    // 3B. Logika Geocoding (Pencarian Nominatim API)
+    // ---------------------------------------------------------
+    const searchButton = document.getElementById('btn-cari-koordinat');
     if (searchButton) {
         searchButton.addEventListener('click', async function() {
             const province = document.getElementById('province').value.trim();
@@ -250,7 +335,7 @@ $(document).ready(function() {
             const village = document.getElementById('village').value.trim();
 
             if (!district || !regency) {
-                showAlert('Pilih wilayah dari form pencarian terlebih dahulu.', 'error');
+                showAlert('Pilih wilayah dari form pencarian alamat terlebih dahulu.', 'error');
                 return;
             }
 
@@ -275,7 +360,7 @@ $(document).ready(function() {
                 if (data && data.length > 0) {
                     latInput.value = parseFloat(data[0].lat).toFixed(7);
                     lonInput.value = parseFloat(data[0].lon).toFixed(7);
-                    showAlert('Koordinat berhasil ditemukan.', 'success');
+                    showAlert('Koordinat ditemukan berdasarkan alamat (Nominatim).', 'success');
 
                     // Visual ringkasan singkat (ala Vercel)
                     latInput.classList.add('ring-1', 'ring-green-500', 'border-green-500');
@@ -285,7 +370,7 @@ $(document).ready(function() {
                         lonInput.classList.remove('ring-1', 'ring-green-500', 'border-green-500');
                     }, 2000);
                 } else {
-                    showAlert('Gagal mencari titik peta. Silakan isi manual.', 'error');
+                    showAlert('Gagal mencari titik peta via alamat.', 'error');
                 }
             } catch (error) {
                 showAlert('Koneksi terputus saat menghubungi server.', 'error');
