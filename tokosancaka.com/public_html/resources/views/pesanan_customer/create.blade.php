@@ -529,9 +529,9 @@
                                 <label for="vendor_filter" class="form-label">Pilihan Ekspedisi</label>
                                     <select id="vendor_filter" class="form-select border-primary bg-light fw-bold text-dark">
                                         <option value="all" selected>Semua</option>
+                                        <option value="sancaka_express" class="text-danger fw-bold">Sancaka Express</option> <!-- TAMBAHKAN INI -->
                                         <option value="deliveree" class="text-success fw-bold">Deliveree</option>
                                         <option value="lalamove" class="fw-bold" style="color: #f27024;">Lalamove</option>
-                                        {{-- TAMBAHAN: OPSI IPAYMU --}}
                                         <option value="ipaymu" class="fw-bold text-white" style="background-color: #6f42c1;">iPaymu (COD Khusus)</option>
                                     </select>
                             </div>

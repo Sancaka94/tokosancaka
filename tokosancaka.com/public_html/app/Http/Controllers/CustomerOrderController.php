@@ -568,7 +568,7 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
 
                 // Deteksi vendor dari payload dropdown frontend
                 // $expVendor = explode('-', $validatedData['expedition'])[1] ?? '';
-                $expVendorStr = strtolower($validatedData['expedition'] ?? '');
+                $expVendor = explode('-', $validatedData['expedition'])[1] ?? '';
 
                 if (strtolower($expVendor) === 'deliveree') {
                     // Panggil helper Deliveree
@@ -2577,12 +2577,20 @@ TEXT;
                  return ['status' => false, 'results' => []];
             }
 
-            $route = $response['routes'][0];
+           $route = $response['routes'][0];
             $distanceKm = $route['distance'] / 1000;
             $durationMin = ceil($route['duration'] / 60);
 
-            // 4. Kalkulasi Tarif Dinamis (Bisa diubah oleh Admin di Database)
-            // Default: Tarif Dasar 5000, Per KM 2000, Per KG 1500
+            // --- KONVERSI WAKTU KE JAM & MENIT ---
+            $hours = floor($durationMin / 60);
+            $minutes = $durationMin % 60;
+            $timeString = '';
+            if ($hours > 0) { $timeString .= $hours . ' Jam '; }
+            if ($minutes > 0) { $timeString .= $minutes . ' Menit'; }
+            $etdText = 'Hari Ini (' . trim($timeString) . ')';
+            // -------------------------------------
+
+            // Kalkulasi Tarif Dinamis
             $baseFare = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 5000);
             $pricePerKm = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 2000);
             $pricePerKg = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1500);
@@ -2591,19 +2599,16 @@ TEXT;
             $weightKg = ceil($weightGram / 1000);
             if ($weightKg < 1) $weightKg = 1;
 
-            // Rumus: Tarif Dasar + (Jarak * Harga/KM) + (Berat * Harga/KG)
             $totalCost = $baseFare + ($distanceKm * $pricePerKm) + ($weightKg * $pricePerKg);
-
-            // Pembulatan ke 500 perak terdekat agar rapi
             $finalCost = (int) (ceil($totalCost / 500) * 500);
 
             $results[] = [
                 'service' => 'sancaka_express',
-                'service_type' => 'sancaka_express-One_Day', // Format: vendor-layanan
+                'service_type' => 'One Day Service', // Dibuat lebih rapi untuk user
                 'cost' => $finalCost,
                 'distance_fees' => $finalCost,
                 'extra_fees' => 0,
-                'etd' => '1 Hari (' . $durationMin . ' Menit)',
+                'etd' => $etdText, // Menggunakan format jam/menit
                 'cod' => true,
                 'jarak_km' => round($distanceKm, 2),
                 'berat_kg' => $weightKg
