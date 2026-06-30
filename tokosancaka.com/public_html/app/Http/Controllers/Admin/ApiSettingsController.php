@@ -31,6 +31,11 @@ class ApiSettingsController extends Controller
         // --- TAMBAHAN MANDIRI ---
         $mandiriMode        = Api::getValue('MANDIRI_MODE', 'global', 'sandbox');
 
+        // KUNCI ANTI CRASH: Paksa ke sandbox kalau databasenya nyangkut di nilai lain
+        if (!in_array($mandiriMode, ['sandbox', 'production'])) {
+            $mandiriMode = 'sandbox';
+        }
+
         $kiriminaja = [
             'mode' => $kaMode,
             'staging' => [
@@ -385,8 +390,14 @@ class ApiSettingsController extends Controller
                 Api::setValue('IPAYMU_API_KEY', $request->ipaymu_api_key, 'ipaymu', $env);
 
             // --- TAMBAHAN MANDIRI ---
-            } elseif ($type === 'mandiri') {
+           } elseif ($type === 'mandiri') {
                 $env = $request->mandiri_mode;
+
+                // KUNCI ANTI NYANGKUT: Cegah status kosong saat disubmit
+                if (empty($env) || !in_array($env, ['sandbox', 'production'])) {
+                    $env = 'sandbox';
+                }
+
                 Api::setValue('MANDIRI_MODE', $env, 'mandiri', 'global');
 
                 // Zero Trust Input Sanitization (Kecuali Private Key karena struktur .pem)
