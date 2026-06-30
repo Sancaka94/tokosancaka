@@ -761,7 +761,7 @@
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
                         @csrf @method('PUT')
                         <input type="hidden" name="type" value="mandiri">
-                        <input type="hidden" name="mandiri_mode" x-model="mandiriData.mode">
+                        <input type="hidden" name="mandiri_mode" :value="mandiriData.mode || 'sandbox'">
 
                         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                             <div>

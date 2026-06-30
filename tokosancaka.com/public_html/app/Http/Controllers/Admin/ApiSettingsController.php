@@ -212,6 +212,12 @@ class ApiSettingsController extends Controller
             ]
         ];
 
+        // --- TAMBAHAN MANDIRI ---
+        $mandiriMode = Api::getValue('MANDIRI_MODE', 'global', 'sandbox');
+
+        // TAMBAHKAN BARIS INI: Cegah mode null/kosong biar JS ga crash
+        $mandiriMode = in_array($mandiriMode, ['sandbox', 'production']) ? $mandiriMode : 'sandbox';
+
         // --- TAMBAHAN MANDIRI API ---
         $mandiri = [
             'mode' => $mandiriMode,
