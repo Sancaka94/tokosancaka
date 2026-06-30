@@ -235,60 +235,34 @@
                     <div class="bg-white rounded-xl shadow-md p-6">
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Pilih Metode Pengiriman</h2>
 
-                        {{-- ====================================================================== --}}
-                        {{-- 1. LOGIKA UNTUK FOOD DELIVERY (KURIR SANCAKA LOKAL / MAPBOX)         --}}
-                        {{-- ====================================================================== --}}
-                        @if(isset($isLocalFood) && $isLocalFood)
-                            <div class="p-4 bg-orange-50 border border-orange-200 rounded-lg flex items-start mb-4">
-                                <i class="fas fa-motorcycle text-orange-500 text-3xl mr-4 mt-1"></i>
-                                <div class="flex-1">
-                                    <h3 class="font-bold text-orange-800">Kurir Sancaka Lokal (Food Delivery)</h3>
-                                    <p class="text-sm text-orange-600 mt-1">Pesanan Anda akan diantar secepatnya oleh Driver Sancaka terdekat.</p>
-
-                                    @if(isset($routeResult) && $routeResult['success'])
-                                        <div class="mt-3 bg-white p-3 rounded border border-orange-100 shadow-sm flex items-center justify-between">
-                                            <div>
-                                                <span class="block text-xs font-semibold text-gray-500 uppercase">Jarak Tempuh</span>
-                                                <span class="block text-sm font-bold text-gray-900">{{ $routeResult['data']['distance_km'] }} KM</span>
-                                            </div>
-                                            <div class="text-right">
-                                                <span class="block text-xs font-semibold text-gray-500 uppercase">Estimasi Tiba</span>
-                                                <span class="block text-sm font-bold text-gray-900">{{ $routeResult['data']['duration_minutes'] }} Menit</span>
-                                            </div>
-                                        </div>
-                                    @else
-                                        <div class="mt-3 text-red-600 text-sm font-semibold">
-                                            <i class="fas fa-exclamation-circle"></i> Titik lokasi belum akurat atau rute tidak ditemukan.
-                                        </div>
-                                    @endif
+                       @if(isset($isLocalFood) && $isLocalFood)
+                        <div class="p-4 bg-orange-50 border border-orange-200 rounded-lg mb-4" id="mapbox-loading">
+                            <div class="flex items-center text-orange-600">
+                                <i class="fas fa-spinner fa-spin text-2xl mr-3"></i>
+                                <div>
+                                    <h3 class="font-bold">Menghitung Jarak & Tarif...</h3>
+                                    <p class="text-xs">Sistem sedang mendeteksi lokasi Anda via GPS.</p>
                                 </div>
                             </div>
+                        </div>
 
-                            {{-- Hidden Input agar JS mengenali ini sebagai "sancaka_local" --}}
+                        <!-- Container hasil perhitungan Mapbox yang disembunyikan awalnya -->
+                        <div id="mapbox-result-container" class="hidden">
                             <label class="flex items-center border border-orange-300 bg-orange-50 p-4 rounded-lg cursor-pointer mb-2">
-                                <input type="radio"
-                                    name="shipping_method"
-                                    value="sancaka_local-motor-food-{{ isset($routeResult) ? $routeResult['data']['estimated_cost'] : 0 }}-0-0"
-                                    data-cost="{{ isset($routeResult) ? $routeResult['data']['estimated_cost'] : 0 }}"
-                                    data-insurance="0"
-                                    data-cod="true"
-                                    data-cod-fee="0"
-                                    class="form-radio h-5 w-5 text-orange-600"
-                                    checked>
-
+                                <input type="radio" name="shipping_method" id="radio_sancaka_local" value="" data-cost="0" data-insurance="0" data-cod="true" data-cod-fee="0" class="form-radio h-5 w-5 text-orange-600" checked>
                                 <div class="ml-4 flex justify-between w-full items-center">
                                     <div class="flex items-center gap-3">
-                                        <i class="fas fa-route text-gray-400 text-xl"></i>
+                                        <i class="fas fa-motorcycle text-orange-500 text-3xl"></i>
                                         <div>
-                                            <span class="text-sm font-bold text-gray-900">Pengantaran Langsung</span>
-                                            <span class="block text-xs text-gray-500">Tarif dihitung otomatis berdasarkan jarak tempuh Mapbox.</span>
+                                            <span class="text-sm font-bold text-gray-900">Kurir Sancaka Lokal (Motor)</span>
+                                            <span class="block text-xs text-gray-500">Jarak: <span id="mapbox_km">0</span> KM | Estimasi: <span id="mapbox_min">0</span> Menit</span>
                                         </div>
                                     </div>
-                                    <span class="text-lg font-bold text-orange-600">
-                                        Rp{{ number_format(isset($routeResult) ? $routeResult['data']['estimated_cost'] : 0, 0, ',', '.') }}
-                                    </span>
+                                    <span class="text-lg font-bold text-orange-600" id="mapbox_price">Rp0</span>
                                 </div>
                             </label>
+                        </div>
+                    @endif
 
 
                         {{-- ====================================================================== --}}
@@ -1154,6 +1128,57 @@ $(document).ready(function() {
     setInterval(function() {
         updateCardPreview();
     }, 1500);
+});
+</script>
+
+<script>
+window.addEventListener('load', function() {
+    const isLocalFood = {{ (isset($isLocalFood) && $isLocalFood) ? 'true' : 'false' }};
+    const storeLat = '{{ $storeLat ?? "" }}';
+    const storeLng = '{{ $storeLng ?? "" }}';
+
+    if (isLocalFood && 'geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                let userLat = position.coords.latitude;
+                let userLng = position.coords.longitude;
+
+                // Set nilai ke input hidden
+                document.getElementById('latitude').value = userLat;
+                document.getElementById('longitude').value = userLng;
+
+                // Tembak API Mapbox Controller kamu
+                fetch(`/api/mapbox/calculate?origin_lat=${storeLat}&origin_lng=${storeLng}&dest_lat=${userLat}&dest_lng=${userLng}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById('mapbox-loading').style.display = 'none';
+                        if (data.success) {
+                            document.getElementById('mapbox-result-container').classList.remove('hidden');
+
+                            let cost = data.data.estimated_cost;
+                            let radioValue = `sancaka_local-motor-food-${cost}-0-0`;
+
+                            // Update DOM
+                            document.getElementById('radio_sancaka_local').value = radioValue;
+                            document.getElementById('radio_sancaka_local').dataset.cost = cost;
+                            document.getElementById('mapbox_km').innerText = data.data.distance_km;
+                            document.getElementById('mapbox_min').innerText = data.data.duration_minutes;
+                            document.getElementById('mapbox_price').innerText = 'Rp' + new Intl.NumberFormat('id-ID').format(cost);
+
+                            // Trigger kalkulasi total harga
+                            if(typeof handleShippingChange === "function") { handleShippingChange(); }
+                        } else {
+                            alert('Gagal menghitung rute: ' + data.message);
+                        }
+                    })
+                    .catch(err => console.error('Mapbox API Error:', err));
+            },
+            function(error) {
+                document.getElementById('mapbox-loading').innerHTML = '<p class="text-red-500 font-bold p-3">Gagal membaca GPS. Mohon izinkan akses lokasi browser Anda.</p>';
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    }
 });
 </script>
 

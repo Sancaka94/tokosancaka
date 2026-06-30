@@ -153,6 +153,19 @@ class TrainTicketingController extends BaseController
             Log::info("Train Order DRAFT berhasil dibuat. Local ID: " . $orderId);
 
             // STEP B: RAKIT PAYLOAD DARMAWISATA
+
+            // 1. Mapping ulang array penumpang agar tipe identitas terkirim
+            $mappedPassengers = array_map(function($pax) {
+                return [
+                    "name"      => $pax['name'],
+                    "IDNumber"  => $pax['IDNumber'],
+                    "idType"    => $pax['idType'] ?? 'KTP', // <--- TERUSKAN KE DARMAWISATA
+                    "type"      => $pax['type'],
+                    "phone"     => $pax['phone'],
+                    "birthDate" => $pax['birthDate']
+                ];
+            }, $request->passengers);
+
             $dwPayload = [
                 "origin"            => $request->origin,
                 "destination"       => $request->destination,
@@ -165,20 +178,7 @@ class TrainTicketingController extends BaseController
                 "paxAdult"          => DB::table('train_passengers')->where('train_order_id', $orderId)->where('pax_type', 0)->count(),
                 "paxChild"          => DB::table('train_passengers')->where('train_order_id', $orderId)->where('pax_type', 1)->count(),
                 "paxInfant"         => DB::table('train_passengers')->where('train_order_id', $orderId)->where('pax_type', 2)->count(),
-                // RAKIT ULANG PASSENGER UNTUK MENERUSKAN IDType KE DARMAWISATA
-                "passengers"        => array_map(function($pax) {
-                    return [
-                        "name"      => $pax['name'],
-                        "IDNumber"  => $pax['IDNumber'],
-                        // Tambahkan parameter IDType/identityType (sesuaikan dengan dokumentasi Darmawisata)
-                        // KAI biasanya butuh 'Passport' atau 'KTP' sebagai penanda
-                        "identityType" => isset($pax['IDType']) && $pax['IDType'] === 'Passport' ? 'Passport' : 'KTP',
-                        "type"      => $pax['type'],
-                        "phone"     => $pax['phone'],
-                        "birthDate" => $pax['birthDate']
-                    ];
-                }, $request->passengers),
-
+                "passengers"        => $mappedPassengers, // <--- GUNAKAN ARRAY YANG SUDAH DI-MAPPING
                 "trainID"           => $request->trainID,
                 "userID"            => $this->darmawisataUserId,
                 "accessToken"       => $request->accessToken

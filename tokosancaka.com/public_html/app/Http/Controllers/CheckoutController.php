@@ -456,7 +456,7 @@ class CheckoutController extends Controller
         // PASTIKAN VARIABLE 'isDigital' DILEMPAR KE COMPACT
         //return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'hasDigital', 'hasPhysical', 'isStrictlyDigital'));
 
-        return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'hasDigital', 'hasPhysical', 'isStrictlyDigital', 'isLocalFood', 'routeResult'));
+        return view('checkout.index', compact('cart', 'expressOptions', 'instantOptions', 'user', 'tripayChannels', 'hasDigital', 'hasPhysical', 'isStrictlyDigital', 'isLocalFood', 'storeLat', 'storeLng'));
         }
 
 
@@ -567,9 +567,34 @@ class CheckoutController extends Controller
 
         $isDigital = $isStrictlyDigital;
 
-        if (!$isStrictlyDigital && (!$user || empty($user->address_detail))) {
-            return redirect()->route('profile.edit')->with('warning', 'Silakan lengkapi alamat pengiriman dahulu.');
+       // 1. TAMBAHKAN DETEKSI MAKANAN DI SINI
+        $isLocalFood = false;
+        foreach ($cart as $item) {
+            $productCheck = $productsCache[$item['product_id'] ?? null] ?? null;
+            if ($productCheck) {
+                $kategoriGroup = $productCheck->category->category_group ?? '';
+                $kategoriName  = $productCheck->category->name ?? '';
+                if (str_contains(strtolower($kategoriGroup), 'food') ||
+                    str_contains(strtolower($kategoriGroup), 'makanan') ||
+                    str_contains(strtolower($kategoriName), 'makanan')) {
+                    $isLocalFood = true;
+                }
+            }
         }
+
+        // 2. UBAH ATURAN BYPASS (Izinkan Digital ATAU Makanan lolos tanpa login)
+        if (!$isStrictlyDigital && !$isLocalFood) {
+            if (!$user) {
+                return redirect()->route('login')->with('warning', 'Keranjang Anda berisi produk fisik reguler. Silakan login untuk memilih opsi kurir ekspedisi.');
+            }
+            if (empty($user->village) || empty($user->district) || empty($user->regency) || empty($user->province) || empty($user->address_detail)) {
+                return redirect()->route('profile.edit')->with('warning', 'Alamat pengiriman Anda belum lengkap.');
+            }
+        }
+
+        // Dapatkan koordinat Toko untuk dikirim ke JS Frontend
+        $storeLat = $store ? $store->latitude : '-7.3998307'; // Default koordinat Ngawi jika kosong
+        $storeLng = $store ? $store->longitude : '111.4511975';
 
         // ====================================================================
         // 🔥 KEAMANAN & UX: SILENT REGISTRATION UNTUK GUEST CHECKOUT DIGITAL
