@@ -134,6 +134,7 @@ use App\Http\Controllers\Admin\AdminLogController;
 use App\Http\Controllers\SellerRegisterController;
 use App\Http\Controllers\SellerReviewController;
 use App\Http\Controllers\Admin\PerizinanController;
+use App\Http\Controllers\Admin\SancakaExpressController;
 
 use App\Http\Controllers\InvoiceController;
 
@@ -1749,4 +1750,10 @@ Route::prefix('customer')->name('customer.')->group(function () {
     // Checkout Barang
     Route::get('/checkout', [\App\Http\Controllers\Customer\CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [\App\Http\Controllers\Customer\CheckoutController::class, 'store'])->name('checkout.store');
+});
+
+
+Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
+    Route::get('/sancaka-express/setting', [\App\Http\Controllers\Admin\SancakaExpressController::class, 'index'])->name('sancaka_express.index');
+    Route::put('/sancaka-express/setting', [\App\Http\Controllers\Admin\SancakaExpressController::class, 'update'])->name('sancaka_express.update');
 });

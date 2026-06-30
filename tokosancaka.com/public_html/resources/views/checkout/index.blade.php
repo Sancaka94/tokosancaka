@@ -258,7 +258,7 @@
                                     <div class="flex items-center gap-3">
                                         <i class="fas fa-motorcycle text-orange-500 text-3xl"></i>
                                         <div>
-                                            <span class="text-sm font-bold text-gray-900">Kurir Sancaka Lokal (Motor)</span>
+                                            <span class="text-sm font-bold text-gray-900">Kurir Sancaka Express (Motor)</span>
                                             <span class="block text-xs text-gray-500">Jarak: <span id="mapbox_km">0</span> KM | Estimasi: <span id="mapbox_min">0</span> Menit</span>
                                         </div>
                                     </div>

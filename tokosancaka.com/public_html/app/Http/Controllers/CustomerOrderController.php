@@ -329,6 +329,21 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
         }
 
         // =========================================================================
+        // BLOK SANCAKA EXPRESS (ONE DAY SERVICE - INTERNAL KILAT)
+        // =========================================================================
+        if (in_array($vendorFilter, ['all', 'sancaka_express'])) {
+            $sancakaOptions = $this->_getSancakaExpressPricing(
+                $senderLat, $senderLng, $receiverLat, $receiverLng, $validated['weight'],
+                $senderFullAddress, $receiverFullAddress, $senderSimpleAddress, $receiverSimpleAddress
+            );
+
+            if ($sancakaOptions['status']) {
+                $expressOptions['status'] = true;
+                $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $sancakaOptions['results']);
+            }
+        }
+
+        // =========================================================================
         // 5. GABUNGKAN DAN KEMBALIKAN HASIL FINAL
         // =========================================================================
         $finalResults = [
@@ -582,6 +597,20 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                     $pesanan->status = 'Menunggu Pickup';
                     $pesanan->status_pesanan = 'Menunggu Pickup';
                     $pesanan->resi = $lalamoveResponse['resi'] ?? null;
+
+                    } elseif (strtolower($expVendor) === 'sancaka_express') {
+                    // Panggil helper Sancaka Express Internal
+                    $sancakaResponse = $this->_createSancakaExpressOrder(
+                        $validatedData, $pesanan, $cod_value
+                    );
+
+                    if (($sancakaResponse['status'] ?? false) !== true) {
+                        throw new Exception($sancakaResponse['text'] ?? 'Gagal membuat order Sancaka Express.');
+                    }
+
+                    $pesanan->status = 'Menunggu Driver Sancaka'; // Status Khusus Kurir Internal
+                    $pesanan->status_pesanan = 'Menunggu Driver Sancaka';
+                    $pesanan->resi = $sancakaResponse['resi'] ?? null;
 
                 } elseif (strtolower($expVendor) === 'ipaymu' || strtolower($expVendor) === 'komship') {
 
@@ -2497,6 +2526,112 @@ TEXT;
         } catch (\Exception $e) {
             Log::error('LOG LOG: IPAYMU PG System Error: ' . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * =========================================================================
+     * FUNGSI HELPER SANCAKA EXPRESS (ONE DAY SERVICE) - TARIK MAPBOX & BIAYA
+     * =========================================================================
+     */
+    private function _getSancakaExpressPricing($senderLat, $senderLng, $receiverLat, $receiverLng, $weightGram, $senderAddress, $receiverAddress, $senderSimple = '', $receiverSimple = '')
+    {
+        Log::info('LOG LOG: Start Sancaka Express Pricing');
+
+        // 1. Fallback Geocoding jika GPS kosong
+        if (empty($senderLat) || empty($senderLng)) {
+            $geo = $this->geocode(!empty($senderSimple) ? $senderSimple : $senderAddress);
+            if ($geo) { $senderLat = $geo['lat']; $senderLng = $geo['lng']; }
+        }
+        if (empty($receiverLat) || empty($receiverLng)) {
+            $geo = $this->geocode(!empty($receiverSimple) ? $receiverSimple : $receiverAddress);
+            if ($geo) { $receiverLat = $geo['lat']; $receiverLng = $geo['lng']; }
+        }
+
+        if (empty($senderLat) || empty($senderLng) || empty($receiverLat) || empty($receiverLng)) {
+            Log::warning('Sancaka Express Pricing Batal: Koordinat gagal didapat.');
+            return ['status' => false, 'results' => []];
+        }
+
+        // 2. Ambil Token Mapbox Dinamis
+        $mapboxToken = \App\Models\Api::getValue('MAPBOX_TOKEN', 'global');
+        if (empty($mapboxToken)) {
+            Log::error('Sancaka Express Batal: Token Mapbox belum diatur di database.');
+            return ['status' => false, 'results' => []];
+        }
+
+        // 3. Tembak API Mapbox
+        $url = "https://api.mapbox.com/directions/v5/mapbox/driving/{$senderLng},{$senderLat};{$receiverLng},{$receiverLat}";
+        try {
+            $response = Http::withHeaders([
+                'Referer' => url('/') // Header bypass anti-forbidden
+            ])->timeout(10)->get($url, [
+                'access_token' => $mapboxToken,
+                'geometries'   => 'geojson',
+                'overview'     => 'simplified',
+                'steps'        => 'false',
+            ]);
+
+            if (!$response->successful() || !isset($response['routes'][0])) {
+                 Log::error('Sancaka Express Mapbox Error: ', $response->json() ?? []);
+                 return ['status' => false, 'results' => []];
+            }
+
+            $route = $response['routes'][0];
+            $distanceKm = $route['distance'] / 1000;
+            $durationMin = ceil($route['duration'] / 60);
+
+            // 4. Kalkulasi Tarif Dinamis (Bisa diubah oleh Admin di Database)
+            // Default: Tarif Dasar 5000, Per KM 2000, Per KG 1500
+            $baseFare = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 5000);
+            $pricePerKm = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 2000);
+            $pricePerKg = (float) \App\Models\Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1500);
+
+            // Tonase (Berat)
+            $weightKg = ceil($weightGram / 1000);
+            if ($weightKg < 1) $weightKg = 1;
+
+            // Rumus: Tarif Dasar + (Jarak * Harga/KM) + (Berat * Harga/KG)
+            $totalCost = $baseFare + ($distanceKm * $pricePerKm) + ($weightKg * $pricePerKg);
+
+            // Pembulatan ke 500 perak terdekat agar rapi
+            $finalCost = (int) (ceil($totalCost / 500) * 500);
+
+            $results[] = [
+                'service' => 'sancaka_express',
+                'service_type' => 'sancaka_express-One_Day', // Format: vendor-layanan
+                'cost' => $finalCost,
+                'distance_fees' => $finalCost,
+                'extra_fees' => 0,
+                'etd' => '1 Hari (' . $durationMin . ' Menit)',
+                'cod' => true,
+                'jarak_km' => round($distanceKm, 2),
+                'berat_kg' => $weightKg
+            ];
+
+            Log::info("Sancaka Express Berhasil Hitung: Jarak {$distanceKm} KM, Berat {$weightKg} KG, Tarif Rp {$finalCost}");
+            return ['status' => true, 'results' => $results];
+
+        } catch (\Exception $e) {
+            Log::error('Sancaka Express Exception: ' . $e->getMessage());
+            return ['status' => false, 'results' => []];
+        }
+    }
+
+    private function _createSancakaExpressOrder($data, $pesanan, $cod_value)
+    {
+        try {
+            // Karena ini kurir internal Sancaka, kita generate Resi Otomatis
+            $resi = 'SCK-EXP-' . strtoupper(\Illuminate\Support\Str::random(6));
+
+            Log::info("Order Sancaka Express Dibuat: {$pesanan->nomor_invoice} -> Resi: {$resi}");
+
+            return [
+                'status' => true,
+                'resi' => $resi
+            ];
+        } catch (\Exception $e) {
+            return ['status' => false, 'text' => 'Gagal membuat pesanan Sancaka Express.'];
         }
     }
 
