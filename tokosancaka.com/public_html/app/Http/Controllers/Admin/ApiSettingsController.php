@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Events\SystemModeUpdated;
 use App\Models\Api;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log; // Pastikan Log dipanggil
 
 class ApiSettingsController extends Controller
 {
@@ -115,7 +116,7 @@ class ApiSettingsController extends Controller
             'api_key' => Api::getValue('FONNTE_API_KEY', 'global'),
         ];
 
-        // --- TAMBAHAN MAPBOX & SANCAKA EXPRESS ---
+        // --- MAPBOX & SANCAKA EXPRESS ---
         $mapbox = [
             'token'        => Api::getValue('MAPBOX_TOKEN', 'global'),
             'base_fare'    => Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 5000),
@@ -304,12 +305,25 @@ class ApiSettingsController extends Controller
             } elseif ($type === 'fonnte') {
                 Api::setValue('FONNTE_API_KEY', $request->fonnte_api_key, 'fonnte', 'global');
 
-            // --- TAMBAHAN MAPBOX & SANCAKA EXPRESS ---
+            // --- MAPBOX & SANCAKA EXPRESS ---
             } elseif ($type === 'mapbox') {
+
+                // [AUTO-FIX] Membersihkan data korup dari SancakaExpressController sebelumnya
+                // Agar tidak terjadi bentrok "Integrity constraint violation: 1062 Duplicate entry"
+                Api::whereIn('key', [
+                    'MAPBOX_TOKEN',
+                    'SANCAKA_EXPRESS_BASE_FARE',
+                    'SANCAKA_EXPRESS_PER_KM',
+                    'SANCAKA_EXPRESS_PER_KG'
+                ])->where('name', '!=', 'mapbox')->delete();
+
+                // Simpan pengaturan
                 Api::setValue('MAPBOX_TOKEN', trim(strip_tags($request->mapbox_token)), 'mapbox', 'global');
                 Api::setValue('SANCAKA_EXPRESS_BASE_FARE', $request->base_fare, 'mapbox', 'global');
                 Api::setValue('SANCAKA_EXPRESS_PER_KM', $request->price_per_km, 'mapbox', 'global');
                 Api::setValue('SANCAKA_EXPRESS_PER_KG', $request->price_per_kg, 'mapbox', 'global');
+
+                Log::info("Pengaturan Mapbox & Sancaka Express berhasil diperbarui.");
 
             } elseif ($type === 'dana') {
                 $env = $request->dana_mode;
@@ -392,9 +406,11 @@ class ApiSettingsController extends Controller
                 }
             }
 
+            Log::info("Konfigurasi API {$type} berhasil disimpan.");
             return back()->with('success', 'Konfigurasi ' . strtoupper($type) . ' berhasil diperbarui untuk mode ' . strtoupper($request->input("{$type}_mode") ?? 'GLOBAL') . '.');
 
         } catch (\Exception $e) {
+            Log::error("Gagal menyimpan pengaturan API {$type}: " . $e->getMessage());
             return back()->with('error', 'Gagal menyimpan: ' . $e->getMessage());
         }
     }
@@ -415,8 +431,8 @@ class ApiSettingsController extends Controller
                 $targetLalamove     = 'sandbox';
                 $targetPaypal       = 'sandbox';
                 $targetDeliveree    = 'sandbox';
-                $targetIpaymu       = 'sandbox'; // --- TAMBAHAN IPAYMU ---
-                $targetMandiri      = 'sandbox'; // --- TAMBAHAN MANDIRI ---
+                $targetIpaymu       = 'sandbox';
+                $targetMandiri      = 'sandbox';
                 $label              = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
                 $targetKA           = 'production';
@@ -429,8 +445,8 @@ class ApiSettingsController extends Controller
                 $targetLalamove     = 'production';
                 $targetPaypal       = 'production';
                 $targetDeliveree    = 'production';
-                $targetIpaymu       = 'production'; // --- TAMBAHAN IPAYMU ---
-                $targetMandiri      = 'production'; // --- TAMBAHAN MANDIRI ---
+                $targetIpaymu       = 'production';
+                $targetMandiri      = 'production';
                 $label              = 'PRODUCTION (LIVE)';
             }
 
@@ -442,18 +458,20 @@ class ApiSettingsController extends Controller
             Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
             Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
             Api::setValue('DELIVEREE_MODE', $targetDeliveree, 'deliveree', 'global');
-            Api::setValue('IPAYMU_MODE', $targetIpaymu, 'ipaymu', 'global'); // --- TAMBAHAN IPAYMU ---
-            Api::setValue('MANDIRI_MODE', $targetMandiri, 'mandiri', 'global'); // --- TAMBAHAN MANDIRI ---
-
-            // LOG LOG
+            Api::setValue('IPAYMU_MODE', $targetIpaymu, 'ipaymu', 'global');
+            Api::setValue('MANDIRI_MODE', $targetMandiri, 'mandiri', 'global');
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
             Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
+
+            // Log proses toggle
+            Log::info("Sistem API Global Mode diubah secara manual ke: {$label}");
 
             event(new SystemModeUpdated($targetKA));
 
             return back()->with('success', "Mode API berhasil diubah ke: <b>$label</b>");
 
         } catch (\Exception $e) {
+            Log::error("Gagal melakukan toggle mode API: " . $e->getMessage());
             return back()->with('error', 'Gagal mengubah mode: ' . $e->getMessage());
         }
     }
@@ -474,8 +492,8 @@ class ApiSettingsController extends Controller
                 $targetLalamove     = 'production';
                 $targetPaypal       = 'production';
                 $targetDeliveree    = 'production';
-                $targetIpaymu       = 'production'; // --- TAMBAHAN IPAYMU ---
-                $targetMandiri      = 'production'; // --- TAMBAHAN MANDIRI ---
+                $targetIpaymu       = 'production';
+                $targetMandiri      = 'production';
                 $label              = 'PRODUCTION (LIVE)';
             } else {
                 $targetKA           = 'staging';
@@ -488,8 +506,8 @@ class ApiSettingsController extends Controller
                 $targetLalamove     = 'sandbox';
                 $targetPaypal       = 'sandbox';
                 $targetDeliveree    = 'sandbox';
-                $targetIpaymu       = 'sandbox'; // --- TAMBAHAN IPAYMU ---
-                $targetMandiri      = 'sandbox'; // --- TAMBAHAN MANDIRI ---
+                $targetIpaymu       = 'sandbox';
+                $targetMandiri      = 'sandbox';
                 $label              = 'SANDBOX / MAINTENANCE';
             }
 
@@ -501,12 +519,13 @@ class ApiSettingsController extends Controller
             Api::setValue('dana_production_mode', $targetDana, 'dana', 'global');
             Api::setValue('MIDTRANS_MODE', $targetMidtrans, 'midtrans', 'global');
             Api::setValue('DELIVEREE_MODE', $targetDeliveree, 'deliveree', 'global');
-            Api::setValue('IPAYMU_MODE', $targetIpaymu, 'ipaymu', 'global'); // --- TAMBAHAN IPAYMU ---
-            Api::setValue('MANDIRI_MODE', $targetMandiri, 'mandiri', 'global'); // --- TAMBAHAN MANDIRI ---
-
-            // LOG LOG
+            Api::setValue('IPAYMU_MODE', $targetIpaymu, 'ipaymu', 'global');
+            Api::setValue('MANDIRI_MODE', $targetMandiri, 'mandiri', 'global');
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
             Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
+
+            // Log proses toggle via AJAX
+            Log::info("Sistem API Mode di-toggle via API ke: {$label}");
 
             event(new SystemModeUpdated($targetKA));
 
@@ -517,6 +536,7 @@ class ApiSettingsController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
+            Log::error("Gagal melakukan toggle mode API (AJAX): " . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengubah database: ' . $e->getMessage()
@@ -580,6 +600,8 @@ class ApiSettingsController extends Controller
 
             $statusLabel = $isDebug ? 'AKTIF (TRUE)' : 'MATI (FALSE)';
 
+            Log::info("APP_DEBUG berhasil diubah menjadi: {$statusLabel} oleh sistem.");
+
             // Jika dipanggil lewat AJAX
             if ($request->ajax()) {
                 return response()->json([
@@ -592,6 +614,8 @@ class ApiSettingsController extends Controller
             return back()->with('success', "Laravel Debugger berhasil diubah menjadi $statusLabel");
 
         } catch (\Exception $e) {
+            Log::error("Gagal mengubah APP_DEBUG: " . $e->getMessage());
+
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
