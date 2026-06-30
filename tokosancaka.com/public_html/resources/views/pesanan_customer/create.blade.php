@@ -1638,9 +1638,22 @@
                 if (kiriminAjaResults.length > 0) {
                     b.append(`<div class="ongkir-header-row d-none d-lg-flex"><div class="ongkir-item-col col-service">Layanan</div><div class="ongkir-item-col col-etd">Estimasi</div><div class="ongkir-item-col col-cod">COD</div><div class="ongkir-item-col col-price">Tarif</div><div class="ongkir-item-col col-action"></div></div>`);
 
-                    kiriminAjaResults.forEach(i => {
-                        const logoName = (i.service || "").toLowerCase().replace(/\s+/g, '');
-                        let logoUrl = logoName === 'gosend' ? 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png' : (logoName === 'grab' ? 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png' : `{{ asset('public/storage/logo-ekspedisi/') }}/${logoName}.png`);
+                   kiriminAjaResults.forEach(i => {
+                        // Hilangkan spasi dan underscore agar pengecekan nama logo lebih akurat
+                        const logoName = (i.service || "").toLowerCase().replace(/[\s_]+/g, '');
+
+                        // 1. PERBAIKAN LOGO: Masukkan link logo Sancaka Express Anda
+                        let logoUrl = '';
+                        if (logoName === 'sancakaexpress') {
+                            logoUrl = 'https://tokosancaka.com/storage/uploads/sancaka.png';
+                        } else if (logoName === 'gosend') {
+                            logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png';
+                        } else if (logoName === 'grab') {
+                            logoUrl = 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png';
+                        } else {
+                            logoUrl = `{{ asset('public/storage/logo-ekspedisi/') }}/${logoName}.png`;
+                        }
+
                         const safeService = (i.service || '').toString().replace(/-/g, ' ');
                         const safeServiceTypeLabel = (i.service_type_label || '').toString().replace(/-/g, ' ');
                         const useInsurance = $('#ansuransi').val() === 'iya';
@@ -1652,17 +1665,31 @@
                         const hasDiscount = i.price?.base_price && i.price.base_price > i.cost;
                         const basePriceFmt = hasDiscount ? formatRupiah(i.price.base_price) : '';
                         const insuranceFee = i.insurance || 0;
+
                         let feeDetailsHtml = '';
                         if (useInsurance && insuranceFee > 0) { feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFee)}</small></div>`; }
                         if (i.cod && codFee > 0) { feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`; }
-                        let etdHtml = i.etd ? (i.is_instant ? `<span>${i.etd}</span>` : `<span>${i.etd} Hari</span>`) : '';
+
+                        // 2. PERBAIKAN WAKTU ETD: Mencegah kata "Hari" menjadi dobel
+                        let etdText = String(i.etd || '');
+                        let etdHtml = '';
+                        if (etdText) {
+                            // Jika teks sudah mengandung kata "hari", "jam", atau "menit", jangan tambahkan kata "Hari" lagi.
+                            if (etdText.toLowerCase().includes('hari') || etdText.toLowerCase().includes('jam') || etdText.toLowerCase().includes('menit') || i.is_instant) {
+                                etdHtml = `<span>${etdText}</span>`;
+                            } else {
+                                etdHtml = `<span>${etdText} Hari</span>`;
+                            }
+                        }
+
                         const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}" data-shipping-cost="${parseInt(i.cost || 0)}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">Kirim Paket</button>`;
 
+                        // 3. PERBAIKAN HTML GAMBAR: Menghapus atribut onerror yang menyembunyikan gambar
                         b.append(`
                         <div class="ongkir-item-card">
                             <div class="ongkir-item-col col-service">
-                                <img src="${logoUrl}" class="ongkir-logo" onerror="this.style.display='none'">
-                                <div class="service-info"><span class="service-name">${i.service_name}</span><span class="service-type">${i.service_type_label}</span></div>
+                                <img src="${logoUrl}" class="ongkir-logo" style="max-height: 40px; width: auto; object-fit: contain; margin-right: 15px;" alt="${i.service_name}">
+                                <div class="service-info"><span class="service-name">${i.service_name.replace(/_/g, ' ')}</span><span class="service-type">${i.service_type_label}</span></div>
                             </div>
                             <div class="ongkir-item-col col-etd"><span class="col-label">Estimasi</span>${etdHtml}</div>
                             <div class="ongkir-item-col col-cod"><span class="col-label">COD</span><span>${i.cod ? 'Tersedia' : '-'}</span></div>
