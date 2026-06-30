@@ -66,7 +66,7 @@ class SancakaExpressController extends Controller
         // Biasanya tabel API memiliki kolom: name (key), mode (global/sandbox), dan value
         Api::updateOrCreate(
             ['name' => $name, 'mode' => $mode],
-            ['value' => $value]
+            ['value' => $value, 'key' => $name,]
         );
     }
 }
