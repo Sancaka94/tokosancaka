@@ -165,7 +165,19 @@ class TrainTicketingController extends BaseController
                 "paxAdult"          => DB::table('train_passengers')->where('train_order_id', $orderId)->where('pax_type', 0)->count(),
                 "paxChild"          => DB::table('train_passengers')->where('train_order_id', $orderId)->where('pax_type', 1)->count(),
                 "paxInfant"         => DB::table('train_passengers')->where('train_order_id', $orderId)->where('pax_type', 2)->count(),
-                "passengers"        => $request->passengers,
+                // RAKIT ULANG PASSENGER UNTUK MENERUSKAN IDType KE DARMAWISATA
+                "passengers"        => array_map(function($pax) {
+                    return [
+                        "name"      => $pax['name'],
+                        "IDNumber"  => $pax['IDNumber'],
+                        // Tambahkan parameter IDType/identityType (sesuaikan dengan dokumentasi Darmawisata)
+                        // KAI biasanya butuh 'Passport' atau 'KTP' sebagai penanda
+                        "identityType" => isset($pax['IDType']) && $pax['IDType'] === 'Passport' ? 'Passport' : 'KTP',
+                        "type"      => $pax['type'],
+                        "phone"     => $pax['phone'],
+                        "birthDate" => $pax['birthDate']
+                    ];
+                }, $request->passengers),
                 "trainID"           => $request->trainID,
                 "userID"            => $this->darmawisataUserId,
                 "accessToken"       => $request->accessToken
@@ -559,7 +571,7 @@ class TrainTicketingController extends BaseController
     {
         try {
             $invoiceNumber = $data['order']['invoice_number']; // Contoh: KAI-55-XY812
-            
+
             // Ekstrak ID Order lokal (Angka di tengah)
             $parts = explode('-', $invoiceNumber);
             if (count($parts) < 2) {
@@ -583,20 +595,20 @@ class TrainTicketingController extends BaseController
 
             // 3. Update status menjadi PAID_PROCESSING (Lunas, siap di-Issued)
             DB::table('train_orders')->where('id', $transactionId)->update([
-                'status' => 'PAID_PROCESSING', 
+                'status' => 'PAID_PROCESSING',
                 'updated_at' => now()
             ]);
 
             Log::info("DOKU Webhook KAI: Uang pesanan $transactionId sudah masuk Sancaka. Menunggu Issued.");
-            
+
             // TODO: Jika ingin Auto-Issued, panggil fungsi API Train/Issued di sini.
 
             return response()->json(['status' => 'success', 'message' => 'Webhook KAI berhasil']);
-            
+
         } catch (\Exception $e) {
             Log::error("Webhook KAI Error: " . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => 'Sistem Error'], 500);
         }
     }
-    
+
 }
