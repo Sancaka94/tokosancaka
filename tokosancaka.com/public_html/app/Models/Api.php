@@ -11,7 +11,15 @@ class Api extends Model
     protected $table = 'API';
 
     // Kolom yang boleh diisi
-    protected $fillable = ['key', 'value', 'group', 'environment'];
+    protected $fillable = [
+        'key',
+        'value',
+        'group',
+        'environment',
+        'name',
+        'mode',
+
+        ];
 
     /**
      * Helper untuk mengambil value konfigurasi.
