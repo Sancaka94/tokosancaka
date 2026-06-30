@@ -151,13 +151,11 @@
         <form id="checkout-form" action="{{ route('checkout.store') }}" method="POST">
             @csrf
 
-            <!-- === KODE GPS (INPUT TERSEMBUNYI) === -->
             <input type="hidden" name="latitude" id="latitude">
             <input type="hidden" name="longitude" id="longitude">
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                <!-- Kolom Kiri: Alamat, Pengiriman, Pembayaran -->
                 <div class="lg:col-span-2 space-y-8">
 
 
@@ -192,11 +190,10 @@
                                     <label class="block text-sm font-medium text-gray-700">Alamat Lengkap</label>
                                     <textarea name="alamat_lengkap_penerima" id="alamat_lengkap_penerima" rows="2" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 sm:text-sm"></textarea>
                                 </div>
-                                <!-- OPSI CARI MANUAL KIRIMINAJA -->
                                 <div class="md:col-span-2 border-t border-gray-200 pt-4 mt-2">
                                     <label class="block text-sm font-medium text-gray-700">Pencarian Wilayah Otomatis (Kelurahan / Kecamatan)</label>
                                     <select id="select2_alamat_digital" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm"></select>
-                                    <p class="text-xs text-gray-500 mt-1"><i class="fas fa-info-circle"></i> Gunakan pencarian ini jika data wilayah dari GPS kurang akurat.</p>
+                                    <p class="text-xs text-gray-500 mt-1"><i class="fas fa-info-circle"></i> Gunakan pencarian ini untuk menentukan tarif ongkos kirim.</p>
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700">Provinsi</label>
@@ -222,7 +219,6 @@
                         </div>
                     @endif
 
-                    <!-- Alamat Pengiriman -->
                     <div class="bg-white rounded-xl shadow-md p-6">
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Alamat Pengiriman</h2>
                         <div class="border border-gray-200 rounded-lg p-4">
@@ -247,15 +243,14 @@
                        @if(isset($isLocalFood) && $isLocalFood)
                         <div class="p-4 bg-orange-50 border border-orange-200 rounded-lg mb-4" id="mapbox-loading">
                             <div class="flex items-center text-orange-600">
-                                <i class="fas fa-spinner fa-spin text-2xl mr-3"></i>
+                                <i class="fas fa-map-marker-alt text-2xl mr-3"></i>
                                 <div>
-                                    <h3 class="font-bold">Menghitung Jarak & Tarif...</h3>
-                                    <p class="text-xs">Sistem sedang mendeteksi lokasi Anda via GPS.</p>
+                                    <h3 class="font-bold">Menunggu Input Alamat</h3>
+                                    <p class="text-xs">Silakan cari dan pilih wilayah (Kelurahan/Kecamatan) pada form di atas untuk menghitung ongkir secara otomatis.</p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Container hasil perhitungan Mapbox yang disembunyikan awalnya -->
                         <div id="mapbox-result-container" class="hidden">
                             <label class="flex items-center border border-orange-300 bg-orange-50 p-4 rounded-lg cursor-pointer mb-2">
                                 <input type="radio" name="shipping_method" id="radio_sancaka_local" value="" data-cost="0" data-insurance="0" data-cod="true" data-cod-fee="0" class="form-radio h-5 w-5 text-orange-600" checked>
@@ -398,7 +393,6 @@
                         @endif
                     </div>
 
-                    <!-- Pilih Metode Pembayaran -->
                     <div class="bg-white rounded-xl shadow-md p-6 relative">
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Pilih Metode Pembayaran</h2>
                         <div class="w-full">
@@ -416,7 +410,6 @@
                     </div>
                 </div>
 
-                <!-- Kolom Kanan: Ringkasan Pesanan -->
                 <div class="lg:col-span-1">
                     <div class="bg-white rounded-xl shadow-md p-6 sticky top-24">
                         <h2 class="text-lg font-medium text-gray-900">Ringkasan Pesanan</h2>
@@ -448,7 +441,6 @@
                                 <dd class="text-sm font-medium text-gray-900" id="ongkos_kirim">Pilih pengiriman</dd>
                             </div>
 
-                            <!-- Baris Asuransi -->
                             <div class="flex items-center justify-between" id="insurance_row">
                                 <dt class="text-sm text-gray-600">
                                     <label for="use_insurance" class="cursor-pointer">Gunakan Asuransi</label>
@@ -501,9 +493,6 @@
     </div>
 </div>
 
-<!-- ====================================================================== -->
-<!-- ============ MODAL PEMBAYARAN: LEBAR DI DESKTOP, POTRAIT DI HP ======= -->
-<!-- ====================================================================== -->
 <div id="paymentModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden transition-opacity">
     {{-- max-w-5xl membuat modal sangat lebar di layar Desktop seperti Mega Menu --}}
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl mx-4 transform transition-all flex flex-col max-h-[90vh]">
@@ -900,7 +889,7 @@ document.addEventListener('DOMContentLoaded', function () {
         totalEl.innerText = formatRupiah(grandTotal);
     }
 
-    function handleShippingChange() {
+    window.handleShippingChange = function() {
         const selectedShipping = document.querySelector('input[name="shipping_method"]:checked');
 
         if (!selectedShipping) {
@@ -945,7 +934,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
         updateTotal();
-    }
+    };
 
     termsCheckbox.addEventListener('change', function() {
         submitButton.disabled = !this.checked;
@@ -1026,9 +1015,6 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-<!-- ====================================================== -->
-<!-- === SCRIPT PENCARIAN ALAMAT KIRIMINAJA (SELECT2) === -->
-<!-- ====================================================== -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
@@ -1074,6 +1060,11 @@ $(document).ready(function() {
         $('#kode_pos_penerima').val(kode_pos);
 
         document.getElementById('alamat_lengkap_penerima').focus();
+
+        // --- INI PEMICU UTAMA MAPBOX ---
+        if (typeof triggerMapboxAfterAddress === "function") {
+            triggerMapboxAfterAddress();
+        }
     });
 });
 </script>
@@ -1114,64 +1105,133 @@ $(document).ready(function() {
 });
 </script>
 
-<!-- ====================================================== -->
-<!-- === SCRIPT GPS & MAPBOX TERPADU === -->
-<!-- ====================================================== -->
 <script>
-window.addEventListener('load', function() {
+// Fungsi utama untuk hitung tarif ke server
+window.hitungOngkirMapbox = function(userLat, userLng) {
     const isLocalFood = {{ (isset($isLocalFood) && $isLocalFood) ? 'true' : 'false' }};
     const storeLat = '{{ $storeLat ?? "" }}';
     const storeLng = '{{ $storeLng ?? "" }}';
 
+    if (!isLocalFood) return;
+
+    const loadingEl = document.getElementById('mapbox-loading');
+    const resultEl = document.getElementById('mapbox-result-container');
+
+    if(loadingEl) {
+        loadingEl.style.display = 'block';
+        loadingEl.innerHTML = `
+            <div class="flex items-center text-orange-600">
+                <i class="fas fa-spinner fa-spin text-2xl mr-3"></i>
+                <div>
+                    <h3 class="font-bold">Menghitung Jarak & Tarif...</h3>
+                    <p class="text-xs">Menghubungkan ke server Mapbox...</p>
+                </div>
+            </div>`;
+    }
+    if(resultEl) resultEl.classList.add('hidden');
+
+    fetch(`/api/mapbox/calculate?origin_lat=${storeLat}&origin_lng=${storeLng}&dest_lat=${userLat}&dest_lng=${userLng}`)
+        .then(response => {
+            if(!response.ok) throw new Error("Gagal mengambil data dari API");
+            return response.json();
+        })
+        .then(data => {
+            if(loadingEl) loadingEl.style.display = 'none';
+            if (data.success) {
+                if(resultEl) resultEl.classList.remove('hidden');
+
+                let cost = data.data.estimated_cost;
+                let radioValue = `sancaka_local-motor-food-${cost}-0-0`;
+
+                const radioLocal = document.getElementById('radio_sancaka_local');
+                if (radioLocal) {
+                    radioLocal.value = radioValue;
+                    radioLocal.dataset.cost = cost;
+                }
+
+                document.getElementById('mapbox_km').innerText = data.data.distance_km;
+                document.getElementById('mapbox_min').innerText = data.data.duration_minutes;
+                document.getElementById('mapbox_price').innerText = 'Rp' + new Intl.NumberFormat('id-ID').format(cost);
+
+                // Perbarui keranjang (ongkir di layar kanan)
+                if(typeof handleShippingChange === "function") { handleShippingChange(); }
+            } else {
+                if(loadingEl) {
+                    loadingEl.style.display = 'block';
+                    loadingEl.innerHTML = `<p class="text-red-500 font-bold p-3"><i class="fas fa-exclamation-triangle"></i> Gagal menghitung rute: ${data.message}</p>`;
+                }
+            }
+        })
+        .catch(err => {
+            console.error('Mapbox API Error:', err);
+            if(loadingEl) {
+                loadingEl.style.display = 'block';
+                loadingEl.innerHTML = '<p class="text-red-500 font-bold p-3">Gagal menghitung tarif (Server Error).</p>';
+            }
+        });
+};
+
+// Fungsi ini akan dipanggil SETELAH alamat KiriminAja dipilih
+window.triggerMapboxAfterAddress = function() {
+    let lat = document.getElementById('latitude').value;
+    let lng = document.getElementById('longitude').value;
+
+    const loadingEl = document.getElementById('mapbox-loading');
+
+    // Jika GPS sudah berhasil didapatkan secara otomatis sebelumnya
+    if (lat && lng) {
+        window.hitungOngkirMapbox(lat, lng);
+    } else {
+        // Jika belum ada, paksa minta izin lokasi GPS saat itu juga
+        if(loadingEl) {
+            loadingEl.style.display = 'block';
+            loadingEl.innerHTML = `
+                <div class="flex items-center text-orange-600">
+                    <i class="fas fa-location-arrow text-2xl mr-3"></i>
+                    <div>
+                        <h3 class="font-bold">Membutuhkan Izin Lokasi...</h3>
+                        <p class="text-xs">Mohon klik 'Allow' / Izinkan akses lokasi (GPS) pada browser Anda.</p>
+                    </div>
+                </div>`;
+        }
+
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    document.getElementById('latitude').value = position.coords.latitude;
+                    document.getElementById('longitude').value = position.coords.longitude;
+                    window.hitungOngkirMapbox(position.coords.latitude, position.coords.longitude);
+                },
+                function(error) {
+                    if(loadingEl) {
+                        loadingEl.innerHTML = '<p class="text-red-500 font-bold p-3">Akses GPS ditolak / gagal. Mohon izinkan akses lokasi (Location) di browser Anda agar sistem bisa menghitung ongkir akurat.</p>';
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        } else {
+            alert("Browser Anda tidak mendukung fitur lokasi GPS.");
+        }
+    }
+};
+
+// Mode diam saat halaman pertama kali dibuka
+window.addEventListener('load', function() {
+    const isLocalFood = {{ (isset($isLocalFood) && $isLocalFood) ? 'true' : 'false' }};
+    if (!isLocalFood) return;
+
+    // Ambil GPS secara diam-diam (Silent pre-fill), tapi JANGAN jalankan Mapbox dulu
     if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
             function(position) {
-                let userLat = position.coords.latitude;
-                let userLng = position.coords.longitude;
-
-                // 1. Selalu catat koordinat (Berguna untuk digital & fisik)
-                document.getElementById('latitude').value = userLat;
-                document.getElementById('longitude').value = userLng;
-
-                // 2. Jika Makanan Lokal, tembak API Mapbox
-                if (isLocalFood) {
-                    fetch(`/api/mapbox/calculate?origin_lat=${storeLat}&origin_lng=${storeLng}&dest_lat=${userLat}&dest_lng=${userLng}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            document.getElementById('mapbox-loading').style.display = 'none';
-                            if (data.success) {
-                                document.getElementById('mapbox-result-container').classList.remove('hidden');
-
-                                let cost = data.data.estimated_cost;
-                                let radioValue = `sancaka_local-motor-food-${cost}-0-0`;
-
-                                // Update DOM
-                                document.getElementById('radio_sancaka_local').value = radioValue;
-                                document.getElementById('radio_sancaka_local').dataset.cost = cost;
-                                document.getElementById('mapbox_km').innerText = data.data.distance_km;
-                                document.getElementById('mapbox_min').innerText = data.data.duration_minutes;
-                                document.getElementById('mapbox_price').innerText = 'Rp' + new Intl.NumberFormat('id-ID').format(cost);
-
-                                // Trigger kalkulasi total harga
-                                if(typeof handleShippingChange === "function") { handleShippingChange(); }
-                            } else {
-                                alert('Gagal menghitung rute: ' + data.message);
-                            }
-                        })
-                        .catch(err => console.error('Mapbox API Error:', err));
-                }
+                document.getElementById('latitude').value = position.coords.latitude;
+                document.getElementById('longitude').value = position.coords.longitude;
             },
             function(error) {
-                console.warn('Gagal mendapatkan lokasi GPS:', error.message);
-                // Munculkan peringatan error khusus untuk Makanan Lokal
-                if (isLocalFood) {
-                    document.getElementById('mapbox-loading').innerHTML = '<p class="text-red-500 font-bold p-3">Gagal membaca GPS. Mohon izinkan akses lokasi browser Anda.</p>';
-                }
+                console.warn('GPS Silent Load gagal. User belum izinkan / error.', error.message);
             },
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
-    } else {
-        console.warn('Geolocation tidak didukung browser ini.');
     }
 });
 </script>
