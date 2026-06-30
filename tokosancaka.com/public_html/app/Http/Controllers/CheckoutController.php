@@ -212,6 +212,7 @@ class CheckoutController extends Controller
             }
         }*/
 
+
         $firstCartItemData = reset($cart);
         $productId = $firstCartItemData['product_id'] ?? null;
         $firstProduct = $productId ? Product::find($productId) : null;
