@@ -15,13 +15,12 @@ class CategoryAttributeController extends Controller
      */
     public function index(Request $request)
     {
-        // PERBAIKAN 1: Pastikan query ini sinkron dengan data kategori Anda.
-        // Jika type 'marketplace', 'product', 'blog' digunakan:
+        // Pastikan query ini sinkron dengan tipe kategori yang kamu gunakan
         $categories = Category::whereIn('type', ['product', 'marketplace'])
-            ->orderBy('category_group') // Opsional: kelompokkan visual dropdown
+            ->orderBy('category_group')
             ->orderBy('name')
             ->get();
-            
+
         $selectedCategory = null;
         $attributes = collect();
 
@@ -37,39 +36,44 @@ class CategoryAttributeController extends Controller
 
     /**
      * Menyimpan atribut baru.
-     * Support AJAX (untuk Edit Produk) dan Form Submit Biasa (untuk Halaman Atribut).
+     * Support AJAX (untuk Edit Produk) dan Form Submit Biasa.
      */
-    public function store(Request $request, Category $category)
+    public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'required|string|in:text,number,textarea,checkbox,select',
-            'options' => 'nullable|string|max:65535', // Opsi untuk select/checkbox
+            'category_id' => 'required|exists:categories,id', // Memastikan ID kategori valid
+            'name'        => 'required|string|max:255',
+            'type'        => 'required|string|in:text,number,textarea,checkbox,select',
+            'options'     => 'nullable|string|max:65535',
             'is_required' => 'nullable|boolean',
         ]);
 
-        // PERBAIKAN 2: Penamaan variabel $attribute yang aman
+        $category = Category::findOrFail($validated['category_id']);
+
+        // Sanitasi: Hapus spasi berlebih dan hilangkan item kosong jika inputnya "Merah,, Biru"
+        $options = null;
+        if (!empty($validated['options'])) {
+            $optionsArray = array_filter(array_map('trim', explode(',', $validated['options'])));
+            $options = implode(',', $optionsArray);
+        }
+
         $attribute = $category->attributes()->create([
-            'name' => $validated['name'],
-            'slug' => Str::slug($validated['name']), // Generate slug otomatis
-            'type' => $validated['type'],
-            // Hapus spasi berlebih pada options jika user input sembarangan (contoh: "Merah, Biru ")
-            'options' => isset($validated['options']) ? implode(',', array_map('trim', explode(',', $validated['options']))) : null,
+            'name'        => $validated['name'],
+            'slug'        => Str::slug($validated['name']),
+            'type'        => $validated['type'],
+            'options'     => $options,
             'is_required' => $request->boolean('is_required'),
         ]);
 
-        // --- LOGIC HYBRID (PENTING) ---
-        
-        // 1. Jika Request dari AJAX (Popup di Edit Produk)
+        // --- LOGIC HYBRID ---
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Atribut berhasil ditambahkan.',
-                'data' => $attribute // Kirim data balik agar bisa dirender JS
+                'data'    => $attribute
             ]);
         }
 
-        // 2. Jika Request dari Form Biasa (Halaman Management Atribut)
         return redirect()->route('admin.category-attributes.index', ['category_id' => $category->id])
                          ->with('success', 'Atribut berhasil ditambahkan.');
     }
@@ -88,27 +92,32 @@ class CategoryAttributeController extends Controller
     public function update(Request $request, Attribute $attribute)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'required|string|in:text,number,textarea,checkbox,select',
-            'options' => 'nullable|string|max:65535',
+            'name'        => 'required|string|max:255',
+            'type'        => 'required|string|in:text,number,textarea,checkbox,select',
+            'options'     => 'nullable|string|max:65535',
             'is_required' => 'nullable|boolean',
         ]);
 
+        // Sanitasi options saat update
+        $options = null;
+        if (!empty($validated['options'])) {
+            $optionsArray = array_filter(array_map('trim', explode(',', $validated['options'])));
+            $options = implode(',', $optionsArray);
+        }
+
         $attribute->update([
-            'name' => $validated['name'],
-            'slug' => Str::slug($validated['name']),
-            'type' => $validated['type'],
-            // PERBAIKAN 3: Sanitisasi input options saat diupdate
-            'options' => isset($validated['options']) ? implode(',', array_map('trim', explode(',', $validated['options']))) : null,
+            'name'        => $validated['name'],
+            'slug'        => Str::slug($validated['name']),
+            'type'        => $validated['type'],
+            'options'     => $options,
             'is_required' => $request->boolean('is_required'),
         ]);
 
-        // Support JSON response juga jika nanti dibutuhkan edit via popup
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Atribut berhasil diperbarui.',
-                'data' => $attribute
+                'data'    => $attribute
             ]);
         }
 
@@ -124,7 +133,6 @@ class CategoryAttributeController extends Controller
         $categoryId = $attribute->category_id;
         $attribute->delete();
 
-        // Support JSON response untuk delete via AJAX
         if (request()->wantsJson() || request()->ajax()) {
             return response()->json([
                 'success' => true,
