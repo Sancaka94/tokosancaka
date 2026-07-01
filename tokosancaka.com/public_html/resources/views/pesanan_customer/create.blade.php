@@ -166,9 +166,27 @@
 
     /* Pengaturan Lebar Kolom di Desktop */
     .ongkir-item-col .col-label { display: none; } /* Sembunyikan label mobile di desktop */
-    .col-service { flex: 0 0 35%; flex-direction: row; align-items: center; }
-    .ongkir-logo { width: 60px; height: auto; object-fit: contain; margin-right: 15px; }
-    .service-info { display: flex; flex-direction: column; }
+    .col-service {
+        flex: 0 0 35%;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-start !important; /* Memaksa elemen rapat ke kiri */
+    }
+
+    .ongkir-logo {
+        width: 75px; /* Lebar box dibikin tetap agar jarak ke teks sama semua */
+        height: 40px; /* Tinggi disamakan agar pas center di tengah vertikal */
+        object-fit: contain;
+        object-position: left center; /* Pastikan gambar logo nempel di sisi kiri box */
+        margin-right: 15px;
+        flex-shrink: 0; /* Mencegah logo tergencet jika teks terlalu panjang */
+    }
+
+    .service-info {
+        display: flex;
+        flex-direction: column;
+        text-align: left; /* Teks dipastikan rata kiri */
+    }
     .service-name { font-weight: 600; font-size: 0.95rem; color: var(--text-color); }
     .service-type { font-size: 0.8rem; color: var(--secondary-color); }
 
