@@ -158,20 +158,24 @@ class TrainTicketingController extends BaseController
             $mappedPassengers = array_map(function($pax) {
                 $isPassport = (isset($pax['idType']) && $pax['idType'] === 'Passport');
 
+                // Ambil nilai kewarganegaraan dinamis dari frontend.
+                // Jika "WNI" ubah menjadi kode "ID", jika selain itu pakai nilai aslinya (WNA)
+                $chosenNationality = isset($pax['nationality']) ? $pax['nationality'] : null;
+                $finalNationality = ($chosenNationality === 'WNI') ? 'ID' : (($chosenNationality === 'WNA') ? 'WNA' : ($isPassport ? 'WNA' : 'ID'));
+
                 return [
                     "name"         => $pax['name'],
-                    "IDNumber"     => $pax['IDNumber'],
+                    "IDNumber"     => $pax['idNumber'] ?? $pax['IDNumber'], // Sesuaikan dengan key camelCase dari mobile
 
-                    // === PERBAIKAN SESUAI DOKUMENTASI DARMAWISATA ===
                     // Doctype menggunakan integer: 1 (KTP) atau 4 (Passport)
                     "Doctype"      => $isPassport ? 4 : 1,
 
-                    // Biarkan parameter lama sebagai fallback jika API H2H KAI membutuhkannya
                     "idType"       => $isPassport ? 'Passport' : 'KTP',
                     "IDType"       => $isPassport ? 'Passport' : 'KTP',
+                    "identityType" => $isPassport ? 'Passport' : 'KTP',
 
-                    // Nationality biasanya wajib WNA jika menggunakan Passport di sistem KAI
-                    "nationality"  => $isPassport ? 'WNA' : 'ID',
+                    // SEKARANG SUDAH DINAMIS SESUAI PILIHAN DI HALAMAN TIKET
+                    "nationality"  => $finalNationality,
 
                     "type"         => $pax['type'],
                     "phone"        => $pax['phone'],
