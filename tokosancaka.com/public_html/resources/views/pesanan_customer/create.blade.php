@@ -949,7 +949,7 @@
         let pendingPaymentSelection = null;
 
         // ==============================================================================
-        // 1. INTEGRASI MAPBOX: FITUR GRAB / GOJEK STYLE (REALTIME GPS & DRAG MAP)
+        // 1. INTEGRASI MAPBOX: FITUR GRAB / GOJEK STYLE DENGAN MAPBOX STANDARD 3D
         // ==============================================================================
         const mapboxToken = '{{ \App\Models\Api::getValue("MAPBOX_TOKEN", "global") }}';
 
@@ -960,16 +960,25 @@
 
             map = new mapboxgl.Map({
                 container: 'map',
-                style: 'mapbox://styles/mapbox/streets-v12',
-                center: [111.4558, -7.4025], // Pusat default
-                zoom: 14,
-                attributionControl: false // Sembunyikan tulisan mapbox agar bersih
+                style: 'mapbox://styles/mapbox/standard', // 👈 Pakai tema Standard 3D terbaru
+                center: [111.4558, -7.4025],
+                zoom: 15, // Zoom lebih dekat agar 3D terlihat
+                pitch: 45, // Kemiringan kamera agar bangunan 3D menjulang
+                bearing: -15, // Putaran kamera sedikit untuk estetika
+                attributionControl: false, // Bersihkan layar dari logo mapbox
+                config: {
+                    basemap: {
+                        lightPreset: "dusk", // Pilihan: "dawn", "day", "dusk", "night" (Bisa kamu sesuaikan)
+                        show3dObjects: true, // Wajib true untuk memunculkan gedung 3D
+                        showPedestrianRoads: false
+                    }
+                }
             });
 
             // Tambahkan Kontrol Zoom & Rotasi
             map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-            // Tambahkan Kontrol GPS Bawaan Mapbox (Sangat akurat untuk HP)
+            // Tambahkan Kontrol GPS Bawaan Mapbox
             const geolocateControl = new mapboxgl.GeolocateControl({
                 positionOptions: { enableHighAccuracy: true },
                 trackUserLocation: true,
