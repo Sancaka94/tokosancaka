@@ -120,109 +120,56 @@
         .sticky-lg-top { position: sticky; top: 2rem; z-index: 1020; }
     }
 
-    /*
+   /*
     ============================================
-    Desain Modal Cek Ongkir (KiriminAja & Lainnya)
+    Desain Modal Cek Ongkir (DIPISAH TOTAL)
     ============================================
     */
-    #ongkirModal .modal-dialog, #delivereeModal .modal-dialog {
-        max-width: 90vw; /* Lebar modal 90% dari layar */
-    }
+    #ongkirModal .modal-dialog, #delivereeModal .modal-dialog { max-width: 90vw; }
 
     .ongkir-header-row {
-        font-weight: 600;
-        color: var(--secondary-color);
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        padding: 0 1rem;
-        margin-bottom: 0.5rem;
+        display: flex; flex-direction: row; align-items: center;
+        font-weight: 600; color: var(--secondary-color); font-size: 0.8rem;
+        text-transform: uppercase; padding: 0 1rem; margin-bottom: 0.5rem;
     }
 
     .ongkir-item-card {
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-        background-color: #fff;
-        border: 1px solid var(--card-border-color);
-        border-radius: 0.75rem;
-        padding: 0.75rem 1rem;
-        margin-bottom: 0.75rem;
-        font-size: 0.9rem;
-        transition: all 0.2s ease-in-out;
+        display: flex; flex-direction: row; align-items: center;
+        background-color: #fff; border: 1px solid var(--card-border-color);
+        border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.75rem;
+        font-size: 0.9rem; transition: all 0.2s ease-in-out; width: 100%;
     }
+    .ongkir-item-card:hover { box-shadow: var(--card-shadow); border-color: var(--primary-color); transform: translateY(-2px); }
 
-    .ongkir-item-card:hover {
-        box-shadow: var(--card-shadow);
-        transform: translateY(-2px);
-        border-color: var(--primary-color);
-    }
+    /* PEMBAGIAN 6 KOLOM TERPISAH (TOTAL 100%) */
+    .col-logo    { flex: 0 0 15%; display: flex; justify-content: center; align-items: center; padding-right: 10px; }
+    .col-service { flex: 0 0 20%; display: flex; flex-direction: column; justify-content: center; text-align: left; }
+    .col-etd     { flex: 0 0 15%; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+    .col-cod     { flex: 0 0 15%; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+    .col-price   { flex: 0 0 20%; display: flex; flex-direction: column; justify-content: center; text-align: right; padding-right: 15px; }
+    .col-action  { flex: 0 0 15%; display: flex; align-items: center; justify-content: flex-end; }
 
-    .ongkir-item-col {
-        padding: 0 10px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
-
-    /* Pengaturan Lebar Kolom di Desktop */
-    .ongkir-item-col .col-label { display: none; } /* Sembunyikan label mobile di desktop */
-    .col-service {
-        flex: 0 0 35%;
-        flex-direction: row;
-        align-items: center;
-        justify-content: flex-start !important; /* Memaksa elemen rapat ke kiri */
-    }
-
-    .ongkir-logo {
-        width: 75px; /* Lebar box dibikin tetap agar jarak ke teks sama semua */
-        height: 40px; /* Tinggi disamakan agar pas center di tengah vertikal */
-        object-fit: contain;
-        object-position: left center; /* Pastikan gambar logo nempel di sisi kiri box */
-        margin-right: 15px;
-        flex-shrink: 0; /* Mencegah logo tergencet jika teks terlalu panjang */
-    }
-
-    .service-info {
-        display: flex;
-        flex-direction: column;
-        text-align: left; /* Teks dipastikan rata kiri */
-    }
-    .service-name { font-weight: 600; font-size: 0.95rem; color: var(--text-color); }
+    /* Elemen di dalam kolom */
+    .ongkir-logo { width: 75px; height: 35px; object-fit: contain; }
+    .service-name { font-weight: 700; font-size: 0.95rem; color: var(--text-color); }
     .service-type { font-size: 0.8rem; color: var(--secondary-color); }
-
-    .col-etd { flex: 0 0 15%; text-align: center; }
-    .col-cod { flex: 0 0 10%; text-align: center; }
-    .col-price { flex: 0 0 20%; text-align: right; padding-right: 15px; }
-
     .price-value .final-price { font-weight: 700; font-size: 1rem; color: var(--success-color); }
     .price-details { font-size: 0.8rem; color: var(--secondary-color); margin-top: 2px; }
-    .col-action { flex: 0 0 20%; text-align: right; }
+    .btn-kirim { background-color: var(--primary-color); color: #fff; border-radius: 999px; font-weight: 600; font-size: 0.8rem; padding: 0.4rem 1rem; border: none; white-space: nowrap; }
+    .btn-kirim:hover { background-color: var(--primary-color-darker); color: #fff; }
 
-    /* Tombol Kirim Paket (Pill) */
-    .btn-kirim {
-        background-color: var(--primary-color);
-        color: #fff;
-        border-radius: 999px;
-        font-weight: 600;
-        font-size: 0.8rem;
-        padding: 0.4rem 1rem;
-        border: none;
-    }
-    .btn-kirim:hover {
-        background-color: var(--primary-color-darker);
-        color: #fff;
-    }
-
-    /* Responsif untuk Modal (Layar HP) */
+    /* Tampilan HP (Mobile) */
+    .col-label-mobile { display: none; }
     @media (max-width: 991px) {
         .ongkir-item-card { flex-wrap: wrap; padding: 1rem; }
-        .ongkir-item-col { padding: 5px 0; text-align: left !important; flex-basis: 50%; }
-        .ongkir-item-col .col-label { display: block; font-size: 0.75rem; color: var(--secondary-color); margin-bottom: 2px; font-weight: 500; }
-        .col-service { flex-basis: 70%; order: 1; flex-direction: row; }
-        .col-action { flex-basis: 30%; order: 2; align-self: center; text-align: center !important;}
-        .col-price { order: 3; text-align: left !important; }
-        .col-etd { order: 4; }
-        .col-cod { order: 5; }
+        .col-label-mobile { display: block; font-size: 0.75rem; color: var(--secondary-color); margin-bottom: 2px; font-weight: 500; }
+
+        .col-logo    { flex: 0 0 25%; justify-content: flex-start; margin-bottom: 15px; }
+        .col-service { flex: 0 0 75%; margin-bottom: 15px; }
+        .col-etd     { flex: 0 0 50%; text-align: left; margin-bottom: 15px; align-items: flex-start; }
+        .col-cod     { flex: 0 0 50%; text-align: left; margin-bottom: 15px; align-items: flex-start; }
+        .col-price   { flex: 0 0 50%; text-align: left; align-items: flex-start; }
+        .col-action  { flex: 0 0 50%; justify-content: center; }
     }
 
     #map { width: 100%; height: 380px; border-radius: var(--border-radius-lg); border: 1px solid var(--card-border-color); }
@@ -1302,8 +1249,19 @@
                     else if (vendorFilter === 'ipaymu') { renderIpaymuModal(ipaymuResults, { serviceType: serviceType }); }
                     else {
                         const b = $('#ongkirResultsContainer').empty();
-                        if (kiriminAjaResults.length > 0) {
-                            b.append(`<div class="ongkir-header-row d-none d-lg-flex"><div class="ongkir-item-col col-service">Layanan</div><div class="ongkir-item-col col-etd">Estimasi</div><div class="ongkir-item-col col-cod">COD</div><div class="ongkir-item-col col-price">Tarif</div><div class="ongkir-item-col col-action"></div></div>`);
+                       if (kiriminAjaResults.length > 0) {
+                            // 1. HEADER ROW DIPISAH (Biar tulisan LAYANAN tidak nabrak logo)
+                            b.append(`
+                                <div class="ongkir-header-row d-none d-lg-flex">
+                                    <div class="col-logo"></div>
+                                    <div class="col-service">Layanan</div>
+                                    <div class="col-etd">Estimasi</div>
+                                    <div class="col-cod">COD</div>
+                                    <div class="col-price">Tarif</div>
+                                    <div class="col-action"></div>
+                                </div>
+                            `);
+
                             kiriminAjaResults.forEach(i => {
                                 const logoName = (i.service || "").toLowerCase().replace(/[\s_]+/g, '');
                                 let logoUrl = logoName === 'sancakaexpress' ? 'https://tokosancaka.com/storage/uploads/sancaka.png' : (logoName === 'gosend' ? 'https://tokosancaka.com/public/storage/logo-ekspedisi/gosend.png' : (logoName === 'grab' ? 'https://tokosancaka.com/public/storage/logo-ekspedisi/grab.png' : `{{ asset('public/storage/logo-ekspedisi/') }}/${logoName}.png`));
@@ -1323,19 +1281,32 @@
                                 let codDisplayHtml = i.cod ? `Tersedia${actualCodFee > 0 ? `<br><small class="text-danger fw-bold">+ ${formatRupiah(actualCodFee)}</small>` : ''}` : '-';
                                 const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" data-value="${v}" data-display="${i.service_name} - ${i.service_type_label}" data-cod-supported="${i.cod}" data-shipping-cost="${parseInt(i.cost || 0)}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">Kirim Paket</button>`;
 
+                                // 2. ISI CARD DIPISAH TOTAL PER KOLOM
                                 b.append(`
                                 <div class="ongkir-item-card">
-                                    <div class="ongkir-item-col col-service">
-                                        <img src="${logoUrl}" class="ongkir-logo" style="max-height: 40px; width: auto; object-fit: contain; margin-right: 15px;" alt="${i.service_name}">
-                                        <div class="service-info"><span class="service-name">${i.service_name.replace(/_/g, ' ')}</span><span class="service-type">${i.service_type_label}</span></div>
+                                    <div class="col-logo">
+                                        <img src="${logoUrl}" class="ongkir-logo" alt="${i.service_name}">
                                     </div>
-                                    <div class="ongkir-item-col col-etd"><span class="col-label">Estimasi</span>${etdHtml}</div>
-                                    <div class="ongkir-item-col col-cod"><span class="col-label">COD</span><span>${codDisplayHtml}</span></div>
-                                    <div class="ongkir-item-col col-price"><span class="col-label">Tarif</span>
+                                    <div class="col-service">
+                                        <div class="service-name">${i.service_name.replace(/_/g, ' ')}</div>
+                                        <div class="service-type">${i.service_type_label}</div>
+                                    </div>
+                                    <div class="col-etd">
+                                        <span class="col-label-mobile">Estimasi</span>
+                                        ${etdHtml}
+                                    </div>
+                                    <div class="col-cod">
+                                        <span class="col-label-mobile">COD</span>
+                                        <span>${codDisplayHtml}</span>
+                                    </div>
+                                    <div class="col-price">
+                                        <span class="col-label-mobile">Tarif</span>
                                         <div class="price-value"><span class="final-price">${formatRupiah(i.cost)}</span>${hasDiscount ? `<span class="base-price text-decoration-line-through">${basePriceFmt}</span>` : ''}</div>
                                         <div class="price-details">${feeDetailsHtml}</div>
                                     </div>
-                                    <div class="ongkir-item-col col-action">${buttonHtml}</div>
+                                    <div class="col-action">
+                                        ${buttonHtml}
+                                    </div>
                                 </div>`);
                             });
                         }
@@ -1352,10 +1323,13 @@
                                 if (i.cod && codFee > 0) { feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`; }
                                 const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" style="background-color: #6f42c1;" data-value="${payloadValue}" data-display="iPaymu - ${displayServiceType}" data-cod-supported="${i.cod}" data-shipping-cost="${baseOngkirCost}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">Pilih Kurir</button>`;
 
-                                b.append(`
+                               b.append(`
                                 <div class="ongkir-item-card" style="border-left: 4px solid #6f42c1;">
-                                    <div class="ongkir-item-col col-service">
+                                    <div class="ongkir-item-col col-logo">
                                         <img src="${imgUrl}" class="ongkir-logo" onerror="this.src='https://tokosancaka.com/public/assets/ipaymu.jpg'">
+                                    </div>
+                                    <div class="ongkir-item-col col-service">
+                                        <span class="col-label">Layanan</span>
                                         <div class="service-info"><span class="service-name">${displayServiceType}</span><span class="service-type" style="color:#6f42c1; font-weight:bold;">iPaymu COD</span></div>
                                     </div>
                                     <div class="ongkir-item-col col-etd"><span class="col-label">Estimasi</span><span>${i.etd}</span></div>
