@@ -411,20 +411,35 @@
         <div class="card-header d-flex align-items-center">
             <i class="fas fa-map-marked-alt fa-icon me-2"></i> Preview Rute & Titik Peta Sancaka Express
         </div>
-        <div class="card-body p-2">
-            {{-- Container Peta dengan UI mirip Gojek --}}
-            <div class="card mb-4 border-primary">
+       <div class="card-body p-2">
+            {{-- Container Peta dengan UI Toggle --}}
+            <div class="card mb-4 border-primary shadow-sm">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
                     <span><i class="fas fa-map-marked-alt me-2"></i> Peta Lokasi (Akurat)</span>
                     <button type="button" id="btn-find-my-location" class="btn btn-light btn-sm fw-bold text-primary rounded-pill shadow-sm">
                         <i class="fas fa-crosshairs me-1"></i> Lokasi Saya
                     </button>
                 </div>
+
+                {{-- TAMBAHAN: Tombol Pemilih Mode Peta --}}
+                <div class="card-body p-2 bg-light border-bottom">
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check map-mode-toggle" name="map_mode" id="mode_pengirim" value="sender" checked>
+                        <label class="btn btn-outline-primary fw-bold" for="mode_pengirim">
+                            <i class="fas fa-arrow-up"></i> Set Titik Pengirim
+                        </label>
+
+                        <input type="radio" class="btn-check map-mode-toggle" name="map_mode" id="mode_penerima" value="receiver">
+                        <label class="btn btn-outline-danger fw-bold" for="mode_penerima">
+                            <i class="fas fa-map-marker-alt"></i> Set Titik Penerima
+                        </label>
+                    </div>
+                </div>
+
                 <div class="card-body p-0 position-relative">
-                    {{-- Notifikasi pop-up kecil di atas peta --}}
                     <div class="position-absolute top-0 start-50 translate-middle-x mt-2 z-3" style="pointer-events: none;">
                         <span class="badge bg-dark shadow-sm px-3 py-2 rounded-pill" style="opacity: 0.85;">
-                            <i class="fas fa-hand-pointer me-1"></i> Geser Pin / Klik peta untuk titik pas
+                            <i class="fas fa-hand-pointer me-1"></i> Klik peta / Geser pin untuk titik pas
                         </span>
                     </div>
                     <div id='map' style="width: 100%; height: 380px; border-bottom-left-radius: var(--border-radius-lg); border-bottom-right-radius: var(--border-radius-lg);"></div>
@@ -952,6 +967,7 @@
         // ==============================================================================
         // 1. INTEGRASI MAPBOX: FITUR GRAB / GOJEK STYLE DENGAN MAPBOX STANDARD 3D
         // ==============================================================================
+        // Gunakan MAPBOX_PUBLIC_TOKEN untuk sisi Client/Browser
         const mapboxToken = '{{ \App\Models\Api::getValue("MAPBOX_PUBLIC_TOKEN", "global") }}';
 
         let map, senderMarker, receiverMarker;
@@ -963,14 +979,14 @@
                 container: 'map',
                 style: 'mapbox://styles/mapbox/standard', // 👈 Pakai tema Standard 3D terbaru
                 center: [111.4558, -7.4025],
-                zoom: 15, // Zoom lebih dekat agar 3D terlihat
-                pitch: 45, // Kemiringan kamera agar bangunan 3D menjulang
-                bearing: -15, // Putaran kamera sedikit untuk estetika
-                attributionControl: false, // Bersihkan layar dari logo mapbox
+                zoom: 15,
+                pitch: 45,
+                bearing: -15,
+                attributionControl: false,
                 config: {
                     basemap: {
-                        lightPreset: "dusk", // Pilihan: "dawn", "day", "dusk", "night" (Bisa kamu sesuaikan)
-                        show3dObjects: true, // Wajib true untuk memunculkan gedung 3D
+                        lightPreset: "dusk",
+                        show3dObjects: true,
                         showPedestrianRoads: false
                     }
                 }
@@ -987,15 +1003,28 @@
             });
             map.addControl(geolocateControl, 'bottom-right');
 
+            // Tambahkan Label (Popup) agar jelas mana Pengirim dan Penerima
+            const senderPopup = new mapboxgl.Popup({ offset: 25, closeButton: false, closeOnClick: false })
+                .setHTML('<div class="fw-bold text-primary mb-1"><i class="fas fa-arrow-up"></i> PENGIRIM</div><small class="text-muted">Tarik pin biru ini</small>');
+
+            const receiverPopup = new mapboxgl.Popup({ offset: 25, closeButton: false, closeOnClick: false })
+                .setHTML('<div class="fw-bold text-danger mb-1"><i class="fas fa-map-marker-alt"></i> PENERIMA</div><small class="text-muted">Tarik pin merah ini</small>');
+
             // Marker Pengirim (Biru - Titik Jemput)
             senderMarker = new mapboxgl.Marker({ color: '#007bff', draggable: true })
                 .setLngLat([111.4558, -7.4025])
+                .setPopup(senderPopup)
                 .addTo(map);
 
             // Marker Penerima (Merah - Titik Antar)
             receiverMarker = new mapboxgl.Marker({ color: '#dc3545', draggable: true })
                 .setLngLat([111.4650, -7.4100])
+                .setPopup(receiverPopup)
                 .addTo(map);
+
+            // Tampilkan label popup secara otomatis
+            senderMarker.togglePopup();
+            receiverMarker.togglePopup();
 
             // Fungsi Reverse Geocoding (Ubah Koordinat jadi Teks Alamat)
             function reverseGeocode(lat, lng, prefix) {
@@ -1003,10 +1032,7 @@
                     url: `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
                     success: function(data) {
                         if (data && data.display_name) {
-                            // Isi otomatis ke kolom teks alamat pencarian
                             $(`#${prefix}_address_search`).val(data.display_name).addClass('is-valid');
-
-                            // Ekstrak data untuk hidden input (Kec, Kab, Prov) jika ada
                             if(data.address) {
                                 const desa = data.address.village || data.address.neighbourhood || '';
                                 const kec = data.address.town || data.address.city_district || '';
@@ -1030,52 +1056,49 @@
                 const lngLat = marker.getLngLat();
                 $(`#${prefix}_lat`).val(lngLat.lat);
                 $(`#${prefix}_lng`).val(lngLat.lng).trigger('change');
-
-                // Terjemahkan koordinat ke teks alamat (Ala Gojek)
                 reverseGeocode(lngLat.lat, lngLat.lng, prefix);
             }
 
-            // Event Listener saat pin selesai ditarik
             senderMarker.on('dragend', () => updateInputsFromMarker('sender', senderMarker));
             receiverMarker.on('dragend', () => updateInputsFromMarker('receiver', receiverMarker));
 
-            // Event Listener saat Peta Di-Klik (Agar mudah di HP)
+            // Event Listener saat Peta Di-Klik
             map.on('click', function(e) {
-                // Cek step mana yang sedang aktif
-                const isStepPenerimaActive = !$('#card-penerima').hasClass('d-none');
-
-                if (isStepPenerimaActive) {
-                    // Jika form Penerima aktif, klik peta memindahkan pin MERAH
+                const activeMode = $('input[name="map_mode"]:checked').val();
+                if (activeMode === 'receiver') {
                     receiverMarker.setLngLat(e.lngLat);
                     updateInputsFromMarker('receiver', receiverMarker);
                 } else {
-                    // Jika form Pengirim aktif, klik peta memindahkan pin BIRU
                     senderMarker.setLngLat(e.lngLat);
                     updateInputsFromMarker('sender', senderMarker);
                 }
             });
 
-            // Tombol Kustom "Lokasi Saya" di Header Card
+            // Fokuskan peta ke marker yang dipilih saat tombol toggle ditekan
+            $('.map-mode-toggle').on('change', function() {
+                const mode = $(this).val();
+                if(mode === 'receiver') {
+                    map.flyTo({ center: receiverMarker.getLngLat(), zoom: 16 });
+                } else {
+                    map.flyTo({ center: senderMarker.getLngLat(), zoom: 16 });
+                }
+            });
+
             $('#btn-find-my-location').on('click', function(e) {
                 e.preventDefault();
-                geolocateControl.trigger(); // Trigger GPS Mapbox
+                geolocateControl.trigger();
                 $(this).html('<i class="fas fa-spinner fa-spin me-1"></i> Mencari...');
             });
 
-            // Event saat GPS berhasil ditemukan oleh Mapbox
             geolocateControl.on('geolocate', function(e) {
                 const lon = e.coords.longitude;
                 const lat = e.coords.latitude;
-
                 $('#btn-find-my-location').html('<i class="fas fa-crosshairs me-1"></i> Lokasi Saya');
-
-                // Simpan GPS asli pembeli
                 $('#buyer_latitude').val(lat);
                 $('#buyer_longitude').val(lon);
 
-                // Cek step aktif, pindahkan marker yang sesuai ke lokasi GPS
-                const isStepPenerimaActive = !$('#card-penerima').hasClass('d-none');
-                if (!isStepPenerimaActive) {
+                const activeMode = $('input[name="map_mode"]:checked').val();
+                if (activeMode !== 'receiver') {
                     senderMarker.setLngLat([lon, lat]);
                     updateInputsFromMarker('sender', senderMarker);
                 } else {
@@ -1084,12 +1107,10 @@
                 }
             });
 
-            // Trigger GPS otomatis saat peta pertama kali dimuat
             map.on('load', function() {
                 geolocateControl.trigger();
             });
 
-            // Fungsi sinkronisasi Peta dari Input Pencarian Teks
             window.syncMarkerFromInputs = function(prefix) {
                 const lat = parseFloat($(`#${prefix}_lat`).val());
                 const lng = parseFloat($(`#${prefix}_lng`).val());
@@ -1099,13 +1120,35 @@
                     } else {
                         receiverMarker.setLngLat([lng, lat]);
                     }
-                    map.flyTo({ center: [lng, lat], zoom: 16, essential: true }); // Animasi zoom mulus
+                    map.flyTo({ center: [lng, lat], zoom: 16, essential: true });
                 }
             };
 
         } else {
             console.warn("LOG LOG: Token Mapbox tidak ditemukan.");
             $('#map').html('<div class="p-4 text-center text-muted">Peta tidak tersedia (Token belum diatur).</div>');
+        }
+
+        // Tangkap GPS Pembeli (User)
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    $('#buyer_latitude').val(position.coords.latitude);
+                    $('#buyer_longitude').val(position.coords.longitude);
+
+                    // Set marker pengirim ke lokasi pembeli saat ini
+                    if (map && senderMarker) {
+                        senderMarker.setLngLat([position.coords.longitude, position.coords.latitude]);
+                        map.setCenter([position.coords.longitude, position.coords.latitude]);
+                        $(`#sender_lat`).val(position.coords.latitude);
+                        $(`#sender_lng`).val(position.coords.longitude);
+                    }
+                },
+                function(error) {
+                    console.warn("LOG LOG: Akses GPS Pembeli ditolak atau bermasalah: " + error.message);
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
         }
 
         // Tangkap GPS Pembeli (User)
@@ -1166,6 +1209,9 @@
                 $('#step-indicator-2').addClass('active');
                 $('#card-penerima').removeClass('d-none');
                 document.getElementById('card-penerima').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                // BARIS INI PENTING: Pindah mode peta otomatis ke Penerima
+                $('#mode_penerima').prop('checked', true).trigger('change');
             } else {
                 Swal.fire('Data Tidak Lengkap', 'Harap isi semua informasi pengirim yang wajib diisi.', 'warning');
             }
