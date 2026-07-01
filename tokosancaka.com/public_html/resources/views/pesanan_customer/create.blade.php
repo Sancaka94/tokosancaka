@@ -120,15 +120,82 @@
         .sticky-lg-top { position: sticky; top: 2rem; z-index: 1020; }
     }
 
-    /* Modals & Ongkir Cards */
-    #ongkirModal .modal-dialog, #delivereeModal .modal-dialog { max-width: 90vw; }
-    .ongkir-item-card { display: flex; align-items: center; background-color: #fff; border: 1px solid var(--card-border-color); border-radius: 0.75rem; padding: 0.75rem 1rem; margin-bottom: 0.75rem; font-size: 0.9rem; transition: all 0.2s; }
-    .ongkir-item-card:hover { box-shadow: var(--card-shadow); transform: translateY(-2px); border-color: var(--primary-color); }
-    .ongkir-item-col { padding: 0 10px; display: flex; flex-direction: column; justify-content: center; }
+    /*
+    ============================================
+    Desain Modal Cek Ongkir (KiriminAja & Lainnya)
+    ============================================
+    */
+    #ongkirModal .modal-dialog, #delivereeModal .modal-dialog {
+        max-width: 90vw; /* Lebar modal 90% dari layar */
+    }
+
+    .ongkir-header-row {
+        font-weight: 600;
+        color: var(--secondary-color);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        padding: 0 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .ongkir-item-card {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        background-color: #fff;
+        border: 1px solid var(--card-border-color);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.75rem;
+        font-size: 0.9rem;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .ongkir-item-card:hover {
+        box-shadow: var(--card-shadow);
+        transform: translateY(-2px);
+        border-color: var(--primary-color);
+    }
+
+    .ongkir-item-col {
+        padding: 0 10px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    /* Pengaturan Lebar Kolom di Desktop */
+    .ongkir-item-col .col-label { display: none; } /* Sembunyikan label mobile di desktop */
     .col-service { flex: 0 0 35%; flex-direction: row; align-items: center; }
     .ongkir-logo { width: 60px; height: auto; object-fit: contain; margin-right: 15px; }
-    .price-value .final-price { font-weight: 700; font-size: 1rem; color: var(--success-color); }
+    .service-info { display: flex; flex-direction: column; }
+    .service-name { font-weight: 600; font-size: 0.95rem; color: var(--text-color); }
+    .service-type { font-size: 0.8rem; color: var(--secondary-color); }
 
+    .col-etd { flex: 0 0 15%; text-align: center; }
+    .col-cod { flex: 0 0 10%; text-align: center; }
+    .col-price { flex: 0 0 20%; text-align: right; padding-right: 15px; }
+
+    .price-value .final-price { font-weight: 700; font-size: 1rem; color: var(--success-color); }
+    .price-details { font-size: 0.8rem; color: var(--secondary-color); margin-top: 2px; }
+    .col-action { flex: 0 0 20%; text-align: right; }
+
+    /* Tombol Kirim Paket (Pill) */
+    .btn-kirim {
+        background-color: var(--primary-color);
+        color: #fff;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 0.8rem;
+        padding: 0.4rem 1rem;
+        border: none;
+    }
+    .btn-kirim:hover {
+        background-color: var(--primary-color-darker);
+        color: #fff;
+    }
+
+    /* Responsif untuk Modal (Layar HP) */
     @media (max-width: 991px) {
         .ongkir-item-card { flex-wrap: wrap; padding: 1rem; }
         .ongkir-item-col { padding: 5px 0; text-align: left !important; flex-basis: 50%; }
