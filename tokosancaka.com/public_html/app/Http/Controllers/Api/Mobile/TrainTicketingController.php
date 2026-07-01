@@ -162,12 +162,15 @@ class TrainTicketingController extends BaseController
                     "name"         => $pax['name'],
                     "IDNumber"     => $pax['IDNumber'],
 
-                    // Kita tembak semua kemungkinan key yang dibaca oleh Darmawisata
+                    // === PERBAIKAN SESUAI DOKUMENTASI DARMAWISATA ===
+                    // Doctype menggunakan integer: 1 (KTP) atau 4 (Passport)
+                    "Doctype"      => $isPassport ? 4 : 1,
+
+                    // Biarkan parameter lama sebagai fallback jika API H2H KAI membutuhkannya
                     "idType"       => $isPassport ? 'Passport' : 'KTP',
                     "IDType"       => $isPassport ? 'Passport' : 'KTP',
-                    "identityType" => $isPassport ? 'Passport' : 'KTP',
 
-                    // Beberapa versi API H2H KAI mewajibkan nationality 'WNA' (atau kode negara lain) agar Paspor diloloskan
+                    // Nationality biasanya wajib WNA jika menggunakan Passport di sistem KAI
                     "nationality"  => $isPassport ? 'WNA' : 'ID',
 
                     "type"         => $pax['type'],
