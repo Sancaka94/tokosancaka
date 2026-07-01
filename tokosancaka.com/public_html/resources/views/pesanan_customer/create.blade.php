@@ -754,6 +754,39 @@
             receiverMarker = new mapboxgl.Marker({ color: '#dc3545', draggable: true }).setLngLat([111.4650, -7.4100]).setPopup(receiverPopup).addTo(map);
             senderMarker.togglePopup(); receiverMarker.togglePopup();
 
+            // ==========================================
+            // FITUR BARU: FUNGSI MENGGAMBAR GARIS RUTE
+            // ==========================================
+            function getRoute(start, end) {
+                // Gunakan Mapbox Directions API untuk mencari rute jalan raya (driving)
+                const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${end.lng},${end.lat}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
+
+                $.ajax({
+                    url: url,
+                    success: function(json) {
+                        if(json.routes && json.routes.length > 0) {
+                            const routeGeometry = json.routes[0].geometry;
+                            // Update data garis di peta
+                            if (map.getSource('route')) {
+                                map.getSource('route').setData({
+                                    type: 'Feature',
+                                    properties: {},
+                                    geometry: routeGeometry
+                                });
+                            }
+
+                            // Opsional: Otomatis zoom agar kedua titik dan garis terlihat semua (Fit Bounds)
+                            const coordinates = routeGeometry.coordinates;
+                            const bounds = new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]);
+                            for (const coord of coordinates) {
+                                bounds.extend(coord);
+                            }
+                            map.fitBounds(bounds, { padding: 60, maxZoom: 16 });
+                        }
+                    }
+                });
+            }
+
             function reverseGeocode(lat, lng, prefix) {
                 $.ajax({
                     url: `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
@@ -785,17 +818,66 @@
                 reverseGeocode(lngLat.lat, lngLat.lng, prefix);
             }
 
-            senderMarker.on('dragend', () => updateInputsFromMarker('sender', senderMarker));
-            receiverMarker.on('dragend', () => updateInputsFromMarker('receiver', receiverMarker));
+           // Update saat marker selesai digeser manual
+            senderMarker.on('dragend', () => {
+                updateInputsFromMarker('sender', senderMarker);
+                getRoute(senderMarker.getLngLat(), receiverMarker.getLngLat()); // <--- Update Garis
+            });
 
+            receiverMarker.on('dragend', () => {
+                updateInputsFromMarker('receiver', receiverMarker);
+                getRoute(senderMarker.getLngLat(), receiverMarker.getLngLat()); // <--- Update Garis
+            });
+
+            // Update saat peta di-klik
             map.on('click', function(e) {
                 const activeMode = $('input[name="map_mode"]:checked').val();
                 if (activeMode === 'receiver') {
-                    receiverMarker.setLngLat(e.lngLat); updateInputsFromMarker('receiver', receiverMarker);
+                    receiverMarker.setLngLat(e.lngLat);
+                    updateInputsFromMarker('receiver', receiverMarker);
                 } else {
-                    senderMarker.setLngLat(e.lngLat); updateInputsFromMarker('sender', senderMarker);
+                    senderMarker.setLngLat(e.lngLat);
+                    updateInputsFromMarker('sender', senderMarker);
                 }
+
+                getRoute(senderMarker.getLngLat(), receiverMarker.getLngLat()); // <--- Update Garis
             });
+
+            // Tambahkan juga di dalam event geolocateControl (saat GPS nyala pertama kali)
+            geolocateControl.on('geolocate', function(e) {
+                const lon = e.coords.longitude;
+                const lat = e.coords.latitude;
+                $('#btn-find-my-location').html('<i class="fas fa-crosshairs me-1"></i> Lokasi Saya');
+                $('#buyer_latitude').val(lat);
+                $('#buyer_longitude').val(lon);
+
+                const activeMode = $('input[name="map_mode"]:checked').val();
+                if (activeMode !== 'receiver') {
+                    senderMarker.setLngLat([lon, lat]);
+                    updateInputsFromMarker('sender', senderMarker);
+                } else {
+                    receiverMarker.setLngLat([lon, lat]);
+                    updateInputsFromMarker('receiver', receiverMarker);
+                }
+
+                // Update Garis setelah dapet GPS
+                getRoute(senderMarker.getLngLat(), receiverMarker.getLngLat());
+            });
+
+            // Tambahkan juga di window.syncMarkerFromInputs (saat user cari alamat dari text input)
+            window.syncMarkerFromInputs = function(prefix) {
+                const lat = parseFloat($(`#${prefix}_lat`).val());
+                const lng = parseFloat($(`#${prefix}_lng`).val());
+                if (lat && lng) {
+                    if (prefix === 'sender') {
+                        senderMarker.setLngLat([lng, lat]);
+                    } else {
+                        receiverMarker.setLngLat([lng, lat]);
+                    }
+                    // Update garis rute
+                    getRoute(senderMarker.getLngLat(), receiverMarker.getLngLat());
+                }
+            };
 
             $('.map-mode-toggle').on('change', function() {
                 const mode = $(this).val();
@@ -824,7 +906,40 @@
                 }
             });
 
-            map.on('load', function() { geolocateControl.trigger(); });
+            map.on('load', function() {
+                // 1. Buat penampung data (source) kosong untuk rute
+                map.addSource('route', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'properties': {},
+                        'geometry': { 'type': 'LineString', 'coordinates': [] }
+                    }
+                });
+
+                // 2. Tambahkan Layer Outline (Bayangan garis biar tebal kayak Google Maps)
+                map.addLayer({
+                    'id': 'route-casing',
+                    'type': 'line',
+                    'source': 'route',
+                    'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                    'paint': { 'line-color': '#1e40af', 'line-width': 8, 'line-opacity': 0.5 }
+                });
+
+                // 3. Tambahkan Layer Rute Utama (Garis biru cerah di atas outline)
+                map.addLayer({
+                    'id': 'route-main',
+                    'type': 'line',
+                    'source': 'route',
+                    'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                    'paint': { 'line-color': '#3b82f6', 'line-width': 5 }
+                });
+
+                geolocateControl.trigger();
+
+                // Gambar rute awal berdasarkan posisi pin default
+                getRoute(senderMarker.getLngLat(), receiverMarker.getLngLat());
+            });
 
             window.syncMarkerFromInputs = function(prefix) {
                 const lat = parseFloat($(`#${prefix}_lat`).val()), lng = parseFloat($(`#${prefix}_lng`).val());
