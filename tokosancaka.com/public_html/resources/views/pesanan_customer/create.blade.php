@@ -178,6 +178,18 @@
 {{-- Load Mapbox GL JS Assets --}}
 <script src='https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js'></script>
 <link href='https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css' rel='stylesheet' />
+
+{{-- TAMBAHAN: Load Mapbox GL Geocoder (Pencarian Tempat) --}}
+<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
+<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
+
+<style>
+    /* Sedikit penyesuaian agar lebar search bar di peta lebih enak dilihat */
+    .mapboxgl-ctrl-geocoder { min-width: 300px !important; }
+    @media (max-width: 768px) {
+        .mapboxgl-ctrl-geocoder { min-width: 250px !important; }
+    }
+</style>
 @endpush
 
 @section('content')
@@ -746,6 +758,46 @@
             map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
             const geolocateControl = new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showUserHeading: true });
             map.addControl(geolocateControl, 'bottom-right');
+
+            // ==========================================
+            // FITUR BARU: KOLOM PENCARIAN TEMPAT (GEOCODER)
+            // ==========================================
+            const geocoder = new MapboxGeocoder({
+                accessToken: mapboxgl.accessToken,
+                mapboxgl: mapboxgl,
+                countries: 'id', // Batasi pencarian hanya di wilayah Indonesia
+                placeholder: 'Cari hotel, toko, terminal, kodepos...', // Placeholder teks
+                marker: false // Matikan marker bawaan geocoder karena kita pakai pin biru/merah sendiri
+            });
+
+            // Tambahkan kolom pencarian ke sudut kiri atas peta
+            map.addControl(geocoder, 'top-left');
+
+            // Event ketika user memilih lokasi dari hasil pencarian
+            geocoder.on('result', function(e) {
+                const coords = e.result.center; // Dapatkan kordinat [lng, lat] dari tempat yang dicari
+
+                // Cek mode apa yang sedang aktif (Pengirim atau Penerima)
+                const activeMode = $('input[name="map_mode"]:checked').val();
+
+                if (activeMode === 'receiver') {
+                    // Pindahkan pin merah
+                    receiverMarker.setLngLat(coords);
+                    updateInputsFromMarker('receiver', receiverMarker);
+                } else {
+                    // Pindahkan pin biru
+                    senderMarker.setLngLat(coords);
+                    updateInputsFromMarker('sender', senderMarker);
+                }
+
+                // Update garis rute (ular biru) otomatis
+                getRoute(senderMarker.getLngLat(), receiverMarker.getLngLat());
+            });
+
+            // Event untuk mengosongkan search bar ketika user klik tombol silang (clear)
+            geocoder.on('clear', function() {
+                // Opsional: Anda bisa melakukan sesuatu di sini jika pencarian dihapus
+            });
 
             const senderPopup = new mapboxgl.Popup({ offset: 25, closeButton: false, closeOnClick: false }).setHTML('<div class="fw-bold text-primary mb-1"><i class="fas fa-arrow-up"></i> PENGIRIM</div><small class="text-muted">Tarik pin biru ini</small>');
             const receiverPopup = new mapboxgl.Popup({ offset: 25, closeButton: false, closeOnClick: false }).setHTML('<div class="fw-bold text-danger mb-1"><i class="fas fa-map-marker-alt"></i> PENERIMA</div><small class="text-muted">Tarik pin merah ini</small>');
