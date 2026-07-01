@@ -118,7 +118,8 @@ class ApiSettingsController extends Controller
 
        // --- MAPBOX & SANCAKA EXPRESS ---
         $mapbox = [
-            'token'           => Api::getValue('MAPBOX_TOKEN', 'global'),
+            'public_token'    => Api::getValue('MAPBOX_PUBLIC_TOKEN', 'global', env('MAPBOX_PUBLIC_TOKEN')),
+            'secret_token'    => Api::getValue('MAPBOX_SECRET_TOKEN', 'global', env('MAPBOX_SECRET_TOKEN')),
             'base_fare'       => Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 3000),
             'price_per_km'    => Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 1000),
             'price_per_kg'    => Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1000),
@@ -310,7 +311,10 @@ class ApiSettingsController extends Controller
             // --- MAPBOX & SANCAKA EXPRESS ---
             } elseif ($type === 'mapbox') {
 
-                Api::setValue('MAPBOX_TOKEN', trim(strip_tags($request->mapbox_token)), 'mapbox', 'global');
+                // Pisahkan penyimpanan untuk Public dan Secret Token
+                Api::setValue('MAPBOX_PUBLIC_TOKEN', trim(strip_tags($request->mapbox_public_token)), 'mapbox', 'global');
+                Api::setValue('MAPBOX_SECRET_TOKEN', trim(strip_tags($request->mapbox_secret_token)), 'mapbox', 'global');
+
                 Api::setValue('SANCAKA_EXPRESS_BASE_FARE', $request->base_fare, 'mapbox', 'global');
                 Api::setValue('SANCAKA_EXPRESS_PER_KM', $request->price_per_km, 'mapbox', 'global');
                 Api::setValue('SANCAKA_EXPRESS_PER_KG', $request->price_per_kg, 'mapbox', 'global');

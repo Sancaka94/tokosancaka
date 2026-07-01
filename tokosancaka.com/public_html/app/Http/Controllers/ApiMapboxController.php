@@ -12,8 +12,8 @@ class ApiMapboxController extends Controller
 
     public function __construct()
     {
-        // Ganti dari env('MAPBOX_TOKEN') menjadi panggilan database dinamis:
-        $this->mapboxToken = \App\Models\Api::getValue('MAPBOX_TOKEN', 'global');
+        // Memanggil token secret untuk transaksi API sisi server
+        $this->mapboxToken = \App\Models\Api::getValue('MAPBOX_SECRET_TOKEN', 'global');
     }
 
     /**
@@ -35,7 +35,7 @@ class ApiMapboxController extends Controller
 
         // Cek Apakah Token Terbaca (Mencegah pengiriman request kosong ke Mapbox)
         if (empty($this->mapboxToken)) {
-            Log::error('[MAPBOX API] GAGAL: Token Mapbox kosong atau bernilai null! Pastikan MAPBOX_TOKEN ada di .env dan jalankan php artisan config:clear');
+            Log::error('[MAPBOX API] GAGAL: Secret Token Mapbox kosong atau bernilai null! Pastikan sudah disetting di panel admin.');
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan konfigurasi Token Peta di server. Hubungi admin.',

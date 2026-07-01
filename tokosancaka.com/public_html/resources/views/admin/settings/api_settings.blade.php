@@ -796,7 +796,7 @@
                     </form>
                 </div>
 
-                {{-- 14. TAB MAPBOX --}}
+               {{-- 14. TAB MAPBOX --}}
                 <div x-show="activeTab === 'mapbox'" style="display:none;" x-transition.opacity>
                     <div class="p-6 border-b border-zinc-200">
                         <h3 class="text-lg font-bold text-zinc-900 mb-1">Sancaka Express & Mapbox</h3>
@@ -813,10 +813,20 @@
                                 <p class="text-xs text-zinc-500 mt-1">API Token diperlukan untuk menghitung rute dan jarak tempuh kurir Sancaka Express antara titik pengirim dan penerima.</p>
                                 <a href="https://account.mapbox.com/access-tokens/" target="_blank" class="inline-block mt-3 text-xs font-medium text-blue-600 hover:text-blue-700">Dapatkan Token &rarr;</a>
                             </div>
-                            <div class="md:col-span-2">
-                                <label class="block text-xs font-medium text-zinc-700 uppercase mb-1">Public Token (pk.xxx...)</label>
-                                <input type="text" name="mapbox_token" x-model="mapboxData.token" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" required placeholder="pk.eyJ1Ijoi...">
-                                <p class="text-[11px] text-zinc-500 mt-1.5">Gunakan token Mapbox yang kolom <strong>URL Restrictions</strong>-nya dikosongkan.</p>
+                            <div class="md:col-span-2 space-y-4">
+                                {{-- Input Public Token --}}
+                                <div>
+                                    <label class="block text-xs font-medium text-zinc-700 uppercase mb-1">Public Token (pk.xxx...)</label>
+                                    <input type="text" name="mapbox_public_token" x-model="mapboxData.public_token" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" required placeholder="pk.eyJ1Ijoi...">
+                                    <p class="text-[11px] text-zinc-500 mt-1.5">Gunakan token Mapbox yang kolom <strong>URL Restrictions</strong>-nya dikosongkan.</p>
+                                </div>
+
+                                {{-- Input Secret Token --}}
+                                <div>
+                                    <label class="block text-xs font-medium text-zinc-700 uppercase mb-1">Secret Token (sk.xxx...)</label>
+                                    <input type="text" name="mapbox_secret_token" x-model="mapboxData.secret_token" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono" placeholder="sk.eyJ1Ijoi...">
+                                    <p class="text-[11px] text-zinc-500 mt-1.5">Token rahasia untuk akses API melalui sisi server (Backend).</p>
+                                </div>
                             </div>
                         </div>
 
