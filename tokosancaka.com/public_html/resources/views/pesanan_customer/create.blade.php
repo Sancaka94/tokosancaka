@@ -241,11 +241,16 @@
                                 <label for="item_type" class="form-label">Kategori</label>
                                 <select name="item_type" id="item_type" class="form-select" required>
                                     <option value="" disabled selected>Pilih...</option>
-                                    <option value="1">Elektronik & Gadget</option>
-                                    <option value="2">Pakaian / Kain</option>
+                                    <option value="1">Peralatan Elektronik & Gadget</option>
+                                    <option value="2">Pakaian / Baju / Kain</option>
                                     <option value="3">Pecah Belah</option>
-                                    <option value="4">Dokumen / Buku</option>
-                                    <option value="5">Rumah Tangga</option>
+                                    <option value="4">Dokumen / Berkas / Buku</option>
+                                    <option value="5">Peralatan Rumah Tangga</option>
+                                    <option value="6">Aksesoris</option>
+                                    <option value="8">Dokumen Berharga</option>
+                                    <option value="9">Peralatan Kesehatan / Kecantikan / Kosmetik</option>
+                                    <option value="10">Peralatan Olahraga & Hiburan</option>
+                                    <option value="11">Perlengkapan Mobil & Motor</option>
                                     <option value="7">Lain-Lain</option>
                                 </select>
                             </div>
