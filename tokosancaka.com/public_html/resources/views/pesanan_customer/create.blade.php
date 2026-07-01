@@ -227,6 +227,32 @@
                                 <i class="fas fa-hand-pointer me-1"></i> Geser pin untuk titik pas
                             </span>
                         </div>
+
+                        <!-- [AWAL TAMBAHAN] KOTAK RINCIAN ONGKIR DI PETA -->
+                        <div id="map_ongkir_summary" class="position-absolute z-3 d-none bg-white p-3 shadow-lg" style="top: 70px; left: 10px; border-radius: var(--border-radius-md); border: 2px solid var(--primary-color); min-width: 260px;">
+                            <h6 class="fw-bold text-primary mb-2 border-bottom pb-2" style="font-size: 0.9rem;"><i class="fas fa-box-open me-1"></i> Rincian Sancaka Express</h6>
+                            <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
+                                <span class="text-muted">Layanan:</span>
+                                <span id="map_summary_service" class="fw-bold text-dark text-end">-</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
+                                <span class="text-muted">Ongkir:</span>
+                                <span id="map_summary_ongkir" class="fw-bold text-dark">Rp 0</span>
+                            </div>
+                            <div id="map_summary_asuransi_row" class="d-flex justify-content-between mb-1 d-none" style="font-size: 0.8rem;">
+                                <span class="text-muted">Asuransi:</span>
+                                <span id="map_summary_asuransi" class="fw-bold text-success">Rp 0</span>
+                            </div>
+                            <div id="map_summary_cod_row" class="d-flex justify-content-between mb-1 d-none" style="font-size: 0.8rem;">
+                                <span class="text-muted">Biaya COD:</span>
+                                <span id="map_summary_cod" class="fw-bold text-danger">Rp 0</span>
+                            </div>
+                            <div class="d-flex justify-content-between mt-2 pt-2 border-top">
+                                <span class="fw-bold text-dark" style="font-size: 0.85rem;">Total Estimasi:</span>
+                                <span id="map_summary_total" class="fw-bold text-primary" style="font-size: 1rem;">Rp 0</span>
+                            </div>
+                        </div>
+                        <!-- [AKHIR TAMBAHAN] KOTAK RINCIAN ONGKIR DI PETA -->
                         <!-- ======================================================= -->
                         <!-- FITUR BARU: INFO BOX JARAK & DURASI (MUNCUL DI KANAN ATAS) -->
                         <!-- ======================================================= -->
@@ -1563,6 +1589,7 @@
             $('#expedition').val(''); $('#selected_expedition_display').val('').attr('placeholder', 'Klik untuk Pilih Kurir').removeClass('is-valid');
             $('.cod-payment-option').hide();
             $('#selected_shipping_cost, #selected_insurance_cost').val('0');
+            $('#map_ongkir_summary').fadeOut(200, function() { $(this).addClass('d-none'); });
 
             $('#payment_method').val(''); $('#selectedPaymentName').text('Pilih Pembayaran...');
             $('#selectedPaymentLogo').addClass('d-none').attr('src', ''); $('#defaultPaymentIcon').removeClass('d-none');
@@ -1618,6 +1645,38 @@
                     $('#helper_driver_price_text, #helper_extra_price_text').text('(Gagal cek API)').addClass('text-danger');
                 });
             }
+
+            // ==========================================================
+            // PASTE KODE TAMBAHANNYA DI SINI
+            // ==========================================================
+            // [AWAL TAMBAHAN] TAMPILKAN RINCIAN DI ATAS PETA JIKA SANCAKA EXPRESS
+            if ($('#vendor_filter').val() === 'sancaka_express') {
+                let baseOngkir = parseInt($(this).data('shipping-cost')) || 0;
+                let asuransi = parseInt($(this).data('insurance-cost')) || 0;
+                let codFee = parseInt($(this).data('cod-fee')) || 0;
+                let total = baseOngkir + asuransi; // Biaya akhir jika non-COD
+
+                $('#map_summary_service').text($(this).data('display').replace('Sancaka Express - ', ''));
+                $('#map_summary_ongkir').text(formatRupiah(baseOngkir));
+
+                if (asuransi > 0) {
+                    $('#map_summary_asuransi_row').removeClass('d-none');
+                    $('#map_summary_asuransi').text(formatRupiah(asuransi));
+                } else {
+                    $('#map_summary_asuransi_row').addClass('d-none');
+                }
+
+                if (codFee > 0) {
+                    $('#map_summary_cod_row').removeClass('d-none');
+                    $('#map_summary_cod').text(formatRupiah(codFee) + ' (Jika COD)');
+                } else {
+                    $('#map_summary_cod_row').addClass('d-none');
+                }
+
+                $('#map_summary_total').text(formatRupiah(total));
+                $('#map_ongkir_summary').removeClass('d-none').hide().fadeIn(300);
+            }
+
         });
 
         let isPaymentApiLoaded = false;
