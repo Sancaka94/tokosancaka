@@ -1465,44 +1465,43 @@
         }
 
         function setupAddressSearch(prefix) {
-            const s = $(`#${prefix}_address_search`), r = $(`#${prefix}_address_results`);
-            s.on('input', debounce(() => {
-                s.removeClass('is-valid is-invalid');
-                const q = s.val();
-                if (q.length < 3) return r.addClass('d-none');
+        const s = $(`#${prefix}_address_search`), r = $(`#${prefix}_address_results`);
 
-                $.get("{{ route('api.address.search') }}", { search: q }).done(d => {
-                    r.html('').removeClass('d-none');
-                    if (d && d.length > 0) {
-                        d.forEach(i => r.append($(`<div class="search-result-item"><div class="font-weight-bold">${i.full_address}</div></div>`).on('click', () => {
-                            s.val(i.full_address);
-                            const p = i.full_address.split(',').map(t => t.trim());
-                            $(`#${prefix}_village`).val(p[0] || '').trigger('change');
-                            $(`#${prefix}_district`).val(p[1] || '').trigger('change');
-                            $(`#${prefix}_regency`).val(p[2] || '').trigger('change');
-                            $(`#${prefix}_province`).val(p[3] || '').trigger('change');
-                            $(`#${prefix}_postal_code`).val(p[4] || '').trigger('change');
-                            $(`#${prefix}_district_id`).val(i.district_id).trigger('change');
-                            $(`#${prefix}_subdistrict_id`).val(i.subdistrict_id).trigger('change');
+        s.on('input', debounce(function() {
+            const query = s.val();
+            if (query.length < 3) return r.addClass('d-none');
 
-                            let lat = parseFloat(i.lat);
-                            let lon = parseFloat(i.lon);
-                            if (!lat || !lon || lat === 0 || lon === 0) {
-                                fallbackGeocode(prefix, p[0], p[1], p[2]);
-                            } else {
+            // Ganti URL dengan Mapbox Geocoding API (Gunakan Public Token)
+            const mapboxPublicToken = '{{ \App\Models\Api::getValue("MAPBOX_PUBLIC_TOKEN", "global") }}';
+            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxPublicToken}&country=id&limit=5&language=id`;
+
+            $.get(url).done(d => {
+                r.html('').removeClass('d-none');
+                if (d.features && d.features.length > 0) {
+                    d.features.forEach(i => {
+                        r.append($(`<div class="search-result-item"><div class="font-weight-bold">${i.place_name}</div></div>`)
+                            .on('click', () => {
+                                s.val(i.place_name);
+
+                                // Langsung ambil koordinat AKURAT dari Mapbox
+                                const [lng, lat] = i.center;
                                 $(`#${prefix}_lat`).val(lat);
-                                $(`#${prefix}_lng`).val(lon);
-                                // Sinkronkan marker Mapbox
+                                $(`#${prefix}_lng`).val(lng);
+
+                                // Isi detail alamat jika Mapbox mengembalikan context
+                                $(`#${prefix}_address`).val(i.place_name);
+
+                                // Sinkronkan ke Peta
                                 if(typeof window.syncMarkerFromInputs === 'function') window.syncMarkerFromInputs(prefix);
-                            }
-                            r.addClass('d-none');
-                        })));
-                    } else {
-                        r.html('<div class="p-3 text-muted">Alamat tidak ditemukan.</div>');
-                    }
-                }).fail(() => r.html('<div class="p-3 text-danger">Gagal memuat data.</div>'));
-            }, 400));
-        }
+                                r.addClass('d-none');
+                            }));
+                    });
+                } else {
+                    r.html('<div class="p-3 text-muted">Alamat tidak ditemukan.</div>');
+                }
+            });
+        }, 400));
+    }
         setupAddressSearch('sender');
         setupAddressSearch('receiver');
 
