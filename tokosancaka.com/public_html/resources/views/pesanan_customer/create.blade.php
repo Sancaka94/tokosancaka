@@ -227,6 +227,21 @@
                                 <i class="fas fa-hand-pointer me-1"></i> Geser pin untuk titik pas
                             </span>
                         </div>
+                        <!-- ======================================================= -->
+                        <!-- FITUR BARU: INFO BOX JARAK & DURASI (MUNCUL DI KANAN ATAS) -->
+                        <!-- ======================================================= -->
+                        <div id="route-info-box" class="position-absolute top-0 end-0 m-2 z-3 d-none">
+                            <div class="bg-white px-3 py-2 rounded shadow-sm border border-primary d-flex align-items-center" style="font-size: 0.9rem;">
+                                <div class="text-primary fw-bold me-3" title="Total Jarak">
+                                    <i class="fas fa-road me-1"></i> <span id="route-distance">0 km</span>
+                                </div>
+                                <div class="text-success fw-bold" title="Estimasi Waktu Tempuh">
+                                    <i class="fas fa-clock me-1"></i> <span id="route-duration">0 mnt</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- ======================================================= -->
+
                         <div id='map' style="border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg); border: none;"></div>
                     </div>
                 </div>
@@ -806,19 +821,31 @@
             receiverMarker = new mapboxgl.Marker({ color: '#dc3545', draggable: true }).setLngLat([111.4650, -7.4100]).setPopup(receiverPopup).addTo(map);
             senderMarker.togglePopup(); receiverMarker.togglePopup();
 
+           // ==========================================
+            // PENAHAN KAMERA AGAR MAP TIDAK LONCAT SAAT ISI FORM
             // ==========================================
-            // FITUR BARU: FUNGSI MENGGAMBAR GARIS RUTE
+            window.isTypingForm = false;
+            $('form input, form textarea, form select').on('focus', function() {
+                window.isTypingForm = true; // Jika user ngeklik form, kunci pergerakan kamera peta
+            }).on('blur', function() {
+                setTimeout(() => { window.isTypingForm = false; }, 1000); // Lepas kunci setelah 1 detik
+            });
+
+
+            // ==========================================
+            // UPDATE: FUNGSI RUTE + HITUNG KM & MENIT
             // ==========================================
             function getRoute(start, end) {
-                // Gunakan Mapbox Directions API untuk mencari rute jalan raya (driving)
                 const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start.lng},${start.lat};${end.lng},${end.lat}?geometries=geojson&access_token=${mapboxgl.accessToken}`;
 
                 $.ajax({
                     url: url,
                     success: function(json) {
                         if(json.routes && json.routes.length > 0) {
-                            const routeGeometry = json.routes[0].geometry;
-                            // Update data garis di peta
+                            const route = json.routes[0];
+                            const routeGeometry = route.geometry;
+
+                            // 1. Update data garis ular di peta
                             if (map.getSource('route')) {
                                 map.getSource('route').setData({
                                     type: 'Feature',
@@ -827,13 +854,23 @@
                                 });
                             }
 
-                            // Opsional: Otomatis zoom agar kedua titik dan garis terlihat semua (Fit Bounds)
-                            const coordinates = routeGeometry.coordinates;
-                            const bounds = new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]);
-                            for (const coord of coordinates) {
-                                bounds.extend(coord);
+                            // 2. HITUNG & TAMPILKAN JARAK SERTA WAKTU
+                            const distanceKm = (route.distance / 1000).toFixed(1); // Ubah meter ke KM (1 desimal)
+                            const durationMin = Math.round(route.duration / 60); // Ubah detik ke Menit pembulatan
+
+                            $('#route-distance').text(distanceKm + ' km');
+                            $('#route-duration').text(durationMin + ' mnt');
+                            $('#route-info-box').removeClass('d-none'); // Tampilkan kotaknya
+
+                            // 3. Zoom otomatis (Fit Bounds) HANYA jika user tidak sedang mengisi form di bawah
+                            if (!window.isTypingForm) {
+                                const coordinates = routeGeometry.coordinates;
+                                const bounds = new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]);
+                                for (const coord of coordinates) {
+                                    bounds.extend(coord);
+                                }
+                                map.fitBounds(bounds, { padding: 60, maxZoom: 16 });
                             }
-                            map.fitBounds(bounds, { padding: 60, maxZoom: 16 });
                         }
                     }
                 });
