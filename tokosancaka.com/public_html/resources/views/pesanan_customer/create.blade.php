@@ -1502,6 +1502,7 @@
             });
         }, 400));
     }
+
         setupAddressSearch('sender');
         setupAddressSearch('receiver');
 
