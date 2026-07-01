@@ -2577,10 +2577,11 @@ TEXT;
             return ['status' => false, 'results' => []];
         }
 
-        // 2. Ambil Token Mapbox Dinamis
-        $mapboxToken = \App\Models\Api::getValue('MAPBOX_TOKEN', 'global');
+        // 2. Ambil Token Mapbox Dinamis (Gunakan Secret Token untuk akses Backend)
+        $mapboxToken = \App\Models\Api::getValue('MAPBOX_SECRET_TOKEN', 'global');
+
         if (empty($mapboxToken)) {
-            Log::error('LOG LOG: [Sancaka Express] Batal - Token Mapbox belum diatur di database.');
+            Log::error('LOG LOG: [Sancaka Express] Batal - Secret Token Mapbox belum diatur di database.');
             return ['status' => false, 'results' => []];
         }
 

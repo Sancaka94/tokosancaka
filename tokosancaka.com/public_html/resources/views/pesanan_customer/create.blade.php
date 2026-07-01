@@ -951,7 +951,7 @@
         // ==============================================================================
         // 1. INTEGRASI MAPBOX: FITUR GRAB / GOJEK STYLE DENGAN MAPBOX STANDARD 3D
         // ==============================================================================
-        const mapboxToken = '{{ \App\Models\Api::getValue("MAPBOX_TOKEN", "global") }}';
+        const mapboxToken = '{{ \App\Models\Api::getValue("MAPBOX_PUBLIC_TOKEN", "global") }}';
 
         let map, senderMarker, receiverMarker;
 
