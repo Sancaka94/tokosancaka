@@ -439,9 +439,9 @@ class ApiMapboxController extends Controller
         return round($earthRadius * $c);
     }
 
-    /**
+   /**
      * Endpoint POST: /api/mobile/order/notify-driver
-     * Mengirim notifikasi detail pesanan & membunyikan HP Driver
+     * Mengirim notifikasi detail pesanan ke HP Driver
      */
     public function notify_driver(Request $request)
     {
@@ -449,7 +449,10 @@ class ApiMapboxController extends Controller
         $customerLat = $request->input('origin_lat');
         $customerLng = $request->input('origin_lng');
 
-        // Cari data driver dan token expo miliknya
+        // 1. Dapatkan Data User Pemesan (Customer) dari Tabel Pengguna
+        $customer = $request->user(); // Karena API ini dilindungi Auth:Sanctum
+
+        // 2. Dapatkan Data Driver yang dituju
         $driver = DB::table('registrasi_driver_sancaka')
             ->join('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
             ->where('registrasi_driver_sancaka.id', $driverId)
@@ -460,33 +463,43 @@ class ApiMapboxController extends Controller
             return response()->json(['status' => false, 'message' => 'Driver Offline / Token tidak ditemukan.'], 404);
         }
 
-        // Hitung jarak real-time dari posisi driver sekarang ke pemesan (dalam meter)
+        // 3. Hitung Jarak
         $jarakKePemesanMeter = $this->getDistanceMeter(
             (float)$driver->latitude, (float)$driver->longitude,
             (float)$customerLat, (float)$customerLng
         );
 
         try {
-            // Kirim Push Notification ke Expo Push Server dengan PAYLOAD LENGKAP
-            $response = Http::withHeaders([
+            // 4. KIRIM PAYLOAD LENGKAP KE DRIVER
+            Http::withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
             ])->post('https://exp.host/--/api/v2/push/send', [
                 'to'        => $driver->expo_token,
-                'title'     => '🚨 ORDERAN BARU MASUK! Rp ' . number_format($request->input('tarif'), 0, ',', '.'),
-                'body'      => 'Jemput: ' . $request->input('origin_address') . ' -> Antar: ' . $request->input('dest_address'),
+                'title'     => '🚨 ORDERAN BARU! Rp ' . number_format($request->input('tarif'), 0, ',', '.'),
+                'body'      => 'Dari: ' . $customer->nama_lengkap . ' (' . $jarakKePemesanMeter . 'm)',
                 'sound'     => 'default',
                 'channelId' => 'pesanan-masuk',
                 'priority'  => 'high',
                 'data'      => [
                     'action'               => 'new_order',
-                    'order_id'             => $request->input('order_id', uniqid()), // ID Transaksi
-                    'customer_id'          => $request->user()->id_pengguna, // ID Pemesan untuk notif balik
+                    'order_id'             => $request->input('order_id', uniqid()),
+
+                    // === DATA CUSTOMER UNTUK HALAMAN RUTE ===
+                    'customer_id'          => $customer->id_pengguna,
+                    'customer_name'        => $customer->nama_lengkap,
+                    'customer_phone'       => $customer->no_wa,
+
+                    // === DATA RUTE ===
                     'tarif'                => $request->input('tarif'),
                     'origin_address'       => $request->input('origin_address'),
                     'dest_address'         => $request->input('dest_address'),
-                    'jarak_ke_pemesan'     => $jarakKePemesanMeter, // dalam Meter
-                    'waktu_tempuh_menit'   => $request->input('waktu_menit', 10), // Durasi perjalanan ojek
+                    'origin_lat'           => $request->input('origin_lat'),
+                    'origin_lng'           => $request->input('origin_lng'),
+                    'dest_lat'             => $request->input('dest_lat'),
+                    'dest_lng'             => $request->input('dest_lng'),
+                    'jarak_ke_pemesan'     => $jarakKePemesanMeter,
+                    'waktu_tempuh_menit'   => $request->input('waktu_menit', 10),
                 ]
             ]);
 
