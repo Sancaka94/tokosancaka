@@ -74,6 +74,8 @@ Route::get('/verifikasi-email', [App\Http\Controllers\Api\Mobile\AuthController:
 
 Route::get('/system-status', [\App\Http\Controllers\Admin\DashboardController::class, 'getSystemMode']);
 
+Route::get('/payment-channels', [\App\Http\Controllers\CustomerOrderController::class, 'getTripayChannels']);
+
 
 // =========================================================================
 // ROUTE WEBHOOK & CALLBACK DANA GATEWAY (TIDAK BUTUH LOGIN)
