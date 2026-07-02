@@ -424,56 +424,112 @@ class ApiMapboxController extends Controller
         }
     }
 
+   /**
+     * Hitung Jarak Haversine antar dua titik koordinat (dalam Meter)
+     */
+    private function getDistanceMeter($lat1, $lon1, $lat2, $lon2) {
+        $earthRadius = 6371000; // Radius bumi dalam meter
+        $latDelta = radians($lat2 - $lat1);
+        $lonDelta = radians($lon2 - $lon1);
+
+        $a = sin($latDelta / 2) * sin($latDelta / 2) +
+             cos(radians($lat1)) * cos(radians($lat2)) *
+             sin($lonDelta / 2) * sin($lonDelta / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return round($earthRadius * $c);
+    }
+
     /**
      * Endpoint POST: /api/mobile/order/notify-driver
-     * Mengirim notifikasi berdering ke HP Driver
+     * Mengirim notifikasi detail pesanan & membunyikan HP Driver
      */
     public function notify_driver(Request $request)
     {
         $driverId = $request->input('driver_id');
+        $customerLat = $request->input('origin_lat');
+        $customerLng = $request->input('origin_lng');
 
-        // Cari expo_token dari driver tersebut
+        // Cari data driver dan token expo miliknya
         $driver = DB::table('registrasi_driver_sancaka')
             ->join('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
             ->where('registrasi_driver_sancaka.id', $driverId)
-            ->select('Pengguna.expo_token', 'registrasi_driver_sancaka.nama_lengkap')
+            ->select('Pengguna.expo_token', 'registrasi_driver_sancaka.nama_lengkap', 'registrasi_driver_sancaka.latitude', 'registrasi_driver_sancaka.longitude')
             ->first();
 
         if (!$driver || empty($driver->expo_token)) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Driver tidak bisa dihubungi (Token tidak ditemukan).'
-            ], 404);
+            return response()->json(['status' => false, 'message' => 'Driver Offline / Token tidak ditemukan.'], 404);
         }
 
+        // Hitung jarak real-time dari posisi driver sekarang ke pemesan (dalam meter)
+        $jarakKePemesanMeter = $this->getDistanceMeter(
+            (float)$driver->latitude, (float)$driver->longitude,
+            (float)$customerLat, (float)$customerLng
+        );
+
         try {
-            // INILAH TEMPAT ANDA MENARUH PAYLOAD TERSEBUT (Dikonversi ke PHP Array)
+            // Kirim Push Notification ke Expo Push Server dengan PAYLOAD LENGKAP
             $response = Http::withHeaders([
                 'Accept' => 'application/json',
-                'Accept-Encoding' => 'gzip, deflate',
                 'Content-Type' => 'application/json',
             ])->post('https://exp.host/--/api/v2/push/send', [
                 'to'        => $driver->expo_token,
-                'title'     => '🚨 ORDERAN BARU MASUK!',
-                'body'      => 'Segera ambil orderan dari pelanggan Anda.',
-                'sound'     => 'default', // <--- INI YANG BIKIN HP DRIVER BUNYI
-                'channelId' => 'pesanan-masuk', // <--- HARUS COCOK DENGAN SETTING DI HP DRIVER
+                'title'     => '🚨 ORDERAN BARU MASUK! Rp ' . number_format($request->input('tarif'), 0, ',', '.'),
+                'body'      => 'Jemput: ' . $request->input('origin_address') . ' -> Antar: ' . $request->input('dest_address'),
+                'sound'     => 'default',
+                'channelId' => 'pesanan-masuk',
+                'priority'  => 'high',
                 'data'      => [
-                    'action'    => 'new_order',
-                    'tarif'     => $request->input('tarif'),
-                    'origin'    => $request->input('origin_address'),
-                    'dest'      => $request->input('dest_address'),
+                    'action'               => 'new_order',
+                    'order_id'             => $request->input('order_id', uniqid()), // ID Transaksi
+                    'customer_id'          => $request->user()->id_pengguna, // ID Pemesan untuk notif balik
+                    'tarif'                => $request->input('tarif'),
+                    'origin_address'       => $request->input('origin_address'),
+                    'dest_address'         => $request->input('dest_address'),
+                    'jarak_ke_pemesan'     => $jarakKePemesanMeter, // dalam Meter
+                    'waktu_tempuh_menit'   => $request->input('waktu_menit', 10), // Durasi perjalanan ojek
                 ]
             ]);
 
-            return response()->json([
-                'status' => true,
-                'message' => 'Memanggil driver ' . $driver->nama_lengkap
-            ]);
-
+            return response()->json(['status' => true, 'message' => 'Memanggil driver ' . $driver->nama_lengkap]);
         } catch (\Exception $e) {
             return response()->json(['status' => false, 'message' => 'Gagal memanggil.'], 500);
         }
+    }
+
+    /**
+     * Endpoint POST: /api/mobile/order/driver-accept
+     * Dipicu ketika Driver klik "Terima Pesanan". Mengirim notif balik ke Customer.
+     */
+    public function accept_order(Request $request)
+    {
+        $customerId = $request->input('customer_id');
+        $driverUser = $request->user(); // Data user driver yang sedang login
+
+        // Ambil info kendaraan driver
+        $driverDetail = DB::table('registrasi_driver_sancaka')
+            ->where('id_pengguna', $driverUser->id_pengguna)->first();
+
+        // Cari expo token milik customer
+        $customerToken = DB::table('Pengguna')->where('id_pengguna', $customerId)->value('expo_token');
+
+        if ($customerToken) {
+            // Kirim notifikasi balik ke Customer
+            Http::post('https://exp.host/--/api/v2/push/send', [
+                'to'    => $customerToken,
+                'title' => '✅ Driver Ditemukan!',
+                'body'  => $driverUser->nama_lengkap . ' siap menjemput Anda dengan ' . ($driverDetail->vehicle ?? 'Ojek Sancaka'),
+                'sound' => 'default',
+                'data'  => [
+                    'action'      => 'order_accepted',
+                    'driver_name' => $driverUser->nama_lengkap,
+                    'driver_lat'  => $driverDetail->latitude,
+                    'driver_lng'  => $driverDetail->longitude,
+                    'phone'       => $driverDetail->nomor_wa,
+                ]
+            ]);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Notifikasi penerimaan berhasil dikirim ke customer.']);
     }
 
 }
