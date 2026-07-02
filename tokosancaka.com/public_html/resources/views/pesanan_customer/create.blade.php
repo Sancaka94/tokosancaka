@@ -905,39 +905,29 @@
                 });
             }
 
-          function reverseGeocode(lat, lng, prefix) {
-            $.ajax({
-                url: `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-                success: function(data) {
-                    if (data && data.display_name) {
-                        $(`#${prefix}_address_search`).val(data.display_name).addClass('is-valid');
-                        if(data.address) {
-                            const desa = data.address.village || data.address.neighbourhood || '';
-                            const kec = data.address.town || data.address.city_district || data.address.suburb || '';
-                            const kab = data.address.city || data.address.county || '';
-                            const prov = data.address.state || '';
-                            const kodepos = data.address.postcode || '';
+            function reverseGeocode(lat, lng, prefix) {
+                $.ajax({
+                    url: `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+                    success: function(data) {
+                        if (data && data.display_name) {
+                            $(`#${prefix}_address_search`).val(data.display_name).addClass('is-valid');
+                            if(data.address) {
+                                const desa = data.address.village || data.address.neighbourhood || '';
+                                const kec = data.address.town || data.address.city_district || '';
+                                const kab = data.address.city || data.address.county || '';
+                                const prov = data.address.state || '';
+                                const kodepos = data.address.postcode || '';
 
-                            if(desa) $(`#${prefix}_village`).val(desa);
-                            if(kec) $(`#${prefix}_district`).val(kec);
-                            if(kab) $(`#${prefix}_regency`).val(kab);
-                            if(prov) $(`#${prefix}_province`).val(prov);
-                            if(kodepos) $(`#${prefix}_postal_code`).val(kodepos);
-
-                            // PERBAIKAN BUG: Wajib tembak API internal untuk dapat ID Kecamatan Ongkir
-                            if (kec) {
-                                $.get("{{ route('api.address.search') }}", { search: `${desa} ${kec}` }).done(function(res) {
-                                    if (res && res.length > 0) {
-                                        $(`#${prefix}_district_id`).val(res[0].district_id).trigger('change');
-                                        $(`#${prefix}_subdistrict_id`).val(res[0].subdistrict_id).trigger('change');
-                                    }
-                                });
+                                if(desa) $(`#${prefix}_village`).val(desa);
+                                if(kec) $(`#${prefix}_district`).val(kec);
+                                if(kab) $(`#${prefix}_regency`).val(kab);
+                                if(prov) $(`#${prefix}_province`).val(prov);
+                                if(kodepos) $(`#${prefix}_postal_code`).val(kodepos);
                             }
                         }
                     }
-                }
-            });
-        }
+                });
+            }
 
             function updateInputsFromMarker(prefix, marker) {
                 const lngLat = marker.getLngLat();
@@ -1269,38 +1259,32 @@
             });
         }
 
-       function setupAddressSearch(prefix) {
+        function setupAddressSearch(prefix) {
             const s = $(`#${prefix}_address_search`), r = $(`#${prefix}_address_results`);
             s.on('input', debounce(() => {
                 s.removeClass('is-valid is-invalid'); const q = s.val();
                 if (q.length < 3) return r.addClass('d-none');
-
-                // MENGGUNAKAN MAPBOX API AGAR BISA CARI TOKO/TERMINAL DARI FORM INPUT TEKS
-                const mapboxUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${mapboxToken}&country=id&language=id&types=poi,address,place,locality&autocomplete=true`;
-
-                $.get(mapboxUrl).done(data => {
+                $.get("{{ route('api.address.search') }}", { search: q }).done(d => {
                     r.html('').removeClass('d-none');
-                    if (data && data.features && data.features.length > 0) {
-                        data.features.forEach(i => {
-                            r.append($(`<div class="search-result-item"><div class="font-weight-bold">${i.place_name}</div></div>`).on('click', () => {
-                                s.val(i.place_name);
-                                r.addClass('d-none');
+                    if (d && d.length > 0) {
+                        d.forEach(i => r.append($(`<div class="search-result-item"><div class="font-weight-bold">${i.full_address}</div></div>`).on('click', () => {
+                            s.val(i.full_address);
+                            const p = i.full_address.split(',').map(t => t.trim());
+                            $(`#${prefix}_village`).val(p[0] || '').trigger('change');
+                            $(`#${prefix}_district`).val(p[1] || '').trigger('change');
+                            $(`#${prefix}_regency`).val(p[2] || '').trigger('change');
+                            $(`#${prefix}_province`).val(p[3] || '').trigger('change');
+                            $(`#${prefix}_postal_code`).val(p[4] || '').trigger('change');
+                            $(`#${prefix}_district_id`).val(i.district_id).trigger('change');
+                            $(`#${prefix}_subdistrict_id`).val(i.subdistrict_id).trigger('change');
 
-                                let lon = i.center[0];
-                                let lat = i.center[1];
-                                $(`#${prefix}_lat`).val(lat);
-                                $(`#${prefix}_lng`).val(lon);
-
-                                if(typeof window.syncMarkerFromInputs === 'function') window.syncMarkerFromInputs(prefix);
-
-                                // Tarik ID Kecamatan otomatis
-                                reverseGeocode(lat, lon, prefix);
-                            }));
-                        });
-                    } else {
-                        r.html('<div class="p-3 text-muted">Tempat atau alamat tidak ditemukan.</div>');
-                    }
-                }).fail(() => r.html('<div class="p-3 text-danger">Gagal memuat data pencarian.</div>'));
+                            let lat = parseFloat(i.lat), lon = parseFloat(i.lon);
+                            if (!lat || !lon || lat === 0 || lon === 0) { fallbackGeocode(prefix, p[0], p[1], p[2]); }
+                            else { $(`#${prefix}_lat`).val(lat); $(`#${prefix}_lng`).val(lon); if(typeof window.syncMarkerFromInputs === 'function') window.syncMarkerFromInputs(prefix); }
+                            r.addClass('d-none');
+                        })));
+                    } else { r.html('<div class="p-3 text-muted">Alamat tidak ditemukan.</div>'); }
+                }).fail(() => r.html('<div class="p-3 text-danger">Gagal memuat data.</div>'));
             }, 400));
         }
         setupAddressSearch('sender'); setupAddressSearch('receiver');
