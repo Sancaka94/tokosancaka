@@ -214,18 +214,13 @@ class ApiMapboxController extends Controller
         }
     }
 
-    /**
-     * Endpoint API GET: /api/mobile/driver/nearby
-     * Mencari driver terdekat dalam radius 5 KM
-     */
-    public function getNearbyDrivers(Request $request)
+   public function getNearbyDrivers(Request $request)
     {
         try {
             $lat = $request->query('lat');
             $lng = $request->query('lng');
-            $radius = 5; // Radius maksimal pencarian dalam Kilometer (KM)
+            $radius = 5;
 
-            // Validasi jika lat/lng kosong
             if (!$lat || !$lng) {
                 return response()->json([
                     'success' => false,
@@ -233,33 +228,33 @@ class ApiMapboxController extends Controller
                 ]);
             }
 
-            // QUERY MENGGUNAKAN RUMUS HAVERSINE UNTUK MENGHITUNG JARAK REAL
-            // Mencari driver di tabel registrasi_driver_sancaka yang statusnya 'approved'
+            // 🔥 PERBAIKAN QUERY: Tambahkan is_active_map di Select dan Where 🔥
             $drivers = DB::table('registrasi_driver_sancaka')
-                ->selectRaw("id, id_pengguna, nama_lengkap, latitude, longitude, status,
+                ->selectRaw("id, id_pengguna, nama_lengkap, latitude, longitude, status, is_active_map,
                     ( 6371 * acos( cos( radians(?) ) *
                       cos( radians( latitude ) ) *
                       cos( radians( longitude ) - radians(?) ) +
                       sin( radians(?) ) *
                       sin( radians( latitude ) ) )
                     ) AS distance", [$lat, $lng, $lat])
-                ->where('status', 'approved') // Wajib Approved
+                ->where('status', 'approved')
+                ->where('is_active_map', 1) // KUNCI: HANYA TARIK DRIVER YANG ONLINE
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
-                ->having('distance', '<=', $radius) // Batasi hanya yang jaraknya <= 5 KM
-                ->orderBy('distance', 'asc') // Urutkan dari yang paling dekat
-                ->limit(10) // Tampilkan maksimal 10 driver
+                ->having('distance', '<=', $radius)
+                ->orderBy('distance', 'asc')
+                ->limit(10)
                 ->get();
 
-            // Format datanya agar persis seperti yang diminta React Native
             $formattedDrivers = $drivers->map(function ($driver) {
                 return [
                     'id'       => $driver->id,
                     'name'     => $driver->nama_lengkap,
-                    'vehicle'  => 'Ojek Sancaka', // Bisa diubah jika ada field merk motor
-                    'distance' => round($driver->distance, 1) . ' KM', // Dibulatkan jadi 1 angka di belakang koma
+                    'vehicle'  => 'Ojek Sancaka',
+                    'distance' => round($driver->distance, 1) . ' KM',
                     'lat'      => (float) $driver->latitude,
                     'lng'      => (float) $driver->longitude,
+                    'is_online'=> $driver->is_active_map == 1 // Kirim status ke frontend jika dibutuhkan
                 ];
             });
 
