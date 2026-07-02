@@ -179,15 +179,17 @@
 <script src='https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js'></script>
 <link href='https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css' rel='stylesheet' />
 
-{{-- TAMBAHAN: Load Mapbox GL Geocoder (Pencarian Tempat) --}}
-<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
-<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
+{{-- TAMBAHAN: Load Mapbox Search JS Web (Versi Pintar) --}}
+<script id="search-js" defer src="https://api.mapbox.com/search-js/v1.5.0/web.js"></script>
 
 <style>
-    /* Sedikit penyesuaian agar lebar search bar di peta lebih enak dilihat */
-    .mapboxgl-ctrl-geocoder { min-width: 300px !important; }
+    /* CSS untuk Search Box Component yang baru */
+    mapbox-search-box {
+        min-width: 300px !important;
+        margin: 10px;
+    }
     @media (max-width: 768px) {
-        .mapboxgl-ctrl-geocoder { min-width: 250px !important; }
+        mapbox-search-box { min-width: 250px !important; }
     }
 </style>
 @endpush
@@ -800,26 +802,30 @@
             const geolocateControl = new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showUserHeading: true });
             map.addControl(geolocateControl, 'bottom-right');
 
+           // ==========================================
+            // FITUR BARU: MAPBOX SEARCH JS (Pencarian Cerdas)
             // ==========================================
-            // FITUR BARU: KOLOM PENCARIAN TEMPAT (GEOCODER)
-            // ==========================================
-            const geocoder = new MapboxGeocoder({
-                accessToken: mapboxgl.accessToken,
-                mapboxgl: mapboxgl,
-                countries: 'id',
-                language: 'id', // Paksa pencarian menggunakan bahasa Indonesia
-                types: 'poi,address,place,locality', // Paksa Mapbox memprioritaskan pencarian Tempat Umum (POI) dan alamat
-                trackProximity: true, // Prioritaskan pencarian di area yang sedang tampil di layar
-                placeholder: 'Ketik nama spesifik (Misal: Terminal Kertonegoro)...',
-                marker: false // Matikan marker bawaan geocoder karena kita pakai pin biru/merah sendiri
-            });
+            const searchBox = new MapboxSearchBox();
+            searchBox.accessToken = mapboxgl.accessToken;
+            searchBox.options = {
+                language: 'id',
+                country: 'id'
+            };
 
-            // Tambahkan kolom pencarian ke sudut kiri atas peta
-            map.addControl(geocoder, 'top-left');
+            // Set mapboxgl library agar tersambung dengan ekosistem peta
+            searchBox.mapboxgl = mapboxgl;
+            searchBox.marker = false; // Matikan pin bawaan karena kita pakai pin biru/merah sendiri
 
-            // Event ketika user memilih lokasi dari hasil pencarian
-            geocoder.on('result', function(e) {
-                const coords = e.result.center; // Dapatkan kordinat [lng, lat] dari tempat yang dicari
+            // Masukkan kotak pencarian ke sudut kiri atas peta
+            map.addControl(searchBox, 'top-left');
+
+            // Event saat pembeli mengeklik salah satu saran tempat
+            searchBox.addEventListener('retrieve', function(e) {
+                // Mapbox Search JS mengembalikan data di dalam e.detail
+                const feature = e.detail.features ? e.detail.features[0] : e.detail;
+                if (!feature || !feature.geometry) return;
+
+                const coords = feature.geometry.coordinates; // Format: [lng, lat]
 
                 // Cek mode apa yang sedang aktif (Pengirim atau Penerima)
                 const activeMode = $('input[name="map_mode"]:checked').val();
@@ -836,11 +842,6 @@
 
                 // Update garis rute (ular biru) otomatis
                 getRoute(senderMarker.getLngLat(), receiverMarker.getLngLat());
-            });
-
-            // Event untuk mengosongkan search bar ketika user klik tombol silang (clear)
-            geocoder.on('clear', function() {
-                // Opsional: Anda bisa melakukan sesuatu di sini jika pencarian dihapus
             });
 
             const senderPopup = new mapboxgl.Popup({ offset: 25, closeButton: false, closeOnClick: false }).setHTML('<div class="fw-bold text-primary mb-1"><i class="fas fa-arrow-up"></i> PENGIRIM</div><small class="text-muted">Tarik pin biru ini</small>');
