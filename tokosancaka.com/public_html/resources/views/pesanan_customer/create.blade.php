@@ -806,10 +806,12 @@
             const geocoder = new MapboxGeocoder({
                 accessToken: mapboxgl.accessToken,
                 mapboxgl: mapboxgl,
-                countries: 'id', // Batasi pencarian hanya di wilayah Indonesia
-                placeholder: 'Cari hotel, toko, terminal, kodepos...', // Placeholder teks
-                marker: false, // Matikan marker bawaan geocoder karena kita pakai pin biru/merah sendiri
-                trackProximity: true
+                countries: 'id',
+                language: 'id', // Paksa pencarian menggunakan bahasa Indonesia
+                types: 'poi,address,place,locality', // Paksa Mapbox memprioritaskan pencarian Tempat Umum (POI) dan alamat
+                trackProximity: true, // Prioritaskan pencarian di area yang sedang tampil di layar
+                placeholder: 'Ketik nama spesifik (Misal: Terminal Kertonegoro)...',
+                marker: false // Matikan marker bawaan geocoder karena kita pakai pin biru/merah sendiri
             });
 
             // Tambahkan kolom pencarian ke sudut kiri atas peta
