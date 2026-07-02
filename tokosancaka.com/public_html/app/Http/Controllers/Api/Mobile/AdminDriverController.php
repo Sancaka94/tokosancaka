@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator; // Tambahkan namespace Validator untuk fitur Bulk Delete
 
 class AdminDriverController extends Controller
 {
@@ -122,6 +123,112 @@ class AdminDriverController extends Controller
         } catch (\Exception $e) {
             Log::error("[ADMIN DRIVER STATUS] Error: " . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan server.'], 500);
+        }
+    }
+
+    /**
+     * Mengambil seluruh data riwayat ojek online dengan join informasi pengguna.
+     * GET /api/mobile/admin/ojek/history
+     */
+    public function historyOjek(Request $request)
+    {
+        Log::info("=== [ADMIN API] MENARIK DATA RIWAYAT OJEK ONLINE ===");
+        try {
+            $history = DB::table('order_ojek_online')
+                ->leftJoin('Pengguna as customer', 'order_ojek_online.customer_id', '=', 'customer.id_pengguna')
+                ->leftJoin('registrasi_driver_sancaka as driver', 'order_ojek_online.driver_id', '=', 'driver.id_pengguna')
+                ->select(
+                    'order_ojek_online.*',
+                    'customer.nama_lengkap as customer_name',
+                    'customer.no_wa as customer_phone',
+                    'driver.nama_lengkap as driver_name',
+                    'driver.nomor_wa as driver_phone'
+                )
+                ->orderBy('order_ojek_online.created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Data riwayat perjalanan berhasil dimuat.',
+                'data' => $history
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error("[ADMIN API] Gagal memuat riwayat ojek: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Kesalahan server internal saat memuat data.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Menghapus baris tunggal riwayat perjalanan.
+     * DELETE /api/mobile/admin/ojek/history/{id}
+     */
+    public function destroyOjek($id)
+    {
+        Log::info("=== [ADMIN API] PROSES PENGHAPUSAN SINGLE ORDER ID: {$id} ===");
+        try {
+            $deleted = DB::table('order_ojek_online')->where('id', $id)->delete();
+
+            if ($deleted) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Catatan riwayat perjalanan berhasil dihapus secara permanen.'
+                ], 200);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Data tidak ditemukan atau sudah terhapus.'
+            ], 404);
+
+        } catch (\Exception $e) {
+            Log::error("[ADMIN API] Gagal menghapus single order: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengeksekusi penghapusan data.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Menghapus banyak data sekaligus (Bulk Destroy).
+     * POST /api/mobile/admin/ojek/history/bulk-delete
+     */
+    public function bulkDestroyOjek(Request $request)
+    {
+        Log::info("=== [ADMIN API] PROSES MASSAL BULK DESTROY ===");
+
+        $validator = Validator::make($request->all(), [
+            'ids' => 'required|array',
+            'ids.*' => 'required|integer'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal, parameter ID wajib berformat array angka.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $ids = $request->input('ids');
+            $count = DB::table('order_ojek_online')->whereIn('id', $ids)->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil menghapus secara massal sejumlah {$count} catatan perjalanan."
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error("[ADMIN API] Gagal mengeksekusi bulk destroy: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memproses penghapusan massal di server.'
+            ], 500);
         }
     }
 }
