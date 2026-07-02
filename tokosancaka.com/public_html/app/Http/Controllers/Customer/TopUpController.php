@@ -863,8 +863,8 @@ public function handleCallback(Request $request)
     }
 
     private function generateSignature($stringToSign) {
-        \Illuminate\Support\Facades\Log::debug('=== [DANA DEBUG LOG] START GENERATE SIGNATURE ===');
-        \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 1. String To Sign (Mentah):', ['string' => $stringToSign]);
+       //  \Illuminate\Support\Facades\Log::debug('=== [DANA DEBUG LOG] START GENERATE SIGNATURE ===');
+       //  \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 1. String To Sign (Mentah):', ['string' => $stringToSign]);
 
         // 1. Ambil Key dari Config (hasil dinamisasi)
         $rawKey = config('services.dana.private_key');
@@ -874,7 +874,7 @@ public function handleCallback(Request $request)
             throw new \Exception("Private Key kosong. Pastikan DANA_PRIVATE_KEY di .env atau Pengaturan Database sudah terisi.");
         }
 
-        \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 2. Raw Key Berhasil Diambil', ['panjang_karakter' => strlen($rawKey)]);
+       //  \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 2. Raw Key Berhasil Diambil', ['panjang_karakter' => strlen($rawKey)]);
 
         // 2. Bersihkan Key dari header/footer/spasi/newline/tanda kutip yang berantakan
         $cleanKey = str_replace(
@@ -882,7 +882,7 @@ public function handleCallback(Request $request)
             "",
             $rawKey
         );
-        \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 3. Clean Key Berhasil Dibuat', ['panjang_karakter' => strlen($cleanKey)]);
+       //  \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 3. Clean Key Berhasil Dibuat', ['panjang_karakter' => strlen($cleanKey)]);
 
         // 3. Format ulang menjadi PEM standar (64 karakter per baris)
         $formattedKey = "-----BEGIN PRIVATE KEY-----\n" .
@@ -898,7 +898,7 @@ public function handleCallback(Request $request)
             throw new \Exception("Format Private Key salah atau korup. Tidak dapat diproses oleh OpenSSL.");
         }
 
-        \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 4. OpenSSL Resource Valid. Memulai proses SHA256...');
+       //  \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 4. OpenSSL Resource Valid. Memulai proses SHA256...');
 
         // 5. Sign Data (SHA256)
         $binarySignature = "";
@@ -912,10 +912,10 @@ public function handleCallback(Request $request)
 
         $finalBase64Signature = base64_encode($binarySignature);
 
-        \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 5. Signature Berhasil Dibuat!', [
+       //  \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 5. Signature Berhasil Dibuat!', [
             'signature_result' => $finalBase64Signature
         ]);
-        \Illuminate\Support\Facades\Log::debug('=== [DANA DEBUG LOG] END GENERATE SIGNATURE ===');
+       //  \Illuminate\Support\Facades\Log::debug('=== [DANA DEBUG LOG] END GENERATE SIGNATURE ===');
 
         return $finalBase64Signature;
     }
@@ -1610,8 +1610,8 @@ public function handleCallback(Request $request)
 
     public function consultPaymentMethods(Request $request)
     {
-        \Illuminate\Support\Facades\Log::debug('================ [GAPURA DEBUG LOG] CONSULT START ================');
-        \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 1. Request Masuk dari User', [
+       //  \Illuminate\Support\Facades\Log::debug('================ [GAPURA DEBUG LOG] CONSULT START ================');
+       //  \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 1. Request Masuk dari User', [
             'user_id' => Auth::id(),
             'ip'      => $request->ip(),
             'amount'  => $request->amount
@@ -1666,16 +1666,16 @@ public function handleCallback(Request $request)
                 ]
             ];
 
-            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 2. Body Payload Array:', $body);
+           //  \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 2. Body Payload Array:', $body);
 
             $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
-            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 2a. Body Payload JSON (Mentah untuk di-Hash):', ['json' => $jsonBody]);
+           //  \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 2a. Body Payload JSON (Mentah untuk di-Hash):', ['json' => $jsonBody]);
 
             $hashedBody   = strtolower(hash('sha256', $jsonBody));
-            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 2b. Hashed Body (SHA-256):', ['hash' => $hashedBody]);
+           //  \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 2b. Hashed Body (SHA-256):', ['hash' => $hashedBody]);
 
             $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 3. String to Sign GAPURA:', ['str' => $stringToSign]);
+           //  \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 3. String to Sign GAPURA:', ['str' => $stringToSign]);
 
             $signature = $this->generateSignature($stringToSign);
 
@@ -1689,8 +1689,8 @@ public function handleCallback(Request $request)
                 'ORIGIN'        => config('app.url'),
             ];
 
-            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 4. Headers Request Disiapkan:', $headers);
-            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 4a. Target URL:', ['url' => config('services.dana.base_url') . $path]);
+           //  \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 4. Headers Request Disiapkan:', $headers);
+           //  \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 4a. Target URL:', ['url' => config('services.dana.base_url') . $path]);
 
             // URL Dinamis
             $response = Http::withHeaders($headers)
@@ -1700,7 +1700,7 @@ public function handleCallback(Request $request)
             $result = $response->json();
             $httpStatus = $response->status();
 
-            \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 5. Response Diterima!', [
+           //  \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 5. Response Diterima!', [
                 'http_status' => $httpStatus,
                 'raw_body' => $response->body(),
                 'parsed_json' => $result
@@ -1711,7 +1711,7 @@ public function handleCallback(Request $request)
 
             if (in_array($resCode, $successCodes)) {
                 $paymentMethods = $result['paymentInfos'] ?? [];
-                \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 6. SUCCESS. Total Methods found: ' . count($paymentMethods));
+               //  \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 6. SUCCESS. Total Methods found: ' . count($paymentMethods));
 
                 $availableMethods = collect($paymentMethods)->map(function($item) {
                     return [
