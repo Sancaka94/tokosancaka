@@ -557,7 +557,9 @@ class TrainTicketingController extends BaseController
                     'destination'   => $order->destination,
                     'departDate'    => $order->depart_date,
                     'status'        => $order->status, // HOLD, ISSUED, CANCELLED, FAILED
-                    'totalFare'     => (float) $order->total_fare,
+                    'ticketPrice'   => (float) $order->ticket_price, // <--- TAMBAHAN BARU
+                    'adminFee'      => (float) $order->admin_fee,    // <--- TAMBAHAN BARU
+                    'totalFare'     => (float) $order->total_fare,   // (Ini merepresentasikan salesPrice di API)
                     'paymentMethod' => $order->payment_method ?? 'SALDO',
                     'paymentUrl'    => $order->payment_url,
                     'timeLimit'     => $order->time_limit,
