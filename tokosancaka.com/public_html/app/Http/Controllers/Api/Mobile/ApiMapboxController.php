@@ -16,7 +16,7 @@ class ApiMapboxController extends Controller
     public function cek_tarif(Request $request)
     {
         // [DEBUG] Catat semua request yang masuk ke Laravel
-        Log::info("=== [API MOBILE] REQUEST CEK TARIF MASUK ===");
+        Log::info("=== [API MAPBOX] REQUEST CEK TARIF MASUK ===");
         Log::info("Payload:", $request->all());
 
         $latAsal = $request->input('sender_lat');
@@ -27,18 +27,18 @@ class ApiMapboxController extends Controller
         $beratGram = (float) $request->input('weight', 1000);
 
         if (!$latAsal || !$lngAsal || !$latTujuan || !$lngTujuan) {
-            Log::warning("[API MOBILE] Koordinat tidak lengkap.");
+            Log::warning("[API MAPBOX] Koordinat tidak lengkap.");
             return response()->json(['status' => false, 'message' => 'Koordinat tidak lengkap.']);
         }
 
         $mapboxToken = Api::getValue('MAPBOX_SECRET_TOKEN', 'global', env('MAPBOX_TOKEN'));
 
         if (empty($mapboxToken)) {
-            Log::error("[API MOBILE] Mapbox Token kosong di database!");
+            Log::error("[API MAPBOX] Mapbox Token kosong di database!");
         }
 
         $url = "https://api.mapbox.com/directions/v5/mapbox/driving/{$lngAsal},{$latAsal};{$lngTujuan},{$latTujuan}";
-        Log::info("[API MOBILE] URL Mapbox Backend: " . $url);
+        Log::info("[API MAPBOX] Menembak URL: " . $url);
 
         try {
             $response = Http::get($url, [
@@ -48,7 +48,7 @@ class ApiMapboxController extends Controller
             ]);
 
             if (!$response->successful() || empty($response['routes'][0])) {
-                Log::error("[API MOBILE] Mapbox API Gagal Merespons: ", $response->json() ?? []);
+                Log::error("[API MAPBOX] Mapbox API Gagal Merespons: ", $response->json() ?? []);
                 return response()->json(['status' => false, 'message' => 'Gagal mendapatkan rute dari Mapbox']);
             }
 
@@ -56,7 +56,7 @@ class ApiMapboxController extends Controller
             $distanceKm = $route['distance'] / 1000;
             $durationMin = ceil($route['duration'] / 60);
 
-            Log::info("[API MOBILE] Jarak: {$distanceKm} KM | Waktu: {$durationMin} Menit");
+            Log::info("[API MAPBOX] Jarak: {$distanceKm} KM | Waktu: {$durationMin} Menit");
 
             if ($layanan == 'ojek_online') {
                 $baseFare = (float) Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 5000);
@@ -73,7 +73,7 @@ class ApiMapboxController extends Controller
 
             $finalCost = (int) (ceil($totalCost / 500) * 500);
 
-            Log::info("[API MOBILE] Tarif Final Dihitung: Rp " . $finalCost);
+            Log::info("[API MAPBOX] Tarif Final Dihitung: Rp " . $finalCost);
 
             return response()->json([
                 'status' => true,
@@ -85,8 +85,8 @@ class ApiMapboxController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            // [DEBUG] Memastikan error apapun direkam di log dan dilempar sebagai JSON, BUKAN HTML
-            Log::error("[API MOBILE] EXCEPTION CRASH: " . $e->getMessage() . " | Trace: " . $e->getTraceAsString());
+            // [DEBUG] Memastikan error apapun direkam di log dan dilempar sebagai JSON
+            Log::error("[API MAPBOX] EXCEPTION CRASH: " . $e->getMessage() . " | Trace: " . $e->getTraceAsString());
             return response()->json([
                 'status' => false,
                 'message' => 'Internal Server Error: ' . $e->getMessage()
