@@ -862,6 +862,8 @@
 
                 const coords = feature.geometry.coordinates; // Format: [lng, lat]
 
+                map.flyTo({ center: coords, zoom: 16, essential: true });
+
                 // Cek mode apa yang sedang aktif (Pengirim atau Penerima)
                 const activeMode = $('input[name="map_mode"]:checked').val();
 
