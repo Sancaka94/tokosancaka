@@ -555,6 +555,7 @@ class ApiMapboxController extends Controller
                         'driver_lat'  => $driverDetail->latitude,
                         'driver_lng'  => $driverDetail->longitude,
                         'phone'       => $driverDetail->nomor_wa,
+                        'tarif'       => $request->input('tarif'),
                     ]
                 ]);
             }
