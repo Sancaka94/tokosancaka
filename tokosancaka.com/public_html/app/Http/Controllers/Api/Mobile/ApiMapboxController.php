@@ -550,6 +550,7 @@ class ApiMapboxController extends Controller
                     'sound' => 'default',
                     'data'  => [
                         'action'      => 'order_accepted',
+                        'driver_id'   => $driverUser->id_pengguna,
                         'driver_name' => $driverUser->nama_lengkap,
                         'driver_lat'  => $driverDetail->latitude,
                         'driver_lng'  => $driverDetail->longitude,
