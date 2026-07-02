@@ -808,7 +808,7 @@
                 mapboxgl: mapboxgl,
                 countries: 'id', // Batasi pencarian hanya di wilayah Indonesia
                 placeholder: 'Cari hotel, toko, terminal, kodepos...', // Placeholder teks
-                marker: false // Matikan marker bawaan geocoder karena kita pakai pin biru/merah sendiri
+                marker: false, // Matikan marker bawaan geocoder karena kita pakai pin biru/merah sendiri
                 trackProximity: true
             });
 
