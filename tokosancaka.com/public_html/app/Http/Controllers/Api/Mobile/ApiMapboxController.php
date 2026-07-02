@@ -583,6 +583,76 @@ class ApiMapboxController extends Controller
     }
 
     /**
+     * Endpoint POST: /api/mobile/order/update-status
+     * Dipicu saat driver mengubah status (otw_jemput, otw_antar, completed)
+     */
+    public function update_status_order(Request $request)
+    {
+        try {
+            $orderId = $request->input('order_id');
+            $newStatus = $request->input('status');
+            $driverUser = $request->user();
+
+            if (!$orderId || !$newStatus) {
+                return response()->json(['success' => false, 'message' => 'Data tidak lengkap.'], 400);
+            }
+
+            // 1. UPDATE STATUS DI DATABASE
+            DB::table('order_ojek_online')
+                ->where('order_id', $orderId)
+                ->where('driver_id', $driverUser->id_pengguna)
+                ->update([
+                    'status'     => $newStatus,
+                    'updated_at' => now()
+                ]);
+
+            // 2. KIRIM NOTIFIKASI KE PELANGGAN BAHWA STATUS BERUBAH
+            $order = DB::table('order_ojek_online')->where('order_id', $orderId)->first();
+
+            if ($order) {
+                $customerToken = DB::table('Pengguna')->where('id_pengguna', $order->customer_id)->value('expo_token');
+
+                if ($customerToken) {
+                    $notifTitle = 'Info Pesanan';
+                    $notifBody = 'Status pesanan Anda diperbarui.';
+
+                    // Kustomisasi pesan berdasarkan status
+                    if ($newStatus === 'otw_jemput') {
+                        $notifTitle = '🛵 Driver Menuju Lokasi';
+                        $notifBody = $driverUser->nama_lengkap . ' sedang meluncur menjemput Anda.';
+                    } else if ($newStatus === 'otw_antar') {
+                        $notifTitle = '🏁 Menuju Tujuan';
+                        $notifBody = 'Silakan pakai helm dan nikmati perjalanan Anda bersama Sancaka Express.';
+                    } else if ($newStatus === 'completed') {
+                        $notifTitle = '✅ Pesanan Selesai';
+                        $notifBody = 'Terima kasih telah menggunakan layanan Sancaka Ride!';
+
+                        // TODO: Di masa depan, kamu bisa tambahkan logika potong saldo / tambah komisi driver di sini jika pembayarannya non-tunai.
+                    }
+
+                    Http::post('https://exp.host/--/api/v2/push/send', [
+                        'to'    => $customerToken,
+                        'title' => $notifTitle,
+                        'body'  => $notifBody,
+                        'sound' => 'default',
+                        'data'  => [
+                            'action'   => 'status_updated',
+                            'order_id' => $orderId,
+                            'status'   => $newStatus
+                        ]
+                    ]);
+                }
+            }
+
+            return response()->json(['success' => true, 'message' => 'Status perjalanan berhasil diperbarui.']);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("[API DRIVER UPDATE STATUS] Crash: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Sistem Error saat update status.'], 500);
+        }
+    }
+
+    /**
   * Endpoint GET: /api/mobile/order/track-driver/{driver_id}
   * Digunakan oleh pelanggan untuk menarik koordinat realtime driver
   */
