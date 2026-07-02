@@ -188,7 +188,7 @@
         min-width: 300px !important;
     }
 
-    /* Paksa kotak pencarian naik sejajar dengan kotak rute */
+    /* Posisi default Desktop */
     .mapboxgl-ctrl-top-left .mapboxgl-ctrl {
         margin-top: 12px !important;
         margin-left: 12px !important;
@@ -198,51 +198,53 @@
        PERBAIKAN RESPONSIVE UNTUK HP DAN TABLET
        ======================================================= */
     @media (max-width: 768px) {
-        /* 1. Perkecil lebar minimum kotak pencarian di HP */
+        /* 1. Sembunyikan badge "Geser pin" KHUSUS DI HP agar atasnya lega */
+        .position-absolute.top-0.start-50.translate-middle-x.mt-2.z-3 {
+            display: none !important;
+        }
+
+        /* 2. Tarik kembali kotak pencarian ke pojok kiri atas */
+        .mapboxgl-ctrl-top-left .mapboxgl-ctrl {
+            margin-top: 10px !important;
+            margin-left: 10px !important;
+        }
+
+        /* 3. Batasi lebar maksimal kotak pencarian agar tidak nabrak ke kanan */
         mapbox-search-box {
-            min-width: 200px !important;
-            max-width: 60vw !important; /* Jangan sampai full layar agar tidak nabrak */
+            min-width: 180px !important;
+            max-width: 50vw !important;
         }
 
-        /* 2. Turunkan Kotak Info Jarak & Waktu ke bawah kotak pencarian */
+        /* 4. Kotak info rute (4.5 km | 12 mnt) diletakkan di KANAN ATAS */
         #route-info-box {
-            top: 65px !important; /* Geser ke bawah */
-            right: 12px !important;
+            top: 10px !important;
+            right: 10px !important;
         }
 
-        /* 3. Sesuaikan tinggi peta agar lebih nyaman di-scroll di HP */
+        /* 5. Perkecil sedikit ukuran kotak info rute di HP */
+        #route-info-box .bg-white {
+            padding: 0.3rem 0.6rem !important;
+            font-size: 0.75rem !important;
+        }
+
+        /* 6. Sesuaikan Tinggi Peta agar cukup untuk digeser */
         #map {
-            height: 320px !important;
+            height: 380px !important;
         }
 
-        /* 4. Jika summary Sancaka Express muncul di dalam map, pindahkan ke bawah agar tidak menutupi search */
+        /* 7. Posisikan Box Rincian Sancaka Express di BAWAH peta (bukan menutupi pin) */
         #map_ongkir_summary {
             top: auto !important;
-            bottom: 40px !important; /* Letakkan di bawah peta */
+            bottom: 25px !important;
             left: 10px !important;
             right: 10px !important;
             min-width: 0 !important;
             width: calc(100% - 20px) !important;
         }
 
-        /* 5. Perkecil ukuran font pada box rincian Ojek agar muat di layar kecil */
-        #ojek_summary_price {
-            font-size: 1rem !important;
-        }
-        #btn-pay-ojek {
-            padding: 0.3rem 1rem !important;
-            font-size: 0.8rem !important;
-        }
-    }
-
-    @media (max-width: 400px) {
-        /* Ekstra penyesuaian untuk HP layar sangat kecil (seperti iPhone SE) */
-        #route-info-box {
-            top: 75px !important;
-        }
-        mapbox-search-box {
-            max-width: 220px !important;
-        }
+        /* 8. Penyesuaian font jika Div Ojek Online sedang aktif (Dipilih) */
+        #ojek_summary_price { font-size: 1rem !important; }
+        #btn-pay-ojek { padding: 0.4rem 1rem !important; font-size: 0.8rem !important; }
     }
 </style>
 @endpush
