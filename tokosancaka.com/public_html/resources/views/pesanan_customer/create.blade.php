@@ -68,6 +68,8 @@
         font-weight: 600;
         font-size: 1.1rem;
         padding: 1.25rem 1.5rem;
+        border-top-left-radius: calc(var(--border-radius-lg) - 1px) !important;
+        border-top-right-radius: calc(var(--border-radius-lg) - 1px) !important;
     }
     .card-header .fa-icon { color: var(--primary-color); }
     .form-label { font-weight: 500; margin-bottom: 0.5rem; color: #495057; }
