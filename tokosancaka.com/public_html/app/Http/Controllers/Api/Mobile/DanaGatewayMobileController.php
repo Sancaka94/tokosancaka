@@ -63,8 +63,8 @@ class DanaGatewayMobileController extends Controller
     }
 
     private function generateSignature($stringToSign) {
-        Log::debug('=== [DANA DEBUG LOG] START GENERATE SIGNATURE ===');
-        Log::debug('[DANA DEBUG LOG] 1. String To Sign (Mentah):', ['string' => $stringToSign]);
+        // Log::debug('=== [DANA DEBUG LOG] START GENERATE SIGNATURE ===');
+        // Log::debug('[DANA DEBUG LOG] 1. String To Sign (Mentah):', ['string' => $stringToSign]);
 
         $rawKey = config('services.dana.private_key');
 
@@ -73,14 +73,14 @@ class DanaGatewayMobileController extends Controller
             throw new Exception("Private Key kosong. Pastikan DANA_PRIVATE_KEY di .env atau Pengaturan Database sudah terisi.");
         }
 
-        Log::debug('[DANA DEBUG LOG] 2. Raw Key Berhasil Diambil', ['panjang_karakter' => strlen($rawKey)]);
+        // Log::debug('[DANA DEBUG LOG] 2. Raw Key Berhasil Diambil', ['panjang_karakter' => strlen($rawKey)]);
 
         $cleanKey = str_replace(
             ["-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----", "\r", "\n", " ", "\"", "'"],
             "",
             $rawKey
         );
-        Log::debug('[DANA DEBUG LOG] 3. Clean Key Berhasil Dibuat', ['panjang_karakter' => strlen($cleanKey)]);
+        // Log::debug('[DANA DEBUG LOG] 3. Clean Key Berhasil Dibuat', ['panjang_karakter' => strlen($cleanKey)]);
 
         $formattedKey = "-----BEGIN PRIVATE KEY-----\n" .
                         wordwrap($cleanKey, 64, "\n", true) .
@@ -94,7 +94,7 @@ class DanaGatewayMobileController extends Controller
             throw new Exception("Format Private Key salah atau korup. Tidak dapat diproses oleh OpenSSL.");
         }
 
-        Log::debug('[DANA DEBUG LOG] 4. OpenSSL Resource Valid. Memulai proses SHA256...');
+        // Log::debug('[DANA DEBUG LOG] 4. OpenSSL Resource Valid. Memulai proses SHA256...');
 
         $binarySignature = "";
         $isSignSuccess = openssl_sign($stringToSign, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256);
@@ -107,10 +107,10 @@ class DanaGatewayMobileController extends Controller
 
         $finalBase64Signature = base64_encode($binarySignature);
 
-        Log::debug('[DANA DEBUG LOG] 5. Signature Berhasil Dibuat!', [
+        // Log::debug('[DANA DEBUG LOG] 5. Signature Berhasil Dibuat!', [
             'signature_result' => $finalBase64Signature
         ]);
-        Log::debug('=== [DANA DEBUG LOG] END GENERATE SIGNATURE ===');
+        // Log::debug('=== [DANA DEBUG LOG] END GENERATE SIGNATURE ===');
 
         return $finalBase64Signature;
     }
@@ -1246,8 +1246,8 @@ class DanaGatewayMobileController extends Controller
     // =========================================================================
     public function consultPaymentMethods(Request $request)
     {
-        Log::debug('================ [GAPURA DEBUG LOG] CONSULT START ================');
-        Log::debug('[GAPURA DEBUG LOG] 1. Request Masuk dari User', [
+        // Log::debug('================ [GAPURA DEBUG LOG] CONSULT START ================');
+        // Log::debug('[GAPURA DEBUG LOG] 1. Request Masuk dari User', [
             'user_id' => Auth::id(),
             'ip'      => $request->ip(),
             'amount'  => $request->amount
@@ -1300,16 +1300,16 @@ class DanaGatewayMobileController extends Controller
                 ]
             ];
 
-            Log::debug('[GAPURA DEBUG LOG] 2. Body Payload Array:', $body);
+            // Log::debug('[GAPURA DEBUG LOG] 2. Body Payload Array:', $body);
 
             $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
-            Log::debug('[GAPURA DEBUG LOG] 2a. Body Payload JSON (Mentah untuk di-Hash):', ['json' => $jsonBody]);
+            // Log::debug('[GAPURA DEBUG LOG] 2a. Body Payload JSON (Mentah untuk di-Hash):', ['json' => $jsonBody]);
 
             $hashedBody   = strtolower(hash('sha256', $jsonBody));
-            Log::debug('[GAPURA DEBUG LOG] 2b. Hashed Body (SHA-256):', ['hash' => $hashedBody]);
+            // Log::debug('[GAPURA DEBUG LOG] 2b. Hashed Body (SHA-256):', ['hash' => $hashedBody]);
 
             $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-            Log::debug('[GAPURA DEBUG LOG] 3. String to Sign GAPURA:', ['str' => $stringToSign]);
+            // Log::debug('[GAPURA DEBUG LOG] 3. String to Sign GAPURA:', ['str' => $stringToSign]);
 
             $signature = $this->generateSignature($stringToSign);
 
@@ -1323,8 +1323,8 @@ class DanaGatewayMobileController extends Controller
                 'ORIGIN'        => config('app.url'),
             ];
 
-            Log::debug('[GAPURA DEBUG LOG] 4. Headers Request Disiapkan:', $headers);
-            Log::debug('[GAPURA DEBUG LOG] 4a. Target URL:', ['url' => config('services.dana.base_url') . $path]);
+            // Log::debug('[GAPURA DEBUG LOG] 4. Headers Request Disiapkan:', $headers);
+            // Log::debug('[GAPURA DEBUG LOG] 4a. Target URL:', ['url' => config('services.dana.base_url') . $path]);
 
             $response = Http::withHeaders($headers)
                 ->withBody($jsonBody, 'application/json')
@@ -1333,7 +1333,7 @@ class DanaGatewayMobileController extends Controller
             $result = $response->json();
             $httpStatus = $response->status();
 
-            Log::debug('[GAPURA DEBUG LOG] 5. Response Diterima!', [
+            // Log::debug('[GAPURA DEBUG LOG] 5. Response Diterima!', [
                 'http_status' => $httpStatus,
                 'raw_body' => $response->body(),
                 'parsed_json' => $result
@@ -1344,7 +1344,7 @@ class DanaGatewayMobileController extends Controller
 
             if (in_array($resCode, $successCodes)) {
                 $paymentMethods = $result['paymentInfos'] ?? [];
-                Log::debug('[GAPURA DEBUG LOG] 6. SUCCESS. Total Methods found: ' . count($paymentMethods));
+                // Log::debug('[GAPURA DEBUG LOG] 6. SUCCESS. Total Methods found: ' . count($paymentMethods));
 
                 $availableMethods = collect($paymentMethods)->map(function($item) {
                     return [
