@@ -39,6 +39,16 @@ Route::prefix('mapbox')->group(function () {
 
 Route::post('/driver/register', [ApiMapboxController::class, 'register_driver']);
 
+Route::middleware('auth:sanctum')->group(function () {
+
+    // Rute Pengaturan Koordinat Dinamis & Status Driver Aktif (Berdasarkan ID Pengguna Token)
+    Route::get('/driver/my-status', [ApiMapboxController::class, 'myStatus']);
+    Route::post('/driver/update', [ApiMapboxController::class, 'updateDriver']);
+    Route::post('/driver/toggle-map', [ApiMapboxController::class, 'toggleMap']);
+    Route::post('/driver/update-location', [ApiMapboxController::class, 'updateLocation']);
+
+});
+
 /*
 |--------------------------------------------------------------------------
 | API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)

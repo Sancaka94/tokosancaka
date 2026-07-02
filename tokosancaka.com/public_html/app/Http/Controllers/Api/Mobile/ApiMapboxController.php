@@ -278,4 +278,155 @@ class ApiMapboxController extends Controller
         }
     }
 
+    /**
+     * 1. CEK STATUS DRIVER BERDASARKAN ID PENGGUNA AUTH
+     * GET /api/mobile/driver/my-status
+     */
+    public function myStatus(Request $request)
+    {
+        try {
+            // Ambil id_pengguna langsung dari token login expo
+            $idPengguna = $request->user()->id_pengguna;
+
+            // Cari di database tabel driver
+            $driver = DB::table('registrasi_driver_sancaka')
+                        ->where('id_pengguna', $idPengguna)
+                        ->first();
+
+            if ($driver) {
+                return response()->json([
+                    'success' => true,
+                    'data' => $driver
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Belum terdaftar sebagai driver.'
+            ], 404);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * 2. UPDATE DATA DRIVER (JIKA SUDAH TERDAFTAR)
+     * POST /api/mobile/driver/update
+     */
+    public function updateDriver(Request $request)
+    {
+        $idPengguna = $request->user()->id_pengguna;
+
+        // Ambil data driver lama untuk pengecekan file
+        $oldDriver = DB::table('registrasi_driver_sancaka')->where('id_pengguna', $idPengguna)->first();
+        if (!$oldDriver) {
+            return response()->json(['success' => false, 'message' => 'Data driver tidak ditemukan.'], 404);
+        }
+
+        // Validasi form (berkas dibuat nullable karena sifatnya update/opsional)
+        $validator = Validator::make($request->all(), [
+            'nama_lengkap' => 'required|string|max:255',
+            'nomor_nik'    => 'required|string|max:20',
+            'nomor_kk'     => 'required|string|max:20',
+            'nomor_wa'     => 'required|string|max:20',
+            'alamat_lengkap' => 'required|string',
+            'latitude'     => 'required|numeric',
+            'longitude'    => 'required|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        try {
+            $uploadPath = 'drivers';
+            $filePaths = [];
+            $fields = ['file_ktp', 'file_kk', 'file_buku_nikah', 'file_stnk', 'file_bpkb', 'foto_motor', 'foto_wajah'];
+
+            foreach ($fields as $field) {
+                if ($request->hasFile($field)) {
+                    $file = $request->file($field);
+                    $filename = time() . '_' . $field . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                    $filePaths[$field] = $file->storeAs($uploadPath, $filename, 'public');
+                } else {
+                    // Jika tidak upload file baru, tetap gunakan file yang lama di database
+                    $filePaths[$field] = $oldDriver->$field;
+                }
+            }
+
+            // Jalankan Query UPDATE berdasarkan id_pengguna token
+            DB::table('registrasi_driver_sancaka')
+                ->where('id_pengguna', $idPengguna)
+                ->update([
+                    'nama_lengkap'   => $request->input('nama_lengkap'),
+                    'nomor_nik'      => $request->input('nomor_nik'),
+                    'nomor_kk'       => $request->input('nomor_kk'),
+                    'nomor_wa'       => $request->input('nomor_wa'),
+                    'alamat_lengkap' => $request->input('alamat_lengkap'),
+                    'latitude'       => $request->input('latitude'),
+                    'longitude'      => $request->input('longitude'),
+                    'file_ktp'       => $filePaths['file_ktp'],
+                    'file_kk'        => $filePaths['file_kk'],
+                    'file_buku_nikah'=> $filePaths['file_buku_nikah'],
+                    'file_stnk'      => $filePaths['file_stnk'],
+                    'file_bpkb'      => $filePaths['file_bpkb'],
+                    'foto_motor'     => $filePaths['foto_motor'],
+                    'foto_wajah'     => $filePaths['foto_wajah'],
+                    'updated_at'     => now(),
+                ]);
+
+            return response()->json(['success' => true, 'message' => 'Data driver Anda berhasil diperbarui.']);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * 3. SAKLAR TOGGLE ONLINE/OFFLINE DI MAP
+     * POST /api/mobile/driver/toggle-map
+     */
+    public function toggleMap(Request $request)
+    {
+        try {
+            $idPengguna = $request->user()->id_pengguna;
+            $isActive = $request->input('is_active_map'); // 1 atau 0
+
+            DB::table('registrasi_driver_sancaka')
+                ->where('id_pengguna', $idPengguna)
+                ->update([
+                    'is_active_map' => $isActive,
+                    'updated_at'    => now()
+                ]);
+
+            return response()->json(['success' => true, 'message' => 'Status aktif berhasil diubah.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * 4. UPDATE KOORDINAT GPS REAL-TIME (DINAMIS TIAP 4 DETIK)
+     * POST /api/mobile/driver/update-location
+     */
+    public function updateLocation(Request $request)
+    {
+        try {
+            $idPengguna = $request->user()->id_pengguna;
+
+            DB::table('registrasi_driver_sancaka')
+                ->where('id_pengguna', $idPengguna)
+                ->update([
+                    'latitude'   => $request->input('latitude'),
+                    'longitude'  => $request->input('longitude'),
+                    'updated_at' => now()
+                ]);
+
+            return response()->json(['success' => true, 'message' => 'Koordinat GPS sinkron.']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
 }
