@@ -1066,19 +1066,54 @@
                 });
             }
 
-            function reverseGeocode(lat, lng, prefix) {
+           function reverseGeocode(lat, lng, prefix) {
+                // 1. Tampilkan animasi loading saat pin digeser
+                if (prefix === 'sender') {
+                    $('#ojek_summary_origin_name').html('<i class="fas fa-spinner fa-spin text-primary"></i> Menarik data...');
+                } else {
+                    $('#ojek_summary_destination_name').html('<i class="fas fa-spinner fa-spin text-danger"></i> Menarik data...');
+                }
+
                 $.ajax({
                     url: `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
                     success: function(data) {
                         if (data && data.display_name) {
+                            // Update input text pencarian di form atas
                             $(`#${prefix}_address_search`).val(data.display_name).addClass('is-valid');
 
-                            if (prefix === 'sender') $('#ojek_summary_origin').text(data.display_name);
-                            if (prefix === 'receiver') $('#ojek_summary_destination').text(data.display_name);
+                            // =======================================================
+                            // LOGIKA CERDAS: PARSING NAMA TEMPAT vs ALAMAT LENGKAP
+                            // =======================================================
+                            let shortName = "Lokasi Pin Peta";
+                            let detailAddress = data.display_name;
 
-                            if(data.address) {
+                            if (data.address) {
+                                // Prioritaskan urutan pencarian nama: Gedung/Toko -> Fasilitas Umum -> Jalan -> Desa
+                                shortName = data.address.amenity ||
+                                            data.address.building ||
+                                            data.address.shop ||
+                                            data.address.office ||
+                                            data.address.tourism ||
+                                            data.address.road ||
+                                            data.address.neighbourhood ||
+                                            data.address.village ||
+                                            "Titik Kordinat";
+                            }
+
+                            // Update text di kotak UI Ojek Online
+                            if (prefix === 'sender') {
+                                $('#ojek_summary_origin_name').text(shortName);
+                                $('#ojek_summary_origin_address').text(detailAddress);
+                            } else if (prefix === 'receiver') {
+                                $('#ojek_summary_destination_name').text(shortName);
+                                $('#ojek_summary_destination_address').text(detailAddress);
+                            }
+
+                            // Isi otomatis form hidden (Kecamatan, Kelurahan, Kodepos)
+                            if (data.address) {
                                 const desa = data.address.village || data.address.neighbourhood || '';
-                                const kec = data.address.town || data.address.city_district || '';
+                                // Di OSM, nama kecamatan bisa masuk town, city_district, atau municipality
+                                const kec = data.address.town || data.address.city_district || data.address.municipality || '';
                                 const kab = data.address.city || data.address.county || '';
                                 const prov = data.address.state || '';
                                 const kodepos = data.address.postcode || '';
@@ -1089,6 +1124,16 @@
                                 if(prov) $(`#${prefix}_province`).val(prov);
                                 if(kodepos) $(`#${prefix}_postal_code`).val(kodepos);
                             }
+                        }
+                    },
+                    error: function() {
+                        // Jika koneksi internet lemot/putus
+                        if (prefix === 'sender') {
+                            $('#ojek_summary_origin_name').text("Titik Pengirim");
+                            $('#ojek_summary_origin_address').text("Gagal memuat alamat (Masalah Jaringan)");
+                        } else {
+                            $('#ojek_summary_destination_name').text("Titik Penerima");
+                            $('#ojek_summary_destination_address').text("Gagal memuat alamat (Masalah Jaringan)");
                         }
                     }
                 });
