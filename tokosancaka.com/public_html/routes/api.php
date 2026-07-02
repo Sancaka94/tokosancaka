@@ -56,7 +56,7 @@ use App\Http\Controllers\Webhook\PayPalWebhookController;
 use App\Http\Controllers\Api\DelivereeWebhookController;
 use App\Http\Controllers\LalamoveApiController;
 use App\Http\Controllers\Api\MandiriGatewayController;
-
+use App\Http\Controllers\Api\Mobile\ApiMapboxController;
 use App\Http\Controllers\Api\Mobile\AdminDriverController;
 
 
