@@ -278,7 +278,7 @@
                         <!-- ======================================================= -->
 
                         <div id='map' style="border-radius: 0; border: none;"></div>
-                        <!-- [AWAL TAMBAHAN] BOX TARIF OJEK ONLINE BAWAH PETA -->
+
                         <!-- [AWAL TAMBAHAN] BOX TARIF OJEK ONLINE BAWAH PETA -->
                         <div id="ojek-online-summary" class="d-none bg-white p-3 border-top border-info shadow-sm" style="border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);">
                             <h6 class="fw-bold text-info mb-3"><i class="fas fa-motorcycle me-2"></i>Tarif Ojek Online Sancaka</h6>
@@ -315,12 +315,17 @@
                                     <span id="ojek_summary_duration" class="fw-bold text-dark">0 mnt</span>
                                 </div>
                             </div>
-                            <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                            <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
                                 <span class="fw-bold text-dark" style="font-size: 0.85rem;">Total Tarif:</span>
-                                <span id="ojek_summary_price" class="fw-bold text-info" style="font-size: 1.15rem;">Rp 0</span>
+                                <div class="d-flex align-items-center gap-3">
+                                    <span id="ojek_summary_price" class="fw-bold text-info" style="font-size: 1.2rem;">Rp 0</span>
+                                    <button type="button" id="btn-pay-ojek" class="btn btn-primary rounded-pill px-4 py-2 fw-bold text-white shadow-sm" style="font-size: 0.85rem;">
+                                        Bayar Sekarang <i class="fas fa-chevron-right ms-1"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                        <!-- [AKHIR TAMBAHAN] BOX TARIF OJEK -->
+
                         <!-- [AKHIR TAMBAHAN] BOX TARIF OJEK -->
 
                      </div>
@@ -1927,6 +1932,25 @@
                     $btn.prop('disabled', false).html('Verifikasi & Bayar');
                 }
             });
+        });
+
+        // ==========================================================
+        // EVENT TOMBOL BAYAR SEKARANG (OJEK ONLINE)
+        // ==========================================================
+        $('#btn-pay-ojek').on('click', function(e) {
+            e.preventDefault();
+
+            // 1. Bypass Validasi Form (Isi data ekspedisi secara gaib)
+            // Format: kodevendor-layananspesifik-nama-harga-asuransi-cod
+            let tarifOjek = parseInt($('#ojek_summary_price').text().replace(/[^0-9]/g, '')) || 0;
+            $('#expedition').val(`sancaka-ojek_online-Ojek Sancaka-${tarifOjek}-0-0`);
+            $('#selected_shipping_cost').val(tarifOjek);
+            $('#selected_expedition_display').val('Ojek Online Sancaka').addClass('is-valid');
+
+            // 2. Panggil Modal Payment Gateway Tripay/Lainnya
+            applyGatewayMinimumLimit();
+            paymentModal.show();
+            loadTripayChannels();
         });
 
         $('#cekOngkirWaBtn').on('click', () => {
