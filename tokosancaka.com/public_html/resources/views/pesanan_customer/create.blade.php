@@ -194,7 +194,18 @@
         margin-left: 12px !important;
     }
 
-  @media (max-width: 768px) {
+    /* =======================================================
+       KOTAK INFO RUTE UNTUK DESKTOP & TABLET
+       ======================================================= */
+    #route-info-box {
+        top: 12px !important;
+        right: 12px !important; /* Biar ada jarak dan tidak nempel garis */
+    }
+
+    /* =======================================================
+       PERBAIKAN RESPONSIVE KHUSUS UNTUK HP
+       ======================================================= */
+    @media (max-width: 768px) {
         /* 1. Sembunyikan badge "Geser pin" KHUSUS DI HP agar atasnya lega */
         .position-absolute.top-0.start-50.translate-middle-x.mt-2.z-3 {
             display: none !important;
