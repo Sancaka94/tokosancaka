@@ -888,6 +888,27 @@
                                 </div>
                                 {{-- AKHIR TAMBAHAN KODE --}}
 
+                                div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 mt-6 border-t border-zinc-200">
+                                    <div class="md:col-span-1">
+                                        <h4 class="text-sm font-semibold text-zinc-900">Tarif Ojek Online</h4>
+                                        <p class="text-xs text-zinc-500 mt-1">Konfigurasi hitungan otomatis untuk layanan Ojek Online Sancaka berbasis Jarak (Mapbox).</p>
+                                    </div>
+                                    <div class="md:col-span-2 space-y-5">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label class="block text-xs font-medium text-zinc-700 uppercase mb-1">Tarif Dasar Ojek (Rp)</label>
+                                                <input type="number" name="ojek_base_fare" x-model="mapboxData.ojek_base_fare" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border" required min="0" placeholder="5000">
+                                                <p class="text-[11px] text-zinc-500 mt-1">Tarif pembuka (Misal: Rp 5.000).</p>
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-zinc-700 uppercase mb-1">Harga per KM Ojek (Rp)</label>
+                                                <input type="number" name="ojek_price_per_km" x-model="mapboxData.ojek_price_per_km" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border" required min="0" placeholder="2500">
+                                                <p class="text-[11px] text-zinc-500 mt-1">Tarif pengali jarak (Misal: Rp 2.500).</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
 

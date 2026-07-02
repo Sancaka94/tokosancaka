@@ -126,6 +126,8 @@ class ApiSettingsController extends Controller
             'price_per_kg'    => Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1000),
             'volume_divisor'  => Api::getValue('SANCAKA_EXPRESS_VOLUME_DIVISOR', 'global', 6000), // <-- BARU
             'cod_fee_percent' => Api::getValue('SANCAKA_EXPRESS_COD_FEE_PERCENT', 'global', 3),   // <-- BARU
+            'ojek_base_fare'    => Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 5000),
+            'ojek_price_per_km' => Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 2500),
         ];
 
         $dana = [
@@ -336,6 +338,13 @@ class ApiSettingsController extends Controller
                 // --- PENYIMPANAN DINAMIS BARU ---
                 Api::setValue('SANCAKA_EXPRESS_VOLUME_DIVISOR', $request->volume_divisor, 'mapbox', 'global');
                 Api::setValue('SANCAKA_EXPRESS_COD_FEE_PERCENT', $request->cod_fee_percent, 'mapbox', 'global');
+
+                if ($request->has('ojek_base_fare')) {
+                    Api::setValue('SANCAKA_OJEK_BASE_FARE', $request->ojek_base_fare, 'mapbox', 'global');
+                }
+                if ($request->has('ojek_price_per_km')) {
+                    Api::setValue('SANCAKA_OJEK_PER_KM', $request->ojek_price_per_km, 'mapbox', 'global');
+                }
 
                 Log::info("Pengaturan Mapbox & Sancaka Express berhasil diperbarui.");
 

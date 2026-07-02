@@ -186,8 +186,15 @@
     /* CSS untuk Search Box Component yang baru */
     mapbox-search-box {
         min-width: 300px !important;
-        margin: 10px;
+        /* Hapus margin di sini agar tidak dobel turun ke bawah */
     }
+
+    /* Paksa kotak pencarian naik sejajar dengan kotak rute */
+    .mapboxgl-ctrl-top-left .mapboxgl-ctrl {
+        margin-top: 12px !important;
+        margin-left: 12px !important;
+    }
+
     @media (max-width: 768px) {
         mapbox-search-box { min-width: 250px !important; }
     }
@@ -258,7 +265,7 @@
                         <!-- ======================================================= -->
                         <!-- FITUR BARU: INFO BOX JARAK & DURASI (MUNCUL DI KANAN ATAS) -->
                         <!-- ======================================================= -->
-                        <div id="route-info-box" class="position-absolute top-0 end-0 m-2 z-3 d-none">
+                        <div id="route-info-box" class="position-absolute end-0 z-3 d-none" style="top: 12px; right: 12px !important;">
                             <div class="bg-white px-3 py-2 rounded shadow-sm border border-primary d-flex align-items-center" style="font-size: 0.9rem;">
                                 <div class="text-primary fw-bold me-3" title="Total Jarak">
                                     <i class="fas fa-road me-1"></i> <span id="route-distance">0 km</span>
@@ -270,8 +277,27 @@
                         </div>
                         <!-- ======================================================= -->
 
-                        <div id='map' style="border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg); border: none;"></div>
-                    </div>
+                        <div id='map' style="border-radius: 0; border: none;"></div>
+
+                        <div id="ojek-online-summary" class="d-none bg-white p-3 border-top border-info shadow-sm" style="border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);">
+                            <h6 class="fw-bold text-info mb-3"><i class="fas fa-motorcycle me-2"></i>Tarif Ojek Online Sancaka</h6>
+                            <div class="row text-center mb-2">
+                                <div class="col-6 border-end">
+                                    <span class="text-muted" style="font-size: 0.8rem;">Jarak Tempuh</span><br>
+                                    <span id="ojek_summary_distance" class="fw-bold text-dark">0 km</span>
+                                </div>
+                                <div class="col-6">
+                                    <span class="text-muted" style="font-size: 0.8rem;">Estimasi Tiba</span><br>
+                                    <span id="ojek_summary_duration" class="fw-bold text-dark">0 mnt</span>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
+                                <span class="fw-bold text-dark" style="font-size: 0.85rem;">Total Tarif:</span>
+                                <span id="ojek_summary_price" class="fw-bold text-info" style="font-size: 1.15rem;">Rp 0</span>
+                            </div>
+                        </div>
+
+                     </div>
                 </div>
             </div>
         </div>
@@ -292,9 +318,10 @@
                                 <select id="vendor_filter" class="form-select border-primary bg-light fw-bold text-dark">
                                     <option value="all" selected>Semua (Reguler)</option>
                                     <option value="sancaka_express" class="text-danger fw-bold">Sancaka Express</option>
+                                    <option value="ojek_online" class="text-info fw-bold">Ojek Online Sancaka</option>
                                     <option value="deliveree" class="text-success fw-bold">Deliveree</option>
                                     <option value="lalamove" class="fw-bold" style="color: #f27024;">Lalamove</option>
-                                    <option value="ipaymu" class="fw-bold text-white" style="background-color: #6f42c1;">iPaymu (COD Khusus)</option>
+                                    {{--  <option value="ipaymu" class="fw-bold text-white" style="background-color: #6f42c1;">iPaymu (COD Khusus)</option> --}}
                                 </select>
                             </div>
 
@@ -773,10 +800,18 @@
         // FUNGSI TOGGLE PETA HANYA UNTUK SANCAKA EXPRESS
         function toggleMapVisibility() {
             const vendor = $('#vendor_filter').val();
-            if (vendor === 'sancaka_express') {
+            if (vendor === 'sancaka_express' || vendor === 'ojek_online') {
                 $('#map-section').hide().removeClass('d-none').slideDown(300);
                 if (map) {
                     setTimeout(() => map.resize(), 300); // Pastikan map dirender sesuai width baru
+                }
+
+                // Tampilkan box Ojek jika vendor ojek dipilih
+                if (vendor === 'ojek_online') {
+                    $('#map_ongkir_summary').addClass('d-none');
+                    $('#ojek-online-summary').removeClass('d-none');
+                } else {
+                    $('#ojek-online-summary').addClass('d-none');
                 }
             } else {
                 $('#map-section').slideUp(300, function() {
@@ -891,6 +926,19 @@
                             $('#route-distance').text(distanceKm + ' km');
                             $('#route-duration').text(durationMin + ' mnt');
                             $('#route-info-box').removeClass('d-none'); // Tampilkan kotaknya
+
+                            // --- [AWAL TAMBAHAN] KALKULASI OJEK ONLINE SECARA LIVE ---
+                            // Mengambil data tarif ojek dari Database Sancaka
+                            const tarifDasarOjek = parseInt('{{ \App\Models\Api::getValue("SANCAKA_OJEK_BASE_FARE", "global", 5000) }}');
+                            const tarifPerKmOjek = parseInt('{{ \App\Models\Api::getValue("SANCAKA_OJEK_PER_KM", "global", 2500) }}');
+
+                            let totalTarifOjek = tarifDasarOjek + (parseFloat(distanceKm) * tarifPerKmOjek);
+                            totalTarifOjek = Math.ceil(totalTarifOjek / 500) * 500; // Pembulatan ke atas kelipatan 500 perak
+
+                            $('#ojek_summary_distance').text(distanceKm + ' km');
+                            $('#ojek_summary_duration').text(durationMin + ' mnt');
+                            $('#ojek_summary_price').text(formatRupiah(totalTarifOjek));
+                            // --- [AKHIR TAMBAHAN] ---
 
                             // 3. Zoom otomatis (Fit Bounds) HANYA jika user tidak sedang mengisi form di bawah
                             if (!window.isTypingForm) {
