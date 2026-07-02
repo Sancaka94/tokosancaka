@@ -429,4 +429,61 @@ class ApiMapboxController extends Controller
         }
     }
 
+    /**
+     * Endpoint POST: /api/mobile/order/notify-driver
+     * Mengirim notifikasi berdering keras ke HP Driver menggunakan Expo Push API
+     */
+    public function notify_driver(Request $request)
+    {
+        $driverId = $request->input('driver_id');
+
+        // 1. Ambil data expo_token driver dari tabel Pengguna berdasarkan relasi id_pengguna
+        $driver = DB::table('registrasi_driver_sancaka')
+            ->join('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
+            ->where('registrasi_driver_sancaka.id', $driverId)
+            ->select('Pengguna.expo_token', 'registrasi_driver_sancaka.nama_lengkap')
+            ->first();
+
+        if (!$driver || !$driver->expo_token) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Driver tidak online atau perangkat tidak mengenali Push Token.'
+            ], 404);
+        }
+
+        try {
+            // 2. STUKTUR PAYLOAD DIUBAH KE PHP ARRAY UNTUK DIKIRIM KE EXPO SERVER
+            // Ini adalah tempat asli kode JSON yang Anda tanyakan diletakkan
+            $response = Http::withHeaders([
+                'Accept' => 'application/json',
+                'Accept-Encoding' => 'gzip, deflate',
+                'Content-Type' => 'application/json',
+            ])->post('https://exp.host/--/api/v2/push/send', [
+                'to'        => $driver->expo_token, // Mengambil ExponentPushToken[...] dari database
+                'title'     => 'ORDERAN BARU MASUK!',
+                'body'      => 'Segera ambil orderan dari pelanggan Anda.',
+                'sound'     => 'default', // <--- MEMICU NADA DERING BAWAAN HP
+                'channelId' => 'pesanan-masuk', // <--- Channel ID wajib sama dengan di HP Driver agar berdering keras
+                'data'      => [
+                    'action'    => 'new_order',
+                    'tarif'     => $request->input('tarif'),
+                    'origin'    => $request->input('origin_address'),
+                    'destination' => $request->input('dest_address'),
+                ]
+            ]);
+
+            if ($response->successful()) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Notifikasi panggilan darurat berhasil dikirim ke HP ' . $driver->nama_lengkap
+                ]);
+            }
+
+            return response()->json(['status' => false, 'message' => 'Gagal meneruskan ke server Expo.'], 500);
+
+        } catch (\Exception $e) {
+            return response()->json(['status' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
 }

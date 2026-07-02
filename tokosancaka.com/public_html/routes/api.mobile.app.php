@@ -46,11 +46,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/driver/update', [ApiMapboxController::class, 'updateDriver']);
     Route::post('/driver/toggle-map', [ApiMapboxController::class, 'toggleMap']);
     Route::post('/driver/update-location', [ApiMapboxController::class, 'updateLocation']);
+    Route::post('/order/notify-driver', [ApiMapboxController::class, 'notify_driver']);
 
 });
 
 /*
-|--------------------------------------------------------------------------
 | API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)
 |--------------------------------------------------------------------------
 | Catatan Penting:
