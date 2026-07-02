@@ -834,10 +834,10 @@
             });
 
             map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-            const geolocateControl = new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: true, showUserHeading: true });
+            const geolocateControl = new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, trackUserLocation: false, showUserHeading: true });
             map.addControl(geolocateControl, 'bottom-right');
 
-           // ==========================================
+            // ==========================================
             // FITUR BARU: MAPBOX SEARCH JS (Pencarian Cerdas)
             // ==========================================
             const searchBox = new MapboxSearchBox();
