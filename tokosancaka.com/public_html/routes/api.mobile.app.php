@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\Mobile\PpobDarmawisataController;
 use App\Http\Controllers\Api\Mobile\PpobDarmaTopupController;
 use App\Http\Controllers\Api\Mobile\CargoDarmaController;
 use App\Http\Controllers\Api\Mobile\ApiMapboxController;
+use App\Http\Controllers\Api\Mobile\AdminDriverController;
 
 Route::prefix('mapbox')->group(function () {
     Route::post('/cek-tarif', [ApiMapboxController::class, 'cek_tarif']);
@@ -340,6 +341,10 @@ Route::prefix('seller')->group(function () {
 
     // --- E. ADMIN ROUTES (KHUSUS ADMIN) ---
     Route::prefix('admin')->group(function () {
+
+        // ---> RUTE MANAJEMEN DRIVER (KHUSUS ADMIN) <---
+        Route::get('/drivers', [AdminDriverController::class, 'index']);
+        Route::post('/drivers/{id}/status', [AdminDriverController::class, 'updateStatus']);
         // Laporan Keuangan Mobile
         Route::get('/laporan/ringkasan', [\App\Http\Controllers\Api\Mobile\AdminFinanceController::class, 'summary']);
 
