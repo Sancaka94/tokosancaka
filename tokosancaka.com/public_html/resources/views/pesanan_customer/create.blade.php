@@ -205,6 +205,13 @@
     }
 
     /* =======================================================
+       FIX POJOKAN MAP BAWAH BOCOR (Berlaku Semua Layar)
+       ======================================================= */
+    #map-section .card {
+        overflow: hidden !important;
+    }
+
+    /* =======================================================
        PERBAIKAN RESPONSIVE KHUSUS UNTUK HP
        ======================================================= */
     @media (max-width: 768px) {
