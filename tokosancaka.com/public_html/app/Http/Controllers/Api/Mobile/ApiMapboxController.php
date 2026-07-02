@@ -213,4 +213,69 @@ class ApiMapboxController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Endpoint API GET: /api/mobile/driver/nearby
+     * Mencari driver terdekat dalam radius 5 KM
+     */
+    public function getNearbyDrivers(Request $request)
+    {
+        try {
+            $lat = $request->query('lat');
+            $lng = $request->query('lng');
+            $radius = 5; // Radius maksimal pencarian dalam Kilometer (KM)
+
+            // Validasi jika lat/lng kosong
+            if (!$lat || !$lng) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Titik kordinat asal tidak ditemukan.'
+                ]);
+            }
+
+            // QUERY MENGGUNAKAN RUMUS HAVERSINE UNTUK MENGHITUNG JARAK REAL
+            // Mencari driver di tabel registrasi_driver_sancaka yang statusnya 'approved'
+            $drivers = DB::table('registrasi_driver_sancaka')
+                ->selectRaw("id, id_pengguna, nama_lengkap, latitude, longitude, status,
+                    ( 6371 * acos( cos( radians(?) ) *
+                      cos( radians( latitude ) ) *
+                      cos( radians( longitude ) - radians(?) ) +
+                      sin( radians(?) ) *
+                      sin( radians( latitude ) ) )
+                    ) AS distance", [$lat, $lng, $lat])
+                ->where('status', 'approved') // Wajib Approved
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->having('distance', '<=', $radius) // Batasi hanya yang jaraknya <= 5 KM
+                ->orderBy('distance', 'asc') // Urutkan dari yang paling dekat
+                ->limit(10) // Tampilkan maksimal 10 driver
+                ->get();
+
+            // Format datanya agar persis seperti yang diminta React Native
+            $formattedDrivers = $drivers->map(function ($driver) {
+                return [
+                    'id'       => $driver->id,
+                    'name'     => $driver->nama_lengkap,
+                    'vehicle'  => 'Ojek Sancaka', // Bisa diubah jika ada field merk motor
+                    'distance' => round($driver->distance, 1) . ' KM', // Dibulatkan jadi 1 angka di belakang koma
+                    'lat'      => (float) $driver->latitude,
+                    'lng'      => (float) $driver->longitude,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data'    => $formattedDrivers
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("[API DRIVER NEARBY] Error: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem saat mencari driver.',
+                'error'   => $e->getMessage()
+            ], 500);
+        }
+    }
+
 }

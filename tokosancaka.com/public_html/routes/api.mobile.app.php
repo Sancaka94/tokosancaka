@@ -227,6 +227,8 @@ Route::prefix('seller')->group(function () {
     // --- C. CUSTOMER ROUTES (PELANGGAN) ---
     Route::prefix('customer')->group(function () {
 
+        Route::get('/driver/nearby', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'getNearbyDrivers']);
+
         // ==========================================
         // BUKU ALAMAT / KONTAK (SUDAH LENGKAP & SINKRON)
         // ==========================================
