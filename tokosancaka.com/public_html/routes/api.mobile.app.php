@@ -36,6 +36,8 @@ Route::prefix('mapbox')->group(function () {
     Route::post('/create-order', [ApiMapboxController::class, 'create_order']);
 });
 
+Route::post('/driver/register', [ApiMapboxController::class, 'register_driver']);
+
 /*
 |--------------------------------------------------------------------------
 | API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)
@@ -75,6 +77,8 @@ Route::get('/verifikasi-email', [App\Http\Controllers\Api\Mobile\AuthController:
 Route::get('/system-status', [\App\Http\Controllers\Admin\DashboardController::class, 'getSystemMode']);
 
 Route::get('/payment-channels', [\App\Http\Controllers\CustomerOrderController::class, 'getTripayChannels']);
+
+
 
 
 // =========================================================================

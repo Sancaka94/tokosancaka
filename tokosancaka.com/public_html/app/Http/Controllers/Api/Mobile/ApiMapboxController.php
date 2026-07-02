@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB; // <-- TAMBAHKAN INI UNTUK QUERY TANPA MIGRATE
+use Illuminate\Support\Facades\Validator; // <-- TAMBAHKAN INI UNTUK VALIDASI
 use App\Models\Api;
 
 class ApiMapboxController extends Controller
@@ -85,11 +87,108 @@ class ApiMapboxController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            // [DEBUG] Memastikan error apapun direkam di log dan dilempar sebagai JSON
             Log::error("[API MAPBOX] EXCEPTION CRASH: " . $e->getMessage() . " | Trace: " . $e->getTraceAsString());
             return response()->json([
                 'status' => false,
                 'message' => 'Internal Server Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Endpoint API POST: /api/mobile/driver/register
+     * MENANGANI PENDAFTARAN DRIVER + UPLOAD FILE
+     */
+    public function register_driver(Request $request)
+    {
+        Log::info("=== [API DRIVER] REQUEST PENDAFTARAN MASUK ===");
+
+        // 1. Validasi Input (File max 5MB)
+        $validator = Validator::make($request->all(), [
+            'nama_lengkap'    => 'required|string|max:255',
+            'nomor_nik'       => 'required|string|max:20',
+            'nomor_kk'        => 'required|string|max:20',
+            'nomor_wa'        => 'required|string|max:20',
+            'alamat_lengkap'  => 'required|string',
+            'latitude'        => 'required|numeric',
+            'longitude'       => 'required|numeric',
+            'file_ktp'        => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_kk'         => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_buku_nikah' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_stnk'       => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_bpkb'       => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'foto_motor'      => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'foto_wajah'      => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            Log::warning("[API DRIVER] Validasi gagal: ", $validator->errors()->toArray());
+            return response()->json([
+                'status'  => false,
+                'message' => 'Data tidak lengkap atau format file salah.',
+                'errors'  => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // 2. Proses Upload File
+            // Akan tersimpan di folder: storage/app/public/drivers
+            $uploadPath = 'drivers';
+            $filePaths = [
+                'file_ktp' => null,
+                'file_kk' => null,
+                'file_buku_nikah' => null,
+                'file_stnk' => null,
+                'file_bpkb' => null,
+                'foto_motor' => null,
+                'foto_wajah' => null,
+            ];
+
+            foreach (array_keys($filePaths) as $fileKey) {
+                if ($request->hasFile($fileKey)) {
+                    $file = $request->file($fileKey);
+                    // Generate nama file unik (Mencegah nama file kembar tertimpa)
+                    $filename = time() . '_' . $fileKey . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                    // Simpan ke storage 'public'
+                    $path = $file->storeAs($uploadPath, $filename, 'public');
+                    $filePaths[$fileKey] = $path; // cth: 'drivers/168..._file_ktp_...jpg'
+                }
+            }
+
+            // 3. Simpan Ke Database (Menggunakan Query Builder Langsung)
+            $insertId = DB::table('registrasi_driver_sancaka')->insertGetId([
+                'nama_lengkap'    => $request->input('nama_lengkap'),
+                'nomor_nik'       => $request->input('nomor_nik'),
+                'nomor_kk'        => $request->input('nomor_kk'),
+                'nomor_wa'        => $request->input('nomor_wa'),
+                'alamat_lengkap'  => $request->input('alamat_lengkap'),
+                'latitude'        => $request->input('latitude'),
+                'longitude'       => $request->input('longitude'),
+                'file_ktp'        => $filePaths['file_ktp'],
+                'file_kk'         => $filePaths['file_kk'],
+                'file_buku_nikah' => $filePaths['file_buku_nikah'],
+                'file_stnk'       => $filePaths['file_stnk'],
+                'file_bpkb'       => $filePaths['file_bpkb'],
+                'foto_motor'      => $filePaths['foto_motor'],
+                'foto_wajah'      => $filePaths['foto_wajah'],
+                'status'          => 'pending',
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]);
+
+            Log::info("[API DRIVER] Pendaftaran Sukses! ID: " . $insertId);
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Pendaftaran berhasil dikirim. Tim kami akan memvalidasi data Anda.',
+                'data'    => ['id' => $insertId]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("[API DRIVER] CRASH SERVER: " . $e->getMessage() . " | Trace: " . $e->getTraceAsString());
+            return response()->json([
+                'status'  => false,
+                'message' => 'Terjadi kesalahan sistem saat menyimpan data.'
             ], 500);
         }
     }
