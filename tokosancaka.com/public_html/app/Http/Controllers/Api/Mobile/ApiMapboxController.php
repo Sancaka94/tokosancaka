@@ -516,40 +516,61 @@ class ApiMapboxController extends Controller
         }
     }
 
-    /**
+   /**
      * Endpoint POST: /api/mobile/order/driver-accept
      * Dipicu ketika Driver klik "Terima Pesanan". Mengirim notif balik ke Customer.
      */
     public function accept_order(Request $request)
     {
-        $customerId = $request->input('customer_id');
-        $driverUser = $request->user(); // Data user driver yang sedang login
+        try {
+            $customerId = $request->input('customer_id');
+            $driverUser = $request->user(); // Data user driver yang sedang login
 
-        // Ambil info kendaraan driver
-        $driverDetail = DB::table('registrasi_driver_sancaka')
-            ->where('id_pengguna', $driverUser->id_pengguna)->first();
+            // Ambil info detail kendaraan driver
+            $driverDetail = DB::table('registrasi_driver_sancaka')
+                ->where('id_pengguna', $driverUser->id_pengguna)
+                ->first();
 
-        // Cari expo token milik customer
-        $customerToken = DB::table('Pengguna')->where('id_pengguna', $customerId)->value('expo_token');
+            if (!$driverDetail) {
+                return response()->json(['success' => false, 'message' => 'Data driver tidak ditemukan.'], 404);
+            }
 
-        if ($customerToken) {
-            // Kirim notifikasi balik ke Customer
-            Http::post('https://exp.host/--/api/v2/push/send', [
-                'to'    => $customerToken,
-                'title' => '✅ Driver Ditemukan!',
-                'body'  => $driverUser->nama_lengkap . ' siap menjemput Anda dengan ' . ($driverDetail->vehicle ?? 'Ojek Sancaka'),
-                'sound' => 'default',
-                'data'  => [
-                    'action'      => 'order_accepted',
-                    'driver_name' => $driverUser->nama_lengkap,
-                    'driver_lat'  => $driverDetail->latitude,
-                    'driver_lng'  => $driverDetail->longitude,
-                    'phone'       => $driverDetail->nomor_wa,
-                ]
+            // Cari token HP milik customer
+            $customerToken = DB::table('Pengguna')->where('id_pengguna', $customerId)->value('expo_token');
+
+            if ($customerToken) {
+                // Kirim notifikasi balik ke Customer
+                Http::withHeaders([
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])->post('https://exp.host/--/api/v2/push/send', [
+                    'to'    => $customerToken,
+                    'title' => '✅ Driver Ditemukan!',
+                    'body'  => $driverUser->nama_lengkap . ' siap menjemput Anda dengan Ojek Sancaka',
+                    'sound' => 'default',
+                    'data'  => [
+                        'action'      => 'order_accepted',
+                        'driver_name' => $driverUser->nama_lengkap,
+                        'driver_lat'  => $driverDetail->latitude,
+                        'driver_lng'  => $driverDetail->longitude,
+                        'phone'       => $driverDetail->nomor_wa,
+                    ]
+                ]);
+            }
+
+            // Wajib kembalikan JSON sukses agar Frontend mau pindah halaman
+            return response()->json([
+                'success' => true,
+                'message' => 'Pesanan diterima.'
             ]);
-        }
 
-        return response()->json(['success' => true, 'message' => 'Notifikasi penerimaan berhasil dikirim ke customer.']);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("[API DRIVER ACCEPT] Crash: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem saat menerima pesanan.'
+            ], 500);
+        }
     }
 
 }
