@@ -56,13 +56,7 @@ use App\Http\Controllers\Webhook\PayPalWebhookController;
 use App\Http\Controllers\Api\DelivereeWebhookController;
 use App\Http\Controllers\LalamoveApiController;
 use App\Http\Controllers\Api\MandiriGatewayController;
-use App\Http\Controllers\Api\Mobile\ApiMapboxController; // <-- TAMBAHKAN INI
 
-
-Route::prefix('mapbox')->group(function () {
-    Route::post('/cek-tarif', [ApiMapboxController::class, 'cek_tarif']);
-    Route::post('/create-order', [ApiMapboxController::class, 'create_order']);
-});
 
 
 // Di dalam file routes/api.php

@@ -29,6 +29,12 @@ use App\Http\Controllers\Api\Mobile\ShipDluTicketingController;
 use App\Http\Controllers\Api\Mobile\PpobDarmawisataController;
 use App\Http\Controllers\Api\Mobile\PpobDarmaTopupController;
 use App\Http\Controllers\Api\Mobile\CargoDarmaController;
+use App\Http\Controllers\Api\Mobile\ApiMapboxController;
+
+Route::prefix('mapbox')->group(function () {
+    Route::post('/cek-tarif', [ApiMapboxController::class, 'cek_tarif']);
+    Route::post('/create-order', [ApiMapboxController::class, 'create_order']);
+});
 
 /*
 |--------------------------------------------------------------------------
