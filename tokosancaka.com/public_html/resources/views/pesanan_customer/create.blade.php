@@ -278,7 +278,8 @@
                         <!-- ======================================================= -->
 
                         <div id='map' style="border-radius: 0; border: none;"></div>
-<!-- [AWAL TAMBAHAN] BOX TARIF OJEK ONLINE BAWAH PETA -->
+                        <!-- [AWAL TAMBAHAN] BOX TARIF OJEK ONLINE BAWAH PETA -->
+                        <!-- [AWAL TAMBAHAN] BOX TARIF OJEK ONLINE BAWAH PETA -->
                         <div id="ojek-online-summary" class="d-none bg-white p-3 border-top border-info shadow-sm" style="border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);">
                             <h6 class="fw-bold text-info mb-3"><i class="fas fa-motorcycle me-2"></i>Tarif Ojek Online Sancaka</h6>
 
@@ -288,14 +289,16 @@
                                     <i class="fas fa-arrow-up text-primary mt-1 me-2" style="font-size: 0.85rem;"></i>
                                     <div>
                                         <div class="text-muted" style="font-size: 0.75rem;">Titik Jemput (Pengirim)</div>
-                                        <div id="ojek_summary_origin" class="fw-bold text-dark" style="font-size: 0.85rem; line-height: 1.2;">Menentukan lokasi...</div>
+                                        <div id="ojek_summary_origin_name" class="fw-bold text-dark" style="font-size: 0.9rem; line-height: 1.2;">Menentukan lokasi...</div>
+                                        <div id="ojek_summary_origin_address" class="text-muted mt-1" style="font-size: 0.75rem; line-height: 1.2;">-</div>
                                     </div>
                                 </div>
                                 <div class="d-flex align-items-start">
                                     <i class="fas fa-map-marker-alt text-danger mt-1 me-2" style="font-size: 0.85rem;"></i>
                                     <div>
                                         <div class="text-muted" style="font-size: 0.75rem;">Titik Antar (Penerima)</div>
-                                        <div id="ojek_summary_destination" class="fw-bold text-dark" style="font-size: 0.85rem; line-height: 1.2;">Menentukan lokasi...</div>
+                                        <div id="ojek_summary_destination_name" class="fw-bold text-dark" style="font-size: 0.9rem; line-height: 1.2;">Menentukan lokasi...</div>
+                                        <div id="ojek_summary_destination_address" class="text-muted mt-1" style="font-size: 0.75rem; line-height: 1.2;">-</div>
                                     </div>
                                 </div>
                             </div>
@@ -317,6 +320,7 @@
                                 <span id="ojek_summary_price" class="fw-bold text-info" style="font-size: 1.15rem;">Rp 0</span>
                             </div>
                         </div>
+                        <!-- [AKHIR TAMBAHAN] BOX TARIF OJEK -->
                         <!-- [AKHIR TAMBAHAN] BOX TARIF OJEK -->
 
                      </div>
@@ -883,21 +887,29 @@
 
                 const coords = feature.geometry.coordinates; // Format: [lng, lat]
 
-                // Menangkap nama tempat keren dari Mapbox (Terminal, Toko, dll)
-                const placeName = feature.properties.name || feature.properties.full_address || feature.properties.place_formatted || "Lokasi Terpilih";
+                // MENGAMBIL NAMA TEMPAT DAN ALAMAT TERPISAH DARI MAPBOX
+                const shortName = feature.properties.name || feature.text || "Lokasi Terpilih";
+                const fullAddress = feature.properties.place_formatted || feature.place_name || "";
+                const combinedAddress = shortName + (fullAddress ? ', ' + fullAddress : '');
 
                 map.flyTo({ center: coords, zoom: 16, essential: true });
 
                 const activeMode = $('input[name="map_mode"]:checked').val();
 
                 if (activeMode === 'receiver') {
-                    $('#receiver_address_search').val(placeName); // Simpan nama tempat
+                    $('#receiver_address_search').val(combinedAddress);
+                    $('#ojek_summary_destination_name').text(shortName);
+                    $('#ojek_summary_destination_address').text(fullAddress);
+
                     receiverMarker.setLngLat(coords);
-                    updateInputsFromMarker('receiver', receiverMarker);
+                    updateInputsFromMarker('receiver', receiverMarker, true); // TRUE = Kunci namanya, jangan ditimpa!
                 } else {
-                    $('#sender_address_search').val(placeName); // Simpan nama tempat
+                    $('#sender_address_search').val(combinedAddress);
+                    $('#ojek_summary_origin_name').text(shortName);
+                    $('#ojek_summary_origin_address').text(fullAddress);
+
                     senderMarker.setLngLat(coords);
-                    updateInputsFromMarker('sender', senderMarker);
+                    updateInputsFromMarker('sender', senderMarker, true); // TRUE = Kunci namanya, jangan ditimpa!
                 }
 
                 getRoute(senderMarker.getLngLat(), receiverMarker.getLngLat());
@@ -1012,11 +1024,13 @@
                 });
             }
 
-            function updateInputsFromMarker(prefix, marker) {
+            function updateInputsFromMarker(prefix, marker, keepName = false) {
                 const lngLat = marker.getLngLat();
                 $(`#${prefix}_lat`).val(lngLat.lat);
                 $(`#${prefix}_lng`).val(lngLat.lng).trigger('change');
-                reverseGeocode(lngLat.lat, lngLat.lng, prefix);
+
+                // Teruskan perintah keepName ke Nominatim
+                reverseGeocode(lngLat.lat, lngLat.lng, prefix, keepName);
             }
 
            // Update saat marker selesai digeser manual
