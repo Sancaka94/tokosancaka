@@ -57,6 +57,9 @@ use App\Http\Controllers\Api\DelivereeWebhookController;
 use App\Http\Controllers\LalamoveApiController;
 use App\Http\Controllers\Api\MandiriGatewayController;
 
+use App\Http\Controllers\Api\Mobile\AdminDriverController;
+
+
 
 
 // Di dalam file routes/api.php
@@ -230,10 +233,14 @@ Route::prefix('locations')->group(function () {
 
 // --- RUTE TERAUTENTIKASI (Perlu Login) ---
 Route::middleware('auth:sanctum')->group(function () {
+
+
     // Pengguna & Autentikasi
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', fn(Request $request) => $request->user());
     Route::get('/dashboard', [DashboardController::class, 'index']);
+
+    Route::get('/driver/nearby', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'getNearbyDrivers']);
 
     // Profil Pengguna
     Route::get('/profile', [ProfileController::class, 'show']);
