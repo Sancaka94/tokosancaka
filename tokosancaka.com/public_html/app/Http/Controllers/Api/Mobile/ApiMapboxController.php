@@ -469,9 +469,8 @@ class ApiMapboxController extends Controller
             (float)$customerLat, (float)$customerLng
         );
 
-        try {
-            // 4. KIRIM PAYLOAD LENGKAP KE DRIVER
-            Http::withHeaders([
+       try {
+            $response = Http::withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
             ])->post('https://exp.host/--/api/v2/push/send', [
@@ -482,30 +481,38 @@ class ApiMapboxController extends Controller
                 'channelId' => 'pesanan-masuk',
                 'priority'  => 'high',
                 'data'      => [
-                    'action'               => 'new_order',
-                    'order_id'             => $request->input('order_id', uniqid()),
-
-                    // === DATA CUSTOMER UNTUK HALAMAN RUTE ===
-                    'customer_id'          => $customer->id_pengguna,
-                    'customer_name'        => $customer->nama_lengkap,
-                    'customer_phone'       => $customer->no_wa,
-
-                    // === DATA RUTE ===
-                    'tarif'                => $request->input('tarif'),
-                    'origin_address'       => $request->input('origin_address'),
-                    'dest_address'         => $request->input('dest_address'),
-                    'origin_lat'           => $request->input('origin_lat'),
-                    'origin_lng'           => $request->input('origin_lng'),
-                    'dest_lat'             => $request->input('dest_lat'),
-                    'dest_lng'             => $request->input('dest_lng'),
-                    'jarak_ke_pemesan'     => $jarakKePemesanMeter,
-                    'waktu_tempuh_menit'   => $request->input('waktu_menit', 10),
+                    'action'             => 'new_order',
+                    'order_id'           => $request->input('order_id', uniqid()),
+                    'customer_id'        => $customer->id_pengguna,
+                    'customer_name'      => $customer->nama_lengkap,
+                    'customer_phone'     => $customer->no_wa,
+                    'tarif'              => $request->input('tarif'),
+                    'origin_address'     => $request->input('origin_address'),
+                    'dest_address'       => $request->input('dest_address'),
+                    'origin_lat'         => $request->input('origin_lat'),
+                    'origin_lng'         => $request->input('origin_lng'),
+                    'dest_lat'           => $request->input('dest_lat'),
+                    'dest_lng'           => $request->input('dest_lng'),
+                    'jarak_ke_pemesan'   => $jarakKePemesanMeter,
+                    'waktu_tempuh_menit' => $request->input('waktu_menit', 10),
                 ]
             ]);
 
+            $expoResult = $response->json();
+            Log::info("[API MAPBOX] Balasan dari Expo: ", $expoResult ?? []);
+
+            // Expo mengembalikan struktur spesifik jika ada error pada data token
+            if (!$response->successful() || (isset($expoResult['data'][0]['status']) && $expoResult['data'][0]['status'] === 'error')) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Gagal mengirim notifikasi ke perangkat driver. Token mungkin tidak valid.',
+                    'error_detail' => $expoResult
+                ], 500);
+            }
+
             return response()->json(['status' => true, 'message' => 'Memanggil driver ' . $driver->nama_lengkap]);
         } catch (\Exception $e) {
-            return response()->json(['status' => false, 'message' => 'Gagal memanggil.'], 500);
+            return response()->json(['status' => false, 'message' => 'Server Error: ' . $e->getMessage()], 500);
         }
     }
 
