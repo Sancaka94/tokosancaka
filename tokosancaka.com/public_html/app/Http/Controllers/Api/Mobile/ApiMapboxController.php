@@ -6,13 +6,12 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use App\Models\Pesanan;
-use App\Models\Api; // Asumsi Model untuk ambil konfigurasi
+use App\Models\Api; // Asumsi model Anda untuk ambil config DB
 
 class ApiMapboxController extends Controller
 {
     /**
-     * Mengecek rute dan tarif Ojek Online & Sancaka Express
+     * Endpoint API POST: /api/mobile/mapbox/cek-tarif
      */
     public function cek_tarif(Request $request)
     {
@@ -27,7 +26,7 @@ class ApiMapboxController extends Controller
             return response()->json(['status' => false, 'message' => 'Koordinat tidak lengkap.']);
         }
 
-        // Tembak API Mapbox Backend (Lebih aman token disembunyikan di backend)
+        // Tembak Mapbox dari Server
         $mapboxToken = Api::getValue('MAPBOX_SECRET_TOKEN', 'global', env('MAPBOX_TOKEN'));
         $url = "https://api.mapbox.com/directions/v5/mapbox/driving/{$lngAsal},{$latAsal};{$lngTujuan},{$latTujuan}";
 
@@ -47,7 +46,7 @@ class ApiMapboxController extends Controller
             $durationMin = ceil($route['duration'] / 60);
 
             // ============================================
-            // LOGIKA TARIF MENYAMAI LARAVEL WEB SANCAKA
+            // AMBIL HARGA DINAMIS DARI DATABASE SANCAKA
             // ============================================
             if ($layanan == 'ojek_online') {
                 $baseFare = (float) Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 5000);
@@ -55,17 +54,16 @@ class ApiMapboxController extends Controller
 
                 $totalCost = $baseFare + ($distanceKm * $pricePerKm);
             } else {
-                // Sancaka Express (Sameday)
+                // Sancaka Express (Kirim Paket)
                 $baseFare = (float) Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 3000);
                 $pricePerKm = (float) Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 1000);
                 $pricePerKg = (float) Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1000);
 
                 $weightKg = max(1, ceil($beratGram / 1000));
-
                 $totalCost = $baseFare + ($distanceKm * $pricePerKm) + ($weightKg * $pricePerKg);
             }
 
-            // Aturan Pembulatan Sancaka (ke kelipatan Rp 500)
+            // Pembulatan Sancaka (Kelipatan Rp 500)
             $finalCost = (int) (ceil($totalCost / 500) * 500);
 
             return response()->json([
@@ -73,7 +71,6 @@ class ApiMapboxController extends Controller
                 'data' => [
                     'jarak_km' => round($distanceKm, 2),
                     'waktu_menit' => $durationMin,
-                    'tarif_mentah' => $totalCost,
                     'tarif_final' => $finalCost
                 ]
             ]);
@@ -82,32 +79,5 @@ class ApiMapboxController extends Controller
             Log::error("API Mapbox Error (Mobile): " . $e->getMessage());
             return response()->json(['status' => false, 'message' => 'Internal Server Error pada Mapbox']);
         }
-    }
-
-    /**
-     * Menyimpan Data Pesanan Mobile
-     */
-    public function create_order(Request $request)
-    {
-        $user_id = $request->input('user_id');
-        $payment_method = strtoupper($request->input('payment_method'));
-
-        // ATURAN VALIDASI PEMBAYARAN ADMIN (Aturan No 7)
-        if ($payment_method === 'CASH') {
-            if ((int)$user_id !== 4) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Akses Ditolak. Pembayaran Cash hanya untuk Admin Sancaka.'
-                ], 403);
-            }
-        }
-
-        // Logic Create Order di Database
-        // Pesanan::create([...])
-
-        return response()->json([
-            'status' => true,
-            'message' => 'Pesanan berhasil dibuat, Menunggu Driver.'
-        ]);
     }
 }
