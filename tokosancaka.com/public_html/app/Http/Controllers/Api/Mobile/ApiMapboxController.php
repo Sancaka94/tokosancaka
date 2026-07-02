@@ -439,139 +439,146 @@ class ApiMapboxController extends Controller
         return round($earthRadius * $c);
     }
 
-   /**
-     * Endpoint POST: /api/mobile/order/notify-driver
-     * Mengirim notifikasi detail pesanan ke HP Driver
-     */
-    public function notify_driver(Request $request)
+   public function notify_driver(Request $request)
     {
         $driverId = $request->input('driver_id');
         $customerLat = $request->input('origin_lat');
         $customerLng = $request->input('origin_lng');
 
-        // 1. Dapatkan Data User Pemesan (Customer) dari Tabel Pengguna
-        $customer = $request->user(); // Karena API ini dilindungi Auth:Sanctum
+        $customer = $request->user();
 
-        // 2. Dapatkan Data Driver yang dituju
         $driver = DB::table('registrasi_driver_sancaka')
             ->join('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
             ->where('registrasi_driver_sancaka.id', $driverId)
-            ->select('Pengguna.expo_token', 'registrasi_driver_sancaka.nama_lengkap', 'registrasi_driver_sancaka.latitude', 'registrasi_driver_sancaka.longitude')
+            ->select('Pengguna.expo_token', 'registrasi_driver_sancaka.nama_lengkap', 'registrasi_driver_sancaka.latitude', 'registrasi_driver_sancaka.longitude', 'registrasi_driver_sancaka.id_pengguna as driver_user_id')
             ->first();
 
         if (!$driver || empty($driver->expo_token)) {
             return response()->json(['status' => false, 'message' => 'Driver Offline / Token tidak ditemukan.'], 404);
         }
 
-        // 3. Hitung Jarak
         $jarakKePemesanMeter = $this->getDistanceMeter(
             (float)$driver->latitude, (float)$driver->longitude,
             (float)$customerLat, (float)$customerLng
         );
 
-       try {
+        // 1. GENERATE ORDER ID & SIMPAN KE DATABASE
+        $orderId = 'S-RIDE-' . strtoupper(uniqid());
+
+        try {
+            DB::table('order_ojek_online')->insert([
+                'order_id'          => $orderId,
+                'customer_id'       => $customer->id_pengguna,
+                'driver_id'         => $driver->driver_user_id,
+                'origin_lat'        => $customerLat,
+                'origin_lng'        => $customerLng,
+                'origin_address'    => $request->input('origin_address'),
+                'dest_lat'          => $request->input('dest_lat'),
+                'dest_lng'          => $request->input('dest_lng'),
+                'dest_address'      => $request->input('dest_address'),
+                'jarak_km'          => (float) $request->input('jarak_km', 0), // Pastikan param ini dikirim dari FE
+                'waktu_menit'       => (int) $request->input('waktu_menit', 0), // Pastikan param ini dikirim dari FE
+                'tarif'             => (float) $request->input('tarif'),
+                'metode_pembayaran' => $request->input('metode_pembayaran'),
+                'status'            => 'pending',
+                'created_at'        => now(),
+                'updated_at'        => now(),
+            ]);
+
+            // 2. KIRIM NOTIFIKASI (Hanya membawa ID, sisa datanya ditarik dari API nanti)
             $response = Http::withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
             ])->post('https://exp.host/--/api/v2/push/send', [
                 'to'        => $driver->expo_token,
                 'title'     => '🚨 ORDERAN BARU! Rp ' . number_format($request->input('tarif'), 0, ',', '.'),
-                'body'      => 'Dari: ' . $customer->nama_lengkap . ' (' . $jarakKePemesanMeter . 'm)',
+                'body'      => 'Jarak Jemput: ' . $jarakKePemesanMeter . 'm | Tujuan: ' . $request->input('dest_address'),
                 'sound'     => 'default',
                 'channelId' => 'pesanan-masuk',
                 'priority'  => 'high',
                 'data'      => [
-                    'action'             => 'new_order',
-                    'order_id'           => $request->input('order_id', uniqid()),
-                    'customer_id'        => $customer->id_pengguna,
-                    'customer_name'      => $customer->nama_lengkap,
-                    'customer_phone'     => $customer->no_wa,
-                    'tarif'              => $request->input('tarif'),
-                    'origin_address'     => $request->input('origin_address'),
-                    'dest_address'       => $request->input('dest_address'),
-                    'origin_lat'         => $request->input('origin_lat'),
-                    'origin_lng'         => $request->input('origin_lng'),
-                    'dest_lat'           => $request->input('dest_lat'),
-                    'dest_lng'           => $request->input('dest_lng'),
-                    'jarak_ke_pemesan'   => $jarakKePemesanMeter,
-                    'waktu_tempuh_menit' => $request->input('waktu_menit', 10),
+                    'action'   => 'new_order',
+                    'order_id' => $orderId // HANYA BAWA INI!
                 ]
             ]);
 
-            $expoResult = $response->json();
-            Log::info("[API MAPBOX] Balasan dari Expo: ", $expoResult ?? []);
-
-            // Expo mengembalikan struktur spesifik jika ada error pada data token
-            if (!$response->successful() || (isset($expoResult['data'][0]['status']) && $expoResult['data'][0]['status'] === 'error')) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Gagal mengirim notifikasi ke perangkat driver. Token mungkin tidak valid.',
-                    'error_detail' => $expoResult
-                ], 500);
-            }
-
-            return response()->json(['status' => true, 'message' => 'Memanggil driver ' . $driver->nama_lengkap]);
+            return response()->json(['status' => true, 'message' => 'Memanggil driver...', 'order_id' => $orderId]);
         } catch (\Exception $e) {
-            return response()->json(['status' => false, 'message' => 'Server Error: ' . $e->getMessage()], 500);
+            \Illuminate\Support\Facades\Log::error("Gagal create order: " . $e->getMessage());
+            return response()->json(['status' => false, 'message' => 'Gagal membuat pesanan.'], 500);
         }
     }
 
-   /**
-     * Endpoint POST: /api/mobile/order/driver-accept
-     * Dipicu ketika Driver klik "Terima Pesanan". Mengirim notif balik ke Customer.
-     */
-    public function accept_order(Request $request)
+  public function accept_order(Request $request)
     {
         try {
-            $customerId = $request->input('customer_id');
-            $driverUser = $request->user(); // Data user driver yang sedang login
+            $orderId = $request->input('order_id');
+            $driverUser = $request->user();
 
-            // Ambil info detail kendaraan driver
-            $driverDetail = DB::table('registrasi_driver_sancaka')
-                ->where('id_pengguna', $driverUser->id_pengguna)
-                ->first();
+            // 1. UPDATE STATUS ORDER DI DATABASE
+            DB::table('order_ojek_online')
+                ->where('order_id', $orderId)
+                ->where('driver_id', $driverUser->id_pengguna)
+                ->update(['status' => 'accepted', 'updated_at' => now()]);
 
-            if (!$driverDetail) {
-                return response()->json(['success' => false, 'message' => 'Data driver tidak ditemukan.'], 404);
+            // 2. AMBIL DATA ORDER UNTUK CARI CUSTOMER
+            $order = DB::table('order_ojek_online')->where('order_id', $orderId)->first();
+
+            if (!$order) {
+                return response()->json(['success' => false, 'message' => 'Order tidak valid.'], 404);
             }
 
             // Cari token HP milik customer
-            $customerToken = DB::table('Pengguna')->where('id_pengguna', $customerId)->value('expo_token');
+            $customerToken = DB::table('Pengguna')->where('id_pengguna', $order->customer_id)->value('expo_token');
 
             if ($customerToken) {
-                // Kirim notifikasi balik ke Customer
-                Http::withHeaders([
-                    'Accept' => 'application/json',
-                    'Content-Type' => 'application/json',
-                ])->post('https://exp.host/--/api/v2/push/send', [
+                Http::post('https://exp.host/--/api/v2/push/send', [
                     'to'    => $customerToken,
                     'title' => '✅ Driver Ditemukan!',
-                    'body'  => $driverUser->nama_lengkap . ' siap menjemput Anda dengan Ojek Sancaka',
+                    'body'  => $driverUser->nama_lengkap . ' siap menjemput Anda!',
                     'sound' => 'default',
                     'data'  => [
-                        'action'      => 'order_accepted',
-                        'driver_id'   => $driverUser->id_pengguna,
-                        'driver_name' => $driverUser->nama_lengkap,
-                        'driver_lat'  => $driverDetail->latitude,
-                        'driver_lng'  => $driverDetail->longitude,
-                        'phone'       => $driverDetail->nomor_wa,
-                        'tarif'       => $request->input('tarif'),
+                        'action'   => 'order_accepted',
+                        'order_id' => $orderId // HANYA BAWA INI!
                     ]
                 ]);
             }
 
-            // Wajib kembalikan JSON sukses agar Frontend mau pindah halaman
-            return response()->json([
-                'success' => true,
-                'message' => 'Pesanan diterima.'
-            ]);
+            return response()->json(['success' => true, 'message' => 'Pesanan diterima.']);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("[API DRIVER ACCEPT] Crash: " . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan sistem saat menerima pesanan.'
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Sistem Error.'], 500);
+        }
+    }
+
+    public function get_order_detail($order_id)
+    {
+        try {
+            $order = DB::table('order_ojek_online')
+                ->join('Pengguna as customer', 'order_ojek_online.customer_id', '=', 'customer.id_pengguna')
+                ->join('registrasi_driver_sancaka as driver', 'order_ojek_online.driver_id', '=', 'driver.id_pengguna')
+                ->where('order_ojek_online.order_id', $order_id)
+                ->select(
+                    'order_ojek_online.*',
+                    'customer.nama_lengkap as customer_name',
+                    'customer.no_wa as customer_phone',
+                    'driver.nama_lengkap as driver_name',
+                    'driver.nomor_wa as driver_phone',
+                    'driver.latitude as driver_lat',
+                    'driver.longitude as driver_lng',
+                    'driver.is_active_map as driver_is_online',
+                    'driver.vehicle',
+                    'driver.foto_motor'
+                )
+                ->first();
+
+            if (!$order) {
+                return response()->json(['success' => false, 'message' => 'Order tidak ditemukan'], 404);
+            }
+
+            return response()->json(['success' => true, 'data' => $order]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Sistem Error'], 500);
         }
     }
 

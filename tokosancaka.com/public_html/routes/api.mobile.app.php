@@ -49,7 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/order/notify-driver', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'notify_driver']);
     Route::post('/order/driver-accept', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'accept_order']);
     Route::get('/order/track-driver/{driver_id}', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'track_driver']);
-
+    Route::get('/order/detail/{order_id}', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'get_order_detail']);
 });
 
 /*
