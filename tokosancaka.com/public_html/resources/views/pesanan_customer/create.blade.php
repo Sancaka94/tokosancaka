@@ -278,10 +278,31 @@
                         <!-- ======================================================= -->
 
                         <div id='map' style="border-radius: 0; border: none;"></div>
-
+<!-- [AWAL TAMBAHAN] BOX TARIF OJEK ONLINE BAWAH PETA -->
                         <div id="ojek-online-summary" class="d-none bg-white p-3 border-top border-info shadow-sm" style="border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);">
                             <h6 class="fw-bold text-info mb-3"><i class="fas fa-motorcycle me-2"></i>Tarif Ojek Online Sancaka</h6>
-                            <div class="row text-center mb-2">
+
+                            <!-- Detail Titik Jemput & Tujuan -->
+                            <div class="mb-3 px-2">
+                                <div class="d-flex align-items-start mb-2">
+                                    <i class="fas fa-arrow-up text-primary mt-1 me-2" style="font-size: 0.85rem;"></i>
+                                    <div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">Titik Jemput (Pengirim)</div>
+                                        <div id="ojek_summary_origin" class="fw-bold text-dark" style="font-size: 0.85rem; line-height: 1.2;">Menentukan lokasi...</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-start">
+                                    <i class="fas fa-map-marker-alt text-danger mt-1 me-2" style="font-size: 0.85rem;"></i>
+                                    <div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">Titik Antar (Penerima)</div>
+                                        <div id="ojek_summary_destination" class="fw-bold text-dark" style="font-size: 0.85rem; line-height: 1.2;">Menentukan lokasi...</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <hr class="my-2 border-zinc-200">
+
+                            <!-- Jarak, Waktu & Harga -->
+                            <div class="row text-center mb-2 mt-3">
                                 <div class="col-6 border-end">
                                     <span class="text-muted" style="font-size: 0.8rem;">Jarak Tempuh</span><br>
                                     <span id="ojek_summary_distance" class="fw-bold text-dark">0 km</span>
@@ -296,6 +317,7 @@
                                 <span id="ojek_summary_price" class="fw-bold text-info" style="font-size: 1.15rem;">Rp 0</span>
                             </div>
                         </div>
+                        <!-- [AKHIR TAMBAHAN] BOX TARIF OJEK -->
 
                      </div>
                 </div>
@@ -856,28 +878,28 @@
 
             // Event saat pembeli mengeklik salah satu saran tempat
             searchBox.addEventListener('retrieve', function(e) {
-                // Mapbox Search JS mengembalikan data di dalam e.detail
                 const feature = e.detail.features ? e.detail.features[0] : e.detail;
                 if (!feature || !feature.geometry) return;
 
                 const coords = feature.geometry.coordinates; // Format: [lng, lat]
 
+                // Menangkap nama tempat keren dari Mapbox (Terminal, Toko, dll)
+                const placeName = feature.properties.name || feature.properties.full_address || feature.properties.place_formatted || "Lokasi Terpilih";
+
                 map.flyTo({ center: coords, zoom: 16, essential: true });
 
-                // Cek mode apa yang sedang aktif (Pengirim atau Penerima)
                 const activeMode = $('input[name="map_mode"]:checked').val();
 
                 if (activeMode === 'receiver') {
-                    // Pindahkan pin merah
+                    $('#receiver_address_search').val(placeName); // Simpan nama tempat
                     receiverMarker.setLngLat(coords);
                     updateInputsFromMarker('receiver', receiverMarker);
                 } else {
-                    // Pindahkan pin biru
+                    $('#sender_address_search').val(placeName); // Simpan nama tempat
                     senderMarker.setLngLat(coords);
                     updateInputsFromMarker('sender', senderMarker);
                 }
 
-                // Update garis rute (ular biru) otomatis
                 getRoute(senderMarker.getLngLat(), receiverMarker.getLngLat());
             });
 
@@ -929,13 +951,19 @@
                             $('#route-duration').text(durationMin + ' mnt');
                             $('#route-info-box').removeClass('d-none'); // Tampilkan kotaknya
 
-                            // --- [AWAL TAMBAHAN] KALKULASI OJEK ONLINE SECARA LIVE ---
-                            // Mengambil data tarif ojek dari Database Sancaka
+                           // --- [AWAL TAMBAHAN] KALKULASI OJEK ONLINE SECARA LIVE ---
                             const tarifDasarOjek = parseInt('{{ \App\Models\Api::getValue("SANCAKA_OJEK_BASE_FARE", "global", 5000) }}');
                             const tarifPerKmOjek = parseInt('{{ \App\Models\Api::getValue("SANCAKA_OJEK_PER_KM", "global", 2500) }}');
 
                             let totalTarifOjek = tarifDasarOjek + (parseFloat(distanceKm) * tarifPerKmOjek);
                             totalTarifOjek = Math.ceil(totalTarifOjek / 500) * 500; // Pembulatan ke atas kelipatan 500 perak
+
+                            // Ambil nama tempat dari kotak pencarian form
+                            let originName = $('#sender_address_search').val() || $('#sender_village').val() || 'Menentukan lokasi...';
+                            let destName = $('#receiver_address_search').val() || $('#receiver_village').val() || 'Menentukan lokasi...';
+
+                            $('#ojek_summary_origin').text(originName);
+                            $('#ojek_summary_destination').text(destName);
 
                             $('#ojek_summary_distance').text(distanceKm + ' km');
                             $('#ojek_summary_duration').text(durationMin + ' mnt');
@@ -962,6 +990,10 @@
                     success: function(data) {
                         if (data && data.display_name) {
                             $(`#${prefix}_address_search`).val(data.display_name).addClass('is-valid');
+
+                            if (prefix === 'sender') $('#ojek_summary_origin').text(data.display_name);
+                            if (prefix === 'receiver') $('#ojek_summary_destination').text(data.display_name);
+
                             if(data.address) {
                                 const desa = data.address.village || data.address.neighbourhood || '';
                                 const kec = data.address.town || data.address.city_district || '';
