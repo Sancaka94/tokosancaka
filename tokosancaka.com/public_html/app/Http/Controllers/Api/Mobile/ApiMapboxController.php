@@ -441,6 +441,9 @@ class ApiMapboxController extends Controller
 
    public function notify_driver(Request $request)
     {
+        Log::info("=== [API MAPBOX] REQUEST NOTIFY DRIVER (ORDER BARU) MASUK ===");
+        Log::info("LOG LOG: Payload dari HP Pelanggan: ", $request->all());
+
         $driverId = $request->input('driver_id');
         $customerLat = $request->input('origin_lat');
         $customerLng = $request->input('origin_lng');
@@ -454,6 +457,7 @@ class ApiMapboxController extends Controller
             ->first();
 
         if (!$driver || empty($driver->expo_token)) {
+            Log::warning("LOG LOG: Driver Offline atau Expo Token Kosong", ['driver_id' => $driverId]);
             return response()->json(['status' => false, 'message' => 'Driver Offline / Token tidak ditemukan.'], 404);
         }
 
@@ -462,30 +466,37 @@ class ApiMapboxController extends Controller
             (float)$customerLat, (float)$customerLng
         );
 
-        // 1. GENERATE ORDER ID & SIMPAN KE DATABASE
+        // 1. GENERATE ORDER ID
         $orderId = 'S-RIDE-' . strtoupper(uniqid());
+        Log::info("LOG LOG: Order ID di-generate: " . $orderId);
 
         try {
+            Log::info("LOG LOG: Mencoba Insert ke tabel order_ojek_online...");
+
             DB::table('order_ojek_online')->insert([
                 'order_id'          => $orderId,
                 'customer_id'       => $customer->id_pengguna,
                 'driver_id'         => $driver->driver_user_id,
                 'origin_lat'        => $customerLat,
                 'origin_lng'        => $customerLng,
-                'origin_address'    => $request->input('origin_address'),
+                'origin_address'    => $request->input('origin_address', 'Lokasi Jemput'),
                 'dest_lat'          => $request->input('dest_lat'),
                 'dest_lng'          => $request->input('dest_lng'),
-                'dest_address'      => $request->input('dest_address'),
-                'jarak_km'          => (float) $request->input('jarak_km', 0), // Pastikan param ini dikirim dari FE
-                'waktu_menit'       => (int) $request->input('waktu_menit', 0), // Pastikan param ini dikirim dari FE
-                'tarif'             => (float) $request->input('tarif'),
-                'metode_pembayaran' => $request->input('metode_pembayaran'),
+                'dest_address'      => $request->input('dest_address', 'Tujuan Antar'),
+                'jarak_km'          => (float) $request->input('jarak_km', 0),
+                'waktu_menit'       => (int) $request->input('waktu_menit', 0),
+                'tarif'             => (float) $request->input('tarif', 0),
+                'metode_pembayaran' => $request->input('metode_pembayaran', 'CASH'),
                 'status'            => 'pending',
                 'created_at'        => now(),
                 'updated_at'        => now(),
             ]);
 
-            // 2. KIRIM NOTIFIKASI (Hanya membawa ID, sisa datanya ditarik dari API nanti)
+            Log::info("LOG LOG: Sukses Insert ke Database!");
+
+            // 2. KIRIM NOTIFIKASI BESERTA DATA UNTUK MODAL
+            Log::info("LOG LOG: Mengirim Push Notification ke HP Driver...");
+
             $response = Http::withHeaders([
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
@@ -497,15 +508,28 @@ class ApiMapboxController extends Controller
                 'channelId' => 'pesanan-masuk',
                 'priority'  => 'high',
                 'data'      => [
-                    'action'   => 'new_order',
-                    'order_id' => $orderId // HANYA BAWA INI!
+                    'action'           => 'new_order',
+                    'order_id'         => $orderId,
+                    'customer_id'      => $customer->id_pengguna,
+
+                    // INI YANG BIKIN MODAL LU JADI NOL KEMAREN (Sekarang udah dibalikin)
+                    'tarif'            => $request->input('tarif'),
+                    'jarak_ke_pemesan' => $jarakKePemesanMeter,
+                    'origin_address'   => $request->input('origin_address'),
+                    'dest_address'     => $request->input('dest_address')
                 ]
             ]);
 
+            Log::info("LOG LOG: Balasan dari Expo: ", $response->json() ?? []);
+
             return response()->json(['status' => true, 'message' => 'Memanggil driver...', 'order_id' => $orderId]);
+
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Gagal create order: " . $e->getMessage());
-            return response()->json(['status' => false, 'message' => 'Gagal membuat pesanan.'], 500);
+            // KALAU GAGAL INSERT DATABASE, BACA ERROR-NYA DI SINI
+            Log::error("LOG LOG: CRASH Insert DB / Notif! Pesan: " . $e->getMessage());
+            Log::error("Trace: " . $e->getTraceAsString());
+
+            return response()->json(['status' => false, 'message' => 'Gagal membuat pesanan di server.'], 500);
         }
     }
 
