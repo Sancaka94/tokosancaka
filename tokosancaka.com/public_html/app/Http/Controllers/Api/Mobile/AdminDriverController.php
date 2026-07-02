@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 class AdminDriverController extends Controller
 {
     /**
-     * Mengambil semua data pendaftaran driver
+     * Mengambil semua data pendaftaran driver beserta data penggunanya
      */
     public function index(Request $request)
     {
@@ -24,9 +24,16 @@ class AdminDriverController extends Controller
                 ], 403);
             }
 
-            // Ambil semua data driver, urutkan dari yang terbaru
+            // Ambil data driver + Join dengan tabel Pengguna
             $drivers = DB::table('registrasi_driver_sancaka')
-                ->orderBy('created_at', 'desc')
+                ->leftJoin('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
+                ->select(
+                    'registrasi_driver_sancaka.*',
+                    'Pengguna.email as email_pengguna',
+                    'Pengguna.role as role_pengguna',
+                    'Pengguna.status as status_akun'
+                )
+                ->orderBy('registrasi_driver_sancaka.created_at', 'desc')
                 ->get();
 
             // Format URL Gambar/File agar bisa diakses langsung via React Native
@@ -57,11 +64,12 @@ class AdminDriverController extends Controller
     }
 
     /**
-     * Update Status Driver (Terima / Tolak)
+     * Update Status Driver (Terima / Tolak) dan Sinkronisasi Role Pengguna
      */
     public function updateStatus(Request $request, $id)
     {
         try {
+            // Pengaman akses Admin
             $user = $request->user();
             if ($user->id != 4 && $user->id_pengguna != 4) {
                 return response()->json(['success' => false, 'message' => 'Akses ditolak!'], 403);
@@ -69,17 +77,47 @@ class AdminDriverController extends Controller
 
             $status = $request->input('status'); // 'approved' atau 'rejected'
 
-            DB::table('registrasi_driver_sancaka')
-                ->where('id', $id)
-                ->update([
-                    'status' => $status,
-                    'updated_at' => now()
+            // Cari data pendaftaran driver terlebih dahulu
+            $driverRegistration = DB::table('registrasi_driver_sancaka')->where('id', $id)->first();
+
+            if (!$driverRegistration) {
+                return response()->json(['success' => false, 'message' => 'Data pendaftaran tidak ditemukan.'], 404);
+            }
+
+            // Gunakan Transaction agar jika satu query gagal, database tidak rusak/setengah jalan
+            DB::beginTransaction();
+
+            try {
+                // 1. Update status di tabel registrasi_driver_sancaka
+                DB::table('registrasi_driver_sancaka')
+                    ->where('id', $id)
+                    ->update([
+                        'status' => $status,
+                        'updated_at' => now()
+                    ]);
+
+                // 2. Sinkronisasi dengan tabel Pengguna jika status = 'approved'
+                if ($status === 'approved' && $driverRegistration->id_pengguna) {
+                    DB::table('Pengguna')
+                        ->where('id_pengguna', $driverRegistration->id_pengguna)
+                        ->update([
+                            'role' => 'Driver' // Sesuaikan jika penamaan rolenya berbeda di sistem Anda
+                        ]);
+                }
+
+                // Commit transaksi jika semua sukses
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Status pendaftaran driver berhasil diubah menjadi " . strtoupper($status) . " dan tersinkronisasi."
                 ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => "Status pendaftaran driver berhasil diubah menjadi " . strtoupper($status)
-            ]);
+            } catch (\Exception $ex) {
+                // Rollback transaksi jika terjadi kegagalan saat update
+                DB::rollBack();
+                throw $ex; // Lempar error ke catch utama
+            }
 
         } catch (\Exception $e) {
             Log::error("[ADMIN DRIVER STATUS] Error: " . $e->getMessage());

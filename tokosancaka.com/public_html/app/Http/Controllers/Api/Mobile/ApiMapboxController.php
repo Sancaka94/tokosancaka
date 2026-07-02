@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB; // <-- TAMBAHKAN INI UNTUK QUERY TANPA MIGRATE
-use Illuminate\Support\Facades\Validator; // <-- TAMBAHKAN INI UNTUK VALIDASI
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use App\Models\Api;
 
 class ApiMapboxController extends Controller
@@ -103,7 +103,7 @@ class ApiMapboxController extends Controller
     {
         Log::info("=== [API DRIVER] REQUEST PENDAFTARAN MASUK ===");
 
-        // 1. Validasi Input (File max 5MB)
+        // 1. Validasi Input
         $validator = Validator::make($request->all(), [
             'nama_lengkap'    => 'required|string|max:255',
             'nomor_nik'       => 'required|string|max:20',
@@ -131,36 +131,54 @@ class ApiMapboxController extends Controller
         }
 
         try {
+            // =====================================================================
+            // FITUR CERDAS: DETEKSI AKUN PENGGUNA YANG SUDAH ADA
+            // =====================================================================
+            $nomorWa = $request->input('nomor_wa');
+            $idPengguna = null;
+            $namaLengkap = $request->input('nama_lengkap');
+
+            // Cek apakah user sedang login dengan Sanctum/Passport token
+            $userLoggedIn = $request->user();
+
+            if ($userLoggedIn) {
+                // Jika login, gunakan data dari token
+                $idPengguna = $userLoggedIn->id_pengguna;
+                $namaLengkap = $userLoggedIn->nama_lengkap ?? $namaLengkap;
+            } else {
+                // Jika mendaftar anonim, cari di tabel Pengguna berdasarkan Nomor WA
+                $existingUser = DB::table('Pengguna')->where('no_wa', $nomorWa)->first();
+                if ($existingUser) {
+                    $idPengguna = $existingUser->id_pengguna;
+                    // Ambil nama asli dari akun untuk validitas (menimpa input form)
+                    $namaLengkap = $existingUser->nama_lengkap ?? $namaLengkap;
+                }
+            }
+            // =====================================================================
+
             // 2. Proses Upload File
-            // Akan tersimpan di folder: storage/app/public/drivers
             $uploadPath = 'drivers';
             $filePaths = [
-                'file_ktp' => null,
-                'file_kk' => null,
-                'file_buku_nikah' => null,
-                'file_stnk' => null,
-                'file_bpkb' => null,
-                'foto_motor' => null,
-                'foto_wajah' => null,
+                'file_ktp' => null, 'file_kk' => null, 'file_buku_nikah' => null,
+                'file_stnk' => null, 'file_bpkb' => null, 'foto_motor' => null, 'foto_wajah' => null,
             ];
 
             foreach (array_keys($filePaths) as $fileKey) {
                 if ($request->hasFile($fileKey)) {
                     $file = $request->file($fileKey);
-                    // Generate nama file unik (Mencegah nama file kembar tertimpa)
                     $filename = time() . '_' . $fileKey . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                    // Simpan ke storage 'public'
                     $path = $file->storeAs($uploadPath, $filename, 'public');
-                    $filePaths[$fileKey] = $path; // cth: 'drivers/168..._file_ktp_...jpg'
+                    $filePaths[$fileKey] = $path;
                 }
             }
 
-            // 3. Simpan Ke Database (Menggunakan Query Builder Langsung)
+            // 3. Simpan Ke Database Driver
             $insertId = DB::table('registrasi_driver_sancaka')->insertGetId([
-                'nama_lengkap'    => $request->input('nama_lengkap'),
+                'id_pengguna'     => $idPengguna, // <-- Data Tersinkronisasi Otomatis
+                'nama_lengkap'    => $namaLengkap, // <-- Diambil dari akun jika ada
                 'nomor_nik'       => $request->input('nomor_nik'),
                 'nomor_kk'        => $request->input('nomor_kk'),
-                'nomor_wa'        => $request->input('nomor_wa'),
+                'nomor_wa'        => $nomorWa,
                 'alamat_lengkap'  => $request->input('alamat_lengkap'),
                 'latitude'        => $request->input('latitude'),
                 'longitude'       => $request->input('longitude'),
@@ -176,12 +194,15 @@ class ApiMapboxController extends Controller
                 'updated_at'      => now(),
             ]);
 
-            Log::info("[API DRIVER] Pendaftaran Sukses! ID: " . $insertId);
+            Log::info("[API DRIVER] Pendaftaran Sukses! ID: {$insertId} | Linked Pengguna ID: " . ($idPengguna ?? 'NULL'));
 
             return response()->json([
                 'status'  => true,
                 'message' => 'Pendaftaran berhasil dikirim. Tim kami akan memvalidasi data Anda.',
-                'data'    => ['id' => $insertId]
+                'data'    => [
+                    'id'          => $insertId,
+                    'id_pengguna' => $idPengguna
+                ]
             ]);
 
         } catch (\Exception $e) {
