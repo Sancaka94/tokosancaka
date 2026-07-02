@@ -194,7 +194,7 @@
         margin-left: 12px !important;
     }
 
-   @media (max-width: 768px) {
+  @media (max-width: 768px) {
         /* 1. Sembunyikan badge "Geser pin" KHUSUS DI HP agar atasnya lega */
         .position-absolute.top-0.start-50.translate-middle-x.mt-2.z-3 {
             display: none !important;
@@ -207,14 +207,14 @@
         }
         mapbox-search-box {
             min-width: 250px !important;
-            max-width: calc(100vw - 30px) !important; /* Tampil penuh ke samping */
+            max-width: calc(100vw - 30px) !important;
         }
 
-        /* 3. Kotak info rute (KM & mnt) dipindah ke KANAN BAWAH */
+        /* 3. Kotak info rute (KM & mnt) dipindah ke KANAN BAWAH DALAM PETA */
         #route-info-box {
-            top: auto !important; /* Hapus aturan atas */
-            bottom: 25px !important; /* Pindah ke bawah */
-            right: 50px !important; /* Geser ke kiri 50px agar tidak ketutup tombol zoom (+/-) Mapbox */
+            top: 330px !important; /* Mentok manis di dalam peta */
+            bottom: auto !important;
+            right: 50px !important;
         }
 
         /* 4. Beri bayangan (shadow) sedikit agar KM & Mnt lebih jelas di atas peta */
@@ -231,7 +231,7 @@
 
         /* 6. Posisikan Box Rincian Sancaka Express di bawah kotak pencarian */
         #map_ongkir_summary {
-            top: 60px !important; /* Muncul tepat di bawah kotak Search */
+            top: 60px !important;
             bottom: auto !important;
             left: 10px !important;
             right: 10px !important;
