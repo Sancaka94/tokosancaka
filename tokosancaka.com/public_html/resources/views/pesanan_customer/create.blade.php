@@ -186,7 +186,6 @@
     /* CSS untuk Search Box Component yang baru */
     mapbox-search-box {
         min-width: 300px !important;
-        /* Hapus margin di sini agar tidak dobel turun ke bawah */
     }
 
     /* Paksa kotak pencarian naik sejajar dengan kotak rute */
@@ -195,8 +194,55 @@
         margin-left: 12px !important;
     }
 
+    /* =======================================================
+       PERBAIKAN RESPONSIVE UNTUK HP DAN TABLET
+       ======================================================= */
     @media (max-width: 768px) {
-        mapbox-search-box { min-width: 250px !important; }
+        /* 1. Perkecil lebar minimum kotak pencarian di HP */
+        mapbox-search-box {
+            min-width: 200px !important;
+            max-width: 60vw !important; /* Jangan sampai full layar agar tidak nabrak */
+        }
+
+        /* 2. Turunkan Kotak Info Jarak & Waktu ke bawah kotak pencarian */
+        #route-info-box {
+            top: 65px !important; /* Geser ke bawah */
+            right: 12px !important;
+        }
+
+        /* 3. Sesuaikan tinggi peta agar lebih nyaman di-scroll di HP */
+        #map {
+            height: 320px !important;
+        }
+
+        /* 4. Jika summary Sancaka Express muncul di dalam map, pindahkan ke bawah agar tidak menutupi search */
+        #map_ongkir_summary {
+            top: auto !important;
+            bottom: 40px !important; /* Letakkan di bawah peta */
+            left: 10px !important;
+            right: 10px !important;
+            min-width: 0 !important;
+            width: calc(100% - 20px) !important;
+        }
+
+        /* 5. Perkecil ukuran font pada box rincian Ojek agar muat di layar kecil */
+        #ojek_summary_price {
+            font-size: 1rem !important;
+        }
+        #btn-pay-ojek {
+            padding: 0.3rem 1rem !important;
+            font-size: 0.8rem !important;
+        }
+    }
+
+    @media (max-width: 400px) {
+        /* Ekstra penyesuaian untuk HP layar sangat kecil (seperti iPhone SE) */
+        #route-info-box {
+            top: 75px !important;
+        }
+        mapbox-search-box {
+            max-width: 220px !important;
+        }
     }
 </style>
 @endpush
@@ -265,7 +311,7 @@
                         <!-- ======================================================= -->
                         <!-- FITUR BARU: INFO BOX JARAK & DURASI (MUNCUL DI KANAN ATAS) -->
                         <!-- ======================================================= -->
-                        <div id="route-info-box" class="position-absolute end-0 z-3 d-none" style="top: 12px; right: 12px !important;">
+                        <div id="route-info-box" class="position-absolute end-0 z-3 d-none" style="top: 12px; right: 12px;">
                             <div class="bg-white px-3 py-2 rounded shadow-sm border border-primary d-flex align-items-center" style="font-size: 0.9rem;">
                                 <div class="text-primary fw-bold me-3" title="Total Jarak">
                                     <i class="fas fa-road me-1"></i> <span id="route-distance">0 km</span>
