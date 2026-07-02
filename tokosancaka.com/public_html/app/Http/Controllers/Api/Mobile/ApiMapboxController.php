@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use App\Models\Api; // Asumsi model Anda untuk ambil config DB
+use App\Models\Api;
 
 class ApiMapboxController extends Controller
 {
@@ -15,20 +15,30 @@ class ApiMapboxController extends Controller
      */
     public function cek_tarif(Request $request)
     {
+        // [DEBUG] Catat semua request yang masuk ke Laravel
+        Log::info("=== [API MOBILE] REQUEST CEK TARIF MASUK ===");
+        Log::info("Payload:", $request->all());
+
         $latAsal = $request->input('sender_lat');
         $lngAsal = $request->input('sender_lng');
         $latTujuan = $request->input('receiver_lat');
         $lngTujuan = $request->input('receiver_lng');
-        $layanan = $request->input('layanan'); // 'sancaka_express' atau 'ojek_online'
+        $layanan = $request->input('layanan');
         $beratGram = (float) $request->input('weight', 1000);
 
         if (!$latAsal || !$lngAsal || !$latTujuan || !$lngTujuan) {
+            Log::warning("[API MOBILE] Koordinat tidak lengkap.");
             return response()->json(['status' => false, 'message' => 'Koordinat tidak lengkap.']);
         }
 
-        // Tembak Mapbox dari Server
         $mapboxToken = Api::getValue('MAPBOX_SECRET_TOKEN', 'global', env('MAPBOX_TOKEN'));
+
+        if (empty($mapboxToken)) {
+            Log::error("[API MOBILE] Mapbox Token kosong di database!");
+        }
+
         $url = "https://api.mapbox.com/directions/v5/mapbox/driving/{$lngAsal},{$latAsal};{$lngTujuan},{$latTujuan}";
+        Log::info("[API MOBILE] URL Mapbox Backend: " . $url);
 
         try {
             $response = Http::get($url, [
@@ -38,6 +48,7 @@ class ApiMapboxController extends Controller
             ]);
 
             if (!$response->successful() || empty($response['routes'][0])) {
+                Log::error("[API MOBILE] Mapbox API Gagal Merespons: ", $response->json() ?? []);
                 return response()->json(['status' => false, 'message' => 'Gagal mendapatkan rute dari Mapbox']);
             }
 
@@ -45,16 +56,13 @@ class ApiMapboxController extends Controller
             $distanceKm = $route['distance'] / 1000;
             $durationMin = ceil($route['duration'] / 60);
 
-            // ============================================
-            // AMBIL HARGA DINAMIS DARI DATABASE SANCAKA
-            // ============================================
+            Log::info("[API MOBILE] Jarak: {$distanceKm} KM | Waktu: {$durationMin} Menit");
+
             if ($layanan == 'ojek_online') {
                 $baseFare = (float) Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 5000);
                 $pricePerKm = (float) Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 2500);
-
                 $totalCost = $baseFare + ($distanceKm * $pricePerKm);
             } else {
-                // Sancaka Express (Kirim Paket)
                 $baseFare = (float) Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 3000);
                 $pricePerKm = (float) Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 1000);
                 $pricePerKg = (float) Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1000);
@@ -63,8 +71,9 @@ class ApiMapboxController extends Controller
                 $totalCost = $baseFare + ($distanceKm * $pricePerKm) + ($weightKg * $pricePerKg);
             }
 
-            // Pembulatan Sancaka (Kelipatan Rp 500)
             $finalCost = (int) (ceil($totalCost / 500) * 500);
+
+            Log::info("[API MOBILE] Tarif Final Dihitung: Rp " . $finalCost);
 
             return response()->json([
                 'status' => true,
@@ -76,8 +85,12 @@ class ApiMapboxController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error("API Mapbox Error (Mobile): " . $e->getMessage());
-            return response()->json(['status' => false, 'message' => 'Internal Server Error pada Mapbox']);
+            // [DEBUG] Memastikan error apapun direkam di log dan dilempar sebagai JSON, BUKAN HTML
+            Log::error("[API MOBILE] EXCEPTION CRASH: " . $e->getMessage() . " | Trace: " . $e->getTraceAsString());
+            return response()->json([
+                'status' => false,
+                'message' => 'Internal Server Error: ' . $e->getMessage()
+            ], 500);
         }
     }
 }
