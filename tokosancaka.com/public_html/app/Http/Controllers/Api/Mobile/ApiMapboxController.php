@@ -575,8 +575,15 @@ class ApiMapboxController extends Controller
         }
     }
 
+   /**
+     * Endpoint GET: /api/mobile/order/detail/{order_id}
+     * Menarik semua data order, customer, dan driver dari Database.
+     */
     public function get_order_detail($order_id)
     {
+        Log::info("=== [API MAPBOX] REQUEST GET ORDER DETAIL MASUK ===");
+        Log::info("LOG LOG: Mencari data untuk Order ID: " . $order_id);
+
         try {
             $order = DB::table('order_ojek_online')
                 ->join('Pengguna as customer', 'order_ojek_online.customer_id', '=', 'customer.id_pengguna')
@@ -591,18 +598,26 @@ class ApiMapboxController extends Controller
                     'driver.latitude as driver_lat',
                     'driver.longitude as driver_lng',
                     'driver.is_active_map as driver_is_online',
-                    'driver.vehicle',
+                    // 'driver.vehicle', <-- INI BIANG KEROKNYA, SUDAH SAYA HAPUS!
                     'driver.foto_motor'
                 )
                 ->first();
 
             if (!$order) {
+                Log::warning("LOG LOG: Gagal! Order ID " . $order_id . " tidak ditemukan di database.");
                 return response()->json(['success' => false, 'message' => 'Order tidak ditemukan'], 404);
             }
 
+            Log::info("LOG LOG: SUKSES! Data order berhasil ditarik dan dikirim ke Frontend.");
+
             return response()->json(['success' => true, 'data' => $order]);
+
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Sistem Error'], 500);
+            // SEKARANG KALAU SERVER MELEDAK LAGI, PASTI TERCATAT DI LOG!
+            Log::error("LOG LOG: CRASH GET ORDER DETAIL! Pesan: " . $e->getMessage());
+            Log::error("Trace: " . $e->getTraceAsString());
+
+            return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
         }
     }
 
