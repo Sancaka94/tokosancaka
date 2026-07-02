@@ -29,6 +29,7 @@ class ApiSettingsController extends Controller
         $delivereeMode      = Api::getValue('DELIVEREE_MODE', 'global', 'sandbox');
         $ipaymuMode         = Api::getValue('IPAYMU_MODE', 'global', 'sandbox');
         $mandiriMode        = Api::getValue('MANDIRI_MODE', 'global', 'sandbox');
+        $autokirimMode      = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
 
         // KUNCI ANTI CRASH: Paksa ke sandbox kalau databasenya nyangkut di nilai lain
         if (!in_array($mandiriMode, ['sandbox', 'production'])) {
@@ -235,7 +236,20 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        return view('admin.settings.api_settings', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu', 'mandiri', 'mapbox'));
+        $autokirim = [
+            'mode' => $autokirimMode,
+            'sandbox' => [
+                'token'    => Api::getValue('AUTOKIRIM_TOKEN', 'sandbox'),
+                'base_url' => Api::getValue('AUTOKIRIM_BASE_URL', 'sandbox', 'https://api-dev.autokirim.com'),
+            ],
+            'production' => [
+                'token'    => Api::getValue('AUTOKIRIM_TOKEN', 'production'),
+                'base_url' => Api::getValue('AUTOKIRIM_BASE_URL', 'production'),
+            ]
+        ];
+
+        return view('admin.settings.api_settings', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu', 'mandiri', 'mapbox', 'autokirim'));
+
     }
 
     public function update(Request $request)
@@ -404,9 +418,22 @@ class ApiSettingsController extends Controller
                 if ($request->has('mandiri_private_key')) {
                     Api::setValue('MANDIRI_PRIVATE_KEY', $request->mandiri_private_key, 'mandiri', $env);
                 }
+            // --- TAMBAHAN UNTUK AUTOKIRIM ---
+            } elseif ($type === 'autokirim') {
+                $env = $request->autokirim_mode;
+                Api::setValue('AUTOKIRIM_MODE', $env, 'autokirim', 'global');
+
+                $baseUrl = $request->autokirim_base_url;
+                if (empty($baseUrl)) {
+                    $baseUrl = ($env === 'production') ? 'https://api.autokirim.com' : 'https://api-dev.autokirim.com'; // Sesuaikan URL production nanti
+                }
+
+                Api::setValue('AUTOKIRIM_TOKEN', $request->autokirim_token, 'autokirim', $env);
+                Api::setValue('AUTOKIRIM_BASE_URL', $baseUrl, 'autokirim', $env);
             }
 
             Log::info("Konfigurasi API {$type} berhasil disimpan.");
+
             return back()->with('success', 'Konfigurasi ' . strtoupper($type) . ' berhasil diperbarui untuk mode ' . strtoupper($request->input("{$type}_mode") ?? 'GLOBAL') . '.');
 
         } catch (\Exception $e) {
@@ -433,6 +460,7 @@ class ApiSettingsController extends Controller
                 $targetDeliveree    = 'sandbox';
                 $targetIpaymu       = 'sandbox';
                 $targetMandiri      = 'sandbox';
+                $targetAutokirim    = 'sandbox';
                 $label              = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
                 $targetKA           = 'production';
@@ -447,6 +475,7 @@ class ApiSettingsController extends Controller
                 $targetDeliveree    = 'production';
                 $targetIpaymu       = 'production';
                 $targetMandiri      = 'production';
+                $targetAutokirim    = 'production';
                 $label              = 'PRODUCTION (LIVE)';
             }
 
@@ -462,6 +491,7 @@ class ApiSettingsController extends Controller
             Api::setValue('MANDIRI_MODE', $targetMandiri, 'mandiri', 'global');
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
             Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
+            Api::setValue('AUTOKIRIM_MODE', $targetAutokirim, 'autokirim', 'global');
 
             // Log proses toggle
             Log::info("Sistem API Global Mode diubah secara manual ke: {$label}");
@@ -494,6 +524,7 @@ class ApiSettingsController extends Controller
                 $targetDeliveree    = 'production';
                 $targetIpaymu       = 'production';
                 $targetMandiri      = 'production';
+                $targetAutokirim    = 'production';
                 $label              = 'PRODUCTION (LIVE)';
             } else {
                 $targetKA           = 'staging';
@@ -508,6 +539,7 @@ class ApiSettingsController extends Controller
                 $targetDeliveree    = 'sandbox';
                 $targetIpaymu       = 'sandbox';
                 $targetMandiri      = 'sandbox';
+                $targetAutokirim    = 'sandbox';
                 $label              = 'SANDBOX / MAINTENANCE';
             }
 
@@ -523,6 +555,7 @@ class ApiSettingsController extends Controller
             Api::setValue('MANDIRI_MODE', $targetMandiri, 'mandiri', 'global');
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
             Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
+            Api::setValue('AUTOKIRIM_MODE', $targetAutokirim, 'autokirim', 'global');
 
             // Log proses toggle via AJAX
             Log::info("Sistem API Mode di-toggle via API ke: {$label}");
