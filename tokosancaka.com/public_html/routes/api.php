@@ -60,7 +60,8 @@ use App\Http\Controllers\Api\Mobile\ApiMapboxController;
 use App\Http\Controllers\Api\Mobile\AdminDriverController;
 
 
-
+// --- RUTE API PENCARIAN DRIVER (LANGSUNG TEMBAK) ---
+Route::middleware('auth:sanctum')->get('/mobile/driver/nearby', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'getNearbyDrivers']);
 
 // Di dalam file routes/api.php
 Route::post('/webhook/mandiri/va', [\App\Http\Controllers\Api\MandiriGatewayController::class, 'notifyPaymentVirtualAccount']);
@@ -240,7 +241,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', fn(Request $request) => $request->user());
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
-    Route::get('/driver/nearby', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'getNearbyDrivers']);
 
     // Profil Pengguna
     Route::get('/profile', [ProfileController::class, 'show']);
