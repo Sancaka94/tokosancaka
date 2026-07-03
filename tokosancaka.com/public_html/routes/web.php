@@ -17,6 +17,9 @@ use App\Http\Controllers\Rsud\AdminOrderObatController;
 use App\Http\Controllers\PayPalController;
 
 
+use App\Http\Controllers\RegisterDriverOnlineController;
+
+
 use App\Http\Controllers\Customer\TopupDanaController;
 
 // =========================================================================
@@ -1756,4 +1759,36 @@ Route::prefix('customer')->name('customer.')->group(function () {
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
     Route::get('/sancaka-express/setting', [\App\Http\Controllers\Admin\SancakaExpressController::class, 'index'])->name('sancaka_express.index');
     Route::put('/sancaka-express/setting', [\App\Http\Controllers\Admin\SancakaExpressController::class, 'update'])->name('sancaka_express.update');
+});
+
+// ==========================================
+// 1. AREA PUBLIC (Form Pendaftaran Driver)
+// ==========================================
+// Rute ini bisa diakses oleh siapa saja tanpa perlu login
+Route::get('/driver/register', [RegisterDriverOnlineController::class, 'create'])->name('driver.register.create');
+Route::post('/driver/register', [RegisterDriverOnlineController::class, 'store'])->name('driver.register.store');
+
+
+// ==========================================
+// 2. AREA ADMIN (Manajemen Driver Sancaka)
+// ==========================================
+// Sangat disarankan rute ini dibungkus dengan middleware 'auth' (atau middleware khusus admin Anda) 
+// agar tidak sembarang orang bisa mengaksesnya.
+Route::prefix('admin')->middleware(['auth'])->group(function () {
+    
+    // Menampilkan halaman tabel manajemen driver
+    Route::get('/drivers', [RegisterDriverOnlineController::class, 'index'])->name('admin.drivers.index');
+    
+    // Update data driver dari modal edit
+    Route::put('/drivers/{id}', [RegisterDriverOnlineController::class, 'update'])->name('admin.drivers.update');
+    
+    // Update status (Approve / Reject)
+    Route::patch('/drivers/{id}/status', [RegisterDriverOnlineController::class, 'updateStatus'])->name('admin.drivers.status');
+    
+    // Hapus satu data (Single Delete)
+    Route::delete('/drivers/{id}', [RegisterDriverOnlineController::class, 'destroy'])->name('admin.drivers.destroy');
+    
+    // Hapus massal dari tombol checkbox (Bulk Delete)
+    Route::post('/drivers/bulk-destroy', [RegisterDriverOnlineController::class, 'bulkDestroy'])->name('admin.drivers.bulk_destroy');
+    
 });

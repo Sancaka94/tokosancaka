@@ -416,6 +416,14 @@
                 </div>
             </div>
 
+            {{-- Manajemen Driver Sancaka --}}
+            <a href="{{ route('admin.drivers.index') }}" wire:navigate
+               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+               class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.drivers.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                <i class="fa-solid fa-id-card fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.drivers.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Manajemen Driver</span>
+            </a>
+
             {{-- PPOB --}}
             <div x-data="{ open: {{ request()->routeIs('admin.ppob.*') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
