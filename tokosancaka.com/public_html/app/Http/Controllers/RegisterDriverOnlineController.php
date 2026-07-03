@@ -17,11 +17,10 @@ class RegisterDriverOnlineController extends Controller
 
     public function create()
     {
-        // Menampilkan form pendaftaran untuk calon driver
         return view('public.register_driver');
     }
 
-   public function store(Request $request)
+    public function store(Request $request)
     {
         Log::info("LOG LOG: Proses pendaftaran driver baru via Web masuk.");
 
@@ -43,7 +42,6 @@ class RegisterDriverOnlineController extends Controller
         ]);
 
         try {
-            // Upload helper function
             $uploadPath = 'drivers';
             $filePaths = [];
             $fields = ['file_ktp', 'file_kk', 'file_buku_nikah', 'file_stnk', 'file_bpkb', 'foto_motor', 'foto_wajah'];
@@ -72,7 +70,7 @@ class RegisterDriverOnlineController extends Controller
                 'foto_motor'      => $filePaths['foto_motor'],
                 'foto_wajah'      => $filePaths['foto_wajah'],
                 'status'          => 'pending',
-                'is_active_map'   => 0, // Default offline
+                'is_active_map'   => 0,
             ]);
 
             Log::info("LOG LOG: Pendaftaran driver {$request->nama_lengkap} berhasil disimpan.");
@@ -84,7 +82,7 @@ class RegisterDriverOnlineController extends Controller
         }
     }
 
-   public function update(Request $request, $id)
+    public function update(Request $request, $id)
     {
         Log::info("LOG LOG: Memperbarui data pendaftaran driver ID: {$id}");
 
@@ -96,8 +94,8 @@ class RegisterDriverOnlineController extends Controller
             'nomor_kk'       => $request->nomor_kk,
             'nomor_wa'       => $request->nomor_wa,
             'alamat_lengkap' => $request->alamat_lengkap,
-            'latitude'       => $request->latitude, // Menambahkan update latitude
-            'longitude'      => $request->longitude // Menambahkan update longitude
+            'latitude'       => $request->latitude,
+            'longitude'      => $request->longitude
         ]);
 
         return redirect()->back()->with('success', 'Data driver berhasil diperbarui.');
@@ -111,29 +109,49 @@ class RegisterDriverOnlineController extends Controller
     {
         $query = RegistrasiDriverSancaka::query();
 
-        // Fitur Pencarian
+        // 1. Filter Pencarian (Nama, WA, NIK)
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where('nama_lengkap', 'like', "%{$search}%")
-                  ->orWhere('nomor_wa', 'like', "%{$search}%");
+            $query->where(function($q) use ($search) {
+                $q->where('nama_lengkap', 'like', "%{$search}%")
+                  ->orWhere('nomor_wa', 'like', "%{$search}%")
+                  ->orWhere('nomor_nik', 'like', "%{$search}%");
+            });
         }
 
-        // Fitur Filter Status
+        // 2. Filter Status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
+        // 3. Filter Rentang Tanggal (Flatpickr)
+        if ($request->filled('date_range')) {
+            $dates = explode(' to ', $request->date_range);
+            if (count($dates) == 2) {
+                $query->whereBetween('created_at', [$dates[0] . ' 00:00:00', $dates[1] . ' 23:59:59']);
+            } elseif (count($dates) == 1) {
+                $query->whereDate('created_at', $dates[0]);
+            }
+        }
+
+        // 4. Data untuk Card Monitor (Berdasarkan Total Seluruh Data)
+        $totalDrivers = RegistrasiDriverSancaka::count();
+        $pendingDrivers = RegistrasiDriverSancaka::where('status', 'pending')->count();
+        $approvedDrivers = RegistrasiDriverSancaka::where('status', 'approved')->count();
+        $rejectedDrivers = RegistrasiDriverSancaka::where('status', 'rejected')->count();
+
+        // 5. Pagination
         $drivers = $query->orderBy('created_at', 'desc')->paginate(10);
 
-        return view('admin.driver_management', compact('drivers'));
+        return view('admin.drivers.index', compact(
+            'drivers', 'totalDrivers', 'pendingDrivers', 'approvedDrivers', 'rejectedDrivers'
+        ));
     }
 
     public function updateStatus(Request $request, $id)
     {
         $request->validate(['status' => 'required|in:approved,rejected']);
         $status = $request->status;
-
-        Log::info("LOG LOG: Admin mengubah status driver ID {$id} menjadi {$status}");
 
         DB::beginTransaction();
         try {
@@ -143,7 +161,6 @@ class RegisterDriverOnlineController extends Controller
             // Jika diapprove dan punya akun pengguna, set role menjadi Driver
             if ($status === 'approved' && $driver->id_pengguna) {
                 Pengguna::where('id_pengguna', $driver->id_pengguna)->update(['role' => 'Driver']);
-                Log::info("LOG LOG: Role pengguna disinkronisasi menjadi Driver.");
             }
 
             DB::commit();
@@ -151,30 +168,30 @@ class RegisterDriverOnlineController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("LOG LOG: Gagal update status. Error: " . $e->getMessage());
             return redirect()->back()->with('error', 'Gagal merubah status.');
         }
     }
 
     public function destroy($id)
     {
-        Log::info("LOG LOG: Menghapus data driver ID: {$id}");
         $driver = RegistrasiDriverSancaka::findOrFail($id);
         $driver->delete();
-
         return redirect()->back()->with('success', 'Data berhasil dihapus.');
     }
 
     public function bulkDestroy(Request $request)
     {
-        $ids = $request->ids;
-        if (!$ids) {
-            return response()->json(['success' => false, 'message' => 'Pilih data terlebih dahulu.']);
+        // Menangkap data ID dari form submission
+        $ids = $request->input('selected_ids');
+        
+        if (!$ids || empty($ids)) {
+            return redirect()->back()->with('error', 'Pilih minimal satu data terlebih dahulu.');
         }
 
         Log::info("LOG LOG: Admin melakukan bulk delete pada ID: " . implode(',', $ids));
 
         RegistrasiDriverSancaka::whereIn('id', $ids)->delete();
-        return response()->json(['success' => true, 'message' => 'Data terpilih berhasil dihapus.']);
+        
+        return redirect()->back()->with('success', count($ids) . ' data terpilih berhasil dihapus secara massal.');
     }
 }

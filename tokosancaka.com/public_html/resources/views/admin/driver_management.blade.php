@@ -309,10 +309,9 @@
                             </div>
                         </td>
 
-                        {{-- 3. KONTAK & ALAMAT (Sembunyi di Mobile Awalnya) --}}
+                        {{-- 3. KONTAK & ALAMAT --}}
                         <td class="hidden md:table-cell px-4 py-4 align-top text-sm bg-gray-50 md:bg-white toggle-target-{{$index}}">
                             <span class="md:hidden block font-bold text-gray-500 text-xs mb-1 uppercase tracking-wider border-b pb-1 mt-2">📍 Kontak & Alamat</span>
-                            
                             <div class="font-semibold text-blue-600 mb-1">
                                 <i class="fa-brands fa-whatsapp text-green-500"></i> {{ $driver->nomor_wa }}
                             </div>
@@ -324,7 +323,6 @@
                         {{-- 4. STATUS --}}
                         <td class="hidden md:table-cell px-4 py-4 align-top text-sm bg-gray-50 md:bg-white toggle-target-{{$index}}">
                             <span class="md:hidden block font-bold text-gray-500 text-xs mb-1 uppercase tracking-wider border-b pb-1">🔖 Status</span>
-                            
                             @if($driver->status == 'pending')
                                 <span class="bg-yellow-50 border border-yellow-200 text-yellow-700 text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md">Pending</span>
                             @elseif($driver->status == 'approved')
@@ -334,19 +332,14 @@
                             @endif
                         </td>
 
-                        {{-- 5. AKSI (Sama visual icon pesanan) --}}
+                        {{-- 5. AKSI --}}
                         <td class="hidden md:table-cell px-4 py-4 align-middle whitespace-nowrap text-sm font-medium sticky-col bg-gray-50 md:bg-white border-t md:border-none toggle-target-{{$index}}">
                             <span class="md:hidden block font-bold text-gray-500 text-xs mb-2 text-center uppercase border-b pb-2">⚙️ Aksi</span>
                             <div class="flex items-center justify-center space-x-3 w-full py-2 md:py-0">
                                 
-                                {{-- Detail (Memanggil Modal Bootstrap) --}}
-                                <button type="button" data-bs-toggle="modal" data-bs-target="#detailModal{{ $driver->id }}" class="text-gray-500 hover:text-blue-600 transform hover:scale-110 transition" title="Detail">
+                                {{-- Tombol Buka Modal Detail (Tailwind) --}}
+                                <button type="button" onclick="openModal('modalDetail_{{ $driver->id }}')" class="text-gray-500 hover:text-blue-600 transform hover:scale-110 transition" title="Detail">
                                     <i class="fas fa-eye fa-lg"></i>
-                                </button>
-
-                                {{-- Edit (Memanggil Modal Bootstrap) --}}
-                                <button type="button" data-bs-toggle="modal" data-bs-target="#editModal{{ $driver->id }}" class="text-gray-500 hover:text-yellow-500 transform hover:scale-110 transition" title="Edit">
-                                    <i class="fas fa-pencil-alt fa-lg"></i>
                                 </button>
 
                                 {{-- Hapus Satuan --}}
@@ -357,10 +350,6 @@
                             </div>
                         </td>
                     </tr>
-
-                    {{-- INCLUDE MODAL DARI FILE TERPISAH / BAWAAN --}}
-                    @include('admin.partials._driver_modals', ['driver' => $driver])
-
                     @empty
                     <tr>
                         <td colspan="6" class="text-center py-10 text-gray-500">
@@ -390,7 +379,7 @@
     </form>
 
     {{-- ======================================================================= --}}
-    {{-- MODAL KONFIRMASI HAPUS MASSAL (MENGGUNAKAN UI PESANAN)                  --}}
+    {{-- MODAL HAPUS MASSAL                                                      --}}
     {{-- ======================================================================= --}}
     <div id="bulkDeleteModal" class="hidden" style="position: fixed; inset: 0px; z-index: 99999;">
         <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" onclick="closeModal('bulkDeleteModal')"></div>
@@ -406,12 +395,10 @@
                                 <h3 class="text-xl font-bold leading-6 text-gray-900">Konfirmasi Hapus Data</h3>
                                 <div class="mt-3">
                                     <p class="text-sm text-gray-600 mb-4">
-                                        Anda yakin ingin menghapus <strong id="modalSelectedCount" class="text-red-600 text-lg">0</strong> driver berikut secara permanen? Data yang dihapus tidak dapat dikembalikan.
+                                        Anda yakin ingin menghapus <strong id="modalSelectedCount" class="text-red-600 text-lg">0</strong> driver berikut secara permanen?
                                     </p>
                                     <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 max-h-64 overflow-y-auto">
-                                        <ul id="deleteItemsList" class="divide-y divide-gray-200 text-sm text-gray-700 font-medium">
-                                            {{-- Di-inject via JS --}}
-                                        </ul>
+                                        <ul id="deleteItemsList" class="divide-y divide-gray-200 text-sm text-gray-700 font-medium"></ul>
                                     </div>
                                 </div>
                             </div>
@@ -430,6 +417,109 @@
         </div>
     </div>
 
+
+    {{-- ======================================================================= --}}
+    {{-- SEMUA KUMPULAN MODAL DETAIL DRIVER DITETAPKAN DI LUAR TABEL DI SINI     --}}
+    {{-- ======================================================================= --}}
+    @foreach ($drivers as $driver)
+    <div id="modalDetail_{{ $driver->id }}" class="hidden" style="position: fixed; inset: 0px; z-index: 99999;">
+        {{-- Backdrop --}}
+        <div class="fixed inset-0 bg-gray-900 bg-opacity-75 transition-opacity" onclick="closeModal('modalDetail_{{ $driver->id }}')"></div>
+        
+        {{-- Modal Panel --}}
+        <div class="fixed inset-0 overflow-y-auto">
+            <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+                <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 sm:w-full sm:max-w-4xl border border-gray-200">
+                    
+                    {{-- Header Modal --}}
+                    <div class="border-b border-gray-200 px-6 py-4 bg-gray-50 flex justify-between items-center">
+                        <h5 class="text-xl font-bold text-gray-800 m-0">Detail Pendaftaran: {{ $driver->nama_lengkap }}</h5>
+                        <button type="button" onclick="closeModal('modalDetail_{{ $driver->id }}')" class="text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <i class="fas fa-times fa-lg"></i>
+                        </button>
+                    </div>
+                    
+                    {{-- Body Modal --}}
+                    <div class="px-6 py-5 text-left">
+                        <div class="overflow-hidden border border-gray-200 rounded-xl mb-6 shadow-sm">
+                            <table class="w-full text-sm text-left">
+                                <tbody class="divide-y divide-gray-200">
+                                    <tr class="divide-x divide-gray-200 hover:bg-gray-50/50">
+                                        <td class="px-4 py-3 bg-gray-50 text-gray-500 font-semibold w-1/3 sm:w-1/4">ID Akun</td>
+                                        <td class="px-4 py-3 text-gray-800 font-bold bg-white">{{ $driver->id_pengguna ?? 'Belum Terhubung' }}</td>
+                                    </tr>
+                                    <tr class="divide-x divide-gray-200 hover:bg-gray-50/50">
+                                        <td class="px-4 py-3 bg-gray-50 text-gray-500 font-semibold">Nomor NIK</td>
+                                        <td class="px-4 py-3 text-gray-800 font-bold bg-white">{{ $driver->nomor_nik ?? '-' }}</td>
+                                    </tr>
+                                    <tr class="divide-x divide-gray-200 hover:bg-gray-50/50">
+                                        <td class="px-4 py-3 bg-gray-50 text-gray-500 font-semibold">Nomor KK</td>
+                                        <td class="px-4 py-3 text-gray-800 font-bold bg-white">{{ $driver->nomor_kk ?? '-' }}</td>
+                                    </tr>
+                                    <tr class="divide-x divide-gray-200 hover:bg-gray-50/50">
+                                        <td class="px-4 py-3 bg-gray-50 text-gray-500 font-semibold">WhatsApp</td>
+                                        <td class="px-4 py-3 text-gray-800 font-bold bg-white">{{ $driver->nomor_wa }}</td>
+                                    </tr>
+                                    <tr class="divide-x divide-gray-200 hover:bg-gray-50/50">
+                                        <td class="px-4 py-3 bg-gray-50 text-gray-500 font-semibold">Alamat Lengkap</td>
+                                        <td class="px-4 py-3 text-gray-800 font-bold bg-white">{{ $driver->alamat_lengkap }}</td>
+                                    </tr>
+                                    <tr class="divide-x divide-gray-200 hover:bg-gray-50/50">
+                                        <td class="px-4 py-3 bg-gray-50 text-gray-500 font-semibold align-middle">Titik Lokasi</td>
+                                        <td class="px-4 py-3 bg-white align-middle">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <strong class="text-gray-800">{{ $driver->latitude ?? '-' }}, {{ $driver->longitude ?? '-' }}</strong>
+                                                @if($driver->latitude && $driver->longitude)
+                                                    <a href="https://www.google.com/maps?q={{ $driver->latitude }},{{ $driver->longitude }}" target="_blank" 
+                                                       class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-md bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition-colors">
+                                                        <i class="fa-solid fa-map-location-dot"></i> Buka Maps
+                                                    </a>
+                                                @endif
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <tr class="divide-x divide-gray-200 hover:bg-gray-50/50">
+                                        <td class="px-4 py-3 bg-gray-50 text-gray-500 font-semibold align-top">Dokumen</td>
+                                        <td class="px-4 py-3 bg-white align-top">
+                                            <div class="flex flex-wrap gap-2">
+                                                @if($driver->file_ktp) <a href="{{ asset('storage/' . $driver->file_ktp) }}" target="_blank" class="px-2.5 py-1 text-xs font-bold rounded-md bg-blue-100 text-blue-700">KTP</a> @endif
+                                                @if($driver->file_kk) <a href="{{ asset('storage/' . $driver->file_kk) }}" target="_blank" class="px-2.5 py-1 text-xs font-bold rounded-md bg-cyan-100 text-cyan-700">KK</a> @endif
+                                                @if($driver->file_stnk) <a href="{{ asset('storage/' . $driver->file_stnk) }}" target="_blank" class="px-2.5 py-1 text-xs font-bold rounded-md bg-gray-200 text-gray-800">STNK</a> @endif
+                                                @if($driver->file_bpkb) <a href="{{ asset('storage/' . $driver->file_bpkb) }}" target="_blank" class="px-2.5 py-1 text-xs font-bold rounded-md bg-gray-800 text-white">BPKB</a> @endif
+                                                @if($driver->foto_motor) <a href="{{ asset('storage/' . $driver->foto_motor) }}" target="_blank" class="px-2.5 py-1 text-xs font-bold rounded-md bg-yellow-100 text-yellow-800">Foto Motor</a> @endif
+                                                @if($driver->foto_wajah) <a href="{{ asset('storage/' . $driver->foto_wajah) }}" target="_blank" class="px-2.5 py-1 text-xs font-bold rounded-md bg-emerald-100 text-emerald-800">Foto Wajah</a> @endif
+                                                @if($driver->file_buku_nikah) <a href="{{ asset('storage/' . $driver->file_buku_nikah) }}" target="_blank" class="px-2.5 py-1 text-xs font-bold rounded-md bg-rose-100 text-rose-700">Buku Nikah</a> @endif
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {{-- Tombol Aksi Persetujuan --}}
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <form action="{{ route('admin.drivers.status', $driver->id) }}" method="POST" class="w-full sm:w-1/2 m-0">
+                                @csrf @method('PATCH')
+                                <input type="hidden" name="status" value="approved">
+                                <button type="submit" class="w-full inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors">
+                                    <i class="fa-solid fa-circle-check"></i> Setujui Pendaftaran
+                                </button>
+                            </form>
+                            <form action="{{ route('admin.drivers.status', $driver->id) }}" method="POST" class="w-full sm:w-1/2 m-0">
+                                @csrf @method('PATCH')
+                                <input type="hidden" name="status" value="rejected">
+                                <button type="submit" class="w-full inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-white border-2 border-red-500 text-red-600 hover:bg-red-50 text-sm font-semibold rounded-xl transition-colors">
+                                    <i class="fa-solid fa-circle-xmark"></i> Tolak Data
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    @endforeach
 </div>
 @endsection
 
