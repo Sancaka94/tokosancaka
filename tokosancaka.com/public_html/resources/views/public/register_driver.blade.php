@@ -236,7 +236,7 @@
                                     <h6 class="fw-bold mt-2 mb-0 text-secondary" style="font-size: 0.85rem;">A. Berkas Administrasi Diri</h6>
                                     
                                     <div class="col-md-6">
-                                        <label class="form-label">Foto Selfie / Wajah Pas <span class="text-danger">*</span></label>
+                                        <label class="form-label">Foto 4x6 Warna Biru <span class="text-danger">*</span></label>
                                         <input type="file" name="foto_wajah" class="form-control custom-file-input w-100" required accept=".jpg,.jpeg,.png">
                                     </div>
                                     <div class="col-md-6">
@@ -483,7 +483,7 @@
                                         <li><strong>Kontak Resmi:</strong> Pertanyaan & keluhan hanya diterima lewat kanal resmi kami.</li>
                                         <li><strong>Penutup:</strong> Dengan menggunakan layanan kami, Anda menyatakan setuju tanpa paksaan.</li>
                                     </ul>
-                                    
+
                                     <p class="text-dark mb-5">Terima kasih telah menggunakan Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace.</p>
                                     
                                     <p class="fw-bold text-success text-center mt-5 bg-light p-3 border rounded shadow-sm">--- AKHIR DOKUMEN PERATURAN & PERSETUJUAN ---</p>
@@ -555,12 +555,12 @@
                         btnGetLocation.innerHTML = '<i class="fa-solid fa-check text-success me-2"></i> Lokasi Terkunci';
                         btnGetLocation.classList.replace('btn-get-location', 'btn-light');
                         btnGetLocation.disabled = false;
-                        statusText.innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-check-circle"></i> Titik koordinat berhasil dimasukkan otomatis!</span>';
+                        statusText.innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-check-circle"></i> Titik koordinat berhasil dimasukkan otomatis! Lebih akurat, Gunakan GPS HP Anda</span>';
                     },
                     function(error) {
                         btnGetLocation.disabled = false;
                         btnGetLocation.innerHTML = '<i class="fa-solid fa-location-crosshairs me-2 text-danger"></i> Dapatkan Lokasi GPS Otomatis';
-                        statusText.innerHTML = '<span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> GPS Gagal dideteksi. Silakan input manual.</span>';
+                        statusText.innerHTML = '<span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> GPS Gagal dideteksi. Silakan input manual. Cek Koordinat Anda Di Google Maps</span>';
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
