@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Intervention\Image\Laravel\Facades\Image;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use App\Models\Api;
 
 class ApiMapboxController extends Controller
@@ -178,9 +181,18 @@ class ApiMapboxController extends Controller
             foreach (array_keys($filePaths) as $fileKey) {
                 if ($request->hasFile($fileKey)) {
                     $file = $request->file($fileKey);
-                    $filename = time() . '_' . $fileKey . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                    $path = $file->storeAs($uploadPath, $filename, 'public');
-                    $filePaths[$fileKey] = $path;
+                    
+                    // PROSES KEAMANAN FILE (Gunakan engine keamanan)
+                    $pathAman = $this->amankanDanSimpanFile($file, $uploadPath);
+                    
+                    if (!$pathAman) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => "Pendaftaran Gagal: Berkas terindikasi berbahaya pada kolom: {$fileKey}."
+                        ], 422);
+                    }
+                    
+                    $filePaths[$fileKey] = $pathAman;
                 }
             }
 
@@ -383,11 +395,26 @@ class ApiMapboxController extends Controller
                 'file_stnk', 'file_bpkb', 'foto_motor', 'file_buku_rekening', 'foto_wajah'
             ];
 
-            foreach ($fields as $field) {
+           foreach ($fields as $field) {
                 if ($request->hasFile($field)) {
                     $file = $request->file($field);
-                    $filename = time() . '_' . $field . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                    $filePaths[$field] = $file->storeAs($uploadPath, $filename, 'public');
+                    
+                    // PROSES KEAMANAN FILE
+                    $pathAman = $this->amankanDanSimpanFile($file, $uploadPath);
+                    
+                    if (!$pathAman) {
+                        return response()->json([
+                            'status'  => false,
+                            'message' => "Gagal memperbarui: File {$field} terindikasi berbahaya!"
+                        ], 422);
+                    }
+
+                    // Hapus file lama jika ada upload baru yang aman
+                    if (!empty($oldDriver->$field) && Storage::disk('public')->exists($oldDriver->$field)) {
+                        Storage::disk('public')->delete($oldDriver->$field);
+                    }
+                    
+                    $filePaths[$field] = $pathAman;
                 } else {
                     // Gunakan file lama jika tidak ada upload baru
                     $filePaths[$field] = $oldDriver->$field;
@@ -758,5 +785,96 @@ class ApiMapboxController extends Controller
          'is_online' => $driver->is_active_map
      ]);
  }
+
+ // =========================================================================
+    // MESIN KEAMANAN FILE BERINTEGRASI (INTERVENTION IMAGE + VIRUSTOTAL API)
+    // =========================================================================
+    private function amankanDanSimpanFile($file, $folder)
+    {
+        $ekstensi = strtolower($file->getClientOriginalExtension());
+        $namaAcak = Str::uuid();
+
+        // 1. JIKA GAMBAR -> Cuci dengan Intervention Image
+        if (in_array($ekstensi, ['jpg', 'jpeg', 'png'])) {
+            try {
+                $namaFileBaru = $folder . '/' . $namaAcak . '.jpg';
+                
+                $img = Image::decode($file->getRealPath())->scaleDown(width: 1200); 
+                $encoded = $img->encodeUsingFileExtension('jpg', quality: 85);
+                
+                Storage::put('public/' . $namaFileBaru, (string) $encoded);
+                return $namaFileBaru;
+            } catch (\Exception $e) {
+                Log::error('API Intervention Image Error: ' . $e->getMessage());
+                return false;
+            }
+        }
+
+        // 2. JIKA PDF -> Scan lewat VirusTotal API
+        if ($ekstensi === 'pdf') {
+            $isSafe = $this->scanPdfVirusTotal($file);
+            
+            if ($isSafe) {
+                $namaFileBaru = $namaAcak . '.pdf';
+                return $file->storeAs($folder, $namaFileBaru, 'public');
+            } else {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    private function scanPdfVirusTotal($file)
+    {
+        $apiKey = env('VIRUSTOTAL_API_KEY');
+        if (empty($apiKey)) {
+            Log::warning('VirusTotal API Key belum diatur di API Controller. File PDF lolos secara default.');
+            return true;
+        }
+
+        $fileHash = hash_file('sha256', $file->getRealPath());
+
+        try {
+            // TAHAP 1: Cek Hash ke VirusTotal
+            $cekHash = Http::withHeaders(['x-apikey' => $apiKey])
+                ->get("https://www.virustotal.com/api/v3/files/{$fileHash}");
+
+            if ($cekHash->successful()) {
+                $stats = $cekHash->json('data.attributes.last_analysis_stats');
+                if ($stats['malicious'] > 0 || $stats['suspicious'] > 0) {
+                    Log::warning("VIRUSTOTAL API ALERT: File PDF terindikasi bahaya! Hash: {$fileHash}");
+                }
+                return ($stats['malicious'] == 0 && $stats['suspicious'] == 0);
+            }
+
+            // TAHAP 2: Upload File Baru
+            $upload = Http::withHeaders(['x-apikey' => $apiKey])
+                ->attach('file', file_get_contents($file->getRealPath()), 'berkas.pdf')
+                ->post('https://www.virustotal.com/api/v3/files');
+
+            if (!$upload->successful()) return false;
+            $analysisId = $upload->json('data.id');
+
+            // TAHAP 3: Polling Hasil
+            for ($i = 0; $i < 4; $i++) {
+                sleep(5);
+                $analisis = Http::withHeaders(['x-apikey' => $apiKey])
+                    ->get("https://www.virustotal.com/api/v3/analyses/{$analysisId}");
+
+                if ($analisis->successful() && $analisis->json('data.attributes.status') === 'completed') {
+                    $stats = $analisis->json('data.attributes.stats');
+                    return ($stats['malicious'] == 0 && $stats['suspicious'] == 0);
+                }
+            }
+
+            Log::warning('VirusTotal Timeout pada API pendaftaran mobile.');
+            return false;
+
+        } catch (\Exception $e) {
+            Log::error('VirusTotal API Exception: ' . $e->getMessage());
+            return false;
+        }
+    }
 
 }
