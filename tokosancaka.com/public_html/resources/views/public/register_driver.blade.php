@@ -69,7 +69,7 @@
         color: #0f172a;
     }
     .tos-scroll-box {
-        height: 350px; /* Dipertinggi sedikit karena teks panjang */
+        height: 350px;
         overflow-y: scroll;
         background-color: #f8fafc;
         border: 2px solid #e2e8f0;
@@ -108,7 +108,7 @@
 
                     @if(session('error'))
                         <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm" role="alert">
-                            <i class="fa-solid fa-triangle-exclamation me-2"></i> {{ session('error') }}
+                            <i class="fa-solid fa-shield-virus me-2 fs-5"></i> {{ session('error') }}
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     @endif
@@ -124,7 +124,7 @@
                         </div>
                     @endif
 
-                    <form action="{{ route('driver.register.store') }}" method="POST" enctype="multipart/form-data">
+                    <form action="{{ route('driver.register.store') }}" method="POST" enctype="multipart/form-data" id="formPendaftaran">
                         @csrf
                         
                         <div class="row g-5">
@@ -298,7 +298,7 @@
                                 
                                 <div id="tosScrollBox" class="tos-scroll-box mb-3 shadow-inner">
                                     
-                                    {{-- 1. PERATURAN MITRA DRIVER --}}
+                                  {{-- 1. PERATURAN MITRA DRIVER --}}
                                     <h5 class="fw-bold text-danger border-bottom pb-1 mb-3">PERSYARATAN & PERATURAN MITRA DRIVER SANCAKA</h5>
                                     
                                     <h6 class="fw-bold mt-3 text-dark">1. Persyaratan Kualifikasi Mitra Driver (Standar Resmi)</h6>
@@ -327,43 +327,164 @@
 
                                     {{-- 2. KEBIJAKAN PRIVASI --}}
                                     <h5 class="fw-bold text-primary border-bottom pb-1 mb-3">KEBIJAKAN PRIVASI</h5>
-                                    <p>Privasi Anda adalah prioritas utama kami di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace. Dokumen ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi pribadi Anda saat menggunakan layanan kami. Dengan menggunakan situs atau aplikasi kami, Anda dianggap telah menyetujui seluruh isi Kebijakan Privasi ini.</p>
+                                    <p class="text-dark">Privasi Anda adalah prioritas utama kami di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace. Dokumen ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi pribadi Anda saat menggunakan layanan kami. Dengan menggunakan situs atau aplikasi kami, Anda dianggap telah menyetujui seluruh isi Kebijakan Privasi ini.</p>
                                     
-                                    <h6 class="fw-bold mt-3">1. Informasi yang Kami Kumpulkan</h6>
-                                    <p>Kami dapat mengumpulkan data berikut: Nama lengkap, alamat email, nomor telepon, Alamat pengiriman dan penagihan, Data transaksi & riwayat belanja, Informasi pembayaran (hanya melalui saluran resmi), Data lokasi GPS live (jika Anda mengaktifkan layanan berbasis lokasi), dan dokumen foto kelayakan berkas kendaraan (untuk mitra driver).</p>
+                                    <h6 class="fw-bold mt-3 text-dark">1. Informasi yang Kami Kumpulkan</h6>
+                                    <p class="mb-2 text-dark">Kami dapat mengumpulkan data berikut:</p>
+                                    <ul class="ps-3 mb-3 text-dark">
+                                        <li>Nama lengkap, alamat email, dan nomor telepon</li>
+                                        <li>Alamat pengiriman dan penagihan</li>
+                                        <li>Data transaksi & riwayat belanja</li>
+                                        <li>Informasi pembayaran (hanya melalui saluran resmi, tidak kami simpan detail kartu)</li>
+                                        <li>Data lokasi (jika Anda mengaktifkan layanan berbasis lokasi)</li>
+                                    </ul>
 
-                                    <h6 class="fw-bold mt-3">2. Cara Pengumpulan & Penggunaan Data</h6>
-                                    <p>Data diperoleh melalui formulir pendaftaran, transaksi, penggunaan cookie, dan komunikasi layanan pelanggan. Data pribadi digunakan untuk memproses pesanan, menyediakan dukungan, meningkatkan kualitas layanan, mengirimkan notifikasi, serta mencegah penipuan dan menjaga keamanan transaksi.</p>
+                                    <h6 class="fw-bold mt-3 text-dark">2. Cara Pengumpulan Data</h6>
+                                    <p class="mb-2 text-dark">Data diperoleh melalui:</p>
+                                    <ul class="ps-3 mb-3 text-dark">
+                                        <li>Formulir pendaftaran akun</li>
+                                        <li>Transaksi pembelian & pemesanan layanan</li>
+                                        <li>Penggunaan cookie di situs web</li>
+                                        <li>Komunikasi melalui email, WhatsApp, atau live chat</li>
+                                    </ul>
 
-                                    <h6 class="fw-bold mt-3">3. Perlindungan & Pembagian Informasi</h6>
-                                    <p>Kami menerapkan teknologi enkripsi dan prosedur keamanan standar industri untuk melindungi data pribadi Anda. Kami tidak menjual atau menyewakan data pribadi Anda ke pihak periklanan manapun. Informasi dapat dibagikan hanya kepada Partner logistik & ekspedisi untuk pengiriman pesanan, Penyedia pembayaran untuk memproses transaksi, dan Pihak berwenang jika diwajibkan oleh hukum.</p>
+                                    <h6 class="fw-bold mt-3 text-dark">3. Tujuan Penggunaan Informasi</h6>
+                                    <p class="mb-2 text-dark">Data pribadi digunakan untuk:</p>
+                                    <ul class="ps-3 mb-3 text-dark">
+                                        <li>Memproses pesanan dan mengirimkan produk/jasa</li>
+                                        <li>Menyediakan dukungan pelanggan</li>
+                                        <li>Meningkatkan kualitas layanan dan pengalaman pengguna</li>
+                                        <li>Mengirimkan notifikasi, promo, dan informasi penting</li>
+                                        <li>Mencegah penipuan dan menjaga keamanan transaksi</li>
+                                    </ul>
 
-                                    <h6 class="fw-bold mt-3">4. Hak Pengguna & Penyimpanan Data</h6>
-                                    <p>Anda memiliki hak untuk meminta salinan, memperbaiki, atau menghapus data pribadi sesuai ketentuan hukum. Data akan disimpan selama akun aktif atau diperlukan, setelah itu data akan dihapus atau dianonimkan.</p>
+                                    <h6 class="fw-bold mt-3 text-dark">4. Penggunaan Cookie</h6>
+                                    <p class="text-dark mb-3">Kami menggunakan cookie untuk menyimpan preferensi pengguna, melacak aktivitas, dan meningkatkan pengalaman saat menggunakan layanan. Anda dapat menonaktifkan cookie melalui pengaturan browser, namun beberapa fitur mungkin tidak berfungsi optimal.</p>
 
-                                    <h6 class="fw-bold mt-3">5. Proses Delivery, Pembatalan & Refund</h6>
-                                    <p>Estimasi pengiriman ditentukan oleh pihak ekspedisi. Kami tidak bertanggung jawab atas kesalahan pengiriman akibat informasi alamat yang salah. Pesanan dapat dibatalkan sebelum status berubah menjadi "Diproses". Anda berhak mengajukan refund (dana kembali) apabila produk cacat, tidak sesuai, atau hilang, yang akan dicairkan ke metode pembayaran awal.</p>
+                                    <h6 class="fw-bold mt-3 text-dark">5. Perlindungan Data</h6>
+                                    <p class="text-dark mb-3">Kami menerapkan teknologi enkripsi dan prosedur keamanan standar industri untuk melindungi data pribadi Anda. Meskipun demikian, transmisi data melalui internet tidak sepenuhnya aman, dan kami tidak dapat menjamin 100% keamanan informasi.</p>
 
-                                    <h6 class="fw-bold mt-3">6. Izin Akses Perangkat (Permissions)</h6>
-                                    <p>Untuk memastikan aplikasi dan layanan kami berfungsi dengan optimal, kami mungkin meminta izin akses ke beberapa fitur pada perangkat Anda, yaitu: Kamera (untuk foto profil, scan QR, bukti paket), GPS Lokasi (akurasi pengiriman dan pelacakan kurir), Browser & Akses Internet, dan Pengiriman Data Pribadi secara aman ke server kami.</p>
+                                    <h6 class="fw-bold mt-3 text-dark">6. Pembagian Informasi</h6>
+                                    <p class="mb-2 text-dark">Kami tidak menjual atau menyewakan data pribadi Anda. Informasi dapat dibagikan hanya kepada:</p>
+                                    <ul class="ps-3 mb-3 text-dark">
+                                        <li>Partner logistik & ekspedisi untuk pengiriman pesanan</li>
+                                        <li>Penyedia pembayaran untuk memproses transaksi</li>
+                                        <li>Pihak berwenang jika diwajibkan oleh hukum</li>
+                                    </ul>
 
-                                    <p class="mb-5">Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Jika Anda memiliki pertanyaan, silakan hubungi kami melalui halaman kontak resmi.</p>
+                                    <h6 class="fw-bold mt-3 text-dark">7. Hak Pengguna</h6>
+                                    <p class="mb-2 text-dark">Anda memiliki hak untuk:</p>
+                                    <ul class="ps-3 mb-3 text-dark">
+                                        <li>Meminta salinan data pribadi Anda</li>
+                                        <li>Memperbaiki data yang salah atau tidak akurat</li>
+                                        <li>Meminta penghapusan data sesuai ketentuan hukum</li>
+                                        <li>Menolak penggunaan data untuk tujuan pemasaran</li>
+                                    </ul>
+
+                                    <h6 class="fw-bold mt-3 text-dark">8. Penyimpanan Data</h6>
+                                    <p class="text-dark mb-3">Data pribadi Anda akan disimpan selama akun aktif atau selama diperlukan untuk memenuhi tujuan yang disebutkan dalam kebijakan ini. Setelah itu, data akan dihapus atau dianonimkan.</p>
+
+                                    <h6 class="fw-bold mt-3 text-dark">9. Keamanan Transaksi</h6>
+                                    <p class="text-dark mb-3">Semua transaksi hanya dapat dilakukan melalui metode pembayaran resmi yang tersedia di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace. Kami tidak bertanggung jawab atas transaksi di luar platform resmi kami.</p>
+
+                                    <h6 class="fw-bold mt-3 text-dark">10. Layanan Pihak Ketiga</h6>
+                                    <p class="text-dark mb-3">Situs atau aplikasi kami dapat memuat tautan ke layanan pihak ketiga (misalnya ekspedisi, metode pembayaran). Kami tidak bertanggung jawab atas kebijakan privasi pihak ketiga tersebut. Disarankan untuk membaca syarat dan ketentuan mereka secara terpisah.</p>
+
+                                    <h6 class="fw-bold mt-3 text-dark">11. Kebijakan Anak-anak</h6>
+                                    <p class="text-dark mb-3">Layanan kami tidak ditujukan untuk anak-anak di bawah usia 13 tahun. Kami tidak sengaja mengumpulkan informasi pribadi dari anak-anak. Jika Anda percaya bahwa anak Anda telah memberikan data kepada kami, segera hubungi layanan pelanggan.</p>
+
+                                    <h6 class="fw-bold mt-3 text-dark">12. Proses Delivery</h6>
+                                    <p class="text-dark mb-3">Estimasi pengiriman ditentukan oleh pihak ekspedisi. Data alamat yang Anda berikan akan digunakan untuk memastikan pesanan sampai dengan benar. Kami tidak bertanggung jawab atas kesalahan pengiriman akibat informasi alamat yang tidak lengkap atau salah.</p>
+
+                                    <h6 class="fw-bold mt-3 text-dark">13. Pembatalan Pesanan (Cancel)</h6>
+                                    <p class="text-dark mb-3">Pesanan dapat dibatalkan sebelum status berubah menjadi "Diproses". Setelah pesanan diproses atau dikirim, pembatalan tidak dapat dilakukan. Untuk bantuan pembatalan, hubungi layanan pelanggan segera setelah pemesanan.</p>
+
+                                    <h6 class="fw-bold mt-3 text-dark">14. Kebijakan Pengembalian & Refund</h6>
+                                    <p class="mb-2 text-dark">Anda berhak mengajukan refund atau pengembalian barang apabila:</p>
+                                    <ul class="ps-3 mb-2 text-dark">
+                                        <li>Produk yang diterima rusak atau cacat produksi</li>
+                                        <li>Produk tidak sesuai dengan deskripsi atau pesanan</li>
+                                        <li>Produk hilang dalam proses pengiriman (setelah konfirmasi resmi dari ekspedisi)</li>
+                                    </ul>
+                                    <p class="text-dark mb-3">Proses refund akan dilakukan ke metode pembayaran yang sama dengan yang digunakan saat transaksi. Waktu pencairan refund mengikuti kebijakan bank atau penyedia pembayaran masing-masing.</p>
+
+                                    <h6 class="fw-bold mt-3 text-dark">15. Perubahan Kebijakan</h6>
+                                    <p class="text-dark mb-3">Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Versi terbaru akan ditampilkan di situs web, dan perubahan berlaku sejak tanggal dipublikasikan.</p>
+
+                                    <h6 class="fw-bold mt-3 text-dark">16. Persetujuan</h6>
+                                    <p class="text-dark mb-3">Dengan menggunakan layanan kami, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh isi Kebijakan Privasi ini.</p>
+
+                                    <h6 class="fw-bold mt-3 text-dark">17. Izin Akses Perangkat (Permissions)</h6>
+                                    <p class="mb-2 text-dark">Untuk memastikan aplikasi dan layanan kami berfungsi dengan optimal, kami mungkin meminta izin akses ke beberapa fitur pada perangkat Anda, yaitu:</p>
+                                    <ul class="ps-3 mb-2 text-dark">
+                                        <li><strong>Kamera:</strong> Untuk mengambil foto profil, memindai QR code/barcode, atau melampirkan foto bukti transaksi dan pengembalian barang.</li>
+                                        <li><strong>GPS (Lokasi):</strong> Untuk mendeteksi lokasi Anda demi akurasi alamat pengiriman, pencarian toko terdekat, dan pelacakan kurir.</li>
+                                        <li><strong>Browser & Akses Internet:</strong> Untuk menghubungkan aplikasi dengan server kami, memproses transaksi secara real-time, dan membuka tautan layanan.</li>
+                                        <li><strong>Pengiriman Data Pribadi:</strong> Untuk mengirimkan dan menyinkronkan data pribadi Anda secara aman ke server kami guna keperluan verifikasi akun dan kelancaran layanan.</li>
+                                    </ul>
+                                    <p class="text-dark mb-3">Anda dapat mengaktifkan atau menonaktifkan izin ini kapan saja melalui pengaturan (settings) perangkat Anda. Namun, perlu diketahui bahwa menonaktifkan izin tertentu dapat membuat beberapa fitur aplikasi tidak berfungsi dengan baik.</p>
+
+                                    <h6 class="fw-bold mt-3 text-dark">18. Kontak Kami</h6>
+                                    <p class="text-dark mb-5">Jika Anda memiliki pertanyaan, keluhan, atau permintaan terkait data pribadi, pengiriman, pembatalan, atau refund, silakan hubungi kami melalui halaman kontak resmi di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace. Terima kasih telah mempercayakan belanja dan layanan Anda kepada kami.</p>
 
                                     {{-- 3. SYARAT & KETENTUAN PLATFORM --}}
                                     <h5 class="fw-bold text-success border-bottom pb-1 mb-3">SYARAT & KETENTUAN PLATFORM (T.O.S)</h5>
-                                    <p>Halaman ini berisi syarat & ketentuan resmi yang berlaku di ekosistem Sancaka. Mohon dibaca dengan seksama karena semua poin ini mengikat setiap pengguna layanan kami.</p>
+                                    <p class="text-dark mb-3">Halaman ini berisi syarat & ketentuan resmi yang berlaku di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace. Mohon dibaca dengan seksama karena semua poin ini mengikat setiap pengguna layanan kami.</p>
                                     
                                     <ul class="ps-3 mb-4 text-dark">
                                         <li><strong>Penerimaan Ketentuan:</strong> Dengan menggunakan layanan kami, Anda setuju terikat oleh ketentuan ini.</li>
-                                        <li><strong>Akun & Keamanan:</strong> Pendaftaran akun harus akurat. Anda bertanggung jawab menjaga kerahasiaan username & password Anda. Penyalahgunaan akun mengakibatkan penonaktifan sepihak.</li>
-                                        <li><strong>Penggunaan Platform:</strong> Layanan hanya boleh digunakan untuk aktivitas legal di Republik Indonesia. Transaksi di luar platform resmi kami tidak diakui dan bukan tanggung jawab kami.</li>
-                                        <li><strong>Produk, Harga, & Pembayaran:</strong> Harga dapat berubah sewaktu-waktu. Pembayaran hanya melalui metode resmi. Sancaka tidak bertanggung jawab atas kerugian transaksi langsung ke pribadi.</li>
-                                        <li><strong>Pengiriman & Asuransi:</strong> Estimasi pengiriman berdasarkan ekspedisi dan bisa berubah karena force majeure. Pembeli wajib memeriksa kondisi produk saat diterima. Kerusakan pengiriman harus diklaim maksimal 1x24 jam beserta bukti Video Unboxing.</li>
-                                        <li><strong>Pembatalan (Cancel):</strong> Berlaku sebelum pesanan diproses. Pembatalan sepihak dilarang jika pesanan kurir sudah berjalan/di pick-up.</li>
-                                        <li><strong>Refund & Pengembalian:</strong> Berlaku untuk barang rusak/hilang (estimasi 3–14 hari kerja pencairan). Produk digital, makanan segar, atau custom tidak bisa dikembalikan.</li>
-                                        <li><strong>Hak Kekayaan Intelektual:</strong> Semua konten platform dilindungi hak cipta & merek dagang. Segala bentuk pencurian data akan diproses hukum.</li>
-                                        <li><strong>Penyelesaian Sengketa:</strong> Segala permasalahan diselesaikan secara musyawarah kekeluargaan, bila gagal maka akan melalui jalur hukum sesuai wilayah Republik Indonesia.</li>
+                                        <li><strong>Pendaftaran Akun:</strong> Semua informasi akun harus akurat, lengkap, dan terkini.</li>
+                                        <li><strong>Kerahasiaan Akun:</strong> Anda bertanggung jawab menjaga keamanan username & password Anda.</li>
+                                        <li><strong>Penggunaan yang Sah:</strong> Layanan hanya boleh digunakan untuk aktivitas legal.</li>
+                                        <li><strong>Produk & Deskripsi:</strong> Kami berusaha akurat, tapi kesalahan deskripsi bisa terjadi.</li>
+                                        <li><strong>Harga:</strong> Harga dapat berubah sewaktu-waktu tanpa pemberitahuan.</li>
+                                        <li><strong>Pembayaran:</strong> Hanya melalui metode resmi yang kami sediakan.</li>
+                                        <li><strong>Transaksi di Luar Platform:</strong> Tidak diakui & bukan tanggung jawab kami.</li>
+                                        <li><strong>Konfirmasi Pesanan:</strong> Pesanan diproses setelah pembayaran terverifikasi.</li>
+                                        <li><strong>Estimasi Pengiriman:</strong> Berdasarkan ekspedisi, bisa berubah karena faktor eksternal.</li>
+                                        <li><strong>Pemeriksaan Barang:</strong> Pembeli wajib memeriksa kondisi produk saat diterima.</li>
+                                        <li><strong>Kerusakan Pengiriman:</strong> Harus diklaim dalam 1x24 jam dengan bukti video/foto.</li>
+                                        <li><strong>Asuransi:</strong> Tersedia sesuai pilihan ekspedisi & tanggungan pembeli.</li>
+                                        <li><strong>Pembatalan Pesanan:</strong> Hanya berlaku sebelum pesanan diproses/ dikirim.</li>
+                                        <li><strong>Kebijakan Refund:</strong> Berlaku untuk barang rusak, tidak sesuai, atau hilang.</li>
+                                        <li><strong>Waktu Refund:</strong> Mengikuti kebijakan penyedia pembayaran (estimasi 3–14 hari kerja).</li>
+                                        <li><strong>Produk Non-Refund:</strong> Produk digital, makanan segar, atau custom tidak bisa dikembalikan.</li>
+                                        <li><strong>Tanggung Jawab Penjual:</strong> Kualitas & keaslian produk adalah tanggung jawab penjual.</li>
+                                        <li><strong>Tanggung Jawab Pembeli:</strong> Memberikan alamat & data penerima yang benar.</li>
+                                        <li><strong>Klaim Salah Kirim:</strong> Wajib diajukan maksimal 2x24 jam setelah barang diterima.</li>
+                                        <li><strong>Perubahan Pesanan:</strong> Tidak dapat dilakukan setelah pesanan masuk tahap pengiriman.</li>
+                                        <li><strong>Privasi:</strong> Data pribadi dilindungi sesuai kebijakan privasi kami.</li>
+                                        <li><strong>Keamanan Data:</strong> Kami gunakan teknologi terbaik untuk melindungi data Anda.</li>
+                                        <li><strong>Penyalahgunaan Akun:</strong> Kami berhak menonaktifkan akun yang melanggar aturan.</li>
+                                        <li><strong>Keterlambatan:</strong> Tidak ada kompensasi jika karena force majeure (cuaca, bencana, dsb).</li>
+                                        <li><strong>Pajak & Biaya:</strong> Pembeli bertanggung jawab atas pajak atau biaya tambahan yang berlaku.</li>
+                                        <li><strong>Promosi & Diskon:</strong> Berlaku sesuai syarat yang ditentukan, tidak dapat digabungkan.</li>
+                                        <li><strong>Layanan Pelanggan:</strong> Tersedia untuk membantu melalui kontak resmi kami.</li>
+                                        <li><strong>Hak Kekayaan Intelektual:</strong> Semua konten platform dilindungi hak cipta & merek dagang.</li>
+                                        <li><strong>Penyalahgunaan Platform:</strong> Tindakan ilegal/penipuan akan diproses hukum.</li>
+                                        <li><strong>Batas Tanggung Jawab:</strong> Kami tidak bertanggung jawab atas kerugian tidak langsung.</li>
+                                        <li><strong>Ketersediaan Layanan:</strong> Bisa dihentikan sementara untuk pemeliharaan sistem.</li>
+                                        <li><strong>Perubahan Layanan:</strong> Kami berhak mengubah fitur kapan saja.</li>
+                                        <li><strong>Force Majeure:</strong> Kami dibebaskan dari tanggung jawab bila ada keadaan di luar kendali.</li>
+                                        <li><strong>Pihak Ketiga:</strong> Kami tidak menjamin layanan pihak ketiga yang terintegrasi.</li>
+                                        <li><strong>Konten Pengguna:</strong> Semua konten yang diunggah pengguna menjadi tanggung jawab pribadi.</li>
+                                        <li><strong>Penghapusan Konten:</strong> Kami berhak menghapus konten yang melanggar aturan.</li>
+                                        <li><strong>Notifikasi:</strong> Semua pemberitahuan resmi dilakukan melalui email/akun resmi.</li>
+                                        <li><strong>Korespondensi:</strong> Percakapan dengan CS bisa disimpan untuk bukti layanan.</li>
+                                        <li><strong>Penyelesaian Sengketa:</strong> Diselesaikan secara musyawarah, bila gagal melalui jalur hukum.</li>
+                                        <li><strong>Wilayah Hukum:</strong> Berlaku hukum Republik Indonesia.</li>
+                                        <li><strong>Bahasa:</strong> Dokumen ini dibuat dalam bahasa Indonesia.</li>
+                                        <li><strong>Kebijakan Anak:</strong> Layanan tidak ditujukan untuk anak di bawah 13 tahun tanpa izin orang tua.</li>
+                                        <li><strong>Update Ketentuan:</strong> Kami bisa memperbarui syarat & ketentuan kapan saja.</li>
+                                        <li><strong>Tanggal Berlaku:</strong> Ketentuan ini berlaku sejak tanggal dipublikasikan.</li>
+                                        <li><strong>Keterikatan Hukum:</strong> Semua pengguna terikat otomatis oleh syarat & ketentuan ini.</li>
+                                        <li><strong>Kompensasi:</strong> Tidak ada kompensasi selain refund sesuai aturan.</li>
+                                        <li><strong>Pelanggaran:</strong> Pelanggaran bisa mengakibatkan penutupan akun permanen.</li>
+                                        <li><strong>Kontak Resmi:</strong> Pertanyaan & keluhan hanya diterima lewat kanal resmi kami.</li>
+                                        <li><strong>Penutup:</strong> Dengan menggunakan layanan kami, Anda menyatakan setuju tanpa paksaan.</li>
                                     </ul>
+                                    
+                                    <p class="text-dark mb-5">Terima kasih telah menggunakan Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace.</p>
                                     
                                     <p class="fw-bold text-success text-center mt-5 bg-light p-3 border rounded shadow-sm">--- AKHIR DOKUMEN PERATURAN & PERSETUJUAN ---</p>
                                 </div>
@@ -374,6 +495,15 @@
                                     <label class="form-check-input-label fw-bold text-dark small" for="agreeCheckbox" style="cursor: pointer;">
                                         Saya menjamin seluruh berkas adalah asli. Saya telah membaca lengkap aturan Kualifikasi Mitra, Anti-Fraud, Kebijakan Privasi, dan T.O.S Sancaka Express.
                                     </label>
+                                </div>
+
+                                {{-- INFO SISTEM ANTI-VIRUS --}}
+                                <div class="text-center mb-3">
+                                    <p class="text-sm text-gray-500 mb-0" style="font-size: 0.85rem; color: #64748b;">
+                                        <i class="fa-solid fa-shield-halved text-success me-1"></i> Sistem Keamanan Aktif: 
+                                        Semua dokumen yang Anda unggah akan dipindai oleh sistem Anti-Virus. 
+                                        Proses pengiriman mungkin memakan waktu hingga 30 detik.
+                                    </p>
                                 </div>
 
                                 {{-- Tombol Kirim Form --}}
@@ -393,6 +523,19 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // --- LOGIC FORM SUBMIT (LOADING STATE) ---
+        const form = document.getElementById('formPendaftaran');
+        const submitBtn = document.getElementById('submitBtn');
+
+        form.addEventListener('submit', function() {
+            // Ubah tampilan tombol saat form di-submit
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Mengunggah & Memindai Berkas... Mohon tunggu!';
+            submitBtn.classList.replace('btn-danger', 'btn-secondary');
+            submitBtn.style.opacity = '0.8';
+            submitBtn.style.cursor = 'not-allowed';
+            submitBtn.disabled = true; // Mencegah multiple submit
+        });
+
         // --- LOGIC DETEKSI GPS MAPS ---
         const btnGetLocation = document.getElementById('btnGetLocation');
         const latInput = document.getElementById('latitude');
@@ -428,7 +571,6 @@
         const tosBox = document.getElementById('tosScrollBox');
         const agreeCheckbox = document.getElementById('agreeCheckbox');
         const checkboxWrapper = document.getElementById('checkboxWrapper');
-        const submitBtn = document.getElementById('submitBtn');
 
         let hasScrolledToBottom = false;
 
