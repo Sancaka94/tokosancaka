@@ -913,7 +913,7 @@ public function handleCallback(Request $request)
         $finalBase64Signature = base64_encode($binarySignature);
 
        //  \Illuminate\Support\Facades\Log::debug('[DANA DEBUG LOG] 5. Signature Berhasil Dibuat!', [
-            'signature_result' => $finalBase64Signature
+            'signature_result' => $finalBase64Signature,
         ]);
        //  \Illuminate\Support\Facades\Log::debug('=== [DANA DEBUG LOG] END GENERATE SIGNATURE ===');
 
