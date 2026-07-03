@@ -11,10 +11,6 @@ use Illuminate\Support\Facades\Storage;
 
 class RegisterDriverOnlineController extends Controller
 {
-    // ==========================================
-    // AREA PUBLIC (PENDAFTARAN)
-    // ==========================================
-
     public function create()
     {
         return view('public.register_driver');
@@ -22,94 +18,124 @@ class RegisterDriverOnlineController extends Controller
 
     public function store(Request $request)
     {
-        Log::info("LOG LOG: Proses pendaftaran driver baru via Web masuk.");
+        Log::info("LOG: Pendaftaran driver baru masuk.");
+
+        // Maksimal tahun kendaraan = 8 tahun dari tahun saat ini
+        $minTahun = date('Y') - 8;
+
+        $messages = [
+            'tanggal_lahir.before' => 'Usia Anda harus minimal 18 tahun untuk mendaftar.',
+            'tahun_kendaraan.min'  => "Tahun pembuatan kendaraan maksimal berusia 8 tahun (Minimal {$minTahun}).",
+        ];
 
         $request->validate([
             'nama_lengkap'    => 'required|string|max:255',
+            'tempat_lahir'    => 'required|string|max:100',
+            'tanggal_lahir'   => 'required|date|before:-18 years', // Wajib min 18 thn
             'nomor_nik'       => 'required|string|max:20',
-            'nomor_kk'        => 'required|string|max:20',
+            'nomor_kk'        => 'nullable|string|max:20',
             'nomor_wa'        => 'required|string|max:20',
             'alamat_lengkap'  => 'required|string',
+            'jenis_layanan'   => 'required|in:motor,mobil',
+            'merk_kendaraan'  => 'required|string|max:100',
+            'tahun_kendaraan' => 'required|integer|min:' . $minTahun . '|max:' . date('Y'),
+            'plat_nomor'      => 'required|string|max:15',
             'latitude'        => 'nullable|numeric',
             'longitude'       => 'nullable|numeric',
-            'file_ktp'        => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            
+            // Dokumen Inti
+            'foto_wajah'         => 'required|file|mimes:jpeg,png,jpg|max:5120',
+            'file_ktp'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_sim'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_skck'          => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_stnk'          => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'foto_motor'         => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_buku_rekening' => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            
+            // Opsional
             'file_kk'         => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'file_buku_nikah' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'file_stnk'       => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_bpkb'       => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'foto_motor'      => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'foto_wajah'      => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-        ]);
+            'file_buku_nikah' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+        ], $messages);
 
         try {
             $uploadPath = 'drivers';
             $filePaths = [];
-            $fields = ['file_ktp', 'file_kk', 'file_buku_nikah', 'file_stnk', 'file_bpkb', 'foto_motor', 'foto_wajah'];
+            
+            $fields = ['foto_wajah', 'file_ktp', 'file_sim', 'file_skck', 'file_stnk', 'foto_motor', 'file_buku_rekening', 'file_kk', 'file_bpkb', 'file_buku_nikah'];
 
             foreach ($fields as $field) {
-                if ($request->hasFile($field)) {
-                    $filePaths[$field] = $request->file($field)->store($uploadPath, 'public');
-                } else {
-                    $filePaths[$field] = null;
-                }
+                $filePaths[$field] = $request->hasFile($field) ? $request->file($field)->store($uploadPath, 'public') : null;
             }
 
-            RegistrasiDriverSancaka::create([
-                'nama_lengkap'    => $request->nama_lengkap,
-                'nomor_nik'       => $request->nomor_nik,
-                'nomor_kk'        => $request->nomor_kk,
-                'nomor_wa'        => $request->nomor_wa,
-                'alamat_lengkap'  => $request->alamat_lengkap,
-                'latitude'        => $request->latitude,
-                'longitude'       => $request->longitude,
-                'file_ktp'        => $filePaths['file_ktp'],
-                'file_kk'         => $filePaths['file_kk'],
-                'file_buku_nikah' => $filePaths['file_buku_nikah'],
-                'file_stnk'       => $filePaths['file_stnk'],
-                'file_bpkb'       => $filePaths['file_bpkb'],
-                'foto_motor'      => $filePaths['foto_motor'],
-                'foto_wajah'      => $filePaths['foto_wajah'],
-                'status'          => 'pending',
-                'is_active_map'   => 0,
-            ]);
+            RegistrasiDriverSancaka::create(array_merge(
+                $request->only(['nama_lengkap', 'tempat_lahir', 'tanggal_lahir', 'nomor_nik', 'nomor_kk', 'nomor_wa', 'alamat_lengkap', 'jenis_layanan', 'merk_kendaraan', 'tahun_kendaraan', 'plat_nomor', 'latitude', 'longitude']),
+                $filePaths,
+                ['status' => 'pending', 'is_active_map' => 0]
+            ));
 
-            Log::info("LOG LOG: Pendaftaran driver {$request->nama_lengkap} berhasil disimpan.");
-            return redirect()->back()->with('success', 'Pendaftaran berhasil! Tim kami akan segera menghubungi Anda.');
-
+            return redirect()->back()->with('success', 'Pendaftaran berhasil! Tim kami akan melakukan verifikasi berkas Anda maksimal 2x24 Jam.');
         } catch (\Exception $e) {
-            Log::error("LOG LOG: Gagal menyimpan pendaftaran. Error: " . $e->getMessage());
-            return redirect()->back()->with('error', 'Terjadi kesalahan sistem.');
+            Log::error("LOG: Error Register Driver - " . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat mengunggah berkas.');
         }
     }
 
     public function update(Request $request, $id)
     {
-        Log::info("LOG LOG: Memperbarui data pendaftaran driver ID: {$id}");
-
         $driver = RegistrasiDriverSancaka::findOrFail($id);
+        $minTahun = date('Y') - 8;
         
-        $driver->update([
-            'nama_lengkap'   => $request->nama_lengkap,
-            'nomor_nik'      => $request->nomor_nik,
-            'nomor_kk'       => $request->nomor_kk,
-            'nomor_wa'       => $request->nomor_wa,
-            'alamat_lengkap' => $request->alamat_lengkap,
-            'latitude'       => $request->latitude,
-            'longitude'      => $request->longitude
+        $request->validate([
+            'nama_lengkap'    => 'required|string|max:255',
+            'tempat_lahir'    => 'required|string|max:100',
+            'tanggal_lahir'   => 'required|date|before:-18 years',
+            'nomor_nik'       => 'required|string|max:20',
+            'nomor_wa'        => 'required|string|max:20',
+            'alamat_lengkap'  => 'required|string',
+            'jenis_layanan'   => 'required|in:motor,mobil',
+            'merk_kendaraan'  => 'required|string|max:100',
+            'tahun_kendaraan' => 'required|integer|min:' . $minTahun . '|max:' . date('Y'),
+            'plat_nomor'      => 'required|string|max:15',
+            
+            // File dibuat nullable agar tidak wajib diupload ulang jika hanya edit teks
+            'foto_wajah' => 'nullable|file|mimes:jpeg,png,jpg|max:5120',
+            'file_ktp'   => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_sim'   => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_skck'  => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_stnk'  => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'foto_motor' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_buku_rekening' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+        ], [
+            'tanggal_lahir.before' => 'Usia driver harus minimal 18 tahun.',
+            'tahun_kendaraan.min'  => "Kendaraan maksimal 8 tahun (Min {$minTahun}).",
         ]);
 
-        return redirect()->back()->with('success', 'Data driver berhasil diperbarui.');
-    }
+        try {
+            $updateData = $request->only(['nama_lengkap', 'tempat_lahir', 'tanggal_lahir', 'nomor_nik', 'nomor_kk', 'nomor_wa', 'alamat_lengkap', 'jenis_layanan', 'merk_kendaraan', 'tahun_kendaraan', 'plat_nomor', 'latitude', 'longitude']);
+            
+            $fields = ['foto_wajah', 'file_ktp', 'file_sim', 'file_skck', 'file_stnk', 'foto_motor', 'file_buku_rekening', 'file_kk', 'file_bpkb', 'file_buku_nikah'];
 
-    // ==========================================
-    // AREA ADMIN (MANAJEMEN DRIVER)
-    // ==========================================
+            foreach ($fields as $field) {
+                if ($request->hasFile($field)) {
+                    if (!empty($driver->$field) && Storage::disk('public')->exists($driver->$field)) {
+                        Storage::disk('public')->delete($driver->$field);
+                    }
+                    $updateData[$field] = $request->file($field)->store('drivers', 'public');
+                }
+            }
+
+            $driver->update($updateData);
+            return redirect()->back()->with('success', 'Data driver dan dokumen berhasil diperbarui!');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem.');
+        }
+    }
 
     public function index(Request $request)
     {
         $query = RegistrasiDriverSancaka::query();
 
-        // 1. Filter Pencarian (Nama, WA, NIK)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -119,33 +145,22 @@ class RegisterDriverOnlineController extends Controller
             });
         }
 
-        // 2. Filter Status
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
+        if ($request->filled('status')) $query->where('status', $request->status);
 
-        // 3. Filter Rentang Tanggal (Flatpickr)
         if ($request->filled('date_range')) {
             $dates = explode(' to ', $request->date_range);
-            if (count($dates) == 2) {
-                $query->whereBetween('created_at', [$dates[0] . ' 00:00:00', $dates[1] . ' 23:59:59']);
-            } elseif (count($dates) == 1) {
-                $query->whereDate('created_at', $dates[0]);
-            }
+            if (count($dates) == 2) $query->whereBetween('created_at', [$dates[0] . ' 00:00:00', $dates[1] . ' 23:59:59']);
+            elseif (count($dates) == 1) $query->whereDate('created_at', $dates[0]);
         }
 
-        // 4. Data untuk Card Monitor (Berdasarkan Total Seluruh Data)
         $totalDrivers = RegistrasiDriverSancaka::count();
         $pendingDrivers = RegistrasiDriverSancaka::where('status', 'pending')->count();
         $approvedDrivers = RegistrasiDriverSancaka::where('status', 'approved')->count();
         $rejectedDrivers = RegistrasiDriverSancaka::where('status', 'rejected')->count();
 
-        // 5. Pagination
         $drivers = $query->orderBy('created_at', 'desc')->paginate(10);
 
-        return view('admin.drivers.index', compact(
-            'drivers', 'totalDrivers', 'pendingDrivers', 'approvedDrivers', 'rejectedDrivers'
-        ));
+        return view('admin.drivers.index', compact('drivers', 'totalDrivers', 'pendingDrivers', 'approvedDrivers', 'rejectedDrivers'));
     }
 
     public function updateStatus(Request $request, $id)
@@ -158,14 +173,12 @@ class RegisterDriverOnlineController extends Controller
             $driver = RegistrasiDriverSancaka::findOrFail($id);
             $driver->update(['status' => $status]);
 
-            // Jika diapprove dan punya akun pengguna, set role menjadi Driver
             if ($status === 'approved' && $driver->id_pengguna) {
                 Pengguna::where('id_pengguna', $driver->id_pengguna)->update(['role' => 'Driver']);
             }
 
             DB::commit();
             return redirect()->back()->with('success', "Pendaftaran berhasil di-{$status}.");
-
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal merubah status.');
@@ -175,23 +188,24 @@ class RegisterDriverOnlineController extends Controller
     public function destroy($id)
     {
         $driver = RegistrasiDriverSancaka::findOrFail($id);
+        // Opsional: Hapus file dari storage jika akun dihapus permanen
+        $fields = ['foto_wajah', 'file_ktp', 'file_sim', 'file_skck', 'file_stnk', 'foto_motor', 'file_buku_rekening', 'file_kk', 'file_bpkb', 'file_buku_nikah'];
+        foreach($fields as $field){
+            if (!empty($driver->$field) && Storage::disk('public')->exists($driver->$field)) Storage::disk('public')->delete($driver->$field);
+        }
         $driver->delete();
         return redirect()->back()->with('success', 'Data berhasil dihapus.');
     }
 
     public function bulkDestroy(Request $request)
     {
-        // Menangkap data ID dari form submission
         $ids = $request->input('selected_ids');
+        if (!$ids || empty($ids)) return redirect()->back()->with('error', 'Pilih minimal satu data.');
         
-        if (!$ids || empty($ids)) {
-            return redirect()->back()->with('error', 'Pilih minimal satu data terlebih dahulu.');
+        $drivers = RegistrasiDriverSancaka::whereIn('id', $ids)->get();
+        foreach ($drivers as $driver) {
+            $this->destroy($driver->id); // Reuse destroy method logic for deleting files
         }
-
-        Log::info("LOG LOG: Admin melakukan bulk delete pada ID: " . implode(',', $ids));
-
-        RegistrasiDriverSancaka::whereIn('id', $ids)->delete();
-        
-        return redirect()->back()->with('success', count($ids) . ' data terpilih berhasil dihapus secara massal.');
+        return redirect()->back()->with('success', count($ids) . ' data terpilih berhasil dihapus massal.');
     }
 }

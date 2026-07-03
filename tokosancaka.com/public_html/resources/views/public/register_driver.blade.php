@@ -24,21 +24,22 @@
         gap: 10px;
     }
     .form-section-title i {
-        color: #dc2626; /* Sancaka Red */
+        color: #dc2626;
     }
     .form-label {
         font-weight: 600;
         color: #475569;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
     }
-    .custom-input {
+    .custom-input, .custom-select {
         background-color: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: 0.5rem;
         padding: 0.75rem 1rem;
+        font-size: 0.9rem;
         transition: all 0.2s ease-in-out;
     }
-    .custom-input:focus {
+    .custom-input:focus, .custom-select:focus {
         background-color: #ffffff;
         border-color: #dc2626;
         box-shadow: 0 0 0 0.25rem rgba(220, 38, 38, 0.15);
@@ -47,8 +48,8 @@
         background-color: #f8fafc;
         border: 1px dashed #cbd5e1;
         border-radius: 0.5rem;
-        padding: 0.5rem;
-        font-size: 0.85rem;
+        padding: 0.45rem;
+        font-size: 0.8rem;
         transition: all 0.2s;
     }
     .custom-file-input:hover {
@@ -60,13 +61,13 @@
         color: #334155;
         border: 1px solid #cbd5e1;
         font-weight: 600;
+        font-size: 0.9rem;
         transition: all 0.2s;
     }
     .btn-get-location:hover {
         background-color: #e2e8f0;
         color: #0f172a;
     }
-    /* Style Khusus untuk Box Term & Condition Scroll */
     .tos-scroll-box {
         height: 250px;
         overflow-y: scroll;
@@ -78,27 +79,10 @@
         color: #334155;
         line-height: 1.6;
     }
-    .tos-scroll-box::-webkit-scrollbar {
-        width: 8px;
-    }
-    .tos-scroll-box::-webkit-scrollbar-track {
-        background: #f1f5f9;
-    }
-    .tos-scroll-box::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 4px;
-    }
-    .tos-scroll-box::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-    }
-    .rules-badge {
-        font-size: 0.75rem;
-        background-color: #fee2e2;
-        color: #991b1b;
-        padding: 0.25rem 0.5rem;
-        border-radius: 0.25rem;
-        font-weight: bold;
-    }
+    .tos-scroll-box::-webkit-scrollbar { width: 8px; }
+    .tos-scroll-box::-webkit-scrollbar-track { background: #f1f5f9; }
+    .tos-scroll-box::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .tos-scroll-box::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 </style>
 
 <div class="container py-5">
@@ -108,12 +92,12 @@
             <div class="card register-card">
                 <div class="register-header">
                     <h2 class="fw-bold mb-2">Gabung Menjadi Mitra Driver Sancaka</h2>
-                    <p class="mb-0 opacity-75">Pendaftaran Ojek Online & Kurir Ekspres Resmi Mandiri</p>
+                    <p class="mb-0 opacity-75">Formulir Pendaftaran Resmi Ojek Online (Ride) & Mobil (Car)</p>
                 </div>
 
                 <div class="card-body p-4 p-md-5">
                     
-                    {{-- Alert Messages --}}
+                    {{-- Alert Notifikasi --}}
                     @if(session('success'))
                         <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
                             <i class="fa-solid fa-circle-check me-2 fs-5"></i>
@@ -131,8 +115,8 @@
 
                     @if ($errors->any())
                         <div class="alert alert-danger rounded-3 shadow-sm">
-                            <div class="fw-bold mb-2"><i class="fa-solid fa-circle-exclamation me-2"></i> Terdapat kesalahan input:</div>
-                            <ul class="mb-0">
+                            <div class="fw-bold mb-2"><i class="fa-solid fa-circle-exclamation me-2"></i> Pendaftaran Gagal! Periksa kembali berkas input Anda:</div>
+                            <ul class="mb-0 ps-3">
                                 @foreach ($errors->all() as $error)
                                     <li>{{ $error }}</li>
                                 @endforeach
@@ -144,30 +128,42 @@
                         @csrf
                         
                         <div class="row g-5">
-                            {{-- ================= KOLOM KIRI ================= --}}
+                            {{-- ================= KOLOM KIRI (Informasi Pribadi & Kendaraan) ================= --}}
                             <div class="col-lg-6">
+                                
                                 <div class="form-section-title border-bottom pb-2">
-                                    <i class="fa-solid fa-id-card"></i> Informasi Pribadi
+                                    <i class="fa-solid fa-id-card"></i> Identitas Diri Pelamar
                                 </div>
                                 
                                 <div class="row g-3 mb-4">
                                     <div class="col-12">
                                         <label class="form-label">Nama Lengkap Sesuai KTP <span class="text-danger">*</span></label>
-                                        <input type="text" name="nama_lengkap" class="form-control custom-input @error('nama_lengkap') is-invalid @enderror" value="{{ old('nama_lengkap') }}" required placeholder="Contoh: Amal Abu Kholid">
+                                        <input type="text" name="nama_lengkap" class="form-control custom-input w-100 @error('nama_lengkap') is-invalid @enderror" value="{{ old('nama_lengkap') }}" required placeholder="Contoh: Amal Abu Kholid">
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label">Nomor NIK <span class="text-danger">*</span></label>
-                                        <input type="number" name="nomor_nik" class="form-control custom-input @error('nomor_nik') is-invalid @enderror" value="{{ old('nomor_nik') }}" required placeholder="16 Digit NIK">
+                                        <label class="form-label">Tempat Lahir <span class="text-danger">*</span></label>
+                                        <input type="text" name="tempat_lahir" class="form-control custom-input w-100 @error('tempat_lahir') is-invalid @enderror" value="{{ old('tempat_lahir') }}" required placeholder="Contoh: Ngawi">
                                     </div>
 
                                     <div class="col-md-6">
-                                        <label class="form-label">Nomor Kartu Keluarga <span class="text-danger">*</span></label>
-                                        <input type="number" name="nomor_kk" class="form-control custom-input @error('nomor_kk') is-invalid @enderror" value="{{ old('nomor_kk') }}" required placeholder="16 Digit Nomor KK">
+                                        <label class="form-label">Tanggal Lahir <span class="text-danger">*</span></label>
+                                        <input type="date" name="tanggal_lahir" class="form-control custom-input w-100 @error('tanggal_lahir') is-invalid @enderror" value="{{ old('tanggal_lahir') }}" required>
+                                        <small class="text-muted d-block" style="font-size: 0.7rem;">Batas usia standar minimal 18 tahun.</small>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Nomor NIK KTP <span class="text-danger">*</span></label>
+                                        <input type="number" name="nomor_nik" class="form-control custom-input w-100 @error('nomor_nik') is-invalid @enderror" value="{{ old('nomor_nik') }}" required placeholder="16 Digit NIK">
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Nomor Kartu Keluarga (KK)</label>
+                                        <input type="number" name="nomor_kk" class="form-control custom-input w-100 @error('nomor_kk') is-invalid @enderror" value="{{ old('nomor_kk') }}" placeholder="16 Digit Nomor KK">
                                     </div>
 
                                     <div class="col-12">
-                                        <label class="form-label">Nomor WhatsApp <span class="text-danger">*</span></label>
+                                        <label class="form-label">Nomor WhatsApp Aktif <span class="text-danger">*</span></label>
                                         <div class="input-group">
                                             <span class="input-group-text bg-light border-end-0"><i class="fa-brands fa-whatsapp text-success"></i></span>
                                             <input type="text" name="nomor_wa" class="form-control custom-input border-start-0 @error('nomor_wa') is-invalid @enderror" value="{{ old('nomor_wa') }}" required placeholder="Contoh: 085745808809">
@@ -175,174 +171,185 @@
                                     </div>
 
                                     <div class="col-12">
-                                        <label class="form-label">Alamat Domisili <span class="text-danger">*</span></label>
-                                        <textarea name="alamat_lengkap" class="form-control custom-input @error('alamat_lengkap') is-invalid @enderror" rows="3" required placeholder="Tuliskan alamat lengkap beserta RT/RW, Kelurahan, Kecamatan, dan Kabupaten">{{ old('alamat_lengkap') }}</textarea>
+                                        <label class="form-label">Alamat Domisili Sekarang <span class="text-danger">*</span></label>
+                                        <textarea name="alamat_lengkap" class="form-control custom-input w-100 @error('alamat_lengkap') is-invalid @enderror" rows="2" required placeholder="Tuliskan alamat rumah lengkap beserta RT/RW, Kecamatan, dan Kabupaten">{{ old('alamat_lengkap') }}</textarea>
                                     </div>
                                 </div>
 
-                                <div class="form-section-title border-bottom pb-2 mt-2">
-                                    <i class="fa-solid fa-location-dot"></i> Titik Lokasi GPS Perangkat
+                                <div class="form-section-title border-bottom pb-2">
+                                    <i class="fa-solid fa-motorcycle"></i> Detail Layanan & Spesifikasi Kendaraan
+                                </div>
+                                <div class="row g-3 mb-4">
+                                    <div class="col-12">
+                                        <label class="form-label">Jenis Layanan Standar Mitra <span class="text-danger">*</span></label>
+                                        <select name="jenis_layanan" class="form-select custom-select w-100 @error('jenis_layanan') is-invalid @enderror" required>
+                                            <option value="" selected disabled>-- Pilih Jenis Kendaraan Operasional --</option>
+                                            <option value="motor" {{ old('jenis_layanan') == 'motor' ? 'selected' : '' }}>Sancaka RIDE (Ojek Motor - Maks. 250cc)</option>
+                                            <option value="mobil" {{ old('jenis_layanan') == 'mobil' ? 'selected' : '' }}>Sancaka CAR (Mobil - Min. 1000cc)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Merek & Tipe <span class="text-danger">*</span></label>
+                                        <input type="text" name="merk_kendaraan" class="form-control custom-input w-100" value="{{ old('merk_kendaraan') }}" required placeholder="Honda Vario 150">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Tahun Pembuatan <span class="text-danger">*</span></label>
+                                        <input type="number" name="tahun_kendaraan" class="form-control custom-input w-100" value="{{ old('tahun_kendaraan') }}" required placeholder="2022">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Plat Nomor <span class="text-danger">*</span></label>
+                                        <input type="text" name="plat_nomor" class="form-control custom-input w-100 text-uppercase" value="{{ old('plat_nomor') }}" required placeholder="AE 1234 XX">
+                                    </div>
+                                </div>
+
+                                <div class="form-section-title border-bottom pb-2">
+                                    <i class="fa-solid fa-location-dot"></i> Pemetaan Titik Koordinat GPS Rumah / Pangkalan
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-12">
                                         <button type="button" id="btnGetLocation" class="btn btn-get-location w-100 rounded-3 py-2">
-                                            <i class="fa-solid fa-location-crosshairs me-2 text-danger"></i> Dapatkan Lokasi Otomatis via Perangkat
+                                            <i class="fa-solid fa-location-crosshairs me-2 text-danger"></i> Ambil Titik Lokasi GPS Perangkat Otomatis
                                         </button>
                                         <div id="gpsStatus" class="form-text mt-1 text-center"></div>
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">Latitude</label>
-                                        <input type="text" id="latitude" name="latitude" class="form-control custom-input" value="{{ old('latitude') }}" placeholder="-7.39338940">
+                                        <input type="text" id="latitude" name="latitude" class="form-control custom-input text-center w-100" value="{{ old('latitude') }}" placeholder="Latitude">
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">Longitude</label>
-                                        <input type="text" id="longitude" name="longitude" class="form-control custom-input" value="{{ old('longitude') }}" placeholder="111.44485420">
+                                        <input type="text" id="longitude" name="longitude" class="form-control custom-input text-center w-100" value="{{ old('longitude') }}" placeholder="Longitude">
                                     </div>
                                 </div>
                             </div>
 
-                            {{-- ================= KOLOM KANAN ================= --}}
+                            {{-- ================= KOLOM KANAN (Upload Berkas Dokumen) ================= --}}
                             <div class="col-lg-6">
                                 <div class="form-section-title border-bottom pb-2">
-                                    <i class="fa-solid fa-file-arrow-up"></i> Upload Dokumen Utama
+                                    <i class="fa-solid fa-file-arrow-up"></i> Upload Berkas Dokumen Driver (Foto Jelas)
                                 </div>
                                 
-                                <div class="alert alert-light border rounded-3 text-muted text-center py-2 mb-3" style="font-size: 0.85rem;">
-                                    <i class="fa-solid fa-circle-info me-1"></i> File Ekstensi: <strong>JPG, PNG, PDF</strong> (Maks: 5MB)
+                                <div class="alert alert-light border rounded-3 text-muted text-center py-2 mb-3" style="font-size: 0.8rem;">
+                                    <i class="fa-solid fa-circle-info me-1"></i> Format: <strong>JPG, PNG, PDF</strong> (Maksimal Ukuran: 5MB per File).
                                 </div>
 
-                                <div class="row g-3 mb-4">
+                                <div class="row g-3">
+                                    <h6 class="fw-bold mt-2 mb-0 text-secondary" style="font-size: 0.85rem;">A. Berkas Administrasi Diri</h6>
+                                    
                                     <div class="col-md-6">
-                                        <label class="form-label">KTP (Wajib)</label>
-                                        <input type="file" name="file_ktp" class="form-control custom-file-input" required accept=".jpg,.jpeg,.png,.pdf">
+                                        <label class="form-label">Foto Selfie / Wajah Pas <span class="text-danger">*</span></label>
+                                        <input type="file" name="foto_wajah" class="form-control custom-file-input w-100" required accept=".jpg,.jpeg,.png">
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">Kartu Keluarga (Wajib)</label>
-                                        <input type="file" name="file_kk" class="form-control custom-file-input" required accept=".jpg,.jpeg,.png,.pdf">
+                                        <label class="form-label">E-KTP Asli Terbaca <span class="text-danger">*</span></label>
+                                        <input type="file" name="file_ktp" class="form-control custom-file-input w-100" required accept=".jpg,.jpeg,.png,.pdf">
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">STNK Kendaraan (Wajib)</label>
-                                        <input type="file" name="file_stnk" class="form-control custom-file-input" required accept=".jpg,.jpeg,.png,.pdf">
+                                        <label class="form-label">SIM (A / C) Aktif <span class="text-danger">*</span></label>
+                                        <input type="file" name="file_sim" class="form-control custom-file-input w-100" required accept=".jpg,.jpeg,.png,.pdf">
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">BPKB Kendaraan (Wajib)</label>
-                                        <input type="file" name="file_bpkb" class="form-control custom-file-input" required accept=".jpg,.jpeg,.png,.pdf">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Foto Motor Tampak Samping (Wajib)</label>
-                                        <input type="file" name="foto_motor" class="form-control custom-file-input" required accept=".jpg,.jpeg,.png,.pdf">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label">Foto 4x6 Warna Biru (Wajib)</label>
-                                        <input type="file" name="foto_wajah" class="form-control custom-file-input" required accept=".jpg,.jpeg,.png,.pdf">
+                                        <label class="form-label">SKCK Kepolisian Aktif <span class="text-danger">*</span></label>
+                                        <input type="file" name="file_skck" class="form-control custom-file-input w-100" required accept=".jpg,.jpeg,.png,.pdf">
                                     </div>
                                     <div class="col-12">
-                                        <label class="form-label text-muted">Buku Nikah (Opsional)</label>
-                                        <input type="file" name="file_buku_nikah" class="form-control custom-file-input" accept=".jpg,.jpeg,.png,.pdf">
+                                        <label class="form-label">Halaman Depan Buku Rekening Bank <span class="text-danger">*</span></label>
+                                        <input type="file" name="file_buku_rekening" class="form-control custom-file-input w-100" required accept=".jpg,.jpeg,.png,.pdf">
+                                        <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">Nama rekening bank wajib mutlak sama dengan KTP pendaftar.</small>
+                                    </div>
+
+                                    <h6 class="fw-bold mt-4 mb-0 text-secondary" style="font-size: 0.85rem;">B. Berkas Kendaraan Operasional</h6>
+                                    
+                                    <div class="col-md-6">
+                                        <label class="form-label">STNK Asli (Pajak Hidup) <span class="text-danger">*</span></label>
+                                        <input type="file" name="file_stnk" class="form-control custom-file-input w-100" required accept=".jpg,.jpeg,.png,.pdf">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Foto Kendaraan (Tampak Samping) <span class="text-danger">*</span></label>
+                                        <input type="file" name="foto_motor" class="form-control custom-file-input w-100" required accept=".jpg,.jpeg,.png">
+                                    </div>
+
+                                    <h6 class="fw-bold mt-4 mb-0 text-secondary" style="font-size: 0.85rem;">C. Berkas Pendukung (Tambahan / Opsional)</h6>
+                                    
+                                    <div class="col-md-4">
+                                        <label class="form-label text-muted">Kartu Keluarga (KK)</label>
+                                        <input type="file" name="file_kk" class="form-control custom-file-input w-100" accept=".jpg,.jpeg,.png,.pdf">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label text-muted">BPKB Lembar Utama</label>
+                                        <input type="file" name="file_bpkb" class="form-control custom-file-input w-100" accept=".jpg,.jpeg,.png,.pdf">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label text-muted">Buku Nikah KUA</label>
+                                        <input type="file" name="file_buku_nikah" class="form-control custom-file-input w-100" accept=".jpg,.jpeg,.png,.pdf">
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {{-- ================= BARIS FULL WIDTH DI BAWAH: PERATURAN & KETENTUAN ================= --}}
-                        <div class="row mt-4">
+                        {{-- ================= BOX FULL WIDTH DI BAWAH: PERATURAN & KETENTUAN SCROLL ================= --}}
+                        <div class="row mt-5">
                             <div class="col-12">
                                 <div class="form-section-title border-bottom pb-2">
-                                    <i class="fa-solid fa-scale-balanced"></i> Ketentuan Pendaftaran Mitra & Kebijakan Privasi
+                                    <i class="fa-solid fa-scale-balanced"></i> Syarat Ketentuan Kemitraan & Kebijakan Privasi
                                 </div>
-                                <p class="text-muted small mb-2"><i class="fa-solid fa-circle-exclamation text-danger"></i> Anda wajib membaca dan melakukan <strong>scroll ke bawah sampai selesai</strong> pada teks Box Peraturan berikut untuk mengaktifkan tombol daftar.</p>
+                                <p class="text-muted small mb-2"><i class="fa-solid fa-circle-exclamation text-danger"></i> Harap baca lembar dokumen ini dengan cara **melakukan scroll box ke bawah sampai selesai** untuk mengaktifkan persetujuan.</p>
                                 
-                                {{-- Box Peraturan Gabungan --}}
                                 <div id="tosScrollBox" class="tos-scroll-box mb-3 shadow-inner">
-                                    <h5 class="fw-bold text-danger border-bottom pb-1 mb-2">PERATURAN UTAMA MITRA DRIVER & KURIR SANCAKA</h5>
-                                    <ol class="ps-3 mb-4 font-bold text-dark">
-                                        <li><strong>Kepatuhan Operasional:</strong> Mitra bersedia mematuhi jam operasional, standar pelayanan pengantaran penumpang (Ojek), serta penanganan paket express/marketplace sesuai SOP Sancaka Express.</li>
-                                        <li><strong>Kelayakan Perangkat & Kendaraan:</strong> Kendaraan yang didaftarkan wajib memiliki STNK aktif, pajak hidup, serta kondisi mekanis yang aman. Handphone wajib mendukung sinyal internet stabil untuk akurasi peta.</li>
-                                        <li><strong>Kejujuran Transaksi:</strong> Dilarang keras melakukan transaksi palsu (Fiktif), kecurangan manipulasi GPS (Fake GPS), atau penyalahgunaan akun. Pelanggaran berakibat pada pemblokiran permanen (Putus Mitra) tanpa pencairan sisa saldo.</li>
-                                        <li><strong>Tarif Resmi Platform:</strong> Seluruh sistem penarifan, bagi hasil, dan ongkos kirim wajib mengikuti ketentuan mutlak aplikasi Sancaka Marketplace / Toko Sancaka. Dilarang memungut biaya tambahan di luar platform kepada customer secara sepihak.</li>
-                                        <li><strong>Perlindungan Barang & Penumpang:</strong> Driver bertanggung jawab penuh atas keselamatan penumpang dan keutuhan paket yang dibawa sejak serah terima hingga tujuan. Segala kehilangan akibat kelalaian driver menjadi tanggung jawab pribadi.</li>
-                                    </ol>
+                                    <h5 class="fw-bold text-danger border-bottom pb-1 mb-2">PERSYARATAN & PERATURAN MITRA DRIVER SANCAKA</h5>
+                                    
+                                    <h6 class="fw-bold mt-3 text-dark">1. Persyaratan Kualifikasi Mitra Driver (Standar Resmi)</h6>
+                                    <ul class="ps-3 mb-3 text-dark">
+                                        <li>Batas Usia pendaftar adalah <strong>18 tahun hingga 65 tahun</strong> pada saat pendaftaran.</li>
+                                        <li>Memiliki dokumen identitas (e-KTP), SIM C (untuk Ride) atau SIM A/B (untuk Car) yang masih berlaku.</li>
+                                        <li>Wajib melampirkan <strong>Surat Keterangan Catatan Kepolisian (SKCK)</strong> yang masih aktif/berlaku.</li>
+                                        <li>Memiliki rekening Bank atas nama sendiri sesuai dengan KTP untuk pencairan komisi (Withdrawal).</li>
+                                    </ul>
 
-                                    <h5 class="fw-bold border-bottom pb-1 mb-2">KEBIJAKAN PRIVASI</h5>
-                                    <p>Privasi Anda adalah prioritas utama kami di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace.<br>
-                                    Dokumen ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi pribadi Anda saat menggunakan layanan kami. Dengan menggunakan situs atau aplikasi kami, Anda dianggap telah menyetujui seluruh isi Kebijakan Privasi ini.</p>
+                                    <h6 class="fw-bold text-dark">2. Spesifikasi Standar Kendaraan</h6>
+                                    <ul class="ps-3 mb-3 text-dark">
+                                        <li>Tahun produksi/pembuatan kendaraan maksimal <strong>8 tahun terakhir</strong> (Batas minimal tahun kendaraan mengikuti aturan tahun berjalan sistem).</li>
+                                        <li>Kapasitas mesin motor maksimal 250cc (mesin 4 tak). Dilarang mendaftarkan motor tipe Trail atau Sport Modifikasi ekstrim.</li>
+                                        <li>Mobil (Car) diwajibkan berkapasitas mesin minimal 1.000cc.</li>
+                                        <li>Kondisi fisik kendaraan harus layak jalan, bodi tidak hancur, mesin tidak brebet, ban tidak gundul, serta lampu & rem berfungsi 100%.</li>
+                                    </ul>
+
+                                    <h6 class="fw-bold text-dark">3. Kepatuhan & Kejujuran Operasional (Anti Fraud)</h6>
+                                    <ul class="ps-3 mb-4 text-dark">
+                                        <li>Mitra dilarang keras menggunakan aplikasi pihak ketiga untuk memanipulasi koordinat lokasi (Fake GPS / Tuyul).</li>
+                                        <li>Dilarang melakukan orderan Fiktif (transaksi palsu) bersama rekan atau pelanggan komplotan untuk mengejar bonus / insentif harian.</li>
+                                        <li>Akun driver dilarang dipindahtangankan, dijualbelikan, atau digantikan oleh joki. 1 Akun mutlak untuk 1 Identitas KTP & Wajah terdaftar.</li>
+                                        <li>Segala bentuk pelanggaran Anti Fraud (Kecurangan) akan berakibat pada <strong>Pemblokiran Akun Permanen (Putus Mitra)</strong> dan pembekuan saldo di dalam dompet aplikasi.</li>
+                                    </ul>
+
+                                    <h5 class="fw-bold border-bottom pb-1 mb-2 mt-4">KEBIJAKAN PRIVASI</h5>
+                                    <p>Privasi Anda adalah prioritas utama kami di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace. Dokumen ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi pribadi Anda. Dengan menggunakan situs atau aplikasi kami, Anda dianggap telah menyetujui seluruh isi Kebijakan Privasi ini.</p>
                                     
                                     <h6>1. Informasi yang Kami Kumpulkan</h6>
-                                    <p>Kami dapat mengumpulkan data berikut:<br>
-                                    Nama lengkap, alamat email, dan nomor telepon<br>
-                                    Alamat pengiriman dan penagihan<br>
-                                    Data transaksi & riwayat belanja<br>
-                                    Informasi pembayaran (hanya melalui saluran resmi, tidak kami simpan detail kartu)<br>
-                                    Data lokasi (jika Anda mengaktifkan layanan berbasis lokasi)</p>
+                                    <p>Kami dapat mengumpulkan data berupa: Nama lengkap, alamat email, nomor telepon, alamat pengiriman/penagihan, data lokasi live GPS, dan dokumen foto kelayakan berkas kendaraan.</p>
 
-                                    <h6>2. Cara Pengumpulan Data</h6>
-                                    <p>Data diperoleh melalui formulir pendaftaran akun, transaksi pembelian & pemesanan layanan, penggunaan cookie di situs web, serta komunikasi melalui email, WhatsApp, atau live chat.</p>
+                                    <h6>2. Perlindungan & Pembagian Informasi</h6>
+                                    <p>Kami menerapkan teknologi enkripsi dan prosedur keamanan standar industri untuk melindungi data pribadi Anda. Kami tidak menjual atau menyewakan data pribadi Anda ke pihak periklanan manapun.</p>
 
-                                    <h6>3. Tujuan Penggunaan Informasi</h6>
-                                    <p>Data pribadi digunakan untuk memproses pesanan dan mengirimkan produk/jasa, menyediakan dukungan pelanggan, meningkatkan kualitas layanan, mengirimkan notifikasi/promo, serta mencegah penipuan.</p>
+                                    <h6>3. Izin Akses Perangkat (Permissions)</h6>
+                                    <p>Untuk memastikan aplikasi dapat berjalan optimal melacak rute orderan, kami meminta izin akses konfirmasi perangkat atas Kamera (Foto bukti drop paket), GPS Lokasi (Pelacakan maps real-time kurir), dan sinkronisasi data internet.</p>
 
-                                    <h6>4. Penggunaan Cookie</h6>
-                                    <p>Kami menggunakan cookie untuk menyimpan preferensi pengguna, melacak aktivitas, dan meningkatkan pengalaman saat menggunakan layanan.</p>
-
-                                    <h6>5. Perlindungan Data</h6>
-                                    <p>Kami menerapkan teknologi enkripsi dan prosedur keamanan standar industri untuk melindungi data pribadi Anda. Meskipun demikian, kami tidak dapat menjamin 100% keamanan informasi dari transmisi data internet.</p>
-
-                                    <h6>6. Pembagian Informasi</h6>
-                                    <p>Kami tidak menjual atau menyewakan data pribadi Anda. Informasi hanya dibagikan kepada partner logistik/ekspedisi, penyedia pembayaran resmi, atau pihak berwenang jika diwajibkan oleh hukum.</p>
-
-                                    <h6>7. Hak Pengguna</h6>
-                                    <p>Anda memiliki hak untuk meminta salinan data pribadi Anda, memperbaiki data yang salah atau tidak akurat, meminta penghapusan data, atau menolak penggunaan data pemasaran.</p>
-
-                                    <h6>8. Penyimpanan Data</h6>
-                                    <p>Data pribadi Anda akan disimpan selama akun aktif atau selama diperlukan untuk memenuhi tujuan yang disebutkan dalam kebijakan ini.</p>
-
-                                    <h6>9. Keamanan Transaksi</h6>
-                                    <p>Semua transaksi hanya dapat dilakukan melalui metode pembayaran resmi yang tersedia di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace.</p>
-
-                                    <h6>10. Layanan Pihak Ketiga</h6>
-                                    <p>Situs atau aplikasi kami dapat memuat tautan ke layanan pihak ketiga. Kami tidak bertanggung jawab atas kebijakan privasi pihak ketiga tersebut.</p>
-
-                                    <h6>11. Kebijakan Anak-anak</h6>
-                                    <p>Layanan kami tidak ditujukan untuk anak-anak di bawah usia 13 tahun. Kami tidak sengaja mengumpulkan informasi pribadi dari anak-anak.</p>
-
-                                    <h6>12. Proses Delivery</h6>
-                                    <p>Estimasi pengiriman ditentukan oleh pihak ekspedisi. Kami tidak bertanggung jawab atas kesalahan pengiriman akibat informasi alamat yang tidak lengkap atau salah.</p>
-
-                                    <h6>13. Pembatalan Pesanan (Cancel)</h6>
-                                    <p>Pesanan dapat dibatalkan sebelum status berubah menjadi "Diproses". Setelah pesanan diproses atau dikirim, pembatalan tidak dapat dilakukan.</p>
-
-                                    <h6>14. Kebijakan Pengembalian & Refund</h6>
-                                    <p>Anda berhak mengajukan refund jika produk yang diterima rusak/cacat produksi, tidak sesuai deskripsi, atau hilang dalam proses pengiriman setelah konfirmasi ekspedisi.</p>
-
-                                    <h6>15. Perubahan Kebijakan</h6>
-                                    <p>Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Versi terbaru akan ditampilkan di situs web.</p>
-
-                                    <h6>16. Persetujuan</h6>
-                                    <p>Dengan menggunakan layanan kami, Anda menyatakan telah membaca, memahami, dan menyetujui seluruh isi Kebijakan Privasi ini.</p>
-
-                                    <h6>17. Izin Akses Perangkat (Permissions)</h6>
-                                    <p>Untuk memastikan aplikasi berfungsi optimal, kami meminta izin akses ke Kamera (foto profil/QR), GPS/Lokasi (akurasi pengantaran kurir), Browser/Akses Internet, dan Pengiriman sinkronisasi Data Pribadi.</p>
-
-                                    <h6>18. Kontak Kami</h6>
-                                    <p>Jika Anda memiliki pertanyaan keluhan silakan hubungi kami melalui halaman kontak resmi di Sancaka Express.</p>
-
-                                    <h5 class="fw-bold border-bottom pb-1 mb-2 mt-4">SYARAT & KETENTUAN</h5>
+                                    <h5 class="fw-bold border-bottom pb-1 mb-2 mt-4">SYARAT & KETENTUAN PLATFORM</h5>
                                     <p>Halaman ini berisi syarat & ketentuan resmi yang berlaku di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace. Mohon dibaca dengan seksama karena semua poin ini mengikat setiap pengguna layanan kami.</p>
                                     <p>Penerimaan Ketentuan, Pendaftaran Akun valid, Kerahasiaan sandi pengguna, Penggunaan platform yang sah secara hukum Republik Indonesia, Transaksi luar platform tidak diakui, klaim paket rusak maksimal 1x24 jam wajib menyertakan bukti video unboxing, pembatalan sepihak dilarang jika pesanan kurir sudah berjalan, penyalahgunaan akun berakibat penonaktifan sepihak oleh admin, penyelesaian sengketa diselesaikan secara kekeluargaan / musyawarah mufakat.</p>
-                                    <p class="fw-bold text-success text-center mt-3 bg-light p-2 border rounded">--- AKHIR DOKUMEN PERATURAN ---</p>
+                                    
+                                    <p class="fw-bold text-success text-center mt-4 bg-light p-2 border rounded">--- AKHIR DOKUMEN PERATURAN ---</p>
                                 </div>
 
-                                {{-- Pilihan Persetujuan & Tanda Centang --}}
+                                {{-- Centang Konfirmasi --}}
                                 <div class="form-check mb-4 bg-light p-3 rounded border d-flex align-items-center gap-2" id="checkboxWrapper" style="opacity: 0.5; pointer-events: none;">
                                     <input class="form-check-input ms-0" type="checkbox" value="" id="agreeCheckbox" disabled>
                                     <label class="form-check-input-label fw-bold text-dark small" for="agreeCheckbox" style="cursor: pointer;">
-                                        Saya telah membaca lengkap Peraturan Mitra & Kebijakan Privasi, dan saya setuju terikat secara hukum dengan ketentuan Sancaka Express.
+                                        Saya menjamin seluruh berkas adalah asli. Saya telah membaca lengkap aturan Mitra, Anti-Fraud, & Kebijakan Privasi Sancaka Express.
                                     </label>
                                 </div>
 
-                                {{-- Tombol Submit Form --}}
+                                {{-- Tombol Kirim Form --}}
                                 <button type="submit" id="submitBtn" class="btn btn-secondary btn-lg w-100 rounded-pill fw-bold shadow-sm py-3" disabled>
-                                    <i class="fa-solid fa-lock me-2"></i> Baca Peraturan Terlebih Dahulu
+                                    <i class="fa-solid fa-lock me-2"></i> Silakan Scroll Peraturan Terlebih Dahulu
                                 </button>
                             </div>
                         </div>
@@ -355,12 +362,9 @@
     </div>
 </div>
 
-{{-- =========================================================== --}}
-{{-- JAVASCRIPT: LOKASI GPS & SCROLL TO ENABLE BUTTON            --}}
-{{-- =========================================================== --}}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // --- LOGIC GPS ---
+        // --- LOGIC DETEKSI GPS MAPS ---
         const btnGetLocation = document.getElementById('btnGetLocation');
         const latInput = document.getElementById('latitude');
         const lngInput = document.getElementById('longitude');
@@ -368,34 +372,30 @@
 
         btnGetLocation.addEventListener('click', function() {
             if (navigator.geolocation) {
-                btnGetLocation.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Mencari koordinat...';
+                btnGetLocation.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Sinkronisasi Koordinat...';
                 btnGetLocation.disabled = true;
-                statusText.innerHTML = '<span class="text-muted">Sedang meminta izin akses lokasi...</span>';
+                statusText.innerHTML = '<span class="text-muted">Meminta izin GPS satelit...</span>';
 
                 navigator.geolocation.getCurrentPosition(
                     function(position) {
                         latInput.value = position.coords.latitude;
                         lngInput.value = position.coords.longitude;
-                        btnGetLocation.innerHTML = '<i class="fa-solid fa-check text-success me-2"></i> Berhasil Didapatkan';
+                        btnGetLocation.innerHTML = '<i class="fa-solid fa-check text-success me-2"></i> Lokasi Terkunci';
                         btnGetLocation.classList.replace('btn-get-location', 'btn-light');
                         btnGetLocation.disabled = false;
-                        statusText.innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-check-circle"></i> Koordinat berhasil disinkronkan! Gunakan HP untuk mendapatkan titik yang akurat, Terimakasih</span>';
-                        setTimeout(() => {
-                            btnGetLocation.innerHTML = '<i class="fa-solid fa-location-crosshairs me-2 text-danger"></i> Perbarui Lokasi Perangkat';
-                            btnGetLocation.classList.replace('btn-light', 'btn-get-location');
-                        }, 3000);
+                        statusText.innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-check-circle"></i> Titik koordinat berhasil dimasukkan otomatis!</span>';
                     },
                     function(error) {
                         btnGetLocation.disabled = false;
-                        btnGetLocation.innerHTML = '<i class="fa-solid fa-location-crosshairs me-2 text-danger"></i> Dapatkan Lokasi Otomatis via Perangkat';
-                        statusText.innerHTML = '<span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> Gagal mendeteksi GPS. Silakan isi manual.</span>';
+                        btnGetLocation.innerHTML = '<i class="fa-solid fa-location-crosshairs me-2 text-danger"></i> Dapatkan Lokasi GPS Otomatis';
+                        statusText.innerHTML = '<span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> GPS Gagal dideteksi. Silakan input manual.</span>';
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             }
         });
 
-        // --- LOGIC SCROLL TO READ (Wajib Baca Sebelum Daftar) ---
+        // --- LOGIC SCROLL VALIDATION ---
         const tosBox = document.getElementById('tosScrollBox');
         const agreeCheckbox = document.getElementById('agreeCheckbox');
         const checkboxWrapper = document.getElementById('checkboxWrapper');
@@ -404,32 +404,24 @@
         let hasScrolledToBottom = false;
 
         tosBox.addEventListener('scroll', function() {
-            // Toleransi 5 piksel dari bawah box untuk mendeteksi scroll mentok dasar
-            if (!hasScrolledToBottom && (tosBox.scrollHeight - tosBox.scrollTop <= tosBox.clientHeight + 5)) {
+            if (!hasScrolledToBottom && (tosBox.scrollHeight - tosBox.scrollTop <= tosBox.clientHeight + 6)) {
                 hasScrolledToBottom = true;
-                
-                // Aktifkan area checkbox persetujuan
                 checkboxWrapper.style.opacity = "1";
                 checkboxWrapper.style.pointerEvents = "auto";
                 agreeCheckbox.disabled = false;
-                
-                // Berikan tanda visual box berganti border hijau sebagai indikator selesai baca
-                tosBox.style.borderColor = "#10b981";
+                tosBox.style.borderColor = "#10b981"; // Ganti border box jadi hijau tanda lulus baca
             }
         });
 
-        // Listener Checkbox untuk memicu tombol aktif jadi merah
         agreeCheckbox.addEventListener('change', function() {
             if (agreeCheckbox.checked && hasScrolledToBottom) {
-                // Tombol aktif penuh (Warna Merah Sancaka)
                 submitBtn.disabled = false;
                 submitBtn.classList.replace('btn-secondary', 'btn-danger');
-                submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Kirim Pendaftaran Sekarang';
+                submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Kirim Berkas Pendaftaran Mitra';
             } else {
-                // Kunci kembali tombol jika centang dilepas
                 submitBtn.disabled = true;
                 submitBtn.classList.replace('btn-danger', 'btn-secondary');
-                submitBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i> Baca Peraturan Terlebih Dahulu';
+                submitBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i> Silakan Scroll Peraturan Terlebih Dahulu';
             }
         });
     });
