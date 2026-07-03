@@ -153,15 +153,19 @@ class RegisterDriverOnlineController extends Controller
             elseif (count($dates) == 1) $query->whereDate('created_at', $dates[0]);
         }
 
-        $totalDrivers = RegistrasiDriverSancaka::count();
+     $totalDrivers = RegistrasiDriverSancaka::count();
         $pendingDrivers = RegistrasiDriverSancaka::where('status', 'pending')->count();
         $approvedDrivers = RegistrasiDriverSancaka::where('status', 'approved')->count();
         $rejectedDrivers = RegistrasiDriverSancaka::where('status', 'rejected')->count();
+        
+        // TAMBAHKAN BARIS INI:
+        $frozenDrivers = RegistrasiDriverSancaka::where('status', 'freeze')->count();
 
+        // JANGAN LUPA TAMBAHKAN 'frozenDrivers' DI DALAM COMPACT:
         $drivers = $query->orderBy('created_at', 'desc')->paginate(10);
-
-        return view('admin.drivers.index', compact('drivers', 'totalDrivers', 'pendingDrivers', 'approvedDrivers', 'rejectedDrivers'));
-    }
+        return view('admin.drivers.index', compact('drivers', 'totalDrivers', 'pendingDrivers', 'approvedDrivers', 'rejectedDrivers', 'frozenDrivers'));
+        
+        }
 
    public function updateStatus(Request $request, $id)
     {

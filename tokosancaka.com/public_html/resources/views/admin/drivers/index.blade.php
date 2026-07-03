@@ -56,8 +56,9 @@
         </div>
     @endif
 
-    {{-- STATISTIK (CLEAN & ELEGANT) --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+   {{-- STATISTIK (CLEAN & ELEGANT) --}}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
+        
         <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center justify-between transition hover:shadow-md">
             <div>
                 <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Total Pendaftar</p>
@@ -97,6 +98,17 @@
                 <i class="fas fa-times-circle text-xl"></i>
             </div>
         </div>
+
+        {{-- TAMBAHAN CARD KE-5: FROZEN --}}
+        <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center justify-between transition hover:shadow-md">
+            <div>
+                <p class="text-xs font-semibold text-cyan-500 uppercase tracking-wider mb-1">Tidak Aktif</p>
+                <p class="text-3xl font-bold text-gray-800">{{ $frozenDrivers }}</p>
+            </div>
+            <div class="h-12 w-12 rounded-full bg-cyan-50 border border-cyan-100 flex items-center justify-center text-cyan-500">
+                <i class="fas fa-snowflake text-xl"></i>
+            </div>
+        </div>
     </div>
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -112,6 +124,8 @@
                     <a href="{{ route('admin.drivers.index', array_merge($baseQuery, ['status'=>'pending', 'page'=>1])) }}" class="whitespace-nowrap px-4 py-2 text-sm font-medium rounded-lg transition-all {{ request('status')=='pending' ? 'bg-amber-500 text-white shadow-md' : 'bg-white text-slate-600 border border-gray-200 hover:bg-slate-50' }}">Pending</a>
                     <a href="{{ route('admin.drivers.index', array_merge($baseQuery, ['status'=>'approved', 'page'=>1])) }}" class="whitespace-nowrap px-4 py-2 text-sm font-medium rounded-lg transition-all {{ request('status')=='approved' ? 'bg-emerald-500 text-white shadow-md' : 'bg-white text-slate-600 border border-gray-200 hover:bg-slate-50' }}">Approved</a>
                     <a href="{{ route('admin.drivers.index', array_merge($baseQuery, ['status'=>'rejected', 'page'=>1])) }}" class="whitespace-nowrap px-4 py-2 text-sm font-medium rounded-lg transition-all {{ request('status')=='rejected' ? 'bg-rose-500 text-white shadow-md' : 'bg-white text-slate-600 border border-gray-200 hover:bg-slate-50' }}">Rejected</a>
+                    <a href="{{ route('admin.drivers.index', array_merge($baseQuery, ['status'=>'freeze', 'page'=>1])) }}" class="whitespace-nowrap px-4 py-2 text-sm font-medium rounded-lg transition-all {{ request('status')=='freeze' ? 'bg-cyan-500 text-white shadow-md' : 'bg-white text-slate-600 border border-gray-200 hover:bg-slate-50' }}">Frozen</a>
+                
                 </div>
 
                 {{-- FILTER FORM --}}
