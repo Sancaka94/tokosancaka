@@ -91,8 +91,7 @@
             <div class="card register-card">
                 <div class="register-header d-flex justify-content-between align-items-center flex-wrap gap-3">
                     <!-- Logo Kiri -->
-                    <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Kiri" style="max-height: 65px; width: auto; object-fit: contain;">
-
+                    <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Kiri" style="max-height: 65px; width: auto; object-fit: contain; background-color: #ffffff; padding: 6px; border-radius: 8px;">
                     <!-- Teks Judul (Tengah) -->
                     <div class="text-center flex-grow-1">
                         <h2 class="fw-bold mb-1" style="font-size: 1.8rem; color: #ffffff;">Gabung Menjadi Mitra Driver Sancaka</h2>
