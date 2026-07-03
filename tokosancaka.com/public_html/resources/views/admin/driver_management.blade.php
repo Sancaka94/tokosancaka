@@ -1,50 +1,62 @@
 @extends('layouts.admin')
 
 @section('content')
-<div class="container-fluid py-4">
+<div class="w-full px-4 py-6 mx-auto">
     <!-- Header & Title -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="fw-bold m-0 text-dark">Manajemen Pendaftaran Driver</h3>
+    <div class="flex justify-between items-center mb-6">
+        <h3 class="text-2xl font-bold text-gray-800 m-0">Manajemen Pendaftaran Driver</h3>
     </div>
 
-    <!-- Alert Notifications -->
+    <!-- Alert Notifications (Menggunakan Alpine.js untuk fitur dismiss) -->
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
-            <i class="bi bi-check-circle-fill me-2"></i> {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div x-data="{ show: true }" x-show="show" class="flex items-center justify-between p-4 mb-6 text-sm text-green-800 bg-green-50 border border-green-200 rounded-xl shadow-sm">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-circle-check text-lg"></i>
+                <span class="font-medium">{{ session('success') }}</span>
+            </div>
+            <button @click="show = false" type="button" class="text-green-600 hover:text-green-900 focus:outline-none">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
         </div>
     @endif
 
     @if(session('error'))
-        <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div x-data="{ show: true }" x-show="show" class="flex items-center justify-between p-4 mb-6 text-sm text-red-800 bg-red-50 border border-red-200 rounded-xl shadow-sm">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+                <span class="font-medium">{{ session('error') }}</span>
+            </div>
+            <button @click="show = false" type="button" class="text-red-600 hover:text-red-900 focus:outline-none">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
         </div>
     @endif
 
     <!-- Filter & Search Section -->
-    <div class="card border-0 shadow-sm rounded-4 mb-4">
-        <div class="card-body p-4">
-            <form method="GET" action="{{ route('admin.drivers.index') }}" class="row g-3">
-                <div class="col-md-5">
-                    <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-lg bg-light border-0 rounded-3" placeholder="Cari nama atau nomor WA...">
+    <div class="bg-white border border-gray-100 shadow-sm rounded-xl mb-6">
+        <div class="p-5">
+            <form method="GET" action="{{ route('admin.drivers.index') }}" class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                <div class="md:col-span-5">
+                    <input type="text" name="search" value="{{ request('search') }}" 
+                           class="w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-4 py-2.5 transition-colors" 
+                           placeholder="Cari nama atau nomor WA...">
                 </div>
-                <div class="col-md-3">
-                    <select name="status" class="form-select form-select-lg bg-light border-0 rounded-3">
+                <div class="md:col-span-3">
+                    <select name="status" class="w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block px-4 py-2.5 transition-colors">
                         <option value="">Semua Status</option>
                         <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
                         <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-dark btn-lg w-100 rounded-3">
-                        <i class="bi bi-funnel"></i> Filter
+                <div class="md:col-span-2">
+                    <button type="submit" class="w-full flex justify-center items-center gap-2 bg-gray-800 hover:bg-gray-900 text-white font-medium rounded-lg text-sm px-4 py-2.5 transition-colors shadow-sm">
+                        <i class="fa-solid fa-filter"></i> Filter
                     </button>
                 </div>
-                <div class="col-md-2">
-                    <button type="button" class="btn btn-danger btn-lg w-100 rounded-3" id="btn-bulk-delete">
-                        <i class="bi bi-trash"></i> Hapus Massal
+                <div class="md:col-span-2">
+                    <button type="button" id="btn-bulk-delete" class="w-full flex justify-center items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg text-sm px-4 py-2.5 transition-colors shadow-sm">
+                        <i class="fa-solid fa-trash-can"></i> Hapus Massal
                     </button>
                 </div>
             </form>
@@ -52,78 +64,77 @@
     </div>
 
     <!-- Data Table Section -->
-    <div class="card border-0 shadow-sm rounded-4">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="ps-4" style="width: 50px;">
-                                <input class="form-check-input" type="checkbox" id="checkAll">
-                            </th>
-                            <th>Nama Lengkap</th>
-                            <th>No. WhatsApp</th>
-                            <th>Status</th>
-                            <th>Tanggal Daftar</th>
-                            <th class="text-center pe-4">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody class="border-top-0">
-                        @forelse($drivers as $driver)
-                        <tr>
-                            <td class="ps-4">
-                                <input class="form-check-input driver-checkbox" type="checkbox" value="{{ $driver->id }}">
-                            </td>
-                            <td class="fw-semibold text-dark">{{ $driver->nama_lengkap }}</td>
-                            <td>{{ $driver->nomor_wa }}</td>
-                            <td>
-                                @if($driver->status == 'pending')
-                                    <span class="badge bg-warning text-dark rounded-pill px-3 py-2">Pending</span>
-                                @elseif($driver->status == 'approved')
-                                    <span class="badge bg-success rounded-pill px-3 py-2">Approved</span>
-                                @else
-                                    <span class="badge bg-danger rounded-pill px-3 py-2">Rejected</span>
-                                @endif
-                            </td>
-                            <td class="text-muted">{{ $driver->created_at->format('d M Y') }}</td>
-                            <td class="text-center pe-4">
-                                <!-- Action Buttons -->
-                                <div class="btn-group shadow-sm rounded-3">
-                                    <button type="button" class="btn btn-light btn-sm text-primary" data-bs-toggle="modal" data-bs-target="#detailModal{{ $driver->id }}" title="Detail & Verifikasi">
-                                        <i class="bi bi-eye"></i>
+    <div class="bg-white border border-gray-100 shadow-sm rounded-xl overflow-hidden mb-6">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left text-gray-600 align-middle">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th scope="col" class="px-6 py-4 w-12">
+                            <input type="checkbox" id="checkAll" class="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                        </th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Nama Lengkap</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">No. WhatsApp</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Status</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Tanggal Daftar</th>
+                        <th scope="col" class="px-6 py-4 font-semibold text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @forelse($drivers as $driver)
+                    <tr class="bg-white hover:bg-gray-50 transition-colors duration-200">
+                        <td class="px-6 py-4">
+                            <input type="checkbox" value="{{ $driver->id }}" class="driver-checkbox w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                        </td>
+                        <td class="px-6 py-4 font-semibold text-gray-800 whitespace-nowrap">{{ $driver->nama_lengkap }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ $driver->nomor_wa }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            @if($driver->status == 'pending')
+                                <span class="bg-yellow-100 text-yellow-800 text-xs font-semibold px-3 py-1 rounded-full">Pending</span>
+                            @elseif($driver->status == 'approved')
+                                <span class="bg-green-100 text-green-800 text-xs font-semibold px-3 py-1 rounded-full">Approved</span>
+                            @else
+                                <span class="bg-red-100 text-red-800 text-xs font-semibold px-3 py-1 rounded-full">Rejected</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4 text-gray-500 whitespace-nowrap">{{ $driver->created_at->format('d M Y') }}</td>
+                        <td class="px-6 py-4 text-center">
+                            <!-- Action Buttons -->
+                            <div class="flex items-center justify-center gap-2">
+                                <!-- Catatan: Atribut data-bs-toggle dipertahankan agar Modal Bootstrap lama tetap bisa terpanggil -->
+                                <button type="button" data-bs-toggle="modal" data-bs-target="#detailModal{{ $driver->id }}" class="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-colors shadow-sm" title="Detail & Verifikasi">
+                                    <i class="fa-solid fa-eye fa-fw"></i>
+                                </button>
+                                <button type="button" data-bs-toggle="modal" data-bs-target="#editModal{{ $driver->id }}" class="p-2 text-yellow-600 bg-yellow-50 hover:bg-yellow-100 hover:text-yellow-700 rounded-lg transition-colors shadow-sm" title="Edit Data">
+                                    <i class="fa-solid fa-pen fa-fw"></i>
+                                </button>
+                                <form action="{{ route('admin.drivers.destroy', $driver->id) }}" method="POST" class="inline-block m-0" onsubmit="return confirm('Apakah Anda yakin ingin menghapus permanen data ini?');">
+                                    @csrf 
+                                    @method('DELETE')
+                                    <button type="submit" class="p-2 text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 rounded-lg transition-colors shadow-sm" title="Hapus">
+                                        <i class="fa-solid fa-trash-can fa-fw"></i>
                                     </button>
-                                    <button type="button" class="btn btn-light btn-sm text-warning" data-bs-toggle="modal" data-bs-target="#editModal{{ $driver->id }}" title="Edit Data">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
-                                    <form action="{{ route('admin.drivers.destroy', $driver->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus permanen data ini?');">
-                                        @csrf 
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-light btn-sm text-danger" title="Hapus">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
+                                </form>
+                            </div>
 
-                                <!-- Modals (Detail & Edit) dipanggil dari file partial -->
-                                @include('admin.partials._driver_modals', ['driver' => $driver])
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="6" class="text-center py-5 text-muted">
-                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                                Belum ada data pendaftaran.
-                            </td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                            <!-- Modals (Detail & Edit) -->
+                            @include('admin.partials._driver_modals', ['driver' => $driver])
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-400">
+                            <i class="fa-solid fa-inbox text-4xl block mb-3"></i>
+                            <span class="text-sm font-medium">Belum ada data pendaftaran.</span>
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
         
         <!-- Pagination -->
         @if($drivers->hasPages())
-        <div class="card-footer bg-white border-0 py-3">
+        <div class="p-4 border-t border-gray-100 bg-white">
             {{ $drivers->links() }}
         </div>
         @endif
@@ -157,10 +168,11 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (confirm('Anda yakin ingin menghapus ' + selectedIds.length + ' data terpilih secara permanen?')) {
-                // Tampilkan loading state pada tombol
+                // Tampilkan loading state pada tombol dengan icon FontAwesome spinner
                 const originalText = btnBulkDelete.innerHTML;
-                btnBulkDelete.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Menghapus...';
+                btnBulkDelete.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Menghapus...';
                 btnBulkDelete.disabled = true;
+                btnBulkDelete.classList.add('opacity-75', 'cursor-not-allowed');
 
                 fetch("{{ route('admin.drivers.bulk_destroy') }}", {
                     method: 'POST',
@@ -176,18 +188,22 @@ document.addEventListener('DOMContentLoaded', function () {
                         location.reload();
                     } else {
                         alert(data.message);
-                        btnBulkDelete.innerHTML = originalText;
-                        btnBulkDelete.disabled = false;
+                        resetButton(btnBulkDelete, originalText);
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     alert('Terjadi kesalahan pada sistem.');
-                    btnBulkDelete.innerHTML = originalText;
-                    btnBulkDelete.disabled = false;
+                    resetButton(btnBulkDelete, originalText);
                 });
             }
         });
+    }
+    
+    function resetButton(btn, text) {
+        btn.innerHTML = text;
+        btn.disabled = false;
+        btn.classList.remove('opacity-75', 'cursor-not-allowed');
     }
 });
 </script>
