@@ -162,15 +162,18 @@ class RegisterDriverOnlineController extends Controller
         $ekstensi = strtolower($file->getClientOriginalExtension());
         $namaAcak = Str::uuid();
 
-        // 1. JIKA GAMBAR -> Cuci dengan Intervention (Instant, No API Limit)
+       // 1. JIKA GAMBAR -> Cuci dengan Intervention (Instant, No API Limit)
         if (in_array($ekstensi, ['jpg', 'jpeg', 'png'])) {
             try {
                 $namaFileBaru = $folder . '/' . $namaAcak . '.jpg';
-                // Render ulang gambar untuk menghancurkan malware di metadata
-                $img = Image::read($file->getRealPath())->scaleDown(1200); 
-                $encoded = $img->toJpeg(85);
                 
-                Storage::put('public/' . $namaFileBaru, $encoded);
+                // PERUBAHAN V4: 
+                // read() -> decode()
+                // toJpeg() -> encodeUsingFileExtension()
+                $img = Image::decode($file->getRealPath())->scaleDown(width: 1200); 
+                $encoded = $img->encodeUsingFileExtension('jpg', quality: 85);
+                
+                Storage::put('public/' . $namaFileBaru, (string) $encoded);
                 return $namaFileBaru; // Return relative path
             } catch (\Exception $e) {
                 Log::error('Intervention Image Error: ' . $e->getMessage());
