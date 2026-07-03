@@ -9,10 +9,9 @@
         overflow: hidden;
     }
     .register-header {
-        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); /* Gradasi Merah Sancaka */
         color: white;
-        padding: 2.5rem 1.5rem;
-        text-align: center;
+        padding: 2rem 1.5rem;
     }
     .form-section-title {
         font-size: 1.1rem;
@@ -90,9 +89,18 @@
         <div class="col-xl-11 col-lg-12">
             
             <div class="card register-card">
-                <div class="register-header">
-                    <h2 class="fw-bold mb-2">Gabung Menjadi Mitra Driver Sancaka</h2>
-                    <p class="mb-0 opacity-75">Formulir Pendaftaran Resmi Ojek Online (Ride) & Mobil (Car)</p>
+                <div class="register-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <!-- Logo Kiri -->
+                    <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Kiri" style="max-height: 65px; width: auto; object-fit: contain;">
+
+                    <!-- Teks Judul (Tengah) -->
+                    <div class="text-center flex-grow-1">
+                        <h2 class="fw-bold mb-1" style="font-size: 1.8rem; color: #ffffff;">Gabung Menjadi Mitra Driver Sancaka</h2>
+                        <p class="mb-0" style="color: rgba(255, 255, 255, 0.85);">Formulir Pendaftaran Resmi Ojek Online (Ride) & Mobil (Car)</p>
+                    </div>
+
+                    <!-- Logo Kanan -->
+                    <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" alt="Logo Kanan" style="max-height: 65px; width: auto; object-fit: contain; border-radius: 8px;">
                 </div>
 
                 <div class="card-body p-4 p-md-5">
