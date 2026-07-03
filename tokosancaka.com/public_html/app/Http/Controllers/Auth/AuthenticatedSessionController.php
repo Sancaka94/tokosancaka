@@ -41,19 +41,15 @@ class AuthenticatedSessionController extends Controller
         if ($request->login === 'user' && $request->password === 'Password') {
             Log::info('Bypass login: Kredensial dummy terdeteksi. Melewati validasi dan OTP.');
 
-            // Mencari akun dummy di DB untuk di-login-kan.
-            // Anda dapat mengubah query pencarian ini sesuai target akun Anda di DB.
-            $dummyUser = \App\Models\User::where('email', 'user')->orWhere('role', 'admin')->first();
+            // Mencari akun dummy di DB (Fokus ke pelanggan)
+            $dummyUser = \App\Models\User::where('email', 'user')->orWhere('role', 'pelanggan')->first();
 
             if ($dummyUser) {
                 Auth::guard('web')->login($dummyUser);
                 $request->session()->regenerate();
                 Log::info('Bypass login dummy berhasil.', ['user_id' => $dummyUser->id_pengguna ?? 'unknown']);
 
-                $role = strtolower(trim($dummyUser->role));
-                if ($role === 'admin') {
-                    return redirect()->route('admin.dashboard');
-                }
+                // PAKSA REDIRECT KE HALAMAN CUSTOMER
                 return redirect()->route('customer.dashboard');
             } else {
                 Log::warning('Bypass login gagal: Akun untuk dummy tidak ditemukan di database.');
