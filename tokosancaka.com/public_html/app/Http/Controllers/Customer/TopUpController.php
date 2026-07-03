@@ -1612,10 +1612,10 @@ public function handleCallback(Request $request)
     {
        //  \Illuminate\Support\Facades\Log::debug('================ [GAPURA DEBUG LOG] CONSULT START ================');
        //  \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 1. Request Masuk dari User', [
-            'user_id' => Auth::id(),
-            'ip'      => $request->ip(),
-            'amount'  => $request->amount
-        ]);
+       //     'user_id' => Auth::id(),
+       //     'ip'      => $request->ip(),
+       //     'amount'  => $request->amount
+       // ]);
 
         try {
             $request->validate([
@@ -1701,10 +1701,10 @@ public function handleCallback(Request $request)
             $httpStatus = $response->status();
 
            //  \Illuminate\Support\Facades\Log::debug('[GAPURA DEBUG LOG] 5. Response Diterima!', [
-                'http_status' => $httpStatus,
-                'raw_body' => $response->body(),
-                'parsed_json' => $result
-            ]);
+           //     'http_status' => $httpStatus,
+           //     'raw_body' => $response->body(),
+           //     'parsed_json' => $result
+            //]);
 
             $resCode = $result['responseCode'] ?? 'UNKNOWN';
             $successCodes = ['2000000', '2005700', '2005400'];
