@@ -342,6 +342,11 @@
                                     <i class="fas fa-eye fa-lg"></i>
                                 </button>
 
+                                {{-- Edit (Memanggil Modal Bootstrap) --}}
+                                <button type="button" data-bs-toggle="modal" data-bs-target="#editModal{{ $driver->id }}" class="text-gray-500 hover:text-yellow-500 transform hover:scale-110 transition" title="Edit">
+                                    <i class="fas fa-pencil-alt fa-lg"></i>
+                                </button>
+
                                 {{-- Hapus Satuan --}}
                                 <button type="button" onclick="hapusSatuan('{{ route('admin.drivers.destroy', $driver->id) }}')" class="text-gray-500 hover:text-red-600 transform hover:scale-110 transition" title="Hapus">
                                     <i class="fas fa-trash-alt fa-lg"></i>
@@ -496,22 +501,53 @@
                             </table>
                         </div>
 
-                        {{-- Tombol Aksi Persetujuan --}}
-                        <div class="flex flex-col sm:flex-row gap-3">
-                            <form action="{{ route('admin.drivers.status', $driver->id) }}" method="POST" class="w-full sm:w-1/2 m-0">
-                                @csrf @method('PATCH')
-                                <input type="hidden" name="status" value="approved">
-                                <button type="submit" class="w-full inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors">
-                                    <i class="fa-solid fa-circle-check"></i> Setujui Pendaftaran
+                       {{-- Tombol Aksi Berdasarkan Status --}}
+                        <div class="flex flex-col sm:flex-row gap-3 mt-4 pt-4 border-t border-gray-100">
+                            
+                            @if($driver->status == 'pending')
+                                {{-- JIKA STATUS PENDING: Tampilkan tombol Setuju & Tolak --}}
+                                <form action="{{ route('admin.drivers.status', $driver->id) }}" method="POST" class="w-full sm:w-1/2 m-0">
+                                    @csrf @method('PATCH')
+                                    <input type="hidden" name="status" value="approved">
+                                    <button type="submit" class="w-full inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors">
+                                        <i class="fa-solid fa-circle-check"></i> Setujui Pendaftaran
+                                    </button>
+                                </form>
+                                <form action="{{ route('admin.drivers.status', $driver->id) }}" method="POST" class="w-full sm:w-1/2 m-0">
+                                    @csrf @method('PATCH')
+                                    <input type="hidden" name="status" value="rejected">
+                                    <button type="submit" class="w-full inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-white border-2 border-red-500 text-red-600 hover:bg-red-50 text-sm font-semibold rounded-xl transition-colors">
+                                        <i class="fa-solid fa-circle-xmark"></i> Tolak Data
+                                    </button>
+                                </form>
+
+                            @elseif($driver->status == 'approved')
+                                {{-- JIKA STATUS APPROVED: Tampilkan tombol Edit & Batalkan --}}
+                                <button type="button" data-bs-toggle="modal" data-bs-target="#editModal{{ $driver->id }}" onclick="closeModal('modalDetail_{{ $driver->id }}')" class="w-full sm:w-1/2 inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors">
+                                    <i class="fa-solid fa-pen-to-square"></i> Edit Data Driver
                                 </button>
-                            </form>
-                            <form action="{{ route('admin.drivers.status', $driver->id) }}" method="POST" class="w-full sm:w-1/2 m-0">
-                                @csrf @method('PATCH')
-                                <input type="hidden" name="status" value="rejected">
-                                <button type="submit" class="w-full inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-white border-2 border-red-500 text-red-600 hover:bg-red-50 text-sm font-semibold rounded-xl transition-colors">
-                                    <i class="fa-solid fa-circle-xmark"></i> Tolak Data
+                                <form action="{{ route('admin.drivers.status', $driver->id) }}" method="POST" class="w-full sm:w-1/2 m-0">
+                                    @csrf @method('PATCH')
+                                    <input type="hidden" name="status" value="rejected">
+                                    <button type="submit" onclick="return confirm('Yakin ingin membatalkan persetujuan driver ini?')" class="w-full inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-white border-2 border-red-500 text-red-600 hover:bg-red-50 text-sm font-semibold rounded-xl transition-colors">
+                                        <i class="fa-solid fa-ban"></i> Batalkan Status (Tolak)
+                                    </button>
+                                </form>
+
+                            @else
+                                {{-- JIKA STATUS REJECTED: Tampilkan tombol Edit & Setujui Ulang --}}
+                                <button type="button" data-bs-toggle="modal" data-bs-target="#editModal{{ $driver->id }}" onclick="closeModal('modalDetail_{{ $driver->id }}')" class="w-full sm:w-1/2 inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors">
+                                    <i class="fa-solid fa-pen-to-square"></i> Edit Data Driver
                                 </button>
-                            </form>
+                                <form action="{{ route('admin.drivers.status', $driver->id) }}" method="POST" class="w-full sm:w-1/2 m-0">
+                                    @csrf @method('PATCH')
+                                    <input type="hidden" name="status" value="approved">
+                                    <button type="submit" class="w-full inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors">
+                                        <i class="fa-solid fa-rotate-left"></i> Pulihkan & Setujui
+                                    </button>
+                                </form>
+                            @endif
+
                         </div>
                     </div>
 
