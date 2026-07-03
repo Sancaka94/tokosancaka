@@ -69,12 +69,12 @@
         color: #0f172a;
     }
     .tos-scroll-box {
-        height: 250px;
+        height: 350px; /* Dipertinggi sedikit karena teks panjang */
         overflow-y: scroll;
         background-color: #f8fafc;
         border: 2px solid #e2e8f0;
         border-radius: 0.5rem;
-        padding: 1rem;
+        padding: 1.5rem;
         font-size: 0.85rem;
         color: #334155;
         line-height: 1.6;
@@ -232,6 +232,7 @@
                                 </div>
 
                                 <div class="row g-3">
+                                    {{-- DOKUMEN PRIBADI --}}
                                     <h6 class="fw-bold mt-2 mb-0 text-secondary" style="font-size: 0.85rem;">A. Berkas Administrasi Diri</h6>
                                     
                                     <div class="col-md-6">
@@ -256,6 +257,7 @@
                                         <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">Nama rekening bank wajib mutlak sama dengan KTP pendaftar.</small>
                                     </div>
 
+                                    {{-- DOKUMEN KENDARAAN --}}
                                     <h6 class="fw-bold mt-4 mb-0 text-secondary" style="font-size: 0.85rem;">B. Berkas Kendaraan Operasional</h6>
                                     
                                     <div class="col-md-6">
@@ -267,7 +269,8 @@
                                         <input type="file" name="foto_motor" class="form-control custom-file-input w-100" required accept=".jpg,.jpeg,.png">
                                     </div>
 
-                                    <h6 class="fw-bold mt-4 mb-0 text-secondary" style="font-size: 0.85rem;">C. Berkas Pendukung (Tambahan / Opsional)</h6>
+                                    {{-- DOKUMEN PENDUKUNG --}}
+                                    <h6 class="fw-bold mt-4 mb-0 text-secondary" style="font-size: 0.85rem;">C. Berkas Pendukung (Opsional)</h6>
                                     
                                     <div class="col-md-4">
                                         <label class="form-label text-muted">Kartu Keluarga (KK)</label>
@@ -289,12 +292,14 @@
                         <div class="row mt-5">
                             <div class="col-12">
                                 <div class="form-section-title border-bottom pb-2">
-                                    <i class="fa-solid fa-scale-balanced"></i> Syarat Ketentuan Kemitraan & Kebijakan Privasi
+                                    <i class="fa-solid fa-scale-balanced"></i> Peraturan, Syarat Ketentuan & Kebijakan Privasi Sancaka
                                 </div>
-                                <p class="text-muted small mb-2"><i class="fa-solid fa-circle-exclamation text-danger"></i> Harap baca lembar dokumen ini dengan cara **melakukan scroll box ke bawah sampai selesai** untuk mengaktifkan persetujuan.</p>
+                                <p class="text-muted small mb-3"><i class="fa-solid fa-circle-exclamation text-danger"></i> Harap baca lembar dokumen ini dengan cara <strong>melakukan scroll box ke bawah sampai selesai</strong> untuk mengaktifkan tombol pendaftaran.</p>
                                 
                                 <div id="tosScrollBox" class="tos-scroll-box mb-3 shadow-inner">
-                                    <h5 class="fw-bold text-danger border-bottom pb-1 mb-2">PERSYARATAN & PERATURAN MITRA DRIVER SANCAKA</h5>
+                                    
+                                    {{-- 1. PERATURAN MITRA DRIVER --}}
+                                    <h5 class="fw-bold text-danger border-bottom pb-1 mb-3">PERSYARATAN & PERATURAN MITRA DRIVER SANCAKA</h5>
                                     
                                     <h6 class="fw-bold mt-3 text-dark">1. Persyaratan Kualifikasi Mitra Driver (Standar Resmi)</h6>
                                     <ul class="ps-3 mb-3 text-dark">
@@ -313,37 +318,61 @@
                                     </ul>
 
                                     <h6 class="fw-bold text-dark">3. Kepatuhan & Kejujuran Operasional (Anti Fraud)</h6>
-                                    <ul class="ps-3 mb-4 text-dark">
+                                    <ul class="ps-3 mb-5 text-dark">
                                         <li>Mitra dilarang keras menggunakan aplikasi pihak ketiga untuk memanipulasi koordinat lokasi (Fake GPS / Tuyul).</li>
                                         <li>Dilarang melakukan orderan Fiktif (transaksi palsu) bersama rekan atau pelanggan komplotan untuk mengejar bonus / insentif harian.</li>
                                         <li>Akun driver dilarang dipindahtangankan, dijualbelikan, atau digantikan oleh joki. 1 Akun mutlak untuk 1 Identitas KTP & Wajah terdaftar.</li>
                                         <li>Segala bentuk pelanggaran Anti Fraud (Kecurangan) akan berakibat pada <strong>Pemblokiran Akun Permanen (Putus Mitra)</strong> dan pembekuan saldo di dalam dompet aplikasi.</li>
                                     </ul>
 
-                                    <h5 class="fw-bold border-bottom pb-1 mb-2 mt-4">KEBIJAKAN PRIVASI</h5>
-                                    <p>Privasi Anda adalah prioritas utama kami di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace. Dokumen ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi pribadi Anda. Dengan menggunakan situs atau aplikasi kami, Anda dianggap telah menyetujui seluruh isi Kebijakan Privasi ini.</p>
+                                    {{-- 2. KEBIJAKAN PRIVASI --}}
+                                    <h5 class="fw-bold text-primary border-bottom pb-1 mb-3">KEBIJAKAN PRIVASI</h5>
+                                    <p>Privasi Anda adalah prioritas utama kami di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace. Dokumen ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi pribadi Anda saat menggunakan layanan kami. Dengan menggunakan situs atau aplikasi kami, Anda dianggap telah menyetujui seluruh isi Kebijakan Privasi ini.</p>
                                     
-                                    <h6>1. Informasi yang Kami Kumpulkan</h6>
-                                    <p>Kami dapat mengumpulkan data berupa: Nama lengkap, alamat email, nomor telepon, alamat pengiriman/penagihan, data lokasi live GPS, dan dokumen foto kelayakan berkas kendaraan.</p>
+                                    <h6 class="fw-bold mt-3">1. Informasi yang Kami Kumpulkan</h6>
+                                    <p>Kami dapat mengumpulkan data berikut: Nama lengkap, alamat email, nomor telepon, Alamat pengiriman dan penagihan, Data transaksi & riwayat belanja, Informasi pembayaran (hanya melalui saluran resmi), Data lokasi GPS live (jika Anda mengaktifkan layanan berbasis lokasi), dan dokumen foto kelayakan berkas kendaraan (untuk mitra driver).</p>
 
-                                    <h6>2. Perlindungan & Pembagian Informasi</h6>
-                                    <p>Kami menerapkan teknologi enkripsi dan prosedur keamanan standar industri untuk melindungi data pribadi Anda. Kami tidak menjual atau menyewakan data pribadi Anda ke pihak periklanan manapun.</p>
+                                    <h6 class="fw-bold mt-3">2. Cara Pengumpulan & Penggunaan Data</h6>
+                                    <p>Data diperoleh melalui formulir pendaftaran, transaksi, penggunaan cookie, dan komunikasi layanan pelanggan. Data pribadi digunakan untuk memproses pesanan, menyediakan dukungan, meningkatkan kualitas layanan, mengirimkan notifikasi, serta mencegah penipuan dan menjaga keamanan transaksi.</p>
 
-                                    <h6>3. Izin Akses Perangkat (Permissions)</h6>
-                                    <p>Untuk memastikan aplikasi dapat berjalan optimal melacak rute orderan, kami meminta izin akses konfirmasi perangkat atas Kamera (Foto bukti drop paket), GPS Lokasi (Pelacakan maps real-time kurir), dan sinkronisasi data internet.</p>
+                                    <h6 class="fw-bold mt-3">3. Perlindungan & Pembagian Informasi</h6>
+                                    <p>Kami menerapkan teknologi enkripsi dan prosedur keamanan standar industri untuk melindungi data pribadi Anda. Kami tidak menjual atau menyewakan data pribadi Anda ke pihak periklanan manapun. Informasi dapat dibagikan hanya kepada Partner logistik & ekspedisi untuk pengiriman pesanan, Penyedia pembayaran untuk memproses transaksi, dan Pihak berwenang jika diwajibkan oleh hukum.</p>
 
-                                    <h5 class="fw-bold border-bottom pb-1 mb-2 mt-4">SYARAT & KETENTUAN PLATFORM</h5>
-                                    <p>Halaman ini berisi syarat & ketentuan resmi yang berlaku di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace. Mohon dibaca dengan seksama karena semua poin ini mengikat setiap pengguna layanan kami.</p>
-                                    <p>Penerimaan Ketentuan, Pendaftaran Akun valid, Kerahasiaan sandi pengguna, Penggunaan platform yang sah secara hukum Republik Indonesia, Transaksi luar platform tidak diakui, klaim paket rusak maksimal 1x24 jam wajib menyertakan bukti video unboxing, pembatalan sepihak dilarang jika pesanan kurir sudah berjalan, penyalahgunaan akun berakibat penonaktifan sepihak oleh admin, penyelesaian sengketa diselesaikan secara kekeluargaan / musyawarah mufakat.</p>
+                                    <h6 class="fw-bold mt-3">4. Hak Pengguna & Penyimpanan Data</h6>
+                                    <p>Anda memiliki hak untuk meminta salinan, memperbaiki, atau menghapus data pribadi sesuai ketentuan hukum. Data akan disimpan selama akun aktif atau diperlukan, setelah itu data akan dihapus atau dianonimkan.</p>
+
+                                    <h6 class="fw-bold mt-3">5. Proses Delivery, Pembatalan & Refund</h6>
+                                    <p>Estimasi pengiriman ditentukan oleh pihak ekspedisi. Kami tidak bertanggung jawab atas kesalahan pengiriman akibat informasi alamat yang salah. Pesanan dapat dibatalkan sebelum status berubah menjadi "Diproses". Anda berhak mengajukan refund (dana kembali) apabila produk cacat, tidak sesuai, atau hilang, yang akan dicairkan ke metode pembayaran awal.</p>
+
+                                    <h6 class="fw-bold mt-3">6. Izin Akses Perangkat (Permissions)</h6>
+                                    <p>Untuk memastikan aplikasi dan layanan kami berfungsi dengan optimal, kami mungkin meminta izin akses ke beberapa fitur pada perangkat Anda, yaitu: Kamera (untuk foto profil, scan QR, bukti paket), GPS Lokasi (akurasi pengiriman dan pelacakan kurir), Browser & Akses Internet, dan Pengiriman Data Pribadi secara aman ke server kami.</p>
+
+                                    <p class="mb-5">Kami dapat memperbarui Kebijakan Privasi ini dari waktu ke waktu. Jika Anda memiliki pertanyaan, silakan hubungi kami melalui halaman kontak resmi.</p>
+
+                                    {{-- 3. SYARAT & KETENTUAN PLATFORM --}}
+                                    <h5 class="fw-bold text-success border-bottom pb-1 mb-3">SYARAT & KETENTUAN PLATFORM (T.O.S)</h5>
+                                    <p>Halaman ini berisi syarat & ketentuan resmi yang berlaku di ekosistem Sancaka. Mohon dibaca dengan seksama karena semua poin ini mengikat setiap pengguna layanan kami.</p>
                                     
-                                    <p class="fw-bold text-success text-center mt-4 bg-light p-2 border rounded">--- AKHIR DOKUMEN PERATURAN ---</p>
+                                    <ul class="ps-3 mb-4 text-dark">
+                                        <li><strong>Penerimaan Ketentuan:</strong> Dengan menggunakan layanan kami, Anda setuju terikat oleh ketentuan ini.</li>
+                                        <li><strong>Akun & Keamanan:</strong> Pendaftaran akun harus akurat. Anda bertanggung jawab menjaga kerahasiaan username & password Anda. Penyalahgunaan akun mengakibatkan penonaktifan sepihak.</li>
+                                        <li><strong>Penggunaan Platform:</strong> Layanan hanya boleh digunakan untuk aktivitas legal di Republik Indonesia. Transaksi di luar platform resmi kami tidak diakui dan bukan tanggung jawab kami.</li>
+                                        <li><strong>Produk, Harga, & Pembayaran:</strong> Harga dapat berubah sewaktu-waktu. Pembayaran hanya melalui metode resmi. Sancaka tidak bertanggung jawab atas kerugian transaksi langsung ke pribadi.</li>
+                                        <li><strong>Pengiriman & Asuransi:</strong> Estimasi pengiriman berdasarkan ekspedisi dan bisa berubah karena force majeure. Pembeli wajib memeriksa kondisi produk saat diterima. Kerusakan pengiriman harus diklaim maksimal 1x24 jam beserta bukti Video Unboxing.</li>
+                                        <li><strong>Pembatalan (Cancel):</strong> Berlaku sebelum pesanan diproses. Pembatalan sepihak dilarang jika pesanan kurir sudah berjalan/di pick-up.</li>
+                                        <li><strong>Refund & Pengembalian:</strong> Berlaku untuk barang rusak/hilang (estimasi 3–14 hari kerja pencairan). Produk digital, makanan segar, atau custom tidak bisa dikembalikan.</li>
+                                        <li><strong>Hak Kekayaan Intelektual:</strong> Semua konten platform dilindungi hak cipta & merek dagang. Segala bentuk pencurian data akan diproses hukum.</li>
+                                        <li><strong>Penyelesaian Sengketa:</strong> Segala permasalahan diselesaikan secara musyawarah kekeluargaan, bila gagal maka akan melalui jalur hukum sesuai wilayah Republik Indonesia.</li>
+                                    </ul>
+                                    
+                                    <p class="fw-bold text-success text-center mt-5 bg-light p-3 border rounded shadow-sm">--- AKHIR DOKUMEN PERATURAN & PERSETUJUAN ---</p>
                                 </div>
 
                                 {{-- Centang Konfirmasi --}}
                                 <div class="form-check mb-4 bg-light p-3 rounded border d-flex align-items-center gap-2" id="checkboxWrapper" style="opacity: 0.5; pointer-events: none;">
                                     <input class="form-check-input ms-0" type="checkbox" value="" id="agreeCheckbox" disabled>
                                     <label class="form-check-input-label fw-bold text-dark small" for="agreeCheckbox" style="cursor: pointer;">
-                                        Saya menjamin seluruh berkas adalah asli. Saya telah membaca lengkap aturan Mitra, Anti-Fraud, & Kebijakan Privasi Sancaka Express.
+                                        Saya menjamin seluruh berkas adalah asli. Saya telah membaca lengkap aturan Kualifikasi Mitra, Anti-Fraud, Kebijakan Privasi, dan T.O.S Sancaka Express.
                                     </label>
                                 </div>
 
