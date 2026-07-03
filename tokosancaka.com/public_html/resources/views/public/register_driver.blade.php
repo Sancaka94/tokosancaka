@@ -89,17 +89,28 @@
         <div class="col-xl-11 col-lg-12">
             
             <div class="card register-card">
-                <div class="register-header d-flex justify-content-between align-items-center flex-wrap gap-3">
-                    <!-- Logo Kiri -->
-                    <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Kiri" style="max-height: 65px; width: auto; object-fit: contain; background-color: #ffffff; padding: 6px; border-radius: 8px;">
-                    <!-- Teks Judul (Tengah) -->
-                    <div class="text-center flex-grow-1">
-                        <h2 class="fw-bold mb-1" style="font-size: 1.8rem; color: #ffffff;">Gabung Menjadi Mitra Driver Sancaka</h2>
-                        <p class="mb-0" style="color: rgba(255, 255, 255, 0.85);">Formulir Pendaftaran Resmi Ojek Online (Ride) & Mobil (Car)</p>
-                    </div>
+                <div class="register-header">
+                    <div class="row align-items-center">
+                        
+                        <div class="col-12 d-md-none d-flex justify-content-center align-items-center gap-4 mb-3">
+                            <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Kiri" style="max-height: 55px; width: auto; object-fit: contain; background-color: #ffffff; padding: 5px; border-radius: 8px;">
+                            <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" alt="Logo Kanan" style="max-height: 55px; width: auto; object-fit: contain; border-radius: 8px;">
+                        </div>
 
-                    <!-- Logo Kanan -->
-                    <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" alt="Logo Kanan" style="max-height: 65px; width: auto; object-fit: contain; border-radius: 8px;">
+                        <div class="col-md-2 d-none d-md-block text-start">
+                            <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Kiri" style="max-height: 65px; width: auto; object-fit: contain; background-color: #ffffff; padding: 6px; border-radius: 8px;">
+                        </div>
+
+                        <div class="col-12 col-md-8 text-center">
+                            <h2 class="fw-bold mb-1" style="font-size: clamp(1.2rem, 4vw, 1.8rem); color: #ffffff;">Gabung Menjadi Mitra Driver Sancaka</h2>
+                            <p class="mb-0" style="color: rgba(255, 255, 255, 0.85); font-size: clamp(0.8rem, 2vw, 1rem);">Formulir Pendaftaran Resmi Ojek Online (Ride) & Mobil (Car)</p>
+                        </div>
+
+                        <div class="col-md-2 d-none d-md-block text-end">
+                            <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" alt="Logo Kanan" style="max-height: 65px; width: auto; object-fit: contain; border-radius: 8px;">
+                        </div>
+                        
+                    </div>
                 </div>
 
                 <div class="card-body p-4 p-md-5">
