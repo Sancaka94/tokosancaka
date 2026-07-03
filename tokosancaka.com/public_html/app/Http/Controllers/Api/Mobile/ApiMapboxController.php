@@ -103,22 +103,37 @@ class ApiMapboxController extends Controller
     {
         Log::info("=== [API DRIVER] REQUEST PENDAFTARAN MASUK ===");
 
-        // 1. Validasi Input
+        $minTahun = date('Y') - 8;
+
+        // 1. Validasi Input (Dilengkapi Sesuai Database & Web Controller)
         $validator = Validator::make($request->all(), [
             'nama_lengkap'    => 'required|string|max:255',
+            'tempat_lahir'    => 'required|string|max:100',
+            'tanggal_lahir'   => 'required|date|before:-18 years',
             'nomor_nik'       => 'required|string|max:20',
             'nomor_kk'        => 'required|string|max:20',
             'nomor_wa'        => 'required|string|max:20',
             'alamat_lengkap'  => 'required|string',
+            'jenis_layanan'   => 'required|in:motor,mobil',
+            'merk_kendaraan'  => 'required|string|max:100',
+            'tahun_kendaraan' => 'required|integer|min:' . $minTahun . '|max:' . date('Y'),
+            'plat_nomor'      => 'required|string|max:15',
             'latitude'        => 'required|numeric',
             'longitude'       => 'required|numeric',
-            'file_ktp'        => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            
+            // File Pendukung (Wajib di awal pendaftaran)
+            'file_ktp'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_sim'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_skck'          => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_stnk'          => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'foto_motor'         => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_buku_rekening' => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'foto_wajah'         => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            
+            // Opsional
             'file_kk'         => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_buku_nikah' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'file_stnk'       => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_bpkb'       => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'foto_motor'      => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'foto_wajah'      => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -138,29 +153,26 @@ class ApiMapboxController extends Controller
             $idPengguna = null;
             $namaLengkap = $request->input('nama_lengkap');
 
-            // Cek apakah user sedang login dengan Sanctum/Passport token
             $userLoggedIn = $request->user();
 
             if ($userLoggedIn) {
-                // Jika login, gunakan data dari token
                 $idPengguna = $userLoggedIn->id_pengguna;
                 $namaLengkap = $userLoggedIn->nama_lengkap ?? $namaLengkap;
             } else {
-                // Jika mendaftar anonim, cari di tabel Pengguna berdasarkan Nomor WA
                 $existingUser = DB::table('Pengguna')->where('no_wa', $nomorWa)->first();
                 if ($existingUser) {
                     $idPengguna = $existingUser->id_pengguna;
-                    // Ambil nama asli dari akun untuk validitas (menimpa input form)
                     $namaLengkap = $existingUser->nama_lengkap ?? $namaLengkap;
                 }
             }
             // =====================================================================
 
-            // 2. Proses Upload File
+            // 2. Proses Upload File (Dilengkapi)
             $uploadPath = 'drivers';
             $filePaths = [
-                'file_ktp' => null, 'file_kk' => null, 'file_buku_nikah' => null,
-                'file_stnk' => null, 'file_bpkb' => null, 'foto_motor' => null, 'foto_wajah' => null,
+                'file_ktp' => null, 'file_sim' => null, 'file_skck' => null, 
+                'file_kk' => null, 'file_buku_nikah' => null, 'file_stnk' => null, 
+                'file_bpkb' => null, 'foto_motor' => null, 'file_buku_rekening' => null, 'foto_wajah' => null,
             ];
 
             foreach (array_keys($filePaths) as $fileKey) {
@@ -172,24 +184,36 @@ class ApiMapboxController extends Controller
                 }
             }
 
-            // 3. Simpan Ke Database Driver
+            // 3. Simpan Ke Database Driver (Dilengkapi)
             $insertId = DB::table('registrasi_driver_sancaka')->insertGetId([
-                'id_pengguna'     => $idPengguna, // <-- Data Tersinkronisasi Otomatis
-                'nama_lengkap'    => $namaLengkap, // <-- Diambil dari akun jika ada
+                'id_pengguna'     => $idPengguna,
+                'nama_lengkap'    => $namaLengkap,
+                'tempat_lahir'    => $request->input('tempat_lahir'),
+                'tanggal_lahir'   => $request->input('tanggal_lahir'),
                 'nomor_nik'       => $request->input('nomor_nik'),
                 'nomor_kk'        => $request->input('nomor_kk'),
                 'nomor_wa'        => $nomorWa,
                 'alamat_lengkap'  => $request->input('alamat_lengkap'),
+                'jenis_layanan'   => $request->input('jenis_layanan'),
+                'merk_kendaraan'  => $request->input('merk_kendaraan'),
+                'tahun_kendaraan' => $request->input('tahun_kendaraan'),
+                'plat_nomor'      => $request->input('plat_nomor'),
                 'latitude'        => $request->input('latitude'),
                 'longitude'       => $request->input('longitude'),
-                'file_ktp'        => $filePaths['file_ktp'],
-                'file_kk'         => $filePaths['file_kk'],
-                'file_buku_nikah' => $filePaths['file_buku_nikah'],
-                'file_stnk'       => $filePaths['file_stnk'],
-                'file_bpkb'       => $filePaths['file_bpkb'],
-                'foto_motor'      => $filePaths['foto_motor'],
-                'foto_wajah'      => $filePaths['foto_wajah'],
+                
+                'file_ktp'           => $filePaths['file_ktp'],
+                'file_sim'           => $filePaths['file_sim'],
+                'file_skck'          => $filePaths['file_skck'],
+                'file_kk'            => $filePaths['file_kk'],
+                'file_buku_nikah'    => $filePaths['file_buku_nikah'],
+                'file_stnk'          => $filePaths['file_stnk'],
+                'file_bpkb'          => $filePaths['file_bpkb'],
+                'foto_motor'         => $filePaths['foto_motor'],
+                'file_buku_rekening' => $filePaths['file_buku_rekening'],
+                'foto_wajah'         => $filePaths['foto_wajah'],
+                
                 'status'          => 'pending',
+                'is_active_map'   => 0,
                 'created_at'      => now(),
                 'updated_at'      => now(),
             ]);
@@ -214,7 +238,7 @@ class ApiMapboxController extends Controller
         }
     }
 
-   public function getNearbyDrivers(Request $request)
+    public function getNearbyDrivers(Request $request)
     {
         try {
             $lat = $request->query('lat');
@@ -254,7 +278,7 @@ class ApiMapboxController extends Controller
                     'distance' => round($driver->distance, 1) . ' KM',
                     'lat'      => (float) $driver->latitude,
                     'lng'      => (float) $driver->longitude,
-                    'is_online'=> $driver->is_active_map == 1 // Kirim status ke frontend jika dibutuhkan
+                    'is_online'=> $driver->is_active_map == 1 
                 ];
             });
 
@@ -280,10 +304,8 @@ class ApiMapboxController extends Controller
     public function myStatus(Request $request)
     {
         try {
-            // Ambil id_pengguna langsung dari token login expo
             $idPengguna = $request->user()->id_pengguna;
 
-            // Cari di database tabel driver
             $driver = DB::table('registrasi_driver_sancaka')
                         ->where('id_pengguna', $idPengguna)
                         ->first();
@@ -312,22 +334,40 @@ class ApiMapboxController extends Controller
     public function updateDriver(Request $request)
     {
         $idPengguna = $request->user()->id_pengguna;
+        $minTahun = date('Y') - 8;
 
-        // Ambil data driver lama untuk pengecekan file
         $oldDriver = DB::table('registrasi_driver_sancaka')->where('id_pengguna', $idPengguna)->first();
         if (!$oldDriver) {
             return response()->json(['success' => false, 'message' => 'Data driver tidak ditemukan.'], 404);
         }
 
-        // Validasi form (berkas dibuat nullable karena sifatnya update/opsional)
+        // Validasi form (Dilengkapi)
         $validator = Validator::make($request->all(), [
-            'nama_lengkap' => 'required|string|max:255',
-            'nomor_nik'    => 'required|string|max:20',
-            'nomor_kk'     => 'required|string|max:20',
-            'nomor_wa'     => 'required|string|max:20',
-            'alamat_lengkap' => 'required|string',
-            'latitude'     => 'required|numeric',
-            'longitude'    => 'required|numeric',
+            'nama_lengkap'    => 'required|string|max:255',
+            'tempat_lahir'    => 'required|string|max:100',
+            'tanggal_lahir'   => 'required|date|before:-18 years',
+            'nomor_nik'       => 'required|string|max:20',
+            'nomor_kk'        => 'required|string|max:20',
+            'nomor_wa'        => 'required|string|max:20',
+            'alamat_lengkap'  => 'required|string',
+            'jenis_layanan'   => 'required|in:motor,mobil',
+            'merk_kendaraan'  => 'required|string|max:100',
+            'tahun_kendaraan' => 'required|integer|min:' . $minTahun . '|max:' . date('Y'),
+            'plat_nomor'      => 'required|string|max:15',
+            'latitude'        => 'required|numeric',
+            'longitude'       => 'required|numeric',
+            
+            // Semua file nullable saat update
+            'file_ktp'           => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_sim'           => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_skck'          => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_stnk'          => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'foto_motor'         => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_buku_rekening' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'foto_wajah'         => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_kk'            => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_buku_nikah'    => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
+            'file_bpkb'          => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -337,7 +377,11 @@ class ApiMapboxController extends Controller
         try {
             $uploadPath = 'drivers';
             $filePaths = [];
-            $fields = ['file_ktp', 'file_kk', 'file_buku_nikah', 'file_stnk', 'file_bpkb', 'foto_motor', 'foto_wajah'];
+            // Daftar field dokumen lengkap
+            $fields = [
+                'file_ktp', 'file_sim', 'file_skck', 'file_kk', 'file_buku_nikah', 
+                'file_stnk', 'file_bpkb', 'foto_motor', 'file_buku_rekening', 'foto_wajah'
+            ];
 
             foreach ($fields as $field) {
                 if ($request->hasFile($field)) {
@@ -345,30 +389,41 @@ class ApiMapboxController extends Controller
                     $filename = time() . '_' . $field . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
                     $filePaths[$field] = $file->storeAs($uploadPath, $filename, 'public');
                 } else {
-                    // Jika tidak upload file baru, tetap gunakan file yang lama di database
+                    // Gunakan file lama jika tidak ada upload baru
                     $filePaths[$field] = $oldDriver->$field;
                 }
             }
 
-            // Jalankan Query UPDATE berdasarkan id_pengguna token
+            // Jalankan Query UPDATE (Dilengkapi)
             DB::table('registrasi_driver_sancaka')
                 ->where('id_pengguna', $idPengguna)
                 ->update([
-                    'nama_lengkap'   => $request->input('nama_lengkap'),
-                    'nomor_nik'      => $request->input('nomor_nik'),
-                    'nomor_kk'       => $request->input('nomor_kk'),
-                    'nomor_wa'       => $request->input('nomor_wa'),
-                    'alamat_lengkap' => $request->input('alamat_lengkap'),
-                    'latitude'       => $request->input('latitude'),
-                    'longitude'      => $request->input('longitude'),
-                    'file_ktp'       => $filePaths['file_ktp'],
-                    'file_kk'        => $filePaths['file_kk'],
-                    'file_buku_nikah'=> $filePaths['file_buku_nikah'],
-                    'file_stnk'      => $filePaths['file_stnk'],
-                    'file_bpkb'      => $filePaths['file_bpkb'],
-                    'foto_motor'     => $filePaths['foto_motor'],
-                    'foto_wajah'     => $filePaths['foto_wajah'],
-                    'updated_at'     => now(),
+                    'nama_lengkap'    => $request->input('nama_lengkap'),
+                    'tempat_lahir'    => $request->input('tempat_lahir'),
+                    'tanggal_lahir'   => $request->input('tanggal_lahir'),
+                    'nomor_nik'       => $request->input('nomor_nik'),
+                    'nomor_kk'        => $request->input('nomor_kk'),
+                    'nomor_wa'        => $request->input('nomor_wa'),
+                    'alamat_lengkap'  => $request->input('alamat_lengkap'),
+                    'jenis_layanan'   => $request->input('jenis_layanan'),
+                    'merk_kendaraan'  => $request->input('merk_kendaraan'),
+                    'tahun_kendaraan' => $request->input('tahun_kendaraan'),
+                    'plat_nomor'      => $request->input('plat_nomor'),
+                    'latitude'        => $request->input('latitude'),
+                    'longitude'       => $request->input('longitude'),
+                    
+                    'file_ktp'           => $filePaths['file_ktp'],
+                    'file_sim'           => $filePaths['file_sim'],
+                    'file_skck'          => $filePaths['file_skck'],
+                    'file_kk'            => $filePaths['file_kk'],
+                    'file_buku_nikah'    => $filePaths['file_buku_nikah'],
+                    'file_stnk'          => $filePaths['file_stnk'],
+                    'file_bpkb'          => $filePaths['file_bpkb'],
+                    'foto_motor'         => $filePaths['foto_motor'],
+                    'file_buku_rekening' => $filePaths['file_buku_rekening'],
+                    'foto_wajah'         => $filePaths['foto_wajah'],
+                    
+                    'updated_at'      => now(),
                 ]);
 
             return response()->json(['success' => true, 'message' => 'Data driver Anda berhasil diperbarui.']);
@@ -511,8 +566,6 @@ class ApiMapboxController extends Controller
                     'action'           => 'new_order',
                     'order_id'         => $orderId,
                     'customer_id'      => $customer->id_pengguna,
-
-                    // INI YANG BIKIN MODAL LU JADI NOL KEMAREN (Sekarang udah dibalikin)
                     'tarif'            => $request->input('tarif'),
                     'jarak_ke_pemesan' => $jarakKePemesanMeter,
                     'origin_address'   => $request->input('origin_address'),
@@ -525,7 +578,6 @@ class ApiMapboxController extends Controller
             return response()->json(['status' => true, 'message' => 'Memanggil driver...', 'order_id' => $orderId]);
 
         } catch (\Exception $e) {
-            // KALAU GAGAL INSERT DATABASE, BACA ERROR-NYA DI SINI
             Log::error("LOG LOG: CRASH Insert DB / Notif! Pesan: " . $e->getMessage());
             Log::error("Trace: " . $e->getTraceAsString());
 
@@ -563,7 +615,7 @@ class ApiMapboxController extends Controller
                     'sound' => 'default',
                     'data'  => [
                         'action'   => 'order_accepted',
-                        'order_id' => $orderId // HANYA BAWA INI!
+                        'order_id' => $orderId 
                     ]
                 ]);
             }
@@ -598,7 +650,6 @@ class ApiMapboxController extends Controller
                     'driver.latitude as driver_lat',
                     'driver.longitude as driver_lng',
                     'driver.is_active_map as driver_is_online',
-                    // 'driver.vehicle', <-- INI BIANG KEROKNYA, SUDAH SAYA HAPUS!
                     'driver.foto_motor'
                 )
                 ->first();
@@ -613,7 +664,6 @@ class ApiMapboxController extends Controller
             return response()->json(['success' => true, 'data' => $order]);
 
         } catch (\Exception $e) {
-            // SEKARANG KALAU SERVER MELEDAK LAGI, PASTI TERCATAT DI LOG!
             Log::error("LOG LOG: CRASH GET ORDER DETAIL! Pesan: " . $e->getMessage());
             Log::error("Trace: " . $e->getTraceAsString());
 
@@ -665,8 +715,6 @@ class ApiMapboxController extends Controller
                     } else if ($newStatus === 'completed') {
                         $notifTitle = '✅ Pesanan Selesai';
                         $notifBody = 'Terima kasih telah menggunakan layanan Sancaka Ride!';
-
-                        // TODO: Di masa depan, kamu bisa tambahkan logika potong saldo / tambah komisi driver di sini jika pembayarannya non-tunai.
                     }
 
                     Http::post('https://exp.host/--/api/v2/push/send', [
