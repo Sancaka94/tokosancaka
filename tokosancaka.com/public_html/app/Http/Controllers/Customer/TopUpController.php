@@ -3257,7 +3257,7 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                     'created_at'       => now()
                 ]);
 
-                $resMsg = $result['responseMessage'] ?? 'Internal Error';
+                /*$resMsg = $result['responseMessage'] ?? 'Internal Error';
                 $userMsg = match($codeCheck) {
                     '4033814' => 'Saldo Corporate Sancaka tidak mencukupi.',
                     '4033805' => 'Nomor DANA tujuan tidak valid.',
@@ -3265,6 +3265,28 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                     '4043811' => 'Nomor DANA tujuan tidak ditemukan/diblokir.',
                     default   => "Gagal: $resMsg ($codeCheck)"
                 };
+
+                return back()->with('error', $userMsg . "\n(Saldo Anda telah dikembalikan)"); */
+
+                $resMsg = $result['responseMessage'] ?? 'Internal Error';
+
+                switch ($codeCheck) {
+                    case '4033814':
+                        $userMsg = 'Saldo Corporate Sancaka tidak mencukupi.';
+                        break;
+                    case '4033805':
+                        $userMsg = 'Nomor DANA tujuan tidak valid.';
+                        break;
+                    case '4033818':
+                        $userMsg = 'Nomor DANA tujuan tidak aktif (Inactive).';
+                        break;
+                    case '4043811':
+                        $userMsg = 'Nomor DANA tujuan tidak ditemukan/diblokir.';
+                        break;
+                    default:
+                        $userMsg = "Gagal: $resMsg ($codeCheck)";
+                        break;
+                }
 
                 return back()->with('error', $userMsg . "\n(Saldo Anda telah dikembalikan)");
             }
