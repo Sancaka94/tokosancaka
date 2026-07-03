@@ -210,7 +210,7 @@
                                         <input type="file" name="foto_motor" class="form-control custom-file-input" required accept=".jpg,.jpeg,.png,.pdf">
                                     </div>
                                     <div class="col-md-6">
-                                        <label class="form-label">Foto Selfie / Wajah <span class="text-danger">*</span></label>
+                                        <label class="form-label">Foto 4x6 Warna Biru <span class="text-danger">*</span></label>
                                         <input type="file" name="foto_wajah" class="form-control custom-file-input" required accept=".jpg,.jpeg,.png,.pdf">
                                     </div>
 
