@@ -84,7 +84,7 @@ class RegisterDriverOnlineController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
+   public function update(Request $request, $id)
     {
         Log::info("LOG LOG: Memperbarui data pendaftaran driver ID: {$id}");
 
@@ -96,6 +96,8 @@ class RegisterDriverOnlineController extends Controller
             'nomor_kk'       => $request->nomor_kk,
             'nomor_wa'       => $request->nomor_wa,
             'alamat_lengkap' => $request->alamat_lengkap,
+            'latitude'       => $request->latitude, // Menambahkan update latitude
+            'longitude'      => $request->longitude // Menambahkan update longitude
         ]);
 
         return redirect()->back()->with('success', 'Data driver berhasil diperbarui.');
