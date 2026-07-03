@@ -163,24 +163,41 @@ class RegisterDriverOnlineController extends Controller
         return view('admin.drivers.index', compact('drivers', 'totalDrivers', 'pendingDrivers', 'approvedDrivers', 'rejectedDrivers'));
     }
 
-    public function updateStatus(Request $request, $id)
+   public function updateStatus(Request $request, $id)
     {
-        $request->validate(['status' => 'required|in:approved,rejected']);
+        // Tambahkan 'freeze' ke dalam daftar validasi
+        $request->validate(['status' => 'required|in:approved,rejected,freeze']);
         $status = $request->status;
 
         DB::beginTransaction();
         try {
             $driver = RegistrasiDriverSancaka::findOrFail($id);
-            $driver->update(['status' => $status]);
+            
+            // Siapkan data yang akan diupdate
+            $updateData = ['status' => $status];
 
+            // LOGIKA FREEZE & UNFREEZE (Menerima Orderan)
+            if ($status === 'freeze') {
+                $updateData['is_active_map'] = 0; // Matikan map agar tidak masuk orderan
+            } elseif ($status === 'approved') {
+                $updateData['is_active_map'] = 1; // Nyalakan map kembali jika disetujui/dipulihkan
+            }
+
+            $driver->update($updateData);
+
+            // LOGIKA ROLE PENGGUNA
             if ($status === 'approved' && $driver->id_pengguna) {
                 Pengguna::where('id_pengguna', $driver->id_pengguna)->update(['role' => 'Driver']);
+            } elseif ($status === 'freeze' && $driver->id_pengguna) {
+                // Opsional: Ubah role kembali ke User biasa agar aplikasi Driver menolak akses login
+                Pengguna::where('id_pengguna', $driver->id_pengguna)->update(['role' => 'Pelanggan']);
             }
 
             DB::commit();
-            return redirect()->back()->with('success', "Pendaftaran berhasil di-{$status}.");
+            return redirect()->back()->with('success', "Status akun berhasil diubah menjadi {$status}.");
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error("LOG: Error merubah status driver - " . $e->getMessage());
             return redirect()->back()->with('error', 'Gagal merubah status.');
         }
     }

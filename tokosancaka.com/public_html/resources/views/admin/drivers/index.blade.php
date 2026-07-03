@@ -233,6 +233,8 @@
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Pending</span>
                             @elseif($driver->status == 'approved') 
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Approved</span>
+                            @elseif($driver->status == 'freeze') 
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-50 border border-cyan-200 text-cyan-700 text-xs font-medium"><span class="w-1.5 h-1.5 rounded-full bg-cyan-500"></span> Frozen</span>
                             @else 
                                 <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Rejected</span> 
                             @endif
@@ -247,6 +249,27 @@
                                 <button type="button" onclick="openModal('modalEdit_{{ $driver->id }}')" class="h-9 w-9 flex items-center justify-center text-gray-400 hover:text-amber-600 bg-white border border-gray-200 hover:border-amber-200 hover:bg-amber-50 rounded-lg transition-all" title="Edit Data">
                                     <i class="fas fa-pen"></i>
                                 </button>
+
+                                @if($driver->status == 'approved')
+                                <form action="{{ route('admin.drivers.status', $driver->id) }}" method="POST" class="m-0 inline" onsubmit="return confirm('Yakin ingin membekukan (freeze) akun driver ini? Driver tidak akan bisa menerima orderan.')">
+                                    @csrf @method('PATCH')
+                                    <input type="hidden" name="status" value="freeze">
+                                    <button type="submit" class="h-9 w-9 flex items-center justify-center text-gray-400 hover:text-cyan-600 bg-white border border-gray-200 hover:border-cyan-200 hover:bg-cyan-50 rounded-lg transition-all" title="Freeze Akun">
+                                        <i class="fas fa-snowflake"></i>
+                                    </button>
+                                </form>
+                                @endif
+
+                                @if($driver->status == 'freeze')
+                                <form action="{{ route('admin.drivers.status', $driver->id) }}" method="POST" class="m-0 inline" onsubmit="return confirm('Yakin ingin memulihkan akun driver ini? Driver akan bisa menerima orderan kembali.')">
+                                    @csrf @method('PATCH')
+                                    <input type="hidden" name="status" value="approved">
+                                    <button type="submit" class="h-9 w-9 flex items-center justify-center text-gray-400 hover:text-emerald-600 bg-white border border-gray-200 hover:border-emerald-200 hover:bg-emerald-50 rounded-lg transition-all" title="Pulihkan Akun (Unfreeze)">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                </form>
+                                @endif
+
                                 <form action="{{ route('admin.drivers.destroy', $driver->id) }}" method="POST" class="m-0 inline" onsubmit="return confirm('Yakin ingin menghapus permanen data ini?')">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="h-9 w-9 flex items-center justify-center text-gray-400 hover:text-rose-600 bg-white border border-gray-200 hover:border-rose-200 hover:bg-rose-50 rounded-lg transition-all" title="Hapus Data">
