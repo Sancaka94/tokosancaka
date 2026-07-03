@@ -499,6 +499,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // User Profile
     Route::get('/user/profile', function () { return view('profile.show'); })->name('profile.show');
 
+    Route::get('/user/profile/edit', [CustomerProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/user/profile/update', [CustomerProfileController::class, 'update'])->name('profile.update');
+
     // Reviews
     Route::post('/reviews', [ProductReviewController::class, 'store'])->name('reviews.store');
 
