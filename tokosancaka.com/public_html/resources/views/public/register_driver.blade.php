@@ -262,7 +262,7 @@
                         btnGetLocation.classList.replace('btn-get-location', 'btn-light');
                         btnGetLocation.disabled = false;
                         
-                        statusText.innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-check-circle"></i> Titik lokasi berhasil diisi. (Bisa diubah manual bila kurang pas)</span>';
+                        statusText.innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-check-circle"></i> Titik lokasi berhasil diisi. (Bisa diubah manual bila kurang pas atau rekomendasi dari kami gunakan HP agar koordinat akurat) Terimakasih</span>';
                         
                         // Kembalikan tombol ke teks awal setelah 3 detik
                         setTimeout(() => {
