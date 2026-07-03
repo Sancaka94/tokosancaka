@@ -596,7 +596,7 @@
                 <div class="col-md-4 col-lg-3 col-xl-3 mx-auto mt-3">
                     <h5 class="text-uppercase mb-4 fw-bold text-white">Hubungi Kami</h5>
                     <p class="text-white-50"><i class="fas fa-home me-3"></i>Jl. Dr. Wahidin No.18A RT.22 RW.05 Kel Ketanggi Kec.Ngawi Kab.Ngawi Jawa Timur 63211</p>
-                    <p class="text-white-50"><i class="fas fa-envelope me-3"></i>kontak@tokosancaka.com</p>
+                    <p class="text-white-50"><i class="fas fa-envelope me-3"></i>admin@tokosancaka.com</p>
                     <p class="text-white-50"><i class="fas fa-phone me-3"></i>+62 85 745 808 809</p>
                 </div>
             </div>
