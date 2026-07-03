@@ -211,8 +211,15 @@ class RegisterDriverOnlineController extends Controller
             $cekHash = Http::withHeaders(['x-apikey' => $apiKey])
                 ->get("https://www.virustotal.com/api/v3/files/{$fileHash}");
 
+           // CONTOH PENERAPAN DI TAHAP 1 (Pencarian Instan)
             if ($cekHash->successful()) {
                 $stats = $cekHash->json('data.attributes.last_analysis_stats');
+                
+                // TAHAPKAN LOG INI:
+                if ($stats['malicious'] > 0 || $stats['suspicious'] > 0) {
+                    Log::warning("VIRUSTOTAL ALERT: File PDF terindikasi bahaya! Hash: {$fileHash} | Malicious: {$stats['malicious']}, Suspicious: {$stats['suspicious']}");
+                }
+
                 return ($stats['malicious'] == 0 && $stats['suspicious'] == 0);
             }
 
