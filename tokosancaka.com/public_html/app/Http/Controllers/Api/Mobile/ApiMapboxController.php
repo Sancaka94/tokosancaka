@@ -98,7 +98,7 @@ class ApiMapboxController extends Controller
         }
     }
 
-    /**
+   /**
      * Endpoint API POST: /api/mobile/driver/register
      * MENANGANI PENDAFTARAN DRIVER + UPLOAD FILE
      */
@@ -113,9 +113,11 @@ class ApiMapboxController extends Controller
             'nama_lengkap'    => 'required|string|max:255',
             'tempat_lahir'    => 'required|string|max:100',
             'tanggal_lahir'   => 'required|date|before:-18 years',
+            'jenis_kelamin'   => 'required|in:Laki-laki,Perempuan',
             'nomor_nik'       => 'required|string|max:20',
             'nomor_kk'        => 'required|string|max:20',
             'nomor_wa'        => 'required|string|max:20',
+            'instansi_perusahaan' => 'nullable|string|max:255',
             'alamat_lengkap'  => 'required|string',
             'jenis_layanan'   => 'required|in:motor,mobil',
             'merk_kendaraan'  => 'required|string|max:100',
@@ -123,7 +125,7 @@ class ApiMapboxController extends Controller
             'plat_nomor'      => 'required|string|max:15',
             'latitude'        => 'required|numeric',
             'longitude'       => 'required|numeric',
-            
+
             // File Pendukung (Wajib di awal pendaftaran)
             'file_ktp'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_sim'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
@@ -132,7 +134,7 @@ class ApiMapboxController extends Controller
             'foto_motor'         => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_buku_rekening' => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'foto_wajah'         => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            
+
             // Opsional
             'file_kk'         => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_buku_nikah' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
@@ -173,25 +175,25 @@ class ApiMapboxController extends Controller
             // 2. Proses Upload File (Dilengkapi)
             $uploadPath = 'drivers';
             $filePaths = [
-                'file_ktp' => null, 'file_sim' => null, 'file_skck' => null, 
-                'file_kk' => null, 'file_buku_nikah' => null, 'file_stnk' => null, 
+                'file_ktp' => null, 'file_sim' => null, 'file_skck' => null,
+                'file_kk' => null, 'file_buku_nikah' => null, 'file_stnk' => null,
                 'file_bpkb' => null, 'foto_motor' => null, 'file_buku_rekening' => null, 'foto_wajah' => null,
             ];
 
             foreach (array_keys($filePaths) as $fileKey) {
                 if ($request->hasFile($fileKey)) {
                     $file = $request->file($fileKey);
-                    
+
                     // PROSES KEAMANAN FILE (Gunakan engine keamanan)
                     $pathAman = $this->amankanDanSimpanFile($file, $uploadPath);
-                    
+
                     if (!$pathAman) {
                         return response()->json([
                             'status'  => false,
                             'message' => "Pendaftaran Gagal: Berkas terindikasi berbahaya pada kolom: {$fileKey}."
                         ], 422);
                     }
-                    
+
                     $filePaths[$fileKey] = $pathAman;
                 }
             }
@@ -202,9 +204,11 @@ class ApiMapboxController extends Controller
                 'nama_lengkap'    => $namaLengkap,
                 'tempat_lahir'    => $request->input('tempat_lahir'),
                 'tanggal_lahir'   => $request->input('tanggal_lahir'),
+                'jenis_kelamin'   => $request->input('jenis_kelamin'),
                 'nomor_nik'       => $request->input('nomor_nik'),
                 'nomor_kk'        => $request->input('nomor_kk'),
                 'nomor_wa'        => $nomorWa,
+                'instansi_perusahaan' => $request->input('instansi_perusahaan'),
                 'alamat_lengkap'  => $request->input('alamat_lengkap'),
                 'jenis_layanan'   => $request->input('jenis_layanan'),
                 'merk_kendaraan'  => $request->input('merk_kendaraan'),
@@ -212,7 +216,7 @@ class ApiMapboxController extends Controller
                 'plat_nomor'      => $request->input('plat_nomor'),
                 'latitude'        => $request->input('latitude'),
                 'longitude'       => $request->input('longitude'),
-                
+
                 'file_ktp'           => $filePaths['file_ktp'],
                 'file_sim'           => $filePaths['file_sim'],
                 'file_skck'          => $filePaths['file_skck'],
@@ -223,7 +227,7 @@ class ApiMapboxController extends Controller
                 'foto_motor'         => $filePaths['foto_motor'],
                 'file_buku_rekening' => $filePaths['file_buku_rekening'],
                 'foto_wajah'         => $filePaths['foto_wajah'],
-                
+
                 'status'          => 'pending',
                 'is_active_map'   => 0,
                 'created_at'      => now(),
@@ -290,7 +294,7 @@ class ApiMapboxController extends Controller
                     'distance' => round($driver->distance, 1) . ' KM',
                     'lat'      => (float) $driver->latitude,
                     'lng'      => (float) $driver->longitude,
-                    'is_online'=> $driver->is_active_map == 1 
+                    'is_online'=> $driver->is_active_map == 1
                 ];
             });
 
@@ -358,9 +362,11 @@ class ApiMapboxController extends Controller
             'nama_lengkap'    => 'required|string|max:255',
             'tempat_lahir'    => 'required|string|max:100',
             'tanggal_lahir'   => 'required|date|before:-18 years',
+            'jenis_kelamin'   => 'required|in:Laki-laki,Perempuan',
             'nomor_nik'       => 'required|string|max:20',
             'nomor_kk'        => 'required|string|max:20',
             'nomor_wa'        => 'required|string|max:20',
+            'instansi_perusahaan' => 'nullable|string|max:255',
             'alamat_lengkap'  => 'required|string',
             'jenis_layanan'   => 'required|in:motor,mobil',
             'merk_kendaraan'  => 'required|string|max:100',
@@ -368,7 +374,7 @@ class ApiMapboxController extends Controller
             'plat_nomor'      => 'required|string|max:15',
             'latitude'        => 'required|numeric',
             'longitude'       => 'required|numeric',
-            
+
             // Semua file nullable saat update
             'file_ktp'           => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_sim'           => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
@@ -391,17 +397,17 @@ class ApiMapboxController extends Controller
             $filePaths = [];
             // Daftar field dokumen lengkap
             $fields = [
-                'file_ktp', 'file_sim', 'file_skck', 'file_kk', 'file_buku_nikah', 
+                'file_ktp', 'file_sim', 'file_skck', 'file_kk', 'file_buku_nikah',
                 'file_stnk', 'file_bpkb', 'foto_motor', 'file_buku_rekening', 'foto_wajah'
             ];
 
            foreach ($fields as $field) {
                 if ($request->hasFile($field)) {
                     $file = $request->file($field);
-                    
+
                     // PROSES KEAMANAN FILE
                     $pathAman = $this->amankanDanSimpanFile($file, $uploadPath);
-                    
+
                     if (!$pathAman) {
                         return response()->json([
                             'status'  => false,
@@ -413,7 +419,7 @@ class ApiMapboxController extends Controller
                     if (!empty($oldDriver->$field) && Storage::disk('public')->exists($oldDriver->$field)) {
                         Storage::disk('public')->delete($oldDriver->$field);
                     }
-                    
+
                     $filePaths[$field] = $pathAman;
                 } else {
                     // Gunakan file lama jika tidak ada upload baru
@@ -428,9 +434,11 @@ class ApiMapboxController extends Controller
                     'nama_lengkap'    => $request->input('nama_lengkap'),
                     'tempat_lahir'    => $request->input('tempat_lahir'),
                     'tanggal_lahir'   => $request->input('tanggal_lahir'),
+                    'jenis_kelamin'   => $request->input('jenis_kelamin'),
                     'nomor_nik'       => $request->input('nomor_nik'),
                     'nomor_kk'        => $request->input('nomor_kk'),
                     'nomor_wa'        => $request->input('nomor_wa'),
+                    'instansi_perusahaan' => $request->input('instansi_perusahaan'),
                     'alamat_lengkap'  => $request->input('alamat_lengkap'),
                     'jenis_layanan'   => $request->input('jenis_layanan'),
                     'merk_kendaraan'  => $request->input('merk_kendaraan'),
@@ -438,7 +446,7 @@ class ApiMapboxController extends Controller
                     'plat_nomor'      => $request->input('plat_nomor'),
                     'latitude'        => $request->input('latitude'),
                     'longitude'       => $request->input('longitude'),
-                    
+
                     'file_ktp'           => $filePaths['file_ktp'],
                     'file_sim'           => $filePaths['file_sim'],
                     'file_skck'          => $filePaths['file_skck'],
@@ -449,7 +457,7 @@ class ApiMapboxController extends Controller
                     'foto_motor'         => $filePaths['foto_motor'],
                     'file_buku_rekening' => $filePaths['file_buku_rekening'],
                     'foto_wajah'         => $filePaths['foto_wajah'],
-                    
+
                     'updated_at'      => now(),
                 ]);
 
@@ -642,7 +650,7 @@ class ApiMapboxController extends Controller
                     'sound' => 'default',
                     'data'  => [
                         'action'   => 'order_accepted',
-                        'order_id' => $orderId 
+                        'order_id' => $orderId
                     ]
                 ]);
             }
@@ -798,10 +806,10 @@ class ApiMapboxController extends Controller
         if (in_array($ekstensi, ['jpg', 'jpeg', 'png'])) {
             try {
                 $namaFileBaru = $folder . '/' . $namaAcak . '.jpg';
-                
-                $img = Image::decode($file->getRealPath())->scaleDown(width: 1200); 
+
+                $img = Image::decode($file->getRealPath())->scaleDown(width: 1200);
                 $encoded = $img->encodeUsingFileExtension('jpg', quality: 85);
-                
+
                 Storage::put('public/' . $namaFileBaru, (string) $encoded);
                 return $namaFileBaru;
             } catch (\Exception $e) {
@@ -813,7 +821,7 @@ class ApiMapboxController extends Controller
         // 2. JIKA PDF -> Scan lewat VirusTotal API
         if ($ekstensi === 'pdf') {
             $isSafe = $this->scanPdfVirusTotal($file);
-            
+
             if ($isSafe) {
                 $namaFileBaru = $namaAcak . '.pdf';
                 return $file->storeAs($folder, $namaFileBaru, 'public');

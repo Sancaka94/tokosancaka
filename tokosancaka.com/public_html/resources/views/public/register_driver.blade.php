@@ -87,11 +87,11 @@
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-xl-11 col-lg-12">
-            
+
             <div class="card register-card">
                 <div class="register-header">
                     <div class="row align-items-center">
-                        
+
                         <div class="col-12 d-md-none d-flex justify-content-center align-items-center gap-4 mb-3">
                             <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Kiri" style="max-height: 55px; width: auto; object-fit: contain; background-color: #ffffff; padding: 5px; border-radius: 8px;">
                             <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" alt="Logo Kanan" style="max-height: 55px; width: auto; object-fit: contain; border-radius: 8px;">
@@ -109,12 +109,12 @@
                         <div class="col-md-2 d-none d-md-block text-end">
                             <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" alt="Logo Kanan" style="max-height: 65px; width: auto; object-fit: contain; border-radius: 8px;">
                         </div>
-                        
+
                     </div>
                 </div>
 
                 <div class="card-body p-4 p-md-5">
-                    
+
                     {{-- Alert Notifikasi --}}
                     @if(session('success'))
                         <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm" role="alert">
@@ -144,15 +144,15 @@
 
                     <form action="{{ route('driver.register.store') }}" method="POST" enctype="multipart/form-data" id="formPendaftaran">
                         @csrf
-                        
+
                         <div class="row g-5">
                             {{-- ================= KOLOM KIRI (Informasi Pribadi & Kendaraan) ================= --}}
                             <div class="col-lg-6">
-                                
+
                                 <div class="form-section-title border-bottom pb-2">
                                     <i class="fa-solid fa-id-card"></i> Identitas Diri Pelamar
                                 </div>
-                                
+
                                 <div class="row g-3 mb-4">
                                     <div class="col-12">
                                         <label class="form-label">Nama Lengkap Sesuai KTP <span class="text-danger">*</span></label>
@@ -186,6 +186,20 @@
                                             <span class="input-group-text bg-light border-end-0"><i class="fa-brands fa-whatsapp text-success"></i></span>
                                             <input type="text" name="nomor_wa" class="form-control custom-input border-start-0 @error('nomor_wa') is-invalid @enderror" value="{{ old('nomor_wa') }}" required placeholder="Contoh: 085745808809">
                                         </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Jenis Kelamin <span class="text-danger">*</span></label>
+                                        <select name="jenis_kelamin" class="form-select custom-select w-100 @error('jenis_kelamin') is-invalid @enderror" required>
+                                            <option value="" selected disabled>-- Pilih Jenis Kelamin --</option>
+                                            <option value="Laki-laki" {{ old('jenis_kelamin') == 'Laki-laki' ? 'selected' : '' }}>Laki-laki</option>
+                                            <option value="Perempuan" {{ old('jenis_kelamin') == 'Perempuan' ? 'selected' : '' }}>Perempuan</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Instansi / Perusahaan</label>
+                                        <input type="text" name="instansi_perusahaan" class="form-control custom-input w-100 @error('instansi_perusahaan') is-invalid @enderror" value="{{ old('instansi_perusahaan') }}" placeholder="Opsional (Isi jika ada)">
                                     </div>
 
                                     <div class="col-12">
@@ -244,7 +258,7 @@
                                 <div class="form-section-title border-bottom pb-2">
                                     <i class="fa-solid fa-file-arrow-up"></i> Upload Berkas Dokumen Driver (Foto Jelas)
                                 </div>
-                                
+
                                 <div class="alert alert-light border rounded-3 text-muted text-center py-2 mb-3" style="font-size: 0.8rem;">
                                     <i class="fa-solid fa-circle-info me-1"></i> Format: <strong>JPG, PNG, PDF</strong> (Maksimal Ukuran: 5MB per File).
                                 </div>
@@ -252,7 +266,7 @@
                                 <div class="row g-3">
                                     {{-- DOKUMEN PRIBADI --}}
                                     <h6 class="fw-bold mt-2 mb-0 text-secondary" style="font-size: 0.85rem;">A. Berkas Administrasi Diri</h6>
-                                    
+
                                     <div class="col-md-6">
                                         <label class="form-label">Foto 4x6 Warna Biru <span class="text-danger">*</span></label>
                                         <input type="file" name="foto_wajah" class="form-control custom-file-input w-100" required accept=".jpg,.jpeg,.png">
@@ -277,7 +291,7 @@
 
                                     {{-- DOKUMEN KENDARAAN --}}
                                     <h6 class="fw-bold mt-4 mb-0 text-secondary" style="font-size: 0.85rem;">B. Berkas Kendaraan Operasional</h6>
-                                    
+
                                     <div class="col-md-6">
                                         <label class="form-label">STNK Asli (Pajak Hidup) <span class="text-danger">*</span></label>
                                         <input type="file" name="file_stnk" class="form-control custom-file-input w-100" required accept=".jpg,.jpeg,.png,.pdf">
@@ -289,7 +303,7 @@
 
                                     {{-- DOKUMEN PENDUKUNG --}}
                                     <h6 class="fw-bold mt-4 mb-0 text-secondary" style="font-size: 0.85rem;">C. Berkas Pendukung (Opsional)</h6>
-                                    
+
                                     <div class="col-md-4">
                                         <label class="form-label text-muted">Kartu Keluarga (KK)</label>
                                         <input type="file" name="file_kk" class="form-control custom-file-input w-100" accept=".jpg,.jpeg,.png,.pdf">
@@ -313,12 +327,12 @@
                                     <i class="fa-solid fa-scale-balanced"></i> Peraturan, Syarat Ketentuan & Kebijakan Privasi Sancaka
                                 </div>
                                 <p class="text-muted small mb-3"><i class="fa-solid fa-circle-exclamation text-danger"></i> Harap baca lembar dokumen ini dengan cara <strong>melakukan scroll box ke bawah sampai selesai</strong> untuk mengaktifkan tombol pendaftaran.</p>
-                                
+
                                 <div id="tosScrollBox" class="tos-scroll-box mb-3 shadow-inner">
-                                    
+
                                   {{-- 1. PERATURAN MITRA DRIVER --}}
                                     <h5 class="fw-bold text-danger border-bottom pb-1 mb-3">PERSYARATAN & PERATURAN MITRA DRIVER SANCAKA</h5>
-                                    
+
                                     <h6 class="fw-bold mt-3 text-dark">1. Persyaratan Kualifikasi Mitra Driver (Standar Resmi)</h6>
                                     <ul class="ps-3 mb-3 text-dark">
                                         <li>Batas Usia pendaftar adalah <strong>18 tahun hingga 65 tahun</strong> pada saat pendaftaran.</li>
@@ -346,7 +360,7 @@
                                     {{-- 2. KEBIJAKAN PRIVASI --}}
                                     <h5 class="fw-bold text-primary border-bottom pb-1 mb-3">KEBIJAKAN PRIVASI</h5>
                                     <p class="text-dark">Privasi Anda adalah prioritas utama kami di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace. Dokumen ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi pribadi Anda saat menggunakan layanan kami. Dengan menggunakan situs atau aplikasi kami, Anda dianggap telah menyetujui seluruh isi Kebijakan Privasi ini.</p>
-                                    
+
                                     <h6 class="fw-bold mt-3 text-dark">1. Informasi yang Kami Kumpulkan</h6>
                                     <p class="mb-2 text-dark">Kami dapat mengumpulkan data berikut:</p>
                                     <ul class="ps-3 mb-3 text-dark">
@@ -448,7 +462,7 @@
                                     {{-- 3. SYARAT & KETENTUAN PLATFORM --}}
                                     <h5 class="fw-bold text-success border-bottom pb-1 mb-3">SYARAT & KETENTUAN PLATFORM (T.O.S)</h5>
                                     <p class="text-dark mb-3">Halaman ini berisi syarat & ketentuan resmi yang berlaku di Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace. Mohon dibaca dengan seksama karena semua poin ini mengikat setiap pengguna layanan kami.</p>
-                                    
+
                                     <ul class="ps-3 mb-4 text-dark">
                                         <li><strong>Penerimaan Ketentuan:</strong> Dengan menggunakan layanan kami, Anda setuju terikat oleh ketentuan ini.</li>
                                         <li><strong>Pendaftaran Akun:</strong> Semua informasi akun harus akurat, lengkap, dan terkini.</li>
@@ -503,7 +517,7 @@
                                     </ul>
 
                                     <p class="text-dark mb-5">Terima kasih telah menggunakan Sancaka Express, Sancaka Store, Toko Sancaka, dan Sancaka Marketplace.</p>
-                                    
+
                                     <p class="fw-bold text-success text-center mt-5 bg-light p-3 border rounded shadow-sm">--- AKHIR DOKUMEN PERATURAN & PERSETUJUAN ---</p>
                                 </div>
 
@@ -518,8 +532,8 @@
                                 {{-- INFO SISTEM ANTI-VIRUS --}}
                                 <div class="text-center mb-3">
                                     <p class="text-sm text-gray-500 mb-0" style="font-size: 0.85rem; color: #64748b;">
-                                        <i class="fa-solid fa-shield-halved text-success me-1"></i> Sistem Keamanan Aktif: 
-                                        Semua dokumen yang Anda unggah akan dipindai oleh sistem Anti-Virus. 
+                                        <i class="fa-solid fa-shield-halved text-success me-1"></i> Sistem Keamanan Aktif:
+                                        Semua dokumen yang Anda unggah akan dipindai oleh sistem Anti-Virus.
                                         Proses pengiriman mungkin memakan waktu hingga 30 detik.
                                     </p>
                                 </div>
@@ -534,7 +548,7 @@
                     </form>
                 </div>
             </div>
-            
+
         </div>
     </div>
 </div>

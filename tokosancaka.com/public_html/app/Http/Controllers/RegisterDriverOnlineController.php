@@ -34,6 +34,8 @@ class RegisterDriverOnlineController extends Controller
             'nama_lengkap'    => 'required|string|max:255',
             'tempat_lahir'    => 'required|string|max:100',
             'tanggal_lahir'   => 'required|date|before:-18 years',
+            'jenis_kelamin'       => 'required|in:Laki-laki,Perempuan',
+            'instansi_perusahaan' => 'nullable|string|max:255',
             'nomor_nik'       => 'required|string|max:20',
             'nomor_kk'        => 'nullable|string|max:20',
             'nomor_wa'        => 'required|string|max:20',
@@ -44,7 +46,7 @@ class RegisterDriverOnlineController extends Controller
             'plat_nomor'      => 'required|string|max:15',
             'latitude'        => 'nullable|numeric',
             'longitude'       => 'nullable|numeric',
-            
+
             // Dokumen Inti
             'foto_wajah'         => 'required|file|mimes:jpeg,png,jpg|max:5120',
             'file_ktp'           => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
@@ -53,7 +55,7 @@ class RegisterDriverOnlineController extends Controller
             'file_stnk'          => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'foto_motor'         => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_buku_rekening' => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            
+
             // Opsional
             'file_kk'         => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_bpkb'       => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
@@ -63,20 +65,20 @@ class RegisterDriverOnlineController extends Controller
         try {
             $uploadPath = 'drivers';
             $filePaths = [];
-            
+
             $fields = ['foto_wajah', 'file_ktp', 'file_sim', 'file_skck', 'file_stnk', 'foto_motor', 'file_buku_rekening', 'file_kk', 'file_bpkb', 'file_buku_nikah'];
 
             foreach ($fields as $field) {
                 if ($request->hasFile($field)) {
                     $file = $request->file($field);
-                    
+
                     // PROSES KEAMANAN FILE SEBELUM DISIMPAN
                     $pathAman = $this->amankanDanSimpanFile($file, $uploadPath);
-                    
+
                     if (!$pathAman) {
                         return redirect()->back()->withInput()->with('error', "Pendaftaran Gagal: Sistem keamanan mendeteksi anomali/malware pada berkas Anda di kolom: {$field}.");
                     }
-                    
+
                     $filePaths[$field] = $pathAman;
                 } else {
                     $filePaths[$field] = null;
@@ -84,7 +86,7 @@ class RegisterDriverOnlineController extends Controller
             }
 
             RegistrasiDriverSancaka::create(array_merge(
-                $request->only(['nama_lengkap', 'tempat_lahir', 'tanggal_lahir', 'nomor_nik', 'nomor_kk', 'nomor_wa', 'alamat_lengkap', 'jenis_layanan', 'merk_kendaraan', 'tahun_kendaraan', 'plat_nomor', 'latitude', 'longitude']),
+                $request->only(['nama_lengkap', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'nomor_nik', 'nomor_kk', 'nomor_wa', 'instansi_perusahaan', 'alamat_lengkap', 'jenis_layanan', 'merk_kendaraan', 'tahun_kendaraan', 'plat_nomor', 'latitude', 'longitude']),
                 $filePaths,
                 ['status' => 'pending', 'is_active_map' => 0]
             ));
@@ -100,11 +102,13 @@ class RegisterDriverOnlineController extends Controller
     {
         $driver = RegistrasiDriverSancaka::findOrFail($id);
         $minTahun = date('Y') - 8;
-        
+
         $request->validate([
             'nama_lengkap'    => 'required|string|max:255',
             'tempat_lahir'    => 'required|string|max:100',
             'tanggal_lahir'   => 'required|date|before:-18 years',
+            'jenis_kelamin'       => 'required|in:Laki-laki,Perempuan',
+            'instansi_perusahaan' => 'nullable|string|max:255',
             'nomor_nik'       => 'required|string|max:20',
             'nomor_wa'        => 'required|string|max:20',
             'alamat_lengkap'  => 'required|string',
@@ -112,7 +116,7 @@ class RegisterDriverOnlineController extends Controller
             'merk_kendaraan'  => 'required|string|max:100',
             'tahun_kendaraan' => 'required|integer|min:' . $minTahun . '|max:' . date('Y'),
             'plat_nomor'      => 'required|string|max:15',
-            
+
             'foto_wajah' => 'nullable|file|mimes:jpeg,png,jpg|max:5120',
             'file_ktp'   => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
             'file_sim'   => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:5120',
@@ -123,17 +127,17 @@ class RegisterDriverOnlineController extends Controller
         ]);
 
         try {
-            $updateData = $request->only(['nama_lengkap', 'tempat_lahir', 'tanggal_lahir', 'nomor_nik', 'nomor_kk', 'nomor_wa', 'alamat_lengkap', 'jenis_layanan', 'merk_kendaraan', 'tahun_kendaraan', 'plat_nomor', 'latitude', 'longitude']);
-            
+            $updateData = $request->only(['nama_lengkap', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'nomor_nik', 'nomor_kk', 'nomor_wa', 'instansi_perusahaan', 'alamat_lengkap', 'jenis_layanan', 'merk_kendaraan', 'tahun_kendaraan', 'plat_nomor', 'latitude', 'longitude'])
+
             $fields = ['foto_wajah', 'file_ktp', 'file_sim', 'file_skck', 'file_stnk', 'foto_motor', 'file_buku_rekening', 'file_kk', 'file_bpkb', 'file_buku_nikah'];
 
             foreach ($fields as $field) {
                 if ($request->hasFile($field)) {
                     $file = $request->file($field);
-                    
+
                     // PROSES KEAMANAN FILE
                     $pathAman = $this->amankanDanSimpanFile($file, 'drivers');
-                    
+
                     if (!$pathAman) {
                         return redirect()->back()->with('error', "Gagal memperbarui: File {$field} terindikasi berbahaya!");
                     }
@@ -142,7 +146,7 @@ class RegisterDriverOnlineController extends Controller
                     if (!empty($driver->$field) && Storage::disk('public')->exists($driver->$field)) {
                         Storage::disk('public')->delete($driver->$field);
                     }
-                    
+
                     $updateData[$field] = $pathAman;
                 }
             }
@@ -166,13 +170,13 @@ class RegisterDriverOnlineController extends Controller
         if (in_array($ekstensi, ['jpg', 'jpeg', 'png'])) {
             try {
                 $namaFileBaru = $folder . '/' . $namaAcak . '.jpg';
-                
-                // PERUBAHAN V4: 
+
+                // PERUBAHAN V4:
                 // read() -> decode()
                 // toJpeg() -> encodeUsingFileExtension()
-                $img = Image::decode($file->getRealPath())->scaleDown(width: 1200); 
+                $img = Image::decode($file->getRealPath())->scaleDown(width: 1200);
                 $encoded = $img->encodeUsingFileExtension('jpg', quality: 85);
-                
+
                 Storage::put('public/' . $namaFileBaru, (string) $encoded);
                 return $namaFileBaru; // Return relative path
             } catch (\Exception $e) {
@@ -184,7 +188,7 @@ class RegisterDriverOnlineController extends Controller
         // 2. JIKA PDF -> Scan lewat VirusTotal API
         if ($ekstensi === 'pdf') {
             $isSafe = $this->scanPdfVirusTotal($file);
-            
+
             if ($isSafe) {
                 $namaFileBaru = $namaAcak . '.pdf';
                 return $file->storeAs($folder, $namaFileBaru, 'public');
@@ -214,7 +218,7 @@ class RegisterDriverOnlineController extends Controller
            // CONTOH PENERAPAN DI TAHAP 1 (Pencarian Instan)
             if ($cekHash->successful()) {
                 $stats = $cekHash->json('data.attributes.last_analysis_stats');
-                
+
                 // TAHAPKAN LOG INI:
                 if ($stats['malicious'] > 0 || $stats['suspicious'] > 0) {
                     Log::warning("VIRUSTOTAL ALERT: File PDF terindikasi bahaya! Hash: {$fileHash} | Malicious: {$stats['malicious']}, Suspicious: {$stats['suspicious']}");
@@ -235,7 +239,7 @@ class RegisterDriverOnlineController extends Controller
             // TAHAP 3: Polling Tunggu Hasil (Maks 4x 5 Detik = 20 Detik)
             for ($i = 0; $i < 4; $i++) {
                 sleep(5);
-                
+
                 $analisis = Http::withHeaders(['x-apikey' => $apiKey])
                     ->get("https://www.virustotal.com/api/v3/analyses/{$analysisId}");
 
@@ -298,9 +302,9 @@ class RegisterDriverOnlineController extends Controller
             $updateData = ['status' => $status];
 
             if ($status === 'freeze') {
-                $updateData['is_active_map'] = 0; 
+                $updateData['is_active_map'] = 0;
             } elseif ($status === 'approved') {
-                $updateData['is_active_map'] = 1; 
+                $updateData['is_active_map'] = 1;
             }
 
             $driver->update($updateData);
@@ -337,10 +341,10 @@ class RegisterDriverOnlineController extends Controller
     {
         $ids = $request->input('selected_ids');
         if (!$ids || empty($ids)) return redirect()->back()->with('error', 'Pilih minimal satu data.');
-        
+
         $drivers = RegistrasiDriverSancaka::whereIn('id', $ids)->get();
         foreach ($drivers as $driver) {
-            $this->destroy($driver->id); 
+            $this->destroy($driver->id);
         }
         return redirect()->back()->with('success', count($ids) . ' data terpilih berhasil dihapus massal.');
     }
