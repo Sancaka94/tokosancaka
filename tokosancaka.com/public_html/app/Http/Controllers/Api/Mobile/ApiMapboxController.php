@@ -529,7 +529,7 @@ class ApiMapboxController extends Controller
         return round($earthRadius * $c);
     }
 
-   public function notify_driver(Request $request)
+  public function notify_driver(Request $request)
     {
         Log::info("=== [API MAPBOX] REQUEST NOTIFY DRIVER (ORDER BARU) MASUK ===");
         Log::info("LOG LOG: Payload dari HP Pelanggan: ", $request->all());
@@ -563,6 +563,7 @@ class ApiMapboxController extends Controller
         try {
             Log::info("LOG LOG: Mencoba Insert ke tabel order_ojek_online...");
 
+            // 🔥 PERBAIKAN 1: SIMPAN CATATAN KE DATABASE 🔥
             DB::table('order_ojek_online')->insert([
                 'order_id'          => $orderId,
                 'customer_id'       => $customer->id_pengguna,
@@ -577,6 +578,7 @@ class ApiMapboxController extends Controller
                 'waktu_menit'       => (int) $request->input('waktu_menit', 0),
                 'tarif'             => (float) $request->input('tarif', 0),
                 'metode_pembayaran' => $request->input('metode_pembayaran', 'CASH'),
+                'catatan'           => $request->input('catatan', null), // <-- TAMBAHAN SIMPAN CATATAN
                 'status'            => 'pending',
                 'created_at'        => now(),
                 'updated_at'        => now(),
@@ -604,7 +606,8 @@ class ApiMapboxController extends Controller
                     'tarif'            => $request->input('tarif'),
                     'jarak_ke_pemesan' => $jarakKePemesanMeter,
                     'origin_address'   => $request->input('origin_address'),
-                    'dest_address'     => $request->input('dest_address')
+                    'dest_address'     => $request->input('dest_address'),
+                    'catatan'          => $request->input('catatan', '') // 🔥 PERBAIKAN 2: KIRIM CATATAN KE HP DRIVER 🔥
                 ]
             ]);
 
