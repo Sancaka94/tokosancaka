@@ -127,7 +127,7 @@ class RegisterDriverOnlineController extends Controller
         ]);
 
         try {
-            $updateData = $request->only(['nama_lengkap', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'nomor_nik', 'nomor_kk', 'nomor_wa', 'instansi_perusahaan', 'alamat_lengkap', 'jenis_layanan', 'merk_kendaraan', 'tahun_kendaraan', 'plat_nomor', 'latitude', 'longitude'])
+            $updateData = $request->only(['nama_lengkap', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'nomor_nik', 'nomor_kk', 'nomor_wa', 'instansi_perusahaan', 'alamat_lengkap', 'jenis_layanan', 'merk_kendaraan', 'tahun_kendaraan', 'plat_nomor', 'latitude', 'longitude']);
 
             $fields = ['foto_wajah', 'file_ktp', 'file_sim', 'file_skck', 'file_stnk', 'foto_motor', 'file_buku_rekening', 'file_kk', 'file_bpkb', 'file_buku_nikah'];
 
