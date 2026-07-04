@@ -888,7 +888,7 @@
                                 </div>
                                 {{-- AKHIR TAMBAHAN KODE --}}
 
-                                div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 mt-6 border-t border-zinc-200">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 mt-6 border-t border-zinc-200">
                                     <div class="md:col-span-1">
                                         <h4 class="text-sm font-semibold text-zinc-900">Tarif Ojek Online</h4>
                                         <p class="text-xs text-zinc-500 mt-1">Konfigurasi hitungan otomatis untuk layanan Ojek Online Sancaka berbasis Jarak (Mapbox).</p>
