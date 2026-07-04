@@ -797,6 +797,78 @@ class ApiMapboxController extends Controller
      ]);
  }
 
+ /**
+     * Endpoint GET: /api/mobile/order/track-driver/{driver_id}
+     * Digunakan oleh pelanggan untuk menarik koordinat realtime driver
+     */
+    public function track_driver($driver_id)
+    {
+        $driver = DB::table('registrasi_driver_sancaka')->where('id_pengguna', $driver_id)->first();
+
+        if (!$driver) {
+            return response()->json(['success' => false, 'message' => 'Driver tidak ditemukan']);
+        }
+
+        return response()->json([
+            'success' => true,
+            'latitude' => (float) $driver->latitude,
+            'longitude' => (float) $driver->longitude,
+            'is_online' => $driver->is_active_map
+        ]);
+    }
+
+    // =========================================================================
+    // TAMBAHKAN FUNGSI HISTORY DI SINI
+    // =========================================================================
+
+    /**
+     * Endpoint GET: /api/mobile/order/history
+     * Menarik riwayat pesanan dengan filter hak akses (Admin vs Driver/Customer)
+     */
+    public function get_history(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $userId = $user->id_pengguna;
+
+            // 1. Inisialisasi query utama (urutkan dari yang paling baru)
+            $query = DB::table('order_ojek_online')
+                ->orderBy('created_at', 'desc');
+
+            // 2. Filter Hak Akses
+            // Jika ID pengguna BUKAN 4 (Bukan Admin), maka batasi datanya
+            if ($userId != 4) {
+                $query->where(function ($q) use ($userId) {
+                    $q->where('customer_id', $userId)
+                      ->orWhere('driver_id', $userId);
+                });
+            }
+
+            // 3. Eksekusi query
+            $orders = $query->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $orders
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("[API HISTORY ORDER] Crash: " . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memuat riwayat sistem.'
+            ], 500);
+        }
+    }
+
+    // =========================================================================
+    // MESIN KEAMANAN FILE BERINTEGRASI (INTERVENTION IMAGE + VIRUSTOTAL API)
+    // =========================================================================
+    private function amankanDanSimpanFile($file, $folder)
+    {
+        // ... (kode kamu selanjutnya tetap aman di bawah sini) ...
+
  // =========================================================================
     // MESIN KEAMANAN FILE BERINTEGRASI (INTERVENTION IMAGE + VIRUSTOTAL API)
     // =========================================================================
