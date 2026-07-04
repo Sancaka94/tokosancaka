@@ -665,17 +665,20 @@ class ApiMapboxController extends Controller
         }
     }
 
-   /**
+  /**
      * Endpoint GET: /api/mobile/order/detail/{order_id}
-     * Menarik semua data order, customer, dan driver dari Database.
      */
-    public function get_order_detail($order_id)
+    public function get_order_detail(Request $request, $order_id)
     {
         Log::info("=== [API MAPBOX] REQUEST GET ORDER DETAIL MASUK ===");
         Log::info("LOG LOG: Mencari data untuk Order ID: " . $order_id);
 
         try {
-            $order = DB::table('order_ojek_online')
+            $user = $request->user();
+            $userId = $user ? $user->id_pengguna : null;
+            $userRole = $user ? ($user->role ?? 'Pelanggan') : 'Pelanggan';
+
+            $query = DB::table('order_ojek_online')
                 ->join('Pengguna as customer', 'order_ojek_online.customer_id', '=', 'customer.id_pengguna')
                 ->join('registrasi_driver_sancaka as driver', 'order_ojek_online.driver_id', '=', 'driver.id_pengguna')
                 ->where('order_ojek_online.order_id', $order_id)
@@ -689,12 +692,22 @@ class ApiMapboxController extends Controller
                     'driver.longitude as driver_lng',
                     'driver.is_active_map as driver_is_online',
                     'driver.foto_motor'
-                )
-                ->first();
+                );
+
+            // --- KUNCI KEAMANAN IDOR ---
+            // Jika bukan Admin, pastikan data yang diambil adalah milik user itu sendiri
+            if ($userId != 4 && $userRole !== 'Admin') {
+                $query->where(function($q) use ($userId) {
+                    $q->where('order_ojek_online.customer_id', $userId)
+                      ->orWhere('order_ojek_online.driver_id', $userId);
+                });
+            }
+
+            $order = $query->first();
 
             if (!$order) {
-                Log::warning("LOG LOG: Gagal! Order ID " . $order_id . " tidak ditemukan di database.");
-                return response()->json(['success' => false, 'message' => 'Order tidak ditemukan'], 404);
+                Log::warning("LOG LOG: Gagal! Order ID " . $order_id . " tidak ditemukan atau diakses ilegal.");
+                return response()->json(['success' => false, 'message' => 'Order tidak ditemukan atau Anda tidak memiliki akses.'], 404);
             }
 
             Log::info("LOG LOG: SUKSES! Data order berhasil ditarik dan dikirim ke Frontend.");
@@ -703,8 +716,6 @@ class ApiMapboxController extends Controller
 
         } catch (\Exception $e) {
             Log::error("LOG LOG: CRASH GET ORDER DETAIL! Pesan: " . $e->getMessage());
-            Log::error("Trace: " . $e->getTraceAsString());
-
             return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
         }
     }
