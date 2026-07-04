@@ -797,25 +797,6 @@ class ApiMapboxController extends Controller
      ]);
  }
 
- /**
-     * Endpoint GET: /api/mobile/order/track-driver/{driver_id}
-     * Digunakan oleh pelanggan untuk menarik koordinat realtime driver
-     */
-    public function track_driver($driver_id)
-    {
-        $driver = DB::table('registrasi_driver_sancaka')->where('id_pengguna', $driver_id)->first();
-
-        if (!$driver) {
-            return response()->json(['success' => false, 'message' => 'Driver tidak ditemukan']);
-        }
-
-        return response()->json([
-            'success' => true,
-            'latitude' => (float) $driver->latitude,
-            'longitude' => (float) $driver->longitude,
-            'is_online' => $driver->is_active_map
-        ]);
-    }
 
     // =========================================================================
     // TAMBAHKAN FUNGSI HISTORY DI SINI
