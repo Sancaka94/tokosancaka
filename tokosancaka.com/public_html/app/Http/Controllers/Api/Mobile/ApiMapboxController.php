@@ -797,12 +797,7 @@ class ApiMapboxController extends Controller
      ]);
  }
 
-
-    // =========================================================================
-    // TAMBAHKAN FUNGSI HISTORY DI SINI
-    // =========================================================================
-
-    /**
+/**
      * Endpoint GET: /api/mobile/order/history
      * Menarik riwayat pesanan dengan filter hak akses (Admin vs Driver/Customer)
      */
@@ -812,16 +807,26 @@ class ApiMapboxController extends Controller
             $user = $request->user();
             $userId = $user->id_pengguna;
 
-            // 1. Inisialisasi query utama (urutkan dari yang paling baru)
+            // 1. Inisialisasi query utama (tambahkan JOIN ke tabel Pengguna)
             $query = DB::table('order_ojek_online')
-                ->orderBy('created_at', 'desc');
+                // Join ke tabel pengguna untuk mengambil data pelanggan
+                ->leftJoin('Pengguna as customer', 'order_ojek_online.customer_id', '=', 'customer.id_pengguna')
+                // Join ke tabel pengguna untuk mengambil data driver (opsional, tapi bagus jika butuh data driver)
+                ->leftJoin('Pengguna as driver', 'order_ojek_online.driver_id', '=', 'driver.id_pengguna')
+                ->select(
+                    'order_ojek_online.*',
+                    'customer.nama_lengkap as customer_name',
+                    'customer.no_wa as customer_phone',
+                    'driver.nama_lengkap as driver_name'
+                )
+                ->orderBy('order_ojek_online.created_at', 'desc');
 
             // 2. Filter Hak Akses
             // Jika ID pengguna BUKAN 4 (Bukan Admin), maka batasi datanya
             if ($userId != 4) {
                 $query->where(function ($q) use ($userId) {
-                    $q->where('customer_id', $userId)
-                      ->orWhere('driver_id', $userId);
+                    $q->where('order_ojek_online.customer_id', $userId)
+                      ->orWhere('order_ojek_online.driver_id', $userId);
                 });
             }
 
