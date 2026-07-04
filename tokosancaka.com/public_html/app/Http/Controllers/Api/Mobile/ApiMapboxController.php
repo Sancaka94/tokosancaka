@@ -804,19 +804,32 @@ class ApiMapboxController extends Controller
     public function get_history(Request $request)
     {
         try {
-            // Ini mengambil ID user yang sedang login dari Token JWT/Sanctum
             $user = $request->user();
+
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'Tidak ada akses (Unauthorized).'], 401);
+            }
+
             $userId = $user->id_pengguna;
+            $userRole = $user->role ?? 'Pelanggan';
 
+            // PERBAIKAN: Gunakan LEFT JOIN untuk menempelkan data driver
             $query = DB::table('order_ojek_online')
-                ->orderBy('created_at', 'desc');
+                ->leftJoin('registrasi_driver_sancaka as driver', 'order_ojek_online.driver_id', '=', 'driver.id_pengguna')
+                ->select(
+                    'order_ojek_online.*',
+                    'driver.nama_lengkap as driver_name', // <-- Ini yang dicari React Native
+                    'driver.nomor_wa as driver_phone'     // <-- Ini juga dicari React Native
+                )
+                ->orderBy('order_ojek_online.created_at', 'desc');
 
-            // --- FILTER KEAMANAN ---
-            // Hanya ambil data dimana user adalah customer ATAU driver
-            $query->where(function ($q) use ($userId) {
-                $q->where('customer_id', $userId)
-                  ->orWhere('driver_id', $userId);
-            });
+            // --- FILTER KEAMANAN & HAK AKSES ADMIN ---
+            if ($userId != 4 && $userRole !== 'Admin') {
+                $query->where(function ($q) use ($userId) {
+                    $q->where('order_ojek_online.customer_id', $userId)
+                      ->orWhere('order_ojek_online.driver_id', $userId);
+                });
+            }
 
             $orders = $query->get();
 
