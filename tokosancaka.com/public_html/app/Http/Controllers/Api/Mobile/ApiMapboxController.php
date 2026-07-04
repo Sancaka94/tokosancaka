@@ -862,12 +862,6 @@ class ApiMapboxController extends Controller
         }
     }
 
-    // =========================================================================
-    // MESIN KEAMANAN FILE BERINTEGRASI (INTERVENTION IMAGE + VIRUSTOTAL API)
-    // =========================================================================
-    private function amankanDanSimpanFile($file, $folder)
-    {
-        // ... (kode kamu selanjutnya tetap aman di bawah sini) ...
 
  // =========================================================================
     // MESIN KEAMANAN FILE BERINTEGRASI (INTERVENTION IMAGE + VIRUSTOTAL API)
