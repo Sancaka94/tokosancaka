@@ -361,9 +361,17 @@ Route::prefix('seller')->group(function () {
         Route::delete('/ojek/history/{id}', [AdminDriverController::class, 'destroyOjek']);
         Route::post('/ojek/history/bulk-delete', [AdminDriverController::class, 'bulkDestroyOjek']);
 
-        // ---> RUTE MANAJEMEN DRIVER (KHUSUS ADMIN) <---
+       // ---> RUTE MANAJEMEN DRIVER (KHUSUS ADMIN) <---
         Route::get('/drivers', [AdminDriverController::class, 'index']);
+
+        // Rute Bulk Delete (Harus di atas {id})
+        Route::post('/drivers/bulk-destroy', [AdminDriverController::class, 'bulkDestroy']);
+
+        // Rute Status, Detail, dan Update Data
         Route::post('/drivers/{id}/status', [AdminDriverController::class, 'updateStatus']);
+        Route::get('/drivers/{id}', [AdminDriverController::class, 'show']);
+        Route::post('/drivers/{id}/update', [AdminDriverController::class, 'update']);
+
         // Laporan Keuangan Mobile
         Route::get('/laporan/ringkasan', [\App\Http\Controllers\Api\Mobile\AdminFinanceController::class, 'summary']);
 
