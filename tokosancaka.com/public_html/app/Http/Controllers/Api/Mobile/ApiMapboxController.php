@@ -810,7 +810,7 @@ class ApiMapboxController extends Controller
 
 /**
      * Endpoint GET: /api/mobile/order/history
-     * Menarik riwayat pesanan dengan filter hak akses (Admin vs Driver/Customer)
+     * Menarik riwayat pesanan dengan filter hak akses dan tipe (customer/driver)
      */
     public function get_history(Request $request)
     {
@@ -824,22 +824,35 @@ class ApiMapboxController extends Controller
             $userId = $user->id_pengguna;
             $userRole = $user->role ?? 'Pelanggan';
 
-            // PERBAIKAN: Gunakan LEFT JOIN untuk menempelkan data driver
+            // Tangkap parameter 'type' dari React Native (?type=customer atau ?type=driver)
+            $type = $request->query('type');
+
             $query = DB::table('order_ojek_online')
                 ->leftJoin('registrasi_driver_sancaka as driver', 'order_ojek_online.driver_id', '=', 'driver.id_pengguna')
+                ->leftJoin('Pengguna as customer', 'order_ojek_online.customer_id', '=', 'customer.id_pengguna') // Join customer juga untuk admin
                 ->select(
                     'order_ojek_online.*',
-                    'driver.nama_lengkap as driver_name', // <-- Ini yang dicari React Native
-                    'driver.nomor_wa as driver_phone'     // <-- Ini juga dicari React Native
+                    'driver.nama_lengkap as driver_name',
+                    'driver.nomor_wa as driver_phone',
+                    'customer.nama_lengkap as customer_name'
                 )
                 ->orderBy('order_ojek_online.created_at', 'desc');
 
             // --- FILTER KEAMANAN & HAK AKSES ADMIN ---
             if ($userId != 4 && $userRole !== 'Admin') {
-                $query->where(function ($q) use ($userId) {
-                    $q->where('order_ojek_online.customer_id', $userId)
-                      ->orWhere('order_ojek_online.driver_id', $userId);
-                });
+                if ($type === 'customer') {
+                    // Jika yang diminta adalah riwayat sebagai penumpang
+                    $query->where('order_ojek_online.customer_id', $userId);
+                } elseif ($type === 'driver') {
+                    // Jika yang diminta adalah riwayat sebagai driver (narik)
+                    $query->where('order_ojek_online.driver_id', $userId);
+                } else {
+                    // Default gabungan (jika parameter tidak dikirim)
+                    $query->where(function ($q) use ($userId) {
+                        $q->where('order_ojek_online.customer_id', $userId)
+                          ->orWhere('order_ojek_online.driver_id', $userId);
+                    });
+                }
             }
 
             $orders = $query->get();
