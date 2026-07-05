@@ -546,8 +546,8 @@ class ApiMapboxController extends Controller
             ->select('Pengguna.expo_token', 'registrasi_driver_sancaka.nama_lengkap', 'registrasi_driver_sancaka.latitude', 'registrasi_driver_sancaka.longitude', 'registrasi_driver_sancaka.id_pengguna as driver_user_id')
             ->first();
 
-        if (!$driver || empty($driver->expo_token)) {
-            Log::warning("LOG LOG: Driver Offline atau Expo Token Kosong", ['driver_id' => $driverId]);
+        if (!$driver || empty($driver->fcm_token)) {
+            Log::warning("LOG LOG: Driver Offline atau FCM Token Kosong", ['driver_id' => $driverId]);
             return response()->json(['status' => false, 'message' => 'Driver Offline / Token tidak ditemukan.'], 404);
         }
 
@@ -597,7 +597,7 @@ class ApiMapboxController extends Controller
                     'Content-Type'  => 'application/json',
                 ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
                     'message' => [
-                        'token' => $driver->expo_token, // Harus berupa FCM device token dari React Native
+                        'token' => $driver->fcm_token, // Harus berupa FCM device token dari React Native
                         'android' => [
                             'priority' => 'HIGH'
                         ],
@@ -1070,6 +1070,31 @@ class ApiMapboxController extends Controller
             \Illuminate\Support\Facades\Log::error("Gagal buat token FCM V1: " . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * Endpoint POST: Menyimpan FCM Token murni ke kolom fcm_token
+     * Dijamin 100% TIDAK menyentuh expo_token sama sekali!
+     */
+    public function saveFcmToken(Request $request)
+    {
+        $request->validate([
+            'fcm_token' => 'required|string'
+        ]);
+
+        $user = $request->user();
+        $userId = $user->id_pengguna ?? $user->id;
+
+        \Illuminate\Support\Facades\DB::table('Pengguna')
+            ->where('id_pengguna', $userId)
+            ->update([
+                'fcm_token' => $request->fcm_token
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'FCM Token berhasil disimpan khusus ke kolom fcm_token'
+        ]);
     }
 
 }

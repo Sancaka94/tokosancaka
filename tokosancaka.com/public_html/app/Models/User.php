@@ -35,15 +35,15 @@ class User extends Authenticatable
      * Atribut yang dapat diisi massal
      */
     protected $fillable = [
-        'nomor_rm', 'nama_lengkap', 'email', 'password', 'no_wa', 
-        'store_name', 'province', 'regency', 'district', 'village', 
-        'postal_code', 'address_detail', 'bank_name', 'bank_account_name', 
-        'bank_account_number', 'store_logo_path', 'setup_token', 
-        'profile_setup_at', 'role', 'saldo', 'balance_iak', 'status', 
-        'is_verified', 'reset_token', 'token_expiry', 'ip_address', 
-        'user_agent', 'latitude', 'longitude', 'last_seen_at', 
-        'last_seen', 'expo_token', 'dana_access_token', 'dana_auth_code', 
-        'dana_user_name', 'dana_user_balance'
+        'nomor_rm', 'nama_lengkap', 'email', 'password', 'no_wa',
+        'store_name', 'province', 'regency', 'district', 'village',
+        'postal_code', 'address_detail', 'bank_name', 'bank_account_name',
+        'bank_account_number', 'store_logo_path', 'setup_token',
+        'profile_setup_at', 'role', 'saldo', 'balance_iak', 'status',
+        'is_verified', 'reset_token', 'token_expiry', 'ip_address',
+        'user_agent', 'latitude', 'longitude', 'last_seen_at',
+        'last_seen', 'expo_token', 'dana_access_token', 'dana_auth_code',
+        'dana_user_name', 'dana_user_balance', 'fcm_token',
     ];
 
     /**
