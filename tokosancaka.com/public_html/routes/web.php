@@ -139,6 +139,9 @@ use App\Http\Controllers\SellerReviewController;
 use App\Http\Controllers\Admin\PerizinanController;
 use App\Http\Controllers\Admin\SancakaExpressController;
 
+use App\Http\Controllers\Admin\WhitelistController;
+
+
 use App\Http\Controllers\InvoiceController;
 
 use App\Http\Controllers\CashflowController;
@@ -1775,23 +1778,37 @@ Route::post('/driver/register', [RegisterDriverOnlineController::class, 'store']
 // ==========================================
 // 2. AREA ADMIN (Manajemen Driver Sancaka)
 // ==========================================
-// Sangat disarankan rute ini dibungkus dengan middleware 'auth' (atau middleware khusus admin Anda) 
+// Sangat disarankan rute ini dibungkus dengan middleware 'auth' (atau middleware khusus admin Anda)
 // agar tidak sembarang orang bisa mengaksesnya.
 Route::prefix('admin')->middleware(['auth'])->group(function () {
-    
+
     // Menampilkan halaman tabel manajemen driver
     Route::get('/drivers', [RegisterDriverOnlineController::class, 'index'])->name('admin.drivers.index');
-    
+
     // Update data driver dari modal edit
     Route::put('/drivers/{id}', [RegisterDriverOnlineController::class, 'update'])->name('admin.drivers.update');
-    
+
     // Update status (Approve / Reject)
     Route::patch('/drivers/{id}/status', [RegisterDriverOnlineController::class, 'updateStatus'])->name('admin.drivers.status');
-    
+
     // Hapus satu data (Single Delete)
     Route::delete('/drivers/{id}', [RegisterDriverOnlineController::class, 'destroy'])->name('admin.drivers.destroy');
-    
+
     // Hapus massal dari tombol checkbox (Bulk Delete)
     Route::post('/drivers/bulk-destroy', [RegisterDriverOnlineController::class, 'bulkDestroy'])->name('admin.drivers.bulk_destroy');
-    
+
+});
+
+// Pastikan ini berada di dalam group middleware admin Anda
+Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
+
+    // Menampilkan halaman Whitelist
+    Route::get('/whitelist', [WhitelistController::class, 'index'])->name('admin.whitelist.index');
+
+    // Menyimpan akun dummy/whitelist baru
+    Route::post('/whitelist/dummy', [WhitelistController::class, 'store'])->name('admin.dummy.store');
+
+    // Menghapus/mencabut status whitelist
+    Route::patch('/whitelist/toggle/{id}', [WhitelistController::class, 'toggle'])->name('admin.whitelist.toggle');
+
 });
