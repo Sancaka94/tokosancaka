@@ -695,7 +695,9 @@ class ApiMapboxController extends Controller
             Log::info("LOG LOG: Pesanan {$orderId} resmi diterima oleh Driver ID: {$driverUser->id_pengguna}");
 
             // 4. KIRIM NOTIFIKASI KE PELANGGAN VIA FIREBASE HTTP v1
-            $customerToken = DB::table('Pengguna')->where('id_pengguna', $order->customer_id)->value('expo_token');
+            $customerToken = DB::table('Pengguna')->where('id_pengguna', $order->customer_id)->value('fcm_token');
+
+            Log::info("LOG LOG: Balasan FCM v1 Pelanggan (Accept Order): " . $response->body());
 
             if (!empty($customerToken)) {
                 Log::info("LOG LOG: Mengirim Push Notif FCM v1 ke HP Pelanggan...");
