@@ -63,7 +63,7 @@ class WhitelistController extends Controller
             'status'         => 'Aktif',
             'is_whitelisted' => 1, // Langsung whitelist
             'created_at'     => now(),
-            'updated_at'     => now(),
+            // 'updated_at'     => now(),
         ]);
 
         return redirect()->route('admin.whitelist.index')->with('success', 'Akun dummy berhasil dibuat dan di-whitelist.');
@@ -83,7 +83,7 @@ class WhitelistController extends Controller
         // Ubah is_whitelisted menjadi 0
         DB::table('Pengguna')->where('id_pengguna', $id)->update([
             'is_whitelisted' => 0,
-            'updated_at'     => now(),
+            //'updated_at'     => now(),
         ]);
 
         return redirect()->route('admin.whitelist.index')->with('success', 'Akses whitelist berhasil dicabut dari ' . $user->nama_lengkap);

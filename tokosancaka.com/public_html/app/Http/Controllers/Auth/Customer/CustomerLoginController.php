@@ -143,7 +143,7 @@ class CustomerLoginController extends Controller
                         'user_agent' => $deviceInfo,
                         'latitude'   => $request->input('latitude'),
                         'longitude'  => $request->input('longitude'),
-                        'updated_at' => now(),
+                        //'updated_at' => now(),
                     ]);
                     Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Bypass Login).', ['user_id' => $dummyUser->id_pengguna, 'ip' => $request->ip()]);
                 } catch (\Exception $e) {
