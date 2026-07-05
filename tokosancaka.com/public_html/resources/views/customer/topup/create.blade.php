@@ -82,6 +82,129 @@
 
                         {{-- Disini KODE SEMUA PAYMENT GATEWAY --}}
 
+                        {{-- ====================================================================== --}}
+                        {{-- PILIHAN METODE PEMBAYARAN DUITKU --}}
+                        {{-- ====================================================================== --}}
+                        <div class="mt-10 border-t pt-8">
+                            <h4 class="text-xl font-bold text-gray-800 mb-6">Pilih Metode Pembayaran</h4>
+
+                            <div class="space-y-6">
+                                {{-- 1. Duitku Gateway General --}}
+                                <div>
+                                    <h5 class="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wider">Payment Gateway (Otomatis)</h5>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-4 shadow-sm hover:border-blue-300 transition-all">
+                                            <input type="radio" name="payment_method" value="DUITKU" class="peer sr-only" required>
+                                            <div class="flex w-full items-center justify-between">
+                                                <div class="flex items-center">
+                                                    <i class="fas fa-shield-alt text-2xl text-blue-500 mr-4"></i>
+                                                    <div class="text-sm">
+                                                        <p class="font-bold text-gray-900 text-base">Pembayaran Bebas via Duitku</p>
+                                                        <div class="text-gray-500">Pilih E-Wallet, VA, atau Gerai Ritel di halaman selanjutnya</div>
+                                                    </div>
+                                                </div>
+                                                <i class="fas fa-check-circle text-blue-600 text-2xl hidden peer-checked:block"></i>
+                                            </div>
+                                            <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {{-- 2. Duitku Virtual Account Langsung --}}
+                                <div>
+                                    <h5 class="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wider">Virtual Account (Bank Transfer)</h5>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-4 shadow-sm hover:border-blue-300 transition-all text-center">
+                                            <input type="radio" name="payment_method" value="DUITKU_BC" class="peer sr-only">
+                                            <div class="flex w-full flex-col items-center justify-center">
+                                                <img src="{{ asset('assets/bca.webp') }}" class="h-8 mb-2 object-contain" alt="BCA" onerror="this.outerHTML='<span class=\'font-bold text-blue-800 text-lg mb-1\'>BCA</span>'">
+                                                <span class="text-xs text-gray-500 font-medium">BCA VA</span>
+                                                <i class="fas fa-check-circle text-blue-600 text-lg absolute top-3 right-3 hidden peer-checked:block"></i>
+                                            </div>
+                                            <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
+                                        </label>
+
+                                        <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-4 shadow-sm hover:border-blue-300 transition-all text-center">
+                                            <input type="radio" name="payment_method" value="DUITKU_M2" class="peer sr-only">
+                                            <div class="flex w-full flex-col items-center justify-center">
+                                                <img src="{{ asset('assets/mandiri.webp') }}" class="h-8 mb-2 object-contain" alt="Mandiri" onerror="this.outerHTML='<span class=\'font-bold text-blue-900 text-lg mb-1\'>MANDIRI</span>'">
+                                                <span class="text-xs text-gray-500 font-medium">Mandiri VA</span>
+                                                <i class="fas fa-check-circle text-blue-600 text-lg absolute top-3 right-3 hidden peer-checked:block"></i>
+                                            </div>
+                                            <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
+                                        </label>
+
+                                        <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-4 shadow-sm hover:border-blue-300 transition-all text-center">
+                                            <input type="radio" name="payment_method" value="DUITKU_BR" class="peer sr-only">
+                                            <div class="flex w-full flex-col items-center justify-center">
+                                                <img src="{{ asset('assets/bri.webp') }}" class="h-8 mb-2 object-contain" alt="BRI" onerror="this.outerHTML='<span class=\'font-bold text-blue-700 text-lg mb-1\'>BRI</span>'">
+                                                <span class="text-xs text-gray-500 font-medium">BRI VA</span>
+                                                <i class="fas fa-check-circle text-blue-600 text-lg absolute top-3 right-3 hidden peer-checked:block"></i>
+                                            </div>
+                                            <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
+                                        </label>
+
+                                        <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-4 shadow-sm hover:border-blue-300 transition-all text-center">
+                                            <input type="radio" name="payment_method" value="DUITKU_I1" class="peer sr-only">
+                                            <div class="flex w-full flex-col items-center justify-center">
+                                                <img src="{{ asset('assets/bni.webp') }}" class="h-8 mb-2 object-contain" alt="BNI" onerror="this.outerHTML='<span class=\'font-bold text-orange-600 text-lg mb-1\'>BNI</span>'">
+                                                <span class="text-xs text-gray-500 font-medium">BNI VA</span>
+                                                <i class="fas fa-check-circle text-blue-600 text-lg absolute top-3 right-3 hidden peer-checked:block"></i>
+                                            </div>
+                                            <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {{-- 3. Duitku E-Wallet Langsung --}}
+                                <div>
+                                    <h5 class="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wider">E-Wallet & QRIS</h5>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-4 shadow-sm hover:border-blue-300 transition-all text-center">
+                                            <input type="radio" name="payment_method" value="DUITKU_SP" class="peer sr-only">
+                                            <div class="flex w-full flex-col items-center justify-center">
+                                                <i class="fas fa-qrcode text-3xl text-pink-500 mb-2"></i>
+                                                <span class="text-xs text-gray-500 font-medium">Scan QRIS</span>
+                                                <i class="fas fa-check-circle text-blue-600 text-lg absolute top-3 right-3 hidden peer-checked:block"></i>
+                                            </div>
+                                            <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
+                                        </label>
+
+                                        <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-4 shadow-sm hover:border-blue-300 transition-all text-center">
+                                            <input type="radio" name="payment_method" value="DUITKU_DA" class="peer sr-only">
+                                            <div class="flex w-full flex-col items-center justify-center">
+                                                <img src="{{ asset('assets/dana.webp') }}" class="h-8 mb-2 object-contain" alt="DANA" onerror="this.outerHTML='<span class=\'font-bold text-blue-500 text-lg mb-1\'>DANA</span>'">
+                                                <span class="text-xs text-gray-500 font-medium">Bayar DANA</span>
+                                                <i class="fas fa-check-circle text-blue-600 text-lg absolute top-3 right-3 hidden peer-checked:block"></i>
+                                            </div>
+                                            <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
+                                        </label>
+
+                                        <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-4 shadow-sm hover:border-blue-300 transition-all text-center">
+                                            <input type="radio" name="payment_method" value="DUITKU_OV" class="peer sr-only">
+                                            <div class="flex w-full flex-col items-center justify-center">
+                                                <img src="{{ asset('assets/ovo.webp') }}" class="h-8 mb-2 object-contain" alt="OVO" onerror="this.outerHTML='<span class=\'font-bold text-purple-700 text-lg mb-1\'>OVO</span>'">
+                                                <span class="text-xs text-gray-500 font-medium">Bayar OVO</span>
+                                                <i class="fas fa-check-circle text-blue-600 text-lg absolute top-3 right-3 hidden peer-checked:block"></i>
+                                            </div>
+                                            <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
+                                        </label>
+
+                                        <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-4 shadow-sm hover:border-blue-300 transition-all text-center">
+                                            <input type="radio" name="payment_method" value="DUITKU_SA" class="peer sr-only">
+                                            <div class="flex w-full flex-col items-center justify-center">
+                                                <img src="{{ asset('assets/shopeepay.webp') }}" class="h-8 mb-2 object-contain" alt="ShopeePay" onerror="this.outerHTML='<span class=\'font-bold text-orange-500 text-lg mb-1\'>ShopeePay</span>'">
+                                                <span class="text-xs text-gray-500 font-medium">ShopeePay</span>
+                                                <i class="fas fa-check-circle text-blue-600 text-lg absolute top-3 right-3 hidden peer-checked:block"></i>
+                                            </div>
+                                            <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {{-- ====================================================================== --}}
+
 
                         {{-- PREVIEW METODE PEMBAYARAN OTOMATIS (Hanya Muncul Saat Input Nominal Valid) --}}
 
