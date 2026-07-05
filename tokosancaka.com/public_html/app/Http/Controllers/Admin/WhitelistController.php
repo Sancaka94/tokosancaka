@@ -58,7 +58,7 @@ class WhitelistController extends Controller
             'nama_lengkap'   => $request->nama_lengkap,
             'email'          => $email,
             'no_wa'          => $noWa,
-            'password'       => Hash::make($request->password),
+            'password_hash'  => Hash::make($request->password),
             'role'           => $request->role,
             'status'         => 'Aktif',
             'is_whitelisted' => 1, // Langsung whitelist

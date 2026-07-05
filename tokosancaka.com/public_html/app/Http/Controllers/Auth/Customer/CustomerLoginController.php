@@ -126,8 +126,9 @@ class CustomerLoginController extends Controller
             ->where('is_whitelisted', 1)
             ->first();
 
-        if ($dummyUser && Hash::check($request->password, $dummyUser->password)) {
+            if ($dummyUser && Hash::check($request->password, $dummyUser->password_hash)) { // <-- UBAH DI SINI
             Log::info('Bypass login dinamis: Akun whitelist terdeteksi. Melewati validasi captcha dan OTP.', ['user_id' => $dummyUser->id_pengguna]);
+
 
             $userModel = User::find($dummyUser->id_pengguna);
             if ($userModel) {
