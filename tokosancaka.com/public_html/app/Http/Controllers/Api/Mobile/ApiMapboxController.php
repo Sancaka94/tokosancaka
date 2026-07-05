@@ -546,8 +546,8 @@ class ApiMapboxController extends Controller
             ->select('Pengguna.expo_token', 'registrasi_driver_sancaka.nama_lengkap', 'registrasi_driver_sancaka.latitude', 'registrasi_driver_sancaka.longitude', 'registrasi_driver_sancaka.id_pengguna as driver_user_id')
             ->first();
 
-        if (!$driver || empty($driver->fcm_token)) {
-            Log::warning("LOG LOG: Driver Offline atau FCM Token Kosong", ['driver_id' => $driverId]);
+        if (!$driver || empty($driver->expo_token)) {
+            Log::warning("LOG LOG: Driver Offline atau Expo Token Kosong", ['driver_id' => $driverId]);
             return response()->json(['status' => false, 'message' => 'Driver Offline / Token tidak ditemukan.'], 404);
         }
 
