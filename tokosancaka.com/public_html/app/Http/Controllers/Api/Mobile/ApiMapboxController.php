@@ -841,7 +841,7 @@ class ApiMapboxController extends Controller
             $order = DB::table('order_ojek_online')->where('order_id', $orderId)->first();
 
             if ($order) {
-                $customerToken = DB::table('Pengguna')->where('id_pengguna', $order->customer_id)->value('expo_token');
+                $customerToken = DB::table('Pengguna')->where('id_pengguna', $order->customer_id)->value('fcm_token');
 
                 if ($customerToken) {
                     $notifTitle = 'Info Pesanan';
