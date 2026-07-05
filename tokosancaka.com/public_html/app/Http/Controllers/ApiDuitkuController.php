@@ -13,7 +13,7 @@ class ApiDuitkuController extends Controller
     protected $env;
     protected $baseUrl;
 
-    // Properti tambahan untuk kredensial Disbursement[cite: 4]
+    // Properti tambahan untuk kredensial Disbursement
     protected $disbursementUserId;
     protected $disbursementSecretKey;
     protected $disbursementBaseUrl;
@@ -30,16 +30,16 @@ class ApiDuitkuController extends Controller
             ? 'https://passport.duitku.com/webapi/api/merchant'
             : 'https://sandbox.duitku.com/webapi/api/merchant';
 
-        // Kredensial khusus Disbursement (User ID & Secret Key berbeda dengan Payment)[cite: 4]
+        // Kredensial khusus Disbursement (User ID & Secret Key berbeda dengan Payment)
         $this->disbursementUserId = env('DUITKU_DISBURSEMENT_USER_ID');
         $this->disbursementSecretKey = env('DUITKU_DISBURSEMENT_SECRET_KEY');
 
-        // Base URL untuk Transfer Online & Clearing[cite: 4]
+        // Base URL untuk Transfer Online & Clearing
         $this->disbursementBaseUrl = $this->env === 'production'
             ? 'https://passport.duitku.com/webapi/api/disbursement'
             : 'https://sandbox.duitku.com/webapi/api/disbursement';
 
-        // Base URL khusus untuk Cash Out (Sangat penting, domain berbeda)[cite: 4]
+        // Base URL khusus untuk Cash Out (Pos Indonesia & Indomaret)
         $this->cashOutBaseUrl = $this->env === 'production'
             ? 'https://disbursement.duitku.com/api/cashout'
             : 'https://disbursement-sandbox.duitku.com/api/cashout';
@@ -174,12 +174,52 @@ class ApiDuitkuController extends Controller
 
     /**
      * ==========================================================
-     * FITUR DISBURSEMENT: UTILITAS UMUM
+     * VALIDASI ATURAN LIMIT DISBURSEMENT
      * ==========================================================
      */
+    private function validateDisbursementLimit($amount, $method, $bankCode = null)
+    {
+        if ($method === 'ONLINE') {
+            // RTOL & E-Wallet (Minimal 10.000)
+            if ($amount < 10000) {
+                throw new \Exception("Nominal transfer RTOL/E-Wallet minimal Rp 10.000.");
+            }
+            // Bank Permata (013) Limit 50 Juta, Selain itu 100 Juta
+            if ($bankCode === '013' && $amount > 50000000) {
+                throw new \Exception("Nominal transfer RTOL untuk Bank Permata maksimal Rp 50.000.000.");
+            } elseif ($amount > 100000000) {
+                throw new \Exception("Nominal transfer RTOL maksimal Rp 100.000.000.");
+            }
+        } elseif ($method === 'BIFAST') {
+            if ($amount < 10000 || $amount > 250000000) {
+                throw new \Exception("Nominal transfer BI FAST harus antara Rp 10.000 hingga Rp 250.000.000.");
+            }
+        } elseif ($method === 'LLG' || $method === 'SKN') {
+            if ($amount < 10000 || $amount > 1000000000) {
+                throw new \Exception("Nominal transfer LLG/SKN harus antara Rp 10.000 hingga Rp 1.000.000.000.");
+            }
+        } elseif ($method === 'RTGS') {
+            if ($amount < 100000000) {
+                throw new \Exception("Nominal transfer RTGS minimal Rp 100.000.000.");
+            }
+        } elseif ($method === 'CASHOUT') {
+            if ($bankCode === '2010') { // Indomaret
+                if ($amount < 50000 || $amount > 1000000 || $amount % 50000 !== 0) {
+                    throw new \Exception("Nominal Cash Out Indomaret harus kelipatan Rp 50.000, minimal Rp 50.000, maksimal Rp 1.000.000.");
+                }
+            } elseif ($bankCode === '2011') { // Pos Indonesia
+                if ($amount < 50000 || $amount > 2000000) {
+                    throw new \Exception("Nominal Cash Out Pos Indonesia harus antara Rp 50.000 hingga Rp 2.000.000.");
+                }
+            }
+        }
+        return true;
+    }
 
     /**
-     * Mengecek Saldo Disbursement (Inquiry Check Balance)[cite: 4]
+     * ==========================================================
+     * FITUR DISBURSEMENT: UTILITAS UMUM
+     * ==========================================================
      */
     public function checkDisbursementBalance($email)
     {
@@ -197,9 +237,6 @@ class ApiDuitkuController extends Controller
         return $response->json();
     }
 
-    /**
-     * Mendapatkan Daftar Bank yang Tersedia (Inquiry List Bank)[cite: 4]
-     */
     public function getDisbursementBankList($email)
     {
         $timestamp = round(microtime(true) * 1000);
@@ -216,9 +253,6 @@ class ApiDuitkuController extends Controller
         return $response->json();
     }
 
-    /**
-     * Memeriksa Status Transaksi (Transfer Online & Clearing)[cite: 4]
-     */
     public function checkDisbursementStatus($disburseId, $email)
     {
         $timestamp = round(microtime(true) * 1000);
@@ -241,9 +275,11 @@ class ApiDuitkuController extends Controller
      * FITUR DISBURSEMENT 1: TRANSFER ONLINE
      * ==========================================================
      */
-
     public function createOnlineInquiry($amountTransfer, $bankAccount, $bankCode, $email, $purpose, $senderId = null, $senderName = null)
     {
+        // Validasi Limit Internal sebelum melempar request ke API
+        $this->validateDisbursementLimit($amountTransfer, 'ONLINE', $bankCode);
+
         $timestamp = round(microtime(true) * 1000);
         $signature = hash('sha256', $email . $timestamp . $bankCode . $bankAccount . $amountTransfer . $purpose . $this->disbursementSecretKey);
 
@@ -293,14 +329,15 @@ class ApiDuitkuController extends Controller
 
     /**
      * ==========================================================
-     * FITUR DISBURSEMENT 2: CLEARING (LLG, RTGS, H2H, BIFAST)[cite: 4]
+     * FITUR DISBURSEMENT 2: CLEARING (LLG, RTGS, H2H, BIFAST)
      * ==========================================================
      */
-
     public function createClearingInquiry($amountTransfer, $bankAccount, $bankCode, $type, $email, $purpose, $custRefNumber = null, $senderId = null, $senderName = null)
     {
+        // Validasi Limit Internal berdasarkan Tipe (RTGS, BIFAST, LLG, H2H)
+        $this->validateDisbursementLimit($amountTransfer, $type, $bankCode);
+
         $timestamp = round(microtime(true) * 1000);
-        // Formula signature terdapat tambahan 'type' dibandingkan Transfer Online[cite: 4]
         $signature = hash('sha256', $email . $timestamp . $bankCode . $type . $bankAccount . $amountTransfer . $purpose . $this->disbursementSecretKey);
 
         $params = [
@@ -350,9 +387,6 @@ class ApiDuitkuController extends Controller
         return $response->json();
     }
 
-    /**
-     * Handler Callback Khusus Clearing (Hanya untuk tipe H2H)[cite: 4]
-     */
     public function handleClearingCallback(Request $request)
     {
         $disburseId     = $request->input('disburseId');
@@ -373,8 +407,6 @@ class ApiDuitkuController extends Controller
 
         if ($signature === $calcSignature) {
             Log::info("Duitku Clearing Callback Diterima: {$disburseId} - Status: {$statusCode}");
-            // Tambahkan logika internal Sancaka di sini jika diperlukan
-
             return response('SUCCESS', 200);
         }
 
@@ -384,12 +416,14 @@ class ApiDuitkuController extends Controller
 
     /**
      * ==========================================================
-     * FITUR DISBURSEMENT 3: CASH OUT (Pos Indonesia & Indomaret)[cite: 4]
+     * FITUR DISBURSEMENT 3: CASH OUT (Pos Indonesia & Indomaret)
      * ==========================================================
      */
-
     public function createCashOutInquiry($amountTransfer, $bankCode, $email, $phoneNumber, $accountName, $accountIdentity, $purpose, $accountAddress = null, $custRefNumber = null, $callbackUrl = null)
     {
+        // Validasi Limit Cash Out berdasarkan Tipe Agen (Indomaret '2010', Pos Indonesia '2011')
+        $this->validateDisbursementLimit($amountTransfer, 'CASHOUT', $bankCode);
+
         $timestamp = round(microtime(true) * 1000);
         $signature = hash('sha256', $email . $timestamp . $amountTransfer . $purpose . $this->disbursementSecretKey);
 
@@ -397,7 +431,7 @@ class ApiDuitkuController extends Controller
             'userId'          => (int) $this->disbursementUserId,
             'amountTransfer'  => (int) $amountTransfer,
             'custRefNumber'   => $custRefNumber,
-            'bankCode'        => $bankCode, // 2010 (Indomaret) atau 2011 (Pos)
+            'bankCode'        => $bankCode,
             'accountName'     => $accountName,
             'accountAddress'  => $accountAddress,
             'accountIdentity' => $accountIdentity,
@@ -409,15 +443,11 @@ class ApiDuitkuController extends Controller
             'signature'       => $signature
         ];
 
-        // Cash out menggunakan base URL khusus[cite: 4]
         $response = Http::post($this->cashOutBaseUrl . '/inquiry', $params);
 
         return $response->json();
     }
 
-    /**
-     * Handler Callback Khusus Cash Out[cite: 4]
-     */
     public function handleCashOutCallback(Request $request)
     {
         $disburseId     = $request->input('disburseId');
@@ -437,8 +467,6 @@ class ApiDuitkuController extends Controller
 
         if ($signature === $calcSignature) {
             Log::info("Duitku CashOut Callback Diterima: {$disburseId} - Status: {$statusCode}");
-            // Tambahkan logika internal Sancaka di sini jika diperlukan
-
             return response('SUCCESS', 200);
         }
 
