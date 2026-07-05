@@ -540,15 +540,23 @@ class ApiMapboxController extends Controller
 
         $customer = $request->user();
 
+        // Tambahkan 'fcm_token' di dalam select query
         $driver = DB::table('registrasi_driver_sancaka')
             ->join('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
             ->where('registrasi_driver_sancaka.id', $driverId)
-            ->select('Pengguna.expo_token', 'registrasi_driver_sancaka.nama_lengkap', 'registrasi_driver_sancaka.latitude', 'registrasi_driver_sancaka.longitude', 'registrasi_driver_sancaka.id_pengguna as driver_user_id')
+            ->select(
+                'Pengguna.fcm_token',
+                'registrasi_driver_sancaka.nama_lengkap',
+                'registrasi_driver_sancaka.latitude',
+                'registrasi_driver_sancaka.longitude',
+                'registrasi_driver_sancaka.id_pengguna as driver_user_id'
+            )
             ->first();
 
-        if (!$driver || empty($driver->expo_token)) {
-            Log::warning("LOG LOG: Driver Offline atau Expo Token Kosong", ['driver_id' => $driverId]);
-            return response()->json(['status' => false, 'message' => 'Driver Offline / Token tidak ditemukan.'], 404);
+        // CEK MENGGUNAKAN !isset ATAU empty agar tidak crash
+        if (!$driver || empty($driver->fcm_token)) {
+            Log::warning("LOG LOG: Driver Offline atau FCM Token Kosong (Null)", ['driver_id' => $driverId]);
+            return response()->json(['status' => false, 'message' => 'Driver belum melakukan aktivasi notifikasi (FCM Token belum terdaftar).'], 404);
         }
 
         $jarakKePemesanMeter = $this->getDistanceMeter(
