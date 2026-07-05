@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB; // <-- FACADE DB UNTUK TABEL PENGGUNA
 use Laravel\Socialite\Facades\Socialite; // <-- Import Socialite
 use Illuminate\Http\RedirectResponse;
 use Jenssegers\Agent\Agent; // <-- TAMBAHAN: Import library Agent untuk deteksi perangkat
+use Illuminate\Support\Facades\Hash;
 
 class CustomerLoginController extends Controller
 {
@@ -112,23 +113,43 @@ class CustomerLoginController extends Controller
         Log::info('Proses login (sebelum OTP) dimulai.');
 
         // ====================================================================
-        // TAMBAHAN: BYPASS AKUN DUMMY (Tanpa Validasi Captcha & OTP)
+        // BYPASS AKUN DUMMY/WHITELIST (DINAMIS via Database)
         // ====================================================================
-        if ($request->login === 'user' && $request->password === 'Password') {
-            Log::info('Bypass login: Kredensial dummy terdeteksi. Melewati validasi dan OTP.');
+        $loginValue = $request->login;
+        $loginField = str_contains($loginValue, '@') ? 'email' : 'no_wa';
+        if ($loginField === 'no_wa') {
+            $loginValue = $this->normalizePhoneNumber($loginValue);
+        }
 
-            // Mencari akun dummy di DB (Fokus ke pelanggan)
-            $dummyUser = \App\Models\User::where('email', 'user')->orWhere('role', 'pelanggan')->first();
+        $dummyUser = DB::table('Pengguna')
+            ->where($loginField, $loginValue)
+            ->where('is_whitelisted', 1)
+            ->first();
 
-            if ($dummyUser) {
-                $this->guard()->login($dummyUser);
+        if ($dummyUser && Hash::check($request->password, $dummyUser->password)) {
+            Log::info('Bypass login dinamis: Akun whitelist terdeteksi. Melewati validasi captcha dan OTP.', ['user_id' => $dummyUser->id_pengguna]);
+
+            $userModel = User::find($dummyUser->id_pengguna);
+            if ($userModel) {
+                $this->guard()->login($userModel);
                 $request->session()->regenerate();
-                Log::info('Bypass login dummy berhasil.', ['user_id' => $dummyUser->id_pengguna ?? 'unknown']);
 
-                // PAKSA REDIRECT KE HALAMAN CUSTOMER
-                return redirect()->route('customer.dashboard');
-            } else {
-                Log::warning('Bypass login gagal: Akun untuk dummy tidak ditemukan di database.');
+                try {
+                    $agent = new Agent();
+                    $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
+                    DB::table('Pengguna')->where('id_pengguna', $dummyUser->id_pengguna)->update([
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $deviceInfo,
+                        'latitude'   => $request->input('latitude'),
+                        'longitude'  => $request->input('longitude'),
+                        'updated_at' => now(),
+                    ]);
+                    Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Bypass Login).', ['user_id' => $dummyUser->id_pengguna, 'ip' => $request->ip()]);
+                } catch (\Exception $e) {
+                    Log::error('Gagal menyimpan data keamanan bypass login: ' . $e->getMessage());
+                }
+
+                return redirect()->intended($this->redirectTo());
             }
         }
         // ====================================================================
