@@ -99,7 +99,11 @@
                                             <div class="flex w-full flex-col items-center justify-between h-full">
                                                 <div class="flex-grow flex items-center justify-center mb-3">
                                                     {{-- Logo otomatis dari API Duitku --}}
-                                                    <img src="{{ $channel['paymentImage'] }}" class="max-h-10 max-w-full object-contain filter group-hover:brightness-110 transition-all" alt="{{ $channel['paymentName'] }}">
+                                                    <!-- Contoh penanganan di dalam perulangan card Duitku pada Blade -->
+                                                    <img src="{{ !empty($channel['paymentImage']) ? $channel['paymentImage'] : asset('images/banks/' . strtolower($channel['paymentMethod']) . '.png') }}"
+                                                        onerror="this.onerror=null; this.src='https://assets.tripay.co.id/upload/payment-icon/ytBKvaleGy1605201833.png';"
+                                                        alt="{{ $channel['paymentName'] }}"
+                                                        class="h-8 mx-auto mb-2 object-contain">
                                                 </div>
 
                                                 {{-- Nama Metode Pembayaran --}}
