@@ -65,30 +65,41 @@ class TopUpController extends Controller
         return view('customer.topup.index', compact('transactions'));
     }
 
-    /**
-     * Menampilkan halaman form top up dengan Metode Pembayaran Dinamis.
+   /**
+     * Menampilkan halaman form top up dengan Metode Pembayaran Dinamis (Tripay & Duitku Terpisah).
      */
-   public function create()
+    public function create()
     {
-        // 1. Ambil & Normalisasi Channel dari Tripay
+        // =========================================================================
+        // ALUR 1: TRIPAY CHANNELS
+        // =========================================================================
         $tripayRaw = $this->getTripayChannels();
+
+        // Jalankan normalisasi struktur Tripay agar sama persis format key-nya dengan Duitku
         $tripayChannels = collect(is_string($tripayRaw) ? json_decode($tripayRaw, true) : $tripayRaw)
             ->map(function ($item) {
                 return [
                     'provider' => 'TRIPAY',
                     'code'     => $item['code'],
                     'name'     => $item['name'],
-                    'group'    => $item['group'], // Tripay sudah punya group asli
+                    'group'    => $item['group'], // Group bawaan asli Tripay
                     'icon'     => $item['icon_url'],
                     'fee'      => $item['total_fee']['flat'] ?? 0,
                 ];
             });
 
-        // 2. Ambil & Normalisasi Channel dari Duitku
+        // Kelompokkan Tripay berdasarkan group miliknya sendiri
+        $groupedtripayChannels = $tripayChannels->groupBy('group');
+
+
+        // =========================================================================
+        // ALUR 2: DUITKU CHANNELS
+        // =========================================================================
         $duitkuRaw = Cache::remember('duitku_payment_methods', 60 * 24, function () {
             try {
                 $duitkuService = app(\App\Http\Controllers\ApiDuitkuController::class);
                 $response = $duitkuService->getPaymentMethods(10000);
+
                 if (isset($response['responseCode']) && $response['responseCode'] === '00') {
                     return $response['paymentFee'];
                 }
@@ -98,22 +109,23 @@ class TopUpController extends Controller
             return [];
         });
 
+        // Normalisasi struktur data Duitku
         $duitkuChannels = collect($duitkuRaw)->map(function ($item) {
             return [
                 'provider' => 'DUITKU',
-                'code'     => 'DUITKU_' . $item['paymentMethod'], // Format kode sesuai log kamu
+                'code'     => 'DUITKU_' . $item['paymentMethod'],
                 'name'     => $item['paymentName'],
-                'group'    => $this->getGroupForDuitku($item['paymentName']), // Tentukan grup otomatis
+                'group'    => $this->getGroupForDuitku($item['paymentName']),
                 'icon'     => !empty($item['paymentImage']) ? $item['paymentImage'] : null,
                 'fee'      => $item['totalFee'] ?? 0,
             ];
         });
 
-        // 3. Gabungkan Tripay & Duitku, lalu kelompokkan berdasarkan 'group'
-        $groupedChannels = $tripayChannels->merge($duitkuChannels)->groupBy('group');
+        // Kelompokkan Duitku berdasarkan group miliknya sendiri
+        $groupedChannels = $duitkuChannels->groupBy('group');
 
-        // Kirim 1 variabel gabungan yang sudah rapi ke Blade
-        return view('customer.topup.create', compact('groupedChannels'));
+        // Kirim kedua variabel kelompok secara terpisah ke Blade
+        return view('customer.topup.create', compact('groupedChannels', 'groupedtripayChannels'));
     }
 
     /**
