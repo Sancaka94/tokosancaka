@@ -108,8 +108,8 @@ class DanaGatewayMobileController extends Controller
         $finalBase64Signature = base64_encode($binarySignature);
 
         // Log::debug('[DANA DEBUG LOG] 5. Signature Berhasil Dibuat!', [
-            'signature_result' => $finalBase64Signature
-        ]);
+        //    'signature_result' => $finalBase64Signature
+        //]);
         // Log::debug('=== [DANA DEBUG LOG] END GENERATE SIGNATURE ===');
 
         return $finalBase64Signature;
@@ -1248,10 +1248,10 @@ class DanaGatewayMobileController extends Controller
     {
         // Log::debug('================ [GAPURA DEBUG LOG] CONSULT START ================');
         // Log::debug('[GAPURA DEBUG LOG] 1. Request Masuk dari User', [
-            'user_id' => Auth::id(),
-            'ip'      => $request->ip(),
-            'amount'  => $request->amount
-        ]);
+        //    'user_id' => Auth::id(),
+        //    'ip'      => $request->ip(),
+        //    'amount'  => $request->amount
+        //]);
 
         try {
             $request->validate([
@@ -1334,10 +1334,10 @@ class DanaGatewayMobileController extends Controller
             $httpStatus = $response->status();
 
             // Log::debug('[GAPURA DEBUG LOG] 5. Response Diterima!', [
-                'http_status' => $httpStatus,
-                'raw_body' => $response->body(),
-                'parsed_json' => $result
-            ]);
+            //    'http_status' => $httpStatus,
+            //    'raw_body' => $response->body(),
+            //    'parsed_json' => $result
+            // ]);
 
             $resCode = $result['responseCode'] ?? 'UNKNOWN';
             $successCodes = ['2000000', '2005700', '2005400'];
