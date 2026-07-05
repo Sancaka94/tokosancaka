@@ -697,8 +697,6 @@ class ApiMapboxController extends Controller
             // 4. KIRIM NOTIFIKASI KE PELANGGAN VIA FIREBASE HTTP v1
             $customerToken = DB::table('Pengguna')->where('id_pengguna', $order->customer_id)->value('fcm_token');
 
-            Log::info("LOG LOG: Balasan FCM v1 Pelanggan (Accept Order): " . $response->body());
-
             if (!empty($customerToken)) {
                 Log::info("LOG LOG: Mengirim Push Notif FCM v1 ke HP Pelanggan...");
 
@@ -715,12 +713,12 @@ class ApiMapboxController extends Controller
                             'android' => [
                                 'priority' => 'HIGH'
                             ],
-                            // Blok 'notification' untuk menampilkan banner popup di atas layar HP Pelanggan
+                            // Blok 'notification' untuk menampilkan banner popup
                             'notification' => [
                                 'title' => '✅ Driver Ditemukan!',
                                 'body'  => "{$namaDriver} ({$platNomor}) siap meluncur menjemput Anda!"
                             ],
-                            // Blok 'data' untuk ditangkap oleh listener React Native (agar auto-redirect ke map tracking)
+                            // Blok 'data' untuk ditangkap oleh listener React Native (auto-redirect)
                             'data' => [
                                 'action'       => 'order_accepted',
                                 'order_id'     => (string) $orderId,
@@ -734,6 +732,7 @@ class ApiMapboxController extends Controller
                         ]
                     ]);
 
+                    // Pastikan Log::info ada di DALAM if ($accessToken)
                     Log::info("LOG LOG: Balasan FCM v1 Pelanggan: " . $response->body());
                 } else {
                     Log::warning("LOG LOG: Gagal kirim notif pelanggan. Access Token FCM v1 gagal dibuat.");
