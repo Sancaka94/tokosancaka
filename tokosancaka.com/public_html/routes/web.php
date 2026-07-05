@@ -1799,16 +1799,8 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
 });
 
-// Pastikan ini berada di dalam group middleware admin Anda
-Route::prefix('admin')->middleware(['auth', 'role:admin'])->group(function () {
-
-    // Menampilkan halaman Whitelist
+Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::get('/whitelist', [WhitelistController::class, 'index'])->name('admin.whitelist.index');
-
-    // Menyimpan akun dummy/whitelist baru
     Route::post('/whitelist/dummy', [WhitelistController::class, 'store'])->name('admin.dummy.store');
-
-    // Menghapus/mencabut status whitelist
     Route::patch('/whitelist/toggle/{id}', [WhitelistController::class, 'toggle'])->name('admin.whitelist.toggle');
-
 });
