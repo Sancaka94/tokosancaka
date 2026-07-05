@@ -80,57 +80,78 @@
                         <p class="mt-3 text-sm text-gray-500 flex items-center"><i class="fas fa-info-circle mr-1.5 text-blue-400"></i> Minimal top up adalah Rp 10.000.</p>
 
 
-                        {{-- Disini KODE SEMUA PAYMENT GATEWAY --}}
+                       <div class="space-y-12">
 
-                       <div class="space-y-8">
-                            @foreach($groupedChannels as $groupName => $channels)
-                                <div>
-                                    <!-- Judul Kategori (Virtual Account, E-Wallet, dll) -->
-                                    <div class="flex items-center mb-4">
-                                        <div class="w-1.5 h-6 bg-red-600 rounded-full mr-2"></div>
-                                        <h3 class="text-base md:text-lg font-bold text-gray-800 uppercase tracking-wide">
-                                            {{ $groupName }}
-                                        </h3>
-                                    </div>
+                            @if($groupedtripayChannels->isNotEmpty())
+                                <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                                    <h2 class="text-lg font-extrabold text-gray-900 mb-6 flex items-center">
+                                        <span class="w-2.5 h-5 bg-blue-600 rounded-full mr-2"></span>
+                                        Metode Pembayaran Gateway A (Tripay)
+                                    </h2>
 
-                                    <!-- Grid Card Channel Pembayaran -->
-                                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
-                                        @foreach($channels as $channel)
-                                            <label class="relative border border-gray-200 rounded-xl p-3.5 flex flex-col items-center justify-between cursor-pointer hover:border-red-500 hover:shadow-md transition-all bg-white group">
-                                                <!-- Input Radio -->
-                                                <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="sr-only peer" required>
+                                    <div class="space-y-8">
+                                        @foreach($groupedtripayChannels as $groupName => $channels)
+                                            <div>
+                                                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">
+                                                    {{ $groupName }}
+                                                </h3>
 
-                                                <!-- Efek Border Merah saat Dipilih (Selected State) -->
-                                                <div class="absolute inset-0 border-2 border-transparent peer-checked:border-red-600 rounded-xl pointer-events-none transition-all"></div>
+                                                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                    @foreach($channels as $channel)
+                                                        <label class="relative border border-gray-200 rounded-xl p-4 flex flex-col items-center justify-between cursor-pointer bg-white hover:border-blue-500 hover:shadow-sm transition-all peer group">
+                                                            <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="sr-only peer" required>
+                                                            <div class="absolute inset-0 border-2 border-transparent peer-checked:border-blue-600 rounded-xl pointer-events-none"></div>
 
-                                                <!-- Logo Bank/E-Wallet dengan Fallback jika Gambar Rusak -->
-                                                <div class="h-12 w-full flex items-center justify-center mb-2.5 px-1">
-                                                    <img src="{{ $channel['icon'] ?? asset('images/default-payment.png') }}"
-                                                        onerror="this.onerror=null; this.src='https://assets.tripay.co.id/upload/payment-icon/qQYo61sIDa1702995837.png';"
-                                                        alt="{{ $channel['name'] }}"
-                                                        class="max-h-10 max-w-full object-contain filter group-hover:scale-105 transition-transform duration-200">
+                                                            <img src="{{ $channel['icon'] }}" alt="{{ $channel['name'] }}" class="h-10 object-contain mb-2">
+
+                                                            <span class="text-xs font-semibold text-gray-700 text-center">{{ $channel['name'] }}</span>
+                                                            <span class="text-[10px] text-gray-400 mt-1">Biaya: Rp {{ number_format($channel['fee'], 0, ',', '.') }}</span>
+                                                        </label>
+                                                    @endforeach
                                                 </div>
-
-                                                <!-- Nama Metode -->
-                                                <div class="text-center w-full">
-                                                    <span class="text-xs font-semibold text-gray-700 block truncate w-full" title="{{ $channel['name'] }}">
-                                                        {{ $channel['name'] }}
-                                                    </span>
-
-                                                    <!-- Biaya Admin -->
-                                                    <span class="text-[11px] font-medium text-gray-400 mt-0.5 block">
-                                                        @if($channel['fee'] > 0)
-                                                            Biaya: Rp {{ number_format($channel['fee'], 0, ',', '.') }}
-                                                        @else
-                                                            <span class="text-green-600 font-semibold">Bebas Biaya</span>
-                                                        @endif
-                                                    </span>
-                                                </div>
-                                            </label>
+                                            </div>
                                         @endforeach
                                     </div>
                                 </div>
-                            @endforeach
+                            @endif
+
+
+                            @if($groupedChannels->isNotEmpty())
+                                <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                                    <h2 class="text-lg font-extrabold text-gray-900 mb-6 flex items-center">
+                                        <span class="w-2.5 h-5 bg-red-600 rounded-full mr-2"></span>
+                                        Metode Pembayaran Gateway B (Duitku)
+                                    </h2>
+
+                                    <div class="space-y-8">
+                                        @foreach($groupedChannels as $groupName => $channels)
+                                            <div>
+                                                <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">
+                                                    {{ $groupName }}
+                                                </h3>
+
+                                                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                    @foreach($channels as $channel)
+                                                        <label class="relative border border-gray-200 rounded-xl p-4 flex flex-col items-center justify-between cursor-pointer bg-white hover:border-red-500 hover:shadow-sm transition-all group">
+                                                            <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="sr-only peer" required>
+                                                            <div class="absolute inset-0 border-2 border-transparent peer-checked:border-red-600 rounded-xl pointer-events-none"></div>
+
+                                                            <img src="{{ $channel['icon'] }}"
+                                                                onerror="this.onerror=null; this.src='https://assets.tripay.co.id/upload/payment-icon/ytBKvaleGy1605201833.png';"
+                                                                alt="{{ $channel['name'] }}"
+                                                                class="h-10 object-contain mb-2">
+
+                                                            <span class="text-xs font-semibold text-gray-700 text-center">{{ $channel['name'] }}</span>
+                                                            <span class="text-[10px] text-gray-400 mt-1">Biaya: Rp {{ number_format($channel['fee'], 0, ',', '.') }}</span>
+                                                        </label>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+
                         </div>
 
 
