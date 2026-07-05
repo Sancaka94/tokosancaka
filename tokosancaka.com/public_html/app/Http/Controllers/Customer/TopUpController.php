@@ -4673,11 +4673,15 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         Log::info('LOG LOG: DUITKU START for Transaction: ' . $transaction->reference_id);
         $user = Auth::user();
 
+        // 1. Force empty string if the frontend sends the generic "DUITKU" label
+        // This tells Duitku to show all available payment methods on their hosted page
+        if ($paymentMethodCode === 'DUITKU') {
+            $paymentMethodCode = "";
+        }
+
         try {
-            // Memanggil ApiDuitkuController sebagai service
             $duitkuService = app(\App\Http\Controllers\ApiDuitkuController::class);
 
-            // Persiapan Data Pelanggan
             $customerDetail = [
                 'firstName'   => $user->nama_lengkap ?? 'Customer',
                 'lastName'    => 'Sancaka',
