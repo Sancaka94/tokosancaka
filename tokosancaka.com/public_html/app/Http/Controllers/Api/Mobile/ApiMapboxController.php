@@ -812,10 +812,6 @@ class ApiMapboxController extends Controller
         }
     }
 
-    /**
-     * Endpoint POST: /api/mobile/order/update-status
-     * Dipicu saat driver mengubah status (otw_jemput, otw_antar, completed)
-     */
     public function update_status_order(Request $request)
     {
         try {
@@ -836,13 +832,14 @@ class ApiMapboxController extends Controller
                     'updated_at' => now()
                 ]);
 
-            // 2. KIRIM NOTIFIKASI KE PELANGGAN BAHWA STATUS BERUBAH
+            // 2. KIRIM NOTIFIKASI KE PELANGGAN BAHWA STATUS BERUBAH VIA FCM v1
             $order = DB::table('order_ojek_online')->where('order_id', $orderId)->first();
 
             if ($order) {
+                // Ambil Token FCM murni
                 $customerToken = DB::table('Pengguna')->where('id_pengguna', $order->customer_id)->value('fcm_token');
 
-                if ($customerToken) {
+                if (!empty($customerToken)) {
                     $notifTitle = 'Info Pesanan';
                     $notifBody = 'Status pesanan Anda diperbarui.';
 
@@ -858,17 +855,36 @@ class ApiMapboxController extends Controller
                         $notifBody = 'Terima kasih telah menggunakan layanan Sancaka Ride!';
                     }
 
-                    Http::post('https://exp.host/--/api/v2/push/send', [
-                        'to'    => $customerToken,
-                        'title' => $notifTitle,
-                        'body'  => $notifBody,
-                        'sound' => 'default',
-                        'data'  => [
-                            'action'   => 'status_updated',
-                            'order_id' => $orderId,
-                            'status'   => $newStatus
-                        ]
-                    ]);
+                    // Tembak ke API Firebase FCM v1
+                    $accessToken = $this->getGoogleAccessToken();
+                    $projectId = 'sancaka-express'; // Sesuai Project ID Firebase
+
+                    if ($accessToken) {
+                        $response = Http::withHeaders([
+                            'Authorization' => 'Bearer ' . $accessToken,
+                            'Content-Type'  => 'application/json',
+                        ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                            'message' => [
+                                'token' => $customerToken,
+                                'android' => [
+                                    'priority' => 'HIGH'
+                                ],
+                                'notification' => [
+                                    'title' => $notifTitle,
+                                    'body'  => $notifBody
+                                ],
+                                'data' => [
+                                    'action'   => 'status_updated',
+                                    'order_id' => (string) $orderId,
+                                    'status'   => (string) $newStatus
+                                ]
+                            ]
+                        ]);
+
+                        Log::info("[API UPDATE STATUS] FCM v1 Response: " . $response->body());
+                    } else {
+                        Log::warning("[API UPDATE STATUS] Gagal mendapat Access Token Google.");
+                    }
                 }
             }
 
