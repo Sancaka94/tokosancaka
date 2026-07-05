@@ -4718,8 +4718,9 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
                 return redirect()->away($response['paymentUrl']);
             }
 
-            // Jika gagal
-            Log::error('LOG LOG: Gagal mendapatkan URL dari Duitku', $response ?? []);
+           // Jika gagal
+            // Pastikan jika $response false, kita kirim array kosong [] sebagai pengganti konteks
+            Log::error('LOG LOG: Gagal mendapatkan URL dari Duitku', is_array($response) ? $response : []);
             return back()->with('error', 'Gagal memproses pembayaran Duitku. Silakan coba metode lain.');
 
         } catch (\Exception $e) {
