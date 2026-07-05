@@ -76,7 +76,27 @@ class TopUpController extends Controller
         // 2. Kelompokkan berdasarkan Group (Virtual Account, E-Wallet, dll)
         $groupedChannels = collect($tripayChannels)->groupBy('group');
 
-        return view('customer.topup.create', compact('groupedChannels'));
+       // Ambil metode pembayaran dinamis dari Duitku menggunakan Cache
+        // Disimpan di Cache 24 jam (60 * 24 menit) agar loading website tetap super cepat
+        $duitkuChannels = \Illuminate\Support\Facades\Cache::remember('duitku_payment_methods', 60 * 24, function () {
+            try {
+                $duitkuService = app(\App\Http\Controllers\ApiDuitkuController::class);
+
+                // Gunakan nominal default 10000 untuk mengecek channel aktif dari API Duitku
+                $response = $duitkuService->getPaymentMethods(10000);
+
+                // Pastikan responseCode adalah "00" (SUCCESS) sesuai dokumen Duitku
+                if (isset($response['responseCode']) && $response['responseCode'] === '00') {
+                    return $response['paymentFee'];
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Gagal load channel Duitku: ' . $e->getMessage());
+            }
+            return []; // Return array kosong jika gagal
+        });
+
+        // Kirim $duitkuChannels ke tampilan Blade
+        return view('customer.topup.create', compact('duitkuChannels', 'groupedChannels'));
     }
 
     /**

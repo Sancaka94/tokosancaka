@@ -83,32 +83,46 @@
                         {{-- Disini KODE SEMUA PAYMENT GATEWAY --}}
 
                        {{-- ====================================================================== --}}
-                        {{-- PILIHAN METODE PEMBAYARAN DUITKU (HOSTED CHECKOUT) --}}
+                        {{-- PILIHAN METODE PEMBAYARAN DUITKU (DYNAMIC FROM API) --}}
                         {{-- ====================================================================== --}}
                         <div class="mt-10 border-t pt-8">
-                            <h4 class="text-xl font-bold text-gray-800 mb-6">Metode Pembayaran</h4>
+                            <h4 class="text-xl font-bold text-gray-800 mb-6">Pilih Metode Pembayaran</h4>
 
-                            <div class="space-y-6">
-                                <div>
-                                    <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-5 shadow-sm hover:border-blue-300 transition-all">
-                                        {{-- Otomatis Checked agar user tinggal klik Bayar --}}
-                                        <input type="radio" name="payment_method" value="DUITKU" class="peer sr-only" checked required>
-                                        <div class="flex w-full items-center justify-between">
-                                            <div class="flex items-center">
-                                                <i class="fas fa-shield-alt text-4xl text-blue-500 mr-5"></i>
-                                                <div class="text-sm">
-                                                    <p class="font-bold text-gray-900 text-lg">Payment Gateway Terpadu</p>
-                                                    <div class="text-gray-500 mt-1">
-                                                        Pilih E-Wallet (OVO, DANA, ShopeePay), Virtual Account (BCA, Mandiri, dll), QRIS, atau Gerai Ritel di halaman selanjutnya.
-                                                    </div>
+                            @if(isset($duitkuChannels) && count($duitkuChannels) > 0)
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    @foreach($duitkuChannels as $channel)
+                                        <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-4 shadow-sm hover:border-blue-300 transition-all text-center group">
+
+                                            {{-- Value dikirim dengan prefix DUITKU_ diikuti Kode Pembayaran (Misal: DUITKU_BC, DUITKU_OV) --}}
+                                            <input type="radio" name="payment_method" value="DUITKU_{{ $channel['paymentMethod'] }}" class="peer sr-only" required>
+
+                                            <div class="flex w-full flex-col items-center justify-between h-full">
+                                                <div class="flex-grow flex items-center justify-center mb-3">
+                                                    {{-- Logo otomatis dari API Duitku --}}
+                                                    <img src="{{ $channel['paymentImage'] }}" class="max-h-10 max-w-full object-contain filter group-hover:brightness-110 transition-all" alt="{{ $channel['paymentName'] }}">
                                                 </div>
+
+                                                {{-- Nama Metode Pembayaran --}}
+                                                <span class="text-xs text-gray-700 font-bold tracking-tight">{{ $channel['paymentName'] }}</span>
+
+                                                {{-- Menampilkan Biaya Admin --}}
+                                                @if($channel['totalFee'] > 0)
+                                                    <span class="text-[10px] text-gray-400 mt-1">Biaya: Rp {{ number_format($channel['totalFee'], 0, ',', '.') }}</span>
+                                                @else
+                                                    <span class="text-[10px] text-green-500 font-medium mt-1">Bebas Biaya</span>
+                                                @endif
+
+                                                <i class="fas fa-check-circle text-blue-600 text-xl absolute top-2 right-2 hidden peer-checked:block"></i>
                                             </div>
-                                            <i class="fas fa-check-circle text-blue-600 text-3xl hidden peer-checked:block"></i>
-                                        </div>
-                                        <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
-                                    </label>
+                                            <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
+                                        </label>
+                                    @endforeach
                                 </div>
-                            </div>
+                            @else
+                                <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-700 text-sm">
+                                    <i class="fas fa-exclamation-triangle mr-2"></i> Saat ini metode pembayaran Duitku sedang tidak tersedia.
+                                </div>
+                            @endif
                         </div>
                         {{-- ====================================================================== --}}
 
