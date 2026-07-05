@@ -82,47 +82,40 @@
 
                         {{-- Disini KODE SEMUA PAYMENT GATEWAY --}}
 
-                       {{-- ====================================================================== --}}
-                        {{-- PILIHAN METODE PEMBAYARAN DUITKU (GROUPED FROM API) --}}
+                        {{-- ====================================================================== --}}
+                        {{-- PILIHAN METODE PEMBAYARAN DUITKU (DYNAMIC FROM API) --}}
                         {{-- ====================================================================== --}}
                         <div class="mt-10 border-t pt-8">
                             <h4 class="text-xl font-bold text-gray-800 mb-6">Pilih Metode Pembayaran</h4>
 
                             @if(isset($duitkuChannels) && count($duitkuChannels) > 0)
-                                <div class="space-y-8">
-                                    {{-- Looping per Kategori/Grup --}}
-                                    @foreach($duitkuChannels as $groupName => $channels)
-                                        <div>
-                                            {{-- Judul Kategori (E-Wallet, VA, dll) --}}
-                                            <h5 class="text-sm font-semibold text-gray-600 mb-4 uppercase tracking-wider">{{ $groupName }}</h5>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    @foreach($duitkuChannels as $channel)
+                                        <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-4 shadow-sm hover:border-blue-300 transition-all text-center group">
 
-                                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                {{-- Looping Channel Pembayaran di dalam grup tersebut --}}
-                                                @foreach($channels as $channel)
-                                                    <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-4 shadow-sm hover:border-blue-300 transition-all text-center group">
+                                            {{-- Value dikirim dengan prefix DUITKU_ diikuti Kode Pembayaran (Misal: DUITKU_BC, DUITKU_OV) --}}
+                                            <input type="radio" name="payment_method" value="DUITKU_{{ $channel['paymentMethod'] }}" class="peer sr-only" required>
 
-                                                        <input type="radio" name="payment_method" value="DUITKU_{{ $channel['paymentMethod'] }}" class="peer sr-only" required>
+                                            <div class="flex w-full flex-col items-center justify-between h-full">
+                                                <div class="flex-grow flex items-center justify-center mb-3">
+                                                    {{-- Logo otomatis dari API Duitku --}}
+                                                    <img src="{{ $channel['paymentImage'] }}" class="max-h-10 max-w-full object-contain filter group-hover:brightness-110 transition-all" alt="{{ $channel['paymentName'] }}">
+                                                </div>
 
-                                                        <div class="flex w-full flex-col items-center justify-between h-full">
-                                                            <div class="flex-grow flex items-center justify-center mb-3 h-10">
-                                                                <img src="{{ $channel['paymentImage'] }}" class="max-h-full max-w-full object-contain filter group-hover:brightness-110 transition-all" alt="{{ $channel['paymentName'] }}">
-                                                            </div>
+                                                {{-- Nama Metode Pembayaran --}}
+                                                <span class="text-xs text-gray-700 font-bold tracking-tight">{{ $channel['paymentName'] }}</span>
 
-                                                            <span class="text-xs text-gray-700 font-bold tracking-tight">{{ $channel['paymentName'] }}</span>
+                                                {{-- Menampilkan Biaya Admin --}}
+                                                @if($channel['totalFee'] > 0)
+                                                    <span class="text-[10px] text-gray-400 mt-1">Biaya: Rp {{ number_format($channel['totalFee'], 0, ',', '.') }}</span>
+                                                @else
+                                                    <span class="text-[10px] text-green-500 font-medium mt-1">Bebas Biaya</span>
+                                                @endif
 
-                                                            @if($channel['totalFee'] > 0)
-                                                                <span class="text-[10px] text-gray-400 mt-1">Biaya: Rp {{ number_format($channel['totalFee'], 0, ',', '.') }}</span>
-                                                            @else
-                                                                <span class="text-[10px] text-green-500 font-medium mt-1">Bebas Biaya</span>
-                                                            @endif
-
-                                                            <i class="fas fa-check-circle text-blue-600 text-xl absolute top-2 right-2 hidden peer-checked:block"></i>
-                                                        </div>
-                                                        <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
-                                                    </label>
-                                                @endforeach
+                                                <i class="fas fa-check-circle text-blue-600 text-xl absolute top-2 right-2 hidden peer-checked:block"></i>
                                             </div>
-                                        </div>
+                                            <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
+                                        </label>
                                     @endforeach
                                 </div>
                             @else
