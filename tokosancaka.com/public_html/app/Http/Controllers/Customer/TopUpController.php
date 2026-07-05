@@ -73,68 +73,51 @@ class TopUpController extends Controller
         // 1. Ambil Channel dari Tripay (Otomatis)
         $tripayChannels = $this->getTripayChannels();
 
+        // LOG TRIPAY: Cek tipe data dan isi response Tripay
+        Log::info('[DEBUG TRIPAY] Tipe Data Respons:', ['type' => gettype($tripayChannels)]);
+        Log::info('[DEBUG TRIPAY] Isi Respons Mentah:', [
+            'data' => is_string($tripayChannels) ? json_decode($tripayChannels, true) : $tripayChannels
+        ]);
+
         // 2. Kelompokkan berdasarkan Group (Virtual Account, E-Wallet, dll)
         $groupedChannels = collect($tripayChannels)->groupBy('group');
 
         // Ambil metode pembayaran dinamis dari Duitku menggunakan Cache
-        $duitkuChannels = \Illuminate\Support\Facades\Cache::remember('duitku_payment_methods', 60 * 24, function () {
+        // Disimpan di Cache 24 jam (60 * 24 menit) agar loading website tetap super cepat
+        $duitkuChannels = Cache::remember('duitku_payment_methods', 60 * 24, function () {
             try {
+                Log::info('[DEBUG DUITKU] Mulai memanggil API Duitku...');
                 $duitkuService = app(\App\Http\Controllers\ApiDuitkuController::class);
+
+                // Gunakan nominal default 10000 untuk mengecek channel aktif dari API Duitku
                 $response = $duitkuService->getPaymentMethods(10000);
 
+                // LOG DUITKU: Cek tipe data dan isi response Duitku
+                Log::info('[DEBUG DUITKU] Tipe Data Respons:', ['type' => gettype($response)]);
+                Log::info('[DEBUG DUITKU] Isi Respons Mentah:', [
+                    'data' => is_string($response) ? json_decode($response, true) : $response
+                ]);
+
+                // Pastikan responseCode adalah "00" (SUCCESS) sesuai dokumen Duitku
                 if (isset($response['responseCode']) && $response['responseCode'] === '00') {
-                    $rawChannels = $response['paymentFee'];
+                    Log::info('[DEBUG DUITKU] Ekstraksi paymentFee berhasil:', [
+                        'paymentFee_type' => gettype($response['paymentFee']),
+                        'paymentFee_count' => is_array($response['paymentFee']) ? count($response['paymentFee']) : 'Bukan Array'
+                    ]);
 
-                    // Siapkan wadah grup
-                    $grouped = [
-                        'E-Wallet' => [],
-                        'Virtual Account' => [],
-                        'QRIS' => [],
-                        'Retail / Gerai' => [],
-                        'Paylater / Cicilan' => [],
-                        'Credit Card / Lainnya' => []
-                    ];
-
-                    // Looping dan kelompokkan berdasarkan kode metode pembayaran Duitku
-                    foreach ($rawChannels as $channel) {
-                        $code = $channel['paymentMethod'];
-
-                        // Kategori E-Wallet
-                        if (in_array($code, ['OV', 'SA', 'LF', 'LA', 'DA', 'SL', 'OL'])) {
-                            $grouped['E-Wallet'][] = $channel;
-                        }
-                        // Kategori Virtual Account Bank
-                        elseif (in_array($code, ['BC', 'M2', 'VA', 'I1', 'B1', 'BT', 'A1', 'AG', 'NC', 'BR', 'S1', 'DM', 'BV'])) {
-                            $grouped['Virtual Account'][] = $channel;
-                        }
-                        // Kategori QRIS
-                        elseif (in_array($code, ['SP', 'NQ', 'GQ', 'SQ'])) {
-                            $grouped['QRIS'][] = $channel;
-                        }
-                        // Kategori Retail / Minimarket
-                        elseif (in_array($code, ['FT', 'IR'])) {
-                            $grouped['Retail / Gerai'][] = $channel;
-                        }
-                        // Kategori Paylater
-                        elseif (in_array($code, ['DN', 'AT'])) {
-                            $grouped['Paylater / Cicilan'][] = $channel;
-                        }
-                        // Sisa kategori (Credit Card, E-Banking, Tokopedia, dll)
-                        else {
-                            $grouped['Credit Card / Lainnya'][] = $channel;
-                        }
-                    }
-
-                    // Hapus grup yang kosong (misal Paylater sedang tidak ada)
-                    return array_filter($grouped);
+                    return $response['paymentFee'];
+                } else {
+                    Log::warning('[DEBUG DUITKU] Respons bukan 00 atau struktur tidak sesuai:', [
+                        'responseCode' => $response['responseCode'] ?? 'Tidak ada responseCode'
+                    ]);
                 }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Gagal load channel Duitku: ' . $e->getMessage());
+                Log::error('Gagal load channel Duitku: ' . $e->getMessage());
             }
-            return [];
+            return []; // Return array kosong jika gagal
         });
 
-        // Kirim array yang sudah dikelompokkan ke Blade
+        // Kirim $duitkuChannels ke tampilan Blade
         return view('customer.topup.create', compact('duitkuChannels', 'groupedChannels'));
     }
 
