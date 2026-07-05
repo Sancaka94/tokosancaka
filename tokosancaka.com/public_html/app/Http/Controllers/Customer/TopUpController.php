@@ -410,6 +410,38 @@ class TopUpController extends Controller
                 return $this->createPaymentMandiriVA($transaction);
             }
 
+            // ==========================================================
+            // --- FITUR BARU: DUITKU ---
+            // ==========================================================
+            elseif (\Illuminate\Support\Str::startsWith(strtoupper($validated['payment_method']), 'DUITKU')) {
+
+                Log::info('LOG LOG: Memulai Top Up Duitku untuk ' . $invoiceNumber);
+
+                $transaction = Transaction::create([
+                    'user_id'        => $user->id_pengguna,
+                    'reference_id'   => $invoiceNumber,
+                    'amount'         => $amount,
+                    'type'           => 'topup',
+                    'status'         => 'pending',
+                    'payment_method' => strtoupper($validated['payment_method']),
+                    'description'    => 'Top up saldo via Duitku',
+                ]);
+
+                DB::commit();
+
+                // Ekstrak kode metode pembayaran Duitku (misal form kirim 'DUITKU_BC' untuk BCA VA, kita ambil 'BC')
+                $duitkuMethod = str_replace('DUITKU_', '', strtoupper($validated['payment_method']));
+
+                // Jika dari form hanya dikirim 'DUITKU', kita kosongkan string agar Duitku menampilkan halaman general berisi semua channel
+                if ($duitkuMethod === 'DUITKU') {
+                    $duitkuMethod = '';
+                }
+
+                // Arahkan ke fungsi eksekutor Duitku
+                return $this->createPaymentDuitku($transaction, $duitkuMethod);
+            }
+            // ==========================================================
+
             // 3. Logika DOKU & TRIPAY
             else {
 
@@ -4628,6 +4660,71 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         } catch (\Exception $e) {
             Log::error('LOG LOG: [MANDIRI VA] Exception: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan sistem koneksi Bank Mandiri.');
+        }
+    }
+
+    /**
+     * =========================================================================
+     * EKSEKUTOR PEMBAYARAN DUITKU UNTUK TOP UP
+     * =========================================================================
+     */
+    protected function createPaymentDuitku(Transaction $transaction, $paymentMethodCode)
+    {
+        Log::info('LOG LOG: DUITKU START for Transaction: ' . $transaction->reference_id);
+        $user = Auth::user();
+
+        try {
+            // Memanggil ApiDuitkuController sebagai service
+            $duitkuService = app(\App\Http\Controllers\ApiDuitkuController::class);
+
+            // Persiapan Data Pelanggan
+            $customerDetail = [
+                'firstName'   => $user->nama_lengkap ?? 'Customer',
+                'lastName'    => 'Sancaka',
+                'email'       => $user->email ?? 'email@kosong.com',
+                'phoneNumber' => $user->no_wa ?? '08123456789',
+            ];
+
+            // Persiapan Detail Item
+            $itemDetails = [
+                [
+                    'name'     => 'Top Up Saldo',
+                    'price'    => (int) $transaction->amount,
+                    'quantity' => 1
+                ]
+            ];
+
+            $productDetails = 'Top Up Saldo - ' . $transaction->reference_id;
+
+            // Hit API ke Duitku Controller Induk
+            $response = $duitkuService->createTransaction(
+                $transaction->reference_id,
+                (int) $transaction->amount,
+                $paymentMethodCode,
+                $customerDetail,
+                $itemDetails,
+                $productDetails
+            );
+
+            // Jika sukses dan paymentUrl tersedia
+            if ($response && isset($response['paymentUrl'])) {
+
+                $transaction->payment_url = $response['paymentUrl'];
+                $transaction->save();
+
+                Log::info('LOG LOG: Berhasil mendapatkan URL Duitku', ['url' => $response['paymentUrl']]);
+
+                // Redirect user ke Halaman Pembayaran Duitku
+                return redirect()->away($response['paymentUrl']);
+            }
+
+            // Jika gagal
+            Log::error('LOG LOG: Gagal mendapatkan URL dari Duitku', $response ?? []);
+            return back()->with('error', 'Gagal memproses pembayaran Duitku. Silakan coba metode lain.');
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: DUITKU System Error: ' . $e->getMessage());
+            return back()->with('error', 'Koneksi ke Duitku terputus: ' . $e->getMessage());
         }
     }
 

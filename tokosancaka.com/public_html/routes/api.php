@@ -58,6 +58,10 @@ use App\Http\Controllers\LalamoveApiController;
 use App\Http\Controllers\Api\MandiriGatewayController;
 use App\Http\Controllers\Api\Mobile\ApiMapboxController;
 use App\Http\Controllers\Api\Mobile\AdminDriverController;
+use App\Http\Controllers\ApiDuitkuController;
+
+Route::post('/duitku/callback', [ApiDuitkuController::class, 'handleCallback']);
+
 
 
 // --- RUTE API PENCARIAN DRIVER (LANGSUNG TEMBAK) ---
