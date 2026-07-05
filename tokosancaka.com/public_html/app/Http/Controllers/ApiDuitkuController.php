@@ -13,10 +13,11 @@ class ApiDuitkuController extends Controller
     protected $env;
     protected $baseUrl;
 
-    // Properti tambahan untuk fitur Disbursement
+    // Properti tambahan untuk kredensial Disbursement[cite: 4]
     protected $disbursementUserId;
     protected $disbursementSecretKey;
     protected $disbursementBaseUrl;
+    protected $cashOutBaseUrl;
 
     public function __construct()
     {
@@ -29,12 +30,19 @@ class ApiDuitkuController extends Controller
             ? 'https://passport.duitku.com/webapi/api/merchant'
             : 'https://sandbox.duitku.com/webapi/api/merchant';
 
-        // Menentukan Base URL dan Kredensial untuk Disbursement [cite: 239, 262]
+        // Kredensial khusus Disbursement (User ID & Secret Key berbeda dengan Payment)[cite: 4]
         $this->disbursementUserId = env('DUITKU_DISBURSEMENT_USER_ID');
         $this->disbursementSecretKey = env('DUITKU_DISBURSEMENT_SECRET_KEY');
+
+        // Base URL untuk Transfer Online & Clearing[cite: 4]
         $this->disbursementBaseUrl = $this->env === 'production'
             ? 'https://passport.duitku.com/webapi/api/disbursement'
             : 'https://sandbox.duitku.com/webapi/api/disbursement';
+
+        // Base URL khusus untuk Cash Out (Sangat penting, domain berbeda)[cite: 4]
+        $this->cashOutBaseUrl = $this->env === 'production'
+            ? 'https://disbursement.duitku.com/api/cashout'
+            : 'https://disbursement-sandbox.duitku.com/api/cashout';
     }
 
     /**
@@ -166,20 +174,17 @@ class ApiDuitkuController extends Controller
 
     /**
      * ==========================================================
-     * FITUR DISBURSEMENT (TRANSFER ONLINE)
+     * FITUR DISBURSEMENT: UTILITAS UMUM
      * ==========================================================
      */
 
     /**
-     * Mengecek Saldo Disbursement (Inquiry Check Balance) [cite: 521, 534]
+     * Mengecek Saldo Disbursement (Inquiry Check Balance)[cite: 4]
      */
     public function checkDisbursementBalance($email)
     {
         $timestamp = round(microtime(true) * 1000);
-
-        // Formula: SHA256(email + timestamp + secretKey) [cite: 535]
-        $paramSignature = $email . $timestamp . $this->disbursementSecretKey;
-        $signature = hash('sha256', $paramSignature);
+        $signature = hash('sha256', $email . $timestamp . $this->disbursementSecretKey);
 
         $params = [
             'userId'    => (int) $this->disbursementUserId,
@@ -189,20 +194,16 @@ class ApiDuitkuController extends Controller
         ];
 
         $response = Http::post($this->disbursementBaseUrl . '/checkbalance', $params);
-
         return $response->json();
     }
 
     /**
-     * Mendapatkan Daftar Bank yang Tersedia (Inquiry List Bank) [cite: 539, 552]
+     * Mendapatkan Daftar Bank yang Tersedia (Inquiry List Bank)[cite: 4]
      */
     public function getDisbursementBankList($email)
     {
         $timestamp = round(microtime(true) * 1000);
-
-        // Formula: SHA256(email + timestamp + secretKey) [cite: 553]
-        $paramSignature = $email . $timestamp . $this->disbursementSecretKey;
-        $signature = hash('sha256', $paramSignature);
+        $signature = hash('sha256', $email . $timestamp . $this->disbursementSecretKey);
 
         $params = [
             'userId'    => (int) $this->disbursementUserId,
@@ -212,20 +213,39 @@ class ApiDuitkuController extends Controller
         ];
 
         $response = Http::post($this->disbursementBaseUrl . '/listBank', $params);
-
         return $response->json();
     }
 
     /**
-     * Membuat Permintaan Transfer Online (Disbursement Inquiry Request) [cite: 238, 239]
+     * Memeriksa Status Transaksi (Transfer Online & Clearing)[cite: 4]
      */
-    public function createDisbursementInquiry($amountTransfer, $bankAccount, $bankCode, $email, $purpose, $senderId = null, $senderName = null)
+    public function checkDisbursementStatus($disburseId, $email)
     {
         $timestamp = round(microtime(true) * 1000);
+        $signature = hash('sha256', $email . $timestamp . $disburseId . $this->disbursementSecretKey);
 
-        // Formula: SHA256(email + timestamp + bankCode + bankAccount + amountTransfer + purpose + secretKey) [cite: 267]
-        $paramSignature = $email . $timestamp . $bankCode . $bankAccount . $amountTransfer . $purpose . $this->disbursementSecretKey;
-        $signature = hash('sha256', $paramSignature);
+        $params = [
+            'disburseId' => $disburseId,
+            'userId'     => (int) $this->disbursementUserId,
+            'email'      => $email,
+            'timestamp'  => $timestamp,
+            'signature'  => $signature
+        ];
+
+        $response = Http::post($this->disbursementBaseUrl . '/inquirystatus', $params);
+        return $response->json();
+    }
+
+    /**
+     * ==========================================================
+     * FITUR DISBURSEMENT 1: TRANSFER ONLINE
+     * ==========================================================
+     */
+
+    public function createOnlineInquiry($amountTransfer, $bankAccount, $bankCode, $email, $purpose, $senderId = null, $senderName = null)
+    {
+        $timestamp = round(microtime(true) * 1000);
+        $signature = hash('sha256', $email . $timestamp . $bankCode . $bankAccount . $amountTransfer . $purpose . $this->disbursementSecretKey);
 
         $params = [
             'userId'         => (int) $this->disbursementUserId,
@@ -240,29 +260,16 @@ class ApiDuitkuController extends Controller
             'signature'      => $signature
         ];
 
-        // URL Sandbox atau Production berbeda pada akhir rute [cite: 239]
         $endpoint = $this->env === 'production' ? '/inquiry' : '/inquirysandbox';
         $response = Http::post($this->disbursementBaseUrl . $endpoint, $params);
 
-        if ($response->successful()) {
-            return $response->json();
-        }
-
-        Log::error('Duitku Disbursement Inquiry Error: ' . $response->body());
-        return false;
+        return $response->json();
     }
 
-    /**
-     * Menjalankan Transfer Dana (Disbursement Transfer Request) [cite: 275, 276]
-     * Dipanggil setelah `createDisbursementInquiry` mendapatkan response sukses.
-     */
-    public function executeDisbursementTransfer($disburseId, $amountTransfer, $bankAccount, $bankCode, $email, $accountName, $custRefNumber, $purpose)
+    public function executeOnlineTransfer($disburseId, $amountTransfer, $bankAccount, $bankCode, $email, $accountName, $custRefNumber, $purpose)
     {
         $timestamp = round(microtime(true) * 1000);
-
-        // Formula: SHA256(email + timestamp + bankCode + bankAccount + accountName + custRefNumber + amountTransfer + purpose + disburseId + secretKey) [cite: 304]
-        $paramSignature = $email . $timestamp . $bankCode . $bankAccount . $accountName . $custRefNumber . $amountTransfer . $purpose . $disburseId . $this->disbursementSecretKey;
-        $signature = hash('sha256', $paramSignature);
+        $signature = hash('sha256', $email . $timestamp . $bankCode . $bankAccount . $accountName . $custRefNumber . $amountTransfer . $purpose . $disburseId . $this->disbursementSecretKey);
 
         $params = [
             'disburseId'     => $disburseId,
@@ -278,39 +285,164 @@ class ApiDuitkuController extends Controller
             'signature'      => $signature
         ];
 
-        // URL Sandbox atau Production berbeda pada akhir rute [cite: 276]
         $endpoint = $this->env === 'production' ? '/transfer' : '/transfersandbox';
         $response = Http::post($this->disbursementBaseUrl . $endpoint, $params);
 
-        if ($response->successful()) {
-            return $response->json();
-        }
-
-        Log::error('Duitku Disbursement Transfer Error: ' . $response->body());
-        return false;
+        return $response->json();
     }
 
     /**
-     * Memeriksa Status Transfer (Disbursement Inquiry Status) [cite: 493, 497]
+     * ==========================================================
+     * FITUR DISBURSEMENT 2: CLEARING (LLG, RTGS, H2H, BIFAST)[cite: 4]
+     * ==========================================================
      */
-    public function checkDisbursementStatus($disburseId, $email)
+
+    public function createClearingInquiry($amountTransfer, $bankAccount, $bankCode, $type, $email, $purpose, $custRefNumber = null, $senderId = null, $senderName = null)
     {
         $timestamp = round(microtime(true) * 1000);
-
-        // Formula: SHA256(email + timestamp + disburseId + secretKey) [cite: 516]
-        $paramSignature = $email . $timestamp . $disburseId . $this->disbursementSecretKey;
-        $signature = hash('sha256', $paramSignature);
+        // Formula signature terdapat tambahan 'type' dibandingkan Transfer Online[cite: 4]
+        $signature = hash('sha256', $email . $timestamp . $bankCode . $type . $bankAccount . $amountTransfer . $purpose . $this->disbursementSecretKey);
 
         $params = [
-            'disburseId' => $disburseId,
-            'userId'     => (int) $this->disbursementUserId,
-            'email'      => $email,
-            'timestamp'  => $timestamp,
-            'signature'  => $signature
+            'userId'         => (int) $this->disbursementUserId,
+            'email'          => $email,
+            'bankCode'       => $bankCode,
+            'bankAccount'    => $bankAccount,
+            'amountTransfer' => (int) $amountTransfer,
+            'custRefNumber'  => $custRefNumber,
+            'senderId'       => $senderId,
+            'senderName'     => $senderName,
+            'purpose'        => $purpose,
+            'type'           => $type,
+            'timestamp'      => $timestamp,
+            'signature'      => $signature
         ];
 
-        $response = Http::post($this->disbursementBaseUrl . '/inquirystatus', $params);
+        $endpoint = $this->env === 'production' ? '/inquiryclearing' : '/inquiryclearingsandbox';
+        $response = Http::post($this->disbursementBaseUrl . $endpoint, $params);
 
         return $response->json();
+    }
+
+    public function executeClearingTransfer($disburseId, $amountTransfer, $bankAccount, $bankCode, $type, $email, $accountName, $custRefNumber, $purpose)
+    {
+        $timestamp = round(microtime(true) * 1000);
+        $signature = hash('sha256', $email . $timestamp . $bankCode . $type . $bankAccount . $accountName . $custRefNumber . $amountTransfer . $purpose . $disburseId . $this->disbursementSecretKey);
+
+        $params = [
+            'disburseId'     => $disburseId,
+            'userId'         => (int) $this->disbursementUserId,
+            'email'          => $email,
+            'bankCode'       => $bankCode,
+            'bankAccount'    => $bankAccount,
+            'amountTransfer' => (int) $amountTransfer,
+            'accountName'    => $accountName,
+            'custRefNumber'  => $custRefNumber,
+            'type'           => $type,
+            'purpose'        => $purpose,
+            'timestamp'      => $timestamp,
+            'signature'      => $signature
+        ];
+
+        $endpoint = $this->env === 'production' ? '/transferclearing' : '/transferclearingsandbox';
+        $response = Http::post($this->disbursementBaseUrl . $endpoint, $params);
+
+        return $response->json();
+    }
+
+    /**
+     * Handler Callback Khusus Clearing (Hanya untuk tipe H2H)[cite: 4]
+     */
+    public function handleClearingCallback(Request $request)
+    {
+        $disburseId     = $request->input('disburseId');
+        $email          = $request->input('email');
+        $bankCode       = $request->input('bankCode');
+        $bankAccount    = $request->input('bankAccount');
+        $accountName    = $request->input('accountName');
+        $custRefNumber  = $request->input('custRefNumber');
+        $amountTransfer = $request->input('amountTransfer');
+        $signature      = $request->input('signature');
+        $statusCode     = $request->input('statusCode'); // 00 = Success
+
+        if (!$email || !$bankCode || !$bankAccount || !$accountName || !$custRefNumber || !$amountTransfer || !$disburseId || !$signature) {
+            return response()->json(['message' => 'Bad Parameter'], 400);
+        }
+
+        $calcSignature = hash('sha256', $email . $bankCode . $bankAccount . $accountName . $custRefNumber . $amountTransfer . $disburseId . $this->disbursementSecretKey);
+
+        if ($signature === $calcSignature) {
+            Log::info("Duitku Clearing Callback Diterima: {$disburseId} - Status: {$statusCode}");
+            // Tambahkan logika internal Sancaka di sini jika diperlukan
+
+            return response('SUCCESS', 200);
+        }
+
+        Log::warning("Duitku Clearing Callback Bad Signature: {$disburseId}");
+        return response()->json(['message' => 'Bad Signature'], 403);
+    }
+
+    /**
+     * ==========================================================
+     * FITUR DISBURSEMENT 3: CASH OUT (Pos Indonesia & Indomaret)[cite: 4]
+     * ==========================================================
+     */
+
+    public function createCashOutInquiry($amountTransfer, $bankCode, $email, $phoneNumber, $accountName, $accountIdentity, $purpose, $accountAddress = null, $custRefNumber = null, $callbackUrl = null)
+    {
+        $timestamp = round(microtime(true) * 1000);
+        $signature = hash('sha256', $email . $timestamp . $amountTransfer . $purpose . $this->disbursementSecretKey);
+
+        $params = [
+            'userId'          => (int) $this->disbursementUserId,
+            'amountTransfer'  => (int) $amountTransfer,
+            'custRefNumber'   => $custRefNumber,
+            'bankCode'        => $bankCode, // 2010 (Indomaret) atau 2011 (Pos)
+            'accountName'     => $accountName,
+            'accountAddress'  => $accountAddress,
+            'accountIdentity' => $accountIdentity,
+            'email'           => $email,
+            'phoneNumber'     => $phoneNumber,
+            'purpose'         => $purpose,
+            'timestamp'       => $timestamp,
+            'callbackUrl'     => $callbackUrl,
+            'signature'       => $signature
+        ];
+
+        // Cash out menggunakan base URL khusus[cite: 4]
+        $response = Http::post($this->cashOutBaseUrl . '/inquiry', $params);
+
+        return $response->json();
+    }
+
+    /**
+     * Handler Callback Khusus Cash Out[cite: 4]
+     */
+    public function handleCashOutCallback(Request $request)
+    {
+        $disburseId     = $request->input('disburseId');
+        $email          = $request->input('email');
+        $amountTransfer = $request->input('amountTransfer');
+        $custRefNumber  = $request->input('custRefNumber');
+        $accountName    = $request->input('accountName');
+        $phoneNumber    = $request->input('phoneNumber');
+        $signature      = $request->input('signature');
+        $statusCode     = $request->input('statusCode'); // 00 = Success
+
+        if (!$email || !$phoneNumber || !$accountName || !$custRefNumber || !$amountTransfer || !$disburseId || !$signature) {
+            return response()->json(['message' => 'Bad Parameter'], 400);
+        }
+
+        $calcSignature = hash('sha256', $email . $disburseId . $custRefNumber . $this->disbursementSecretKey);
+
+        if ($signature === $calcSignature) {
+            Log::info("Duitku CashOut Callback Diterima: {$disburseId} - Status: {$statusCode}");
+            // Tambahkan logika internal Sancaka di sini jika diperlukan
+
+            return response('SUCCESS', 200);
+        }
+
+        Log::warning("Duitku CashOut Callback Bad Signature: {$disburseId}");
+        return response()->json(['message' => 'Bad Signature'], 403);
     }
 }
