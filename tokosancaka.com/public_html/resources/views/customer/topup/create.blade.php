@@ -82,7 +82,7 @@
 
                        <div class="space-y-12">
 
-                            @if($groupedtripayChannels->isNotEmpty())
+                            {{--@if($groupedtripayChannels->isNotEmpty())
                                 <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100">
                                     <h2 class="text-lg font-extrabold text-gray-900 mb-6 flex items-center">
                                         <span class="w-2.5 h-5 bg-blue-600 rounded-full mr-2"></span>
@@ -113,14 +113,14 @@
                                         @endforeach
                                     </div>
                                 </div>
-                            @endif
+                            @endif --}}
 
 
                             @if($groupedChannels->isNotEmpty())
                                 <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100">
                                     <h2 class="text-lg font-extrabold text-gray-900 mb-6 flex items-center">
                                         <span class="w-2.5 h-5 bg-red-600 rounded-full mr-2"></span>
-                                        Metode Pembayaran Gateway B (Duitku)
+                                        Metode Pembayaran Otomatis
                                     </h2>
 
                                     <div class="space-y-8">
