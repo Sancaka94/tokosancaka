@@ -82,53 +82,56 @@
 
                         {{-- Disini KODE SEMUA PAYMENT GATEWAY --}}
 
-                        {{-- ====================================================================== --}}
-                        {{-- PILIHAN METODE PEMBAYARAN DUITKU (DYNAMIC FROM API) --}}
-                        {{-- ====================================================================== --}}
-                        <div class="mt-10 border-t pt-8">
-                            <h4 class="text-xl font-bold text-gray-800 mb-6">Pilih Metode Pembayaran</h4>
+                       <div class="space-y-8">
+                            @foreach($groupedChannels as $groupName => $channels)
+                                <div>
+                                    <!-- Judul Kategori (Virtual Account, E-Wallet, dll) -->
+                                    <div class="flex items-center mb-4">
+                                        <div class="w-1.5 h-6 bg-red-600 rounded-full mr-2"></div>
+                                        <h3 class="text-base md:text-lg font-bold text-gray-800 uppercase tracking-wide">
+                                            {{ $groupName }}
+                                        </h3>
+                                    </div>
 
-                            @if(isset($duitkuChannels) && count($duitkuChannels) > 0)
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    @foreach($duitkuChannels as $channel)
-                                        <label class="relative flex cursor-pointer rounded-xl border-2 border-gray-100 bg-white p-4 shadow-sm hover:border-blue-300 transition-all text-center group">
+                                    <!-- Grid Card Channel Pembayaran -->
+                                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+                                        @foreach($channels as $channel)
+                                            <label class="relative border border-gray-200 rounded-xl p-3.5 flex flex-col items-center justify-between cursor-pointer hover:border-red-500 hover:shadow-md transition-all bg-white group">
+                                                <!-- Input Radio -->
+                                                <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="sr-only peer" required>
 
-                                            {{-- Value dikirim dengan prefix DUITKU_ diikuti Kode Pembayaran (Misal: DUITKU_BC, DUITKU_OV) --}}
-                                            <input type="radio" name="payment_method" value="DUITKU_{{ $channel['paymentMethod'] }}" class="peer sr-only" required>
+                                                <!-- Efek Border Merah saat Dipilih (Selected State) -->
+                                                <div class="absolute inset-0 border-2 border-transparent peer-checked:border-red-600 rounded-xl pointer-events-none transition-all"></div>
 
-                                            <div class="flex w-full flex-col items-center justify-between h-full">
-                                                <div class="flex-grow flex items-center justify-center mb-3">
-                                                    {{-- Logo otomatis dari API Duitku --}}
-                                                    <!-- Contoh penanganan di dalam perulangan card Duitku pada Blade -->
-                                                    <img src="{{ !empty($channel['paymentImage']) ? $channel['paymentImage'] : asset('images/banks/' . strtolower($channel['paymentMethod']) . '.png') }}"
-                                                        onerror="this.onerror=null; this.src='https://assets.tripay.co.id/upload/payment-icon/ytBKvaleGy1605201833.png';"
-                                                        alt="{{ $channel['paymentName'] }}"
-                                                        class="h-8 mx-auto mb-2 object-contain">
+                                                <!-- Logo Bank/E-Wallet dengan Fallback jika Gambar Rusak -->
+                                                <div class="h-12 w-full flex items-center justify-center mb-2.5 px-1">
+                                                    <img src="{{ $channel['icon'] ?? asset('images/default-payment.png') }}"
+                                                        onerror="this.onerror=null; this.src='https://assets.tripay.co.id/upload/payment-icon/qQYo61sIDa1702995837.png';"
+                                                        alt="{{ $channel['name'] }}"
+                                                        class="max-h-10 max-w-full object-contain filter group-hover:scale-105 transition-transform duration-200">
                                                 </div>
 
-                                                {{-- Nama Metode Pembayaran --}}
-                                                <span class="text-xs text-gray-700 font-bold tracking-tight">{{ $channel['paymentName'] }}</span>
+                                                <!-- Nama Metode -->
+                                                <div class="text-center w-full">
+                                                    <span class="text-xs font-semibold text-gray-700 block truncate w-full" title="{{ $channel['name'] }}">
+                                                        {{ $channel['name'] }}
+                                                    </span>
 
-                                                {{-- Menampilkan Biaya Admin --}}
-                                                @if($channel['totalFee'] > 0)
-                                                    <span class="text-[10px] text-gray-400 mt-1">Biaya: Rp {{ number_format($channel['totalFee'], 0, ',', '.') }}</span>
-                                                @else
-                                                    <span class="text-[10px] text-green-500 font-medium mt-1">Bebas Biaya</span>
-                                                @endif
-
-                                                <i class="fas fa-check-circle text-blue-600 text-xl absolute top-2 right-2 hidden peer-checked:block"></i>
-                                            </div>
-                                            <span class="pointer-events-none absolute -inset-px rounded-xl border-2 border-transparent peer-checked:border-blue-600" aria-hidden="true"></span>
-                                        </label>
-                                    @endforeach
+                                                    <!-- Biaya Admin -->
+                                                    <span class="text-[11px] font-medium text-gray-400 mt-0.5 block">
+                                                        @if($channel['fee'] > 0)
+                                                            Biaya: Rp {{ number_format($channel['fee'], 0, ',', '.') }}
+                                                        @else
+                                                            <span class="text-green-600 font-semibold">Bebas Biaya</span>
+                                                        @endif
+                                                    </span>
+                                                </div>
+                                            </label>
+                                        @endforeach
+                                    </div>
                                 </div>
-                            @else
-                                <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-700 text-sm">
-                                    <i class="fas fa-exclamation-triangle mr-2"></i> Saat ini metode pembayaran Duitku sedang tidak tersedia.
-                                </div>
-                            @endif
+                            @endforeach
                         </div>
-                        {{-- ====================================================================== --}}
 
 
                         {{-- PREVIEW METODE PEMBAYARAN OTOMATIS (Hanya Muncul Saat Input Nominal Valid) --}}

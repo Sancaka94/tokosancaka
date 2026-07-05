@@ -68,57 +68,75 @@ class TopUpController extends Controller
     /**
      * Menampilkan halaman form top up dengan Metode Pembayaran Dinamis.
      */
-    public function create()
+   public function create()
     {
-        // 1. Ambil Channel dari Tripay (Otomatis)
-        $tripayChannels = $this->getTripayChannels();
+        // 1. Ambil & Normalisasi Channel dari Tripay
+        $tripayRaw = $this->getTripayChannels();
+        $tripayChannels = collect(is_string($tripayRaw) ? json_decode($tripayRaw, true) : $tripayRaw)
+            ->map(function ($item) {
+                return [
+                    'provider' => 'TRIPAY',
+                    'code'     => $item['code'],
+                    'name'     => $item['name'],
+                    'group'    => $item['group'], // Tripay sudah punya group asli
+                    'icon'     => $item['icon_url'],
+                    'fee'      => $item['total_fee']['flat'] ?? 0,
+                ];
+            });
 
-        // LOG TRIPAY: Cek tipe data dan isi response Tripay
-        Log::info('[DEBUG TRIPAY] Tipe Data Respons:', ['type' => gettype($tripayChannels)]);
-        Log::info('[DEBUG TRIPAY] Isi Respons Mentah:', [
-            'data' => is_string($tripayChannels) ? json_decode($tripayChannels, true) : $tripayChannels
-        ]);
-
-        // 2. Kelompokkan berdasarkan Group (Virtual Account, E-Wallet, dll)
-        $groupedChannels = collect($tripayChannels)->groupBy('group');
-
-        // Ambil metode pembayaran dinamis dari Duitku menggunakan Cache
-        // Disimpan di Cache 24 jam (60 * 24 menit) agar loading website tetap super cepat
-        $duitkuChannels = Cache::remember('duitku_payment_methods', 60 * 24, function () {
+        // 2. Ambil & Normalisasi Channel dari Duitku
+        $duitkuRaw = Cache::remember('duitku_payment_methods', 60 * 24, function () {
             try {
-                Log::info('[DEBUG DUITKU] Mulai memanggil API Duitku...');
                 $duitkuService = app(\App\Http\Controllers\ApiDuitkuController::class);
-
-                // Gunakan nominal default 10000 untuk mengecek channel aktif dari API Duitku
                 $response = $duitkuService->getPaymentMethods(10000);
-
-                // LOG DUITKU: Cek tipe data dan isi response Duitku
-                Log::info('[DEBUG DUITKU] Tipe Data Respons:', ['type' => gettype($response)]);
-                Log::info('[DEBUG DUITKU] Isi Respons Mentah:', [
-                    'data' => is_string($response) ? json_decode($response, true) : $response
-                ]);
-
-                // Pastikan responseCode adalah "00" (SUCCESS) sesuai dokumen Duitku
                 if (isset($response['responseCode']) && $response['responseCode'] === '00') {
-                    Log::info('[DEBUG DUITKU] Ekstraksi paymentFee berhasil:', [
-                        'paymentFee_type' => gettype($response['paymentFee']),
-                        'paymentFee_count' => is_array($response['paymentFee']) ? count($response['paymentFee']) : 'Bukan Array'
-                    ]);
-
                     return $response['paymentFee'];
-                } else {
-                    Log::warning('[DEBUG DUITKU] Respons bukan 00 atau struktur tidak sesuai:', [
-                        'responseCode' => $response['responseCode'] ?? 'Tidak ada responseCode'
-                    ]);
                 }
             } catch (\Exception $e) {
                 Log::error('Gagal load channel Duitku: ' . $e->getMessage());
             }
-            return []; // Return array kosong jika gagal
+            return [];
         });
 
-        // Kirim $duitkuChannels ke tampilan Blade
-        return view('customer.topup.create', compact('duitkuChannels', 'groupedChannels'));
+        $duitkuChannels = collect($duitkuRaw)->map(function ($item) {
+            return [
+                'provider' => 'DUITKU',
+                'code'     => 'DUITKU_' . $item['paymentMethod'], // Format kode sesuai log kamu
+                'name'     => $item['paymentName'],
+                'group'    => $this->getGroupForDuitku($item['paymentName']), // Tentukan grup otomatis
+                'icon'     => !empty($item['paymentImage']) ? $item['paymentImage'] : null,
+                'fee'      => $item['totalFee'] ?? 0,
+            ];
+        });
+
+        // 3. Gabungkan Tripay & Duitku, lalu kelompokkan berdasarkan 'group'
+        $groupedChannels = $tripayChannels->merge($duitkuChannels)->groupBy('group');
+
+        // Kirim 1 variabel gabungan yang sudah rapi ke Blade
+        return view('customer.topup.create', compact('groupedChannels'));
+    }
+
+    /**
+     * Helper otomatis untuk menentukan Kategori Group Duitku agar senada dengan Tripay
+     */
+    private function getGroupForDuitku($name)
+    {
+        $nameUpper = strtoupper($name);
+
+        if (str_contains($nameUpper, 'VA') || str_contains($nameUpper, 'VIRTUAL ACCOUNT')) {
+            return 'Virtual Account';
+        }
+        if (str_contains($nameUpper, 'OVO') || str_contains($nameUpper, 'DANA') || str_contains($nameUpper, 'SHOPEE') || str_contains($nameUpper, 'LINKAJA') || str_contains($nameUpper, 'QRIS') || str_contains($nameUpper, 'JENIUS')) {
+            return 'E-Wallet';
+        }
+        if (str_contains($nameUpper, 'INDOMARET') || str_contains($nameUpper, 'ALFAMART') || str_contains($nameUpper, 'ALFAMIDI')) {
+            return 'Convenience Store';
+        }
+        if (str_contains($nameUpper, 'PAYLATER') || str_contains($nameUpper, 'INDODANA') || str_contains($nameUpper, 'KREDIVO')) {
+            return 'Paylater & Cicilan';
+        }
+
+        return 'Metode Lainnya';
     }
 
     /**
