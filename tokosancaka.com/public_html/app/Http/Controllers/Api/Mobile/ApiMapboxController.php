@@ -1080,11 +1080,7 @@ class ApiMapboxController extends Controller
         }
     }
 
-    /**
-     * Endpoint POST: Menyimpan FCM Token murni ke kolom fcm_token
-     * Dijamin 100% TIDAK menyentuh expo_token sama sekali!
-     */
-    public function saveFcmToken(Request $request)
+   public function saveFcmToken(Request $request)
     {
         $request->validate([
             'fcm_token' => 'required|string'
@@ -1092,6 +1088,9 @@ class ApiMapboxController extends Controller
 
         $user = $request->user();
         $userId = $user->id_pengguna ?? $user->id;
+
+        // 👇 TAMBAHKAN LOG INI 👇
+        \Illuminate\Support\Facades\Log::info("🔥 [FCM MASUK] Menyimpan FCM Token untuk User ID: {$userId} -> Token: " . substr($request->fcm_token, 0, 15) . "...");
 
         \Illuminate\Support\Facades\DB::table('Pengguna')
             ->where('id_pengguna', $userId)
