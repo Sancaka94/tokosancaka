@@ -52,9 +52,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/order/detail/{order_id}', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'get_order_detail']);
     Route::post('/order/update-status', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'update_status_order']);
     Route::get('/order/history', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'get_history']);
+    Route::post('/save-fcm-token', [App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'saveFcmToken']);
+
 });
 
-Route::post('/save-fcm-token', [App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'saveFcmToken']);
 
 /*
 | API ROUTES KHUSUS APLIKASI MOBILE SANCAKA EXPRESS (EXPO)

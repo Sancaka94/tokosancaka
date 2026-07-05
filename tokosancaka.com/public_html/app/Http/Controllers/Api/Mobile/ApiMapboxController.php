@@ -599,7 +599,7 @@ class ApiMapboxController extends Controller
             $accessToken = $this->getGoogleAccessToken();
             $projectId = 'sancaka-express'; // Pastikan sesuai Project ID Firebase kamu
 
-            if ($accessToken && !empty($driver->expo_token)) {
+            if ($accessToken && !empty($driver->fcm_token)) {
                 $response = Http::withHeaders([
                     'Authorization' => 'Bearer ' . $accessToken,
                     'Content-Type'  => 'application/json',
