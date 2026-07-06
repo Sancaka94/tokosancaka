@@ -211,7 +211,7 @@ Route::middleware(['auth', 'verified'])->prefix('customer')->group(function () {
 // 1. Dashboard Pelanggan (Default View Breeze)
 Route::get('/customer/dashboard', function () {
     return view('dashboard'); // Menggunakan view bawaan Breeze (resources/views/dashboard.blade.php)
-})->middleware(['auth', 'verified', RoleMiddleware::class . ':Pelanggan'])->name('customer.dashboard');
+})->middleware(['auth', 'verified', RoleMiddleware::class . ':Pelanggan, Driver'])->name('customer.dashboard');
 
 // 2. Dashboard Admin
 Route::get('/admin/dashboard', function () {
