@@ -39,6 +39,8 @@ Route::prefix('mapbox')->group(function () {
 
 Route::post('/driver/register', [ApiMapboxController::class, 'register_driver']);
 
+Route::post('/save-fcm-token', [ApiMapboxController::class, 'saveFcmToken']);
+
 Route::middleware('auth:sanctum')->group(function () {
 
     // Rute Pengaturan Koordinat Dinamis & Status Driver Aktif (Berdasarkan ID Pengguna Token)
@@ -46,13 +48,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/driver/update', [ApiMapboxController::class, 'updateDriver']);
     Route::post('/driver/toggle-map', [ApiMapboxController::class, 'toggleMap']);
     Route::post('/driver/update-location', [ApiMapboxController::class, 'updateLocation']);
-    Route::post('/order/notify-driver', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'notify_driver']);
-    Route::post('/order/driver-accept', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'accept_order']);
-    Route::get('/order/track-driver/{driver_id}', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'track_driver']);
-    Route::get('/order/detail/{order_id}', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'get_order_detail']);
-    Route::post('/order/update-status', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'update_status_order']);
-    Route::get('/order/history', [\App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'get_history']);
-    Route::post('/save-fcm-token', [App\Http\Controllers\Api\Mobile\ApiMapboxController::class, 'saveFcmToken']);
+    Route::post('/order/notify-driver', [ApiMapboxController::class, 'notify_driver']);
+    Route::post('/order/driver-accept', [ApiMapboxController::class, 'accept_order']);
+    Route::get('/order/track-driver/{driver_id}', [ApiMapboxController::class, 'track_driver']);
+    Route::get('/order/detail/{order_id}', [ApiMapboxController::class, 'get_order_detail']);
+    Route::post('/order/update-status', [ApiMapboxController::class, 'update_status_order']);
+    Route::get('/order/history', [ApiMapboxController::class, 'get_history']);
 
 });
 
