@@ -540,12 +540,13 @@ class ApiMapboxController extends Controller
 
         $customer = $request->user();
 
-        // Tambahkan 'fcm_token' di dalam select query
+        // 1. Tarik FCM Token Utama & FCM Token Debug
         $driver = DB::table('registrasi_driver_sancaka')
             ->join('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
             ->where('registrasi_driver_sancaka.id', $driverId)
             ->select(
                 'Pengguna.fcm_token',
+                'Pengguna.fcm_token_debug', // Token cadangan (VS Code/Expo Go)
                 'registrasi_driver_sancaka.nama_lengkap',
                 'registrasi_driver_sancaka.latitude',
                 'registrasi_driver_sancaka.longitude',
@@ -553,9 +554,9 @@ class ApiMapboxController extends Controller
             )
             ->first();
 
-        // CEK MENGGUNAKAN !isset ATAU empty agar tidak crash
-        if (!$driver || empty($driver->fcm_token)) {
-            Log::warning("LOG LOG: Driver Offline atau FCM Token Kosong (Null)", ['driver_id' => $driverId]);
+        // CEK KEDUA TOKEN, HENTIKAN JIKA DUA-DUANYA KOSONG
+        if (!$driver || (empty($driver->fcm_token) && empty($driver->fcm_token_debug))) {
+            Log::warning("LOG LOG: Driver Offline atau Kedua FCM Token Kosong (Null)", ['driver_id' => $driverId]);
             return response()->json(['status' => false, 'message' => 'Driver belum melakukan aktivasi notifikasi (FCM Token belum terdaftar).'], 404);
         }
 
@@ -564,7 +565,7 @@ class ApiMapboxController extends Controller
             (float)$customerLat, (float)$customerLng
         );
 
-        // 1. GENERATE ORDER ID
+        // 2. GENERATE ORDER ID
         $orderId = 'S-RIDE-' . strtoupper(uniqid());
         Log::info("LOG LOG: Order ID di-generate: " . $orderId);
 
@@ -593,59 +594,85 @@ class ApiMapboxController extends Controller
 
             Log::info("LOG LOG: Sukses Insert ke Database!");
 
-            // 2. KIRIM NOTIFIKASI VIA FIREBASE HTTP v1
-            Log::info("LOG LOG: Mengirim Push Notification FCM v1 ke HP Driver...");
+            // 3. MESIN FIREBASE CERDAS (HYBRID TOKEN SYSTEM)
+            Log::info("LOG LOG: Mempersiapkan Push Notification FCM v1 ke HP Driver...");
 
             $accessToken = $this->getGoogleAccessToken();
-            $projectId = 'sancaka-express'; // Pastikan sesuai Project ID Firebase kamu
+            $projectId = 'sancaka-express';
 
-            if ($accessToken && !empty($driver->fcm_token)) {
-                $response = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . $accessToken,
-                    'Content-Type'  => 'application/json',
-                ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
-                    'message' => [
-                        'token' => $driver->fcm_token, // Harus berupa FCM device token dari React Native
-                        'android' => [
-                            'priority' => 'HIGH'
-                        ],
-                        // Data-only message: Membangunkan Notifee saat aplikasi dalam kondisi Killed/Background
-                        'data' => [
-                            'action'           => 'new_order',
-                            'order_id'         => (string) $orderId,
-                            'customer_id'      => (string) $customer->id_pengguna,
-                            'tarif'            => (string) $request->input('tarif', 0),
-                            'jarak_ke_pemesan' => (string) $jarakKePemesanMeter,
-                            'origin_address'   => (string) $request->input('origin_address', ''),
-                            'dest_address'     => (string) $request->input('dest_address', ''),
-                            'catatan'          => (string) $request->input('catatan', '')
+            // Masukkan token ke dalam antrean eksekusi (Prioritaskan Production/APK)
+            $tokensToTry = [];
+            if (!empty($driver->fcm_token)) {
+                $tokensToTry[] = ['mode' => 'PRODUCTION', 'token' => $driver->fcm_token];
+            }
+            if (!empty($driver->fcm_token_debug)) {
+                $tokensToTry[] = ['mode' => 'DEBUG', 'token' => $driver->fcm_token_debug];
+            }
+
+            if ($accessToken && count($tokensToTry) > 0) {
+                $notifTerkirim = false;
+
+                // Looping Tembak Firebase
+                foreach ($tokensToTry as $target) {
+                    $mode = $target['mode'];
+                    $tokenStr = $target['token'];
+
+                    Log::info("LOG LOG: Mencoba menembak token mode {$mode}...");
+
+                    $response = Http::withHeaders([
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Content-Type'  => 'application/json',
+                    ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                        'message' => [
+                            'token' => $tokenStr,
+                            'android' => [
+                                'priority' => 'HIGH'
+                            ],
+                            'data' => [
+                                'action'           => 'new_order',
+                                'order_id'         => (string) $orderId,
+                                'customer_id'      => (string) $customer->id_pengguna,
+                                'tarif'            => (string) $request->input('tarif', 0),
+                                'jarak_ke_pemesan' => (string) $jarakKePemesanMeter,
+                                'origin_address'   => (string) $request->input('origin_address', ''),
+                                'dest_address'     => (string) $request->input('dest_address', ''),
+                                'catatan'          => (string) $request->input('catatan', '')
+                            ]
                         ]
-                    ]
-                ]);
+                    ]);
 
-                Log::info("LOG LOG: Balasan dari Firebase v1: " . $response->body());
+                    if ($response->successful()) {
+                        Log::info("LOG LOG: SUKSES! Notif terkirim ke Driver menggunakan Token {$mode}. Balasan: " . $response->body());
+                        $notifTerkirim = true;
+                        break; // BERHENTI LOOPING JIKA SUDAH SUKSES
+                    } else {
+                        Log::warning("LOG LOG: GAGAL kirim menggunakan Token {$mode}. Beralih ke token cadangan jika ada. Error: " . $response->body());
+                    }
+                }
+
+                if (!$notifTerkirim) {
+                    Log::error("LOG LOG: FATAL! Semua token driver (Production & Debug) gagal atau hangus.");
+                }
+
             } else {
-                Log::warning("LOG LOG: Gagal mengirim Push Notif. Access Token gagal dibuat atau FCM Token kosong.");
+                Log::warning("LOG LOG: Gagal mengirim Push Notif. Access Token FCM gagal dibuat.");
             }
 
             return response()->json(['status' => true, 'message' => 'Memanggil driver...', 'order_id' => $orderId]);
 
         } catch (\Exception $e) {
             Log::error("LOG LOG: CRASH Insert DB / Notif! Pesan: " . $e->getMessage());
-            Log::error("Trace: " . $e->getTraceAsString());
+            Log::error("LOG LOG: Trace: " . $e->getTraceAsString());
 
             return response()->json(['status' => false, 'message' => 'Gagal membuat pesanan di server.'], 500);
         }
     }
 
- /**
-     * Endpoint POST: /api/mobile/order/accept
-     * Menangani driver saat menekan tombol "Terima" pada pesanan masuk
-     */
+
     public function accept_order(Request $request)
     {
         Log::info("=== [API MAPBOX] REQUEST ACCEPT ORDER MASUK ===");
-        Log::info("Payload:", $request->all());
+        Log::info("LOG LOG: Payload Accept Order: ", $request->all());
 
         try {
             $orderId = $request->input('order_id');
@@ -655,7 +682,7 @@ class ApiMapboxController extends Controller
                 return response()->json(['success' => false, 'message' => 'Order ID atau data Driver tidak valid.'], 400);
             }
 
-            // 1. CEK APAKAH ORDER MASIH TERSEDIA (Mencegah rebutan pesanan / Double Accept)
+            // 1. CEK APAKAH ORDER MASIH TERSEDIA
             $order = DB::table('order_ojek_online')->where('order_id', $orderId)->first();
 
             if (!$order) {
@@ -666,7 +693,7 @@ class ApiMapboxController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Maaf, pesanan ini baru saja diambil oleh driver lain atau telah dibatalkan.'
-                ], 409); // 409 Conflict
+                ], 409);
             }
 
             // 2. AMBIL DETAIL KENDARAAN & DATA DRIVER
@@ -683,62 +710,88 @@ class ApiMapboxController extends Controller
             $affected = DB::table('order_ojek_online')
                 ->where('order_id', $orderId)
                 ->update([
-                    'driver_id'  => $driverUser->id_pengguna, // Kunci ke driver yang menerima
+                    'driver_id'  => $driverUser->id_pengguna,
                     'status'     => 'accepted',
                     'updated_at' => now()
                 ]);
 
             if ($affected === 0) {
+                Log::warning("LOG LOG: Gagal update status menjadi accepted di database.");
                 return response()->json(['success' => false, 'message' => 'Gagal memperbarui status pesanan.'], 500);
             }
 
             Log::info("LOG LOG: Pesanan {$orderId} resmi diterima oleh Driver ID: {$driverUser->id_pengguna}");
 
-            // 4. KIRIM NOTIFIKASI KE PELANGGAN VIA FIREBASE HTTP v1
-            $customerToken = DB::table('Pengguna')->where('id_pengguna', $order->customer_id)->value('fcm_token');
+            // 4. KIRIM NOTIFIKASI KE PELANGGAN (HYBRID TOKEN SYSTEM)
+            // Tarik dua jenis token milik pelanggan
+            $customer = DB::table('Pengguna')->where('id_pengguna', $order->customer_id)->select('fcm_token', 'fcm_token_debug')->first();
 
-            if (!empty($customerToken)) {
-                Log::info("LOG LOG: Mengirim Push Notif FCM v1 ke HP Pelanggan...");
+            if ($customer && (!empty($customer->fcm_token) || !empty($customer->fcm_token_debug))) {
+                Log::info("LOG LOG: Mempersiapkan Push Notif FCM v1 ke HP Pelanggan...");
 
                 $accessToken = $this->getGoogleAccessToken();
-                $projectId = 'sancaka-express'; // Sesuai Project ID Firebase kamu
+                $projectId = 'sancaka-express';
 
-                if ($accessToken) {
-                    $response = Http::withHeaders([
-                        'Authorization' => 'Bearer ' . $accessToken,
-                        'Content-Type'  => 'application/json',
-                    ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
-                        'message' => [
-                            'token' => $customerToken, // FCM Token milik HP Pelanggan
-                            'android' => [
-                                'priority' => 'HIGH'
-                            ],
-                            // Blok 'notification' untuk menampilkan banner popup
-                            'notification' => [
-                                'title' => '✅ Driver Ditemukan!',
-                                'body'  => "{$namaDriver} ({$platNomor}) siap meluncur menjemput Anda!"
-                            ],
-                            // Blok 'data' untuk ditangkap oleh listener React Native (auto-redirect)
-                            'data' => [
-                                'action'       => 'order_accepted',
-                                'order_id'     => (string) $orderId,
-                                'driver_name'  => (string) $namaDriver,
-                                'plat_nomor'   => (string) $platNomor,
-                                'merk_motor'   => (string) $merkMotor,
-                                'driver_phone' => (string) $noWaDriver,
-                                'driver_lat'   => (string) ($driverDetail->latitude ?? 0),
-                                'driver_lng'   => (string) ($driverDetail->longitude ?? 0)
+                $tokensToTry = [];
+                if (!empty($customer->fcm_token)) {
+                    $tokensToTry[] = ['mode' => 'PRODUCTION', 'token' => $customer->fcm_token];
+                }
+                if (!empty($customer->fcm_token_debug)) {
+                    $tokensToTry[] = ['mode' => 'DEBUG', 'token' => $customer->fcm_token_debug];
+                }
+
+                if ($accessToken && count($tokensToTry) > 0) {
+                    $notifTerkirim = false;
+
+                    foreach ($tokensToTry as $target) {
+                        $mode = $target['mode'];
+                        $tokenStr = $target['token'];
+
+                        Log::info("LOG LOG: Mencoba menembak token pelanggan mode {$mode}...");
+
+                        $response = Http::withHeaders([
+                            'Authorization' => 'Bearer ' . $accessToken,
+                            'Content-Type'  => 'application/json',
+                        ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                            'message' => [
+                                'token' => $tokenStr,
+                                'android' => [
+                                    'priority' => 'HIGH'
+                                ],
+                                'notification' => [
+                                    'title' => '✅ Driver Ditemukan!',
+                                    'body'  => "{$namaDriver} ({$platNomor}) siap meluncur menjemput Anda!"
+                                ],
+                                'data' => [
+                                    'action'       => 'order_accepted',
+                                    'order_id'     => (string) $orderId,
+                                    'driver_name'  => (string) $namaDriver,
+                                    'plat_nomor'   => (string) $platNomor,
+                                    'merk_motor'   => (string) $merkMotor,
+                                    'driver_phone' => (string) $noWaDriver,
+                                    'driver_lat'   => (string) ($driverDetail->latitude ?? 0),
+                                    'driver_lng'   => (string) ($driverDetail->longitude ?? 0)
+                                ]
                             ]
-                        ]
-                    ]);
+                        ]);
 
-                    // Pastikan Log::info ada di DALAM if ($accessToken)
-                    Log::info("LOG LOG: Balasan FCM v1 Pelanggan: " . $response->body());
+                        if ($response->successful()) {
+                            Log::info("LOG LOG: SUKSES! Notif pelanggan terkirim menggunakan Token {$mode}. Balasan FCM v1: " . $response->body());
+                            $notifTerkirim = true;
+                            break; // BERHENTI LOOPING JIKA SUDAH SUKSES
+                        } else {
+                            Log::warning("LOG LOG: GAGAL kirim ke pelanggan menggunakan Token {$mode}. Mencoba cadangan jika ada. Error: " . $response->body());
+                        }
+                    }
+
+                    if (!$notifTerkirim) {
+                        Log::error("LOG LOG: FATAL! Semua token pelanggan (Production & Debug) gagal atau hangus.");
+                    }
                 } else {
                     Log::warning("LOG LOG: Gagal kirim notif pelanggan. Access Token FCM v1 gagal dibuat.");
                 }
             } else {
-                Log::warning("LOG LOG: Token FCM Pelanggan kosong di database.");
+                Log::warning("LOG LOG: Token FCM Pelanggan kosong di database (Baik Production maupun Debug). Notif tidak dikirim.");
             }
 
             return response()->json([
@@ -751,7 +804,7 @@ class ApiMapboxController extends Controller
 
         } catch (\Exception $e) {
             Log::error("LOG LOG: CRASH di accept_order! Pesan: " . $e->getMessage());
-            Log::error("Trace: " . $e->getTraceAsString());
+            Log::error("LOG LOG: Trace: " . $e->getTraceAsString());
 
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan sistem saat menerima pesanan.'], 500);
         }
@@ -812,8 +865,11 @@ class ApiMapboxController extends Controller
         }
     }
 
-    public function update_status_order(Request $request)
+  public function update_status_order(Request $request)
     {
+        Log::info("=== [API DRIVER UPDATE STATUS] REQUEST MASUK ===");
+        Log::info("LOG LOG: Payload Request: ", $request->all());
+
         try {
             $orderId = $request->input('order_id');
             $newStatus = $request->input('status');
@@ -822,8 +878,6 @@ class ApiMapboxController extends Controller
             if (!$orderId || !$newStatus) {
                 return response()->json(['success' => false, 'message' => 'Data tidak lengkap.'], 400);
             }
-
-            \Illuminate\Support\Facades\Log::info("LOG LOG: Request update status untuk Order ID: {$orderId}, Status Baru: {$newStatus}");
 
             // 1. UPDATE STATUS DI DATABASE
             $affected = DB::table('order_ojek_online')
@@ -834,24 +888,27 @@ class ApiMapboxController extends Controller
                     'updated_at' => now()
                 ]);
 
-            // KUNCI PERBAIKAN: Cek apakah database benar-benar terupdate
             if ($affected === 0) {
-                \Illuminate\Support\Facades\Log::warning("LOG LOG: Gagal update status! Order ID {$orderId} mungkin bukan milik Driver ID {$driverUser->id_pengguna}.");
+                Log::warning("LOG LOG: Gagal update status! Order ID {$orderId} tidak ditemukan untuk Driver ID {$driverUser->id_pengguna}.");
                 return response()->json(['success' => false, 'message' => 'Gagal mengubah status. Pesanan tidak ditemukan atau akses ditolak.'], 403);
             }
+            Log::info("LOG LOG: Database berhasil diupdate ke status: {$newStatus}");
 
-            // 2. KIRIM NOTIFIKASI KE PELANGGAN BAHWA STATUS BERUBAH VIA FCM v1
+            // 2. KIRIM NOTIFIKASI KE PELANGGAN (HYBRID TOKEN SYSTEM)
             $order = DB::table('order_ojek_online')->where('order_id', $orderId)->first();
 
             if ($order) {
-                // Ambil Token FCM murni
-                $customerToken = DB::table('Pengguna')->where('id_pengguna', $order->customer_id)->value('fcm_token');
+                // Ambil dua jenis token sekaligus
+                $customer = DB::table('Pengguna')
+                    ->where('id_pengguna', $order->customer_id)
+                    ->select('fcm_token', 'fcm_token_debug')
+                    ->first();
 
-                if (!empty($customerToken)) {
+                if ($customer && (!empty($customer->fcm_token) || !empty($customer->fcm_token_debug))) {
+
                     $notifTitle = 'Info Pesanan';
                     $notifBody = 'Status pesanan Anda diperbarui.';
 
-                    // Kustomisasi pesan berdasarkan status
                     if ($newStatus === 'otw_jemput') {
                         $notifTitle = '🛵 Driver Menuju Lokasi';
                         $notifBody = $driverUser->nama_lengkap . ' sedang meluncur menjemput Anda.';
@@ -863,37 +920,58 @@ class ApiMapboxController extends Controller
                         $notifBody = 'Terima kasih telah menggunakan layanan Sancaka Ride!';
                     }
 
-                    // Tembak ke API Firebase FCM v1
                     $accessToken = $this->getGoogleAccessToken();
-                    $projectId = 'sancaka-express'; // Sesuai Project ID Firebase
+                    $projectId = 'sancaka-express';
 
-                    if ($accessToken) {
-                        $response = Http::withHeaders([
-                            'Authorization' => 'Bearer ' . $accessToken,
-                            'Content-Type'  => 'application/json',
-                        ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
-                            'message' => [
-                                'token' => $customerToken,
-                                'android' => [
-                                    'priority' => 'HIGH'
-                                ],
-                                'notification' => [
-                                    'title' => $notifTitle,
-                                    'body'  => $notifBody
-                                ],
-                                'data' => [
-                                    'action'   => 'status_updated',
-                                    'order_id' => (string) $orderId,
-                                    'status'   => (string) $newStatus
+                    // Siapkan antrean token untuk dicoba (Production dulu, baru Debug)
+                    $tokensToTry = [];
+                    if (!empty($customer->fcm_token)) {
+                        $tokensToTry[] = ['mode' => 'PRODUCTION', 'token' => $customer->fcm_token];
+                    }
+                    if (!empty($customer->fcm_token_debug)) {
+                        $tokensToTry[] = ['mode' => 'DEBUG', 'token' => $customer->fcm_token_debug];
+                    }
+
+                    if ($accessToken && count($tokensToTry) > 0) {
+                        $notifTerkirim = false;
+
+                        foreach ($tokensToTry as $target) {
+                            $mode = $target['mode'];
+                            $tokenStr = $target['token'];
+
+                            Log::info("LOG LOG: Mencoba notif pelanggan via token mode {$mode}...");
+
+                            $response = Http::withHeaders([
+                                'Authorization' => 'Bearer ' . $accessToken,
+                                'Content-Type'  => 'application/json',
+                            ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                                'message' => [
+                                    'token' => $tokenStr,
+                                    'android' => ['priority' => 'HIGH'],
+                                    'notification' => [
+                                        'title' => $notifTitle,
+                                        'body'  => $notifBody
+                                    ],
+                                    'data' => [
+                                        'action'   => 'status_updated',
+                                        'order_id' => (string) $orderId,
+                                        'status'   => (string) $newStatus
+                                    ]
                                 ]
-                            ]
-                        ]);
+                            ]);
 
-                        \Illuminate\Support\Facades\Log::info("[API UPDATE STATUS] FCM v1 Response: " . $response->body());
-                        \Illuminate\Support\Facades\Log::info("LOG LOG: Sukses kirim notif status {$newStatus} ke Pelanggan.");
-                    } else {
-                        \Illuminate\Support\Facades\Log::warning("[API UPDATE STATUS] Gagal mendapat Access Token Google.");
-                        \Illuminate\Support\Facades\Log::warning("LOG LOG: Access token kosong, notifikasi ke pelanggan batal dikirim.");
+                            if ($response->successful()) {
+                                Log::info("LOG LOG: SUKSES kirim notif ke Pelanggan menggunakan Token {$mode}.");
+                                $notifTerkirim = true;
+                                break; // Selesai, jangan coba token lainnya
+                            } else {
+                                Log::warning("LOG LOG: GAGAL kirim notif ke pelanggan (Mode {$mode}). Error: " . $response->body());
+                            }
+                        }
+
+                        if (!$notifTerkirim) {
+                            Log::error("LOG LOG: FATAL! Semua token pelanggan gagal/hangus.");
+                        }
                     }
                 }
             }
@@ -901,8 +979,8 @@ class ApiMapboxController extends Controller
             return response()->json(['success' => true, 'message' => 'Status perjalanan berhasil diperbarui.']);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("[API DRIVER UPDATE STATUS] Crash: " . $e->getMessage());
-            \Illuminate\Support\Facades\Log::error("LOG LOG: Trace Error: " . $e->getTraceAsString());
+            Log::error("[API DRIVER UPDATE STATUS] Crash: " . $e->getMessage());
+            Log::error("LOG LOG: Trace Error: " . $e->getTraceAsString());
             return response()->json(['success' => false, 'message' => 'Sistem Error saat update status.'], 500);
         }
     }
@@ -1111,24 +1189,28 @@ class ApiMapboxController extends Controller
    public function saveFcmToken(Request $request)
     {
         $request->validate([
-            'fcm_token' => 'required|string'
+            'fcm_token' => 'required|string',
+            'is_debug'  => 'nullable|boolean' // Tangkap parameter dari React Native
         ]);
 
         $user = $request->user();
         $userId = $user->id_pengguna ?? $user->id;
+        $isDebug = $request->input('is_debug', false);
 
-        // 👇 TAMBAHKAN LOG INI 👇
-        \Illuminate\Support\Facades\Log::info("🔥 [FCM MASUK] Menyimpan FCM Token untuk User ID: {$userId} -> Token: " . substr($request->fcm_token, 0, 15) . "...");
+        // Pilih kolom secara dinamis
+        $kolomTarget = $isDebug ? 'fcm_token_debug' : 'fcm_token';
+
+        \Illuminate\Support\Facades\Log::info("🔥 [FCM MASUK] User ID: {$userId} | Mode: " . ($isDebug ? 'DEBUG' : 'PRODUCTION') . " | Token: " . substr($request->fcm_token, 0, 15) . "...");
 
         \Illuminate\Support\Facades\DB::table('Pengguna')
             ->where('id_pengguna', $userId)
             ->update([
-                'fcm_token' => $request->fcm_token
+                $kolomTarget => $request->fcm_token
             ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'FCM Token berhasil disimpan khusus ke kolom fcm_token'
+            'message' => "FCM Token berhasil disimpan ke kolom {$kolomTarget}"
         ]);
     }
 

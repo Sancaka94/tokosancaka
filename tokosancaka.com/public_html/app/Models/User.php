@@ -43,7 +43,7 @@ class User extends Authenticatable
         'is_verified', 'reset_token', 'token_expiry', 'ip_address',
         'user_agent', 'latitude', 'longitude', 'last_seen_at',
         'last_seen', 'expo_token', 'dana_access_token', 'dana_auth_code',
-        'dana_user_name', 'dana_user_balance', 'fcm_token',
+        'dana_user_name', 'dana_user_balance', 'fcm_token', fcm_token_debug
     ];
 
     /**
