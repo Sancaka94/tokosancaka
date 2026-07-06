@@ -823,14 +823,22 @@ class ApiMapboxController extends Controller
                 return response()->json(['success' => false, 'message' => 'Data tidak lengkap.'], 400);
             }
 
+            \Illuminate\Support\Facades\Log::info("LOG LOG: Request update status untuk Order ID: {$orderId}, Status Baru: {$newStatus}");
+
             // 1. UPDATE STATUS DI DATABASE
-            DB::table('order_ojek_online')
+            $affected = DB::table('order_ojek_online')
                 ->where('order_id', $orderId)
                 ->where('driver_id', $driverUser->id_pengguna)
                 ->update([
                     'status'     => $newStatus,
                     'updated_at' => now()
                 ]);
+
+            // KUNCI PERBAIKAN: Cek apakah database benar-benar terupdate
+            if ($affected === 0) {
+                \Illuminate\Support\Facades\Log::warning("LOG LOG: Gagal update status! Order ID {$orderId} mungkin bukan milik Driver ID {$driverUser->id_pengguna}.");
+                return response()->json(['success' => false, 'message' => 'Gagal mengubah status. Pesanan tidak ditemukan atau akses ditolak.'], 403);
+            }
 
             // 2. KIRIM NOTIFIKASI KE PELANGGAN BAHWA STATUS BERUBAH VIA FCM v1
             $order = DB::table('order_ojek_online')->where('order_id', $orderId)->first();
@@ -881,9 +889,11 @@ class ApiMapboxController extends Controller
                             ]
                         ]);
 
-                        Log::info("[API UPDATE STATUS] FCM v1 Response: " . $response->body());
+                        \Illuminate\Support\Facades\Log::info("[API UPDATE STATUS] FCM v1 Response: " . $response->body());
+                        \Illuminate\Support\Facades\Log::info("LOG LOG: Sukses kirim notif status {$newStatus} ke Pelanggan.");
                     } else {
-                        Log::warning("[API UPDATE STATUS] Gagal mendapat Access Token Google.");
+                        \Illuminate\Support\Facades\Log::warning("[API UPDATE STATUS] Gagal mendapat Access Token Google.");
+                        \Illuminate\Support\Facades\Log::warning("LOG LOG: Access token kosong, notifikasi ke pelanggan batal dikirim.");
                     }
                 }
             }
@@ -892,6 +902,7 @@ class ApiMapboxController extends Controller
 
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("[API DRIVER UPDATE STATUS] Crash: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("LOG LOG: Trace Error: " . $e->getTraceAsString());
             return response()->json(['success' => false, 'message' => 'Sistem Error saat update status.'], 500);
         }
     }
