@@ -69,7 +69,7 @@ class DanaGatewayMobileController extends Controller
         $rawKey = config('services.dana.private_key');
 
         if (empty($rawKey)) {
-            Log::error('[DANA DEBUG LOG] ERROR: Private Key dari config KOSONG!');
+            // Log::error('[DANA DEBUG LOG] ERROR: Private Key dari config KOSONG!');
             throw new Exception("Private Key kosong. Pastikan DANA_PRIVATE_KEY di .env atau Pengaturan Database sudah terisi.");
         }
 
@@ -88,9 +88,9 @@ class DanaGatewayMobileController extends Controller
 
         $privateKeyResource = openssl_pkey_get_private($formattedKey);
         if (!$privateKeyResource) {
-            Log::error('[DANA DEBUG LOG] ERROR: Gagal load OpenSSL Resource!', [
-                'preview_key' => substr($formattedKey, 0, 50) . '...'
-            ]);
+            // Log::error('[DANA DEBUG LOG] ERROR: Gagal load OpenSSL Resource!', [
+            //    'preview_key' => substr($formattedKey, 0, 50) . '...'
+            //]);
             throw new Exception("Format Private Key salah atau korup. Tidak dapat diproses oleh OpenSSL.");
         }
 
@@ -101,7 +101,7 @@ class DanaGatewayMobileController extends Controller
 
         if (!$isSignSuccess) {
             $sslError = openssl_error_string();
-            Log::error('[DANA DEBUG LOG] ERROR: OpenSSL Sign Failed.', ['ssl_error' => $sslError]);
+            // Log::error('[DANA DEBUG LOG] ERROR: OpenSSL Sign Failed.', ['ssl_error' => $sslError]);
             throw new Exception("OpenSSL Sign Failed. Detail: " . $sslError);
         }
 
@@ -215,12 +215,12 @@ class DanaGatewayMobileController extends Controller
                 }
             }
 
-            Log::error('DANA Gagal:', $result);
+            // Log::error('DANA Gagal:', $result);
             $errorCode = $result['responseCode'] ?? 'N/A';
             return response()->json(['success' => false, 'message' => 'Gagal dari DANA: ' . ($result['responseMessage'] ?? 'Unknown') . ' (Code: ' . $errorCode . ')'], 400);
 
         } catch (Exception $e) {
-            Log::error('DANA Error: ' . $e->getMessage());
+            // Log::error('DANA Error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Koneksi DANA Error.'], 500);
         }
     }
@@ -339,11 +339,11 @@ class DanaGatewayMobileController extends Controller
                 }
             }
 
-            Log::error('DANA_FAIL_TOPUP', ['Result' => $result]);
+            // Log::error('DANA_FAIL_TOPUP', ['Result' => $result]);
             return response()->json(['success' => false, 'message' => 'Gagal memproses DANA: ' . ($result['responseMessage'] ?? 'Unknown Error')], 400);
 
         } catch (Exception $e) {
-            Log::error('DANA_EXCEPTION_TOPUP', ['Error' => $e->getMessage()]);
+            // Log::error('DANA_EXCEPTION_TOPUP', ['Error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan koneksi ke DANA.'], 500);
         }
     }
@@ -470,12 +470,12 @@ class DanaGatewayMobileController extends Controller
                 $errorCode  = $result['responseCode'] ?? 'UNKNOWN';
                 $pesanGagal = $result['responseMessage'] ?? 'Terjadi kesalahan pada sistem pembayaran.';
 
-                Log::error("LOG LOG: [DANA BINDING] Gagal memotong saldo. Code: $errorCode | Msg: $pesanGagal");
+                // Log::error("LOG LOG: [DANA BINDING] Gagal memotong saldo. Code: $errorCode | Msg: $pesanGagal");
                 return response()->json(['success' => false, 'message' => "Gagal dari DANA [$errorCode]: $pesanGagal"], 400);
             }
 
         } catch (Exception $e) {
-            Log::error('LOG LOG: [DANA BINDING] Fatal Exception: ' . $e->getMessage());
+            // Log::error('LOG LOG: [DANA BINDING] Fatal Exception: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Koneksi ke sistem DANA gagal.'], 500);
         }
     }
@@ -523,7 +523,7 @@ class DanaGatewayMobileController extends Controller
         }
 
         if (!$authCode || !$userId) {
-            Log::error('LOG LOG: [DANA CALLBACK] Gagal Ekstraksi ID atau Auth Code Kosong. User ID: ' . ($userId ?? 'NULL'));
+            // Log::error('LOG LOG: [DANA CALLBACK] Gagal Ekstraksi ID atau Auth Code Kosong. User ID: ' . ($userId ?? 'NULL'));
             return response()->json(['success' => false, 'message' => 'Sesi kadaluarsa. Pastikan Anda masih login.']);
         }
 
@@ -573,11 +573,11 @@ class DanaGatewayMobileController extends Controller
                 }
             }
 
-            Log::error('LOG LOG: [DANA SNAP ERROR]', $result);
+            // Log::error('LOG LOG: [DANA SNAP ERROR]', $result);
             return response()->json(['success' => false, 'message' => 'DANA Reject: ' . ($result['responseMessage'] ?? 'Unknown Error')]);
 
         } catch (Exception $e) {
-            Log::error('LOG LOG: [DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
+            // Log::error('LOG LOG: [DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Terjadi kesalahan sistem.'], 500);
         }
     }
@@ -687,7 +687,7 @@ class DanaGatewayMobileController extends Controller
             ]);
 
         } catch (Exception $e) {
-            Log::error('[DANA BALANCE CHECK] Error System: ' . $e->getMessage());
+            // Log::error('[DANA BALANCE CHECK] Error System: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Sistem Error saat mengecek saldo.'
@@ -724,7 +724,7 @@ class DanaGatewayMobileController extends Controller
 
         $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
         if (!$aff) {
-            Log::error('[DANA INQUIRY] Affiliate Not Found', ['id' => $request->affiliate_id]);
+            // Log::error('[DANA INQUIRY] Affiliate Not Found', ['id' => $request->affiliate_id]);
             return response()->json(['success' => false, 'message' => 'Affiliate tidak ditemukan.']);
         }
 
@@ -823,7 +823,7 @@ class DanaGatewayMobileController extends Controller
             return response()->json(['success' => false, 'message' => $displayMsg]);
 
         } catch (Exception $e) {
-            Log::error('[DANA INQUIRY] Exception!', ['message' => $e->getMessage()]);
+            // Log::error('[DANA INQUIRY] Exception!', ['message' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
         }
     }
@@ -907,7 +907,7 @@ class DanaGatewayMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Gagal dari DANA: ' . ($result['responseMessage'] ?? 'Respon Server Error')]);
 
         } catch (Exception $e) {
-            Log::error('[DANA TOPUP] Exception!', ['msg' => $e->getMessage()]);
+            // Log::error('[DANA TOPUP] Exception!', ['msg' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
         }
     }
@@ -923,7 +923,7 @@ class DanaGatewayMobileController extends Controller
 
         $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
         if (!$aff) {
-            Log::error('[DANA TOPUP] Affiliate Tidak Ditemukan', ['id' => $request->affiliate_id]);
+            // Log::error('[DANA TOPUP] Affiliate Tidak Ditemukan', ['id' => $request->affiliate_id]);
             return response()->json(['success' => false, 'message' => 'Affiliate tidak terdaftar di sistem.']);
         }
 
@@ -1007,12 +1007,12 @@ class DanaGatewayMobileController extends Controller
                 Log::info('[DANA TOPUP] Berhasil', ['code' => $resCode]);
                 return response()->json(['success' => true, 'message' => 'Topup Berhasil!']);
             } else {
-                Log::error('[DANA TOPUP] Gagal/Error Response', ['result' => $result]);
+                // Log::error('[DANA TOPUP] Gagal/Error Response', ['result' => $result]);
                 return response()->json(['success' => false, 'message' => 'Gagal: ' . ($result['responseMessage'] ?? 'Unknown Error')]);
             }
 
         } catch (Exception $e) {
-            Log::error('[DANA TOPUP] EXCEPTION ERROR', ['msg' => $e->getMessage()]);
+            // Log::error('[DANA TOPUP] EXCEPTION ERROR', ['msg' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
         }
     }
@@ -1109,7 +1109,7 @@ class DanaGatewayMobileController extends Controller
             return response()->json(['success' => false, 'message' => $errMsg]);
 
         } catch (Exception $e) {
-            Log::error('[BANK INQUIRY ERROR]', ['msg' => $e->getMessage()]);
+            // Log::error('[BANK INQUIRY ERROR]', ['msg' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Sistem Error saat cek rekening.'], 500);
         }
     }
@@ -1230,13 +1230,13 @@ class DanaGatewayMobileController extends Controller
                 ]);
 
                 $errorMsg = $result['responseMessage'] ?? 'Transaksi Gagal';
-                Log::error('[DANA TRANSFER BANK] Gagal & Refund', ['res' => $result]);
+                // Log::error('[DANA TRANSFER BANK] Gagal & Refund', ['res' => $result]);
                 return response()->json(['success' => false, 'message' => "Gagal: $errorMsg (Saldo telah dikembalikan)."]);
             }
 
         } catch (Exception $e) {
             DB::table('Pengguna')->where('id_pengguna', $aff->id_pengguna)->increment('saldo', $request->amount);
-            Log::error('[DANA TRANSFER BANK] Exception', ['msg' => $e->getMessage()]);
+            // Log::error('[DANA TRANSFER BANK] Exception', ['msg' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Sistem Error saat eksekusi (Saldo telah dikembalikan).'], 500);
         }
     }
@@ -1361,10 +1361,10 @@ class DanaGatewayMobileController extends Controller
                 ]);
             }
 
-            Log::error('[GAPURA DEBUG LOG] 7. FAILED RESPONSE CODE: ' . $resCode, [
-                'message' => $result['responseMessage'] ?? 'No Message',
-                'full_result' => $result
-            ]);
+            // Log::error('[GAPURA DEBUG LOG] 7. FAILED RESPONSE CODE: ' . $resCode, [
+            //    'message' => $result['responseMessage'] ?? 'No Message',
+            //    'full_result' => $result
+            //]);
 
             return response()->json([
                 'success' => false,
@@ -1478,7 +1478,7 @@ class DanaGatewayMobileController extends Controller
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("LOG LOG: Webhook Error: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            // Log::error("LOG LOG: Webhook Error: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['responseCode' => '5005601', 'responseMessage' => 'Internal Server Error'], 500);
         }
 
@@ -1559,7 +1559,7 @@ class DanaGatewayMobileController extends Controller
             return response()->json(['success' => false, 'message' => 'Gagal cek status: ' . ($result['responseMessage'] ?? 'Unknown Error')]);
 
         } catch (Exception $e) {
-            Log::error('[DANA INQUIRY STATUS] System Error', ['msg' => $e->getMessage()]);
+            // Log::error('[DANA INQUIRY STATUS] System Error', ['msg' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
         }
     }
