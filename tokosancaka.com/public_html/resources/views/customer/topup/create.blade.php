@@ -260,13 +260,12 @@
 
 
                         {{-- GROUP IPAYMU --}}
-                        <div class="mt-8">
+                        {{-- <div class="mt-8">
                             <h5 class="text-sm font-extrabold text-gray-400 uppercase tracking-wider mb-4 pl-3 border-l-4 border-purple-500">
                                 iPaymu Payment
                             </h5>
                             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
 
-                                {{-- IPAYMU REDIRECT UMUM --}}
                                 <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="IPAYMU" class="peer sr-only">
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
@@ -280,7 +279,7 @@
                                 </label>
 
                             </div>
-                        </div>
+                        </div> --}}
 
                         {{-- GROUP 2: TRIPAY OTOMATIS (Looping Data API) --}}
                          @if(isset($groupedChannels) && count($groupedChannels) > 0)
@@ -292,7 +291,7 @@
 
                                     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                         @foreach($channels as $channel)
-                                            @if($channel['active'])
+                                            @if($channel['active'] ?? true)
                                             <label class="relative cursor-pointer group">
                                                 <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="peer sr-only">
                                                 <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all flex flex-col items-center text-center shadow-sm hover:shadow-md">
