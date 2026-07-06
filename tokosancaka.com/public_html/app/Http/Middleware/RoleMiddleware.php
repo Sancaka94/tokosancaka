@@ -24,7 +24,7 @@ class RoleMiddleware
         }
 
         $user = Auth::user();
-        
+
         // 2. Normalisasi Role User (Ubah ke huruf kecil biar aman)
         // Contoh: 'Agent' jadi 'agent'
         $userRole = strtolower($user->role ?? '');
@@ -66,8 +66,16 @@ class RoleMiddleware
             }
         }
 
+        // C. Logika Seller
+        // Jika User adalah Seller, mereka boleh masuk ke area 'Pelanggan'
+        if ($userRole === 'driver') {
+            if (in_array('pelanggan', $allowedRoles)) {
+                return $next($request);
+            }
+        }
+
         // =============================================================
-        
+
         // Jika tidak lolos semua pengecekan di atas, tendang ke dashboard default
         // Sesuaikan route redirect dengan nama route dashboard pelanggan Anda
         return redirect()->route('customer.dashboard')
