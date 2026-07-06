@@ -464,16 +464,50 @@ Route::prefix('paypal/orders')->name('paypal.orders.')->group(function () {
 });
 
 // =========================================================================
-// 4. AUTHENTICATED ROUTES (GENERAL)
+// ✅ FIX ROUTE DASHBOARD (KONSOLIDASI AGAR TIDAK LOOPING REDIRECT)
 // =========================================================================
 Route::middleware(['auth', 'verified'])->group(function () {
 
-    // Dashboard Redirect Logic
+    // 1. Rute Fallback Utama '/dashboard'
     Route::get('/dashboard', function () {
         $user = auth()->user();
-        if ($user->role === 'Admin') return redirect()->route('admin.dashboard');
+        $role = strtolower(trim($user->role));
+
+        if ($role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+        if ($role === 'seller') {
+            return redirect()->route('seller.dashboard');
+        }
+
+        // Pelanggan, Agent, maupun Driver semua diarahkan ke Customer Dashboard
         return redirect()->route('customer.dashboard');
     })->name('dashboard');
+
+    // 2. Dashboard Customer (AMANKAN AGAR PELANGGAN, AGENT, & DRIVER BISA MASUK)
+    Route::get('/customer/dashboard', function () {
+        return view('dashboard');
+    })->middleware(RoleMiddleware::class . ':Pelanggan,Agent,Seller,Driver')
+      ->name('customer.dashboard');
+
+    // 3. Dashboard Admin
+    Route::get('/admin/dashboard', function () {
+        return view('admin.dashboard');
+    })->middleware(RoleMiddleware::class . ':Admin')
+      ->name('admin.dashboard');
+
+    // 4. Dashboard Seller
+    Route::get('/seller/dashboard', function () {
+        return view('seller.dashboard');
+    })->middleware(RoleMiddleware::class . ':Seller,Admin')
+      ->name('seller.dashboard');
+
+});
+
+// =========================================================================
+// 4. AUTHENTICATED ROUTES (GENERAL)
+// =========================================================================
+Route::middleware(['auth', 'verified'])->group(function () {
 
     // ✅ 1. ROUTE KHUSUS (WAJIB DI ATAS)
     // URL: /customer/pesanan/riwayat-belanja
@@ -486,13 +520,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Route Refresh Status DOKU
     Route::post('/seller/doku/refresh-status', [DokuRegistrationController::class, 'refreshDokuStatus'])
         ->name('seller.doku.refresh_status');
-
-    Route::get('/customer/dashboard', function () { return view('dashboard'); })
-        ->middleware(RoleMiddleware::class . ':Pelanggan, Driver')->name('customer.dashboard');
-    Route::get('/admin/dashboard', function () { return view('admin.dashboard'); })
-        ->middleware(RoleMiddleware::class . ':Admin')->name('admin.dashboard');
-    Route::get('/seller/dashboard', function () { return view('seller.dashboard'); })
-        ->middleware(RoleMiddleware::class . ':Seller')->name('seller.dashboard');
 
     // Seller Register
     Route::get('/seller/register', [SellerRegisterController::class, 'create'])->name('seller.register.form');
