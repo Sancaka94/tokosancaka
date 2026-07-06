@@ -1200,32 +1200,57 @@ class ApiMapboxController extends Controller
         }
     }
 
-   public function saveFcmToken(Request $request)
+  public function saveFcmToken(Request $request)
     {
-        $request->validate([
-            'fcm_token' => 'required|string',
-            'is_debug'  => 'nullable|boolean' // Tangkap parameter dari React Native
-        ]);
-
-        $user = $request->user();
-        $userId = $user->id_pengguna ?? $user->id;
-        $isDebug = $request->input('is_debug', false);
-
-        // Pilih kolom secara dinamis
-        $kolomTarget = $isDebug ? 'fcm_token_debug' : 'fcm_token';
-
-        \Illuminate\Support\Facades\Log::info("🔥 [FCM MASUK] User ID: {$userId} | Mode: " . ($isDebug ? 'DEBUG' : 'PRODUCTION') . " | Token: " . substr($request->fcm_token, 0, 15) . "...");
-
-        \Illuminate\Support\Facades\DB::table('Pengguna')
-            ->where('id_pengguna', $userId)
-            ->update([
-                $kolomTarget => $request->fcm_token
+        try {
+            // 1. Validasi dilonggarkan
+            // Hapus validasi 'boolean' yang ketat karena frontend mengirim JSON native true/false
+            // yang terkadang gagal dibaca oleh validator Laravel versi tertentu.
+            $request->validate([
+                'fcm_token' => 'required|string',
             ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => "FCM Token berhasil disimpan ke kolom {$kolomTarget}"
-        ]);
+            $user = $request->user();
+
+            // 2. PENCEGAHAN FATAL ERROR 500
+            // Jika token terlewat, kedaluwarsa, atau user null, hentikan dengan aman.
+            if (!$user) {
+                \Illuminate\Support\Facades\Log::warning("🔥 [FCM MASUK] Gagal: User tidak terdeteksi atau token kedaluwarsa.");
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized / User tidak ditemukan.'
+                ], 401);
+            }
+
+            $userId = $user->id_pengguna ?? $user->id;
+
+            // 3. TANGANI BOOLEAN DENGAN FLEKSIBEL
+            // filter_var memastikan nilai "true", true, "1", atau 1 dari Expo dibaca sebagai TRUE yang valid di PHP.
+            $isDebug = filter_var($request->input('is_debug', false), FILTER_VALIDATE_BOOLEAN);
+
+            // Pilih kolom secara dinamis
+            $kolomTarget = $isDebug ? 'fcm_token_debug' : 'fcm_token';
+
+            \Illuminate\Support\Facades\Log::info("🔥 [FCM MASUK] User ID: {$userId} | Mode: " . ($isDebug ? 'DEBUG' : 'PRODUCTION') . " | Token: " . substr($request->fcm_token, 0, 15) . "...");
+
+            \Illuminate\Support\Facades\DB::table('Pengguna')
+                ->where('id_pengguna', $userId)
+                ->update([
+                    $kolomTarget => $request->fcm_token
+                ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "FCM Token berhasil disimpan ke kolom {$kolomTarget}"
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("🔥 [FCM MASUK] CRASH: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem saat menyimpan FCM token.'
+            ], 500);
+        }
     }
 
 }
