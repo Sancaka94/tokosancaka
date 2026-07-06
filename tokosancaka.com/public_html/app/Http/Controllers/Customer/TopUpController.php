@@ -88,11 +88,9 @@ class TopUpController extends Controller
                 ];
             });
 
-        // Kelompokkan Tripay berdasarkan group miliknya sendiri
-        $groupedtripayChannels = $tripayChannels->groupBy('group');
+        $groupedChannels = $tripayChannels->groupBy('group');
 
-        // Kirim kedua variabel kelompok secara terpisah ke Blade
-        return view('customer.topup.create', compact('groupedtripayChannels'));
+        return view('customer.topup.create', compact('groupedChannels'));
     }
 
 
