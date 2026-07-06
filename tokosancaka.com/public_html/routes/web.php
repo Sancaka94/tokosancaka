@@ -488,7 +488,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('seller.doku.refresh_status');
 
     Route::get('/customer/dashboard', function () { return view('dashboard'); })
-        ->middleware(RoleMiddleware::class . ':Pelanggan')->name('customer.dashboard');
+        ->middleware(RoleMiddleware::class . ':Pelanggan, Driver')->name('customer.dashboard');
     Route::get('/admin/dashboard', function () { return view('admin.dashboard'); })
         ->middleware(RoleMiddleware::class . ':Admin')->name('admin.dashboard');
     Route::get('/seller/dashboard', function () { return view('seller.dashboard'); })
