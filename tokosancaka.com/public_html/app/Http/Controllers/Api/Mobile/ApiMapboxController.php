@@ -917,12 +917,21 @@ class ApiMapboxController extends Controller
                 $tarifBersih = (float) $order->tarif;
                 // Jika aplikasi potong komisi admin misal 10%, rumusnya: $tarifBersih * 0.9;
 
-                // Tambahkan saldo driver di tabel Pengguna / Dompet Driver
+                // 1. Tambahkan saldo ke akun Driver
                 DB::table('Pengguna')
                     ->where('id_pengguna', $driverUser->id_pengguna)
                     ->increment('saldo', $tarifBersih);
 
                 Log::info("LOG LOG: SALDO Rp {$tarifBersih} MASUK KE DRIVER ID {$driverUser->id_pengguna} UNTUK ORDER {$orderId}");
+
+                // 2. Potong saldo dari akun Penumpang (JIKA METODE PEMBAYARAN = SALDO)
+                if (strtoupper($order->metode_pembayaran) === 'SALDO') {
+                    DB::table('Pengguna')
+                        ->where('id_pengguna', $order->customer_id)
+                        ->decrement('saldo', $tarifBersih);
+
+                    Log::info("LOG LOG: SALDO PENUMPANG ID {$order->customer_id} BERHASIL DIPOTONG Rp {$tarifBersih}");
+                }
             }
             // =========================================================================
 
