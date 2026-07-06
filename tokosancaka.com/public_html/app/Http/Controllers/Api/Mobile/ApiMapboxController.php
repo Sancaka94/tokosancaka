@@ -540,6 +540,29 @@ class ApiMapboxController extends Controller
 
         $customer = $request->user();
 
+        // ==========================================================
+        // 🔥 VALIDASI SALDO PENUMPANG SEBELUM ORDER DIBUAT 🔥
+        // ==========================================================
+        $metodePembayaran = strtoupper($request->input('metode_pembayaran', 'CASH'));
+        $tarif = (float) $request->input('tarif', 0);
+
+        if ($metodePembayaran === 'SALDO') {
+            // Tarik data saldo terbaru langsung dari database agar 100% akurat
+            $cekSaldoUser = DB::table('Pengguna')
+                ->where('id_pengguna', $customer->id_pengguna ?? $customer->id)
+                ->value('saldo');
+
+            if ($cekSaldoUser < $tarif) {
+                Log::warning("LOG LOG: Order ditolak! Saldo Penumpang ID " . ($customer->id_pengguna ?? $customer->id) . " (Rp {$cekSaldoUser}) kurang dari tarif (Rp {$tarif}).");
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Saldo Sancaka Anda tidak mencukupi (Sisa: Rp ' . number_format($cekSaldoUser, 0, ',', '.') . '). Silakan Top Up atau ubah metode ke Tunai/CASH.'
+                ], 400);
+                // Return 400 (Bad Request) akan membuat React Native menghentikan loading dan memunculkan Alert pesan error di atas
+            }
+        }
+        // ==========================================================
+
         // 1. Tarik FCM Token Utama & FCM Token Debug
         $driver = DB::table('registrasi_driver_sancaka')
             ->join('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
