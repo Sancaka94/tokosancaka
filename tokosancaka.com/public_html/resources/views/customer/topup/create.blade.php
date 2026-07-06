@@ -296,7 +296,7 @@
                                                 <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="peer sr-only">
                                                 <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all flex flex-col items-center text-center shadow-sm hover:shadow-md">
                                                     <div class="h-10 flex items-center justify-center mb-3">
-                                                        <img src="{{ $channel['icon_url'] }}" alt="{{ $channel['name'] }}" class="max-h-full max-w-full object-contain rounded-md grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 peer-checked:grayscale-0 peer-checked:opacity-100 transition-all">
+                                                        <img src="{{ $channel['icon'] ?? asset('assets/default-payment.png') }}" alt="{{ $channel['name'] }}" class="max-h-full...">
                                                     </div>
                                                     <span class="text-xs font-bold text-gray-800 leading-tight group-hover:text-blue-700 peer-checked:text-blue-700 mb-2">
                                                         {{ $channel['name'] }}
