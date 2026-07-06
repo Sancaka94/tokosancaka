@@ -865,7 +865,7 @@ class ApiMapboxController extends Controller
         }
     }
 
-  public function update_status_order(Request $request)
+ public function update_status_order(Request $request)
     {
         Log::info("=== [API DRIVER UPDATE STATUS] REQUEST MASUK ===");
         Log::info("LOG LOG: Payload Request: ", $request->all());
@@ -879,7 +879,23 @@ class ApiMapboxController extends Controller
                 return response()->json(['success' => false, 'message' => 'Data tidak lengkap.'], 400);
             }
 
-            // 1. UPDATE STATUS DI DATABASE
+            // 1. CEK DULU KONDISI ORDER SAAT INI (MENCEGAH SALDO MASUK 2X)
+            $order = DB::table('order_ojek_online')->where('order_id', $orderId)->first();
+
+            if (!$order) {
+                return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
+            }
+
+            // PENGAMAN MUTLAK: Jika sudah completed, hentikan eksekusi!
+            if ($order->status === 'completed' || $order->status === 'selesai') {
+                Log::warning("LOG LOG: Pencegahan Dobel Saldo! Order {$orderId} sudah selesai sebelumnya.");
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Pesanan ini sudah selesai sebelumnya.'
+                ]);
+            }
+
+            // 2. UPDATE STATUS DI DATABASE
             $affected = DB::table('order_ojek_online')
                 ->where('order_id', $orderId)
                 ->where('driver_id', $driverUser->id_pengguna)
@@ -889,88 +905,87 @@ class ApiMapboxController extends Controller
                 ]);
 
             if ($affected === 0) {
-                Log::warning("LOG LOG: Gagal update status! Order ID {$orderId} tidak ditemukan untuk Driver ID {$driverUser->id_pengguna}.");
+                Log::warning("LOG LOG: Gagal update status! Order ID {$orderId} tidak valid untuk Driver ID {$driverUser->id_pengguna}.");
                 return response()->json(['success' => false, 'message' => 'Gagal mengubah status. Pesanan tidak ditemukan atau akses ditolak.'], 403);
             }
             Log::info("LOG LOG: Database berhasil diupdate ke status: {$newStatus}");
 
-            // 2. KIRIM NOTIFIKASI KE PELANGGAN (HYBRID TOKEN SYSTEM)
-            $order = DB::table('order_ojek_online')->where('order_id', $orderId)->first();
+            // =========================================================================
+            // 🔥 LOGIKA SALDO MASUK KE AKUN DRIVER (Hanya Jika Status = completed) 🔥
+            // =========================================================================
+            if ($newStatus === 'completed' || $newStatus === 'selesai') {
+                $tarifBersih = (float) $order->tarif;
+                // Jika aplikasi potong komisi admin misal 10%, rumusnya: $tarifBersih * 0.9;
 
-            if ($order) {
-                // Ambil dua jenis token sekaligus
-                $customer = DB::table('Pengguna')
-                    ->where('id_pengguna', $order->customer_id)
-                    ->select('fcm_token', 'fcm_token_debug')
-                    ->first();
+                // Tambahkan saldo driver di tabel Pengguna / Dompet Driver
+                DB::table('Pengguna')
+                    ->where('id_pengguna', $driverUser->id_pengguna)
+                    ->increment('saldo', $tarifBersih);
 
-                if ($customer && (!empty($customer->fcm_token) || !empty($customer->fcm_token_debug))) {
+                Log::info("LOG LOG: SALDO Rp {$tarifBersih} MASUK KE DRIVER ID {$driverUser->id_pengguna} UNTUK ORDER {$orderId}");
+            }
+            // =========================================================================
 
-                    $notifTitle = 'Info Pesanan';
-                    $notifBody = 'Status pesanan Anda diperbarui.';
+            // 3. KIRIM NOTIFIKASI KE PELANGGAN (HYBRID TOKEN SYSTEM)
+            $customer = DB::table('Pengguna')
+                ->where('id_pengguna', $order->customer_id)
+                ->select('fcm_token', 'fcm_token_debug')
+                ->first();
 
-                    if ($newStatus === 'otw_jemput') {
-                        $notifTitle = '🛵 Driver Menuju Lokasi';
-                        $notifBody = $driverUser->nama_lengkap . ' sedang meluncur menjemput Anda.';
-                    } else if ($newStatus === 'otw_antar') {
-                        $notifTitle = '🏁 Menuju Tujuan';
-                        $notifBody = 'Silakan pakai helm dan nikmati perjalanan Anda bersama Sancaka Express.';
-                    } else if ($newStatus === 'completed') {
-                        $notifTitle = '✅ Pesanan Selesai';
-                        $notifBody = 'Terima kasih telah menggunakan layanan Sancaka Ride!';
-                    }
+            if ($customer && (!empty($customer->fcm_token) || !empty($customer->fcm_token_debug))) {
+                $notifTitle = 'Info Pesanan';
+                $notifBody = 'Status pesanan Anda diperbarui.';
 
-                    $accessToken = $this->getGoogleAccessToken();
-                    $projectId = 'sancaka-express';
+                if ($newStatus === 'otw_jemput') {
+                    $notifTitle = '🛵 Driver Menuju Lokasi';
+                    $notifBody = $driverUser->nama_lengkap . ' sedang meluncur menjemput Anda.';
+                } else if ($newStatus === 'otw_antar') {
+                    $notifTitle = '🏁 Menuju Tujuan';
+                    $notifBody = 'Silakan pakai helm dan nikmati perjalanan Anda bersama Sancaka Express.';
+                } else if ($newStatus === 'completed') {
+                    $notifTitle = '✅ Pesanan Selesai';
+                    $notifBody = 'Terima kasih telah menggunakan layanan Sancaka Ride!';
+                }
 
-                    // Siapkan antrean token untuk dicoba (Production dulu, baru Debug)
-                    $tokensToTry = [];
-                    if (!empty($customer->fcm_token)) {
-                        $tokensToTry[] = ['mode' => 'PRODUCTION', 'token' => $customer->fcm_token];
-                    }
-                    if (!empty($customer->fcm_token_debug)) {
-                        $tokensToTry[] = ['mode' => 'DEBUG', 'token' => $customer->fcm_token_debug];
-                    }
+                $accessToken = $this->getGoogleAccessToken();
+                $projectId = 'sancaka-express';
 
-                    if ($accessToken && count($tokensToTry) > 0) {
-                        $notifTerkirim = false;
+                $tokensToTry = [];
+                if (!empty($customer->fcm_token)) {
+                    $tokensToTry[] = ['mode' => 'PRODUCTION', 'token' => $customer->fcm_token];
+                }
+                if (!empty($customer->fcm_token_debug)) {
+                    $tokensToTry[] = ['mode' => 'DEBUG', 'token' => $customer->fcm_token_debug];
+                }
 
-                        foreach ($tokensToTry as $target) {
-                            $mode = $target['mode'];
-                            $tokenStr = $target['token'];
+                if ($accessToken && count($tokensToTry) > 0) {
+                    $notifTerkirim = false;
+                    foreach ($tokensToTry as $target) {
+                        $mode = $target['mode'];
+                        $tokenStr = $target['token'];
 
-                            Log::info("LOG LOG: Mencoba notif pelanggan via token mode {$mode}...");
-
-                            $response = Http::withHeaders([
-                                'Authorization' => 'Bearer ' . $accessToken,
-                                'Content-Type'  => 'application/json',
-                            ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
-                                'message' => [
-                                    'token' => $tokenStr,
-                                    'android' => ['priority' => 'HIGH'],
-                                    'notification' => [
-                                        'title' => $notifTitle,
-                                        'body'  => $notifBody
-                                    ],
-                                    'data' => [
-                                        'action'   => 'status_updated',
-                                        'order_id' => (string) $orderId,
-                                        'status'   => (string) $newStatus
-                                    ]
+                        $response = Http::withHeaders([
+                            'Authorization' => 'Bearer ' . $accessToken,
+                            'Content-Type'  => 'application/json',
+                        ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                            'message' => [
+                                'token' => $tokenStr,
+                                'android' => ['priority' => 'HIGH'],
+                                'notification' => [
+                                    'title' => $notifTitle,
+                                    'body'  => $notifBody
+                                ],
+                                'data' => [
+                                    'action'   => 'status_updated',
+                                    'order_id' => (string) $orderId,
+                                    'status'   => (string) $newStatus
                                 ]
-                            ]);
+                            ]
+                        ]);
 
-                            if ($response->successful()) {
-                                Log::info("LOG LOG: SUKSES kirim notif ke Pelanggan menggunakan Token {$mode}.");
-                                $notifTerkirim = true;
-                                break; // Selesai, jangan coba token lainnya
-                            } else {
-                                Log::warning("LOG LOG: GAGAL kirim notif ke pelanggan (Mode {$mode}). Error: " . $response->body());
-                            }
-                        }
-
-                        if (!$notifTerkirim) {
-                            Log::error("LOG LOG: FATAL! Semua token pelanggan gagal/hangus.");
+                        if ($response->successful()) {
+                            $notifTerkirim = true;
+                            break;
                         }
                     }
                 }
@@ -980,7 +995,6 @@ class ApiMapboxController extends Controller
 
         } catch (\Exception $e) {
             Log::error("[API DRIVER UPDATE STATUS] Crash: " . $e->getMessage());
-            Log::error("LOG LOG: Trace Error: " . $e->getTraceAsString());
             return response()->json(['success' => false, 'message' => 'Sistem Error saat update status.'], 500);
         }
     }
