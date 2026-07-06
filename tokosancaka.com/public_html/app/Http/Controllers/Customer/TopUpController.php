@@ -91,65 +91,10 @@ class TopUpController extends Controller
         // Kelompokkan Tripay berdasarkan group miliknya sendiri
         $groupedtripayChannels = $tripayChannels->groupBy('group');
 
-
-        // =========================================================================
-        // ALUR 2: DUITKU CHANNELS
-        // =========================================================================
-        $duitkuRaw = Cache::remember('duitku_payment_methods', 60 * 24, function () {
-            try {
-                $duitkuService = app(\App\Http\Controllers\ApiDuitkuController::class);
-                $response = $duitkuService->getPaymentMethods(10000);
-
-                if (isset($response['responseCode']) && $response['responseCode'] === '00') {
-                    return $response['paymentFee'];
-                }
-            } catch (\Exception $e) {
-                Log::error('Gagal load channel Duitku: ' . $e->getMessage());
-            }
-            return [];
-        });
-
-        // Normalisasi struktur data Duitku
-        $duitkuChannels = collect($duitkuRaw)->map(function ($item) {
-            return [
-                'provider' => 'DUITKU',
-                'code'     => 'DUITKU_' . $item['paymentMethod'],
-                'name'     => $item['paymentName'],
-                'group'    => $this->getGroupForDuitku($item['paymentName']),
-                'icon'     => !empty($item['paymentImage']) ? $item['paymentImage'] : null,
-                'fee'      => $item['totalFee'] ?? 0,
-            ];
-        });
-
-        // Kelompokkan Duitku berdasarkan group miliknya sendiri
-        $groupedChannels = $duitkuChannels->groupBy('group');
-
         // Kirim kedua variabel kelompok secara terpisah ke Blade
-        return view('customer.topup.create', compact('groupedChannels', 'groupedtripayChannels'));
+        return view('customer.topup.create', compact('groupedtripayChannels'));
     }
 
-    /**
-     * Helper otomatis untuk menentukan Kategori Group Duitku agar senada dengan Tripay
-     */
-    private function getGroupForDuitku($name)
-    {
-        $nameUpper = strtoupper($name);
-
-        if (str_contains($nameUpper, 'VA') || str_contains($nameUpper, 'VIRTUAL ACCOUNT')) {
-            return 'Virtual Account';
-        }
-        if (str_contains($nameUpper, 'OVO') || str_contains($nameUpper, 'DANA') || str_contains($nameUpper, 'SHOPEE') || str_contains($nameUpper, 'LINKAJA') || str_contains($nameUpper, 'QRIS') || str_contains($nameUpper, 'JENIUS')) {
-            return 'E-Wallet';
-        }
-        if (str_contains($nameUpper, 'INDOMARET') || str_contains($nameUpper, 'ALFAMART') || str_contains($nameUpper, 'ALFAMIDI')) {
-            return 'Convenience Store';
-        }
-        if (str_contains($nameUpper, 'PAYLATER') || str_contains($nameUpper, 'INDODANA') || str_contains($nameUpper, 'KREDIVO')) {
-            return 'Paylater & Cicilan';
-        }
-
-        return 'Metode Lainnya';
-    }
 
     /**
      * Helper: Ambil Channel Pembayaran dari API Tripay
@@ -436,30 +381,6 @@ class TopUpController extends Controller
             // ==========================================================
 
             // ==========================================================
-            // --- FITUR BARU: IPAYMU ---
-            // ==========================================================
-            elseif (\Illuminate\Support\Str::startsWith(strtoupper($validated['payment_method']), 'IPAYMU')) {
-
-                Log::info('LOG LOG: Memulai Top Up iPaymu untuk ' . $invoiceNumber);
-
-                $transaction = Transaction::create([
-                    'user_id'        => $user->id_pengguna,
-                    'reference_id'   => $invoiceNumber,
-                    'amount'         => $amount,
-                    'type'           => 'topup',
-                    'status'         => 'pending',
-                    'payment_method' => strtoupper($validated['payment_method']),
-                    'description'    => 'Top up saldo via iPaymu',
-                ]);
-
-                DB::commit();
-
-                // Arahkan ke fungsi eksekutor iPaymu
-                return $this->createPaymentIpaymu($transaction, $validated['payment_method']);
-            }
-            // ==========================================================
-
-            // ==========================================================
             // --- FITUR BARU: MANDIRI VIRTUAL ACCOUNT ---
             // ==========================================================
             elseif (strtoupper($validated['payment_method']) === 'MANDIRI_VA') {
@@ -481,38 +402,6 @@ class TopUpController extends Controller
                 // Arahkan ke eksekutor Mandiri
                 return $this->createPaymentMandiriVA($transaction);
             }
-
-            // ==========================================================
-            // --- FITUR BARU: DUITKU ---
-            // ==========================================================
-            elseif (\Illuminate\Support\Str::startsWith(strtoupper($validated['payment_method']), 'DUITKU')) {
-
-                Log::info('LOG LOG: Memulai Top Up Duitku untuk ' . $invoiceNumber);
-
-                $transaction = Transaction::create([
-                    'user_id'        => $user->id_pengguna,
-                    'reference_id'   => $invoiceNumber,
-                    'amount'         => $amount,
-                    'type'           => 'topup',
-                    'status'         => 'pending',
-                    'payment_method' => strtoupper($validated['payment_method']),
-                    'description'    => 'Top up saldo via Duitku',
-                ]);
-
-                DB::commit();
-
-                // Ekstrak kode metode pembayaran Duitku (misal form kirim 'DUITKU_BC' untuk BCA VA, kita ambil 'BC')
-                $duitkuMethod = str_replace('DUITKU_', '', strtoupper($validated['payment_method']));
-
-                // Jika dari form hanya dikirim 'DUITKU', kita kosongkan string agar Duitku menampilkan halaman general berisi semua channel
-                if ($duitkuMethod === 'DUITKU') {
-                    $duitkuMethod = '';
-                }
-
-                // Arahkan ke fungsi eksekutor Duitku
-                return $this->createPaymentDuitku($transaction, $duitkuMethod);
-            }
-            // ==========================================================
 
             // 3. Logika DOKU & TRIPAY
             else {
@@ -4732,76 +4621,6 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
         } catch (\Exception $e) {
             Log::error('LOG LOG: [MANDIRI VA] Exception: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan sistem koneksi Bank Mandiri.');
-        }
-    }
-
-    /**
-     * =========================================================================
-     * EKSEKUTOR PEMBAYARAN DUITKU UNTUK TOP UP
-     * =========================================================================
-     */
-    protected function createPaymentDuitku(Transaction $transaction, $paymentMethodCode)
-    {
-        Log::info('LOG LOG: DUITKU START for Transaction: ' . $transaction->reference_id);
-        $user = Auth::user();
-
-        // 1. Force empty string if the frontend sends the generic "DUITKU" label
-        // This tells Duitku to show all available payment methods on their hosted page
-        if ($paymentMethodCode === 'DUITKU') {
-            $paymentMethodCode = "";
-        }
-
-        try {
-            $duitkuService = app(\App\Http\Controllers\ApiDuitkuController::class);
-
-            $customerDetail = [
-                'firstName'   => $user->nama_lengkap ?? 'Customer',
-                'lastName'    => 'Sancaka',
-                'email'       => $user->email ?? 'email@kosong.com',
-                'phoneNumber' => $user->no_wa ?? '08123456789',
-            ];
-
-            // Persiapan Detail Item
-            $itemDetails = [
-                [
-                    'name'     => 'Top Up Saldo',
-                    'price'    => (int) $transaction->amount,
-                    'quantity' => 1
-                ]
-            ];
-
-            $productDetails = 'Top Up Saldo - ' . $transaction->reference_id;
-
-            // Hit API ke Duitku Controller Induk
-            $response = $duitkuService->createTransaction(
-                $transaction->reference_id,
-                (int) $transaction->amount,
-                $paymentMethodCode,
-                $customerDetail,
-                $itemDetails,
-                $productDetails
-            );
-
-            // Jika sukses dan paymentUrl tersedia
-            if ($response && isset($response['paymentUrl'])) {
-
-                $transaction->payment_url = $response['paymentUrl'];
-                $transaction->save();
-
-                Log::info('LOG LOG: Berhasil mendapatkan URL Duitku', ['url' => $response['paymentUrl']]);
-
-                // Redirect user ke Halaman Pembayaran Duitku
-                return redirect()->away($response['paymentUrl']);
-            }
-
-           // Jika gagal
-            // Pastikan jika $response false, kita kirim array kosong [] sebagai pengganti konteks
-            Log::error('LOG LOG: Gagal mendapatkan URL dari Duitku', is_array($response) ? $response : []);
-            return back()->with('error', 'Gagal memproses pembayaran Duitku. Silakan coba metode lain.');
-
-        } catch (\Exception $e) {
-            Log::error('LOG LOG: DUITKU System Error: ' . $e->getMessage());
-            return back()->with('error', 'Koneksi ke Duitku terputus: ' . $e->getMessage());
         }
     }
 
