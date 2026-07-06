@@ -12,9 +12,9 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\DB; // <-- SEKARANG SUDAH DITAMBAHKAN FACADE DB
-use Laravel\Socialite\Facades\Socialite; // <-- TAMBAHAN: Import Socialite
-use Jenssegers\Agent\Agent; // <-- TAMBAHAN: Import library Agent
+use Illuminate\Support\Facades\DB;
+use Laravel\Socialite\Facades\Socialite;
+use Jenssegers\Agent\Agent;
 use Illuminate\Support\Facades\Hash;
 
 class AuthenticatedSessionController extends Controller
@@ -50,9 +50,8 @@ class AuthenticatedSessionController extends Controller
             ->where('is_whitelisted', 1)
             ->first();
 
-            if ($dummyUser && Hash::check($request->password, $dummyUser->password_hash)) { // <-- UBAH DI SINI
+        if ($dummyUser && Hash::check($request->password, $dummyUser->password_hash)) {
             Log::info('Bypass login dinamis: Akun whitelist terdeteksi. Melewati validasi captcha dan OTP.', ['user_id' => $dummyUser->id_pengguna]);
-
 
             $userModel = User::find($dummyUser->id_pengguna);
             if ($userModel) {
@@ -77,6 +76,8 @@ class AuthenticatedSessionController extends Controller
                 if ($role === 'admin') {
                     return redirect()->intended(route('admin.dashboard'));
                 }
+
+                // Pelanggan, Agent, Seller, maupun Driver diarahkan ke dashboard customer
                 return redirect()->intended(route('customer.dashboard'));
             }
         }
@@ -117,15 +118,11 @@ class AuthenticatedSessionController extends Controller
         if (Auth::guard('web')->validate($credentials)) {
             Log::info('Kredensial valid. Melanjutkan ke proses OTP.');
 
-            // ====================================================================
-            // Menggunakan DB::table agar langsung tembus ke database
-            // ====================================================================
             $user = DB::table('Pengguna')->where($loginField, $loginValue)->first();
-
             $userId = $user->id_pengguna;
 
-            // Validasi Otorisasi Role
-            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent'];
+            // PERBAIKAN: Menambahkan 'driver' agar akun yang ber-role driver tidak terblokir
+            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver'];
             if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
                 Log::warning('Akses Ditolak: Peran tidak diizinkan.', [
                     'user_id' => $userId,
@@ -136,9 +133,6 @@ class AuthenticatedSessionController extends Controller
                 ]);
             }
 
-            // ====================================================================
-            // TAMBAHAN: UPDATE LOKASI, IP, & USER AGENT (LOGIN MANUAL)
-            // ====================================================================
             try {
                 $agent = new Agent();
                 $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
@@ -246,24 +240,22 @@ class AuthenticatedSessionController extends Controller
             $googleUser = Socialite::driver('google')->user();
             Log::info('Data Google diterima.', ['email' => $googleUser->getEmail()]);
 
-            // Cari user di database berdasarkan email dari Google
             $user = User::where('email', $googleUser->getEmail())->first();
 
             if (!$user) {
-                // Jika tidak ada, buat akun baru secara otomatis
                 Log::info('Email tidak ditemukan, membuat user baru dari Google.', ['email' => $googleUser->getEmail()]);
 
                 $user = User::create([
                     'nama_lengkap' => $googleUser->getName(),
                     'email'        => $googleUser->getEmail(),
-                    'role'         => 'pelanggan', // Role default
-                    'status'       => 'Menunggu Setup', // STATUS SEMENTARA AGAR DIPAKSA SETUP PROFIL
-                    'password'     => bcrypt(Str::random(16)), // Generate password acak
+                    'role'         => 'pelanggan',
+                    'status'       => 'Menunggu Setup',
+                    'password'     => bcrypt(Str::random(16)),
                 ]);
             }
 
-            // Validasi Otorisasi Role sama seperti login manual
-            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent'];
+            // PERBAIKAN: Menambahkan 'driver' pada pengecekan role Google Auth
+            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver'];
             if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
                 Log::warning('Akses Ditolak: Peran tidak diizinkan (Via Google).', [
                     'email' => $user->email,
@@ -274,9 +266,6 @@ class AuthenticatedSessionController extends Controller
                 ]);
             }
 
-            // ====================================================================
-            // TAMBAHAN: UPDATE LOKASI, IP, & USER AGENT (LOGIN GOOGLE)
-            // ====================================================================
             try {
                 $agent = new Agent();
                 $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
@@ -296,27 +285,22 @@ class AuthenticatedSessionController extends Controller
                 Log::error('Gagal menyimpan data keamanan login Google: ' . $e->getMessage());
             }
 
-            // Bypass OTP dan langsung login ke dalam sistem
             Auth::guard('web')->login($user);
             $request->session()->regenerate();
 
             Log::info('Login Google berhasil.', ['email' => $user->email]);
 
-            // ====================================================================
-            // CEK KELENGKAPAN PROFIL GOOGLE
-            // ====================================================================
             if ($user->status !== 'Aktif' || empty($user->no_wa)) {
                 Log::info('User belum melengkapi profil. Dialihkan ke halaman Setup Profile.', ['user_id' => $user->id_pengguna]);
                 return redirect()->route('customer.profile.setup');
             }
 
-            // Jika profil sudah lengkap (status Aktif), arahkan ke dashboard sesuai role
             $role = strtolower(trim($user->role));
             if ($role === 'admin') {
                 return redirect()->route('admin.dashboard');
             }
 
-            // Default ke dashboard customer (mencakup pelanggan, agent, seller)
+            // Arahkan semua role non-admin (pelanggan, agent, seller, driver) ke dashboard customer
             return redirect()->route('customer.dashboard');
 
         } catch (\Exception $e) {
