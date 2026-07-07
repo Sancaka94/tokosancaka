@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use App\Notifications\NotifikasiUmum;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
+use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
