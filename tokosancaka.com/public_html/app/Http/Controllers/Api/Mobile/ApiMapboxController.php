@@ -853,7 +853,8 @@ public function notify_driver(Request $request)
 
             $query = DB::table('order_ojek_online')
                 ->join('Pengguna as customer', 'order_ojek_online.customer_id', '=', 'customer.id_pengguna')
-                ->join('registrasi_driver_sancaka as driver', 'order_ojek_online.driver_id', '=', 'driver.id_pengguna')
+                // 🔥 PERBAIKAN: Ubah 'join' menjadi 'leftJoin' 🔥
+                ->leftJoin('registrasi_driver_sancaka as driver', 'order_ojek_online.driver_id', '=', 'driver.id_pengguna')
                 ->where('order_ojek_online.order_id', $order_id)
                 ->select(
                     'order_ojek_online.*',
@@ -868,7 +869,6 @@ public function notify_driver(Request $request)
                 );
 
             // --- KUNCI KEAMANAN IDOR ---
-            // Jika bukan Admin, pastikan data yang diambil adalah milik user itu sendiri
             if ($userId != 4 && $userRole !== 'Admin') {
                 $query->where(function($q) use ($userId) {
                     $q->where('order_ojek_online.customer_id', $userId)
@@ -881,6 +881,14 @@ public function notify_driver(Request $request)
             if (!$order) {
                 Log::warning("LOG LOG: Gagal! Order ID " . $order_id . " tidak ditemukan atau diakses ilegal.");
                 return response()->json(['success' => false, 'message' => 'Order tidak ditemukan atau Anda tidak memiliki akses.'], 404);
+            }
+
+            // 🔥 PERBAIKAN TAMBAHAN: Jika Admin yang ambil order dan data driver kosong, beri nilai default
+            if (empty($order->driver_name) && $order->driver_id == 4) {
+                $order->driver_name = "Pusat Radar Sancaka";
+                $order->driver_phone = "08819435180"; // Sesuaikan dengan nomor WA Admin
+                $order->driver_lat = $order->driver_lat ?? -7.4025;
+                $order->driver_lng = $order->driver_lng ?? 111.4558;
             }
 
             Log::info("LOG LOG: SUKSES! Data order berhasil ditarik dan dikirim ke Frontend.");
