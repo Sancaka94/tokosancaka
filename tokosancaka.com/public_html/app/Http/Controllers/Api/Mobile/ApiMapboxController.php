@@ -298,9 +298,9 @@ class ApiMapboxController extends Controller
                 ];
             })->toArray();
 
-            // 2. TARIK ADMIN BEBAS (User ID 4 dari tabel Pengguna)
+           // 2. TARIK ADMIN BEBAS (User ID 4 dari tabel Pengguna)
             $admin = DB::table('Pengguna')
-                ->selectRaw("id_pengguna, nama_lengkap, latitude, longitude,
+                ->selectRaw("id_pengguna, nama_lengkap, latitude, longitude, last_seen,
                     ( 6371 * acos( cos( radians(?) ) *
                       cos( radians( latitude ) ) *
                       cos( radians( longitude ) - radians(?) ) +
@@ -312,19 +312,33 @@ class ApiMapboxController extends Controller
                 ->whereNotNull('longitude')
                 ->first();
 
-            // Jika admin sedang terdeteksi memiliki koordinat, masukkan ke dalam antrean driver terdekat
+            // Jika admin memiliki koordinat dan masih dalam radius
             if ($admin && $admin->distance <= $radius) {
-                $formattedDrivers[] = [
-                    'id'           => 4, // Gunakan ID 4 agar sinkron saat proses pesanan
-                    'id_pengguna'  => 4,
-                    'name'         => 'Pusat Radar Sancaka (Admin)',
-                    'vehicle'      => 'Sancaka Express / Ojek Admin',
-                    'distance'     => round($admin->distance, 1) . ' KM',
-                    'distance_raw' => (float) $admin->distance,
-                    'lat'          => (float) $admin->latitude,
-                    'lng'          => (float) $admin->longitude,
-                    'is_online'    => true // Admin dipaksa selalu dianggap Online jika koordinatnya ada
-                ];
+
+                // 🔥 LOGIKA DINAMIS ADMIN 🔥
+                // Cek apakah Admin Online: Jika update GPS terakhir kurang dari 3 menit yang lalu
+                $isAdminOnline = false;
+                if (!empty($admin->last_seen)) {
+                    $lastSeenTime = \Carbon\Carbon::parse($admin->last_seen);
+                    if ($lastSeenTime->diffInMinutes(now()) <= 3) {
+                        $isAdminOnline = true;
+                    }
+                }
+
+                // Kita HANYA memunculkan Admin jika statusnya benar-benar sedang Online
+                if ($isAdminOnline) {
+                    $formattedDrivers[] = [
+                        'id'           => 4,
+                        'id_pengguna'  => 4,
+                        'name'         => 'Pusat Radar Sancaka (Admin)',
+                        'vehicle'      => 'Sancaka Express',
+                        'distance'     => round($admin->distance, 1) . ' KM',
+                        'distance_raw' => (float) $admin->distance,
+                        'lat'          => (float) $admin->latitude,
+                        'lng'          => (float) $admin->longitude,
+                        'is_online'    => $isAdminOnline // <-- SEKARANG SUDAH DINAMIS
+                    ];
+                }
             }
 
             // 3. URUTKAN SEMUANYA BERDASARKAN JARAK (Paling dekat ke paling jauh)
@@ -502,22 +516,31 @@ class ApiMapboxController extends Controller
         }
     }
 
-    /**
-     * 3. SAKLAR TOGGLE ONLINE/OFFLINE DI MAP
-     * POST /api/mobile/driver/toggle-map
-     */
-    public function toggleMap(Request $request)
+   public function toggleMap(Request $request)
     {
         try {
-            $idPengguna = $request->user()->id_pengguna;
+            $user = $request->user();
+            $idPengguna = $user->id_pengguna;
             $isActive = $request->input('is_active_map'); // 1 atau 0
 
-            DB::table('registrasi_driver_sancaka')
-                ->where('id_pengguna', $idPengguna)
-                ->update([
-                    'is_active_map' => $isActive,
-                    'updated_at'    => now()
-                ]);
+            // 👇 DETEKSI JIKA YANG MENEKAN SAKLAR ADALAH ADMIN
+            if ($idPengguna == 4 || $user->role === 'Admin') {
+                if ($isActive == 0) {
+                    // Jika Admin mematikan Radar (Offline), bersihkan titik koordinatnya
+                    DB::table('Pengguna')->where('id_pengguna', $idPengguna)->update([
+                        'latitude'  => null,
+                        'longitude' => null
+                    ]);
+                }
+            } else {
+                // 👇 JIKA DRIVER BIASA
+                DB::table('registrasi_driver_sancaka')
+                    ->where('id_pengguna', $idPengguna)
+                    ->update([
+                        'is_active_map' => $isActive,
+                        'updated_at'    => now()
+                    ]);
+            }
 
             return response()->json(['success' => true, 'message' => 'Status aktif berhasil diubah.']);
         } catch (\Exception $e) {
