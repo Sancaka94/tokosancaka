@@ -10,6 +10,7 @@ use App\Models\Api;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log; // Pastikan Log dipanggil
 
+
 class ApiSettingsController extends Controller
 {
     public function index()
@@ -117,17 +118,37 @@ class ApiSettingsController extends Controller
             'api_key' => Api::getValue('FONNTE_API_KEY', 'global'),
         ];
 
-       // --- MAPBOX & SANCAKA EXPRESS ---
+       // --- MAPBOX, SANCAKA EXPRESS & ZONASI OJOL ---
+        // Load pengaturan dinamis untuk Zonasi (Default mengacu pada Kemenhub)
+        $zonasi = [
+            'zona_1' => [
+                'wilayah' => Api::getValue('ZONA_1_WILAYAH', 'global', 'Sumatera, Bali, Jawa Timur, Jawa Tengah, Jawa Barat, Yogyakarta, Banten'),
+                'tarif_minimal' => Api::getValue('ZONA_1_TARIF_MINIMAL', 'global', 8000),
+                'tarif_per_km' => Api::getValue('ZONA_1_TARIF_PER_KM', 'global', 2000), // Batas bawah default
+            ],
+            'zona_2' => [
+                'wilayah' => Api::getValue('ZONA_2_WILAYAH', 'global', 'Jakarta, Bogor, Depok, Tangerang, Bekasi'),
+                'tarif_minimal' => Api::getValue('ZONA_2_TARIF_MINIMAL', 'global', 10200),
+                'tarif_per_km' => Api::getValue('ZONA_2_TARIF_PER_KM', 'global', 2550), // Batas bawah default
+            ],
+            'zona_3' => [
+                'wilayah' => Api::getValue('ZONA_3_WILAYAH', 'global', 'Kalimantan, Sulawesi, Nusa Tenggara, Maluku, Papua'),
+                'tarif_minimal' => Api::getValue('ZONA_3_TARIF_MINIMAL', 'global', 9200),
+                'tarif_per_km' => Api::getValue('ZONA_3_TARIF_PER_KM', 'global', 2300), // Batas bawah default
+            ],
+        ];
+
         $mapbox = [
             'public_token'    => Api::getValue('MAPBOX_PUBLIC_TOKEN', 'global', env('MAPBOX_PUBLIC_TOKEN')),
             'secret_token'    => Api::getValue('MAPBOX_SECRET_TOKEN', 'global', env('MAPBOX_SECRET_TOKEN')),
             'base_fare'       => Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 3000),
             'price_per_km'    => Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 1000),
             'price_per_kg'    => Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1000),
-            'volume_divisor'  => Api::getValue('SANCAKA_EXPRESS_VOLUME_DIVISOR', 'global', 6000), // <-- BARU
-            'cod_fee_percent' => Api::getValue('SANCAKA_EXPRESS_COD_FEE_PERCENT', 'global', 3),   // <-- BARU
-            'ojek_base_fare'    => Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 5000),
-            'ojek_price_per_km' => Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 2500),
+            'volume_divisor'  => Api::getValue('SANCAKA_EXPRESS_VOLUME_DIVISOR', 'global', 6000),
+            'cod_fee_percent' => Api::getValue('SANCAKA_EXPRESS_COD_FEE_PERCENT', 'global', 3),
+            'ojek_base_fare'    => Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 5000), // Default fallback
+            'ojek_price_per_km' => Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 2500),    // Default fallback
+            'zonasi' => $zonasi 
         ];
 
         $dana = [
@@ -326,19 +347,33 @@ class ApiSettingsController extends Controller
 
             // --- MAPBOX & SANCAKA EXPRESS ---
             } elseif ($type === 'mapbox') {
-
-                // Pisahkan penyimpanan untuk Public dan Secret Token
                 Api::setValue('MAPBOX_PUBLIC_TOKEN', trim(strip_tags($request->mapbox_public_token)), 'mapbox', 'global');
                 Api::setValue('MAPBOX_SECRET_TOKEN', trim(strip_tags($request->mapbox_secret_token)), 'mapbox', 'global');
 
                 Api::setValue('SANCAKA_EXPRESS_BASE_FARE', $request->base_fare, 'mapbox', 'global');
                 Api::setValue('SANCAKA_EXPRESS_PER_KM', $request->price_per_km, 'mapbox', 'global');
                 Api::setValue('SANCAKA_EXPRESS_PER_KG', $request->price_per_kg, 'mapbox', 'global');
-
-                // --- PENYIMPANAN DINAMIS BARU ---
                 Api::setValue('SANCAKA_EXPRESS_VOLUME_DIVISOR', $request->volume_divisor, 'mapbox', 'global');
                 Api::setValue('SANCAKA_EXPRESS_COD_FEE_PERCENT', $request->cod_fee_percent, 'mapbox', 'global');
 
+                // Simpan pengaturan Zonasi Ojol yang baru
+                if ($request->has('zona_1_wilayah')) {
+                    Api::setValue('ZONA_1_WILAYAH', $request->zona_1_wilayah, 'mapbox', 'global');
+                    Api::setValue('ZONA_1_TARIF_MINIMAL', $request->zona_1_tarif_minimal, 'mapbox', 'global');
+                    Api::setValue('ZONA_1_TARIF_PER_KM', $request->zona_1_tarif_per_km, 'mapbox', 'global');
+                }
+                if ($request->has('zona_2_wilayah')) {
+                    Api::setValue('ZONA_2_WILAYAH', $request->zona_2_wilayah, 'mapbox', 'global');
+                    Api::setValue('ZONA_2_TARIF_MINIMAL', $request->zona_2_tarif_minimal, 'mapbox', 'global');
+                    Api::setValue('ZONA_2_TARIF_PER_KM', $request->zona_2_tarif_per_km, 'mapbox', 'global');
+                }
+                if ($request->has('zona_3_wilayah')) {
+                    Api::setValue('ZONA_3_WILAYAH', $request->zona_3_wilayah, 'mapbox', 'global');
+                    Api::setValue('ZONA_3_TARIF_MINIMAL', $request->zona_3_tarif_minimal, 'mapbox', 'global');
+                    Api::setValue('ZONA_3_TARIF_PER_KM', $request->zona_3_tarif_per_km, 'mapbox', 'global');
+                }
+
+                // Fallback Ojek Umum (jika zonasi gagal dideteksi)
                 if ($request->has('ojek_base_fare')) {
                     Api::setValue('SANCAKA_OJEK_BASE_FARE', $request->ojek_base_fare, 'mapbox', 'global');
                 }
@@ -346,7 +381,7 @@ class ApiSettingsController extends Controller
                     Api::setValue('SANCAKA_OJEK_PER_KM', $request->ojek_price_per_km, 'mapbox', 'global');
                 }
 
-                Log::info("Pengaturan Mapbox & Sancaka Express berhasil diperbarui.");
+                Log::info("LOG LOG: Pengaturan Mapbox & Sancaka Express (Zonasi) berhasil diperbarui.");
 
             } elseif ($type === 'dana') {
                 $env = $request->dana_mode;
@@ -665,6 +700,157 @@ class ApiSettingsController extends Controller
                 ], 500);
             }
             return back()->with('error', 'Gagal mengubah APP_DEBUG: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Helper Private: Mendapatkan nama wilayah dari Mapbox Reverse Geocoding
+     */
+    private function getRegionFromCoordinates($lng, $lat, $token)
+    {
+        try {
+            $url = "https://api.mapbox.com/geocoding/v5/mapbox.places/{$lng},{$lat}.json";
+            $response = Http::get($url, [
+                'access_token' => $token,
+                'types' => 'region,place',
+                'limit' => 2
+            ]);
+
+            if ($response->successful() && !empty($response['features'])) {
+                $regions = [];
+                foreach ($response['features'] as $feature) {
+                    $regions[] = strtolower($feature['text']);
+                }
+                return $regions; // Mengembalikan array seperti ['jakarta', 'daerah khusus ibukota jakarta']
+            }
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: [API MAPBOX] Gagal Reverse Geocoding: " . $e->getMessage());
+        }
+        return [];
+    }
+
+    /**
+     * Endpoint API POST: /api/mobile/mapbox/cek-tarif
+     */
+    public function cek_tarif(Request $request)
+    {
+        Log::info("=== [API MAPBOX] REQUEST CEK TARIF MASUK ===");
+        Log::info("LOG LOG: Payload:", $request->all());
+
+        $latAsal = $request->input('sender_lat');
+        $lngAsal = $request->input('sender_lng');
+        $latTujuan = $request->input('receiver_lat');
+        $lngTujuan = $request->input('receiver_lng');
+        $layanan = $request->input('layanan');
+        $beratGram = (float) $request->input('weight', 1000);
+
+        if (!$latAsal || !$lngAsal || !$latTujuan || !$lngTujuan) {
+            Log::warning("LOG LOG: [API MAPBOX] Koordinat tidak lengkap.");
+            return response()->json(['status' => false, 'message' => 'Koordinat tidak lengkap.']);
+        }
+
+        $mapboxToken = Api::getValue('MAPBOX_SECRET_TOKEN', 'global', env('MAPBOX_TOKEN'));
+
+        if (empty($mapboxToken)) {
+            Log::error("LOG LOG: [API MAPBOX] Mapbox Token kosong di database!");
+        }
+
+        // 1. Tembak rute ke Mapbox
+        $url = "https://api.mapbox.com/directions/v5/mapbox/driving/{$lngAsal},{$latAsal};{$lngTujuan},{$latTujuan}";
+        
+        try {
+            $response = Http::get($url, [
+                'access_token' => $mapboxToken,
+                'geometries'   => 'geojson',
+                'overview'     => 'simplified'
+            ]);
+
+            if (!$response->successful() || empty($response['routes'][0])) {
+                Log::error("LOG LOG: [API MAPBOX] Gagal Merespons: ", $response->json() ?? []);
+                return response()->json(['status' => false, 'message' => 'Gagal mendapatkan rute dari Mapbox']);
+            }
+
+            $route = $response['routes'][0];
+            $distanceKm = $route['distance'] / 1000;
+            $durationMin = ceil($route['duration'] / 60);
+
+            Log::info("LOG LOG: [API MAPBOX] Jarak: {$distanceKm} KM | Waktu: {$durationMin} Menit");
+
+            if ($layanan == 'ojek_online') {
+                // TAHAP 2: LOGIKA ZONASI (100% DINAMIS)
+                // Tarik semua config zona sekaligus dari DB (Bisa menggunakan whereIn untuk mencegah N+1 jika class Api Anda mendukungnya. Kita ambil satu per satu karena sudah ter-cache di memory Laravel biasanya).
+                $zona1Wilayah = strtolower(Api::getValue('ZONA_1_WILAYAH', 'global', 'sumatera, bali, jawa timur, jawa tengah, jawa barat, yogyakarta, banten'));
+                $zona2Wilayah = strtolower(Api::getValue('ZONA_2_WILAYAH', 'global', 'jakarta, bogor, depok, tangerang, bekasi, jabodetabek'));
+                $zona3Wilayah = strtolower(Api::getValue('ZONA_3_WILAYAH', 'global', 'kalimantan, sulawesi, nusa tenggara, maluku, papua'));
+
+                // Deteksi Wilayah dari Koordinat
+                $detectedRegions = $this->getRegionFromCoordinates($lngAsal, $latAsal, $mapboxToken);
+                Log::info("LOG LOG: Wilayah Terdeteksi: ", $detectedRegions);
+
+                $selectedZone = null;
+                foreach ($detectedRegions as $region) {
+                    if (str_contains($zona2Wilayah, $region)) {
+                        $selectedZone = 2; break;
+                    } elseif (str_contains($zona1Wilayah, $region)) {
+                        $selectedZone = 1; break;
+                    } elseif (str_contains($zona3Wilayah, $region)) {
+                        $selectedZone = 3; break;
+                    }
+                }
+
+                if ($selectedZone === 2) {
+                    Log::info("LOG LOG: Masuk Zona II");
+                    $baseFare   = (float) Api::getValue('ZONA_2_TARIF_MINIMAL', 'global', 10200);
+                    $pricePerKm = (float) Api::getValue('ZONA_2_TARIF_PER_KM', 'global', 2550);
+                } elseif ($selectedZone === 3) {
+                    Log::info("LOG LOG: Masuk Zona III");
+                    $baseFare   = (float) Api::getValue('ZONA_3_TARIF_MINIMAL', 'global', 9200);
+                    $pricePerKm = (float) Api::getValue('ZONA_3_TARIF_PER_KM', 'global', 2300);
+                } elseif ($selectedZone === 1) {
+                    Log::info("LOG LOG: Masuk Zona I");
+                    $baseFare   = (float) Api::getValue('ZONA_1_TARIF_MINIMAL', 'global', 8000);
+                    $pricePerKm = (float) Api::getValue('ZONA_1_TARIF_PER_KM', 'global', 2000);
+                } else {
+                    // Fallback jika Mapbox gagal mengenali wilayah (Gunakan standar umum)
+                    Log::info("LOG LOG: Zona tidak terdeteksi, menggunakan fallback default");
+                    $baseFare   = (float) Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 8000);
+                    $pricePerKm = (float) Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 2000);
+                }
+
+                // Kalkulasi tarif: Berlakukan Base Fare (Tarif Minimal) jika tarif per km masih di bawahnya.
+                $calculatedFare = $distanceKm * $pricePerKm;
+                $totalCost = ($calculatedFare < $baseFare) ? $baseFare : $calculatedFare;
+
+            } else {
+                // LAYANAN SAMEDAY / EXPRESS (Tidak Terpengaruh Kemenhub)
+                $baseFare = (float) Api::getValue('SANCAKA_EXPRESS_BASE_FARE', 'global', 3000);
+                $pricePerKm = (float) Api::getValue('SANCAKA_EXPRESS_PER_KM', 'global', 1000);
+                $pricePerKg = (float) Api::getValue('SANCAKA_EXPRESS_PER_KG', 'global', 1000);
+
+                $weightKg = max(1, ceil($beratGram / 1000));
+                $totalCost = $baseFare + ($distanceKm * $pricePerKm) + ($weightKg * $pricePerKg);
+            }
+
+            // Pembulatan ke ratusan terdekat (Misal: 11.234 -> 11.500)
+            $finalCost = (int) (ceil($totalCost / 500) * 500);
+
+            Log::info("LOG LOG: Tarif Final Dihitung: Rp " . $finalCost);
+
+            return response()->json([
+                'status' => true,
+                'data' => [
+                    'jarak_km' => round($distanceKm, 2),
+                    'waktu_menit' => $durationMin,
+                    'tarif_final' => $finalCost
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: [API MAPBOX] EXCEPTION CRASH: " . $e->getMessage() . " | Trace: " . $e->getTraceAsString());
+            return response()->json([
+                'status' => false,
+                'message' => 'Internal Server Error: ' . $e->getMessage()
+            ], 500);
         }
     }
 }
