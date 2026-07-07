@@ -654,20 +654,36 @@ public function notify_driver(Request $request)
         } else {
             Log::info("LOG LOG: Layanan Ojek Online. Mengarahkan notifikasi ke Driver Pilihan.");
 
-            // Logika lama: Tarik data dari tabel Driver Sancaka
             $driverId = $request->input('driver_id');
-            $driver = DB::table('registrasi_driver_sancaka')
-                ->join('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
-                ->where('registrasi_driver_sancaka.id', $driverId)
-                ->select(
-                    'Pengguna.fcm_token',
-                    'Pengguna.fcm_token_debug',
-                    'registrasi_driver_sancaka.nama_lengkap',
-                    'registrasi_driver_sancaka.latitude',
-                    'registrasi_driver_sancaka.longitude',
-                    'registrasi_driver_sancaka.id_pengguna as driver_user_id'
-                )
-                ->first();
+
+            // 🔥 TAMBAHKAN PENGECEKAN KHUSUS UNTUK ADMIN (ID 4) 🔥
+            if ($driverId == 4) {
+                $driver = DB::table('Pengguna')
+                    ->where('id_pengguna', 4)
+                    ->select(
+                        'fcm_token',
+                        'fcm_token_debug',
+                        'nama_lengkap',
+                        'latitude',
+                        'longitude',
+                        'id_pengguna as driver_user_id'
+                    )
+                    ->first();
+            } else {
+                // Logika driver reguler
+                $driver = DB::table('registrasi_driver_sancaka')
+                    ->join('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
+                    ->where('registrasi_driver_sancaka.id', $driverId)
+                    ->select(
+                        'Pengguna.fcm_token',
+                        'Pengguna.fcm_token_debug',
+                        'registrasi_driver_sancaka.nama_lengkap',
+                        'registrasi_driver_sancaka.latitude',
+                        'registrasi_driver_sancaka.longitude',
+                        'registrasi_driver_sancaka.id_pengguna as driver_user_id'
+                    )
+                    ->first();
+            }
 
             $orderPrefix = 'S-RIDE-'; // Prefix resi Ojek
         }
