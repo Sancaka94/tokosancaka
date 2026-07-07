@@ -1034,11 +1034,38 @@
                             $('#route-duration').text(durationMin + ' mnt');
                             $('#route-info-box').removeClass('d-none'); // Tampilkan kotaknya
 
-                           // --- [AWAL TAMBAHAN] KALKULASI OJEK ONLINE SECARA LIVE ---
-                            const tarifDasarOjek = parseInt('{{ \App\Models\Api::getValue("SANCAKA_OJEK_BASE_FARE", "global", 5000) }}');
-                            const tarifPerKmOjek = parseInt('{{ \App\Models\Api::getValue("SANCAKA_OJEK_PER_KM", "global", 2500) }}');
+                            // --- [AWAL TAMBAHAN] KALKULASI OJEK ONLINE SECARA LIVE DENGAN ZONASI KEMENHUB ---
+                            // 1. Tarik data string wilayah dari DB dan pecah jadi array di JS
+                            const zona1Wilayah = {!! json_encode(explode(',', strtolower(\App\Models\Api::getValue('ZONA_1_WILAYAH', 'global', 'sumatera, bali, jawa timur, jawa tengah, jawa barat, yogyakarta, banten')))) !!}.map(s => s.trim());
+                            const zona2Wilayah = {!! json_encode(explode(',', strtolower(\App\Models\Api::getValue('ZONA_2_WILAYAH', 'global', 'jakarta, bogor, depok, tangerang, bekasi, jabodetabek')))) !!}.map(s => s.trim());
+                            const zona3Wilayah = {!! json_encode(explode(',', strtolower(\App\Models\Api::getValue('ZONA_3_WILAYAH', 'global', 'kalimantan, sulawesi, nusa tenggara, maluku, papua')))) !!}.map(s => s.trim());
 
-                            let totalTarifOjek = tarifDasarOjek + (parseFloat(distanceKm) * tarifPerKmOjek);
+                            // 2. Ambil lokasi titik pengirim (dari input hidden hasil Reverse Geocoding Nominatim)
+                            const originLocation = ($('#sender_province').val() + ' ' + $('#sender_regency').val()).toLowerCase();
+
+                            // 3. Set Harga Default (Fallback jika API Gagal deteksi wilayah)
+                            let tarifDasarOjek = parseInt('{{ \App\Models\Api::getValue("SANCAKA_OJEK_BASE_FARE", "global", 8000) }}');
+                            let tarifPerKmOjek = parseInt('{{ \App\Models\Api::getValue("SANCAKA_OJEK_PER_KM", "global", 2000) }}');
+
+                            // 4. Deteksi Wilayah dan Ubah Harga Sesuai Zona
+                            if (zona2Wilayah.some(wilayah => originLocation.includes(wilayah))) {
+                                // Masuk Zona 2 (Jabodetabek)
+                                tarifDasarOjek = parseInt('{{ \App\Models\Api::getValue("ZONA_2_TARIF_MINIMAL", "global", 10200) }}');
+                                tarifPerKmOjek = parseInt('{{ \App\Models\Api::getValue("ZONA_2_TARIF_PER_KM", "global", 2550) }}');
+                            } else if (zona1Wilayah.some(wilayah => originLocation.includes(wilayah))) {
+                                // Masuk Zona 1 (Sumatera, Bali, Jawa non-Jabodetabek)
+                                tarifDasarOjek = parseInt('{{ \App\Models\Api::getValue("ZONA_1_TARIF_MINIMAL", "global", 8000) }}');
+                                tarifPerKmOjek = parseInt('{{ \App\Models\Api::getValue("ZONA_1_TARIF_PER_KM", "global", 2000) }}');
+                            } else if (zona3Wilayah.some(wilayah => originLocation.includes(wilayah))) {
+                                // Masuk Zona 3 (Kalimantan, Sulawesi, NTT/NTB, Maluku, Papua)
+                                tarifDasarOjek = parseInt('{{ \App\Models\Api::getValue("ZONA_3_TARIF_MINIMAL", "global", 9200) }}');
+                                tarifPerKmOjek = parseInt('{{ \App\Models\Api::getValue("ZONA_3_TARIF_PER_KM", "global", 2300) }}');
+                            }
+
+                            // 5. Kalkulasi Akhir (Berlakukan Tarif Minimal/Base Fare jika jarak pendek)
+                            let totalKalkulasiJarak = parseFloat(distanceKm) * tarifPerKmOjek;
+                            let totalTarifOjek = (totalKalkulasiJarak < tarifDasarOjek) ? tarifDasarOjek : totalKalkulasiJarak;
+
                             totalTarifOjek = Math.ceil(totalTarifOjek / 500) * 500; // Pembulatan ke atas kelipatan 500 perak
 
                             // Ambil nama tempat dari kotak pencarian form
