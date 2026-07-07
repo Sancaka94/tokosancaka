@@ -2542,7 +2542,6 @@ TEXT;
 
         $vendorFilter = strtolower($request->input('vendor_filter', 'all'));
 
-        // PENTING: Pisahkan wadah untuk format Flat dan format Grouped
         $flatResults = [];    // Untuk Sancaka, Ojek, Deliveree, Lalamove
         $groupedResult = [];  // Untuk KiriminAja
 
@@ -2564,7 +2563,6 @@ TEXT;
             );
 
             if (!empty($sancakaRes['status']) && !empty($sancakaRes['results'])) {
-                // Modifikasi label jika user spesifik memilih Ojek Online
                 if ($vendorFilter === 'ojek_online') {
                     foreach ($sancakaRes['results'] as &$item) {
                         $item['service'] = 'ojek_online';
@@ -2578,23 +2576,25 @@ TEXT;
         // 3. LOGIKA PIHAK KETIGA (KiriminAja, Deliveree, Lalamove)
         if (in_array($vendorFilter, ['all', 'kiriminaja', 'deliveree', 'lalamove'])) {
 
-            // Suntikkan data default agar tidak kena error 422 saat memanggil fungsi cek_Ongkir internal
+            // BYPASS VALIDASI: Paksa isi data yang kosong agar lolos sensor cek_Ongkir()
             $request->merge([
-                'ansuransi' => $request->input('ansuransi', 'tidak'),
-                'service_type' => $request->input('service_type', 'regular'),
-                'item_type' => $request->input('item_type', 1),
+                'sender_district_id' => $request->input('sender_district_id') ?: 1,
+                'sender_subdistrict_id' => $request->input('sender_subdistrict_id') ?: 1,
+                'receiver_district_id' => $request->input('receiver_district_id') ?: 1,
+                'receiver_subdistrict_id' => $request->input('receiver_subdistrict_id') ?: 1,
+                'ansuransi' => $request->input('ansuransi') ?: 'tidak',
+                'service_type' => $request->input('service_type') ?: 'regular',
+                'item_type' => (int) $request->input('item_type', 1),
                 'vendor_filter' => $vendorFilter,
-                'sender_district_id' => $request->input('sender_district_id', null),
-                'sender_subdistrict_id' => $request->input('sender_subdistrict_id', null),
-                'receiver_district_id' => $request->input('receiver_district_id', null),
-                'receiver_subdistrict_id' => $request->input('receiver_subdistrict_id', null),
+                'sender_address' => $request->input('sender_address') ?: 'Titik Jemput Mapbox',
+                'receiver_address' => $request->input('receiver_address') ?: 'Titik Antar Mapbox',
             ]);
 
             try {
                 // Eksekusi fungsi internal
                 $thirdPartyRes = $this->cek_Ongkir($request, $kirimaja);
 
-                // Pastikan respons sukses (HTTP 200) sebelum parsing JSON
+                // Pastikan respons sukses (HTTP 200)
                 if ($thirdPartyRes->status() == 200) {
                     $thirdPartyData = $thirdPartyRes->getData(true);
 
@@ -2607,6 +2607,12 @@ TEXT;
                     if (!empty($thirdPartyData['result'])) {
                         $groupedResult = array_merge($groupedResult, $thirdPartyData['result']);
                     }
+                } else {
+                    // JIKA GAGAL, KITA LOG ALASANNYA!
+                    \Illuminate\Support\Facades\Log::warning('Validasi Pihak Ketiga Gagal (Bukan 200):', [
+                        'status' => $thirdPartyRes->status(),
+                        'response' => json_decode($thirdPartyRes->getContent(), true)
+                    ]);
                 }
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error('Error saat call cek_Ongkir dari Mobile API: ' . $e->getMessage());
@@ -2621,7 +2627,7 @@ TEXT;
             ], 404);
         }
 
-        // Sortir HANYA array flat berdasarkan cost termurah agar tidak crash
+        // Sortir HANYA array flat berdasarkan cost termurah
         if (!empty($flatResults)) {
             usort($flatResults, function($a, $b) {
                 $costA = $a['cost'] ?? 0;
@@ -2630,12 +2636,11 @@ TEXT;
             });
         }
 
-        // Kembalikan struktur yang sama persis seperti yang diharapkan React Native
         return response()->json([
             'status' => true,
             'message' => 'Tarif berhasil ditarik',
-            'results' => $flatResults,   // Untuk Sancaka, Lalamove, Deliveree
-            'result'  => $groupedResult  // Untuk KiriminAja
+            'results' => $flatResults,   // Lalamove, Deliveree, Sancaka
+            'result'  => $groupedResult  // KiriminAja
         ]);
     }
 
