@@ -302,7 +302,6 @@
                             </span>
                         </div>
 
-                        <!-- [AWAL TAMBAHAN] KOTAK RINCIAN ONGKIR DI PETA -->
                         <div id="map_ongkir_summary" class="position-absolute z-3 d-none bg-white p-3 shadow-lg" style="top: 70px; left: 10px; border-radius: var(--border-radius-md); border: 2px solid var(--primary-color); min-width: 260px;">
                             <h6 class="fw-bold text-primary mb-2 border-bottom pb-2" style="font-size: 0.9rem;"><i class="fas fa-box-open me-1"></i> Rincian Sancaka Express</h6>
                             <div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
@@ -326,10 +325,6 @@
                                 <span id="map_summary_total" class="fw-bold text-primary" style="font-size: 1rem;">Rp 0</span>
                             </div>
                         </div>
-                        <!-- [AKHIR TAMBAHAN] KOTAK RINCIAN ONGKIR DI PETA -->
-                        <!-- ======================================================= -->
-                        <!-- FITUR BARU: INFO BOX JARAK & DURASI (MUNCUL DI KANAN ATAS) -->
-                        <!-- ======================================================= -->
                         <div id="route-info-box" class="position-absolute end-0 z-3 d-none" style="top: 12px; right: 12px;">
                             <div class="bg-white px-3 py-2 rounded shadow-sm border border-primary d-flex align-items-center" style="font-size: 0.9rem;">
                                 <div class="text-primary fw-bold me-3" title="Total Jarak">
@@ -340,15 +335,11 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- ======================================================= -->
-
                         <div id='map' style="border-radius: 0; border: none;"></div>
 
-                        <!-- [AWAL TAMBAHAN] BOX TARIF OJEK ONLINE BAWAH PETA -->
                         <div id="ojek-online-summary" class="d-none bg-white p-3 border-top border-info shadow-sm" style="border-radius: 0 0 var(--border-radius-lg) var(--border-radius-lg);">
                             <h6 class="fw-bold text-info mb-3"><i class="fas fa-motorcycle me-2"></i>Tarif Ojek Online Sancaka</h6>
 
-                            <!-- Detail Titik Jemput & Tujuan -->
                             <div class="mb-3 px-2">
                                 <div class="d-flex align-items-start mb-2">
                                     <i class="fas fa-arrow-up text-primary mt-1 me-2" style="font-size: 0.85rem;"></i>
@@ -369,7 +360,6 @@
                             </div>
                             <hr class="my-2 border-zinc-200">
 
-                            <!-- Jarak, Waktu & Harga -->
                             <div class="row text-center mb-2 mt-3">
                                 <div class="col-6 border-end">
                                     <span class="text-muted" style="font-size: 0.8rem;">Jarak Tempuh</span><br>
@@ -391,9 +381,7 @@
                             </div>
                         </div>
 
-                        <!-- [AKHIR TAMBAHAN] BOX TARIF OJEK -->
-
-                     </div>
+                        </div>
                 </div>
             </div>
         </div>
@@ -417,7 +405,6 @@
                                     <option value="ojek_online" class="text-info fw-bold">Ojek Online Sancaka</option>
                                     <option value="deliveree" class="text-success fw-bold">Deliveree</option>
                                     <option value="lalamove" class="fw-bold" style="color: #f27024;">Lalamove</option>
-                                    {{--  <option value="ipaymu" class="fw-bold text-white" style="background-color: #6f42c1;">iPaymu (COD Khusus)</option> --}}
                                 </select>
                             </div>
 
@@ -712,21 +699,6 @@
     </div>
 </div>
 
-{{-- MODAL KHUSUS IPAYMU --}}
-{{-- <div class="modal fade" id="ipaymuModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
-        <div class="modal-content">
-            <div class="modal-header text-white" style="background-color: #6f42c1;">
-                <h5 class="modal-title fw-bold"><i class="fas fa-shipping-fast me-2"></i>Pilihan Kurir iPaymu</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" style="background-color: #f8f9fa;">
-                <div id="ipaymuResultsContainer" class="row g-3 justify-content-center"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
 {{-- Modal Metode Pembayaran --}}
 <div class="modal fade" id="paymentMethodModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
@@ -811,14 +783,6 @@
                             <div class="text-muted" style="font-size: 0.75rem;">Arah ke aplikasi DANA</div>
                         </div>
                     </li>
-
-                    {{--<li class="list-group-item list-group-item-action d-flex align-items-center gateway-option" data-value="IPAYMU" data-label="iPaymu">
-                        <img src="https://tokosancaka.com/public/assets/ipaymu.jpg" class="me-3 border rounded p-1 bg-white" style="width: 40px; height: 40px; object-fit: contain;" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=IP'">
-                        <div>
-                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">iPaymu (VA & QRIS)</div>
-                            <div class="text-muted" style="font-size: 0.75rem;">Transfer Bank, E-Wallet</div>
-                        </div>
-                    </li> --}}
 
                     <li class="list-group-item bg-light fw-bold text-muted border-top border-bottom-0" style="font-size: 0.75rem; text-transform: uppercase;">Saluran Pembayaran Lainnya (Tripay)</li>
                     <div id="dynamicPaymentChannels">
@@ -1359,7 +1323,6 @@
         const delivereeModal = new bootstrap.Modal(document.getElementById('delivereeModal'));
         const paymentModal = new bootstrap.Modal(document.getElementById('paymentMethodModal'));
         const lalamoveModal = new bootstrap.Modal(document.getElementById('lalamoveModal'));
-        const ipaymuModal = new bootstrap.Modal(document.getElementById('ipaymuModal'));
 
         let searchTimeout = null;
         const debounce = (func, delay) => (...args) => { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => func.apply(this, args), delay); };
@@ -1616,48 +1579,6 @@
             });
         }
 
-        function getIpaymuLogo(name) {
-            const lowerName = name.toLowerCase();
-            if (lowerName.includes('jne')) return 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png';
-            if (lowerName.includes('sicepat')) return 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png';
-            if (lowerName.includes('jnt') || lowerName.includes('j&t')) return 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png';
-            if (lowerName.includes('ninja')) return 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png';
-            if (lowerName.includes('anteraja')) return 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png';
-            if (lowerName.includes('ide')) return 'https://tokosancaka.com/public/storage/logo-ekspedisi/ide.png';
-            if (lowerName.includes('sap')) return 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png';
-            if (lowerName.includes('lion')) return 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png';
-            return 'https://tokosancaka.com/public/assets/ipaymu.jpg';
-        }
-
-        function renderIpaymuModal(results, baseParams) {
-            const container = $('#ipaymuResultsContainer').empty();
-            if (!results || results.length === 0) { container.html(`<div class="col-12"><div class="alert alert-warning text-center shadow-sm">Layanan iPaymu tidak tersedia.</div></div>`); return; }
-            results.forEach(i => {
-                let rawName = i.service_type_label || '', displayServiceType = rawName.toUpperCase().replace('IPAYMU-', ''), imgUrl = getIpaymuLogo(displayServiceType);
-                const insuranceFeeValue = $('#ansuransi').val() === 'iya' ? (i.insurance || 0) : 0, codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
-                const baseOngkirCost = parseInt(i.distance_fees || i.cost || 0), actualCodFee = parseInt(codFee || 0);
-                const payloadValue = `${baseParams.serviceType}-${i.service_name}-${rawName}-${i.cost}-${insuranceFeeValue}-${codFee}`;
-
-                container.append(`
-                <div class="col-md-6 col-lg-4 d-flex align-items-stretch">
-                    <div class="card h-100 shadow-sm w-100" style="border-radius:1rem; cursor: pointer; background: white; border: 1px solid #6f42c1;">
-                        <div class="card-body text-center p-3 p-md-4">
-                            <img src="${imgUrl}" style="height:60px; width:100%; object-fit:contain; margin-bottom:1rem;" alt="${displayServiceType}" onerror="this.src='https://tokosancaka.com/public/assets/ipaymu.jpg'">
-                            <h6 class="fw-bold text-dark mb-1">${displayServiceType}</h6>
-                            <span class="badge mb-2" style="background-color: #6f42c1; font-size: 0.75rem;">iPaymu COD</span>
-                            <h5 class="fw-bold mb-2" style="color: #6f42c1;">${formatRupiah(i.cost)}</h5>
-                            <div class="text-muted" style="font-size: 0.75rem;"><i class="fas fa-clock me-1"></i> Estimasi: ${i.etd}</div>
-                        </div>
-                        <div class="card-footer bg-transparent border-0 text-center pb-3 pt-0">
-                            <button type="button" class="btn w-100 select-ongkir-btn rounded-pill fw-bold" style="background-color: #6f42c1; color: white; font-size: 0.85rem;" data-value="${payloadValue}" data-display="iPaymu - ${displayServiceType}" data-cod-supported="${i.cod}" data-shipping-cost="${baseOngkirCost}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">
-                                <i class="fas fa-check-circle me-1"></i> Pilih Kurir
-                            </button>
-                        </div>
-                    </div>
-                </div>`);
-            });
-        }
-
         function runCekOngkir() {
             let formData = $('#orderForm').serializeArray();
             formData.forEach((item, index) => {
@@ -1679,9 +1600,11 @@
             $('#ongkirResultsContainer').html(`<div class="text-center p-5"><div class="spinner-border text-danger"></div><p class="mt-2 text-muted">Memuat tarif...</p></div>`);
             $('#delivereeResultsContainer').html(`<div class="col-12"><div class="text-center p-5"><div class="spinner-border text-success"></div><p class="mt-2 text-muted">Mencari Armada Deliveree...</p></div></div>`);
             $('#lalamoveResultsContainer').html(`<div class="col-12"><div class="text-center p-5"><div class="spinner-border" style="color:#f27024;"></div><p class="mt-2 text-muted">Mencari Armada Lalamove...</p></div></div>`);
-            $('#ipaymuResultsContainer').html(`<div class="col-12"><div class="text-center p-5"><div class="spinner-border" style="color:#6f42c1;"></div><p class="mt-2 text-muted">Mencari Kurir iPaymu...</p></div></div>`);
 
-            if (vendorFilter === 'deliveree') { delivereeModal.show(); } else if (vendorFilter === 'lalamove') { lalamoveModal.show(); } else if (vendorFilter === 'ipaymu') { ipaymuModal.show(); } else { ongkirModal.show(); }
+            if (vendorFilter === 'deliveree') { delivereeModal.show(); }
+            else if (vendorFilter === 'lalamove') { lalamoveModal.show(); }
+            else { ongkirModal.show(); }
+
             const serviceType = $('#service_type').val();
 
             $.ajax({
@@ -1690,12 +1613,12 @@
                     let allResults = [];
                     if (typeof res !== 'object' || res === null) {
                         const errHtml = '<div class="alert alert-danger text-center w-100">Format respons tidak valid.</div>';
-                        $('#ongkirResultsContainer, #delivereeResultsContainer, #lalamoveResultsContainer, #ipaymuResultsContainer').html(errHtml); return;
+                        $('#ongkirResultsContainer, #delivereeResultsContainer, #lalamoveResultsContainer').html(errHtml); return;
                     }
                     const hasData = (res.result && Array.isArray(res.result)) || (res.results && Array.isArray(res.results));
                     if (!hasData || (res.status === false && !hasData)) {
                         const errHtml = `<div class="alert alert-warning text-center shadow-sm w-100">${res.message || 'Layanan tidak ditemukan.'}</div>`;
-                        $('#ongkirResultsContainer, #delivereeResultsContainer, #lalamoveResultsContainer, #ipaymuResultsContainer').html(errHtml); return;
+                        $('#ongkirResultsContainer, #delivereeResultsContainer, #lalamoveResultsContainer').html(errHtml); return;
                     }
 
                     if (res.result && Array.isArray(res.result)) {
@@ -1711,18 +1634,19 @@
                     }
 
                     allResults.sort((a, b) => a.cost - b.cost);
-                    let kiriminAjaResults = [], delivereeResults = [], lalamoveResults = [], ipaymuResults = [];
+                    let kiriminAjaResults = [], delivereeResults = [], lalamoveResults = [];
                     allResults.forEach(service => {
                         let logoName = (service.service || "").toLowerCase().replace(/\s+/g, '');
-                        if (logoName === 'deliveree') { delivereeResults.push(service); } else if (logoName === 'lalamove') { lalamoveResults.push(service); } else if (logoName === 'ipaymu') { ipaymuResults.push(service); } else { kiriminAjaResults.push(service); }
+                        if (logoName === 'deliveree') { delivereeResults.push(service); }
+                        else if (logoName === 'lalamove') { lalamoveResults.push(service); }
+                        else { kiriminAjaResults.push(service); }
                     });
 
                     if (vendorFilter === 'deliveree') { renderDelivereeModal(delivereeResults, { serviceType: serviceType }); }
                     else if (vendorFilter === 'lalamove') { renderLalamoveModal(lalamoveResults, { serviceType: serviceType }); }
-                    else if (vendorFilter === 'ipaymu') { renderIpaymuModal(ipaymuResults, { serviceType: serviceType }); }
                     else {
                         const b = $('#ongkirResultsContainer').empty();
-                       if (kiriminAjaResults.length > 0) {
+                        if (kiriminAjaResults.length > 0) {
                             // 1. HEADER ROW DIPISAH (Biar tulisan LAYANAN tidak nabrak logo)
                             b.append(`
                                 <div class="ongkir-header-row d-none d-lg-flex">
@@ -1783,45 +1707,13 @@
                                 </div>`);
                             });
                         }
-                        if (ipaymuResults.length > 0) {
-                            b.append(`<div class="w-100 my-4 text-center text-muted" style="border-top: 1px dashed #ced4da; padding-top: 10px;"><small class="fw-bold" style="color: #6f42c1;">--- LAYANAN ALTERNATIF DARI IPAYMU COD ---</small></div>`);
-                            ipaymuResults.forEach(i => {
-                                let rawName = i.service_type_label || '', displayServiceType = rawName.toUpperCase().replace('IPAYMU-', ''), imgUrl = getIpaymuLogo(displayServiceType);
-                                const useInsurance = $('#ansuransi').val() === 'iya', insuranceFeeValue = useInsurance ? (i.insurance || 0) : 0, codFee = (i.setting && i.setting.cod_fee_amount) ? i.setting.cod_fee_amount : 0;
-                                const baseOngkirCost = parseInt(i.distance_fees || i.cost || 0), actualCodFee = parseInt(codFee || 0);
-                                const payloadValue = `${serviceType}-${i.service_name}-${rawName}-${i.cost}-${insuranceFeeValue}-${codFee}`;
-
-                                let feeDetailsHtml = '';
-                                if (useInsurance && insuranceFeeValue > 0) { feeDetailsHtml += `<div><small>Termasuk Asuransi: ${formatRupiah(insuranceFeeValue)}</small></div>`; }
-                                if (i.cod && codFee > 0) { feeDetailsHtml += `<div><small>Biaya COD: ${formatRupiah(codFee)}</small></div>`; }
-                                const buttonHtml = `<button type="button" class="btn btn-kirim select-ongkir-btn" style="background-color: #6f42c1;" data-value="${payloadValue}" data-display="iPaymu - ${displayServiceType}" data-cod-supported="${i.cod}" data-shipping-cost="${baseOngkirCost}" data-insurance-cost="${insuranceFeeValue}" data-cod-fee="${actualCodFee}">Pilih Kurir</button>`;
-
-                               b.append(`
-                                <div class="ongkir-item-card" style="border-left: 4px solid #6f42c1;">
-                                    <div class="ongkir-item-col col-logo">
-                                        <img src="${imgUrl}" class="ongkir-logo" onerror="this.src='https://tokosancaka.com/public/assets/ipaymu.jpg'">
-                                    </div>
-                                    <div class="ongkir-item-col col-service">
-                                        <span class="col-label">Layanan</span>
-                                        <div class="service-info"><span class="service-name">${displayServiceType}</span><span class="service-type" style="color:#6f42c1; font-weight:bold;">iPaymu COD</span></div>
-                                    </div>
-                                    <div class="ongkir-item-col col-etd"><span class="col-label">Estimasi</span><span>${i.etd}</span></div>
-                                    <div class="ongkir-item-col col-cod"><span class="col-label">COD</span><span class="text-success fw-bold">Wajib</span></div>
-                                    <div class="ongkir-item-col col-price"><span class="col-label">Tarif</span>
-                                        <div class="price-value"><span class="final-price" style="color:#6f42c1;">${formatRupiah(i.cost)}</span></div>
-                                        <div class="price-details">${feeDetailsHtml}</div>
-                                    </div>
-                                    <div class="ongkir-item-col col-action">${buttonHtml}</div>
-                                </div>`);
-                            });
-                        }
-                        if (kiriminAjaResults.length === 0 && ipaymuResults.length === 0) { b.html(`<div class="alert alert-warning text-center shadow-sm">Tidak ada layanan reguler yang tersedia.</div>`); }
+                        if (kiriminAjaResults.length === 0) { b.html(`<div class="alert alert-warning text-center shadow-sm">Tidak ada layanan reguler yang tersedia.</div>`); }
                     }
                 },
                 error: function(jqXHR, textStatus) {
                     let errorMsg = jqXHR.responseJSON?.message || (textStatus === 'timeout' ? 'Waktu habis (Timeout). Server API ekspedisi merespons terlalu lambat.' : 'Gagal mengambil data ongkir dari server.');
                     const errHtml = `<div class="col-12"><div class="alert alert-danger text-center shadow-sm w-100"><i class="fas fa-exclamation-triangle me-2"></i> ${errorMsg}</div></div>`;
-                    $('#ongkirResultsContainer, #delivereeResultsContainer, #lalamoveResultsContainer, #ipaymuResultsContainer').html(errHtml);
+                    $('#ongkirResultsContainer, #delivereeResultsContainer, #lalamoveResultsContainer').html(errHtml);
                 }
             });
         }
@@ -1860,7 +1752,7 @@
             }
 
             updateTotalSummary();
-            ongkirModal.hide(); delivereeModal.hide(); lalamoveModal.hide(); ipaymuModal.hide();
+            ongkirModal.hide(); delivereeModal.hide(); lalamoveModal.hide();
 
             let vehicleId = $(this).data('vehicle-id');
             if (String(expeditionValue).toLowerCase().includes('deliveree') && vehicleId) {
