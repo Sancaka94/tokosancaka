@@ -2535,16 +2535,18 @@ TEXT;
             'receiver_lng' => 'required|numeric',
             'weight' => 'required|numeric',
             'item_price' => 'required|numeric',
-            'vendor_filter' => 'required|string',
-            'service_type' => 'required|string',
-            'item_type' => 'required|integer',
+            'vendor_filter' => 'nullable|string',
+            'service_type' => 'nullable|string',
+            'item_type' => 'nullable|integer',
         ]);
 
-        $vendorFilter = strtolower($request->input('vendor_filter'));
-        $results = [];
+        $vendorFilter = strtolower($request->input('vendor_filter', 'all'));
 
-        // 2. LOGIKA SANCAKA EXPRESS / OJEK (Internal)
-        // Kita hitung menggunakan Mapbox API melalui method private yang ada di controller ini
+        // PENTING: Pisahkan wadah untuk format Flat dan format Grouped
+        $flatResults = [];    // Untuk Sancaka, Ojek, Deliveree, Lalamove
+        $groupedResult = [];  // Untuk KiriminAja
+
+        // 2. LOGIKA SANCAKA EXPRESS / OJEK ONLINE
         if (in_array($vendorFilter, ['all', 'sancaka_express', 'ojek_online'])) {
             $sancakaRes = $this->_getSancakaExpressPricing(
                 $request->input('sender_lat'),
@@ -2561,45 +2563,79 @@ TEXT;
                 $request->input('item_price', 0)
             );
 
-            if ($sancakaRes['status']) {
-                $results = array_merge($results, $sancakaRes['results']);
+            if (!empty($sancakaRes['status']) && !empty($sancakaRes['results'])) {
+                // Modifikasi label jika user spesifik memilih Ojek Online
+                if ($vendorFilter === 'ojek_online') {
+                    foreach ($sancakaRes['results'] as &$item) {
+                        $item['service'] = 'ojek_online';
+                        $item['service_type'] = 'Ojek Online Instan';
+                    }
+                }
+                $flatResults = array_merge($flatResults, $sancakaRes['results']);
             }
         }
 
         // 3. LOGIKA PIHAK KETIGA (KiriminAja, Deliveree, Lalamove)
-        // Hanya jalan jika filter 'all' atau spesifik vendor tersebut
         if (in_array($vendorFilter, ['all', 'kiriminaja', 'deliveree', 'lalamove'])) {
-            // Karena fungsi cek_Ongkir Anda membutuhkan banyak data district_id,
-            // pastikan frontend mengirimkan data tersebut.
-            // Jika frontend tidak punya ID, kita panggil helper internal cek_Ongkir
-            $thirdPartyRes = $this->cek_Ongkir($request, $kirimaja);
 
-            // Ambil data JSON dari response cek_Ongkir
-            $thirdPartyData = $thirdPartyRes->getData(true);
+            // Suntikkan data default agar tidak kena error 422 saat memanggil fungsi cek_Ongkir internal
+            $request->merge([
+                'ansuransi' => $request->input('ansuransi', 'tidak'),
+                'service_type' => $request->input('service_type', 'regular'),
+                'item_type' => $request->input('item_type', 1),
+                'vendor_filter' => $vendorFilter,
+                'sender_district_id' => $request->input('sender_district_id', null),
+                'sender_subdistrict_id' => $request->input('sender_subdistrict_id', null),
+                'receiver_district_id' => $request->input('receiver_district_id', null),
+                'receiver_subdistrict_id' => $request->input('receiver_subdistrict_id', null),
+            ]);
 
-            if (!empty($thirdPartyData['results'])) {
-                $results = array_merge($results, $thirdPartyData['results']);
-            }
-            if (!empty($thirdPartyData['result'])) {
-                $results = array_merge($results, $thirdPartyData['result']);
+            try {
+                // Eksekusi fungsi internal
+                $thirdPartyRes = $this->cek_Ongkir($request, $kirimaja);
+
+                // Pastikan respons sukses (HTTP 200) sebelum parsing JSON
+                if ($thirdPartyRes->status() == 200) {
+                    $thirdPartyData = $thirdPartyRes->getData(true);
+
+                    // Masukkan Lalamove & Deliveree ke kelompok Flat
+                    if (!empty($thirdPartyData['results'])) {
+                        $flatResults = array_merge($flatResults, $thirdPartyData['results']);
+                    }
+
+                    // Masukkan KiriminAja ke kelompok Grouped
+                    if (!empty($thirdPartyData['result'])) {
+                        $groupedResult = array_merge($groupedResult, $thirdPartyData['result']);
+                    }
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error('Error saat call cek_Ongkir dari Mobile API: ' . $e->getMessage());
             }
         }
 
-        // 4. Response Final (Urutkan dari termurah)
-        if (empty($results)) {
+        // 4. Response Final
+        if (empty($flatResults) && empty($groupedResult)) {
             return response()->json([
                 'status' => false,
                 'message' => 'Layanan tidak tersedia untuk rute atau ekspedisi yang dipilih.'
             ], 404);
         }
 
-        // Sortir hasil gabungan berdasarkan cost termurah
-        usort($results, fn($a, $b) => ($a['cost'] ?? $a['price']['total_price']) <=> ($b['cost'] ?? $b['price']['total_price']));
+        // Sortir HANYA array flat berdasarkan cost termurah agar tidak crash
+        if (!empty($flatResults)) {
+            usort($flatResults, function($a, $b) {
+                $costA = $a['cost'] ?? 0;
+                $costB = $b['cost'] ?? 0;
+                return $costA <=> $costB;
+            });
+        }
 
+        // Kembalikan struktur yang sama persis seperti yang diharapkan React Native
         return response()->json([
             'status' => true,
             'message' => 'Tarif berhasil ditarik',
-            'results' => $results
+            'results' => $flatResults,   // Untuk Sancaka, Lalamove, Deliveree
+            'result'  => $groupedResult  // Untuk KiriminAja
         ]);
     }
 
