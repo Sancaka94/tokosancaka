@@ -1835,3 +1835,4 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
 Route::get('auth/facebook', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'redirectToFacebook'])->name('login.facebook');
 Route::get('auth/facebook/callback', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'handleFacebookCallback']);
+
