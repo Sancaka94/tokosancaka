@@ -889,6 +889,7 @@ public function notify_driver(Request $request)
                 $order->driver_phone = "08819435180"; // Sesuaikan dengan nomor WA Admin
                 $order->driver_lat = $order->driver_lat ?? -7.4025;
                 $order->driver_lng = $order->driver_lng ?? 111.4558;
+                $order->driver_is_online = 1;
             }
 
             Log::info("LOG LOG: SUKSES! Data order berhasil ditarik dan dikirim ke Frontend.");
