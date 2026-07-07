@@ -393,11 +393,13 @@ class AuthenticatedSessionController extends Controller
 
             return redirect()->route('customer.dashboard');
 
-        } catch (\Exception $e) {
-            Log::error('Facebook Auth Gagal: ' . $e->getMessage());
-            return redirect()->route('login')->withErrors([
-                'login' => 'Terjadi kesalahan saat otentikasi menggunakan Facebook. Silakan coba lagi.'
-            ]);
-        }
+                } catch (\Exception $e) {
+                // Menambahkan array konteks ['exception' => $e] agar Laravel mencatat detail error secara lengkap
+                Log::error('Facebook Auth Gagal: ' . $e->getMessage(), ['exception' => $e]);
+                
+                return redirect()->route('login')->withErrors([
+                    'login' => 'Terjadi kesalahan saat otentikasi menggunakan Facebook. Silakan coba lagi.'
+                ]);
+            }
     }
 }
