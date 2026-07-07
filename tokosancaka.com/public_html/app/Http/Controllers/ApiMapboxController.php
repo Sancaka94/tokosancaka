@@ -93,8 +93,10 @@ class ApiMapboxController extends Controller
                 $durationMinutes = ceil($durationSeconds / 60);
 
                 // --- [LOGIKA TARIF KURIR LOKAL SANCAKA] ---
-                $baseFare = 10000;
-                $perKmRate = 2500;
+                // --- [LOGIKA TARIF KURIR LOKAL SANCAKA DINAMIS] ---
+                // Mengambil nilai dari database, dengan fallback nilai default jika kosong
+                $baseFare = (float) \App\Models\Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 10000);
+                $perKmRate = (float) \App\Models\Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 2500);
                 $estimatedCost = $baseFare;
 
                 if ($distanceKm > 2) {

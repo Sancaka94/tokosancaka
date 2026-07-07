@@ -888,22 +888,78 @@
                                 </div>
                                 {{-- AKHIR TAMBAHAN KODE --}}
 
+                                {{-- TAMBAHAN: ZONASI TARIF OJOL (KEMENHUB) --}}
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 mt-6 border-t border-zinc-200">
-                                    <div class="md:col-span-1">
-                                        <h4 class="text-sm font-semibold text-zinc-900">Tarif Ojek Online</h4>
-                                        <p class="text-xs text-zinc-500 mt-1">Konfigurasi hitungan otomatis untuk layanan Ojek Online Sancaka berbasis Jarak (Mapbox).</p>
+                                    <div class="md:col-span-3 mb-2">
+                                        <h4 class="text-sm font-semibold text-zinc-900">Zonasi Tarif Ojek Online (Kemenhub)</h4>
+                                        <p class="text-xs text-zinc-500 mt-1">Pisahkan nama wilayah (Provinsi/Kota) dengan koma (,). Sistem mendeteksi otomatis via Mapbox Reverse Geocoding.</p>
                                     </div>
-                                    <div class="md:col-span-2 space-y-5">
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                                    {{-- ZONA I --}}
+                                    <div class="bg-zinc-50 border border-zinc-200 p-4 rounded-lg space-y-4">
+                                        <h6 class="font-bold text-xs text-zinc-800 uppercase border-b border-zinc-200 pb-2">Zona I</h6>
+                                        <div>
+                                            <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Wilayah Tercover</label>
+                                            <textarea name="zona_1_wilayah" x-model="mapboxData.zonasi.zona_1.wilayah" rows="2" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-xs p-2 border"></textarea>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Tarif Minimal (Base Fare)</label>
+                                            <input type="number" name="zona_1_tarif_minimal" x-model="mapboxData.zonasi.zona_1.tarif_minimal" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-xs p-2 border" required min="0">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Tarif per KM</label>
+                                            <input type="number" name="zona_1_tarif_per_km" x-model="mapboxData.zonasi.zona_1.tarif_per_km" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-xs p-2 border" required min="0">
+                                        </div>
+                                    </div>
+
+                                    {{-- ZONA II --}}
+                                    <div class="bg-zinc-50 border border-zinc-200 p-4 rounded-lg space-y-4">
+                                        <h6 class="font-bold text-xs text-zinc-800 uppercase border-b border-zinc-200 pb-2">Zona II (Jabodetabek)</h6>
+                                        <div>
+                                            <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Wilayah Tercover</label>
+                                            <textarea name="zona_2_wilayah" x-model="mapboxData.zonasi.zona_2.wilayah" rows="2" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-xs p-2 border"></textarea>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Tarif Minimal (Base Fare)</label>
+                                            <input type="number" name="zona_2_tarif_minimal" x-model="mapboxData.zonasi.zona_2.tarif_minimal" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-xs p-2 border" required min="0">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Tarif per KM</label>
+                                            <input type="number" name="zona_2_tarif_per_km" x-model="mapboxData.zonasi.zona_2.tarif_per_km" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-xs p-2 border" required min="0">
+                                        </div>
+                                    </div>
+
+                                    {{-- ZONA III --}}
+                                    <div class="bg-zinc-50 border border-zinc-200 p-4 rounded-lg space-y-4">
+                                        <h6 class="font-bold text-xs text-zinc-800 uppercase border-b border-zinc-200 pb-2">Zona III</h6>
+                                        <div>
+                                            <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Wilayah Tercover</label>
+                                            <textarea name="zona_3_wilayah" x-model="mapboxData.zonasi.zona_3.wilayah" rows="2" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-xs p-2 border"></textarea>
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Tarif Minimal (Base Fare)</label>
+                                            <input type="number" name="zona_3_tarif_minimal" x-model="mapboxData.zonasi.zona_3.tarif_minimal" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-xs p-2 border" required min="0">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Tarif per KM</label>
+                                            <input type="number" name="zona_3_tarif_per_km" x-model="mapboxData.zonasi.zona_3.tarif_per_km" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-xs p-2 border" required min="0">
+                                        </div>
+                                    </div>
+
+                                    {{-- FALLBACK / CADANGAN --}}
+                                    <div class="md:col-span-3 mt-2 bg-zinc-100 p-4 rounded-lg border border-zinc-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                        <div>
+                                            <h6 class="font-bold text-xs text-zinc-800 uppercase">Tarif Default (Cadangan)</h6>
+                                            <p class="text-[10px] text-zinc-500 mt-1">Digunakan jika sistem gagal memetakan kordinat wilayah ke salah satu zona di atas.</p>
+                                        </div>
+                                        <div class="flex gap-4">
                                             <div>
-                                                <label class="block text-xs font-medium text-zinc-700 uppercase mb-1">Tarif Dasar Ojek (Rp)</label>
-                                                <input type="number" name="ojek_base_fare" x-model="mapboxData.ojek_base_fare" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border" required min="0" placeholder="5000">
-                                                <p class="text-[11px] text-zinc-500 mt-1">Tarif pembuka (Misal: Rp 5.000).</p>
+                                                <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Tarif Dasar Default</label>
+                                                <input type="number" name="ojek_base_fare" x-model="mapboxData.ojek_base_fare" class="w-full md:w-32 rounded-md border-zinc-300 focus:border-zinc-900 sm:text-xs p-2 border" required min="0">
                                             </div>
                                             <div>
-                                                <label class="block text-xs font-medium text-zinc-700 uppercase mb-1">Harga per KM Ojek (Rp)</label>
-                                                <input type="number" name="ojek_price_per_km" x-model="mapboxData.ojek_price_per_km" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border" required min="0" placeholder="2500">
-                                                <p class="text-[11px] text-zinc-500 mt-1">Tarif pengali jarak (Misal: Rp 2.500).</p>
+                                                <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Tarif / KM Default</label>
+                                                <input type="number" name="ojek_price_per_km" x-model="mapboxData.ojek_price_per_km" class="w-full md:w-32 rounded-md border-zinc-300 focus:border-zinc-900 sm:text-xs p-2 border" required min="0">
                                             </div>
                                         </div>
                                     </div>
