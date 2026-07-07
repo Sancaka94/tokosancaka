@@ -309,25 +309,6 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
             }
         }
 
-       // =========================================================================
-        // 4. BLOK IPAYMU (COD KOMSHIP)
-        // =========================================================================
-        if (in_array($vendorFilter, ['all', 'ipaymu'])) {
-            $ipaymuOptions = $this->_getIpaymuPricing(
-                $validated['sender_district'] ?? null,
-                $validated['sender_regency'] ?? null,
-                $validated['receiver_district'] ?? null,
-                $validated['receiver_regency'] ?? null,
-                $validated['weight'],
-                $itemValue
-            );
-
-            if ($ipaymuOptions['status']) {
-                $expressOptions['status'] = true;
-                $expressOptions['results'] = array_merge($expressOptions['results'] ?? [], $ipaymuOptions['results']);
-            }
-        }
-
         // =========================================================================
         // BLOK SANCAKA EXPRESS (ONE DAY SERVICE - INTERNAL KILAT)
         // =========================================================================
@@ -475,7 +456,6 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                 elseif ($paymentMethodRaw === 'PAYPAL') $paymentGateway = 'paypal';
                 elseif ($paymentMethodRaw === 'DANA_BINDING') $paymentGateway = 'dana_binding';
                 elseif (in_array($paymentMethodRaw, ['DANA', 'NETWORK_PAY_PG_DANA'])) $paymentGateway = 'dana_direct';
-                elseif ($paymentMethodRaw === 'IPAYMU') $paymentGateway = 'ipaymu';
 
                 $orderItemsPayload = $this->_prepareOrderItemsPayload($shipping_cost, $insurance_cost, $validatedData['ansuransi']);
 
@@ -492,11 +472,6 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                     $pesanan->payment_url = $paymentUrl;
                 }
 
-                elseif ($paymentGateway === 'ipaymu') {
-                    $paymentUrl = $this->createPaymentIpaymuPublic($pesanan, $total_paid_ongkir, $customerData);
-                    if (empty($paymentUrl)) throw new Exception('Gagal membuat link pembayaran iPaymu.');
-                    $pesanan->payment_url = $paymentUrl;
-                }
 
                 elseif ($paymentGateway === 'doku') {
                     $dokuService = new DokuJokulService();
@@ -639,21 +614,6 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                     $pesanan->resi = $sancakaResponse['resi'] ?? null;
                 // 👆 [AKHIR PERUBAHAN] 👆
 
-                } elseif (strtolower($expVendor) === 'ipaymu' || strtolower($expVendor) === 'komship') {
-
-                    // Panggil helper iPaymu COD
-                    $ipaymuResponse = $this->_createIpaymuOrder(
-                        $validatedData, $pesanan, $cod_value
-                    );
-
-                    if (($ipaymuResponse['status'] ?? false) !== true) {
-                        throw new Exception($ipaymuResponse['text'] ?? 'Gagal membuat order COD di iPaymu.');
-                    }
-
-                    $pesanan->status = 'Menunggu Pickup';
-                    $pesanan->status_pesanan = 'Menunggu Pickup';
-                    // Kita gunakan Transaction ID iPaymu sebagai Resi sementara
-                    $pesanan->resi = $ipaymuResponse['resi'] ?? null;
 
                 } else {
                     // Panggil _createKiriminAjaOrder (Logika lama Sancaka tetap aman)
@@ -2331,230 +2291,6 @@ TEXT;
         return ['status' => false, 'text' => 'Gagal membuat pesanan di server Lalamove.'];
     }
 
-   /**
-     * =========================================================================
-     * FUNGSI HELPER IPAYMU COD / KOMSHIP (TARIK ONGKIR & CREATE ORDER)
-     * =========================================================================
-     */
-    private function _getIpaymuPricing($senderDistrict, $senderRegency, $receiverDistrict, $receiverRegency, $weight, $amount)
-    {
-        Log::info('LOG LOG: Start iPaymu Pricing', ['origin_dist' => $senderDistrict, 'dest_dist' => $receiverDistrict]);
-
-        try {
-            $ipaymu = app(\App\Services\IpaymuService::class);
-
-            $findAreaId = function($district, $regency) use ($ipaymu) {
-                $cleanRegency = trim(str_ireplace(['kabupaten ', 'kab. ', 'kota '], '', $regency));
-
-                $queries = [
-                    $district,
-                    $district . ' ' . $cleanRegency,
-                    $cleanRegency
-                ];
-
-                foreach ($queries as $q) {
-                    if (empty($q)) continue;
-
-                    $search = $ipaymu->getCodArea($q);
-
-                    // ==========================================================
-                    // 🐛 KODE DEBUG DITAMBAHKAN DI SINI 🐛
-                    // ==========================================================
-                    Log::info("LOG DEBUG IPAYMU: Raw Response Cek Area [{$q}]", [
-                        'response' => $search
-                    ]);
-                    // ==========================================================
-
-                    $id = $search['Data'][0]['id'] ?? $search['data'][0]['id'] ?? null;
-
-                    if ($id) {
-                        Log::info("LOG LOG: iPaymu Area Ditemukan untuk keyword [{$q}] -> ID: {$id}");
-                        return $id;
-                    }
-                }
-
-                return null;
-            };
-
-            $originId = $findAreaId($senderDistrict, $senderRegency);
-            $destId   = $findAreaId($receiverDistrict, $receiverRegency);
-
-            if ($originId && $destId) {
-                $weightKg = ceil($weight / 1000);
-                if ($weightKg < 1) $weightKg = 1;
-
-                $ongkirRes = $ipaymu->calculateShipping($destId, $originId, $weightKg, $amount);
-
-                // ==========================================================
-                // 🐛 KODE DEBUG ONGKIR IPAYMU 🐛
-                // ==========================================================
-                Log::info("LOG DEBUG IPAYMU: Raw Response Cek Harga/Ongkir", [
-                    'response' => $ongkirRes
-                ]);
-                // ==========================================================
-
-                $results = [];
-                $couriers = $ongkirRes['Data'] ?? $ongkirRes['data'] ?? [];
-
-                if (is_array($couriers) && count($couriers) > 0) {
-                    foreach ($couriers as $svc) {
-                        $results[] = [
-                            'service' => 'ipaymu',
-                            'service_type' => 'ipaymu-' . strtoupper($svc['courier'] ?? 'REGULAR'),
-                            'cost' => $svc['price'] ?? $svc['cost'] ?? 0,
-                            'distance_fees' => $svc['price'] ?? $svc['cost'] ?? 0,
-                            'extra_fees' => 0,
-                            'etd' => $svc['estimation'] ?? '2-3 Hari',
-                            'cod' => true
-                        ];
-                    }
-                    Log::info('LOG LOG: iPaymu Pricing Success menemukan ' . count($results) . ' kurir.');
-                    return ['status' => true, 'results' => $results];
-                } else {
-                    Log::warning('LOG LOG: iPaymu API membalikkan hasil kosong untuk ongkir.', ['res' => $ongkirRes]);
-                }
-            } else {
-                Log::warning('LOG LOG: Area iPaymu tetap gagal ditemukan.', [
-                    's_dist' => $senderDistrict, 's_reg' => $senderRegency, 'orig_id' => $originId,
-                    'r_dist' => $receiverDistrict, 'r_reg' => $receiverRegency, 'dest_id' => $destId
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::error('LOG LOG: iPaymu Pricing Exception: ' . $e->getMessage());
-        }
-
-        return ['status' => false, 'results' => []];
-    }
-
-   private function _createIpaymuOrder($data, $pesanan, $cod_value)
-    {
-        try {
-            $ipaymu = app(\App\Services\IpaymuService::class);
-
-            // 1. Hitung Berat dan Dimensi (Fix Undefined Variable)
-            $weightKg = ceil(($pesanan->weight ?? $data['weight'] ?? 1000) / 1000);
-            if ($weightKg < 1) $weightKg = 1;
-
-            $length = $pesanan->length ?? $data['length'] ?? 10;
-            $width  = $pesanan->width ?? $data['width'] ?? 10;
-            $height = $pesanan->height ?? $data['height'] ?? 10;
-
-            // 2. Tarik Area ID (Karena API iPaymu mewajibkan Origin dan Dest ID untuk COD)
-            $findAreaId = function($district, $regency) use ($ipaymu) {
-                $cleanRegency = trim(str_ireplace(['kabupaten ', 'kab. ', 'kota '], '', $regency));
-                $queries = [$district, $district . ' ' . $cleanRegency, $cleanRegency];
-
-                foreach ($queries as $q) {
-                    if (empty($q)) continue;
-                    $search = $ipaymu->getCodArea($q);
-                    $id = $search['Data'][0]['id'] ?? $search['data'][0]['id'] ?? null;
-                    if ($id) return $id;
-                }
-                return null;
-            };
-
-            $originId = $findAreaId($data['sender_district'] ?? '', $data['sender_regency'] ?? '');
-            $destId   = $findAreaId($data['receiver_district'] ?? '', $data['receiver_regency'] ?? '');
-
-            // 3. Buat Pembayaran / Invoice COD di iPaymu
-            $payload = [
-                'product'         => ['Paket COD - ' . $pesanan->nomor_invoice],
-                'qty'             => ['1'],
-                'price'           => [$cod_value],
-                'amount'          => $cod_value,
-                'returnUrl'       => route('pesanan.public.success'),
-                'cancelUrl'       => route('pesanan.public.create'),
-                'notifyUrl'       => url('/api/webhook/ipaymu'),
-                'referenceId'     => $pesanan->nomor_invoice,
-                'buyerName'       => $data['receiver_name'],
-                'buyerEmail'      => $data['customer_email'] ?? 'customer@tokosancaka.com',
-                'buyerPhone'      => $data['receiver_phone'],
-                'paymentMethod'   => 'cod',
-                'weight'          => $weightKg,
-                'width'           => $width,
-                'height'          => $height,
-                'length'          => $length,
-                'deliveryAddress' => $data['receiver_address'],
-            ];
-
-            if ($originId) $payload['pickupArea'] = (string) $originId;
-            if ($destId) $payload['deliveryArea'] = (string) $destId;
-
-            $paymentRes = $ipaymu->createPayment($payload);
-
-            $isSuccess = $paymentRes['Success'] ?? $paymentRes['success'] ?? false;
-
-            if (!$isSuccess) {
-                Log::error('LOG LOG: Gagal Create Payment iPaymu COD', ['res' => $paymentRes]);
-                return ['status' => false, 'text' => 'Gagal membuat invoice COD di iPaymu: ' . ($paymentRes['Message'] ?? $paymentRes['message'] ?? '')];
-            }
-
-            // Dapatkan Transaction ID dari respons iPaymu
-            $trxId = $paymentRes['Data']['TransactionId'] ?? $paymentRes['data']['transaction_id'] ?? $paymentRes['Data']['SessionID'] ?? null;
-
-            if (!$trxId) {
-                return ['status' => false, 'text' => 'Transaction ID tidak ditemukan dari iPaymu.'];
-            }
-
-            // 4. Request Pickup Otomatis
-            $pickupDate = \Carbon\Carbon::now()->timezone('Asia/Jakarta')->format('Y-m-d');
-            $pickupTime = \Carbon\Carbon::now()->timezone('Asia/Jakarta')->addHours(1)->format('H:i');
-
-            $pickupRes = $ipaymu->requestCodPickup($trxId, $pickupDate, $pickupTime, 'Motor');
-            Log::info("LOG LOG: iPaymu Pickup Requested", ['res' => $pickupRes]);
-
-            return [
-                'status' => true,
-                'resi' => (string) $trxId
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('LOG LOG: Exception iPaymu Order: ' . $e->getMessage());
-            return ['status' => false, 'text' => 'Exception iPaymu: ' . $e->getMessage()];
-        }
-    }
-
-    /**
-     * EKSEKUTOR IPAYMU UNTUK PESANAN PUBLIK (REGULER PAYMENT GATEWAY)
-     */
-    private function createPaymentIpaymuPublic(Pesanan $pesanan, int $amount, array $customerData)
-    {
-        Log::info('LOG LOG: IPAYMU PG START for Invoice: ' . $pesanan->nomor_invoice);
-
-        try {
-            $ipaymuService = app(\App\Services\IpaymuService::class);
-
-            $payload = [
-                'product'    => ['Pembayaran Pesanan - ' . $pesanan->nomor_invoice],
-                'qty'        => ['1'],
-                'price'      => [$amount],
-                'amount'     => $amount,
-                'returnUrl'  => route('pesanan.public.success'),
-                'cancelUrl'  => route('pesanan.public.create'),
-                'notifyUrl'  => url('/api/webhook/ipaymu'), // Handle Webhook via ipaymuNotify()
-                'referenceId'=> $pesanan->nomor_invoice,
-                'buyerName'  => $customerData['name'] ?? 'Customer',
-                'buyerEmail' => $customerData['email'] ?? 'customer@tokosancaka.com',
-                'buyerPhone' => $customerData['phone'] ?? '',
-            ];
-
-            // Hit ke API iPaymu
-            $response = $ipaymuService->createPayment($payload);
-            $isSuccess = $response['Success'] ?? ($response['success'] ?? false);
-
-            if ($isSuccess) {
-                // Return link pembayaran ke user
-                return $response['Data']['Url'] ?? ($response['data']['url'] ?? null);
-            }
-
-            Log::error('LOG LOG: Gagal mendapatkan URL PG dari iPaymu', $response ?? []);
-            return null;
-
-        } catch (\Exception $e) {
-            Log::error('LOG LOG: IPAYMU PG System Error: ' . $e->getMessage());
-            return null;
-        }
-    }
 
   /**
      * =========================================================================
