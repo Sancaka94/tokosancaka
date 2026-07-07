@@ -254,12 +254,12 @@ class ApiMapboxController extends Controller
         }
     }
 
-    public function getNearbyDrivers(Request $request)
+   public function getNearbyDrivers(Request $request)
     {
         try {
             $lat = $request->query('lat');
             $lng = $request->query('lng');
-            $radius = 5;
+            $radius = 5; // Jarak maksimal dalam KM
 
             if (!$lat || !$lng) {
                 return response()->json([
@@ -268,7 +268,7 @@ class ApiMapboxController extends Controller
                 ]);
             }
 
-            // 🔥 PERBAIKAN QUERY: Tambahkan is_active_map di Select dan Where 🔥
+            // 1. TARIK DRIVER BIASA (Dari tabel registrasi_driver_sancaka)
             $drivers = DB::table('registrasi_driver_sancaka')
                 ->selectRaw("id, id_pengguna, nama_lengkap, latitude, longitude, status, is_active_map,
                     ( 6371 * acos( cos( radians(?) ) *
@@ -278,24 +278,58 @@ class ApiMapboxController extends Controller
                       sin( radians( latitude ) ) )
                     ) AS distance", [$lat, $lng, $lat])
                 ->where('status', 'approved')
-                ->where('is_active_map', 1) // KUNCI: HANYA TARIK DRIVER YANG ONLINE
+                ->where('is_active_map', 1)
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
                 ->having('distance', '<=', $radius)
-                ->orderBy('distance', 'asc')
-                ->limit(10)
                 ->get();
 
             $formattedDrivers = $drivers->map(function ($driver) {
                 return [
-                    'id'       => $driver->id,
-                    'name'     => $driver->nama_lengkap,
-                    'vehicle'  => 'Ojek Sancaka',
-                    'distance' => round($driver->distance, 1) . ' KM',
-                    'lat'      => (float) $driver->latitude,
-                    'lng'      => (float) $driver->longitude,
-                    'is_online'=> $driver->is_active_map == 1
+                    'id'           => $driver->id, // ID pendaftaran driver
+                    'id_pengguna'  => $driver->id_pengguna,
+                    'name'         => $driver->nama_lengkap,
+                    'vehicle'      => 'Ojek Sancaka',
+                    'distance'     => round($driver->distance, 1) . ' KM',
+                    'distance_raw' => (float) $driver->distance,
+                    'lat'          => (float) $driver->latitude,
+                    'lng'          => (float) $driver->longitude,
+                    'is_online'    => $driver->is_active_map == 1
                 ];
+            })->toArray();
+
+            // 2. TARIK ADMIN BEBAS (User ID 4 dari tabel Pengguna)
+            $admin = DB::table('Pengguna')
+                ->selectRaw("id_pengguna, nama_lengkap, latitude, longitude,
+                    ( 6371 * acos( cos( radians(?) ) *
+                      cos( radians( latitude ) ) *
+                      cos( radians( longitude ) - radians(?) ) +
+                      sin( radians(?) ) *
+                      sin( radians( latitude ) ) )
+                    ) AS distance", [$lat, $lng, $lat])
+                ->where('id_pengguna', 4)
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->first();
+
+            // Jika admin sedang terdeteksi memiliki koordinat, masukkan ke dalam antrean driver terdekat
+            if ($admin && $admin->distance <= $radius) {
+                $formattedDrivers[] = [
+                    'id'           => 4, // Gunakan ID 4 agar sinkron saat proses pesanan
+                    'id_pengguna'  => 4,
+                    'name'         => 'Pusat Radar Sancaka (Admin)',
+                    'vehicle'      => 'Sancaka Express / Ojek Admin',
+                    'distance'     => round($admin->distance, 1) . ' KM',
+                    'distance_raw' => (float) $admin->distance,
+                    'lat'          => (float) $admin->latitude,
+                    'lng'          => (float) $admin->longitude,
+                    'is_online'    => true // Admin dipaksa selalu dianggap Online jika koordinatnya ada
+                ];
+            }
+
+            // 3. URUTKAN SEMUANYA BERDASARKAN JARAK (Paling dekat ke paling jauh)
+            usort($formattedDrivers, function($a, $b) {
+                return $a['distance_raw'] <=> $b['distance_raw'];
             });
 
             return response()->json([
