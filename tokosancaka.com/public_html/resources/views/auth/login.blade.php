@@ -330,6 +330,12 @@
                         btnGoogle.classList.remove('disabled');
                         btnGoogle.removeAttribute('aria-disabled');
                     }
+
+                    const btnFacebook = document.getElementById('btn-submit-facebook');
+                    if(btnFacebook) {
+                        btnFacebook.classList.remove('disabled');
+                        btnFacebook.removeAttribute('aria-disabled');
+                    }
                     
                     const statusAlert = document.getElementById('gps-status-alert');
                     if(statusAlert) {
