@@ -1836,3 +1836,8 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 Route::get('auth/facebook', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'redirectToFacebook'])->name('login.facebook');
 Route::get('auth/facebook/callback', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'handleFacebookCallback']);
 
+// =========================================================================
+// API ROUTE: MOBILE AUTH (ANDROID/EXPO) - PUBLIC
+// =========================================================================
+Route::post('/api/mobile/auth/google', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'loginGoogle']);
+Route::post('/api/mobile/auth/facebook', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'loginFacebook']);

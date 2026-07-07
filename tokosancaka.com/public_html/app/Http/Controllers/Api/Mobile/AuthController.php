@@ -348,4 +348,124 @@ class AuthController extends Controller
     return view('verifikasi-email', ['status' => 'error', 'message' => 'Kode salah atau kedaluwarsa.']);
 }
 
+// ====================================================================
+    // FUNGSI LOGIN GOOGLE VIA API MOBILE
+    // ====================================================================
+    public function loginGoogle(Request $request)
+    {
+        $request->validate([
+            'token' => 'required|string', // Token yang didapat dari SDK Google di Android
+        ]);
+
+        try {
+            // Memverifikasi token ke server Google secara stateless
+            $googleUser = Socialite::driver('google')->stateless()->userFromToken($request->token);
+            
+            Log::info('API Mobile Google Login: Data diterima.', ['email' => $googleUser->getEmail()]);
+
+            // Cari user berdasarkan email
+            $user = User::where('email', $googleUser->getEmail())->first();
+
+            if (!$user) {
+                Log::info('API Mobile Google Login: Mendaftarkan user baru.');
+                $user = User::create([
+                    'nama_lengkap' => $googleUser->getName(),
+                    'email'        => $googleUser->getEmail(),
+                    'role'         => 'Pelanggan',
+                    'status'       => 'Aktif',
+                    'password'     => bcrypt(Str::random(16)),
+                    'is_verified'  => 1,
+                ]);
+            }
+
+            if ($user->status === 'Tidak Aktif') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akun belum aktif.',
+                ], 403);
+            }
+
+            // Cetak Token Sanctum untuk aplikasi Android
+            $token = $user->createToken('sancaka-mobile')->plainTextToken;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login Google Berhasil',
+                'data' => [
+                    'user'  => $user,
+                    'token' => $token
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('API Mobile Google Auth Gagal: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Otentikasi Google gagal atau token kedaluwarsa.',
+            ], 401);
+        }
+    }
+
+    // ====================================================================
+    // FUNGSI LOGIN FACEBOOK VIA API MOBILE
+    // ====================================================================
+    public function loginFacebook(Request $request)
+    {
+        $request->validate([
+            'token' => 'required|string', // Token yang didapat dari SDK Facebook di Android
+        ]);
+
+        try {
+            // Memverifikasi token ke server Facebook secara stateless
+            $facebookUser = Socialite::driver('facebook')->stateless()->userFromToken($request->token);
+            
+            $email = $facebookUser->getEmail() ?? $facebookUser->getId() . '@facebook.sancaka.com';
+            Log::info('API Mobile Facebook Login: Data diterima.', ['email' => $email]);
+
+            // Cari user berdasarkan facebook_id atau email
+            $user = User::where('facebook_id', $facebookUser->getId())
+                        ->orWhere('email', $email)
+                        ->first();
+
+            if (!$user) {
+                Log::info('API Mobile Facebook Login: Mendaftarkan user baru.');
+                $user = User::create([
+                    'nama_lengkap' => $facebookUser->getName(),
+                    'email'        => $email,
+                    'facebook_id'  => $facebookUser->getId(),
+                    'role'         => 'Pelanggan',
+                    'status'       => 'Aktif',
+                    'password'     => bcrypt(Str::random(16)),
+                    'is_verified'  => 1,
+                ]);
+            }
+
+            if ($user->status === 'Tidak Aktif') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akun belum aktif.',
+                ], 403);
+            }
+
+            // Cetak Token Sanctum untuk aplikasi Android
+            $token = $user->createToken('sancaka-mobile')->plainTextToken;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login Facebook Berhasil',
+                'data' => [
+                    'user'  => $user,
+                    'token' => $token
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('API Mobile Facebook Auth Gagal: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Otentikasi Facebook gagal atau token kedaluwarsa.',
+            ], 401);
+        }
+    }
+
 }
