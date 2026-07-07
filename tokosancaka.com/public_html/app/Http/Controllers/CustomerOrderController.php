@@ -618,6 +618,27 @@ public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
                     $pesanan->status_pesanan = 'Menunggu Driver Sancaka';
                     $pesanan->resi = $sancakaResponse['resi'] ?? null;
 
+                // 👇 [UBAH BAGIAN INI] GABUNGKAN SANCAKA EXPRESS & OJEK ONLINE 👇
+                } elseif (in_array(strtolower($expVendor), ['sancaka_express', 'ojek_online'])) {
+
+                    // Validasi Ulang Zonasi Ojek Online di Backend (Keamanan Ekstra)
+                    if (strtolower($expVendor) === 'ojek_online') {
+                        $this->_validateZonasiOjekOnline($validatedData, $shipping_cost);
+                    }
+
+                    $sancakaResponse = $this->_createSancakaExpressOrder(
+                        $validatedData, $pesanan, $cod_value
+                    );
+
+                    if (($sancakaResponse['status'] ?? false) !== true) {
+                        throw new Exception($sancakaResponse['text'] ?? 'Gagal membuat order layanan Sancaka.');
+                    }
+
+                    $pesanan->status = 'Menunggu Driver Sancaka';
+                    $pesanan->status_pesanan = 'Menunggu Driver Sancaka';
+                    $pesanan->resi = $sancakaResponse['resi'] ?? null;
+                // 👆 [AKHIR PERUBAHAN] 👆
+
                 } elseif (strtolower($expVendor) === 'ipaymu' || strtolower($expVendor) === 'komship') {
 
                     // Panggil helper iPaymu COD
@@ -2717,6 +2738,51 @@ TEXT;
             ];
         } catch (\Exception $e) {
             return ['status' => false, 'text' => 'Gagal membuat pesanan Sancaka Express.'];
+        }
+    }
+
+    /**
+     * =========================================================================
+     * FUNGSI KEAMANAN: VALIDASI ZONASI OJEK ONLINE (KEMENHUB) DI BACKEND
+     * =========================================================================
+     */
+    private function _validateZonasiOjekOnline(array $data, int $frontendShippingCost)
+    {
+        // 1. Ambil Wilayah Titik Jemput
+        $originLocation = strtolower(($data['sender_province'] ?? '') . ' ' . ($data['sender_regency'] ?? ''));
+
+        // 2. Tarik Data Zonasi dari Database
+        $zona1 = strtolower(\App\Models\Api::getValue('ZONA_1_WILAYAH', 'global', 'sumatera, bali, jawa'));
+        $zona2 = strtolower(\App\Models\Api::getValue('ZONA_2_WILAYAH', 'global', 'jakarta, bogor, depok, tangerang, bekasi, jabodetabek'));
+        $zona3 = strtolower(\App\Models\Api::getValue('ZONA_3_WILAYAH', 'global', 'kalimantan, sulawesi, nusa tenggara, maluku, papua'));
+
+        // 3. Deteksi Zona
+        $tarifDasar = (float) \App\Models\Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 8000);
+
+        $isZona2 = false; $isZona1 = false; $isZona3 = false;
+
+        foreach(explode(',', $zona2) as $w) { if(str_contains($originLocation, trim($w))) { $isZona2 = true; break; } }
+        if (!$isZona2) { foreach(explode(',', $zona1) as $w) { if(str_contains($originLocation, trim($w))) { $isZona1 = true; break; } } }
+        if (!$isZona2 && !$isZona1) { foreach(explode(',', $zona3) as $w) { if(str_contains($originLocation, trim($w))) { $isZona3 = true; break; } } }
+
+        // 4. Set Base Fare berdasarkan Zona Kemenhub
+        if ($isZona2) {
+            $tarifDasar = (float) \App\Models\Api::getValue('ZONA_2_TARIF_MINIMAL', 'global', 10200);
+        } elseif ($isZona1) {
+            $tarifDasar = (float) \App\Models\Api::getValue('ZONA_1_TARIF_MINIMAL', 'global', 8000);
+        } elseif ($isZona3) {
+            $tarifDasar = (float) \App\Models\Api::getValue('ZONA_3_TARIF_MINIMAL', 'global', 9200);
+        }
+
+        // 5. Verifikasi Keamanan (Tarif dari frontend tidak boleh lebih kecil dari Base Fare Zona)
+        // Diberi toleransi selisih Rp 1.000 untuk pembulatan Mapbox yang mungkin berbeda tipis.
+        if ($frontendShippingCost < ($tarifDasar - 1000)) {
+            Log::warning("Manipulasi Tarif Ojol Terdeteksi!", [
+                'lokasi' => $originLocation,
+                'tarif_frontend' => $frontendShippingCost,
+                'batas_bawah_zona' => $tarifDasar
+            ]);
+            throw new Exception("Tarif Ojek Online tidak valid. Sistem mendeteksi tarif di bawah standar Zona wilayah Anda (Min: Rp " . number_format($tarifDasar, 0, ',', '.') . ").");
         }
     }
 
