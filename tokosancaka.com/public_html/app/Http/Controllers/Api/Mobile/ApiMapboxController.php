@@ -491,22 +491,31 @@ class ApiMapboxController extends Controller
         }
     }
 
-    /**
-     * 4. UPDATE KOORDINAT GPS REAL-TIME (DINAMIS TIAP 4 DETIK)
-     * POST /api/mobile/driver/update-location
-     */
-    public function updateLocation(Request $request)
+   public function updateLocation(Request $request)
     {
         try {
-            $idPengguna = $request->user()->id_pengguna;
+            $user = $request->user();
+            $idPengguna = $user->id_pengguna;
 
-            DB::table('registrasi_driver_sancaka')
-                ->where('id_pengguna', $idPengguna)
-                ->update([
-                    'latitude'   => $request->input('latitude'),
-                    'longitude'  => $request->input('longitude'),
-                    'updated_at' => now()
-                ]);
+            // 👇 DETEKSI: Jika Admin, simpan koordinat ke tabel Pengguna
+            if ($idPengguna == 4 || $user->role === 'Admin') {
+                DB::table('Pengguna')
+                    ->where('id_pengguna', $idPengguna)
+                    ->update([
+                        'latitude'   => $request->input('latitude'),
+                        'longitude'  => $request->input('longitude'),
+                        'last_seen'  => now() // Memanfaatkan kolom last_seen
+                    ]);
+            } else {
+                // 👇 Jika driver biasa, simpan ke tabel registrasi driver
+                DB::table('registrasi_driver_sancaka')
+                    ->where('id_pengguna', $idPengguna)
+                    ->update([
+                        'latitude'   => $request->input('latitude'),
+                        'longitude'  => $request->input('longitude'),
+                        'updated_at' => now()
+                    ]);
+            }
 
             return response()->json(['success' => true, 'message' => 'Koordinat GPS sinkron.']);
         } catch (\Exception $e) {
@@ -838,10 +847,7 @@ public function notify_driver(Request $request)
         }
     }
 
-  /**
-     * Endpoint GET: /api/mobile/order/detail/{order_id}
-     */
-    public function get_order_detail(Request $request, $order_id)
+ public function get_order_detail(Request $request, $order_id)
     {
         Log::info("=== [API MAPBOX] REQUEST GET ORDER DETAIL MASUK ===");
         Log::info("LOG LOG: Mencari data untuk Order ID: " . $order_id);
@@ -853,8 +859,9 @@ public function notify_driver(Request $request)
 
             $query = DB::table('order_ojek_online')
                 ->join('Pengguna as customer', 'order_ojek_online.customer_id', '=', 'customer.id_pengguna')
-                // 🔥 PERBAIKAN: Ubah 'join' menjadi 'leftJoin' 🔥
                 ->leftJoin('registrasi_driver_sancaka as driver', 'order_ojek_online.driver_id', '=', 'driver.id_pengguna')
+                // 👇 TAMBAHAN: Tarik juga data dari tabel Pengguna jika yang ambil order adalah Admin
+                ->leftJoin('Pengguna as admin_user', 'order_ojek_online.driver_id', '=', 'admin_user.id_pengguna')
                 ->where('order_ojek_online.order_id', $order_id)
                 ->select(
                     'order_ojek_online.*',
@@ -865,7 +872,10 @@ public function notify_driver(Request $request)
                     'driver.latitude as driver_lat',
                     'driver.longitude as driver_lng',
                     'driver.is_active_map as driver_is_online',
-                    'driver.foto_motor'
+                    'driver.foto_motor',
+                    // 👇 Ambil koordinat langsung dari tabel Pengguna
+                    'admin_user.latitude as admin_lat',
+                    'admin_user.longitude as admin_lng'
                 );
 
             // --- KUNCI KEAMANAN IDOR ---
@@ -883,12 +893,14 @@ public function notify_driver(Request $request)
                 return response()->json(['success' => false, 'message' => 'Order tidak ditemukan atau Anda tidak memiliki akses.'], 404);
             }
 
-            // 🔥 PERBAIKAN TAMBAHAN: Jika Admin yang ambil order dan data driver kosong, beri nilai default
-            if (empty($order->driver_name) && $order->driver_id == 4) {
+            // 🔥 PERBAIKAN LOGIKA ADMIN 🔥
+            // Jika Admin (ID 4) yang ambil order, kita gunakan koordinat dari admin_lat/admin_lng
+            if ($order->driver_id == 4) {
                 $order->driver_name = "Pusat Radar Sancaka";
-                $order->driver_phone = "08819435180"; // Sesuaikan dengan nomor WA Admin
-                $order->driver_lat = $order->driver_lat ?? -7.4025;
-                $order->driver_lng = $order->driver_lng ?? 111.4558;
+                $order->driver_phone = "08819435180";
+                // Ambil lokasi dari tabel Pengguna, jika masih null baru pakai titik tengah Ngawi
+                $order->driver_lat = $order->admin_lat ?? -7.4025;
+                $order->driver_lng = $order->admin_lng ?? 111.4558;
                 $order->driver_is_online = 1;
             }
 
