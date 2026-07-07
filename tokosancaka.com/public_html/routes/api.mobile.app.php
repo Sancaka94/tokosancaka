@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\Mobile\EditPenggunaController;
 use App\Http\Controllers\Api\Mobile\PesananController;
 use App\Http\Controllers\Api\Mobile\TicketingController;
 use App\Http\Controllers\Customer\TopUpController;
+use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\Api\Mobile\TrainTicketingController;
 use App\Http\Controllers\Api\Mobile\BusTicketingController;
 use App\Http\Controllers\Api\Mobile\ShipTicketingController;
@@ -139,6 +140,11 @@ Route::prefix('public')->group(function () {
     // Tracking & Ekspedisi
     Route::get('/tracking/{resi}', [\App\Http\Controllers\Api\Mobile\TrackingController::class, 'track']);
     Route::post('/cek-ongkir', [\App\Http\Controllers\Api\Mobile\OngkirController::class, 'checkCost']);
+
+    // --- TAMBAHKAN RUTE INI ---
+    // Sekarang aplikasi mobile bisa memanggil URL: /api/mobile/public/cek-ongkir-terpadu
+    Route::post('/cek-ongkir-terpadu', [CustomerOrderController::class, 'cek_ongkir_api']);
+    // --------------------------
 
     // --- UBAH/PASTIKAN DUA BARIS INI MENGARAH KE ONGKIRCONTROLLER ---
     Route::post('/cek-ongkir', [OngkirController::class, 'checkCost']);

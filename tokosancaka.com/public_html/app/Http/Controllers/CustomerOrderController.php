@@ -2522,5 +2522,86 @@ TEXT;
         }
     }
 
+    /**
+     * Endpoint API Mobile: Menangani Cek Ongkir Terpadu
+     */
+    public function cek_ongkir_api(Request $request, KiriminAjaService $kirimaja)
+    {
+        // 1. Validasi Input Dasar
+        $request->validate([
+            'sender_lat' => 'required|numeric',
+            'sender_lng' => 'required|numeric',
+            'receiver_lat' => 'required|numeric',
+            'receiver_lng' => 'required|numeric',
+            'weight' => 'required|numeric',
+            'item_price' => 'required|numeric',
+            'vendor_filter' => 'required|string',
+            'service_type' => 'required|string',
+            'item_type' => 'required|integer',
+        ]);
+
+        $vendorFilter = strtolower($request->input('vendor_filter'));
+        $results = [];
+
+        // 2. LOGIKA SANCAKA EXPRESS / OJEK (Internal)
+        // Kita hitung menggunakan Mapbox API melalui method private yang ada di controller ini
+        if (in_array($vendorFilter, ['all', 'sancaka_express', 'ojek_online'])) {
+            $sancakaRes = $this->_getSancakaExpressPricing(
+                $request->input('sender_lat'),
+                $request->input('sender_lng'),
+                $request->input('receiver_lat'),
+                $request->input('receiver_lng'),
+                $request->input('weight'),
+                $request->input('sender_address', ''),
+                $request->input('receiver_address', ''),
+                '', '', // Simple address fallback
+                $request->input('length', 0),
+                $request->input('width', 0),
+                $request->input('height', 0),
+                $request->input('item_price', 0)
+            );
+
+            if ($sancakaRes['status']) {
+                $results = array_merge($results, $sancakaRes['results']);
+            }
+        }
+
+        // 3. LOGIKA PIHAK KETIGA (KiriminAja, Deliveree, Lalamove)
+        // Hanya jalan jika filter 'all' atau spesifik vendor tersebut
+        if (in_array($vendorFilter, ['all', 'kiriminaja', 'deliveree', 'lalamove'])) {
+            // Karena fungsi cek_Ongkir Anda membutuhkan banyak data district_id,
+            // pastikan frontend mengirimkan data tersebut.
+            // Jika frontend tidak punya ID, kita panggil helper internal cek_Ongkir
+            $thirdPartyRes = $this->cek_Ongkir($request, $kirimaja);
+
+            // Ambil data JSON dari response cek_Ongkir
+            $thirdPartyData = $thirdPartyRes->getData(true);
+
+            if (!empty($thirdPartyData['results'])) {
+                $results = array_merge($results, $thirdPartyData['results']);
+            }
+            if (!empty($thirdPartyData['result'])) {
+                $results = array_merge($results, $thirdPartyData['result']);
+            }
+        }
+
+        // 4. Response Final (Urutkan dari termurah)
+        if (empty($results)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Layanan tidak tersedia untuk rute atau ekspedisi yang dipilih.'
+            ], 404);
+        }
+
+        // Sortir hasil gabungan berdasarkan cost termurah
+        usort($results, fn($a, $b) => ($a['cost'] ?? $a['price']['total_price']) <=> ($b['cost'] ?? $b['price']['total_price']));
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Tarif berhasil ditarik',
+            'results' => $results
+        ]);
+    }
+
 }
 
