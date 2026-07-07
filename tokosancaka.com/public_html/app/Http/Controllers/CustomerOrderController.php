@@ -2588,6 +2588,10 @@ TEXT;
                 'vendor_filter' => $vendorFilter,
                 'sender_address' => $request->input('sender_address') ?: 'Titik Jemput Mapbox',
                 'receiver_address' => $request->input('receiver_address') ?: 'Titik Antar Mapbox',
+
+                'length' => max(1, (int) $request->input('length', 10)),
+                'width'  => max(1, (int) $request->input('width', 10)),
+                'height' => max(1, (int) $request->input('height', 10)),
             ]);
 
             try {
