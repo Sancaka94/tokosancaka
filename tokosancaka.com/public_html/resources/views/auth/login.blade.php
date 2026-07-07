@@ -238,8 +238,8 @@
                         <button type="submit" id="btn-submit-manual" class="btn btn-danger btn-lg text-uppercase" disabled>Login</button>
                     </div>
 
-                    {{-- ========================================== --}}
-                    {{-- TOMBOL LOGIN GOOGLE --}}
+                   {{-- ========================================== --}}
+                    {{-- TOMBOL LOGIN GOOGLE & FACEBOOK --}}
                     {{-- ========================================== --}}
                     @if (!request()->is('admin/*'))
                         <div class="d-flex align-items-center mb-3">
@@ -247,11 +247,20 @@
                             <span class="mx-2 text-muted small">ATAU</span>
                             <hr class="flex-grow-1 text-muted opacity-25">
                         </div>
-                        <div class="d-grid mb-3 disabled-btn-wrapper" onclick="checkGpsClick()">
-                            <a href="{{ route('login.google') }}" id="btn-submit-google" class="btn btn-outline-dark btn-lg d-flex justify-content-center align-items-center disabled" role="button" aria-disabled="true">
-                                <img src="https://tokosancaka.com/public/assets/google.png" alt="Google Logo" style="width: 24px; height: 24px; object-fit: contain;" class="me-2"> 
-                                Masuk dengan Google
-                            </a>
+                        
+                        <div class="row g-2 mb-3">
+                            <div class="col-12 col-sm-6 disabled-btn-wrapper" onclick="checkGpsClick()">
+                                <a href="{{ route('login.google') }}" id="btn-submit-google" class="btn btn-outline-dark btn-lg w-100 d-flex justify-content-center align-items-center disabled" role="button" aria-disabled="true">
+                                    <img src="https://tokosancaka.com/public/assets/google.png" alt="Google Logo" style="width: 20px; height: 20px; object-fit: contain;" class="me-2"> 
+                                    Google
+                                </a>
+                            </div>
+                            <div class="col-12 col-sm-6 disabled-btn-wrapper" onclick="checkGpsClick()">
+                                <a href="{{ route('login.facebook') }}" id="btn-submit-facebook" class="btn btn-lg w-100 d-flex justify-content-center align-items-center disabled" role="button" aria-disabled="true" style="background-color: #000; color: #fff; border: 1px solid #000;">
+                                    <i class="fab fa-facebook me-2" style="font-size: 20px;"></i>
+                                    Facebook
+                                </a>
+                            </div>
                         </div>
                     @endif
                     {{-- ========================================== --}}

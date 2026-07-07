@@ -1831,3 +1831,7 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::post('/whitelist/dummy', [WhitelistController::class, 'store'])->name('admin.dummy.store');
     Route::patch('/whitelist/toggle/{id}', [WhitelistController::class, 'toggle'])->name('admin.whitelist.toggle');
 });
+
+
+Route::get('auth/facebook', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'redirectToFacebook'])->name('login.facebook');
+Route::get('auth/facebook/callback', [App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'handleFacebookCallback']);

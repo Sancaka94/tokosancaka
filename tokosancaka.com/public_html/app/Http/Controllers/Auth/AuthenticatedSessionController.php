@@ -310,4 +310,94 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
     }
+
+    // ====================================================================
+    // FUNGSI LOGIN FACEBOOK (SOCIALITE)
+    // ====================================================================
+
+    public function redirectToFacebook(): RedirectResponse
+    {
+        Log::info('Redirecting user ke Facebook Auth.');
+        return Socialite::driver('facebook')->redirect();
+    }
+
+    public function handleFacebookCallback(Request $request): RedirectResponse
+    {
+        try {
+            Log::info('Proses callback Facebook Auth dimulai.');
+
+            $facebookUser = Socialite::driver('facebook')->user();
+            
+            // Fallback email: Jika akun FB daftar pakai nomor HP, email bisa null.
+            $email = $facebookUser->getEmail() ?? $facebookUser->getId() . '@facebook.sancaka.com';
+            Log::info('Data Facebook diterima.', ['email' => $email]);
+
+            $user = User::where('email', $email)->first();
+
+            if (!$user) {
+                Log::info('Email tidak ditemukan, membuat user baru dari Facebook.', ['email' => $email]);
+
+                $user = User::create([
+                    'nama_lengkap' => $facebookUser->getName(),
+                    'email'        => $email,
+                    'role'         => 'pelanggan',
+                    'status'       => 'Menunggu Setup',
+                    'password'     => bcrypt(Str::random(16)),
+                ]);
+            }
+
+            $allowedRoles = ['pelanggan', 'seller', 'admin', 'agent', 'driver'];
+            if (!in_array(strtolower(trim($user->role)), $allowedRoles)) {
+                Log::warning('Akses Ditolak: Peran tidak diizinkan (Via Facebook).', [
+                    'email' => $user->email,
+                    'role'  => $user->role
+                ]);
+                throw ValidationException::withMessages([
+                    'login' => ['Akses Ditolak: Peran Anda tidak diizinkan masuk.'],
+                ]);
+            }
+
+            try {
+                $agent = new Agent();
+                $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
+
+                $user->update([
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $deviceInfo,
+                    'latitude'   => $request->input('latitude'),
+                    'longitude'  => $request->input('longitude'),
+                ]);
+
+                Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Facebook Login).', [
+                    'user_id' => $user->id_pengguna ?? $user->id,
+                    'ip' => $request->ip()
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Gagal menyimpan data keamanan login Facebook: ' . $e->getMessage());
+            }
+
+            Auth::guard('web')->login($user);
+            $request->session()->regenerate();
+
+            Log::info('Login Facebook berhasil.', ['email' => $user->email]);
+
+            if ($user->status !== 'Aktif' || empty($user->no_wa)) {
+                Log::info('User belum melengkapi profil. Dialihkan ke halaman Setup Profile.', ['user_id' => $user->id_pengguna]);
+                return redirect()->route('customer.profile.setup');
+            }
+
+            $role = strtolower(trim($user->role));
+            if ($role === 'admin') {
+                return redirect()->route('admin.dashboard');
+            }
+
+            return redirect()->route('customer.dashboard');
+
+        } catch (\Exception $e) {
+            Log::error('Facebook Auth Gagal: ' . $e->getMessage());
+            return redirect()->route('login')->withErrors([
+                'login' => 'Terjadi kesalahan saat otentikasi menggunakan Facebook. Silakan coba lagi.'
+            ]);
+        }
+    }
 }
