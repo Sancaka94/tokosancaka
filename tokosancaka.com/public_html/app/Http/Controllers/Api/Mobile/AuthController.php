@@ -274,7 +274,7 @@ class AuthController extends Controller
 
         // Loloskan otomatis jika setup_token sudah kosong (sudah disetujui manual oleh Admin)
         if (empty($user->setup_token)) {
-            
+
             // LOG LOG: Token Valid, Aktifkan User
             $user->status = 'Aktif';
             $user->save();
@@ -349,7 +349,7 @@ class AuthController extends Controller
 }
 
 // ====================================================================
-    // FUNGSI LOGIN GOOGLE VIA API MOBILE
+    // LOG LOG: FUNGSI LOGIN GOOGLE VIA API MOBILE
     // ====================================================================
     public function loginGoogle(Request $request)
     {
@@ -360,7 +360,7 @@ class AuthController extends Controller
         try {
             // Memverifikasi token ke server Google secara stateless
             $googleUser = Socialite::driver('google')->stateless()->userFromToken($request->token);
-            
+
             Log::info('API Mobile Google Login: Data diterima.', ['email' => $googleUser->getEmail()]);
 
             // Cari user berdasarkan email
@@ -407,7 +407,7 @@ class AuthController extends Controller
     }
 
     // ====================================================================
-    // FUNGSI LOGIN FACEBOOK VIA API MOBILE
+    // LOG LOG: FUNGSI LOGIN FACEBOOK VIA API MOBILE
     // ====================================================================
     public function loginFacebook(Request $request)
     {
@@ -418,7 +418,7 @@ class AuthController extends Controller
         try {
             // Memverifikasi token ke server Facebook secara stateless
             $facebookUser = Socialite::driver('facebook')->stateless()->userFromToken($request->token);
-            
+
             $email = $facebookUser->getEmail() ?? $facebookUser->getId() . '@facebook.sancaka.com';
             Log::info('API Mobile Facebook Login: Data diterima.', ['email' => $email]);
 
