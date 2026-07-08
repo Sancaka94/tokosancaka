@@ -59,6 +59,13 @@ use App\Http\Controllers\Api\MandiriGatewayController;
 use App\Http\Controllers\Api\Mobile\ApiMapboxController;
 use App\Http\Controllers\Api\Mobile\AdminDriverController;
 use App\Http\Controllers\ApiDuitkuController;
+use App\Http\Controllers\Api\Mobile\ApiSettingMobileOjekController;
+
+// Pastikan route ini aman dan terproteksi middleware admin jika ini fitur sensitif
+Route::prefix('mobile/settings/harga-ojek')->group(function () {
+    Route::get('/', [ApiSettingMobileOjekController::class, 'getSettings']);
+    Route::put('/update', [ApiSettingMobileOjekController::class, 'updateSettings']);
+});
 
 
 
