@@ -242,7 +242,7 @@ Route::prefix('seller')->group(function () {
     Route::post('/user/profile/update', [\App\Http\Controllers\Api\Mobile\ProfileController::class, 'update']);
     Route::post('/auth/logout', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'logout']);
 
-    Route::post('/user/verify-pin', [\App\Http\Controllers\Api\Mobile\SettingPrivacyController::class, 'verifyPin']);
+    Route::post('/user/verify-pin', [ApiTopUpController::class, 'verifyPin']);
 
     // --- B. DASHBOARD (Otomatis menyesuaikan Role) ---
     Route::get('/dashboard', [\App\Http\Controllers\Api\Mobile\DashboardController::class, 'index']);
