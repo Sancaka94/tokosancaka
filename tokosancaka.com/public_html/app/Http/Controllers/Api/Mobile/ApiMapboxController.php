@@ -757,7 +757,13 @@ public function notify_driver(Request $request)
                                 'jarak_ke_pemesan' => (string) $jarakKePemesanMeter,
                                 'origin_address'   => (string) $request->input('origin_address', ''),
                                 'dest_address'     => (string) $request->input('dest_address', ''),
-                                'catatan'          => (string) $request->input('catatan', '')
+                                'catatan'          => (string) $request->input('catatan', ''),
+                                'berat'            => (string) $request->input('weight', '0'),
+                                'nama_barang'      => (string) $request->input('nama_barang', '-'),
+                                'panjang'          => (string) $request->input('panjang', '0'),
+                                'lebar'            => (string) $request->input('lebar', '0'),
+                                'tinggi'           => (string) $request->input('tinggi', '0'),
+                                'asuransi'         => (string) $request->input('asuransi', 'tidak'),
                             ]
                         ]
                     ]);
