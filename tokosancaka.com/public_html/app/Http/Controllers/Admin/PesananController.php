@@ -187,12 +187,35 @@ class PesananController extends Controller
         $tagihanOngkir    = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->sum('shipping_cost');
         $tagihanAsuransi  = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->sum('insurance_cost');
         
-        // --- TAMBAHAN PERHITUNGAN COD ---
         $tagihanCodOngkir = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->where('payment_method', 'COD')->sum('cod_fee');
         $tagihanCodBarang = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->where('payment_method', 'CODBARANG')->sum('cod_fee');
         
         $totalTagihanReal = $tagihanOngkir + $tagihanAsuransi + $tagihanCodOngkir + $tagihanCodBarang;
+
         // =================================================================
+        // 🔥 TAMBAHAN BARU: RINCIAN INVOICE (Sesuai Excel KiriminAja) 🔥
+        // =================================================================
+        // A. RINCIAN SHIPPING
+        $shipCostCOD    = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('shipping_cost');
+        $shipCostNonCOD = $tagihanOngkir - $shipCostCOD; // Sisanya adalah Non-COD
+        
+        $discountShipping = 0; // Set 0 (Silakan ubah jika ada kolom diskon di DB Anda)
+        $rtsFee = 0;           // Set 0 (Return to Sender fee)
+        
+        // Asumsi PPN Ekspedisi 1.1% dari (Ongkir - Diskon)
+        $dppShipping = $tagihanOngkir - $discountShipping;
+        $ppnShipping = $dppShipping * 0.011; 
+        
+        $totalInvoiceShipping = $dppShipping + $tagihanAsuransi + $rtsFee + $ppnShipping;
+
+        // B. RINCIAN COD
+        $totalCodFeeAll = $tagihanCodOngkir + $tagihanCodBarang;
+        
+        // Asumsi hitungan mundur berdasar rasio di gambar (PPN 12% dari DPP)
+        // Jika total 2500 -> PPN 248, DPP 2065, Base COD 2252.
+        $ppnCod = $totalCodFeeAll * 0.0992; // Estimasi PPN (248/2500)
+        $dppCod = $ppnCod > 0 ? ($ppnCod / 0.12) : 0; // DPP = PPN / 12%
+        $baseCodFee = $totalCodFeeAll - $ppnCod;
         
 
         // =================================================================
@@ -215,7 +238,13 @@ class PesananController extends Controller
             'incomeDikirim', 'incomeDikirimCash', 'incomeDikirimCod', 'incomeDikirimSaldo',
             'incomeGagal', 'incomeGagalCash', 'incomeGagalCod', 'incomeGagalSaldo',
             'countSelesai', 'countPickup', 'countDikirim', 'countGagal',
-            'countTagihanReal', 'tagihanOngkir', 'tagihanAsuransi', 'tagihanCodOngkir', 'tagihanCodBarang', 'totalTagihanReal'
+            
+            // Variabel Tagihan Real (Final Date)
+            'countTagihanReal', 'tagihanOngkir', 'tagihanAsuransi', 'tagihanCodOngkir', 'tagihanCodBarang', 'totalTagihanReal',
+            
+            // Variabel Rincian Invoice
+            'shipCostCOD', 'shipCostNonCOD', 'discountShipping', 'rtsFee', 'ppnShipping', 'totalInvoiceShipping',
+            'totalCodFeeAll', 'ppnCod', 'dppCod', 'baseCodFee'
         ));
     }
 

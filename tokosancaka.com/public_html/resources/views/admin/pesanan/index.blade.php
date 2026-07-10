@@ -410,6 +410,77 @@
             </div>
         </div>
 
+        {{-- ======================================================= --}}
+        {{-- ROW 4: DETAIL RINCIAN INVOICE TAGIHAN (Sesuai Excel)    --}}
+        {{-- ======================================================= --}}
+        <div class="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {{-- BAGIAN KIRI: INVOICE SHIPPING --}}
+            <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                <div class="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-2">
+                    <i class="fas fa-truck-fast text-gray-500"></i>
+                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Exclude PPN (INVOICE SHIPPING)</h3>
+                </div>
+                <div class="p-5 space-y-3 text-sm text-gray-600 font-medium">
+                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
+                        <span>Shipping Cost COD</span>
+                        <span class="text-gray-900">Rp {{ number_format($shipCostCOD ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
+                        <span>Shipping Cost Non COD</span>
+                        <span class="text-gray-900">Rp {{ number_format($shipCostNonCOD ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
+                        <span>Discount</span>
+                        <span class="text-red-600">-Rp {{ number_format($discountShipping ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
+                        <span>Asuransi</span>
+                        <span class="text-gray-900">Rp {{ number_format($tagihanAsuransi ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
+                        <span>RTS Fee</span>
+                        <span class="text-gray-900">Rp {{ number_format($rtsFee ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
+                        <span>PPN (1.1%)</span>
+                        <span class="text-gray-900">Rp {{ number_format($ppnShipping ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-300 mt-2">
+                        <span class="font-bold text-gray-900">Total Shipping</span>
+                        <span class="font-bold text-indigo-700 text-lg">Rp {{ number_format($totalInvoiceShipping ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- BAGIAN KANAN: INVOICE COD --}}
+            <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden h-fit">
+                <div class="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-2">
+                    <i class="fas fa-hand-holding-dollar text-gray-500"></i>
+                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Exclude PPN (INVOICE COD)</h3>
+                </div>
+                <div class="p-5 space-y-3 text-sm text-gray-600 font-medium">
+                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
+                        <span>COD Fee</span>
+                        <span class="text-gray-900">Rp {{ number_format($baseCodFee ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
+                        <span>DPP Nilai lain</span>
+                        <span class="text-gray-900">Rp {{ number_format($dppCod ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
+                        <span>PPN 12%</span>
+                        <span class="text-gray-900">Rp {{ number_format($ppnCod ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-300 mt-2">
+                        <span class="font-bold text-gray-900">Total COD Fee</span>
+                        <span class="font-bold text-indigo-700 text-lg">Rp {{ number_format($totalCodFeeAll ?? 0, 0, ',', '.') }}</span>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+
         {{-- === TOMBOL AKSI MASSAL (MUNCUL SAAT ADA YANG DICEKLIST) === --}}
         <div id="bulkActionBar" class="bulk-action-bar bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div class="text-sm text-red-800 font-semibold flex items-center gap-2">
