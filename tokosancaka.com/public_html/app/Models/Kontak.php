@@ -24,6 +24,9 @@ class Kontak extends Model
         'id_pengguna',
         'tipe',
         'user_id',
+        'email',           // <-- Tambahan baru
+        'jenis_kelamin',   // <-- Tambahan baru
+
 
         // Kordinat & ID Wilayah KiriminAja
         'lat',
