@@ -348,34 +348,48 @@
         {{-- ======================================================= --}}
         {{-- ROW 3: MONITOR TAGIHAN REAL KIRIMINAJA (FINAL DATE)     --}}
         {{-- ======================================================= --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            
-            <div class="relative overflow-hidden rounded-lg bg-indigo-600 p-5 shadow-lg group cursor-help transition-all duration-300">
-                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
-                    <p class="text-3xl font-bold">Rp{{ number_format($totalTagihanReal ?? 0, 0, ',', '.') }}</p>
-                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Tagihan Real</p>
-                    <p class="text-xs opacity-75 mt-0.5">{{ number_format($countTagihanReal ?? 0, 0, ',', '.') }} Paket (Selesai)</p>
-                </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5">
-                    <i class="fas fa-file-invoice-dollar fa-5x text-white"></i>
+        <div class="mb-6">
+            <div class="relative overflow-hidden rounded-lg bg-indigo-600 p-5 sm:p-6 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-indigo-500">
+                
+                {{-- Icon Background Transparan (Pojok Kanan Atas) --}}
+                <div class="absolute right-0 top-0 -mt-6 -mr-6 opacity-10 transform rotate-12 pointer-events-none">
+                    <i class="fas fa-file-invoice-dollar text-9xl text-white"></i>
                 </div>
                 
-                {{-- Detail Saat Di-hover --}}
-                <div class="absolute inset-0 bg-indigo-700 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
-                    <p class="text-xs font-bold uppercase border-b border-indigo-400 pb-1 mb-2">Rincian Ekspedisi</p>
-                    <div class="space-y-1 text-sm font-medium">
-                        <div class="flex justify-between items-center">
-                            <span>Ongkir</span>
-                            <span>Rp{{ number_format($tagihanOngkir ?? 0, 0, ',', '.') }}</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span>Asuransi</span>
-                            <span>Rp{{ number_format($tagihanAsuransi ?? 0, 0, ',', '.') }}</span>
-                        </div>
+                {{-- Bagian Kiri: Grand Total --}}
+                <div class="relative z-10 text-white w-full md:w-1/2">
+                    <p class="text-sm font-bold uppercase tracking-wider text-indigo-200 mb-1">Tagihan Real Ekspedisi</p>
+                    <p class="text-4xl lg:text-5xl font-bold mb-3 drop-shadow-md">Rp{{ number_format($totalTagihanReal ?? 0, 0, ',', '.') }}</p>
+                    <div class="inline-flex items-center bg-indigo-700 bg-opacity-50 px-3 py-1.5 rounded-md border border-indigo-500 text-sm">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i> 
+                        <span><strong>{{ number_format($countTagihanReal ?? 0, 0, ',', '.') }}</strong> Paket (Terkirim/Selesai)</span>
                     </div>
                 </div>
-            </div>
+                
+                {{-- Bagian Kanan: Rincian Pecahan Biaya --}}
+                <div class="relative z-10 w-full md:w-1/2 flex flex-col sm:flex-row gap-4">
+                    
+                    {{-- Kotak Ongkir --}}
+                    <div class="bg-indigo-700 bg-opacity-60 rounded-lg p-4 flex-1 border border-indigo-500 shadow-inner">
+                        <div class="flex items-center gap-2 mb-1 opacity-80">
+                            <i class="fas fa-truck-fast text-indigo-200"></i>
+                            <p class="text-xs font-bold uppercase text-indigo-100">Total Ongkir Murni</p>
+                        </div>
+                        <p class="text-2xl font-bold text-white">Rp{{ number_format($tagihanOngkir ?? 0, 0, ',', '.') }}</p>
+                    </div>
 
+                    {{-- Kotak Asuransi --}}
+                    <div class="bg-indigo-700 bg-opacity-60 rounded-lg p-4 flex-1 border border-indigo-500 shadow-inner">
+                        <div class="flex items-center gap-2 mb-1 opacity-80">
+                            <i class="fas fa-shield-alt text-indigo-200"></i>
+                            <p class="text-xs font-bold uppercase text-indigo-100">Total Asuransi</p>
+                        </div>
+                        <p class="text-2xl font-bold text-white">Rp{{ number_format($tagihanAsuransi ?? 0, 0, ',', '.') }}</p>
+                    </div>
+
+                </div>
+
+            </div>
         </div>
 
         {{-- === TOMBOL AKSI MASSAL (MUNCUL SAAT ADA YANG DICEKLIST) === --}}
