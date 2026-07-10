@@ -136,6 +136,24 @@ class PesananController extends Controller
         $countGagal   = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->count();
 
         // =================================================================
+        // --- C. CARD MONITOR TAGIHAN KIRIMINAJA (REAL) ---
+        // =================================================================
+        // Logika: Memfilter berdasarkan Created Date (sudah bawaan $cardQuery dari tanggal_pesanan)
+        // dan HANYA mengambil yang sudah punya Final Date (Status: Terkirim / Selesai).
+        $statusFinalTagihan = ['Terkirim', 'Selesai'];
+
+        $countTagihanReal = (clone $cardQuery)->whereIn('status_pesanan', $statusFinalTagihan)->count();
+        
+        // Komponen Tagihan KiriminAja (Biasanya Total Ongkir Asli + Asuransi Asli)
+        $tagihanOngkir   = (clone $cardQuery)->whereIn('status_pesanan', $statusFinalTagihan)->sum('shipping_cost');
+        $tagihanAsuransi = (clone $cardQuery)->whereIn('status_pesanan', $statusFinalTagihan)->sum('insurance_cost');
+        
+        // Grand Total Tagihan Real
+        $totalTagihanReal = $tagihanOngkir + $tagihanAsuransi;
+        // =================================================================
+        
+
+        // =================================================================
         // STEP 4: LANJUTKAN QUERY UNTUK TABEL BAWAH
         // =================================================================
         if ($request->filled('status')) {
@@ -154,7 +172,8 @@ class PesananController extends Controller
             'incomePickup', 'incomePickupCash', 'incomePickupCod', 'incomePickupSaldo',
             'incomeDikirim', 'incomeDikirimCash', 'incomeDikirimCod', 'incomeDikirimSaldo',
             'incomeGagal', 'incomeGagalCash', 'incomeGagalCod', 'incomeGagalSaldo',
-            'countSelesai', 'countPickup', 'countDikirim', 'countGagal'
+            'countSelesai', 'countPickup', 'countDikirim', 'countGagal',
+            'countTagihanReal', 'tagihanOngkir', 'tagihanAsuransi', 'totalTagihanReal'
         ));
     }
 
