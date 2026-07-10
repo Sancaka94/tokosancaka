@@ -284,14 +284,27 @@
         </div>
     </div>
 
-    <div id="registration-form-container" class="card border-0 shadow-sm mb-4 d-none">
+  <div id="completion-form-container" class="card border-0 shadow-sm mb-4 d-none">
         <div class="card-body p-4">
-            <h3 class="h5 fw-semibold text-dark mb-3">Nama tidak ditemukan, silakan daftar.</h3>
-            <form id="registration-form">
-                <div class="mb-3"><label for="reg-nama" class="form-label">Nama Lengkap</label><input type="text" id="reg-nama" class="form-control" required></div>
-                <div class="mb-3"><label for="reg-no_hp" class="form-label">No. HP (WhatsApp)</label><input type="tel" id="reg-no_hp" class="form-control" required></div>
-                <div class="mb-3"><label for="reg-alamat" class="form-label">Alamat Lengkap</label><textarea id="reg-alamat" rows="3" class="form-control" required></textarea></div>
-                <button type="submit" class="btn btn-orange w-100 fw-bold">Daftar & Lanjutkan</button>
+            <div class="alert alert-warning mb-3">
+                <i class="fas fa-exclamation-circle me-2"></i><strong>Tunggu Sebentar!</strong><br>
+                Kami membutuhkan Email Anda untuk mengirimkan bukti resi Surat Jalan.
+            </div>
+            <form id="completion-form">
+                <input type="hidden" id="comp-id">
+                <div class="mb-3">
+                    <label for="comp-email" class="form-label">Email Valid</label>
+                    <input type="email" id="comp-email" class="form-control" placeholder="contoh@gmail.com" required>
+                </div>
+                <div class="mb-3">
+                    <label for="comp-jk" class="form-label">Jenis Kelamin</label>
+                    <select id="comp-jk" class="form-control" required>
+                        <option value="">Pilih...</option>
+                        <option value="Laki-laki">Laki-laki</option>
+                        <option value="Perempuan">Perempuan</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 fw-bold">Simpan & Lanjutkan Scan</button>
             </form>
         </div>
     </div>
@@ -392,6 +405,8 @@
         const registrationFormContainer = document.getElementById('registration-form-container');
         const registrationForm = document.getElementById('registration-form');
         const scanResiSection = document.getElementById('scan-resi-section');
+        const completionFormContainer = document.getElementById('completion-form-container');
+        const completionForm = document.getElementById('completion-form');
         const resiInput = document.getElementById('resi-input');
         const alertContainer = document.getElementById('alert-container');
         const scanHistoryContainer = document.getElementById('scan-history');
@@ -522,27 +537,40 @@
             else beepFail.play();
         };
 
-        const selectKontak = (kontak) => {
-            // MODIFIKASI: Cek GPS sebelum melanjutkan
+       const selectKontak = (kontak) => {
             if (isLoadingLocation || locationError) {
                 showAlert('Lokasi GPS wajib diaktifkan. ' + (locationError || 'Tunggu GPS selesai loading.'), 'warning');
                 return;
             }
 
+            // --- TAMBAHAN BARU: Cek Kelengkapan Data ---
+            if (!kontak.email || !kontak.jenis_kelamin) {
+                // Sembunyikan hasil pencarian, munculkan form lengkapi data
+                searchInput.value = kontak.nama;
+                searchInput.disabled = true;
+                searchResultsContainer.classList.add('d-none');
+                completionFormContainer.classList.remove('d-none');
+                
+                // Set ID kontak ke hidden input
+                document.getElementById('comp-id').value = kontak.id;
+                return; // Stop proses di sini sampai form di-submit
+            }
+            // ------------------------------------------
+
             selectedKontak = kontak;
 
-    // LOGIC SENSOR (Copy paste yang tadi)
-    let hpSensor = kontak.no_hp;
-    if(hpSensor.length > 6) {
-        let depan = hpSensor.substring(0, 3);
-        let belakang = hpSensor.substring(hpSensor.length - 3);
-        hpSensor = `${depan} *** *** ${belakang}`;
-    }
-    // Tampilkan versi sensor di Input Box
+            let hpSensor = kontak.no_hp;
+            if(hpSensor.length > 6) {
+                let depan = hpSensor.substring(0, 3);
+                let belakang = hpSensor.substring(hpSensor.length - 3);
+                hpSensor = `${depan} *** *** ${belakang}`;
+            }
+            
             searchInput.value = `${kontak.nama} (${hpSensor})`;
             searchInput.disabled = true;
             searchResultsContainer.classList.add('d-none');
             registrationFormContainer.classList.add('d-none');
+            completionFormContainer.classList.add('d-none'); // Pastikan ini tertutup
             scanResiSection.classList.remove('opacity-50');
             scanResiSection.style.pointerEvents = 'auto';
             resiInput.focus();
@@ -670,12 +698,13 @@
 
         // Form registrasi baru
         registrationForm.addEventListener('submit', async (e) => {
-            // ... (Tidak ada perubahan di sini) ...
             e.preventDefault();
             const formData = {
                 nama: document.getElementById('reg-nama').value,
                 no_hp: document.getElementById('reg-no_hp').value,
-                alamat: document.getElementById('reg-alamat').value
+                alamat: document.getElementById('reg-alamat').value,
+                email: document.getElementById('reg-email').value, // Baru
+                jenis_kelamin: document.getElementById('reg-jk').value // Baru
             };
             try {
                 const response = await fetch("{{ route('kontak.register') }}", {
@@ -690,7 +719,45 @@
                 const result = await response.json();
                 if(response.ok && result.success){
                     selectKontak(result.data);
-                } else showAlert(result.message || 'Gagal mendaftar.');
+                } else {
+                    showAlert(result.message || 'Gagal mendaftar. Pastikan email/nomor WA belum pernah digunakan.');
+                }
+            } catch(err){
+                showAlert('Koneksi error.');
+            }
+        });
+
+        // TAMBAHAN BARU: Proses submit Form Lengkapi Data
+        completionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const idKontak = document.getElementById('comp-id').value;
+            const formData = {
+                email: document.getElementById('comp-email').value,
+                jenis_kelamin: document.getElementById('comp-jk').value
+            };
+            
+            try {
+                // Pastikan route ini sesuai dengan route web.php yang Anda buat
+                const url = `/kontak/${idKontak}/lengkapi-profil`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type':'application/json',
+                        'X-CSRF-TOKEN':csrfToken,
+                        'Accept':'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                const result = await response.json();
+                
+                if(response.ok && result.success){
+                    // Tutup form
+                    completionFormContainer.classList.add('d-none');
+                    // Lanjut proses scan menggunakan data yang sudah diupdate
+                    selectKontak(result.data);
+                } else {
+                    showAlert(result.message || 'Gagal memperbarui data. Email mungkin sudah dipakai.');
+                }
             } catch(err){
                 showAlert('Koneksi error.');
             }

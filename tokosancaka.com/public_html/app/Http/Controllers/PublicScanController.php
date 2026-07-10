@@ -52,6 +52,8 @@ class PublicScanController extends Controller
             'nama' => 'required|string|max:255',
             'no_hp' => 'required|string|unique:kontaks,no_hp',
             'alamat' => 'required|string',
+            'email' => 'required|email|unique:kontaks,email', // Wajib untuk user baru
+            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan', // Wajib untuk user baru
         ]);
 
         // Menambahkan nilai default untuk kolom yang tidak boleh null
@@ -64,6 +66,27 @@ class PublicScanController extends Controller
 
         $kontak = Kontak::create($validated);
         return response()->json(['success' => true, 'data' => $kontak]);
+    }
+
+    /**
+     * Memperbarui profil kontak yang belum memiliki email/jenis kelamin.
+     */
+    public function updateKontakProfil(Request $request, $id)
+    {
+        $kontak = Kontak::findOrFail($id);
+        
+        $validated = $request->validate([
+            'email' => 'required|email|unique:kontaks,email,' . $id,
+            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
+        ]);
+
+        $kontak->update($validated);
+
+        return response()->json([
+            'success' => true, 
+            'data' => $kontak,
+            'message' => 'Data berhasil dilengkapi.'
+        ]);
     }
 
     /**
@@ -277,13 +300,18 @@ class PublicScanController extends Controller
         ";
 
         try {
-            // Eksekusi pengiriman email HTML ke alamat statis
-            Mail::html($htmlBody, function ($message) use ($suratJalan) {
+            // Eksekusi pengiriman email HTML ke alamat statis & CC ke customer
+            Mail::html($htmlBody, function ($message) use ($suratJalan, $kontak) {
                 $message->to('tokosancaka@gmail.com')
                         ->subject("Surat Jalan Baru Dibuat - {$suratJalan->kode_surat_jalan}");
+                
+                // Tambahkan CC ke email customer jika datanya ada
+                if (!empty($kontak->email)) {
+                    $message->cc($kontak->email);
+                }
             });
 
-            Log::info("Email Admin terkirim untuk SJ: {$suratJalan->kode_surat_jalan}");
+            Log::info("Email Admin & Customer terkirim untuk SJ: {$suratJalan->kode_surat_jalan}");
 
         } catch (\Exception $e) {
             Log::error("Gagal mengirim notifikasi Email (Surat Jalan): " . $e->getMessage());
