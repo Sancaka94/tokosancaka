@@ -189,34 +189,34 @@ class PesananController extends Controller
         
         $tagihanCodOngkir = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->where('payment_method', 'COD')->sum('cod_fee');
         $tagihanCodBarang = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->where('payment_method', 'CODBARANG')->sum('cod_fee');
-        
-        $totalTagihanReal = $tagihanOngkir + $tagihanAsuransi + $tagihanCodOngkir + $tagihanCodBarang;
 
         // =================================================================
-        // 🔥 TAMBAHAN BARU: RINCIAN INVOICE (Sesuai Excel KiriminAja) 🔥
+        // 🔥 LOGIKA MATEMATIKA SESUAI RUMUS EXCEL KIRIMINAJA 🔥
         // =================================================================
         // A. RINCIAN SHIPPING
         $shipCostCOD    = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('shipping_cost');
-        $shipCostNonCOD = $tagihanOngkir - $shipCostCOD; // Sisanya adalah Non-COD
+        $shipCostNonCOD = $tagihanOngkir - $shipCostCOD; 
         
-        $discountShipping = 0; // Set 0 (Silakan ubah jika ada kolom diskon di DB Anda)
-        $rtsFee = 0;           // Set 0 (Return to Sender fee)
+        $discountShipping = 0; // Diisi 0 karena Sancaka tidak mencatat diskon internal KiriminAja
+        $rtsFee = 0;           // Return to Sender fee
         
-        // Asumsi PPN Ekspedisi 1.1% dari (Ongkir - Diskon)
-        $dppShipping = $tagihanOngkir - $discountShipping;
-        $ppnShipping = $dppShipping * 0.011; 
+        // PPN 1.1% dihitung dari: (Ongkir - Diskon + Asuransi + RTS Fee)
+        $dasarPengenaanPajak = ($tagihanOngkir - $discountShipping + $tagihanAsuransi + $rtsFee);
+        $ppnShipping = round($dasarPengenaanPajak * 0.011); 
         
-        $totalInvoiceShipping = $dppShipping + $tagihanAsuransi + $rtsFee + $ppnShipping;
+        $totalInvoiceShipping = $dasarPengenaanPajak + $ppnShipping;
 
         // B. RINCIAN COD
         $totalCodFeeAll = $tagihanCodOngkir + $tagihanCodBarang;
         
-        // Asumsi hitungan mundur berdasar rasio di gambar (PPN 12% dari DPP)
-        // Jika total 2500 -> PPN 248, DPP 2065, Base COD 2252.
-        $ppnCod = $totalCodFeeAll * 0.0992; // Estimasi PPN (248/2500)
-        $dppCod = $ppnCod > 0 ? ($ppnCod / 0.12) : 0; // DPP = PPN / 12%
+        // Proporsi PPN 12% sesuai rincian KiriminAja
+        $ppnCod = round($totalCodFeeAll * 0.0992); 
+        $dppCod = $ppnCod > 0 ? round($ppnCod / 0.12) : 0; 
         $baseCodFee = $totalCodFeeAll - $ppnCod;
-        
+
+        // C. GRAND TOTAL REAL (Total Shipping + Total COD)
+        // Ini yang akan tampil di Teks Raksasa Card Ungu
+        $totalTagihanReal = $totalInvoiceShipping + $totalCodFeeAll;
 
         // =================================================================
         // STEP 4: LANJUTKAN QUERY UNTUK TABEL BAWAH
@@ -228,7 +228,7 @@ class PesananController extends Controller
         $orders = $query->orderBy('tanggal_pesanan', 'desc')->paginate(15);
         $orders->appends($request->all());
 
-        // =================================================================
+       // =================================================================
         // STEP 5: RETURN VIEW (Pastikan variabel baru dimasukkan ke compact)
         // =================================================================
         return view('admin.pesanan.index', compact(
