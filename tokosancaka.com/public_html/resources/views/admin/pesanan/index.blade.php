@@ -343,6 +343,42 @@
                 <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-ban fa-5x text-white"></i></div>
             </div>
 
+            {{-- ======================================================= --}}
+        {{-- ROW 3: MONITOR TAGIHAN REAL KIRIMINAJA (FINAL DATE)     --}}
+        {{-- ======================================================= --}}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            
+            <div class="relative overflow-hidden rounded-lg bg-indigo-600 p-5 shadow-lg group cursor-help transition-all duration-300">
+                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
+                    <p class="text-3xl font-bold">Rp{{ number_format($totalTagihanReal ?? 0, 0, ',', '.') }}</p>
+                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Tagihan Real KiriminAja</p>
+                    <p class="text-xs opacity-75 mt-0.5">{{ number_format($countTagihanReal ?? 0, 0, ',', '.') }} Paket (Status: Terkirim/Selesai)</p>
+                </div>
+                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5">
+                    <i class="fas fa-file-invoice-dollar fa-5x text-white"></i>
+                </div>
+                
+                {{-- Detail Saat Di-hover --}}
+                <div class="absolute inset-0 bg-indigo-700 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
+                    <p class="text-xs font-bold uppercase border-b border-indigo-400 pb-1 mb-2">Rincian Tagihan Ekspedisi</p>
+                    <div class="space-y-1 text-sm font-medium">
+                        <div class="flex justify-between items-center">
+                            <span>Total Ongkir Murni</span>
+                            <span>Rp{{ number_format($tagihanOngkir ?? 0, 0, ',', '.') }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>Total Asuransi</span>
+                            <span>Rp{{ number_format($tagihanAsuransi ?? 0, 0, ',', '.') }}</span>
+                        </div>
+                        <div class="text-xs text-indigo-200 mt-2 italic border-t border-indigo-500 pt-1">
+                            *Hanya menghitung paket yang sudah sampai
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
         </div>
 
         {{-- === TOMBOL AKSI MASSAL (MUNCUL SAAT ADA YANG DICEKLIST) === --}}
