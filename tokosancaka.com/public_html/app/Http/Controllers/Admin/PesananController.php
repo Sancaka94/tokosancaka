@@ -180,14 +180,18 @@ class PesananController extends Controller
             }
         }
 
-        // 4. Eksekusi Perhitungan Khusus Paket Selesai
+       // 4. Eksekusi Perhitungan Khusus Paket Selesai
         $statusFinalTagihan = ['Terkirim', 'Selesai'];
         
         $countTagihanReal = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->count();
         $tagihanOngkir    = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->sum('shipping_cost');
         $tagihanAsuransi  = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->sum('insurance_cost');
         
-        $totalTagihanReal = $tagihanOngkir + $tagihanAsuransi;
+        // --- TAMBAHAN PERHITUNGAN COD ---
+        $tagihanCodOngkir = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->where('payment_method', 'COD')->sum('cod_fee');
+        $tagihanCodBarang = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->where('payment_method', 'CODBARANG')->sum('cod_fee');
+        
+        $totalTagihanReal = $tagihanOngkir + $tagihanAsuransi + $tagihanCodOngkir + $tagihanCodBarang;
         // =================================================================
         
 
@@ -211,7 +215,7 @@ class PesananController extends Controller
             'incomeDikirim', 'incomeDikirimCash', 'incomeDikirimCod', 'incomeDikirimSaldo',
             'incomeGagal', 'incomeGagalCash', 'incomeGagalCod', 'incomeGagalSaldo',
             'countSelesai', 'countPickup', 'countDikirim', 'countGagal',
-            'countTagihanReal', 'tagihanOngkir', 'tagihanAsuransi', 'totalTagihanReal'
+            'countTagihanReal', 'tagihanOngkir', 'tagihanAsuransi', 'tagihanCodOngkir', 'tagihanCodBarang', 'totalTagihanReal'
         ));
     }
 

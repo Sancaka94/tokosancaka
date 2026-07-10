@@ -345,46 +345,64 @@
 
         </div>
 
-        {{-- ======================================================= --}}
+      {{-- ======================================================= --}}
         {{-- ROW 3: MONITOR TAGIHAN REAL KIRIMINAJA (FINAL DATE)     --}}
         {{-- ======================================================= --}}
         <div class="mb-6">
             <div class="relative overflow-hidden rounded-lg bg-indigo-600 p-5 sm:p-6 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-indigo-500">
                 
-                {{-- Icon Background Transparan (Pojok Kanan Atas) --}}
+                {{-- Icon Background Transparan --}}
                 <div class="absolute right-0 top-0 -mt-6 -mr-6 opacity-10 transform rotate-12 pointer-events-none">
                     <i class="fas fa-file-invoice-dollar text-9xl text-white"></i>
                 </div>
                 
                 {{-- Bagian Kiri: Grand Total --}}
-                <div class="relative z-10 text-white w-full md:w-1/2">
+                <div class="relative z-10 text-white w-full md:w-2/5">
                     <p class="text-sm font-bold uppercase tracking-wider text-indigo-200 mb-1">Tagihan Real Ekspedisi</p>
                     <p class="text-4xl lg:text-5xl font-bold mb-3 drop-shadow-md">Rp{{ number_format($totalTagihanReal ?? 0, 0, ',', '.') }}</p>
-                    <div class="inline-flex items-center bg-indigo-700 bg-opacity-50 px-3 py-1.5 rounded-md border border-indigo-500 text-sm">
+                    <div class="inline-flex items-center bg-indigo-700 bg-opacity-50 px-3 py-1.5 rounded-md border border-indigo-500 text-sm shadow-sm">
                         <i class="fas fa-check-circle text-green-400 mr-2"></i> 
                         <span><strong>{{ number_format($countTagihanReal ?? 0, 0, ',', '.') }}</strong> Paket (Terkirim/Selesai)</span>
                     </div>
                 </div>
                 
-                {{-- Bagian Kanan: Rincian Pecahan Biaya --}}
-                <div class="relative z-10 w-full md:w-1/2 flex flex-col sm:flex-row gap-4">
+                {{-- Bagian Kanan: Rincian Pecahan Biaya (Grid 2x2) --}}
+                <div class="relative z-10 w-full md:w-3/5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     
                     {{-- Kotak Ongkir --}}
-                    <div class="bg-indigo-700 bg-opacity-60 rounded-lg p-4 flex-1 border border-indigo-500 shadow-inner">
+                    <div class="bg-indigo-700 bg-opacity-60 rounded-lg p-3 lg:p-4 border border-indigo-500 shadow-inner flex flex-col justify-center">
                         <div class="flex items-center gap-2 mb-1 opacity-80">
                             <i class="fas fa-truck-fast text-indigo-200"></i>
-                            <p class="text-xs font-bold uppercase text-indigo-100">Total Ongkir Murni</p>
+                            <p class="text-xs font-bold uppercase text-indigo-100">Ongkir Murni</p>
                         </div>
-                        <p class="text-2xl font-bold text-white">Rp{{ number_format($tagihanOngkir ?? 0, 0, ',', '.') }}</p>
+                        <p class="text-xl lg:text-2xl font-bold text-white">Rp{{ number_format($tagihanOngkir ?? 0, 0, ',', '.') }}</p>
                     </div>
 
                     {{-- Kotak Asuransi --}}
-                    <div class="bg-indigo-700 bg-opacity-60 rounded-lg p-4 flex-1 border border-indigo-500 shadow-inner">
+                    <div class="bg-indigo-700 bg-opacity-60 rounded-lg p-3 lg:p-4 border border-indigo-500 shadow-inner flex flex-col justify-center">
                         <div class="flex items-center gap-2 mb-1 opacity-80">
                             <i class="fas fa-shield-alt text-indigo-200"></i>
-                            <p class="text-xs font-bold uppercase text-indigo-100">Total Asuransi</p>
+                            <p class="text-xs font-bold uppercase text-indigo-100">Asuransi</p>
                         </div>
-                        <p class="text-2xl font-bold text-white">Rp{{ number_format($tagihanAsuransi ?? 0, 0, ',', '.') }}</p>
+                        <p class="text-xl lg:text-2xl font-bold text-white">Rp{{ number_format($tagihanAsuransi ?? 0, 0, ',', '.') }}</p>
+                    </div>
+                    
+                    {{-- Kotak COD Ongkir --}}
+                    <div class="bg-indigo-700 bg-opacity-60 rounded-lg p-3 lg:p-4 border border-indigo-500 shadow-inner flex flex-col justify-center">
+                        <div class="flex items-center gap-2 mb-1 opacity-80">
+                            <i class="fas fa-hand-holding-dollar text-indigo-200"></i>
+                            <p class="text-xs font-bold uppercase text-indigo-100">Fee COD Ongkir</p>
+                        </div>
+                        <p class="text-xl lg:text-2xl font-bold text-white">Rp{{ number_format($tagihanCodOngkir ?? 0, 0, ',', '.') }}</p>
+                    </div>
+
+                    {{-- Kotak COD Barang --}}
+                    <div class="bg-indigo-700 bg-opacity-60 rounded-lg p-3 lg:p-4 border border-indigo-500 shadow-inner flex flex-col justify-center">
+                        <div class="flex items-center gap-2 mb-1 opacity-80">
+                            <i class="fas fa-box-open text-indigo-200"></i>
+                            <p class="text-xs font-bold uppercase text-indigo-100">Fee COD Barang</p>
+                        </div>
+                        <p class="text-xl lg:text-2xl font-bold text-white">Rp{{ number_format($tagihanCodBarang ?? 0, 0, ',', '.') }}</p>
                     </div>
 
                 </div>
