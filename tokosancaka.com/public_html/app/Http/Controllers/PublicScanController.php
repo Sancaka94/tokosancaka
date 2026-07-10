@@ -11,12 +11,12 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Picqer\Barcode\BarcodeGeneratorPNG;
 use Milon\Barcode\DNS1D;
-use App\Services\FonnteService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Mail; // Ditambahkan untuk pengiriman Email
 use App\Notifications\NotifikasiUmum;
 use Exception;
 
@@ -124,7 +124,7 @@ class PublicScanController extends Controller
     }
 
     /**
-     * Membuat surat jalan dan mengirim notifikasi WhatsApp.
+     * Membuat surat jalan dan mengirim notifikasi.
      */
     public function createSuratJalan(Request $request)
     {
@@ -152,8 +152,8 @@ class PublicScanController extends Controller
             ->whereNull('surat_jalan_id')
             ->update(['surat_jalan_id' => $suratJalan->id]);
 
-        // Kirim Notifikasi WhatsApp (Admin & Pelanggan)
-        $this->_sendSuratJalanWhatsapp($suratJalan);
+        // Kirim Notifikasi Email ke Admin Sancaka
+        $this->_sendSuratJalanEmail($suratJalan);
 
         // Notifikasi Panel Admin
         try {
@@ -228,108 +228,65 @@ class PublicScanController extends Controller
     }
 
     /**
-     * Method private untuk mengirim notifikasi WhatsApp (ADMIN + PELANGGAN)
+     * Method private untuk mengirim notifikasi Email ke Admin
      */
-    private function _sendSuratJalanWhatsapp(SuratJalan $suratJalan)
+    private function _sendSuratJalanEmail(SuratJalan $suratJalan)
     {
         $suratJalan->load('kontak');
         $kontak = $suratJalan->kontak;
 
         if (!$kontak) {
-            Log::warning("Gagal kirim WA: Kontak tidak ditemukan untuk Surat Jalan ID {$suratJalan->id}");
+            Log::warning("Gagal kirim Email: Kontak tidak ditemukan untuk Surat Jalan ID {$suratJalan->id}");
             return;
         }
 
-        // Data Umum
         Carbon::setLocale('id');
         $timestamp = $suratJalan->created_at->setTimezone('Asia/Jakarta')->translatedFormat('l, d F Y - H:i');
 
         $packages = ScannedPackage::where('surat_jalan_id', $suratJalan->id)->get();
-        $resiList = $packages->pluck('resi_number')->implode("\n");
+        // Gabungkan resi dengan tag <br> agar rapi di email HTML
+        $resiList = $packages->pluck('resi_number')->implode("<br>");
         $googleMapsUrl = "https://www.google.com/maps?q={$suratJalan->latitude},{$suratJalan->longitude}";
 
-        // ==========================================
-        // 1. SIAPKAN PESAN UNTUK ADMIN
-        // ==========================================
-        $adminTemplate = <<<TEXT
-⚠ *Surat Jalan Baru Dibuat* ⚠
+        // Membuat Body HTML langsung di sini tanpa file Blade
+        $htmlBody = "
+            <div style='font-family: Arial, sans-serif; color: #333;'>
+                <h2 style='color: #d9534f;'>⚠ Surat Jalan Baru Dibuat ⚠</h2>
+                <p>Telah dibuat surat jalan baru oleh <strong>{$kontak->nama}</strong>.</p>
+                
+                <table style='width: 100%; max-width: 500px; border-collapse: collapse; margin-bottom: 15px;'>
+                    <tr><td style='padding: 5px 0;'><strong>Waktu Input:</strong></td><td>{$timestamp}</td></tr>
+                    <tr><td style='padding: 5px 0;'><strong>No. Surat Jalan:</strong></td><td>{$suratJalan->kode_surat_jalan}</td></tr>
+                    <tr><td style='padding: 5px 0;'><strong>Jumlah Paket:</strong></td><td>{$suratJalan->jumlah_paket}</td></tr>
+                    <tr><td style='padding: 5px 0;'><strong>No. WA Pengirim:</strong></td><td>{$kontak->no_hp}</td></tr>
+                    <tr><td style='padding: 5px 0;'><strong>Alamat Pengirim:</strong></td><td>{$kontak->alamat}</td></tr>
+                </table>
 
-Telah dibuat surat jalan baru oleh *{NAMA_PENGIRIM}*.
+                <div style='background: #f9f9f9; padding: 10px; border-left: 4px solid #0275d8; margin-bottom: 15px;'>
+                    <strong>Daftar Resi:</strong><br>
+                    {$resiList}
+                </div>
 
-*RINCIAN:*
-Waktu Input: *{WAKTU_INPUT}*
-Nomor Surat Jalan: *{KODE_SURAT_JALAN}*
-Jumlah Paket: *{JUMLAH_PAKET}*
-No. WA Pengirim: *{NO_HP_PENGIRIM}*
-Alamat Pengirim: *{ALAMAT_PENGIRIM}*
+                <p>
+                    <strong>Lokasi Pickup:</strong><br>
+                    <a href='{$googleMapsUrl}' style='color: #0275d8; text-decoration: none;'>Buka di Google Maps &rarr;</a>
+                </p>
+                <hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;'>
+                <p style='font-size: 12px; color: #999;'>Notifikasi Sistem Sancaka</p>
+            </div>
+        ";
 
-*Daftar Resi:*
-{DAFTAR_RESI}
-
-*Lokasi Pickup (Google Maps):*
-{LINK_LOKASI}
-
-*Mohon segera proses untuk input ke system SPX.*
-*Notifikasi Sistem Sancaka*
-TEXT;
-
-        $msgAdmin = str_replace(
-            ['{WAKTU_INPUT}', '{NAMA_PENGIRIM}', '{KODE_SURAT_JALAN}', '{JUMLAH_PAKET}', '{NO_HP_PENGIRIM}', '{ALAMAT_PENGIRIM}', '{DAFTAR_RESI}', '{LINK_LOKASI}'],
-            [$timestamp, $kontak->nama, $suratJalan->kode_surat_jalan, $suratJalan->jumlah_paket, $kontak->no_hp, $kontak->alamat, $resiList, $googleMapsUrl],
-            $adminTemplate
-        );
-
-        // ==========================================
-        // 2. SIAPKAN PESAN UNTUK PELANGGAN
-        // ==========================================
-        $pelangganTemplate = <<<TEXT
-Halo Kak *{NAMA_PENGIRIM}* 👋,
-
-Surat Jalan Anda berhasil dibuat! ✅
-
-📜 No. SJ: *{KODE_SURAT_JALAN}*
-📦 Total: *{JUMLAH_PAKET} Paket*
-🕒 Waktu: {WAKTU_INPUT}
-
-*Daftar Resi:*
-{DAFTAR_RESI}
-
-Terima kasih telah menggunakan *Sancaka Express*.
-Paket Anda akan segera kami proses pickup/input. 🙏
-TEXT;
-
-        $msgPelanggan = str_replace(
-            ['{NAMA_PENGIRIM}', '{KODE_SURAT_JALAN}', '{JUMLAH_PAKET}', '{WAKTU_INPUT}', '{DAFTAR_RESI}'],
-            [$kontak->nama, $suratJalan->kode_surat_jalan, $suratJalan->jumlah_paket, $timestamp, $resiList],
-            $pelangganTemplate
-        );
-
-        // ==========================================
-        // 3. EKSEKUSI PENGIRIMAN
-        // ==========================================
         try {
-            // A. Kirim ke Admin (Hardcoded)
-            $waNumber = '628819435180';
-            //$waAdmin = '6285745808809';
+            // Eksekusi pengiriman email HTML ke alamat statis
+            Mail::html($htmlBody, function ($message) use ($suratJalan) {
+                $message->to('tokosancaka@gmail.com')
+                        ->subject("Surat Jalan Baru Dibuat - {$suratJalan->kode_surat_jalan}");
+            });
 
-            FonnteService::sendMessage($waNumber, $msgAdmin);
-            //FonnteService::sendMessage($waAdmin, $msgAdmin);
-            Log::info("WA Admin terkirim untuk SJ: {$suratJalan->kode_surat_jalan}");
-
-            // B. Kirim ke Pelanggan (Dynamic)
-            if (!empty($kontak->no_hp)) {
-                // Format nomor HP (Ganti 08 jadi 628)
-                $hpPelanggan = $kontak->no_hp;
-                if (Str::startsWith($hpPelanggan, '0')) {
-                    $hpPelanggan = '62' . substr($hpPelanggan, 1);
-                }
-
-                FonnteService::sendMessage($hpPelanggan, $msgPelanggan);
-                Log::info("WA Pelanggan terkirim ke: {$hpPelanggan}");
-            }
+            Log::info("Email Admin terkirim untuk SJ: {$suratJalan->kode_surat_jalan}");
 
         } catch (\Exception $e) {
-            Log::error("Gagal mengirim notifikasi WA (Surat Jalan): " . $e->getMessage());
+            Log::error("Gagal mengirim notifikasi Email (Surat Jalan): " . $e->getMessage());
         }
     }
 }
