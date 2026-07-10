@@ -48,12 +48,13 @@ class PublicScanController extends Controller
      */
     public function registerKontak(Request $request)
     {
-        $validated = $request->validate([
+       $validated = $request->validate([
             'nama' => 'required|string|max:255',
             'no_hp' => 'required|string|unique:kontaks,no_hp',
             'alamat' => 'required|string',
-            'email' => 'required|email|unique:kontaks,email', // Wajib untuk user baru
-            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan', // Wajib untuk user baru
+            'email' => 'required|email|unique:kontaks,email',
+            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan,Pribadi,Perusahaan',
+            'instansi_perusahaan' => 'nullable|string|max:255',
         ]);
 
         // Menambahkan nilai default untuk kolom yang tidak boleh null
@@ -77,7 +78,8 @@ class PublicScanController extends Controller
         
         $validated = $request->validate([
             'email' => 'required|email|unique:kontaks,email,' . $id,
-            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan',
+            'jenis_kelamin' => 'required|in:Laki-laki,Perempuan,Pribadi,Perusahaan',
+            'instansi_perusahaan' => 'nullable|string|max:255',
         ]);
 
         $kontak->update($validated);
