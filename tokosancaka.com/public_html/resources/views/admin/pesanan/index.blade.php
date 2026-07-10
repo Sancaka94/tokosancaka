@@ -224,139 +224,17 @@
             @endforeach
         </div>
 
-       {{-- === CARD MONITOR (PENDAPATAN & JUMLAH) === --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-
-            {{-- ======================================================= --}}
-            {{-- ROW 1: MONITOR PENDAPATAN (RP) DENGAN EFEK HOVER        --}}
-            {{-- ======================================================= --}}
-
-            {{-- CARD 1: SELESAI --}}
-            <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg group cursor-help transition-all duration-300">
-                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
-                    <p class="text-3xl font-bold">Rp{{ number_format($incomeSelesai ?? 0, 0, ',', '.') }}</p>
-                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Pendapatan Selesai</p>
-                    <p class="text-xs opacity-75 mt-0.5">Total nilai pesanan sukses</p>
-                </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-store fa-5x text-white"></i></div>
-                <div class="absolute inset-0 bg-green-600 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
-                    <p class="text-xs font-bold uppercase border-b border-green-400 pb-1 mb-2">Rincian Pembayaran</p>
-                    <div class="space-y-1 text-sm font-medium">
-                        <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeSelesaiCash ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomeSelesaiCod ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeSelesaiSaldo ?? 0, 0, ',', '.') }}</span></div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- CARD 2: MENUNGGU PICKUP --}}
-            <div class="relative overflow-hidden rounded-lg bg-cyan-600 p-5 shadow-lg group cursor-help transition-all duration-300">
-                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
-                    <p class="text-3xl font-bold">Rp{{ number_format($incomePickup ?? 0, 0, ',', '.') }}</p>
-                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Menunggu Pickup</p>
-                    <p class="text-xs opacity-75 mt-0.5">Sudah lunas, belum kirim</p>
-                </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-box-open fa-5x text-white"></i></div>
-                <div class="absolute inset-0 bg-cyan-700 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
-                    <p class="text-xs font-bold uppercase border-b border-cyan-500 pb-1 mb-2">Rincian Pembayaran</p>
-                    <div class="space-y-1 text-sm font-medium">
-                        <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomePickupCash ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomePickupCod ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomePickupSaldo ?? 0, 0, ',', '.') }}</span></div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- CARD 3: SEDANG DIKIRIM --}}
-            <div class="relative overflow-hidden rounded-lg bg-blue-600 p-5 shadow-lg group cursor-help transition-all duration-300">
-                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
-                    <p class="text-3xl font-bold">Rp{{ number_format($incomeDikirim ?? 0, 0, ',', '.') }}</p>
-                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Sedang Dikirim</p>
-                    <p class="text-xs opacity-75 mt-0.5">Sedang dalam perjalanan</p>
-                </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-shipping-fast fa-5x text-white"></i></div>
-                <div class="absolute inset-0 bg-blue-700 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
-                    <p class="text-xs font-bold uppercase border-b border-blue-500 pb-1 mb-2">Rincian Pembayaran</p>
-                    <div class="space-y-1 text-sm font-medium">
-                        <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeDikirimCash ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomeDikirimCod ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeDikirimSaldo ?? 0, 0, ',', '.') }}</span></div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- CARD 4: GAGAL / BATAL --}}
-            <div class="relative overflow-hidden rounded-lg bg-red-500 p-5 shadow-lg group cursor-help transition-all duration-300">
-                <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0">
-                    <p class="text-3xl font-bold">Rp{{ number_format($incomeGagal ?? 0, 0, ',', '.') }}</p>
-                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Gagal / Batal</p>
-                    <p class="text-xs opacity-75 mt-0.5">Potensi pendapatan hilang</p>
-                </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-arrow-up fa-5x text-white"></i></div>
-                <div class="absolute inset-0 bg-red-600 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white">
-                    <p class="text-xs font-bold uppercase border-b border-red-400 pb-1 mb-2">Rincian Pembayaran</p>
-                    <div class="space-y-1 text-sm font-medium">
-                        <div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeGagalCash ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomeGagalCod ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeGagalSaldo ?? 0, 0, ',', '.') }}</span></div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- ======================================================= --}}
-            {{-- ROW 2: MONITOR JUMLAH TRANSAKSI (QTY) - TETAP SAMA      --}}
-            {{-- ======================================================= --}}
-
-            <div class="relative overflow-hidden rounded-lg bg-green-400 p-5 shadow-lg">
-                <div class="relative z-10 text-white">
-                    <p class="text-3xl font-bold">{{ number_format($countSelesai ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Resi</span></p>
-                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Jumlah Terkirim</p>
-                    <p class="text-xs opacity-75 mt-0.5">Total paket berhasil sampai</p>
-                </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-check-circle fa-5x text-white"></i></div>
-            </div>
-
-            <div class="relative overflow-hidden rounded-lg bg-cyan-500 p-5 shadow-lg">
-                <div class="relative z-10 text-white">
-                    <p class="text-3xl font-bold">{{ number_format($countPickup ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Paket</span></p>
-                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Menunggu Pickup</p>
-                    <p class="text-xs opacity-75 mt-0.5">Paket siap diambil kurir</p>
-                </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-clock fa-5x text-white"></i></div>
-            </div>
-
-            <div class="relative overflow-hidden rounded-lg bg-blue-500 p-5 shadow-lg">
-                <div class="relative z-10 text-white">
-                    <p class="text-3xl font-bold">{{ number_format($countDikirim ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Paket</span></p>
-                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Sedang Dikirim</p>
-                    <p class="text-xs opacity-75 mt-0.5">Paket dalam perjalanan</p>
-                </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-truck-moving fa-5x text-white"></i></div>
-            </div>
-
-            <div class="relative overflow-hidden rounded-lg bg-red-400 p-5 shadow-lg">
-                <div class="relative z-10 text-white">
-                    <p class="text-3xl font-bold">{{ number_format($countGagal ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Trx</span></p>
-                    <p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Gagal / Batal</p>
-                    <p class="text-xs opacity-75 mt-0.5">Transaksi dibatalkan/retur</p>
-                </div>
-                <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-ban fa-5x text-white"></i></div>
-            </div>
-
-        </div>
-
       {{-- ======================================================= --}}
-        {{-- ROW 3: MONITOR TAGIHAN REAL KIRIMINAJA (FINAL DATE)     --}}
+        {{-- AREA CARD MONITOR (DENGAN FITUR SEMBUNYIKAN)            --}}
         {{-- ======================================================= --}}
-        <div class="mb-6">
+
+        {{-- 1. KARTU TAGIHAN REAL (SELALU TAMPIL DI ATAS) --}}
+        <div class="mb-4">
             <div class="relative overflow-hidden rounded-lg bg-indigo-600 p-5 sm:p-6 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-indigo-500">
-                
-                {{-- Icon Background Transparan --}}
                 <div class="absolute right-0 top-0 -mt-6 -mr-6 opacity-10 transform rotate-12 pointer-events-none">
                     <i class="fas fa-file-invoice-dollar text-9xl text-white"></i>
                 </div>
                 
-                {{-- Bagian Kiri: Grand Total --}}
                 <div class="relative z-10 text-white w-full md:w-2/5">
                     <p class="text-sm font-bold uppercase tracking-wider text-indigo-200 mb-1">Tagihan Real Ekspedisi</p>
                     <p class="text-4xl lg:text-5xl font-bold mb-3 drop-shadow-md">Rp{{ number_format($totalTagihanReal ?? 0, 0, ',', '.') }}</p>
@@ -366,119 +244,102 @@
                     </div>
                 </div>
                 
-                {{-- Bagian Kanan: Rincian Pecahan Biaya (Grid 2x2) --}}
                 <div class="relative z-10 w-full md:w-3/5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    
-                    {{-- Kotak Ongkir --}}
                     <div class="bg-indigo-700 bg-opacity-60 rounded-lg p-3 lg:p-4 border border-indigo-500 shadow-inner flex flex-col justify-center">
-                        <div class="flex items-center gap-2 mb-1 opacity-80">
-                            <i class="fas fa-truck-fast text-indigo-200"></i>
-                            <p class="text-xs font-bold uppercase text-indigo-100">Ongkir Murni</p>
-                        </div>
+                        <div class="flex items-center gap-2 mb-1 opacity-80"><i class="fas fa-truck-fast text-indigo-200"></i><p class="text-xs font-bold uppercase text-indigo-100">Ongkir Murni</p></div>
                         <p class="text-xl lg:text-2xl font-bold text-white">Rp{{ number_format($tagihanOngkir ?? 0, 0, ',', '.') }}</p>
                     </div>
-
-                    {{-- Kotak Asuransi --}}
                     <div class="bg-indigo-700 bg-opacity-60 rounded-lg p-3 lg:p-4 border border-indigo-500 shadow-inner flex flex-col justify-center">
-                        <div class="flex items-center gap-2 mb-1 opacity-80">
-                            <i class="fas fa-shield-alt text-indigo-200"></i>
-                            <p class="text-xs font-bold uppercase text-indigo-100">Asuransi</p>
-                        </div>
+                        <div class="flex items-center gap-2 mb-1 opacity-80"><i class="fas fa-shield-alt text-indigo-200"></i><p class="text-xs font-bold uppercase text-indigo-100">Asuransi</p></div>
                         <p class="text-xl lg:text-2xl font-bold text-white">Rp{{ number_format($tagihanAsuransi ?? 0, 0, ',', '.') }}</p>
                     </div>
-                    
-                    {{-- Kotak COD Ongkir --}}
                     <div class="bg-indigo-700 bg-opacity-60 rounded-lg p-3 lg:p-4 border border-indigo-500 shadow-inner flex flex-col justify-center">
-                        <div class="flex items-center gap-2 mb-1 opacity-80">
-                            <i class="fas fa-hand-holding-dollar text-indigo-200"></i>
-                            <p class="text-xs font-bold uppercase text-indigo-100">Fee COD Ongkir</p>
-                        </div>
+                        <div class="flex items-center gap-2 mb-1 opacity-80"><i class="fas fa-hand-holding-dollar text-indigo-200"></i><p class="text-xs font-bold uppercase text-indigo-100">Fee COD Ongkir</p></div>
                         <p class="text-xl lg:text-2xl font-bold text-white">Rp{{ number_format($tagihanCodOngkir ?? 0, 0, ',', '.') }}</p>
                     </div>
-
-                    {{-- Kotak COD Barang --}}
                     <div class="bg-indigo-700 bg-opacity-60 rounded-lg p-3 lg:p-4 border border-indigo-500 shadow-inner flex flex-col justify-center">
-                        <div class="flex items-center gap-2 mb-1 opacity-80">
-                            <i class="fas fa-box-open text-indigo-200"></i>
-                            <p class="text-xs font-bold uppercase text-indigo-100">Fee COD Barang</p>
-                        </div>
+                        <div class="flex items-center gap-2 mb-1 opacity-80"><i class="fas fa-box-open text-indigo-200"></i><p class="text-xs font-bold uppercase text-indigo-100">Fee COD Barang</p></div>
                         <p class="text-xl lg:text-2xl font-bold text-white">Rp{{ number_format($tagihanCodBarang ?? 0, 0, ',', '.') }}</p>
                     </div>
-
                 </div>
+            </div>
 
+            {{-- TOMBOL TOGGLE (KLIK UNTUK MUNCULKAN SEMUA) --}}
+            <div class="mt-4 flex justify-center relative z-20">
+                <button type="button" onclick="toggleSemuaCard()" class="bg-white border border-gray-300 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 px-6 py-2.5 rounded-full text-sm font-bold shadow-sm transition-all duration-300 flex items-center gap-2 group cursor-pointer">
+                    <span id="textToggleCard">Lihat Semua Statistik & Rincian</span>
+                    <i id="iconToggleCard" class="fas fa-chevron-down transform transition-transform duration-300 group-hover:translate-y-1"></i>
+                </button>
             </div>
         </div>
 
-        {{-- ======================================================= --}}
-        {{-- ROW 4: DETAIL RINCIAN INVOICE TAGIHAN (Sesuai Excel)    --}}
-        {{-- ======================================================= --}}
-        <div class="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {{-- 2. WRAPPER CARD LAMA & TABEL INVOICE (DISEMBUNYIKAN BY DEFAULT) --}}
+        <div id="hiddenCardsContainer" class="hidden mt-6 fade-in">
             
-            {{-- BAGIAN KIRI: INVOICE SHIPPING --}}
-            <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-                <div class="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-2">
-                    <i class="fas fa-truck-fast text-gray-500"></i>
-                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Exclude PPN (INVOICE SHIPPING)</h3>
+            {{-- TABEL INVOICE (Dari Sebelumnya) --}}
+            <div class="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+                    <div class="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-2"><i class="fas fa-truck-fast text-gray-500"></i><h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Exclude PPN (INVOICE SHIPPING)</h3></div>
+                    <div class="p-5 space-y-3 text-sm text-gray-600 font-medium">
+                        <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>Shipping Cost COD</span><span class="text-gray-900">Rp {{ number_format($shipCostCOD ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>Shipping Cost Non COD</span><span class="text-gray-900">Rp {{ number_format($shipCostNonCOD ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>Discount</span><span class="text-red-600">-Rp {{ number_format($discountShipping ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>Asuransi</span><span class="text-gray-900">Rp {{ number_format($tagihanAsuransi ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>RTS Fee</span><span class="text-gray-900">Rp {{ number_format($rtsFee ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>PPN (1.1%)</span><span class="text-gray-900">Rp {{ number_format($ppnShipping ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-300 mt-2"><span class="font-bold text-gray-900">Total Shipping</span><span class="font-bold text-indigo-700 text-lg">Rp {{ number_format($totalInvoiceShipping ?? 0, 0, ',', '.') }}</span></div>
+                    </div>
                 </div>
-                <div class="p-5 space-y-3 text-sm text-gray-600 font-medium">
-                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
-                        <span>Shipping Cost COD</span>
-                        <span class="text-gray-900">Rp {{ number_format($shipCostCOD ?? 0, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
-                        <span>Shipping Cost Non COD</span>
-                        <span class="text-gray-900">Rp {{ number_format($shipCostNonCOD ?? 0, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
-                        <span>Discount</span>
-                        <span class="text-red-600">-Rp {{ number_format($discountShipping ?? 0, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
-                        <span>Asuransi</span>
-                        <span class="text-gray-900">Rp {{ number_format($tagihanAsuransi ?? 0, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
-                        <span>RTS Fee</span>
-                        <span class="text-gray-900">Rp {{ number_format($rtsFee ?? 0, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
-                        <span>PPN (1.1%)</span>
-                        <span class="text-gray-900">Rp {{ number_format($ppnShipping ?? 0, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-300 mt-2">
-                        <span class="font-bold text-gray-900">Total Shipping</span>
-                        <span class="font-bold text-indigo-700 text-lg">Rp {{ number_format($totalInvoiceShipping ?? 0, 0, ',', '.') }}</span>
+
+                <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden h-fit">
+                    <div class="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-2"><i class="fas fa-hand-holding-dollar text-gray-500"></i><h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Exclude PPN (INVOICE COD)</h3></div>
+                    <div class="p-5 space-y-3 text-sm text-gray-600 font-medium">
+                        <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>COD Fee</span><span class="text-gray-900">Rp {{ number_format($baseCodFee ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>DPP Nilai lain</span><span class="text-gray-900">Rp {{ number_format($dppCod ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>PPN 12%</span><span class="text-gray-900">Rp {{ number_format($ppnCod ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-300 mt-2"><span class="font-bold text-gray-900">Total COD Fee</span><span class="font-bold text-indigo-700 text-lg">Rp {{ number_format($totalCodFeeAll ?? 0, 0, ',', '.') }}</span></div>
                     </div>
                 </div>
             </div>
 
-            {{-- BAGIAN KANAN: INVOICE COD --}}
-            <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden h-fit">
-                <div class="bg-gray-50 border-b border-gray-200 px-5 py-3 flex items-center gap-2">
-                    <i class="fas fa-hand-holding-dollar text-gray-500"></i>
-                    <h3 class="text-sm font-bold text-gray-800 uppercase tracking-wide">Exclude PPN (INVOICE COD)</h3>
+            {{-- 8 CARD LAMA (Pendapatan & Jumlah) --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                
+                {{-- Card 1: Selesai --}}
+                <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg group cursor-help transition-all duration-300">
+                    <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0"><p class="text-3xl font-bold">Rp{{ number_format($incomeSelesai ?? 0, 0, ',', '.') }}</p><p class="text-sm font-bold uppercase opacity-90 mt-1">Pendapatan Selesai</p><p class="text-xs opacity-75 mt-0.5">Total nilai pesanan sukses</p></div>
+                    <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-store fa-5x text-white"></i></div>
+                    <div class="absolute inset-0 bg-green-600 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white"><p class="text-xs font-bold uppercase border-b border-green-400 pb-1 mb-2">Rincian Pembayaran</p><div class="space-y-1 text-sm font-medium"><div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeSelesaiCash ?? 0, 0, ',', '.') }}</span></div><div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomeSelesaiCod ?? 0, 0, ',', '.') }}</span></div><div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeSelesaiSaldo ?? 0, 0, ',', '.') }}</span></div></div></div>
                 </div>
-                <div class="p-5 space-y-3 text-sm text-gray-600 font-medium">
-                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
-                        <span>COD Fee</span>
-                        <span class="text-gray-900">Rp {{ number_format($baseCodFee ?? 0, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
-                        <span>DPP Nilai lain</span>
-                        <span class="text-gray-900">Rp {{ number_format($dppCod ?? 0, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition">
-                        <span>PPN 12%</span>
-                        <span class="text-gray-900">Rp {{ number_format($ppnCod ?? 0, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-300 mt-2">
-                        <span class="font-bold text-gray-900">Total COD Fee</span>
-                        <span class="font-bold text-indigo-700 text-lg">Rp {{ number_format($totalCodFeeAll ?? 0, 0, ',', '.') }}</span>
-                    </div>
+
+                {{-- Card 2: Menunggu Pickup --}}
+                <div class="relative overflow-hidden rounded-lg bg-cyan-600 p-5 shadow-lg group cursor-help transition-all duration-300">
+                    <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0"><p class="text-3xl font-bold">Rp{{ number_format($incomePickup ?? 0, 0, ',', '.') }}</p><p class="text-sm font-bold uppercase opacity-90 mt-1">Menunggu Pickup</p><p class="text-xs opacity-75 mt-0.5">Sudah lunas, belum kirim</p></div>
+                    <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-box-open fa-5x text-white"></i></div>
+                    <div class="absolute inset-0 bg-cyan-700 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white"><p class="text-xs font-bold uppercase border-b border-cyan-500 pb-1 mb-2">Rincian Pembayaran</p><div class="space-y-1 text-sm font-medium"><div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomePickupCash ?? 0, 0, ',', '.') }}</span></div><div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomePickupCod ?? 0, 0, ',', '.') }}</span></div><div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomePickupSaldo ?? 0, 0, ',', '.') }}</span></div></div></div>
                 </div>
+
+                {{-- Card 3: Sedang Dikirim --}}
+                <div class="relative overflow-hidden rounded-lg bg-blue-600 p-5 shadow-lg group cursor-help transition-all duration-300">
+                    <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0"><p class="text-3xl font-bold">Rp{{ number_format($incomeDikirim ?? 0, 0, ',', '.') }}</p><p class="text-sm font-bold uppercase opacity-90 mt-1">Sedang Dikirim</p><p class="text-xs opacity-75 mt-0.5">Sedang dalam perjalanan</p></div>
+                    <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-shipping-fast fa-5x text-white"></i></div>
+                    <div class="absolute inset-0 bg-blue-700 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white"><p class="text-xs font-bold uppercase border-b border-blue-500 pb-1 mb-2">Rincian Pembayaran</p><div class="space-y-1 text-sm font-medium"><div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeDikirimCash ?? 0, 0, ',', '.') }}</span></div><div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomeDikirimCod ?? 0, 0, ',', '.') }}</span></div><div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeDikirimSaldo ?? 0, 0, ',', '.') }}</span></div></div></div>
+                </div>
+
+                {{-- Card 4: Gagal / Batal --}}
+                <div class="relative overflow-hidden rounded-lg bg-red-500 p-5 shadow-lg group cursor-help transition-all duration-300">
+                    <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0"><p class="text-3xl font-bold">Rp{{ number_format($incomeGagal ?? 0, 0, ',', '.') }}</p><p class="text-sm font-bold uppercase opacity-90 mt-1">Gagal / Batal</p><p class="text-xs opacity-75 mt-0.5">Potensi pendapatan hilang</p></div>
+                    <div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12 transition-opacity duration-300 group-hover:opacity-5"><i class="fas fa-arrow-up fa-5x text-white"></i></div>
+                    <div class="absolute inset-0 bg-red-600 p-4 flex flex-col justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 text-white"><p class="text-xs font-bold uppercase border-b border-red-400 pb-1 mb-2">Rincian Pembayaran</p><div class="space-y-1 text-sm font-medium"><div class="flex justify-between items-center"><span>Cash</span><span>Rp{{ number_format($incomeGagalCash ?? 0, 0, ',', '.') }}</span></div><div class="flex justify-between items-center"><span>COD / Ongkir</span><span>Rp{{ number_format($incomeGagalCod ?? 0, 0, ',', '.') }}</span></div><div class="flex justify-between items-center"><span>Potong Saldo</span><span>Rp{{ number_format($incomeGagalSaldo ?? 0, 0, ',', '.') }}</span></div></div></div>
+                </div>
+
+                {{-- Card 5-8 (Qty) --}}
+                <div class="relative overflow-hidden rounded-lg bg-green-400 p-5 shadow-lg"><div class="relative z-10 text-white"><p class="text-3xl font-bold">{{ number_format($countSelesai ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Resi</span></p><p class="text-sm font-bold uppercase opacity-90 mt-1">Jumlah Terkirim</p><p class="text-xs opacity-75 mt-0.5">Total paket berhasil sampai</p></div><div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-check-circle fa-5x text-white"></i></div></div>
+                <div class="relative overflow-hidden rounded-lg bg-cyan-500 p-5 shadow-lg"><div class="relative z-10 text-white"><p class="text-3xl font-bold">{{ number_format($countPickup ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Paket</span></p><p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Menunggu Pickup</p><p class="text-xs opacity-75 mt-0.5">Paket siap diambil kurir</p></div><div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-clock fa-5x text-white"></i></div></div>
+                <div class="relative overflow-hidden rounded-lg bg-blue-500 p-5 shadow-lg"><div class="relative z-10 text-white"><p class="text-3xl font-bold">{{ number_format($countDikirim ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Paket</span></p><p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Sedang Dikirim</p><p class="text-xs opacity-75 mt-0.5">Paket dalam perjalanan</p></div><div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-truck-moving fa-5x text-white"></i></div></div>
+                <div class="relative overflow-hidden rounded-lg bg-red-400 p-5 shadow-lg"><div class="relative z-10 text-white"><p class="text-3xl font-bold">{{ number_format($countGagal ?? 0, 0, ',', '.') }} <span class="text-lg font-normal">Trx</span></p><p class="text-sm font-bold uppercase opacity-90 mt-1">Jml. Gagal / Batal</p><p class="text-xs opacity-75 mt-0.5">Transaksi dibatalkan/retur</p></div><div class="absolute right-0 top-0 -mt-2 -mr-4 h-24 w-24 opacity-20 transform rotate-12"><i class="fas fa-ban fa-5x text-white"></i></div></div>
+
             </div>
-            
         </div>
 
         {{-- === TOMBOL AKSI MASSAL (MUNCUL SAAT ADA YANG DICEKLIST) === --}}
@@ -1172,6 +1033,29 @@
         document.addEventListener('DOMContentLoaded', function() {
             updateBulkActionUI();
         });
+
+        // ==========================================
+        // LOGIKA TOGGLE CARD & SUMMARY LENGKAP
+        // ==========================================
+        function toggleSemuaCard() {
+            const container = document.getElementById('hiddenCardsContainer');
+            const textEl = document.getElementById('textToggleCard');
+            const iconEl = document.getElementById('iconToggleCard');
+
+            if (container.classList.contains('hidden')) {
+                // Tampilkan Kontainer
+                container.classList.remove('hidden');
+                textEl.innerText = "Sembunyikan Statistik & Rincian";
+                iconEl.classList.remove('fa-chevron-down');
+                iconEl.classList.add('fa-chevron-up');
+            } else {
+                // Sembunyikan Kontainer
+                container.classList.add('hidden');
+                textEl.innerText = "Lihat Semua Statistik & Rincian";
+                iconEl.classList.remove('fa-chevron-up');
+                iconEl.classList.add('fa-chevron-down');
+            }
+        }
 
     </script>
 @endpush
