@@ -135,20 +135,58 @@ class PesananController extends Controller
         $countDikirim = (clone $cardQuery)->whereIn('status_pesanan', $statusDikirim)->count();
         $countGagal   = (clone $cardQuery)->whereIn('status_pesanan', $statusGagal)->count();
 
+       // =================================================================
+        // --- C. CARD MONITOR TAGIHAN KIRIMINAJA (KHUSUS FINAL DATE) ---
         // =================================================================
-        // --- C. CARD MONITOR TAGIHAN KIRIMINAJA (REAL) ---
-        // =================================================================
-        // Logika: Memfilter berdasarkan Created Date (sudah bawaan $cardQuery dari tanggal_pesanan)
-        // dan HANYA mengambil yang sudah punya Final Date (Status: Terkirim / Selesai).
-        $statusFinalTagihan = ['Terkirim', 'Selesai'];
+        // Bikin query baru yang terpisah, tidak mengganggu card sebelumnya
+        $tagihanQuery = \App\Models\Pesanan::query();
 
-        $countTagihanReal = (clone $cardQuery)->whereIn('status_pesanan', $statusFinalTagihan)->count();
+        // 1. Ambil Search (biar card tagihan juga responsif kalau diketik di pencarian)
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $tagihanQuery->where(function($q) use ($search) {
+                $q->where('resi', 'like', "%{$search}%")
+                  ->orWhere('nomor_invoice', 'like', "%{$search}%")
+                  ->orWhere('sender_name', 'like', "%{$search}%")
+                  ->orWhere('receiver_name', 'like', "%{$search}%")
+                  ->orWhere('sender_phone', 'like', "%{$search}%")
+                  ->orWhere('receiver_phone', 'like', "%{$search}%")
+                  ->orWhere('expedition', 'like', "%{$search}%")
+                  ->orWhere('status_pesanan', 'like', "%{$search}%");
+            });
+        }
+
+        // 2. Ambil Filter Ekspedisi (Biar kalau filter JNE, card tagihan ikut berubah)
+        if ($request->has('ekspedisi') && $request->ekspedisi != '') {
+            $filterKurir = $request->ekspedisi;
+            $tagihanQuery->where(function($q) use ($filterKurir) {
+                $q->where('expedition', 'LIKE', '%-' . $filterKurir . '-%')
+                  ->orWhere('expedition', 'LIKE', $filterKurir . '-%');
+            });
+        }
+
+        // 3. Terapkan Filter Tanggal KHUSUS ke updated_at (Final Date)
+        if ($request->filled('date_range')) {
+            $rawDate = $request->date_range;
+            $normalizedDate = str_replace([' - ', ' s.d. '], ' to ', $rawDate);
+            $dates = explode(' to ', $normalizedDate);
+
+            if (count($dates) >= 2) {
+                $startDate = trim($dates[0]) . ' 00:00:00';
+                $endDate   = trim($dates[1]) . ' 23:59:59';
+                $tagihanQuery->whereBetween('updated_at', [$startDate, $endDate]);
+            } elseif (count($dates) == 1) {
+                $tagihanQuery->whereDate('updated_at', trim($dates[0]));
+            }
+        }
+
+        // 4. Eksekusi Perhitungan Khusus Paket Selesai
+        $statusFinalTagihan = ['Terkirim', 'Selesai'];
         
-        // Komponen Tagihan KiriminAja (Biasanya Total Ongkir Asli + Asuransi Asli)
-        $tagihanOngkir   = (clone $cardQuery)->whereIn('status_pesanan', $statusFinalTagihan)->sum('shipping_cost');
-        $tagihanAsuransi = (clone $cardQuery)->whereIn('status_pesanan', $statusFinalTagihan)->sum('insurance_cost');
+        $countTagihanReal = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->count();
+        $tagihanOngkir    = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->sum('shipping_cost');
+        $tagihanAsuransi  = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->sum('insurance_cost');
         
-        // Grand Total Tagihan Real
         $totalTagihanReal = $tagihanOngkir + $tagihanAsuransi;
         // =================================================================
         
