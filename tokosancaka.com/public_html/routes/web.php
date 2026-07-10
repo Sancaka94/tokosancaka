@@ -1842,4 +1842,4 @@ Route::get('auth/facebook/callback', [App\Http\Controllers\Auth\AuthenticatedSes
 Route::post('/api/mobile/auth/google', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'loginGoogle']);
 Route::post('/api/mobile/auth/facebook', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'loginFacebook']);
 
-Route::post('/kontak/{id}/lengkapi-profil', [PublicScanController::class, 'updateKontakProfil'])->name('kontak.lengkapi_profil');
+Route::post('/kontak/{id}/lengkapi-profil', [\App\Http\Controllers\PublicScanController::class, 'updateKontakProfil'])->name('kontak.lengkapi_profil');
