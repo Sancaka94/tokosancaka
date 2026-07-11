@@ -47,42 +47,54 @@ class AppServiceProvider extends ServiceProvider
         View::composer('layouts.partials.header', HeaderComposer::class);
 
         View::composer('*', function ($view) {
-    try {
-        if (auth()->check()) {
-            // Cache data global (Monitor & Aktivitas)
-            $stats = Cache::remember('global_sidebar_data_v5', 5, function () { // Cache 30 detik
-                return [
-                    // --- DATA MONITOR (8 KARTU) ---
-                    'totalPendapatan' => \App\Models\TopUp::where('status', 'success')->sum('amount')
-                                       + Pesanan::sum('shipping_cost'),
-                    'totalPesanan' => Pesanan::count(),
-                    'jumlahToko' => \App\Models\User::where('role', 'Seller')->count(),
-                    'penggunaBaru' => \App\Models\User::where('role', 'Pelanggan')
-                                         ->where('created_at', '>=', now()->subDays(30))->count(),
-                    'totalTerkirim' => Pesanan::where('status_pesanan', 'Selesai')->count(),
-                    'totalSedangDikirim' => Pesanan::whereIn('status_pesanan',
-                        ['Sedang Dikirim', 'Dikirim', 'Diproses', 'Sedang Diantar'])->count(),
-                    'totalMenungguPickup' => Pesanan::where('status_pesanan', 'Menunggu Pickup')->count(),
-                    'totalGagal' => Pesanan::whereIn('status_pesanan',
-                        ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan', 'Gagal Resi'])->count(),
+            try {
+                if (auth()->check()) {
+                    // Cache data global (Monitor & Aktivitas)
+                    $stats = Cache::remember('global_sidebar_data_v5', 30, function () { // Ubah jadi 30 agar sesuai komentar (30 detik)
+                        return [
+                            // --- DATA MONITOR (8 KARTU) ---
+                            'totalPendapatan' => \App\Models\TopUp::where('status', 'success')->sum('amount')
+                                               + Pesanan::sum('shipping_cost'),
+                            'totalPesanan' => Pesanan::count(),
+                            'jumlahToko' => \App\Models\User::where('role', 'Seller')->count(),
+                            'penggunaBaru' => \App\Models\User::where('role', 'Pelanggan')
+                                                 ->where('created_at', '>=', now()->subDays(30))->count(),
+                            'totalTerkirim' => Pesanan::where('status_pesanan', 'Selesai')->count(),
+                            'totalSedangDikirim' => Pesanan::whereIn('status_pesanan',
+                                ['Sedang Dikirim', 'Dikirim', 'Diproses', 'Sedang Diantar'])->count(),
+                            'totalMenungguPickup' => Pesanan::where('status_pesanan', 'Menunggu Pickup')->count(),
+                            'totalGagal' => Pesanan::whereIn('status_pesanan',
+                                ['Batal', 'Gagal', 'Retur', 'Kadaluarsa', 'Dibatalkan', 'Gagal Resi'])->count(),
 
-                    // --- DATA AKTIVITAS (Baru Ditambahkan) ---
-                    'pesananTerbaru' => Pesanan::with('pembeli')
-                                        ->latest('created_at')
-                                        //->take(10)
-                                        ->limit(100) // Ambil 10 terakhir
-                                        ->get()
-                ];
-            });
+                            // --- DATA AKTIVITAS (Baru Ditambahkan) ---
+                            'pesananTerbaru' => Pesanan::with('pembeli')
+                                                ->latest('created_at')
+                                                //->take(10)
+                                                ->limit(100) // Ambil 10 terakhir (Note: Limit 100 tapi komentar bilang 10 terakhir)
+                                                ->get()
+                        ];
+                    });
 
-            foreach ($stats as $key => $val) {
-                $view->with($key, $val);
+                    foreach ($stats as $key => $val) {
+                        $view->with($key, $val);
+                    }
+                } else {
+                    // TAMBAHAN: Kirim nilai default jika user belum login / session habis
+                    // agar tidak terjadi error "Undefined variable" di Blade
+                    $view->with('totalPendapatan', 0)
+                         ->with('totalPesanan', 0)
+                         ->with('jumlahToko', 0)
+                         ->with('penggunaBaru', 0)
+                         ->with('totalTerkirim', 0)
+                         ->with('totalSedangDikirim', 0)
+                         ->with('totalMenungguPickup', 0)
+                         ->with('totalGagal', 0)
+                         ->with('pesananTerbaru', collect([])); // Berikan collection kosong
+                }
+            } catch (\Throwable $e) {
+                // Silent fail
             }
-        }
-    } catch (\Throwable $e) {
-        // Silent fail
-    }
-});
+        });
 
         // ----------------------------------------
         // 2. INJECT CONFIG API DARI DATABASE
