@@ -10,10 +10,56 @@ use App\Imports\AutoKirimImport;
 
 class AutoKirimController extends Controller
 {
-    public function index()
+   public function index(Request $request)
     {
-        $data = AutoKirim::latest()->paginate(15);
-        return view('admin.autokirim.index', compact('data'));
+        $query = AutoKirim::query();
+
+        // 1. FITUR PENCARIAN TEKS (Kodepos, Desa, Kota, Provinsi)
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('zip', 'like', "%{$search}%")
+                  ->orWhere('district_name', 'like', "%{$search}%")
+                  ->orWhere('regency_name', 'like', "%{$search}%")
+                  ->orWhere('province_name', 'like', "%{$search}%");
+            });
+        }
+
+        // 2. FITUR FILTER DROPDOWN PROVINSI
+        if ($request->filled('province')) {
+            $query->where('province_name', $request->province);
+        }
+
+        // 3. FITUR FILTER DROPDOWN KOTA/KABUPATEN
+        if ($request->filled('regency')) {
+            $query->where('regency_name', $request->regency);
+        }
+
+        // 4. PENGURUTAN A-Z (Mulai dari Aceh seperti di Excel)
+        $query->orderBy('province_name', 'asc')
+              ->orderBy('regency_name', 'asc')
+              ->orderBy('district_name', 'asc');
+
+        // 5. HITUNG STATISTIK (Dihitung berdasarkan filter yang aktif)
+        $statsQuery = clone $query;
+        $totalDesa = $statsQuery->count();
+        
+        $kotaQuery = clone $query;
+        $totalKota = $kotaQuery->distinct('regency_name')->count('regency_name');
+        
+        $provQuery = clone $query;
+        $totalProvinsi = $provQuery->distinct('province_name')->count('province_name');
+
+        // 6. AMBIL DATA UNTUK ISI DROPDOWN (Data unik dari tabel)
+        $provinces = AutoKirim::select('province_name')->distinct()->whereNotNull('province_name')->orderBy('province_name')->pluck('province_name');
+        $regencies = AutoKirim::select('regency_name')->distinct()->whereNotNull('regency_name')->orderBy('regency_name')->pluck('regency_name');
+
+        // 7. PAGINASI (withQueryString agar filter tidak hilang saat pindah halaman)
+        $data = $query->paginate(15)->withQueryString();
+
+        return view('admin.autokirim.index', compact(
+            'data', 'totalDesa', 'totalKota', 'totalProvinsi', 'provinces', 'regencies'
+        ));
     }
 
     public function create()
