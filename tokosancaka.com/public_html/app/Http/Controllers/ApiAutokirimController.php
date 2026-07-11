@@ -10,6 +10,7 @@ use App\Models\Api;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\Pesanan;
+use App\Models\AutoKirim; // <-- Tambahkan model AutoKirim
 
 class ApiAutokirimController extends Controller
 {
@@ -136,6 +137,139 @@ class ApiAutokirimController extends Controller
             return response()->json([
                 'rc' => '99',
                 'rd' => 'Internal server error while processing webhook'
+            ], 500);
+        }
+    }
+
+    /**
+     * ==============================================================
+     * API PENGAMBILAN WILAYAH (LOCAL DATABASE)
+     * ==============================================================
+     */
+
+    /**
+     * GET: Ambil daftar semua Provinsi
+     */
+    public function getProvinces()
+    {
+        try {
+            $provinces = AutoKirim::select('province_name')
+                ->distinct()
+                ->whereNotNull('province_name')
+                ->orderBy('province_name', 'asc')
+                ->pluck('province_name');
+
+            return response()->json([
+                'success' => true,
+                'data' => $provinces
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data provinsi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET: Ambil daftar Kota/Kabupaten berdasarkan Provinsi
+     * Contoh request: /api/wilayah/regencies?province_name=JAWA TIMUR
+     */
+    public function getRegencies(Request $request)
+    {
+        try {
+            $province = $request->query('province_name');
+
+            if (!$province) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Parameter province_name wajib diisi.'
+                ], 400);
+            }
+
+            $regencies = AutoKirim::select('regency_name')
+                ->distinct()
+                ->where('province_name', $province)
+                ->whereNotNull('regency_name')
+                ->orderBy('regency_name', 'asc')
+                ->pluck('regency_name');
+
+            return response()->json([
+                'success' => true,
+                'data' => $regencies
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data kota/kabupaten: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET: Ambil daftar Kecamatan/Desa, Zip, dan District ID berdasarkan Kota/Kabupaten
+     * Contoh request: /api/wilayah/districts?regency_name=KABUPATEN NGAWI
+     */
+    public function getDistricts(Request $request)
+    {
+        try {
+            $regency = $request->query('regency_name');
+
+            if (!$regency) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Parameter regency_name wajib diisi.'
+                ], 400);
+            }
+
+            $districts = AutoKirim::select('district_id', 'district_name', 'zip')
+                ->where('regency_name', $regency)
+                ->orderBy('district_name', 'asc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $districts
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data kecamatan: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * GET: Pencarian Global Wilayah (Autocomplete)
+     * Contoh request: /api/wilayah/search?q=NGAWI
+     */
+    public function searchWilayah(Request $request)
+    {
+        try {
+            $keyword = $request->query('q');
+
+            if (!$keyword) {
+                return response()->json([
+                    'success' => true,
+                    'data' => []
+                ], 200);
+            }
+
+            $data = AutoKirim::where('district_name', 'like', "%{$keyword}%")
+                ->orWhere('regency_name', 'like', "%{$keyword}%")
+                ->orWhere('province_name', 'like', "%{$keyword}%")
+                ->orWhere('zip', 'like', "%{$keyword}%")
+                ->limit(50) // Dibatasi agar tidak membebani server
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $data
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal melakukan pencarian wilayah: ' . $e->getMessage()
             ], 500);
         }
     }
