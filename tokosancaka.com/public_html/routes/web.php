@@ -37,6 +37,9 @@ use App\Http\Controllers\PublicPelangganController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\DanaPpobDigitalGoodsController; // <-- TAMBAHKAN INI DI ATAS
 
+use App\Http\Controllers\Admin\AutoKirimController;
+
+
 // Telegram Group
 use App\Http\Controllers\TelegramGroupController;
 
@@ -1843,3 +1846,14 @@ Route::post('/api/mobile/auth/google', [\App\Http\Controllers\Api\Mobile\AuthCon
 Route::post('/api/mobile/auth/facebook', [\App\Http\Controllers\Api\Mobile\AuthController::class, 'loginFacebook']);
 
 Route::post('/kontak/{id}/lengkapi-profil', [\App\Http\Controllers\PublicScanController::class, 'updateKontakProfil'])->name('kontak.lengkapi_profil');
+
+
+
+
+Route::prefix('admin')->name('admin.')->group(function () {
+    // Letakkan route ini sebelum Route::resource
+    Route::post('autokirim/import', [AutoKirimController::class, 'import'])->name('autokirim.import');
+    
+    // CRUD Resource
+    Route::resource('autokirim', AutoKirimController::class);
+});
