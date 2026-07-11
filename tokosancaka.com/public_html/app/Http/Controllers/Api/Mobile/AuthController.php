@@ -8,13 +8,13 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Pengguna;
 use Illuminate\Support\Str;
-use App\Services\FonnteService;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
 use App\Notifications\NotifikasiUmum;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Socialite\Facades\Socialite;
+use Jenssegers\Agent\Agent;
 
 class AuthController extends Controller
 {
@@ -43,6 +43,9 @@ class AuthController extends Controller
                 'message' => 'Akun belum aktif.',
             ], 403);
         }
+
+        // Kirim Notifikasi Keamanan Login
+        $this->sendLoginNotification($user, $request, 'Akun Sancaka (Password)');
 
         // Cetak Token untuk HP
         $token = $user->createToken('sancaka-mobile')->plainTextToken;
@@ -105,6 +108,9 @@ class AuthController extends Controller
             ], 401);
         }
 
+        // Kirim Notifikasi Keamanan Login
+        $this->sendLoginNotification($user, $request, 'Akun Sancaka (PIN)');
+
         // 5. Cetak Token untuk HP
         $token = $user->createToken('sancaka-mobile')->plainTextToken;
 
@@ -139,7 +145,7 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        // 1. Validasi Input (Tetap sama)
+        // 1. Validasi Input
         $validator = Validator::make($request->all(), [
             'nama_lengkap' => ['required', 'string', 'max:255'],
             'email'        => ['required', 'string', 'email', 'max:255', 'unique:Pengguna,email'],
@@ -168,29 +174,22 @@ class AuthController extends Controller
         $user->setup_token = $token;
         $user->save();
 
-        // 3. Kirim OTP Dobel (WhatsApp + Email)
+        // 3. Kirim OTP (Hanya Email)
         $this->sendDualOtp($user, $token);
+        
+        // 4. Kirim Notifikasi Registrasi ke Admin dan CC ke Pendaftar
+        $this->sendRegistrationNotification($user, $request);
 
         return response()->json([
             'success' => true,
-            'message' => 'Registrasi berhasil. Kode verifikasi telah dikirim ke WhatsApp dan Email Anda.',
+            'message' => 'Registrasi berhasil. Kode verifikasi telah dikirim ke Email Anda.',
             'data'    => $user
         ], 201);
     }
 
-    // Fungsi Pembantu untuk mengirim WA & Email
+    // Fungsi Pembantu untuk mengirim Email OTP
     private function sendDualOtp($user, $token)
     {
-        // A. Kirim ke WhatsApp (Fonnte)
-        try {
-            $message = "*Sancaka Express*\n\nHalo Kak {$user->nama_lengkap},\n\nKode Verifikasi Anda: *{$token}*\n\nJangan berikan kode ini kepada siapapun.";
-            $noWa = preg_replace('/^0/', '62', $user->no_wa);
-            FonnteService::sendMessage($noWa, $message);
-        } catch (\Exception $e) {
-            Log::error('Gagal kirim WA saat registrasi: ' . $e->getMessage());
-        }
-
-        // B. Kirim ke Email (Template Keren dengan Link Verifikasi)
         try {
             // URL verifikasi yang mengarah ke route web kita
             $verifyUrl = url('/verifikasi-email?token=' . $token . '&email=' . urlencode($user->email));
@@ -211,7 +210,7 @@ class AuthController extends Controller
 
                         <a href='{$verifyUrl}'
                            style='display: inline-block; background-color: #dc2626; color: #ffffff; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: bold; text-decoration: none;'>
-                           KLIK UNTUK VERIFIKASI
+                            KLIK UNTUK VERIFIKASI
                         </a>
                     </div>
 
@@ -245,10 +244,10 @@ class AuthController extends Controller
         $user->setup_token = $newToken;
         $user->save();
 
-        // Panggil fungsi kirim dobel
+        // Panggil fungsi kirim OTP
         $this->sendDualOtp($user, $newToken);
 
-        return response()->json(['success' => true, 'message' => 'Kode verifikasi baru telah dikirim ke WA dan Email Anda.'], 200);
+        return response()->json(['success' => true, 'message' => 'Kode verifikasi baru telah dikirim ke Email Anda.'], 200);
     }
 
      // LOG LOG: Fungsi Verifikasi Token (Mobile)
@@ -322,34 +321,34 @@ class AuthController extends Controller
     }
 
    public function verifyEmailFromLink(Request $request)
-{
-    $token = $request->query('token');
-    $email = $request->query('email');
+   {
+        $token = $request->query('token');
+        $email = $request->query('email');
 
-    $user = User::where('email', $email)->first();
-    if (!$user) return view('verifikasi-email', ['status' => 'error', 'message' => 'Akun tidak ditemukan.']);
+        $user = User::where('email', $email)->first();
+        if (!$user) return view('verifikasi-email', ['status' => 'error', 'message' => 'Akun tidak ditemukan.']);
 
-    // Jika sudah terverifikasi, langsung lempar ke halaman sukses
-    if ($user->is_verified == 1) {
-        return view('verifikasi-email', ['status' => 'success', 'message' => 'Akun sudah aktif.']);
+        // Jika sudah terverifikasi, langsung lempar ke halaman sukses
+        if ($user->is_verified == 1) {
+            return view('verifikasi-email', ['status' => 'success', 'message' => 'Akun sudah aktif.']);
+        }
+
+        $cacheKey = 'otp_reset_pin_' . $user->id_pengguna;
+        $savedOtp = \Illuminate\Support\Facades\Cache::get($cacheKey);
+
+        if ($savedOtp && strtoupper($token) === strtoupper($savedOtp)) {
+            $user->status = 'Aktif';
+            $user->is_verified = 1;
+            $user->save();
+            \Illuminate\Support\Facades\Cache::forget($cacheKey);
+
+            return view('verifikasi-email', ['status' => 'success', 'message' => 'Verifikasi berhasil!']);
+        }
+
+        return view('verifikasi-email', ['status' => 'error', 'message' => 'Kode salah atau kedaluwarsa.']);
     }
 
-    $cacheKey = 'otp_reset_pin_' . $user->id_pengguna;
-    $savedOtp = \Illuminate\Support\Facades\Cache::get($cacheKey);
-
-    if ($savedOtp && strtoupper($token) === strtoupper($savedOtp)) {
-        $user->status = 'Aktif';
-        $user->is_verified = 1;
-        $user->save();
-        \Illuminate\Support\Facades\Cache::forget($cacheKey);
-
-        return view('verifikasi-email', ['status' => 'success', 'message' => 'Verifikasi berhasil!']);
-    }
-
-    return view('verifikasi-email', ['status' => 'error', 'message' => 'Kode salah atau kedaluwarsa.']);
-}
-
-// ====================================================================
+    // ====================================================================
     // LOG LOG: FUNGSI LOGIN GOOGLE VIA API MOBILE
     // ====================================================================
     public function loginGoogle(Request $request)
@@ -367,6 +366,7 @@ class AuthController extends Controller
             // Cari user berdasarkan email
             $user = User::where('email', $googleUser->getEmail())->first();
 
+            $isNewUser = false;
             if (!$user) {
                 Log::info('API Mobile Google Login: Mendaftarkan user baru.');
                 $user = User::create([
@@ -377,6 +377,7 @@ class AuthController extends Controller
                     'password'     => bcrypt(Str::random(16)),
                     'is_verified'  => 1,
                 ]);
+                $isNewUser = true;
             }
 
             if ($user->status === 'Tidak Aktif') {
@@ -385,6 +386,14 @@ class AuthController extends Controller
                     'message' => 'Akun belum aktif.',
                 ], 403);
             }
+            
+            // Jika user baru daftar via Google, kirim notif registrasi
+            if ($isNewUser) {
+                $this->sendRegistrationNotification($user, $request);
+            }
+
+            // Kirim Notifikasi Keamanan Login
+            $this->sendLoginNotification($user, $request, 'Google Auth');
 
             // Cetak Token Sanctum untuk aplikasi Android
             $token = $user->createToken('sancaka-mobile')->plainTextToken;
@@ -428,6 +437,7 @@ class AuthController extends Controller
                         ->orWhere('email', $email)
                         ->first();
 
+            $isNewUser = false;
             if (!$user) {
                 Log::info('API Mobile Facebook Login: Mendaftarkan user baru.');
                 $user = User::create([
@@ -439,6 +449,7 @@ class AuthController extends Controller
                     'password'     => bcrypt(Str::random(16)),
                     'is_verified'  => 1,
                 ]);
+                $isNewUser = true;
             }
 
             if ($user->status === 'Tidak Aktif') {
@@ -447,6 +458,14 @@ class AuthController extends Controller
                     'message' => 'Akun belum aktif.',
                 ], 403);
             }
+            
+            // Jika user baru daftar via Facebook, kirim notif registrasi
+            if ($isNewUser) {
+                $this->sendRegistrationNotification($user, $request);
+            }
+
+            // Kirim Notifikasi Keamanan Login
+            $this->sendLoginNotification($user, $request, 'Facebook Auth');
 
             // Cetak Token Sanctum untuk aplikasi Android
             $token = $user->createToken('sancaka-mobile')->plainTextToken;
@@ -469,4 +488,181 @@ class AuthController extends Controller
         }
     }
 
+    // ====================================================================
+    // FUNGSI PEMBANTU: KIRIM NOTIFIKASI LOGIN
+    // ====================================================================
+    private function sendLoginNotification($user, Request $request, $loginMethod)
+    {
+        try {
+            $ip = $request->ip();
+            $userAgent = $request->header('User-Agent');
+            $latitude = $request->input('latitude', 'Tidak diketahui');
+            $longitude = $request->input('longitude', 'Tidak diketahui');
+
+            // Deteksi jenis perangkat menggunakan Jenssegers\Agent\Agent
+            $deviceInfo = $userAgent;
+            if (class_exists(\Jenssegers\Agent\Agent::class)) {
+                $agent = new Agent();
+                $agent->setUserAgent($userAgent);
+                $device = $agent->device() ?: 'Tidak diketahui';
+                $platform = $agent->platform() ?: 'Tidak diketahui';
+                $browser = $agent->browser() ?: 'Tidak diketahui';
+                $deviceInfo = "{$device} ({$platform} - {$browser})";
+            }
+
+            $waktu = now()->timezone('Asia/Jakarta')->format('d M Y, H:i:s T');
+            $emailTujuan = !empty($user->email) ? $user->email : 'tidak-ada-email@sancaka.com';
+
+            $html = "
+            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff;'>
+                <div style='background-color: #dc2626; padding: 20px; text-align: center; color: white;'>
+                    <h2 style='margin:0;'>Peringatan Keamanan Login</h2>
+                </div>
+                <div style='padding: 30px; color: #334155;'>
+                    <p>Halo,</p>
+                    <p>Akun atas nama <strong>{$user->nama_lengkap}</strong> baru saja melakukan login ke aplikasi Sancaka Express. Berikut adalah rincian aktivitas tersebut:</p>
+                    
+                    <table style='width: 100%; border-collapse: collapse; margin-top: 20px; text-align: left;'>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc; width: 35%;'>Metode Login</td>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0;'>{$loginMethod}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;'>Waktu</td>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0;'>{$waktu}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;'>IP Address</td>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0;'>{$ip}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;'>Perangkat</td>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0;'>{$deviceInfo}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;'>Lokasi (Lat, Lng)</td>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0;'>
+                                <a href='https://www.google.com/maps/search/?api=1&query={$latitude},{$longitude}' target='_blank' style='color: #dc2626;'>{$latitude}, {$longitude}</a>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <p style='margin-top: 25px; font-size: 14px; color: #64748b;'>
+                        Jika ini adalah Anda, abaikan email ini. Namun, jika Anda tidak merasa melakukan login ini, segera hubungi Admin Sancaka untuk mengamankan akun Anda.
+                    </p>
+                </div>
+            </div>";
+
+            Mail::send([], [], function ($message) use ($emailTujuan, $user, $html) {
+                // Email ditujukan ke Admin (salafy94@gmail.com) dan di-CC ke user
+                $message->to('salafy94@gmail.com')
+                        ->subject("Notifikasi Keamanan: Login Baru ({$user->nama_lengkap})")
+                        ->html($html);
+                
+                // Pastikan user punya email yang valid sebelum di CC
+                if (filter_var($emailTujuan, FILTER_VALIDATE_EMAIL) && !str_contains($emailTujuan, '@facebook.sancaka.com')) {
+                    $message->cc($emailTujuan);
+                }
+            });
+
+            Log::info("Notifikasi login dikirim ke Admin & CC User: {$emailTujuan}");
+        } catch (\Exception $e) {
+            Log::error('Gagal mengirim notifikasi login: ' . $e->getMessage());
+        }
+    }
+
+    // ====================================================================
+    // FUNGSI PEMBANTU: KIRIM NOTIFIKASI REGISTRASI BARU
+    // ====================================================================
+    private function sendRegistrationNotification($user, Request $request)
+    {
+        try {
+            $ip = $request->ip();
+            $userAgent = $request->header('User-Agent');
+            $latitude = $request->input('latitude', 'Tidak diketahui');
+            $longitude = $request->input('longitude', 'Tidak diketahui');
+
+            // Deteksi jenis perangkat
+            $deviceInfo = $userAgent;
+            if (class_exists(\Jenssegers\Agent\Agent::class)) {
+                $agent = new Agent();
+                $agent->setUserAgent($userAgent);
+                $device = $agent->device() ?: 'Tidak diketahui';
+                $platform = $agent->platform() ?: 'Tidak diketahui';
+                $browser = $agent->browser() ?: 'Tidak diketahui';
+                $deviceInfo = "{$device} ({$platform} - {$browser})";
+            }
+
+            $waktu = now()->timezone('Asia/Jakarta')->format('d M Y, H:i:s T');
+            $emailTujuan = !empty($user->email) ? $user->email : 'tidak-ada-email@sancaka.com';
+            
+            // Penyesuaian tampilan agar admin tau jika ada data yang kosong (khusus login sosial media)
+            $storeName = !empty($user->store_name) ? $user->store_name : '-';
+            $noWa = !empty($user->no_wa) ? $user->no_wa : '-';
+
+            $html = "
+            <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background-color: #ffffff;'>
+                <div style='background-color: #0284c7; padding: 20px; text-align: center; color: white;'>
+                    <h2 style='margin:0;'>Pendaftaran Pengguna Baru</h2>
+                </div>
+                <div style='padding: 30px; color: #334155;'>
+                    <p>Halo,</p>
+                    <p>Terdapat pendaftaran akun baru di aplikasi Sancaka Express. Berikut adalah rincian pendaftar tersebut:</p>
+                    
+                    <table style='width: 100%; border-collapse: collapse; margin-top: 20px; text-align: left;'>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc; width: 35%;'>Nama Lengkap</td>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0;'>{$user->nama_lengkap}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;'>Nama Toko</td>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0;'>{$storeName}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;'>Email</td>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0;'>{$user->email}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;'>Nomor WA</td>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0;'>{$noWa}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;'>Waktu Daftar</td>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0;'>{$waktu}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;'>IP Address</td>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0;'>{$ip}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;'>Perangkat</td>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0;'>{$deviceInfo}</td>
+                        </tr>
+                        <tr>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc;'>Lokasi (Lat, Lng)</td>
+                            <td style='padding: 10px; border: 1px solid #e2e8f0;'>
+                                <a href='https://www.google.com/maps/search/?api=1&query={$latitude},{$longitude}' target='_blank' style='color: #0284c7;'>{$latitude}, {$longitude}</a>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>";
+
+            Mail::send([], [], function ($message) use ($emailTujuan, $user, $html) {
+                // Email ditujukan ke Admin (salafy94@gmail.com) dan di-CC ke user
+                $message->to('salafy94@gmail.com')
+                        ->subject("Pendaftaran Baru: {$user->nama_lengkap}")
+                        ->html($html);
+                
+                // Pastikan user punya email yang valid sebelum di CC
+                if (filter_var($emailTujuan, FILTER_VALIDATE_EMAIL) && !str_contains($emailTujuan, '@facebook.sancaka.com')) {
+                    $message->cc($emailTujuan);
+                }
+            });
+
+            Log::info("Notifikasi registrasi dikirim ke Admin & CC User: {$emailTujuan}");
+        } catch (\Exception $e) {
+            Log::error('Gagal mengirim notifikasi registrasi: ' . $e->getMessage());
+        }
+    }
 }
