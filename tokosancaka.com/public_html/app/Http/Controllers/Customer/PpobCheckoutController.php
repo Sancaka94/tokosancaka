@@ -124,15 +124,14 @@ class PpobCheckoutController extends Controller
         // --- C. DOKU (MANUAL) ---
         $paymentChannels['doku'] = [
             ['code' => 'DOKU_CC', 'name' => 'Kartu Kredit', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/6963/6963703.png'],
-            ['code' => 'DOKU_VA', 'name' => 'DOMPET SANCAKA', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/2331/2331922.png'],
+            ['code' => 'DOKU_VA', 'name' => 'DOMPET SANCAKA', 'icon_url' => 'https://tokosancaka.com/public/assets/doku.png'],
         ];
 
         // 👇 TAMBAHKAN KODE INI 👇
         // --- D. PAYMENT GATEWAY LAINNYA ---
         $paymentChannels['lainnya'] = [
-            ['code' => 'MIDTRANS', 'name' => 'Midtrans (GoPay, ShopeePay, dll)', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/825/825503.png'],
-            ['code' => 'DANA', 'name' => 'DANA Direct', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/825/825454.png'],
-            ['code' => 'PAYPAL', 'name' => 'PayPal', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/174/174861.png'],
+            ['code' => 'DANA', 'name' => 'DANA Direct', 'icon_url' => 'https://tokosancaka.com/public/assets/dana.png'],
+            ['code' => 'PAYPAL', 'name' => 'PayPal', 'icon_url' => 'https://tokosancaka.com/public/assets/paypal.png'],
         ];
 
         // 🔥 GENERATE IDEMPOTENCY KEY UNIK
