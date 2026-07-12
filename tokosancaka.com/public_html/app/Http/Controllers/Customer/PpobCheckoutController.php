@@ -363,8 +363,14 @@ class PpobCheckoutController extends Controller
         throw new \Exception('Gagal memuat PayPal.');
     }
 
-   private function _createPaymentDanaPpob($invoice, $amount, $user)
+  private function _createPaymentDanaPpob($invoice, $amount, $user)
     {
+        // 0. WAJIB BINDING: Cek apakah user sudah punya token DANA
+        // Jika token kosong (termasuk Guest), langsung tolak dan minta binding!
+        if (empty($user->dana_access_token)) {
+            throw new \Exception('Akun DANA Anda belum terhubung. Silakan hubungkan (Binding) DANA Anda di halaman Profil terlebih dahulu.');
+        }
+
         // 1. Cek Mode Global DANA (0 = Sandbox, 1 = Production)
         $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
         $isProduction = ($danaMode == '1');
@@ -387,12 +393,11 @@ class PpobCheckoutController extends Controller
             $baseUrl        = 'https://api.sandbox.dana.id';
         }
 
-        // Cegah eksekusi jika private key masih kosong (misal belum diisi di database)
         if (empty($privateKey)) {
             throw new \Exception('Private Key DANA kosong. Periksa pengaturan API DANA di database.');
         }
 
-        // 2. TIMPA CONFIG SECARA RUNTIME DULU!
+        // 2. TIMPA CONFIG SECARA RUNTIME
         config([
             'services.dana.merchant_id'   => $merchantIdConf,
             'services.dana.client_id'     => $partnerIdConf,
@@ -405,24 +410,39 @@ class PpobCheckoutController extends Controller
             'services.dana.origin'        => url('/')
         ]);
 
-        // 3. BARU PANGGIL SERVICE (Agar Service Membaca Config yang Baru)
         $danaSignature = app(\App\Services\DanaSignatureService::class);
 
         $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+        $amountValue = number_format((float)$amount, 2, '.', '');
 
+        // 3. BODY REQUEST KHUSUS BINDING / CUSTOM CHECKOUT
         $body = [
             "partnerReferenceNo" => $invoice,
             "merchantId" => $merchantIdConf,
             "validUpTo" => $validUpTo,
-            "amount" => ["value" => number_format((float)$amount, 2, '.', ''), "currency" => "IDR"],
+            "amount" => ["value" => $amountValue, "currency" => "IDR"],
             "urlParams" => [
                 ["url" => route('customer.ppob.history'), "type" => "PAY_RETURN", "isDeeplink" => "N"],
                 ["url" => url('/dana/notify'), "type" => "NOTIFICATION", "isDeeplink" => "N"]
             ],
+            // Memaksa DANA memotong dari Saldo Utama user
+            "payOptionDetails" => [
+                [
+                    "payMethod"   => "BALANCE",
+                    "payOption"   => "",
+                    "transAmount" => [
+                        "value"    => $amountValue,
+                        "currency" => "IDR"
+                    ]
+                ]
+            ],
             "additionalInfo" => [
-                "order" => ["orderTitle" => "PPOB " . $invoice, "scenario" => "REDIRECT", "merchantTransType" => "01"],
+                "order" => [
+                    "orderTitle" => "PPOB " . $invoice,
+                    "scenario" => "API" // Wajib API untuk Binding/Custom Checkout
+                ],
                 "mcc" => "5732",
                 "envInfo" => ["sourcePlatform" => "IPG", "terminalType" => "SYSTEM"]
             ]
@@ -430,11 +450,9 @@ class PpobCheckoutController extends Controller
 
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        // Buat token & signature
         $signature = $danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
         $token = $danaSignature->getAccessToken();
 
-        // Kirim request ke DANA
         $response = \Illuminate\Support\Facades\Http::withHeaders([
             'Authorization' => 'Bearer ' . $token,
             'X-PARTNER-ID' => $partnerIdConf,
@@ -452,9 +470,8 @@ class PpobCheckoutController extends Controller
             return substr($result['webRedirectUrl'], 0, 255);
         }
 
-        // Log detail kegagalan dari respon DANA
         \Illuminate\Support\Facades\Log::error('DANA PPOB API Error:', $result ?? []);
-        throw new \Exception('Gagal mendapatkan link DANA: ' . ($result['responseMessage'] ?? 'Unknown System Error'));
+        throw new \Exception('Gagal mendapatkan link DANA: ' . ($result['responseMessage'] ?? 'Terjadi kesalahan sistem.'));
     }
 
     /**
