@@ -301,7 +301,7 @@
                                                     <span class="text-xs font-bold text-gray-800 leading-tight group-hover:text-blue-700 peer-checked:text-blue-700 mb-2">
                                                         {{ $channel['name'] }}
                                                     </span>
-                                                    <span class="mt-auto text-[10px] text-gray-500 font-medium bg-gray-50 border border-gray-100 px-2 py-1 rounded w-full">
+                                                    <span class="mt-auto text-[10px] text-red-700 font-medium bg-gray-50 border border-gray-100 px-2 py-1 rounded w-full">
                                                         Admin: Rp {{ number_format($channel['total_fee']['flat'] ?? 0, 0, ',', '.') }}
                                                     </span>
                                                     <div class="absolute top-2 right-2 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
