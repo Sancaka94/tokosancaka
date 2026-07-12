@@ -88,18 +88,21 @@ class PpobCheckoutController extends Controller
             'icon_url'    => 'https://cdn-icons-png.flaticon.com/512/217/217853.png'
         ];
 
-        // --- B. TRIPAY CHANNELS (API) ---
-        // 1. Inisialisasi array default agar aman
+       // --- B. TRIPAY CHANNELS (API) ---
         $paymentChannels['tripay'] = [];
 
         try {
-            $apiKey  = config('tripay.api_key');
-            $mode    = config('tripay.mode');
-            $baseUrl = ($mode === 'production')
-                ? 'https://tripay.co.id/api/merchant/payment-channel'
-                : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
+            // Ambil mode dinamis dari Database
+            $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
 
-            // 2. Naikkan timeout menjadi 15 detik
+            if ($currentMode === 'production') {
+                $baseUrl = 'https://tripay.co.id/api/merchant/payment-channel';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
+            } else {
+                $baseUrl = 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            }
+
             $res = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
                         ->timeout(15)
                         ->withoutVerifying()
@@ -112,7 +115,6 @@ class PpobCheckoutController extends Controller
                     }
                 }
             } else {
-                // Tambahkan log peringatan jika API membalas tapi gagal (misal API key salah)
                 Log::warning('Tripay API Response Failed: ', $res->json() ?? []);
             }
         } catch (Exception $e) {

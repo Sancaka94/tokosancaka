@@ -1447,8 +1447,11 @@ class CheckoutController extends Controller
         if (!in_array($order->payment_method, $excludeMethods) && $order->status !== 'paid') {
 
             try {
-                $apiKey = config('tripay.api_key');
-                $mode   = config('tripay.mode');
+                // MENJADI INI:
+                $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+                $apiKey = ($mode === 'production')
+                    ? \App\Models\Api::getValue('TRIPAY_API_KEY', 'production')
+                    : \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
                 $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api' : 'https://tripay.co.id/api-sandbox';
 
                 // PANGGIL API DETAIL TRANSAKSI TRIPAY
@@ -1485,7 +1488,11 @@ class CheckoutController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid JSON'], 400);
         }
 
-        $privateKey = config('tripay.private_key');
+        // MENJADI INI:
+        $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+        $privateKey = ($mode === 'production')
+            ? \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'production')
+            : \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'sandbox');
         $callbackSignature = $request->header('X-Callback-Signature');
         $expectedSignature = hash_hmac('sha256', $json, $privateKey);
 
