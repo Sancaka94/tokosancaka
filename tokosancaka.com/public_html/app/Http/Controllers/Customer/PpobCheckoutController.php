@@ -89,6 +89,9 @@ class PpobCheckoutController extends Controller
         ];
 
         // --- B. TRIPAY CHANNELS (API) ---
+        // 1. Inisialisasi array default agar aman
+        $paymentChannels['tripay'] = [];
+
         try {
             $apiKey  = config('tripay.api_key');
             $mode    = config('tripay.mode');
@@ -96,8 +99,9 @@ class PpobCheckoutController extends Controller
                 ? 'https://tripay.co.id/api/merchant/payment-channel'
                 : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
 
+            // 2. Naikkan timeout menjadi 15 detik
             $res = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
-                        ->timeout(3)
+                        ->timeout(15)
                         ->withoutVerifying()
                         ->get($baseUrl);
 
@@ -107,6 +111,9 @@ class PpobCheckoutController extends Controller
                         $paymentChannels['tripay'][] = $ch;
                     }
                 }
+            } else {
+                // Tambahkan log peringatan jika API membalas tapi gagal (misal API key salah)
+                Log::warning('Tripay API Response Failed: ', $res->json() ?? []);
             }
         } catch (Exception $e) {
             Log::error('Tripay Error: ' . $e->getMessage());
