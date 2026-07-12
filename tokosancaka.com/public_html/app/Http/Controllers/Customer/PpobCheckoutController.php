@@ -363,30 +363,59 @@ class PpobCheckoutController extends Controller
         throw new \Exception('Gagal memuat PayPal.');
     }
 
-    private function _createPaymentDanaPpob($invoice, $amount, $user)
+   private function _createPaymentDanaPpob($invoice, $amount, $user)
     {
-        $danaSignature = app(\App\Services\DanaSignatureService::class);
-        $isProd = (\App\Models\Api::getValue('dana_production_mode', 'global', '0') == '1');
-        $env = $isProd ? 'prod' : 'sandbox';
+        // 1. Cek Mode Global DANA (0 = Sandbox, 1 = Production)
+        $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
+        $isProduction = ($danaMode == '1');
 
-        $merchantIdConf = \App\Models\Api::getValue("dana_{$env}_merchant_id", $env);
-        $partnerIdConf  = \App\Models\Api::getValue("dana_{$env}_client_id", $env);
-        $baseUrl        = $isProd ? 'https://api.saas.dana.id' : 'https://api.sandbox.dana.id';
+        if ($isProduction) {
+            \Illuminate\Support\Facades\Log::info('LOG LOG: PPOB DANA Mode PRODUCTION');
+            $merchantIdConf = \App\Models\Api::getValue('dana_prod_merchant_id', 'production');
+            $partnerIdConf  = \App\Models\Api::getValue('dana_prod_client_id', 'production');
+            $privateKey     = \App\Models\Api::getValue('dana_prod_private_key', 'production');
+            $clientSecret   = \App\Models\Api::getValue('dana_prod_client_secret', 'production');
+            $publicKey      = \App\Models\Api::getValue('dana_prod_public_key', 'production');
+            $baseUrl        = 'https://api.saas.dana.id';
+        } else {
+            \Illuminate\Support\Facades\Log::info('LOG LOG: PPOB DANA Mode SANDBOX');
+            $merchantIdConf = \App\Models\Api::getValue('dana_sandbox_merchant_id', 'sandbox');
+            $partnerIdConf  = \App\Models\Api::getValue('dana_sandbox_client_id', 'sandbox');
+            $privateKey     = \App\Models\Api::getValue('dana_sandbox_private_key', 'sandbox');
+            $clientSecret   = \App\Models\Api::getValue('dana_sandbox_client_secret', 'sandbox');
+            $publicKey      = \App\Models\Api::getValue('dana_sandbox_public_key', 'sandbox');
+            $baseUrl        = 'https://api.sandbox.dana.id';
+        }
 
+        // Cegah eksekusi jika private key masih kosong (misal belum diisi di database)
+        if (empty($privateKey)) {
+            throw new \Exception('Private Key DANA kosong. Periksa pengaturan API DANA di database.');
+        }
+
+        // 2. TIMPA CONFIG SECARA RUNTIME DULU!
         config([
-            'services.dana.merchant_id'   => $merchantIdConf, 'services.dana.client_id' => $partnerIdConf,
-            'services.dana.x_partner_id'  => $partnerIdConf, 'services.dana.private_key' => \App\Models\Api::getValue("dana_{$env}_private_key", $env),
-            'services.dana.public_key'    => \App\Models\Api::getValue("dana_{$env}_public_key", $env),
-            'services.dana.client_secret' => \App\Models\Api::getValue("dana_{$env}_client_secret", $env),
+            'services.dana.merchant_id'   => $merchantIdConf,
+            'services.dana.client_id'     => $partnerIdConf,
+            'services.dana.x_partner_id'  => $partnerIdConf,
+            'services.dana.private_key'   => $privateKey,
+            'services.dana.public_key'    => $publicKey,
+            'services.dana.client_secret' => $clientSecret,
             'services.dana.base_url'      => $baseUrl,
+            'services.dana.dana_env'      => $isProduction ? 'PRODUCTION' : 'SANDBOX',
+            'services.dana.origin'        => url('/')
         ]);
+
+        // 3. BARU PANGGIL SERVICE (Agar Service Membaca Config yang Baru)
+        $danaSignature = app(\App\Services\DanaSignatureService::class);
 
         $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
         $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
         $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
 
         $body = [
-            "partnerReferenceNo" => $invoice, "merchantId" => $merchantIdConf, "validUpTo" => $validUpTo,
+            "partnerReferenceNo" => $invoice,
+            "merchantId" => $merchantIdConf,
+            "validUpTo" => $validUpTo,
             "amount" => ["value" => number_format((float)$amount, 2, '.', ''), "currency" => "IDR"],
             "urlParams" => [
                 ["url" => route('customer.ppob.history'), "type" => "PAY_RETURN", "isDeeplink" => "N"],
@@ -394,22 +423,38 @@ class PpobCheckoutController extends Controller
             ],
             "additionalInfo" => [
                 "order" => ["orderTitle" => "PPOB " . $invoice, "scenario" => "REDIRECT", "merchantTransType" => "01"],
-                "mcc" => "5732", "envInfo" => ["sourcePlatform" => "IPG", "terminalType" => "SYSTEM"]
+                "mcc" => "5732",
+                "envInfo" => ["sourcePlatform" => "IPG", "terminalType" => "SYSTEM"]
             ]
         ];
 
         $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        // Buat token & signature
         $signature = $danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
         $token = $danaSignature->getAccessToken();
 
+        // Kirim request ke DANA
         $response = \Illuminate\Support\Facades\Http::withHeaders([
-            'Authorization' => 'Bearer ' . $token, 'X-PARTNER-ID' => $partnerIdConf, 'X-EXTERNAL-ID' => \Illuminate\Support\Str::random(32),
-            'X-TIMESTAMP' => $timestamp, 'X-SIGNATURE' => $signature, 'Content-Type' => 'application/json', 'CHANNEL-ID' => '95221', 'ORIGIN' => url('/')
+            'Authorization' => 'Bearer ' . $token,
+            'X-PARTNER-ID' => $partnerIdConf,
+            'X-EXTERNAL-ID' => \Illuminate\Support\Str::random(32),
+            'X-TIMESTAMP' => $timestamp,
+            'X-SIGNATURE' => $signature,
+            'Content-Type' => 'application/json',
+            'CHANNEL-ID' => '95221',
+            'ORIGIN' => url('/')
         ])->post($baseUrl . $path, $jsonBody);
 
         $result = $response->json();
-        if (isset($result['responseCode']) && $result['responseCode'] == '2005400' && !empty($result['webRedirectUrl'])) return substr($result['webRedirectUrl'], 0, 255);
-        throw new \Exception('Gagal mendapatkan link DANA.');
+
+        if (isset($result['responseCode']) && $result['responseCode'] == '2005400' && !empty($result['webRedirectUrl'])) {
+            return substr($result['webRedirectUrl'], 0, 255);
+        }
+
+        // Log detail kegagalan dari respon DANA
+        \Illuminate\Support\Facades\Log::error('DANA PPOB API Error:', $result ?? []);
+        throw new \Exception('Gagal mendapatkan link DANA: ' . ($result['responseMessage'] ?? 'Unknown System Error'));
     }
 
     /**
