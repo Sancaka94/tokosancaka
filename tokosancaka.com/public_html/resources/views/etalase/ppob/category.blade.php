@@ -845,7 +845,7 @@
 
             fetch('{{ route("ppob.prepare") }}', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
                 body: JSON.stringify(currentPrepaidData)
             })
             .then(res => res.json())
@@ -881,7 +881,7 @@
 
             fetch('{{ route("ppob.check.pln.prabayar") }}', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
                 body: JSON.stringify({ customer_no: no, testing: IS_TESTING })
             })
             .then(res => res.json())
@@ -937,7 +937,7 @@
         // --- REQUEST API ---
         fetch('{{ route("ppob.check.bill") }}', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') },
                 body: JSON.stringify({
                     customer_no: cleanNo,
                     sku: ACTIVE_SKU,
@@ -1104,7 +1104,7 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             },
             body: JSON.stringify(currentBillData)
         })
