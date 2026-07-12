@@ -38,7 +38,7 @@
             </div>
 
             {{-- TOMBOL BATALKAN SEMUA TRANSAKSI --}}
-            @if(!empty($cart))
+            (!empty($cart))
             <form action="{{ route('ppob.cart.clear') }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mengosongkan keranjang?');">
                 @csrf
                 <button type="submit" class="group flex items-center gap-2 bg-white border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 hover:text-red-700 px-5 py-2.5 rounded-xl transition font-semibold shadow-sm text-sm">
