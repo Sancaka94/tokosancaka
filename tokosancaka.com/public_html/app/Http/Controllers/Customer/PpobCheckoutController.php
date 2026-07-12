@@ -13,7 +13,7 @@ use Exception;
 
 // --- MODEL ---
 use App\Models\User;
-use App\Models\PpobTransaction; 
+use App\Models\PpobTransaction;
 
 // --- SERVICES ---
 // Pastikan kedua service ini ada
@@ -40,14 +40,14 @@ class PpobCheckoutController extends Controller
             $tempId = uniqid('item_');
 
             $newItem = [
-                'id'          => $tempId, 
+                'id'          => $tempId,
                 'sku'         => $data['sku'],
                 'name'        => $data['name'],
                 'price'       => (int) $data['price'],
                 'customer_no' => $data['customer_no'],
                 // Jika Pasca, ref_id dari Inquiry (INQ-...) wajib dibawa
-                'ref_id'      => $data['ref_id'] ?? 'PRE-' . time() . rand(100,999), 
-                'desc'        => $data['desc'] ?? [], 
+                'ref_id'      => $data['ref_id'] ?? 'PRE-' . time() . rand(100,999),
+                'desc'        => $data['desc'] ?? [],
                 'quantity'    => 1,
                 'is_ppob'     => true
             ];
@@ -80,8 +80,8 @@ class PpobCheckoutController extends Controller
 
         // --- A. SALDO AKUN ---
         $paymentChannels['saldo'] = [
-            'code'        => 'SALDO', 
-            'name'        => 'Saldo Akun', 
+            'code'        => 'SALDO',
+            'name'        => 'Saldo Akun',
             'description' => 'Sisa: Rp ' . number_format($user->saldo ?? 0),
             'balance'     => $user->saldo ?? 0,
             'active'      => true,
@@ -92,8 +92,8 @@ class PpobCheckoutController extends Controller
         try {
             $apiKey  = config('tripay.api_key');
             $mode    = config('tripay.mode');
-            $baseUrl = ($mode === 'production') 
-                ? 'https://tripay.co.id/api/merchant/payment-channel' 
+            $baseUrl = ($mode === 'production')
+                ? 'https://tripay.co.id/api/merchant/payment-channel'
                 : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
 
             $res = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
@@ -116,6 +116,14 @@ class PpobCheckoutController extends Controller
         $paymentChannels['doku'] = [
             ['code' => 'DOKU_CC', 'name' => 'Kartu Kredit', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/6963/6963703.png'],
             ['code' => 'DOKU_VA', 'name' => 'DOMPET SANCAKA', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/2331/2331922.png'],
+        ];
+
+        // 👇 TAMBAHKAN KODE INI 👇
+        // --- D. PAYMENT GATEWAY LAINNYA ---
+        $paymentChannels['lainnya'] = [
+            ['code' => 'MIDTRANS', 'name' => 'Midtrans (GoPay, ShopeePay, dll)', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/825/825503.png'],
+            ['code' => 'DANA', 'name' => 'DANA Direct', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/825/825454.png'],
+            ['code' => 'PAYPAL', 'name' => 'PayPal', 'icon_url' => 'https://cdn-icons-png.flaticon.com/512/174/174861.png'],
         ];
 
         // 🔥 GENERATE IDEMPOTENCY KEY UNIK
@@ -162,7 +170,7 @@ class PpobCheckoutController extends Controller
         }
 
         $request->validate(['payment_method' => 'required']);
-        
+
         $cart = session()->get('ppob_cart', []);
         if (empty($cart)) return redirect()->route('customer.dashboard');
 
@@ -185,7 +193,7 @@ class PpobCheckoutController extends Controller
                 // Jika Pascabayar (ref_id diawali INQ), kita HARUS pakai ID itu lagi sebagai Order ID
                 // agar Digiflazz bisa memproses 'pay-pasca' dengan ID yang sama.
                 $isPasca = isset($item['ref_id']) && str_starts_with($item['ref_id'], 'INQ');
-                
+
                 if ($isPasca) {
                     $orderId = $item['ref_id']; // Pakai ID Inquiry yang lama
                 } else {
@@ -203,7 +211,7 @@ class PpobCheckoutController extends Controller
                 $trx->profit         = 0;
                 $trx->payment_method = $request->payment_method;
                 $trx->desc           = json_encode($item['desc'] ?? []);
-                
+
                 // Status Awal
                 $trx->status         = ($request->payment_method === 'saldo') ? 'Processing' : 'Pending';
                 $trx->message        = 'Menunggu Pembayaran';
@@ -224,140 +232,77 @@ class PpobCheckoutController extends Controller
                 ];
             }
 
-            // ==========================================
-            // LOGIC A: BAYAR PAKAI SALDO (EKSEKUSI LANGSUNG)
-            // ==========================================
-            if ($request->payment_method === 'saldo') {
-                // 1. Potong Saldo User
+        // 👇 KODE YANG KAMU PASTE DIMULAI DARI SINI 👇
+            $paymentMethodRaw = strtoupper($request->payment_method);
+            $paymentUrl = null;
+
+            // 1. SALDO
+            if ($paymentMethodRaw === 'SALDO') {
                 $user->decrement('saldo', $totalPrice);
-                
-                // 2. Eksekusi Ke Digiflazz (Looping per item)
                 $digiflazz = new DigiflazzService();
-                
+
                 foreach ($createdTransactions as $trxItem) {
-                    $response = [];
-                    
-                    // Cek apakah ini Pascabayar atau Prabayar
-                    if ($trxItem['is_pasca']) {
-                        // PANGGIL PAY PASCA
-                        $response = $digiflazz->payPasca($trxItem['sku'], $trxItem['cust_no'], $trxItem['order_id']);
-                    } else {
-                        // PANGGIL TRANSAKSI BIASA (PULSA/DATA)
-                        $response = $digiflazz->transaction($trxItem['sku'], $trxItem['cust_no'], $trxItem['order_id']);
-                    }
+                    $response = $trxItem['is_pasca']
+                        ? $digiflazz->payPasca($trxItem['sku'], $trxItem['cust_no'], $trxItem['order_id'])
+                        : $digiflazz->transaction($trxItem['sku'], $trxItem['cust_no'], $trxItem['order_id']);
 
-                    // Cek jika Gagal Langsung (Saldo habis / Gangguan)
                     if (isset($response['data']['status']) && in_array($response['data']['status'], ['Gagal', 'Failed'])) {
-                        // Update Status DB
                         PpobTransaction::where('order_id', $trxItem['order_id'])->update([
-                            'status' => 'Failed',
-                            'message' => $response['data']['message'] ?? 'Gagal dari Provider'
+                            'status' => 'Failed', 'message' => $response['data']['message'] ?? 'Gagal dari Provider'
                         ]);
-
-                        // REFUND SALDO USER (Partial Refund)
-                        // Kembalikan saldo senilai harga jual item ini
                         $user->increment('saldo', $trxItem['price']);
                     }
-                    // Jika Pending/Sukses, biarkan status 'Processing', nanti Webhook yang update jadi Success
                 }
-                
                 DB::commit();
                 session()->forget('ppob_cart');
-                
                 return redirect()->route('customer.ppob.history')->with('success', 'Transaksi sedang diproses!');
             }
-
-            // ==========================================
-            // LOGIC B: BAYAR PAKAI TRIPAY
-            // ==========================================
-            elseif (isset($request->payment_method) && !str_contains(strtoupper($request->payment_method), 'DOKU')) {
-                
-                $apiKey       = config('tripay.api_key');
-                $privateKey   = config('tripay.private_key');
-                $merchantCode = config('tripay.merchant_code');
-                $isProd       = config('tripay.mode') === 'production';
-                $url          = $isProd 
-                                ? 'https://tripay.co.id/api/transaction/create' 
-                                : 'https://tripay.co.id/api-sandbox/transaction/create';
-
-                $signature = hash_hmac('sha256', $merchantCode . $groupRefId . $totalPrice, $privateKey);
-
-                $orderItems = [];
-                foreach($cart as $c) {
-                    $orderItems[] = [
-                        'sku' => $c['sku'],
-                        'name' => substr($c['name'], 0, 250),
-                        'price' => $c['price'],
-                        'quantity' => 1
-                    ];
-                }
-
-                $payload = [
-                    'method'         => $request->payment_method,
-                    'merchant_ref'   => $groupRefId,
-                    'amount'         => $totalPrice,
-                    'customer_name'  => $user->nama_lengkap,
-                    'customer_email' => $user->email,
-                    'customer_phone' => $user->no_wa ?? '0812345678',
-                    'order_items'    => $orderItems,
-                    'expired_time'   => time() + (60 * 60),
-                    'signature'      => $signature,
-                    'return_url'     => route('customer.dashboard') 
-                ];
-
-                $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
-                                ->timeout(30)
-                                ->withoutVerifying()
-                                ->post($url, $payload);
-                
-                if ($response->successful() && $response->json()['success']) {
-                    $d = $response->json()['data'];
-                    $payUrl = $d['checkout_url'] ?? $d['pay_url'] ?? $d['qr_url'];
-                    
-                    // Update Payment URL
-                    PpobTransaction::where('group_order_id', $groupRefId)->update(['payment_url' => $payUrl]);
-
-                    DB::commit();
-                    session()->forget('ppob_cart');
-
-                    return redirect($payUrl);
-                } else {
-                    throw new Exception('Tripay Error: ' . ($response->json()['message'] ?? 'Connection Failed'));
-                }
-            }
-
-            // ==========================================
-            // LOGIC C: BAYAR PAKAI DOKU
-            // ==========================================
-            else {
+            // 2. DOKU
+            elseif (\Illuminate\Support\Str::startsWith($paymentMethodRaw, 'DOKU')) {
                 $dokuService = new DokuJokulService();
-                $customerData = [
-                    'name'  => $user->nama_lengkap,
-                    'email' => $user->email,
-                    'phone' => $user->no_wa
-                ];
-                
+                $customerData = ['name' => $user->nama_lengkap, 'email' => $user->email, 'phone' => $user->no_wa];
                 $dokuItems = [];
-                foreach($cart as $c) {
-                    $dokuItems[] = [
-                        'name' => $c['name'],
-                        'quantity' => 1,
-                        'price' => $c['price'],
-                        'sku' => $c['sku']
-                    ];
-                }
+                foreach($cart as $c) { $dokuItems[] = ['name' => $c['name'], 'quantity' => 1, 'price' => $c['price'], 'sku' => $c['sku']]; }
 
                 $paymentUrl = $dokuService->createPayment($groupRefId, $totalPrice, $customerData, $dokuItems);
-                
                 if (!$paymentUrl) throw new Exception('Gagal generate link pembayaran DOKU.');
+            }
+            // 3. MIDTRANS
+            elseif ($paymentMethodRaw === 'MIDTRANS') {
+                $paymentUrl = $this->_createPaymentMidtransPpob($groupRefId, $totalPrice, $user);
+            }
+            // 4. PAYPAL
+            elseif ($paymentMethodRaw === 'PAYPAL') {
+                $paymentUrl = $this->_createPaymentPaypalPpob($groupRefId, $totalPrice, $user);
+            }
+            // 5. DANA
+            elseif (in_array($paymentMethodRaw, ['DANA', 'NETWORK_PAY_PG_DANA', 'DANA_BINDING'])) {
+                $paymentUrl = $this->_createPaymentDanaPpob($groupRefId, $totalPrice, $user);
+            }
+            // 6. TRIPAY (Default E-Wallet & VA)
+            else {
+                $orderItemsPayload = [];
+                foreach($cart as $c) { $orderItemsPayload[] = ['sku' => $c['sku'], 'name' => substr($c['name'], 0, 250), 'price' => $c['price'], 'quantity' => 1]; }
 
+                // Buat Object Palsu (Mock) agar sesuai dengan parameter Checkout Tripay Anda
+                $dummyOrder = new \stdClass(); $dummyOrder->invoice_number = $groupRefId; $dummyOrder->user_id = $user->id_pengguna;
+
+                $tripayResult = $this->_createTripayTransaction($dummyOrder, $request->payment_method, $totalPrice, $user->nama_lengkap, $user->email, $user->no_wa ?? '0812345678', $orderItemsPayload);
+                if ($tripayResult['success']) {
+                    $paymentUrl = $tripayResult['data']['checkout_url'] ?? $tripayResult['data']['pay_url'] ?? $tripayResult['data']['qr_url'];
+                } else {
+                    throw new Exception('Tripay Error: ' . ($tripayResult['message'] ?? 'Connection Failed'));
+                }
+            }
+
+            // --- EKSEKUSI REDIRECT UNTUK SEMUA PAYMENT GATEWAY ONLINE ---
+            if ($paymentUrl) {
                 PpobTransaction::where('group_order_id', $groupRefId)->update(['payment_url' => $paymentUrl]);
-                
                 DB::commit();
                 session()->forget('ppob_cart');
-                
-                return redirect($paymentUrl);
+                return redirect()->away($paymentUrl);
             }
+            // 👆 KODE YANG KAMU PASTE BERAKHIR DI SINI 👆
 
         } catch (Exception $e) {
             DB::rollBack();
@@ -374,5 +319,88 @@ class PpobCheckoutController extends Controller
                         ->firstOrFail();
 
         return view('customer.ppob.invoice', compact('transaction'));
+    }
+
+    /**
+     * =========================================================================
+     * HELPER PAYMENT GATEWAY KHUSUS PPOB
+     * =========================================================================
+     */
+    private function _createPaymentMidtransPpob($invoice, $amount, $user)
+    {
+        $mode = \App\Models\Api::getValue('MIDTRANS_MODE', 'global', 'sandbox');
+        $serverKey = \App\Models\Api::getValue('MIDTRANS_SERVER_KEY', $mode);
+        $baseUrl = ($mode === 'production') ? 'https://app.midtrans.com/snap/v1/transactions' : 'https://app.sandbox.midtrans.com/snap/v1/transactions';
+
+        $payload = [
+            'transaction_details' => ['order_id' => $invoice, 'gross_amount' => (int) $amount],
+            'customer_details' => ['first_name' => $user->nama_lengkap ?? 'Customer', 'email' => $user->email ?? 'guest@sancaka.com', 'phone' => $user->no_wa ?? ''],
+            'callbacks' => ['finish' => route('customer.ppob.history')]
+        ];
+
+        $response = Http::withBasicAuth($serverKey, '')->post($baseUrl, $payload);
+        $result = $response->json();
+        if (isset($result['redirect_url'])) return $result['redirect_url'];
+        throw new \Exception('Gagal memuat Midtrans: ' . ($result['error_messages'][0] ?? 'System Error'));
+    }
+
+    private function _createPaymentPaypalPpob($invoice, $amount, $user)
+    {
+        $paypalService = app(\App\Http\Controllers\Api\PayPalGatewayController::class);
+        $usdAmount = round($amount / 16000, 2); // Asumsi Kurs 16rb
+        $items = [['name' => 'PPOB Order ' . $invoice, 'quantity' => '1', 'unit_amount' => ['currency_code' => 'USD', 'value' => number_format($usdAmount, 2, '.', '')]]];
+        $response = $paypalService->createOrder($items, $usdAmount, $invoice, 'CAPTURE', route('paypal.capture.return', ['invoice' => $invoice]), route('ppob.checkout.index'));
+        $result = $response->getData(true);
+        if (isset($result['success']) && $result['success'] === true && !empty($result['approve_url'])) return $result['approve_url'];
+        throw new \Exception('Gagal memuat PayPal.');
+    }
+
+    private function _createPaymentDanaPpob($invoice, $amount, $user)
+    {
+        $danaSignature = app(\App\Services\DanaSignatureService::class);
+        $isProd = (\App\Models\Api::getValue('dana_production_mode', 'global', '0') == '1');
+        $env = $isProd ? 'prod' : 'sandbox';
+
+        $merchantIdConf = \App\Models\Api::getValue("dana_{$env}_merchant_id", $env);
+        $partnerIdConf  = \App\Models\Api::getValue("dana_{$env}_client_id", $env);
+        $baseUrl        = $isProd ? 'https://api.saas.dana.id' : 'https://api.sandbox.dana.id';
+
+        config([
+            'services.dana.merchant_id'   => $merchantIdConf, 'services.dana.client_id' => $partnerIdConf,
+            'services.dana.x_partner_id'  => $partnerIdConf, 'services.dana.private_key' => \App\Models\Api::getValue("dana_{$env}_private_key", $env),
+            'services.dana.public_key'    => \App\Models\Api::getValue("dana_{$env}_public_key", $env),
+            'services.dana.client_secret' => \App\Models\Api::getValue("dana_{$env}_client_secret", $env),
+            'services.dana.base_url'      => $baseUrl,
+        ]);
+
+        $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+
+        $body = [
+            "partnerReferenceNo" => $invoice, "merchantId" => $merchantIdConf, "validUpTo" => $validUpTo,
+            "amount" => ["value" => number_format((float)$amount, 2, '.', ''), "currency" => "IDR"],
+            "urlParams" => [
+                ["url" => route('customer.ppob.history'), "type" => "PAY_RETURN", "isDeeplink" => "N"],
+                ["url" => url('/dana/notify'), "type" => "NOTIFICATION", "isDeeplink" => "N"]
+            ],
+            "additionalInfo" => [
+                "order" => ["orderTitle" => "PPOB " . $invoice, "scenario" => "REDIRECT", "merchantTransType" => "01"],
+                "mcc" => "5732", "envInfo" => ["sourcePlatform" => "IPG", "terminalType" => "SYSTEM"]
+            ]
+        ];
+
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $signature = $danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+        $token = $danaSignature->getAccessToken();
+
+        $response = \Illuminate\Support\Facades\Http::withHeaders([
+            'Authorization' => 'Bearer ' . $token, 'X-PARTNER-ID' => $partnerIdConf, 'X-EXTERNAL-ID' => \Illuminate\Support\Str::random(32),
+            'X-TIMESTAMP' => $timestamp, 'X-SIGNATURE' => $signature, 'Content-Type' => 'application/json', 'CHANNEL-ID' => '95221', 'ORIGIN' => url('/')
+        ])->post($baseUrl . $path, $jsonBody);
+
+        $result = $response->json();
+        if (isset($result['responseCode']) && $result['responseCode'] == '2005400' && !empty($result['webRedirectUrl'])) return substr($result['webRedirectUrl'], 0, 255);
+        throw new \Exception('Gagal mendapatkan link DANA.');
     }
 }

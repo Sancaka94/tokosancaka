@@ -18,13 +18,13 @@
 
         {{-- 1. ALERT NOTIFIKASI --}}
         @if(session('success'))
-            <div class="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl flex items-center gap-2" role="alert">
-                <i class="fas fa-check-circle"></i> <span>{{ session('success') }}</span>
+            <div class="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl flex items-center gap-3 shadow-sm" role="alert">
+                <i class="fas fa-check-circle text-xl"></i> <span class="font-medium">{{ session('success') }}</span>
             </div>
         @endif
         @if(session('error'))
-            <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-2" role="alert">
-                <i class="fas fa-exclamation-circle"></i> <span>{{ session('error') }}</span>
+            <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3 shadow-sm" role="alert">
+                <i class="fas fa-exclamation-circle text-xl"></i> <span class="font-medium">{{ session('error') }}</span>
             </div>
         @endif
 
@@ -38,7 +38,7 @@
             </div>
 
             {{-- TOMBOL BATALKAN SEMUA TRANSAKSI --}}
-            (!empty($cart))
+            @if(!empty($cart) && count($cart) > 0)
             <form action="{{ route('ppob.cart.clear') }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mengosongkan keranjang?');">
                 @csrf
                 <button type="submit" class="group flex items-center gap-2 bg-white border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 hover:text-red-700 px-5 py-2.5 rounded-xl transition font-semibold shadow-sm text-sm">
@@ -49,254 +49,280 @@
             @endif
         </div>
 
-        {{-- FORM UTAMA CHECKOUT --}}
-        <form action="{{ route('ppob.checkout.store') }}" method="POST" id="checkout-form">
-            @csrf
+        {{-- LOGIKA JIKA KERANJANG KOSONG --}}
+        @if(empty($cart) || count($cart) == 0)
+            <div class="bg-white rounded-3xl p-12 text-center border border-dashed border-gray-300 shadow-sm max-w-2xl mx-auto mt-10">
+                <div class="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fas fa-shopping-basket text-5xl text-gray-300"></i>
+                </div>
+                <h2 class="text-xl font-bold text-gray-800 mb-2">Keranjang Anda Kosong</h2>
+                <p class="text-gray-500 mb-6">Sepertinya Anda belum memilih produk PPOB apapun.</p>
+                <a href="{{ route('ppob.pricelist') }}" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg hover:shadow-blue-200 transform hover:-translate-y-1">
+                    <i class="fas fa-arrow-left"></i> Kembali Belanja
+                </a>
+            </div>
+        @else
+            {{-- FORM UTAMA CHECKOUT --}}
+            <form action="{{ route('ppob.checkout.store') }}" method="POST" id="checkout-form">
+                @csrf
 
-            {{-- 🔥 TAMBAHAN KODE PENGAMAN (IDEMPOTENCY) 🔥 --}}
-            {{-- Jika variabel $idempotencyKey belum ada (fallback), buat baru --}}
-            @php
-                if (!isset($idempotencyKey)) {
-                    $idempotencyKey = (string) \Illuminate\Support\Str::uuid();
-                }
-            @endphp
-            <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
+                {{-- 🔥 KODE PENGAMAN (IDEMPOTENCY) 🔥 --}}
+                @php
+                    if (!isset($idempotencyKey)) {
+                        $idempotencyKey = (string) \Illuminate\Support\Str::uuid();
+                    }
+                @endphp
+                <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                {{-- === KOLOM KIRI (LIST ITEM) === --}}
-                <div class="lg:col-span-2 space-y-6">
+                    {{-- === KOLOM KIRI (LIST ITEM) === --}}
+                    <div class="lg:col-span-2 space-y-6">
 
-                    {{-- LOOPING ITEM KERANJANG --}}
-                    @forelse($cart as $item)
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden relative transition hover:shadow-md hover:border-blue-200 group">
+                        {{-- LOOPING ITEM KERANJANG --}}
+                        @foreach($cart as $item)
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden relative transition hover:shadow-md hover:border-blue-200 group">
 
-                        {{-- DEKORASI SIDEBAR WARNA --}}
-                        <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-500"></div>
+                            {{-- DEKORASI SIDEBAR WARNA --}}
+                            <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-500"></div>
 
-                        <div class="p-5 pl-7 flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between">
+                            <div class="p-5 pl-7 flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between">
 
-                            {{-- Info Produk --}}
-                            <div class="flex items-start gap-4 flex-1">
-                                {{-- Icon Produk --}}
-                                <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm border border-blue-100 flex-shrink-0">
-                                    <i class="fas fa-receipt text-xl"></i>
-                                </div>
-
-                                <div>
-                                    <h4 class="font-bold text-gray-800 text-lg leading-tight mb-1">{{ $item['name'] }}</h4>
-                                    <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-                                        <div class="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded text-xs font-mono">
-                                            <i class="fas fa-user text-gray-400"></i> {{ $item['customer_no'] }}
-                                        </div>
-                                        <span class="text-gray-300">|</span>
-                                        <span class="text-xs">SKU: {{ $item['sku'] }}</span>
+                                {{-- Info Produk --}}
+                                <div class="flex items-start gap-4 flex-1">
+                                    {{-- Icon Produk --}}
+                                    <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm border border-blue-100 flex-shrink-0">
+                                        <i class="fas fa-receipt text-xl"></i>
                                     </div>
 
-                                    {{-- Tampilkan Rincian Tagihan (Jika Ada) --}}
-                                    @if(!empty($item['desc']))
-                                        <div class="mt-2 text-xs text-gray-500 bg-yellow-50 p-2 rounded border border-yellow-100 inline-block">
-                                            @if(isset($item['desc']['customer_name']))
-                                                <strong>An. {{ $item['desc']['customer_name'] }}</strong>
-                                            @endif
-                                            @if(isset($item['desc']['power']))
-                                                / {{ $item['desc']['power'] }}
-                                            @endif
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-
-                            {{-- Harga & Hapus --}}
-                            <div class="flex items-center gap-4 sm:gap-6 w-full sm:w-auto justify-between sm:justify-end">
-                                <div class="text-right">
-                                    <p class="text-xs text-gray-400 uppercase font-bold tracking-wider">Harga</p>
-                                    <p class="text-xl font-extrabold text-blue-600">Rp {{ number_format($item['price'], 0, ',', '.') }}</p>
-                                </div>
-
-                                {{-- TOMBOL HAPUS PER ITEM (SAMPAH MERAH) --}}
-                                <a href="{{ route('ppob.cart.remove', $item['id']) }}"
-                                   class="w-10 h-10 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition shadow-sm border border-red-100 tooltip-trigger"
-                                   onclick="return confirm('Hapus produk ini dari keranjang?')"
-                                   title="Hapus Item">
-                                    <i class="fas fa-trash"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    @empty
-                        {{-- Tampilan Jika Keranjang Kosong (Safety Fallback) --}}
-                        <div class="bg-white rounded-2xl p-10 text-center border border-dashed border-gray-300">
-                            <i class="fas fa-shopping-basket text-4xl text-gray-300 mb-4"></i>
-                            <p class="text-gray-500">Keranjang transaksi kosong.</p>
-                            <a href="{{ route('ppob.pricelist') }}" class="text-blue-600 font-bold hover:underline mt-2 inline-block">Kembali Belanja</a>
-                        </div>
-                    @endforelse
-
-                    {{-- TOTAL TAGIHAN --}}
-                    @if(!empty($cart))
-                    <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl shadow-lg p-6 text-white flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div class="flex items-center gap-4">
-                            <div class="p-3 bg-white/20 rounded-full">
-                                <i class="fas fa-wallet text-2xl"></i>
-                            </div>
-                            <div>
-                                <p class="text-blue-100 text-sm font-medium">Total Pembayaran ({{ count($cart) }} Item)</p>
-                                <h2 class="text-3xl font-bold">Rp {{ number_format($totalPrice, 0, ',', '.') }}</h2>
-                            </div>
-                        </div>
-                        <div class="text-blue-200 text-xs text-right hidden sm:block">
-                            <p>Tidak ada biaya tersembunyi.</p>
-                            <p>Transaksi diproses otomatis.</p>
-                        </div>
-                    </div>
-                    @endif
-
-                </div>
-
-                {{-- === KOLOM KANAN (PEMBAYARAN) === --}}
-                {{-- 1. Pindahkan 'sticky top-24' ke div pembungkus utama ini --}}
-                <div class="lg:col-span-1 space-y-6 sticky top-24">
-
-                     {{-- INFORMASI USER --}}
-                    <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-                        <div class="flex items-center gap-3 border-b border-gray-100 pb-3 mb-3">
-                            <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold">
-                                {{ substr($user->nama_lengkap, 0, 1) }}
-                            </div>
-                            <div>
-                                <p class="text-xs text-gray-400 uppercase font-bold">Pembeli</p>
-                                <p class="text-sm font-bold text-gray-800">{{ $user->nama_lengkap }}</p>
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-500">
-                            Invoice akan dikirim ke email <strong>{{ $user->email }}</strong>
-                        </p>
-                    </div>
-
-                    {{-- 2. Hapus 'sticky top-24' dari div metode pembayaran ini --}}
-                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200">
-                        <div class="p-5 border-b border-gray-100 bg-gray-50/80 rounded-t-2xl">
-                            <h3 class="font-bold text-gray-800 flex items-center gap-2">
-                                <i class="fas fa-credit-card text-blue-500"></i> Metode Pembayaran
-                            </h3>
-                        </div>
-
-                        <div class="p-5 space-y-4 max-h-[500px] overflow-y-auto payment-scroll">
-
-                            {{-- A. SALDO AKUN --}}
-                            @if(isset($paymentChannels['saldo']))
-                                @php
-                                    $saldo = $paymentChannels['saldo'];
-                                    $isCukup = $saldo['balance'] >= $totalPrice;
-                                @endphp
-                                <label class="relative block cursor-pointer group">
-                                    <input type="radio" name="payment_method" value="saldo" class="peer sr-only" {{ !$isCukup ? 'disabled' : '' }}>
-                                    <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50/50 transition-all hover:border-blue-300 {{ !$isCukup ? 'opacity-60 bg-gray-50 cursor-not-allowed' : 'bg-white' }}">
-                                        <div class="flex justify-between items-center mb-2">
-                                            <div class="bg-red-600 rounded-xl shadow-lg relative overflow-hidden p-6 text-white group transition-all hover:-translate-y-1">
-
-                                                {{-- Konten Teks --}}
-                                                <div class="relative z-10">
-                                                    {{-- Menampilkan Nominal Saldo (Saya tambahkan variabel ini agar informatif) --}}
-                                                    <h3 class="text-3xl font-extrabold tracking-tight">
-                                                        Rp {{ number_format($saldo['balance'] ?? 0, 0, ',', '.') }}
-                                                    </h3>
-
-                                                    {{-- Label --}}
-                                                    <span class="text-sm font-medium uppercase tracking-wider opacity-90 block mt-1">
-                                                        Saldo Akun Anda
-                                                    </span>
-                                                </div>
-
-                                                {{-- Dekorasi Ikon Besar di Pojok --}}
-                                                <div class="absolute -right-6 -bottom-6 opacity-20 pointer-events-none">
-                                                    {{--
-                                                        brightness-0 invert: Membuat ikon jadi putih polos (siluet).
-                                                        Hapus class ini jika ingin ikon tetap berwarna asli (kuning/emas).
-                                                    --}}
-                                                    <img src="{{ $saldo['icon_url'] }}"
-                                                        class="w-32 h-32 object-contain brightness-0 invert transform rotate-12 group-hover:scale-110 transition-transform duration-500"
-                                                        alt="Icon">
-                                                </div>
-
+                                    <div>
+                                        <h4 class="font-bold text-gray-800 text-lg leading-tight mb-2">{{ $item['name'] }}</h4>
+                                        <div class="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                                            <div class="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-md font-mono text-xs font-semibold text-gray-700">
+                                                <i class="fas fa-user text-gray-400"></i> {{ $item['customer_no'] }}
                                             </div>
-                                            <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 flex items-center justify-center">
-                                                <div class="w-2 h-2 bg-white rounded-full hidden peer-checked:block"></div>
-                                            </div>
+                                            <span class="text-gray-300">|</span>
+                                            <span class="text-xs bg-gray-50 px-2 py-1 rounded border border-gray-100">SKU: {{ $item['sku'] }}</span>
                                         </div>
 
-                                            <span class="text-xs text-gray-500">Sisa Saldo Anda</span>
-                                            <span class="text-sm font-bold {{ $isCukup ? 'text-green-600' : 'text-red-500' }}">
-                                                Rp {{ number_format($saldo['balance']) }}
-                                            </span>
-
-                                        @if(!$isCukup)
-                                            <div class="mt-2 text-[10px] text-red-500 font-bold bg-red-50 px-2 py-1 rounded text-center">
-                                                Saldo Tidak Mencukupi
+                                        {{-- Tampilkan Rincian Tagihan (Jika Ada) --}}
+                                        @if(!empty($item['desc']))
+                                            <div class="mt-3 text-xs text-gray-600 bg-yellow-50 p-2.5 rounded-lg border border-yellow-100 inline-block w-full sm:w-auto">
+                                                @if(isset($item['desc']['customer_name']))
+                                                    <span class="font-bold block sm:inline mb-1 sm:mb-0"><i class="fas fa-user-circle text-yellow-600 mr-1"></i> {{ $item['desc']['customer_name'] }}</span>
+                                                @endif
+                                                @if(isset($item['desc']['power']))
+                                                    <span class="hidden sm:inline text-gray-400 mx-1">/</span>
+                                                    <span class="font-mono text-yellow-700"><i class="fas fa-bolt mr-1"></i> {{ $item['desc']['power'] }}</span>
+                                                @endif
                                             </div>
                                         @endif
                                     </div>
-                                </label>
-                            @endif
-
-                            {{-- C. DOKU CHANNELS --}}
-                            @if(isset($paymentChannels['doku']) && count($paymentChannels['doku']) > 0)
-                                <div class="mt-4">
-                                    <p class="text-xs font-bold text-black uppercase tracking-wider mb-2 pl-1">Rekomendasi Sancaka</p>
-                                    <div class="space-y-3">
-                                        @foreach($paymentChannels['doku'] as $channel)
-                                            <label class="relative block cursor-pointer group">
-                                                <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="peer sr-only">
-                                                <div class="p-3 rounded-xl border border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all hover:border-blue-300 flex items-center gap-3 bg-white">
-                                                    <img src="{{ $channel['icon_url'] }}" class="h-6 w-auto object-contain">
-                                                    <span class="text-sm font-medium text-gray-700 flex-1">{{ $channel['name'] }}</span>
-                                                    <div class="w-4 h-4 rounded-full border border-gray-300 peer-checked:bg-blue-600 peer-checked:border-blue-600"></div>
-                                                </div>
-                                            </label>
-                                        @endforeach
-                                    </div>
                                 </div>
-                            @endif
 
-                            {{-- B. TRIPAY CHANNELS --}}
-                            @if(isset($paymentChannels['tripay']) && count($paymentChannels['tripay']) > 0)
-                                <div class="mt-4">
-                                    <p class="text-xs font-bold text-black uppercase tracking-wider mb-2 pl-1">Virtual Account & E-Wallet</p>
-                                    <div class="space-y-3">
-                                        @foreach($paymentChannels['tripay'] as $channel)
-                                            <label class="relative block cursor-pointer group">
-                                                <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="peer sr-only">
-                                                <div class="p-3 rounded-xl border border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all hover:border-blue-300 flex items-center gap-3 bg-white">
-                                                    <img src="{{ $channel['icon_url'] }}" class="h-6 w-auto object-contain">
-                                                    <span class="text-sm font-medium text-gray-700 flex-1">{{ $channel['name'] }}</span>
-                                                    <div class="w-4 h-4 rounded-full border border-gray-300 peer-checked:bg-blue-600 peer-checked:border-blue-600"></div>
-                                                </div>
-                                            </label>
-                                        @endforeach
+                                {{-- Harga & Hapus --}}
+                                <div class="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto pt-4 sm:pt-0 border-t sm:border-t-0 border-gray-100 mt-2 sm:mt-0">
+                                    <div class="text-left sm:text-right">
+                                        <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Harga</p>
+                                        <p class="text-xl font-extrabold text-blue-600">Rp {{ number_format($item['price'], 0, ',', '.') }}</p>
                                     </div>
+
+                                    {{-- TOMBOL HAPUS PER ITEM (SAMPAH MERAH) --}}
+                                    <a href="{{ route('ppob.cart.remove', $item['id']) }}"
+                                       class="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition shadow-sm border border-red-100 tooltip-trigger"
+                                       onclick="return confirm('Hapus produk ini dari keranjang?')"
+                                       title="Hapus Item">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </a>
                                 </div>
-                            @endif
-
-
-
+                            </div>
                         </div>
+                        @endforeach
 
-                        <div class="p-5 bg-gray-50 border-t border-gray-200 rounded-b-2xl">
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition transform hover:-translate-y-1 flex justify-center items-center gap-2 group">
-                                <span>Bayar Sekarang</span>
-                                <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
-                            </button>
-                            <p class="text-center text-xs text-gray-400 mt-3 flex justify-center items-center gap-1">
-                                <i class="fas fa-shield-alt"></i> Pembayaran aman & terenkripsi SSL.
-                            </p>
+                        {{-- TOTAL TAGIHAN --}}
+                        <div class="bg-gradient-to-r from-blue-600 to-blue-800 rounded-2xl shadow-lg p-6 text-white flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div class="flex items-center gap-4 w-full sm:w-auto">
+                                <div class="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
+                                    <i class="fas fa-wallet text-2xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-blue-100 text-sm font-medium mb-1">Total Pembayaran ({{ count($cart) }} Item)</p>
+                                    <h2 class="text-3xl font-bold">Rp {{ number_format($totalPrice, 0, ',', '.') }}</h2>
+                                </div>
+                            </div>
+                            <div class="text-blue-200 text-xs text-left sm:text-right w-full sm:w-auto bg-white/10 sm:bg-transparent p-3 sm:p-0 rounded-lg">
+                                <p class="flex items-center sm:justify-end gap-1"><i class="fas fa-check-circle"></i> Tidak ada biaya tersembunyi.</p>
+                                <p class="flex items-center sm:justify-end gap-1 mt-1"><i class="fas fa-bolt"></i> Transaksi diproses instan.</p>
+                            </div>
                         </div>
                     </div>
 
-                </div>
+                    {{-- === KOLOM KANAN (PEMBAYARAN) === --}}
+                    <div class="lg:col-span-1 space-y-6 sticky top-24">
 
-            </div>
-        </form>
+                        {{-- INFORMASI USER --}}
+                        <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600 font-bold text-lg flex-shrink-0">
+                                {{ strtoupper(substr($user->nama_lengkap, 0, 1)) }}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs text-gray-400 uppercase font-bold tracking-wide">Informasi Pembeli</p>
+                                <p class="text-sm font-bold text-gray-800 truncate">{{ $user->nama_lengkap }}</p>
+                                <p class="text-xs text-gray-500 truncate mt-0.5"><i class="fas fa-envelope mr-1"></i>{{ $user->email }}</p>
+                            </div>
+                        </div>
+
+                        {{-- METODE PEMBAYARAN --}}
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200">
+                            <div class="p-5 border-b border-gray-100 bg-gray-50/80 rounded-t-2xl">
+                                <h3 class="font-bold text-gray-800 flex items-center gap-2">
+                                    <i class="fas fa-credit-card text-blue-500"></i> Metode Pembayaran
+                                </h3>
+                            </div>
+
+                            <div class="p-5 space-y-5 max-h-[500px] overflow-y-auto payment-scroll">
+
+                                {{-- A. SALDO AKUN --}}
+                                @if(isset($paymentChannels['saldo']))
+                                    @php
+                                        $saldo = $paymentChannels['saldo'];
+                                        $isCukup = $saldo['balance'] >= $totalPrice;
+                                    @endphp
+                                    <div>
+                                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 pl-1">Dompet Internal</p>
+                                        <label class="relative block cursor-pointer group">
+                                            <input type="radio" name="payment_method" value="saldo" class="peer sr-only" {{ !$isCukup ? 'disabled' : '' }} required>
+
+                                            <div class="p-4 rounded-xl border-2 border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all hover:border-blue-300 flex items-center gap-4 {{ !$isCukup ? 'opacity-60 bg-gray-50 cursor-not-allowed' : 'bg-white' }}">
+                                                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 flex-shrink-0">
+                                                    <i class="fas fa-wallet text-xl"></i>
+                                                </div>
+
+                                                <div class="flex-1">
+                                                    <h4 class="font-bold text-gray-800 text-sm">Saldo Akun</h4>
+                                                    <p class="text-sm font-bold {{ $isCukup ? 'text-green-600' : 'text-red-500' }}">
+                                                        Rp {{ number_format($saldo['balance'] ?? 0, 0, ',', '.') }}
+                                                    </p>
+                                                    @if(!$isCukup)
+                                                        <span class="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded mt-1 inline-block border border-red-100">Saldo Tidak Cukup</span>
+                                                    @endif
+                                                </div>
+
+                                                <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:border-blue-600 peer-checked:bg-blue-600 flex items-center justify-center transition-colors">
+                                                    <div class="w-2 h-2 bg-white rounded-full hidden peer-checked:block"></div>
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                @endif
+
+                                {{-- B. DOKU CHANNELS --}}
+                                @if(isset($paymentChannels['doku']) && count($paymentChannels['doku']) > 0)
+                                    <div>
+                                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 pl-1">Rekomendasi Sancaka</p>
+                                        <div class="space-y-3">
+                                            @foreach($paymentChannels['doku'] as $channel)
+                                                <label class="relative block cursor-pointer group">
+                                                    <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="peer sr-only" required>
+                                                    <div class="p-3.5 rounded-xl border-2 border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all hover:border-blue-300 flex items-center gap-3 bg-white">
+                                                        <div class="w-10 h-6 flex items-center justify-center bg-white rounded border border-gray-100 overflow-hidden">
+                                                            <img src="{{ $channel['icon_url'] }}" class="max-h-full max-w-full object-contain" alt="{{ $channel['name'] }}">
+                                                        </div>
+                                                        <span class="text-sm font-semibold text-gray-700 flex-1">{{ $channel['name'] }}</span>
+                                                        <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 flex items-center justify-center transition-colors">
+                                                            <div class="w-2 h-2 bg-white rounded-full hidden peer-checked:block"></div>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- C. E-WALLET & GLOBAL (Midtrans, Dana, Paypal) --}}
+                                @if(isset($paymentChannels['lainnya']) && count($paymentChannels['lainnya']) > 0)
+                                    <div>
+                                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 pl-1">E-Wallet & Global</p>
+                                        <div class="space-y-3">
+                                            @foreach($paymentChannels['lainnya'] as $channel)
+                                                <label class="relative block cursor-pointer group">
+                                                    <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="peer sr-only" required>
+                                                    <div class="p-3.5 rounded-xl border-2 border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all hover:border-blue-300 flex items-center gap-3 bg-white">
+                                                        <div class="w-10 h-6 flex items-center justify-center bg-white rounded border border-gray-100 overflow-hidden p-0.5">
+                                                            <img src="{{ $channel['icon_url'] }}" class="max-h-full max-w-full object-contain" alt="{{ $channel['name'] }}">
+                                                        </div>
+                                                        <span class="text-sm font-semibold text-gray-700 flex-1">{{ $channel['name'] }}</span>
+                                                        <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 flex items-center justify-center transition-colors">
+                                                            <div class="w-2 h-2 bg-white rounded-full hidden peer-checked:block"></div>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- D. TRIPAY CHANNELS --}}
+                                @if(isset($paymentChannels['tripay']) && count($paymentChannels['tripay']) > 0)
+                                    <div>
+                                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 pl-1">Virtual Account & QRIS</p>
+                                        <div class="space-y-3">
+                                            @foreach($paymentChannels['tripay'] as $channel)
+                                                <label class="relative block cursor-pointer group">
+                                                    <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="peer sr-only" required>
+                                                    <div class="p-3.5 rounded-xl border-2 border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all hover:border-blue-300 flex items-center gap-3 bg-white">
+                                                        <div class="w-10 h-6 flex items-center justify-center bg-white rounded border border-gray-100 overflow-hidden p-0.5">
+                                                            <img src="{{ $channel['icon_url'] }}" class="max-h-full max-w-full object-contain" alt="{{ $channel['name'] }}" onerror="this.src='https://placehold.co/32x32?text=IMG'">
+                                                        </div>
+                                                        <span class="text-sm font-semibold text-gray-700 flex-1">{{ $channel['name'] }}</span>
+                                                        <div class="w-5 h-5 rounded-full border-2 border-gray-300 peer-checked:bg-blue-600 peer-checked:border-blue-600 flex items-center justify-center transition-colors">
+                                                            <div class="w-2 h-2 bg-white rounded-full hidden peer-checked:block"></div>
+                                                        </div>
+                                                    </div>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
+
+                            </div>
+
+                            <div class="p-5 bg-gray-50 border-t border-gray-200 rounded-b-2xl">
+                                <button type="submit" id="btn-pay" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 transition transform hover:-translate-y-1 flex justify-center items-center gap-2 group">
+                                    <span>Bayar Sekarang</span>
+                                    <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                                </button>
+                                <p class="text-center text-xs text-gray-400 mt-4 flex justify-center items-center gap-1.5">
+                                    <i class="fas fa-shield-alt text-green-500"></i> Pembayaran aman & terenkripsi SSL.
+                                </p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </form>
+        @endif
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    // Mencegah Double Click / Double Submit saat menekan tombol Bayar
+    document.addEventListener("DOMContentLoaded", function() {
+        const form = document.getElementById('checkout-form');
+        const btnPay = document.getElementById('btn-pay');
+
+        if(form && btnPay) {
+            form.addEventListener('submit', function(e) {
+                // Pastikan input radio metode pembayaran sudah dipilih (lolos validasi HTML5 required)
+                if (form.checkValidity()) {
+                    btnPay.disabled = true;
+                    btnPay.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sedang Memproses...';
+                    btnPay.classList.add('opacity-75', 'cursor-not-allowed');
+                }
+            });
+        }
+    });
+</script>
+@endpush
