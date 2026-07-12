@@ -411,4 +411,94 @@ class PpobCheckoutController extends Controller
         if (isset($result['responseCode']) && $result['responseCode'] == '2005400' && !empty($result['webRedirectUrl'])) return substr($result['webRedirectUrl'], 0, 255);
         throw new \Exception('Gagal mendapatkan link DANA.');
     }
+
+    /**
+     * =========================================================================
+     * HELPER: MEMBUAT TRANSAKSI TRIPAY PPOB
+     * =========================================================================
+     */
+    private function _createTripayTransaction($order, $methodChannel, $amount, $custName, $custEmail, $custPhone, $items)
+    {
+        // 1. Cek Mode Apa yang Aktif di Database (Sandbox / Production)
+        $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+        $baseUrl      = '';
+        $apiKey       = '';
+        $privateKey   = '';
+        $merchantCode = '';
+
+        // 2. Tarik Kredensial Sesuai Mode
+        if ($mode === 'production') {
+            $baseUrl      = 'https://tripay.co.id/api/transaction/create';
+            $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
+            $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'production');
+            $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', 'production');
+        } else {
+            $baseUrl      = 'https://tripay.co.id/api-sandbox/transaction/create';
+            $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'sandbox');
+            $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', 'sandbox');
+        }
+
+        // Validasi
+        if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+            \Illuminate\Support\Facades\Log::error('TRIPAY CONFIG MISSING (Mode: ' . $mode . ')');
+            return ['success' => false, 'message' => 'Konfigurasi Tripay belum lengkap di database.'];
+        }
+
+        $amount = (int) $amount;
+
+        // Jika perhitungan item berbeda dengan grand total, setel ulang item-nya
+        $calculatedTotalItems = 0;
+        foreach ($items as $item) {
+            $calculatedTotalItems += ($item['price'] * $item['quantity']);
+        }
+
+        if ($calculatedTotalItems !== $amount) {
+            $items = [[
+                'sku'      => 'INV-' . $order->invoice_number,
+                'name'     => 'Pembayaran PPOB #' . $order->invoice_number,
+                'price'    => $amount,
+                'quantity' => 1
+            ]];
+        }
+
+        // 3. Buat Signature
+        $signature = hash_hmac('sha256', $merchantCode . $order->invoice_number . $amount, $privateKey);
+
+        // 4. Siapkan Payload (Return URL diubah ke History PPOB)
+        $payload = [
+            'method'         => $methodChannel,
+            'merchant_ref'   => $order->invoice_number,
+            'amount'         => $amount,
+            'customer_name'  => $custName,
+            'customer_email' => $custEmail,
+            'customer_phone' => $custPhone,
+            'order_items'    => $items,
+            'return_url'     => route('customer.ppob.history'),
+            'expired_time'   => (time() + (24 * 60 * 60)), // Expired 24 Jam
+            'signature'      => $signature
+        ];
+
+        // 5. Eksekusi Request
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+                            ->timeout(15)
+                            ->withoutVerifying()
+                            ->post($baseUrl, $payload);
+
+            $body = $response->json();
+
+            if ($response->successful() && ($body['success'] ?? false) === true) {
+                return ['success' => true, 'data' => $body['data']];
+            }
+
+            \Illuminate\Support\Facades\Log::error('Tripay API Error:', ['response' => $body]);
+            return ['success' => false, 'message' => $body['message'] ?? 'Gagal membuat transaksi Tripay.'];
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Tripay Connection Exception: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Koneksi ke server Tripay bermasalah.'];
+        }
+    }
 }
