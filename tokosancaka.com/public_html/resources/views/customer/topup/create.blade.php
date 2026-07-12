@@ -160,7 +160,7 @@
                                 <label class="relative cursor-pointer group">
                                     <input type="radio" name="payment_method" value="DANA_DIRECT_DEBIT" class="peer sr-only">
                                     <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all flex flex-col items-center text-center">
-                                        <img src="{{ asset('assets/dana.webp') }}" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                                        <img src="{{ asset('assets/dana.webp') }}" class="h-12 w-12 object-contain mb-3 rounded-lg shadow-sm" onerror="this.src='https://tokosancaka.com/public/assets/dana.png'">
                                         <span class="text-sm font-bold text-gray-800">DANA BALANCE</span>
                                         <span class="text-[10px] text-blue-500 font-semibold bg-blue-100 px-2 py-0.5 rounded mt-1">Topup Instan</span>
                                         <div class="absolute top-3 right-3 text-blue-600 opacity-0 peer-checked:opacity-100 transform scale-50 peer-checked:scale-100 transition-all">
@@ -293,8 +293,9 @@
                                         @foreach($channels as $channel)
                                             @if($channel['active'] ?? true)
                                             <label class="relative cursor-pointer group">
-                                                <input type="radio" name="payment_method" value="{{ $channel['code'] }}" class="peer sr-only">
-                                                <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all flex flex-col items-center text-center shadow-sm hover:shadow-md">
+                                                {{-- TAMBAHKAN PREFIX TRIPAY_ DI SINI --}}
+                                                <input type="radio" name="payment_method" value="TRIPAY_{{ $channel['code'] }}" class="peer sr-only">
+                                                    <div class="h-full p-4 bg-white border-2 border-gray-200 rounded-xl hover:border-blue-400 peer-checked:border-blue-600 peer-checked:bg-blue-50 transition-all flex flex-col items-center text-center shadow-sm hover:shadow-md">
                                                     <div class="h-10 flex items-center justify-center mb-3">
                                                         <img src="{{ $channel['icon'] ?? asset('assets/default-payment.png') }}" alt="{{ $channel['name'] }}" class="max-h-full max-w-full object-contain rounded-lg" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=Logo'">
                                                     </div>

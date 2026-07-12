@@ -396,43 +396,31 @@ class TopUpController extends Controller
                 return $this->createPaymentMandiriVA($transaction);
             }
 
-            // 3. Logika DOKU & TRIPAY
+           // 3. Logika DOKU, PAYPAL, & TRIPAY
             else {
 
                 $redirectUrl = null;
+                // Bersihkan prefix jika asalnya dari Tripay
+                $paymentMethodClean = str_replace('TRIPAY_', '', $validated['payment_method']);
 
                 $transaction = Transaction::create([
                     'user_id'        => $user->id_pengguna,
                     'amount'         => $amount,
                     'type'           => 'topup',
                     'status'         => 'pending',
-                    'payment_method' => $validated['payment_method'],
-                    'description'    => 'Top up saldo via ' . $validated['payment_method'],
+                    'payment_method' => $validated['payment_method'], // Tetap simpan aslinya (cth: TRIPAY_OVO) untuk histori
+                    'description'    => 'Top up saldo via ' . $paymentMethodClean,
                     'reference_id'   => $invoiceNumber,
                 ]);
 
-                // Notifikasi Admin (Opsional untuk PG)
+                // Notifikasi Admin (Opsional)
                 $message = $user->nama_lengkap . ' meminta top up sebesar Rp ' . number_format($amount);
                 $url = route('admin.saldo.requests.index');
                 event(new AdminNotificationEvent('Permintaan Top Up Baru!', $message, $url));
 
-
                 $paymentUrl = null;
-                $paymentGateway = 'tripay'; // Default
 
                 if (strtoupper($validated['payment_method']) === 'DOKU_JOKUL') {
-                    $paymentGateway = 'doku';
-                } elseif (strtoupper($validated['payment_method']) === 'PAYPAL') {
-                    $paymentGateway = 'paypal'; // <-- TAMBAHAN PAYPAL
-                }
-
-                $customerData = [
-                    'name'  => $user->nama_lengkap,
-                    'email' => $user->email,
-                    'phone' => $user->no_wa
-                ];
-
-                if ($paymentGateway === 'doku') {
                     // --- PROSES VIA DOKU JOKUL ---
                     Log::info('Memulai Top Up DOKU (Jokul) untuk ' . $invoiceNumber);
 
@@ -442,7 +430,6 @@ class TopUpController extends Controller
                     ];
                     $successRedirectUrl = route('customer.topup.show', ['topup' => $invoiceNumber]);
 
-                    // ... logika SAC ID DOKU ...
                     $additionalInfo = [];
                     $store = \App\Models\Store::where('user_id', $user->id_pengguna)->first();
                     if ($store && !empty($store->doku_sac_id)) {
@@ -468,13 +455,10 @@ class TopUpController extends Controller
                         throw new Exception('Gagal membuat transaksi DOKU.');
                     }
 
-                } elseif ($paymentGateway === 'paypal') {
-                    // ==========================================================
-                    // --- PROSES VIA PAYPAL (BARU) ---
-                    // ==========================================================
+                } elseif (strtoupper($validated['payment_method']) === 'PAYPAL') {
+                    // --- PROSES VIA PAYPAL ---
                     Log::info('Memulai Top Up PayPal untuk ' . $invoiceNumber);
 
-                    // Panggil fungsi eksekutor PayPal TopUp yang dibuat di bawah
                     $paymentUrl = $this->createPaymentPayPalTopUp($transaction, $amount);
                     $redirectUrl = $paymentUrl;
 
@@ -482,9 +466,9 @@ class TopUpController extends Controller
                         throw new Exception('Gagal membuat link pembayaran PayPal.');
                     }
 
-                } else {
+                } elseif (\Illuminate\Support\Str::startsWith($validated['payment_method'], 'TRIPAY_')) {
                     // --- PROSES VIA TRIPAY ---
-                    Log::info('Memulai Top Up Tripay untuk ' . $invoiceNumber);
+                    Log::info('Memulai Top Up Tripay untuk ' . $invoiceNumber . ' via ' . $paymentMethodClean);
 
                     $apiKey       = config('tripay.api_key');
                     $privateKey   = config('tripay.private_key');
@@ -492,7 +476,7 @@ class TopUpController extends Controller
                     $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
 
                     $payload = [
-                        'method'         => $validated['payment_method'],
+                        'method'         => $paymentMethodClean, // <-- PENTING: Kirim OVO, BCAVA ke Tripay (tanpa awalan TRIPAY_)
                         'merchant_ref'   => $invoiceNumber,
                         'amount'         => $amount,
                         'customer_name'  => $customerData['name'],
@@ -535,7 +519,6 @@ class TopUpController extends Controller
                 // 4. SIMPAN URL/KODE BAYAR & COMMIT
                 $transaction->payment_url = $paymentUrl;
                 $transaction->save();
-
 
                 DB::commit();
 
