@@ -403,6 +403,14 @@ class TopUpController extends Controller
                 // Bersihkan prefix jika asalnya dari Tripay
                 $paymentMethodClean = str_replace('TRIPAY_', '', $validated['payment_method']);
 
+                // === TAMBAHKAN VARIABEL INI KEMBALI DI SINI ===
+                $customerData = [
+                    'name'  => $user->nama_lengkap ?? 'Customer Sancaka',
+                    'email' => $user->email ?? 'admin@tokosancaka.com',
+                    'phone' => $user->no_wa ?? '085745808809'
+                ];
+                // ==============================================
+
                 $transaction = Transaction::create([
                     'user_id'        => $user->id_pengguna,
                     'amount'         => $amount,
