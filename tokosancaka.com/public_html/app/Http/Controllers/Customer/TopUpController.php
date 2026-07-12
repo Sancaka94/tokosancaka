@@ -65,30 +65,25 @@ class TopUpController extends Controller
         return view('customer.topup.index', compact('transactions'));
     }
 
-  /**
-     * Menampilkan halaman form top up dengan Metode Pembayaran Dinamis.
-     */
     public function create()
     {
+        // =========================================================================
+        // ALUR 1: TRIPAY CHANNELS
+        // =========================================================================
         $tripayRaw = $this->getTripayChannels();
 
-        // Normalisasi struktur Tripay
+        // Normalisasi struktur Tripay tanpa membuang array aslinya
         $tripayChannels = collect(is_string($tripayRaw) ? json_decode($tripayRaw, true) : $tripayRaw)
             ->map(function ($item) {
-                // Tripay memisahkan fee_merchant, fee_customer, dan total_fee
-                // Kita ambil total_fee sebagai patokan biaya admin utama
+                // Ambil total fee untuk berjaga-jaga
                 $flatFee = $item['total_fee']['flat'] ?? 0;
-                $percentFee = $item['total_fee']['percent'] ?? 0;
 
-                return [
-                    'provider'    => 'TRIPAY',
-                    'code'        => $item['code'] ?? '',
-                    'name'        => $item['name'] ?? '',
-                    'group'       => $item['group'] ?? '',
-                    'icon'        => $item['icon_url'] ?? '',
-                    'fee'         => $flatFee,
-                    'fee_percent' => $percentFee // Disimpan untuk kebutuhan frontend jika diperlukan
-                ];
+                // Gunakan array_merge agar SEMUA data asli Tripay tetap ikut ke Blade
+                return array_merge($item, [
+                    'provider' => 'TRIPAY',
+                    'icon'     => $item['icon_url'] ?? '',
+                    'fee'      => $flatFee
+                ]);
             });
 
         $groupedChannels = $tripayChannels->groupBy('group');
@@ -96,16 +91,12 @@ class TopUpController extends Controller
         return view('customer.topup.create', compact('groupedChannels'));
     }
 
-
-    /**
-     * Helper: Ambil Channel Pembayaran dari API Tripay
-     */
     private function getTripayChannels()
     {
         $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
 
-        // 🔥 UBAH NAMA CACHE KEY AGAR MEMAKSA LARAVEL MENGAMBIL DATA BARU DARI TRIPAY
-        return Cache::remember('tripay_channels_v2_' . $mode, 60 * 24, function () use ($mode) {
+        // 🔥 GANTI NAMA CACHE MENJADI v3 AGAR CACHE LAMA TERHAPUS PAKSA
+        return Cache::remember('tripay_channels_v3_' . $mode, 60 * 24, function () use ($mode) {
 
             $apiKey = ($mode === 'production')
                 ? Api::getValue('TRIPAY_API_KEY', 'production')
@@ -118,7 +109,6 @@ class TopUpController extends Controller
             if (empty($apiKey)) return [];
 
             try {
-                // Tambahkan timeout agar tidak hang jika server Tripay lambat
                 $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
                                 ->timeout(15)
                                 ->get($baseUrl);
