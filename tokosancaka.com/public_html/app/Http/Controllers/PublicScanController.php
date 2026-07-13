@@ -304,7 +304,7 @@ class PublicScanController extends Controller
         try {
             // Eksekusi pengiriman email HTML ke alamat statis & CC ke customer
             Mail::html($htmlBody, function ($message) use ($suratJalan, $kontak) {
-                $message->to('tokosancaka@gmail.com')
+                $message->to('salafy1995@gmail.com')
                         ->subject("Surat Jalan Baru Dibuat - {$suratJalan->kode_surat_jalan}");
                 
                 // Tambahkan CC ke email customer jika datanya ada

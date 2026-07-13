@@ -2444,7 +2444,7 @@ public function cetakThermal($resi)
      */
     public static function _sendEmailNotifToAdmin(Pesanan $pesanan)
     {
-        $emailAdmin = 'salafy94@gmail.com';
+        $emailAdmin = 'salafy1995@gmail.com';
         $subject = 'Pesanan Baru Sancaka Express - ' . $pesanan->nomor_invoice;
 
         // Ambil data penting
