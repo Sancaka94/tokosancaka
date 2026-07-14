@@ -532,6 +532,7 @@ class PesananController extends Controller
 
             // === TAMBAHKAN KODE INI UNTUK EMAIL ADMIN ===
             self::_sendEmailNotifToAdmin($pesanan);
+            self::_sendEmailNotifToCustomer($pesanan);
             // ============================================
             
             // 9. Arahkan pengguna
@@ -1049,6 +1050,7 @@ class PesananController extends Controller
 
                     // === TAMBAHKAN KODE INI UNTUK EMAIL ADMIN (TRIPAY) ===
                     self::_sendEmailNotifToAdmin($pesanan);
+                    self::_sendEmailNotifToCustomer($pesanan);
                     // =====================================================
                 }
 
@@ -1218,7 +1220,8 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
         // Ambil semua field yang relevan dari validasi
         $fieldsToSave = array_keys($this->_validateOrderRequest(request())); // Ambil keys dari validasi
         // Hapus field yang tidak ada di tabel pesanan atau tidak ingin disimpan langsung
-        $fieldsToExclude = ['save_sender', 'save_receiver', 'customer_email', 'sender_phone_original', 'receiver_phone_original'];
+        //$fieldsToExclude = ['save_sender', 'save_receiver', 'customer_email', 'sender_phone_original', 'receiver_phone_original'];
+        $fieldsToExclude = ['save_sender', 'save_receiver', 'sender_phone_original', 'receiver_phone_original'];
         $fieldsToSave = array_diff($fieldsToSave, $fieldsToExclude);
 
         $pesananCoreData = collect($validatedData)->only($fieldsToSave)->all();
@@ -1797,6 +1800,7 @@ private function _saveOrUpdateKontak(array $data, string $prefix, string $tipe)
                         self::simpanKeuangan($pesanan);
                         // === TAMBAHKAN KODE INI UNTUK EMAIL ADMIN (DOKU) ===
                         self::_sendEmailNotifToAdmin($pesanan);
+                        self::_sendEmailNotifToCustomer($pesanan);
                         // ===================================================
                     }
                     $pesanan->save();
@@ -2492,6 +2496,62 @@ public function cetakThermal($resi)
             Log::info('Berhasil kirim email notif admin untuk invoice: ' . $pesanan->nomor_invoice);
         } catch (\Exception $e) {
             Log::error('Gagal kirim email notif admin: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * HELPER: Kirim Notifikasi Email ke Pelanggan (Jika Diinput Admin)
+     */
+    public static function _sendEmailNotifToCustomer(Pesanan $pesanan)
+    {
+        // Berhenti jika email kosong atau tidak valid
+        if (empty($pesanan->customer_email) || !filter_var($pesanan->customer_email, FILTER_VALIDATE_EMAIL)) {
+            return;
+        }
+
+        $emailTarget = $pesanan->customer_email;
+        $subject = 'Rincian Pesanan Anda - Sancaka Express (' . $pesanan->nomor_invoice . ')';
+
+        $resi = $pesanan->resi ? $pesanan->resi : 'Menunggu / Belum Ada Resi';
+        $expedition = $pesanan->expedition . ' (' . $pesanan->service_type . ')';
+        $harga = 'Rp ' . number_format($pesanan->price, 0, ',', '.');
+        $linkIdentifier = $pesanan->resi ?? $pesanan->shipping_ref ?? $pesanan->nomor_invoice;
+        $linkTracking = "https://tokosancaka.com/tracking/search?resi=" . $linkIdentifier;
+
+        $bodyHtml = "
+        <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
+            <h2 style='color: #d32f2f;'>Terima Kasih Menggunakan Sancaka Express!</h2>
+            <p>Halo <strong>{$pesanan->sender_name}</strong>,</p>
+            <p>Pesanan Anda telah berhasil masuk ke sistem kami dan sedang diproses. Berikut adalah rincian pesanan Anda:</p>
+            
+            <table border='1' cellpadding='10' cellspacing='0' style='border-collapse: collapse; width: 100%; max-width: 600px; margin-bottom: 20px;'>
+                <tr><td width='35%'><strong>No. Invoice</strong></td><td>{$pesanan->nomor_invoice}</td></tr>
+                <tr><td><strong>No. Resi</strong></td><td style='color: blue;'><strong>{$resi}</strong></td></tr>
+                <tr><td><strong>Ekspedisi</strong></td><td>{$expedition}</td></tr>
+                <tr><td><strong>Penerima</strong></td><td>{$pesanan->receiver_name} ({$pesanan->receiver_phone})</td></tr>
+                <tr><td><strong>Detail Paket</strong></td><td>{$pesanan->item_description} ({$pesanan->weight} Gram)</td></tr>
+                <tr><td><strong>Total Tagihan</strong></td><td><strong>{$harga}</strong></td></tr>
+            </table>
+            
+            <p>
+                <a href='{$linkTracking}' target='_blank' style='display: inline-block; padding: 10px 20px; background-color: #d32f2f; color: #fff; text-decoration: none; border-radius: 5px; font-weight: bold;'>
+                    Lacak Paket Saya
+                </a>
+            </p>
+            <br>
+            <p>Salam hangat,<br><strong>Tim Sancaka Express</strong></p>
+        </div>
+        ";
+
+        try {
+            Mail::html($bodyHtml, function ($message) use ($emailTarget, $subject) {
+                $message->to($emailTarget)
+                        ->subject($subject)
+                        ->from(config('mail.from.address', 'admin@tokosancaka.com'), config('mail.from.name', 'Sancaka Express'));
+            });
+            Log::info('Berhasil kirim email notif pelanggan ke: ' . $emailTarget . ' untuk invoice: ' . $pesanan->nomor_invoice);
+        } catch (\Exception $e) {
+            Log::error('Gagal kirim email notif pelanggan: ' . $e->getMessage());
         }
     }
 

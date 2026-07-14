@@ -68,6 +68,18 @@
                             <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Hanya boleh huruf dan spasi. Angka & simbol otomatis dihapus.</p>
                             <div id="sender_contact_results" class="search-results-container hidden"></div>
                         </div>
+
+                        <div class="md:col-span-2 relative">
+                            <label for="customer_email" class="block mb-2 text-sm font-medium text-gray-700">Email Notifikasi Pelanggan (Opsional)</label>
+                            <div class="relative">
+                                <input type="email" id="customer_email" name="customer_email"
+                                    class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" 
+                                    placeholder="contoh@gmail.com" autocomplete="off">
+                                <i class="fas fa-envelope text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Jika diisi, resi & rincian pesanan akan otomatis dikirim ke email ini.</p>
+                        </div>
+                        
                         <div class="relative">
                             <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
                             <input type="tel" id="sender_phone" name="sender_phone"
