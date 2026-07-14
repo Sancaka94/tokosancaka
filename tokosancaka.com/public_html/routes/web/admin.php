@@ -52,6 +52,8 @@ use App\Http\Controllers\Admin\ImapController; // Pastikan path controller ini b
 
 use App\Http\Controllers\Admin\LoginController;
 
+use App\Http\Controllers\Auth\Admin\AdminLoginController;
+
 use App\Http\Controllers\Admin\KontakController as AdminKontakController;
 
 use App\Http\Controllers\Admin\ProductController;
@@ -590,7 +592,7 @@ Route::prefix('customer-to-seller')->name('customer-to-seller.')->group(function
 });
 
 
-    Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+    Route::post('/logout', [AdminLoginController::class, 'logout'])->name('logout');
 
 
 
