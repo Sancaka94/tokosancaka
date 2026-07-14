@@ -73,10 +73,10 @@ use App\Http\Controllers\Admin\PpobProductController;
 
 
 // Route untuk menampilkan form login admin
-Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])->name('admin.login');
+Route::get('/login', [AdminLoginController::class, 'showLoginForm'])->name('admin.login');
 
 // Route untuk memproses data dari form login admin
-Route::post('/admin/login', [AdminLoginController::class, 'login']);
+Route::post('/login', [AdminLoginController::class, 'login']);
 
 /*
 
