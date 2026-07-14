@@ -69,6 +69,15 @@ use App\Http\Controllers\Admin\DokuBalanceController; // ✅ DITAMBAHKAN
 use App\Http\Controllers\Admin\AdminPpobController;
 use App\Http\Controllers\Admin\PpobProductController;
 
+
+
+
+// Route untuk menampilkan form login admin
+Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])->name('admin.login');
+
+// Route untuk memproses data dari form login admin
+Route::post('/admin/login', [AdminLoginController::class, 'login']);
+
 /*
 
 |--------------------------------------------------------------------------
@@ -593,6 +602,9 @@ Route::prefix('customer-to-seller')->name('customer-to-seller.')->group(function
 
 
     Route::post('/logout', [AdminLoginController::class, 'logout'])->name('logout');
+
+
+
 
 
 
