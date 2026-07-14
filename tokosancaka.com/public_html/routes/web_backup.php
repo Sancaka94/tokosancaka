@@ -85,6 +85,11 @@ use App\Http\Controllers\Customer\AgentTransactionController; // <--- TAMBAHKAN 
 use App\Http\Controllers\Admin\AdminPpobController;
 use App\Http\Controllers\Admin\AdminLogController; // <<< TAMBAHKAN BARIS INI
 use App\Http\Controllers\WhatsappController;
+use App\Http\Controllers\Auth\Admin\AdminLoginController;
+
+
+
+Route::post('/admin/logout', [AdminLoginController::class, 'logout'])->name('admin.logout');
 
 
 
