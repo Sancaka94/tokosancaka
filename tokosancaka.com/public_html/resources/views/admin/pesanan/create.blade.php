@@ -61,62 +61,61 @@
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
+                     <div class="relative">
+                        <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim </label>
                         <div class="relative">
-                            <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim </label>
                             <input type="text" id="sender_name" name="sender_name"
-                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
-                            <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Hanya boleh huruf dan spasi. Angka & simbol otomatis dihapus.</p>
-                            <div id="sender_contact_results" class="search-results-container hidden"></div>
+                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
+                            <i class="fas fa-user text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
                         </div>
+                        <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Hanya boleh huruf dan spasi. Angka & simbol otomatis dihapus.</p>
+                        <div id="sender_contact_results" class="search-results-container hidden"></div>
+                    </div>
 
-                        
-
+                    <div class="relative">
+                        <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
                         <div class="relative">
-                            <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
                             <input type="tel" id="sender_phone" name="sender_phone"
-                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
+                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
+                            <i class="fas fa-phone-alt text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
                         </div>
-                        <div class="md:col-span-2 relative">
-                            <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
-                            <div class="relative">
-                                <input type="text" id="sender_address_search"
-                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
-                                <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
-                            </div>
-                            <div id="sender_address_results" class="search-results-container hidden"></div>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700">
-                                Detail Alamat Lengkap Pengirim
-                            </label>
-                            <textarea
-                                id="sender_address"
-                                name="sender_address"
-                                rows="3"
-                                placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)"
-                                required
-                                class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900
-                                    focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md
-                                    transition duration-150 ease-in-out"
-                            ></textarea>
+                    </div>
 
-                            <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.</p>
-                            </div>
-
-                            <div class="md:col-span-2 relative">
-                            <label for="customer_email" class="block mb-2 text-sm font-medium text-gray-700">Email Notifikasi Pelanggan (Opsional)</label>
-                            <div class="relative">
-                                <input type="email" id="customer_email" name="customer_email"
-                                    class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" 
-                                    placeholder="contoh@gmail.com" autocomplete="off">
-                                <i class="fas fa-envelope text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Jika diisi, resi & rincian pesanan akan otomatis dikirim ke email ini.</p>
+                    <div class="md:col-span-2 relative">
+                        <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
+                        <div class="relative">
+                            <input type="text" id="sender_address_search"
+                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
+                            <i class="fas fa-search text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
                         </div>
+                        <div id="sender_address_results" class="search-results-container hidden"></div>
+                    </div>
 
-                          <div class="md:col-span-2">
-                            <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" checked class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data pengirim ini</label>
+                    <div class="md:col-span-2 relative">
+                        <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700">Detail Alamat Lengkap Pengirim</label>
+                        <div class="relative">
+                            <textarea id="sender_address" name="sender_address" rows="3" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required
+                                class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 pl-10 text-sm text-gray-900 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md transition duration-150 ease-in-out"></textarea>
+                            <i class="fas fa-map-marker-alt text-gray-400 absolute top-3.5 left-3"></i>
                         </div>
+                        <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.</p>
+                    </div>
+
+                    <div class="md:col-span-2 relative">
+                        <label for="customer_email" class="block mb-2 text-sm font-medium text-gray-700">Email Notifikasi Pelanggan (Opsional)</label>
+                        <div class="relative">
+                            <input type="email" id="customer_email" name="customer_email"
+                                class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" 
+                                placeholder="contoh@gmail.com" autocomplete="off">
+                            <i class="fas fa-envelope text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Jika diisi, resi & rincian pesanan akan otomatis dikirim ke email ini.</p>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" checked class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data pengirim ini</label>
+                    </div>
                     </div>
                 </div>
 
@@ -128,39 +127,50 @@
                         </h3>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div class="relative">
+                       <div class="relative">
                             <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Penerima</label>
-                            <input type="text" id="receiver_name" name="receiver_name"
-                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md" required autocomplete="off">
+                            <div class="relative">
+                                <input type="text" id="receiver_name" name="receiver_name"
+                                class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md" required autocomplete="off">
+                                <i class="fas fa-user text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
                             <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Hanya boleh huruf dan spasi. Angka & simbol otomatis dihapus.</p>
                             <div id="receiver_contact_results" class="search-results-container hidden"></div>
                         </div>
+
                         <div class="relative">
                             <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
-                            <input type="tel" id="receiver_phone" name="receiver_phone"
-                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md" required autocomplete="off">
+                            <div class="relative">
+                                <input type="tel" id="receiver_phone" name="receiver_phone"
+                                class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md" required autocomplete="off">
+                                <i class="fas fa-phone-alt text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
                         </div>
+
                         <div class="md:col-span-2 relative">
                             <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
                             <div class="relative">
                                 <input type="text" id="receiver_address_search"
-                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md" required autocomplete="off">
+                                class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md" required autocomplete="off">
+                                <i class="fas fa-search text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
                                 <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
                             </div>
                             <div id="receiver_address_results" class="search-results-container hidden"></div>
                         </div>
-                        <div class="md:col-span-2">
-                            <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700">Alamat Penerima Lengkap</label>
-                            <textarea id="receiver_address" name="receiver_address" rows="3"
-                            class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900
-                            focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md
-                            transition duration-150 ease-in-out" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
 
+                        <div class="md:col-span-2 relative">
+                            <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700">Alamat Penerima Lengkap</label>
+                            <div class="relative">
+                                <textarea id="receiver_address" name="receiver_address" rows="3"
+                                class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 pl-10 text-sm text-gray-900 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md transition duration-150 ease-in-out" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
+                                <i class="fas fa-map-marker-alt text-gray-400 absolute top-3.5 left-3"></i>
+                            </div>
                             <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.</p>
                         </div>
-                          <div class="md:col-span-2">
-                                <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" checked class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data penerima ini</label>
-                          </div>
+
+                        <div class="md:col-span-2">
+                            <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" checked class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data penerima ini</label>
+                        </div>
                     </div>
                 </div>
 
@@ -174,86 +184,105 @@
                     </h3>
                     <div class="space-y-4">
 
-                        <div>
+                       <div>
                             <label for="item_description" class="block mb-2 text-sm font-medium text-gray-700">Deskripsi Barang</label>
-                            <input type="text" id="item_description" name="item_description"
-                                   value="Barang Umum"
-                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
+                            <div class="relative">
+                                <input type="text" id="item_description" name="item_description" value="Barang Umum"
+                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required>
+                                <i class="fas fa-box text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
                         </div>
 
                         <div>
                             <label for="item_price" class="block mb-2 text-sm font-medium text-gray-700">Harga Barang (Rp)</label>
-                            <input type="number" name="item_price" id="item_price"
-                                   value="1000"
-                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required min="1">
+                            <div class="relative">
+                                <input type="number" name="item_price" id="item_price" value="1000"
+                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required min="1">
+                                <i class="fas fa-tag text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
                         </div>
 
                         <div>
                             <label for="weight" class="block mb-2 text-sm font-medium text-gray-700">Berat (gram)</label>
-                            <input type="number" id="weight" name="weight"
-                                   value="1000"
-                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required min="1">
+                            <div class="relative">
+                                <input type="number" id="weight" name="weight" value="1000"
+                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required min="1">
+                                <i class="fas fa-weight-hanging text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-3 gap-4">
                             <div>
                                 <label for="length" class="block mb-2 text-sm font-medium text-gray-700">P (cm)</label>
-                                <input type="number" id="length" name="length"
-                                       value="1"
-                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                                <div class="relative">
+                                    <input type="number" id="length" name="length" value="10"
+                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-8">
+                                    <i class="fas fa-arrows-alt-h text-gray-400 absolute top-1/2 left-2.5 transform -translate-y-1/2 text-xs"></i>
+                                </div>
                             </div>
                             <div>
                                 <label for="width" class="block mb-2 text-sm font-medium text-gray-700">L (cm)</label>
-                                <input type="number" id="width" name="width"
-                                       value="1"
-                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                                <div class="relative">
+                                    <input type="number" id="width" name="width" value="10"
+                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-8">
+                                    <i class="fas fa-arrows-alt-h text-gray-400 absolute top-1/2 left-2.5 transform -translate-y-1/2 text-xs" style="transform: translateY(-50%) rotate(45deg);"></i>
+                                </div>
                             </div>
                             <div>
                                 <label for="height" class="block mb-2 text-sm font-medium text-gray-700">T (cm)</label>
-                                <input type="number" id="height" name="height"
-                                       value="1"
-                                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                                <div class="relative">
+                                    <input type="number" id="height" name="height" value="10"
+                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-8">
+                                    <i class="fas fa-arrows-alt-v text-gray-400 absolute top-1/2 left-2.5 transform -translate-y-1/2 text-xs"></i>
+                                </div>
                             </div>
                         </div>
 
                         <div>
                             <label for="item_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Barang</label>
-
-                            <select name="item_type" id="item_type"
-                                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5"
-                                required>
-                                <option value="" disabled>Pilih...</option>
-                                <option value="1">Peralatan Elektronik & Gadget</option>
-                                <option value="2">Pakaian / Baju / Kain</option>
-                                <option value="3">Pecah Belah</option>
-                                <option value="4">Dokumen / Berkas / Buku</option>
-                                <option value="5">Peralatan Rumah Tangga</option>
-                                <option value="6">Aksesoris</option>
-                                <option value="7" selected>Lain-Lain</option>
-                                <option value="8">Dokumen Berharga</option>
-                                <option value="9">Peralatan Kesehatan / Kecantikan / Kosmetik</option>
-                                <option value="10">Peralatan Olahraga & Hiburan</option>
-                                <option value="11">Perlengkapan Mobil & Motor</option>
-                            </select>
+                            <div class="relative">
+                                <select name="item_type" id="item_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required>
+                                    <option value="" disabled>Pilih...</option>
+                                    <option value="1">Peralatan Elektronik & Gadget</option>
+                                    <option value="2">Pakaian / Baju / Kain</option>
+                                    <option value="3">Pecah Belah</option>
+                                    <option value="4">Dokumen / Berkas / Buku</option>
+                                    <option value="5">Peralatan Rumah Tangga</option>
+                                    <option value="6">Aksesoris</option>
+                                    <option value="7" selected>Lain-Lain</option>
+                                    <option value="8">Dokumen Berharga</option>
+                                    <option value="9">Peralatan Kesehatan / Kecantikan / Kosmetik</option>
+                                    <option value="10">Peralatan Olahraga & Hiburan</option>
+                                    <option value="11">Perlengkapan Mobil & Motor</option>
+                                </select>
+                                <i class="fas fa-list-ul text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
                         </div>
 
                         <div>
                             <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Layanan</label>
-                            <select name="service_type" id="service_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-                                <option value="" disabled>Pilih...</option> <option value="regular" selected>Regular</option>
-
-                                <option value="express">Express</option>
-                                <option value="sameday">Sameday</option>
-                                <option value="instant">Instant</option>
-                                <option value="cargo">Cargo</option>
-                            </select>
+                            <div class="relative">
+                                <select name="service_type" id="service_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required>
+                                    <option value="" disabled>Pilih...</option> 
+                                    <option value="regular" selected>Regular</option>
+                                    <option value="express">Express</option>
+                                    <option value="sameday">Sameday</option>
+                                    <option value="instant">Instant</option>
+                                    <option value="cargo">Cargo</option>
+                                </select>
+                                <i class="fas fa-truck text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
                         </div>
 
                         <div>
                             <label for="ansuransi" class="block mb-2 text-sm font-medium text-gray-700">Asuransi</label>
-                            <select name="ansuransi" id="ansuransi" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5" required>
-                                <option value="tidak" selected>Tidak</option><option value="iya">Iya</option>
-                            </select>
+                            <div class="relative">
+                                <select name="ansuransi" id="ansuransi" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required>
+                                    <option value="tidak" selected>Tidak</option>
+                                    <option value="iya">Iya</option>
+                                </select>
+                                <i class="fas fa-shield-alt text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
                         </div>
                         <hr/>
                         <div>
