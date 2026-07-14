@@ -69,17 +69,8 @@
                             <div id="sender_contact_results" class="search-results-container hidden"></div>
                         </div>
 
-                        <div class="md:col-span-2 relative">
-                            <label for="customer_email" class="block mb-2 text-sm font-medium text-gray-700">Email Notifikasi Pelanggan (Opsional)</label>
-                            <div class="relative">
-                                <input type="email" id="customer_email" name="customer_email"
-                                    class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" 
-                                    placeholder="contoh@gmail.com" autocomplete="off">
-                                <i class="fas fa-envelope text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
-                            </div>
-                            <p class="text-xs text-gray-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Jika diisi, resi & rincian pesanan akan otomatis dikirim ke email ini.</p>
-                        </div>
                         
+
                         <div class="relative">
                             <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
                             <input type="tel" id="sender_phone" name="sender_phone"
@@ -95,22 +86,33 @@
                             <div id="sender_address_results" class="search-results-container hidden"></div>
                         </div>
                         <div class="md:col-span-2">
-    <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700">
-        Detail Alamat Lengkap Pengirim
-    </label>
-    <textarea
-        id="sender_address"
-        name="sender_address"
-        rows="3"
-        placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)"
-        required
-        class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900
-               focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md
-               transition duration-150 ease-in-out"
-    ></textarea>
+                            <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700">
+                                Detail Alamat Lengkap Pengirim
+                            </label>
+                            <textarea
+                                id="sender_address"
+                                name="sender_address"
+                                rows="3"
+                                placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)"
+                                required
+                                class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900
+                                    focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md
+                                    transition duration-150 ease-in-out"
+                            ></textarea>
 
-    <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.</p>
-    </div>
+                            <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.</p>
+                            </div>
+
+                            <div class="md:col-span-2 relative">
+                            <label for="customer_email" class="block mb-2 text-sm font-medium text-gray-700">Email Notifikasi Pelanggan (Opsional)</label>
+                            <div class="relative">
+                                <input type="email" id="customer_email" name="customer_email"
+                                    class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" 
+                                    placeholder="contoh@gmail.com" autocomplete="off">
+                                <i class="fas fa-envelope text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Jika diisi, resi & rincian pesanan akan otomatis dikirim ke email ini.</p>
+                        </div>
 
                           <div class="md:col-span-2">
                             <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" checked class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data pengirim ini</label>
