@@ -196,6 +196,27 @@ use App\Http\Controllers\Api\Mobile\TicketingController;
 
 use App\Http\Controllers\DanaWebhookController;
 use App\Http\Controllers\ApiMapboxController;
+use App\Http\Controllers\Auth\Admin\AdminLoginController;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Route untuk menampilkan form login admin
+Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])->name('admin.login');
+
+// Route untuk memproses data dari form login admin
+Route::post('/admin/login', [AdminLoginController::class, 'login']);
 
 // API Mapbox Route
 Route::get('/api/mapbox/calculate', [\App\Http\Controllers\ApiMapboxController::class, 'calculateRoute']);
