@@ -99,4 +99,38 @@ class DataAutoKirimController extends Controller
     {
         return Excel::download(new \App\Exports\DataAutoKirimTemplateExport, 'Template_Import_Komisi_Agent.xlsx');
     }
+
+    // BULK DESTROY
+    public function bulkDestroy(Request $request)
+    {
+        if (!$request->has('ids') || empty($request->ids)) {
+            return redirect()->back()->with('error', 'Pilih minimal satu data untuk dihapus.');
+        }
+
+        DataAutoKirim::whereIn('id', $request->ids)->delete();
+        
+        return redirect()->back()->with('success', count($request->ids) . ' data terpilih berhasil dihapus.');
+    }
+
+    // BULK UPDATE (Ubah Massal)
+    public function bulkUpdate(Request $request)
+    {
+        if (!$request->has('ids') || empty($request->ids)) {
+            return redirect()->back()->with('error', 'Pilih minimal satu data untuk diubah.');
+        }
+
+        // Siapkan array data yang akan diupdate (hanya memproses field yang diisi)
+        $updateData = [];
+        if ($request->filled('cashback')) $updateData['cashback'] = $request->cashback;
+        if ($request->filled('admin_cod')) $updateData['admin_cod'] = $request->admin_cod;
+        if ($request->filled('komisi_agen')) $updateData['komisi_agen'] = $request->komisi_agen;
+
+        if (empty($updateData)) {
+            return redirect()->back()->with('error', 'Tidak ada nilai baru yang dimasukkan untuk update.');
+        }
+
+        DataAutoKirim::whereIn('id', $request->ids)->update($updateData);
+
+        return redirect()->back()->with('success', count($request->ids) . ' data terpilih berhasil diperbarui.');
+    }
 }
