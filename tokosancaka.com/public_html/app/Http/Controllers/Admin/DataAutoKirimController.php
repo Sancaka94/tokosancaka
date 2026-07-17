@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DataAutoKirim;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Facades\Excel; // Uncomment jika menggunakan package excel
+use Maatwebsite\Excel\Facades\Excel; 
 use App\Imports\DataAutoKirimImport;
 use App\Exports\DataAutoKirimExport;
-// use PDF; // Uncomment jika menggunakan barryvdh/laravel-dompdf
+use PDF; 
 
 class DataAutoKirimController extends Controller
 {
@@ -16,7 +16,7 @@ class DataAutoKirimController extends Controller
     {
         $data = DataAutoKirim::latest()->get();
         
-        // SUDAH DIPERBAIKI: Mengarah ke resources/views/admin/autokirim/data/index.blade.php
+        // Mengarah ke resources/views/admin/autokirim/data/index.blade.php
         return view('admin.autokirim.data.index', compact('data'));
     }
 
@@ -58,22 +58,28 @@ class DataAutoKirimController extends Controller
 
     public function import(Request $request)
     {
-        $request->validate(['file' => 'required|mimes:xlsx,csv']);
-        // Excel::import(new DataAutoKirimImport, $request->file('file'));
-        return redirect()->back()->with('success', 'Data berhasil diimport.');
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv'
+        ]);
+
+        // Fungsi Import Excel Diaktifkan
+        Excel::import(new DataAutoKirimImport, $request->file('file'));
+        
+        return redirect()->back()->with('success', 'Data Excel berhasil diimport.');
     }
 
     public function exportExcel()
     {
-        // return Excel::download(new DataAutoKirimExport, 'data-autokirim.xlsx');
-        return redirect()->back()->with('success', 'Fungsi download Excel dipanggil.');
+        // Fungsi Export Excel Diaktifkan
+        return Excel::download(new DataAutoKirimExport, 'data-autokirim.xlsx');
     }
 
     public function exportPdf()
     {
         $data = DataAutoKirim::all();
-        // $pdf = PDF::loadView('admin.autokirim.data.pdf', compact('data'));
-        // return $pdf->download('data-autokirim.pdf');
-        return redirect()->back()->with('success', 'Fungsi download PDF dipanggil.');
+        
+        // Fungsi PDF Diaktifkan
+        $pdf = PDF::loadView('admin.autokirim.data.pdf', compact('data'));
+        return $pdf->download('data-autokirim.pdf');
     }
 }
