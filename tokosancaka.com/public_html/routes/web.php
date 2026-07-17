@@ -197,7 +197,7 @@ use App\Http\Controllers\Api\Mobile\TicketingController;
 use App\Http\Controllers\DanaWebhookController;
 use App\Http\Controllers\ApiMapboxController;
 use App\Http\Controllers\Auth\Admin\AdminLoginController;
-use App\Http\Controllers\DataAutoKirimController;
+use App\Http\Controllers\Admin\DataAutoKirimController;
 
 // 1. Rute Custom (Export & Import) WAJIB di atas resource agar tidak terbaca sebagai parameter {id}
 Route::post('autokirim/import', [DataAutoKirimController::class, 'import'])->name('autokirim.import');
