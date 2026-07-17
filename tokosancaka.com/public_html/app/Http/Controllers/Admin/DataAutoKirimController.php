@@ -112,7 +112,7 @@ class DataAutoKirimController extends Controller
         return redirect()->back()->with('success', count($request->ids) . ' data terpilih berhasil dihapus.');
     }
 
-    // BULK UPDATE (Ubah Massal)
+   // BULK UPDATE (Ubah Massal)
     public function bulkUpdate(Request $request)
     {
         if (!$request->has('ids') || empty($request->ids)) {
@@ -121,6 +121,11 @@ class DataAutoKirimController extends Controller
 
         // Siapkan array data yang akan diupdate (hanya memproses field yang diisi)
         $updateData = [];
+        
+        // Tambahan penangkapan data brand dan service
+        if ($request->filled('brand_logistik')) $updateData['brand_logistik'] = $request->brand_logistik;
+        if ($request->filled('service')) $updateData['service'] = $request->service;
+        
         if ($request->filled('cashback')) $updateData['cashback'] = $request->cashback;
         if ($request->filled('admin_cod')) $updateData['admin_cod'] = $request->admin_cod;
         if ($request->filled('komisi_agen')) $updateData['komisi_agen'] = $request->komisi_agen;
