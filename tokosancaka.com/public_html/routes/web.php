@@ -1874,7 +1874,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // =========================================================================
     // 2. RUTE LAMA: AREA AUTOKIRIM (AutoKirimController ASLI ANDA)
     // =========================================================================
-    Route::post('autokirim/import', [\App\Http\Controllers\AutoKirimController::class, 'import'])->name('autokirim.import');
-    Route::resource('autokirim', \App\Http\Controllers\AutoKirimController::class);
+    Route::post('autokirim/import', [\App\Http\Controllers\Admin\AutoKirimController::class, 'import'])->name('autokirim.import');
+    Route::resource('autokirim', \App\Http\Controllers\Admin\AutoKirimController::class);
 
 });
