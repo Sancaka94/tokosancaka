@@ -1869,6 +1869,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     // Tombol Download Template Excel
     Route::get('data-autokirim/template', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'downloadTemplate'])->name('data-autokirim.template');
     
+    Route::post('data-autokirim/bulk-destroy', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'bulkDestroy'])->name('data-autokirim.bulk-destroy');
+    Route::post('data-autokirim/bulk-update', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'bulkUpdate'])->name('data-autokirim.bulk-update');
+    
     Route::resource('data-autokirim', \App\Http\Controllers\Admin\DataAutoKirimController::class);
 
     // =========================================================================
