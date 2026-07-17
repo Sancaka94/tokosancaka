@@ -12,10 +12,19 @@ use PDF;
 
 class DataAutoKirimController extends Controller
 {
-    // LOG LOG
-    public function index()
+    public function index(Request $request)
     {
-        $data = DataAutoKirim::latest()->get();
+        $search = $request->search;
+
+        $data = DataAutoKirim::when($search, function ($query) use ($search) {
+                return $query->where('brand_logistik', 'like', "%{$search}%")
+                             ->orWhere('service', 'like', "%{$search}%");
+            })
+            ->orderBy('brand_logistik', 'asc') // Ini untuk mengurutkan A sampai Z
+            ->orderBy('service', 'asc') // Urutan kedua berdasarkan service
+            ->get(); 
+            // Catatan: Jika datanya nanti ribuan, ganti ->get() menjadi ->paginate(50)
+
         return view('admin.autokirim.data.index', compact('data'));
     }
 

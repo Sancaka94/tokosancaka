@@ -87,14 +87,32 @@
     <form id="bulkActionForm" method="POST">
         @csrf
         
-        <!-- Toolbar Bulk Action -->
-        <div class="flex space-x-2 py-2">
-            <button type="button" onclick="submitBulkDestroy()" class="bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 px-4 py-1.5 rounded-md text-sm font-medium transition-colors shadow-sm">
-                Hapus Terpilih
-            </button>
-            <button type="button" onclick="openBulkEditModal()" class="bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 px-4 py-1.5 rounded-md text-sm font-medium transition-colors shadow-sm">
-                Edit Terpilih
-            </button>
+        <!-- Toolbar: Bulk Action & Search Form -->
+        <div class="flex flex-col sm:flex-row justify-between items-center py-2 space-y-2 sm:space-y-0">
+            
+            <!-- Bulk Action Buttons -->
+            <div class="flex space-x-2">
+                <button type="button" onclick="submitBulkDestroy()" class="bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 px-4 py-1.5 rounded-md text-sm font-medium transition-colors shadow-sm">
+                    Hapus Terpilih
+                </button>
+                <button type="button" onclick="openBulkEditModal()" class="bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 px-4 py-1.5 rounded-md text-sm font-medium transition-colors shadow-sm">
+                    Edit Terpilih
+                </button>
+            </div>
+
+            <!-- Search Form -->
+            <div class="flex items-center space-x-2">
+                <!-- Search harus submit GET ke route index saat ini -->
+                <input type="text" form="searchForm" name="search" value="{{ request('search') }}" placeholder="Cari Brand / Service..." class="border border-gray-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:border-black focus:ring-1 focus:ring-black w-64">
+                
+                <button type="submit" form="searchForm" class="bg-gray-800 text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-black transition-colors shadow-sm">
+                    Cari
+                </button>
+                
+                @if(request('search'))
+                    <a href="{{ route('admin.data-autokirim.index') }}" class="text-gray-500 hover:text-red-600 text-sm px-2 transition-colors">Reset</a>
+                @endif
+            </div>
         </div>
 
         <!-- Tabel Data Next.js Style -->
@@ -122,8 +140,8 @@
                             <td class="py-3 px-4 text-center">
                                 <input type="checkbox" name="ids[]" value="{{ $item->id }}" class="row-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
                             </td>
-                            <td class="py-3 px-4 font-medium text-gray-900">{{ $item->brand_logistik }}</td>
-                            <td class="py-3 px-4 text-gray-600">{{ $item->service }}</td>
+                            <td class="py-3 px-4 font-medium text-gray-900 capitalize">{{ $item->brand_logistik }}</td>
+                            <td class="py-3 px-4 text-gray-600 capitalize">{{ $item->service }}</td>
                             <td class="py-3 px-4 text-gray-500 text-center">{{ $item->satuan }}</td>
                             <td class="py-3 px-4 text-gray-700 text-right">{{ $item->cashback }}</td>
                             <td class="py-3 px-4 text-gray-700 text-right">{{ $item->admin_cod }}</td>
@@ -150,7 +168,13 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="py-8 text-center text-gray-500 text-sm">Belum ada data skema komisi.</td>
+                            <td colspan="8" class="py-8 text-center text-gray-500 text-sm">
+                                @if(request('search'))
+                                    Pencarian "<b>{{ request('search') }}</b>" tidak ditemukan.
+                                @else
+                                    Belum ada data skema komisi.
+                                @endif
+                            </td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -159,6 +183,9 @@
         </div>
     </form>
     
+    <!-- Form untuk Search (Dipisah agar tidak bentrok dengan form bulk action) -->
+    <form id="searchForm" action="{{ route('admin.data-autokirim.index') }}" method="GET" class="hidden"></form>
+
     <!-- Form Hapus Individual (Tersembunyi) -->
     <form id="deleteSingleForm" method="POST" class="hidden">
         @csrf
@@ -313,18 +340,15 @@
     // MODAL SINGLE EDIT (UBAH SATUAN)                //
     // ============================================== //
     function openSingleEditModal(id, brand, service, cashback, admin_cod, komisi_agen) {
-        // Set action form ke route update resource
         const form = document.getElementById('singleEditForm');
         form.action = "{{ url('admin/data-autokirim') }}/" + id;
         
-        // Isi input dengan data sebelumnya
         document.getElementById('edit_brand_logistik').value = brand;
         document.getElementById('edit_service').value = service;
         document.getElementById('edit_cashback').value = cashback;
         document.getElementById('edit_admin_cod').value = admin_cod;
         document.getElementById('edit_komisi_agen').value = komisi_agen;
         
-        // Tampilkan modal
         document.getElementById('singleEditModal').classList.remove('hidden');
     }
 
