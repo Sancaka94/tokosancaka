@@ -82,4 +82,10 @@ class DataAutoKirimController extends Controller
         $pdf = PDF::loadView('admin.autokirim.data.pdf', compact('data'));
         return $pdf->download('data-autokirim.pdf');
     }
+
+    // Tambahkan method ini
+    public function downloadTemplate()
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(new \App\Exports\DataAutoKirimTemplateExport, 'Template_Import_Komisi_Agent.xlsx');
+    }
 }

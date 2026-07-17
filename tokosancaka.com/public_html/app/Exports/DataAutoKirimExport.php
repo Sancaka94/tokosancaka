@@ -2,66 +2,40 @@
 
 namespace App\Exports;
 
-use App\Models\DataAutoKirim;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class DataAutoKirimExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
+class DataAutoKirimTemplateExport implements FromArray, WithHeadings, ShouldAutoSize, WithStyles
 {
-    /**
-    * @return \Illuminate\Support\Collection
-    */
-    public function collection()
-    {
-        // Mengambil semua data dari database
-        return DataAutoKirim::all();
-    }
-
-    /**
-     * Membuat Heading / Judul Kolom pada baris pertama Excel
-     */
     public function headings(): array
     {
+        // Header persis seperti yang dibutuhkan untuk Import
         return [
-            'ID',
-            'Brand Logistik',
-            'Service',
-            'Satuan',
-            'Cashback (%)',
-            'Admin COD (%)',
-            'Komisi Agen Sancaka (%)',
-            'Tanggal Dibuat'
+            'brand_logistik',
+            'service',
+            'satuan',
+            'cashback',
+            'admin_cod',
+            'komisi_agen'
         ];
     }
 
-    /**
-     * Memetakan data dari database ke dalam kolom Excel
-     */
-    public function map($data): array
+    public function array(): array
     {
+        // Contoh data agar Anda tahu cara isinya
         return [
-            $data->id,
-            $data->brand_logistik,
-            $data->service,
-            $data->satuan,
-            $data->cashback,
-            $data->admin_cod,
-            $data->komisi_agen, // Kolom dinamis agen
-            $data->created_at ? $data->created_at->format('Y-m-d H:i') : '-',
+            ['AnterAja', 'anteraja cod nextday', '%', '5', '3', '1.5'],
+            ['JNE Express', 'jne reg', '%', '15', '0', '2.5']
         ];
     }
 
-    /**
-     * Memberikan styling (misalnya bold) pada baris pertama (Heading)
-     */
     public function styles(Worksheet $sheet)
     {
         return [
-            1    => ['font' => ['bold' => true]],
+            1 => ['font' => ['bold' => true]],
         ];
     }
 }

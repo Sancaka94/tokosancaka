@@ -1866,6 +1866,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::post('data-autokirim/import', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'import'])->name('data-autokirim.import');
     Route::get('data-autokirim/export/excel', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'exportExcel'])->name('data-autokirim.export.excel');
     Route::get('data-autokirim/export/pdf', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'exportPdf'])->name('data-autokirim.export.pdf');
+    // Tombol Download Template Excel
+    Route::get('data-autokirim/template', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'downloadTemplate'])->name('data-autokirim.template');
+    
     Route::resource('data-autokirim', \App\Http\Controllers\Admin\DataAutoKirimController::class);
 
     // =========================================================================
