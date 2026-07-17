@@ -199,15 +199,13 @@ use App\Http\Controllers\ApiMapboxController;
 use App\Http\Controllers\Auth\Admin\AdminLoginController;
 use App\Http\Controllers\DataAutoKirimController;
 
-Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
-    // Rute CRUD Utama -> menghasilkan admin.autokirim.index, dsb.
-    Route::resource('autokirim', DataAutoKirimController::class);
+// 1. Rute Custom (Export & Import) WAJIB di atas resource agar tidak terbaca sebagai parameter {id}
+Route::post('autokirim/import', [DataAutoKirimController::class, 'import'])->name('autokirim.import');
+Route::get('autokirim/export/excel', [DataAutoKirimController::class, 'exportExcel'])->name('autokirim.export.excel');
+Route::get('autokirim/export/pdf', [DataAutoKirimController::class, 'exportPdf'])->name('autokirim.export.pdf');
 
-    // Rute Import & Export
-    Route::post('autokirim/import', [DataAutoKirimController::class, 'import'])->name('autokirim.import');
-    Route::get('autokirim/export/excel', [DataAutoKirimController::class, 'exportExcel'])->name('autokirim.export.excel');
-    Route::get('autokirim/export/pdf', [DataAutoKirimController::class, 'exportPdf'])->name('autokirim.export.pdf');
-});
+// 2. Rute Resource Utama (menghasilkan admin.autokirim.index, store, update, destroy)
+Route::resource('autokirim', DataAutoKirimController::class);
 
 // Route untuk menampilkan form login admin
 Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])->name('admin.login');
