@@ -6,7 +6,6 @@
 <!-- LOG LOG -->
 <div class="max-w-7xl mx-auto space-y-6 p-4 md:p-8 font-sans">
     
-    <!-- Header & Action Buttons -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
         <div>
             <h1 class="text-2xl font-semibold tracking-tight text-black">Logistik & Komisi</h1>
@@ -14,8 +13,7 @@
         </div>
         
         <div class="flex items-center space-x-3">
-            <!-- Import Excel -->
-            <form action="{{ route('admin.autokirim.import') }}" method="POST" enctype="multipart/form-data" class="flex items-center space-x-2">
+            <form action="{{ route('admin.data-autokirim.import') }}" method="POST" enctype="multipart/form-data" class="flex items-center space-x-2">
                 @csrf
                 <input type="file" name="file" class="text-sm border border-gray-200 rounded-md py-1.5 px-2 bg-white w-48 focus:outline-none focus:border-black" required>
                 <button type="submit" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-md text-sm font-medium transition-colors">
@@ -23,10 +21,10 @@
                 </button>
             </form>
 
-            <a href="{{ route('admin.autokirim.export.excel') }}" class="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+            <a href="{{ route('admin.data-autokirim.export.excel') }}" class="bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 px-4 py-2 rounded-md text-sm font-medium transition-colors">
                 Export Excel
             </a>
-            <a href="{{ route('admin.autokirim.export.pdf') }}" class="bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 px-4 py-2 rounded-md text-sm font-medium transition-colors">
+            <a href="{{ route('admin.data-autokirim.export.pdf') }}" class="bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 px-4 py-2 rounded-md text-sm font-medium transition-colors">
                 Export PDF
             </a>
         </div>
@@ -38,10 +36,9 @@
         </div>
     @endif
 
-    <!-- Form Tambah Data Manual -->
     <div class="bg-white border border-gray-200 rounded-lg p-5 shadow-sm">
         <h2 class="text-base font-medium text-black mb-4">Tambah Skema Komisi</h2>
-        <form action="{{ route('admin.autokirim.store') }}" method="POST" class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+        <form action="{{ route('admin.data-autokirim.store') }}" method="POST" class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
             @csrf
             <div>
                 <label class="block text-xs font-medium text-gray-500 mb-1">Brand Logistik</label>
@@ -71,7 +68,6 @@
         </form>
     </div>
 
-    <!-- Tabel Data Next.js Style (Clean & Minimal) -->
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
@@ -96,7 +92,7 @@
                         <td class="py-3 px-4 text-gray-700 text-right">{{ $item->admin_cod }}</td>
                         <td class="py-3 px-4 font-semibold text-blue-700 text-right bg-blue-50/10">{{ $item->komisi_agen }}</td>
                         <td class="py-3 px-4 text-right">
-                            <form action="{{ route('admin.autokirim.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Hapus data ini?');">
+                            <form action="{{ route('admin.data-autokirim.destroy', $item->id) }}" method="POST" onsubmit="return confirm('Hapus data ini?');">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="text-gray-400 hover:text-red-600 transition-colors">
