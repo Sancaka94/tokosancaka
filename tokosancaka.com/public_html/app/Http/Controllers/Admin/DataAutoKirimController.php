@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Controller;
 use App\Models\DataAutoKirim;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel; // Uncomment jika menggunakan package excel
