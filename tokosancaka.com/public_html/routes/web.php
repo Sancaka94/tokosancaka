@@ -197,15 +197,7 @@ use App\Http\Controllers\Api\Mobile\TicketingController;
 use App\Http\Controllers\DanaWebhookController;
 use App\Http\Controllers\ApiMapboxController;
 use App\Http\Controllers\Auth\Admin\AdminLoginController;
-use App\Http\Controllers\Admin\DataAutoKirimController;
 
-// 1. Rute Custom (Export & Import) WAJIB di atas resource agar tidak terbaca sebagai parameter {id}
-Route::post('autokirim/import', [DataAutoKirimController::class, 'import'])->name('autokirim.import');
-Route::get('autokirim/export/excel', [DataAutoKirimController::class, 'exportExcel'])->name('autokirim.export.excel');
-Route::get('autokirim/export/pdf', [DataAutoKirimController::class, 'exportPdf'])->name('autokirim.export.pdf');
-
-// 2. Rute Resource Utama (menghasilkan admin.autokirim.index, store, update, destroy)
-Route::resource('autokirim', DataAutoKirimController::class);
 
 // Route untuk menampilkan form login admin
 Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])->name('admin.login');
@@ -1866,10 +1858,20 @@ Route::post('/kontak/{id}/lengkapi-profil', [\App\Http\Controllers\PublicScanCon
 
 
 
-Route::prefix('admin')->name('admin.')->group(function () {
-    // Letakkan route ini sebelum Route::resource
-    Route::post('autokirim/import', [AutoKirimController::class, 'import'])->name('autokirim.import');
+Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
     
-    // CRUD Resource
-    Route::resource('autokirim', AutoKirimController::class);
+    // =========================================================================
+    // 1. RUTE BARU: PERSENTASE AGENT (DataAutoKirimController)
+    // =========================================================================
+    Route::post('data-autokirim/import', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'import'])->name('data-autokirim.import');
+    Route::get('data-autokirim/export/excel', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'exportExcel'])->name('data-autokirim.export.excel');
+    Route::get('data-autokirim/export/pdf', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'exportPdf'])->name('data-autokirim.export.pdf');
+    Route::resource('data-autokirim', \App\Http\Controllers\Admin\DataAutoKirimController::class);
+
+    // =========================================================================
+    // 2. RUTE LAMA: AREA AUTOKIRIM (AutoKirimController ASLI ANDA)
+    // =========================================================================
+    Route::post('autokirim/import', [\App\Http\Controllers\AutoKirimController::class, 'import'])->name('autokirim.import');
+    Route::resource('autokirim', \App\Http\Controllers\AutoKirimController::class);
+
 });

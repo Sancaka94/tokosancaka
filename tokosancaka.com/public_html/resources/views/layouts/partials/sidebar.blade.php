@@ -397,12 +397,12 @@
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Master Ekspedisi</span>
             </a>
 
-            {{-- MENU BARU: Daftar AutoKirim / Manajemen Komisi --}}
+            {{-- MENU BARU: Persentase Agent --}}
             <a href="{{ route('admin.autokirim.index') }}" wire:navigate
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.autokirim.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                 <i class="fa-solid fa-percent fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.autokirim.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
-                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Daftar AutoKirim</span>
+                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Persentase Agent</span>
             </a>
 
             {{-- TAMBAHKAN KODE INI: Area AutoKirim --}}
