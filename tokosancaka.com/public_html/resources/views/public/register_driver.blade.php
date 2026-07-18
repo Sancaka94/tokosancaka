@@ -636,10 +636,10 @@
 
 
 <script>
-   // --- VARIABLES GLOBAL UNTUK TRACKING VALIDASI ---
+    // --- VARIABLES GLOBAL UNTUK TRACKING VALIDASI ---
     let hasScrolledToBottom = false;
     let isTurnstileSuccess = false;
-    let isRecaptchaSuccess = false; // <-- Tambahan baru
+    // (isRecaptchaSuccess DIHAPUS KARENA SEKARANG BERJALAN OTOMATIS SAAT SUBMIT)
 
     // --- FUNGSI REFRESH CAPTCHA ---
     function refreshCaptcha() {
@@ -652,23 +652,16 @@
     function onTurnstileExpired() { isTurnstileSuccess = false; checkSubmitStatus(); }
     function onTurnstileError() { isTurnstileSuccess = false; alert("Gagal memuat Cloudflare."); checkSubmitStatus(); }
 
-    // --- FUNGSI GOOGLE RECAPTCHA (BARU) ---
-    function onRecaptchaSuccess(token) { isRecaptchaSuccess = true; checkSubmitStatus(); }
-    function onRecaptchaExpired() { isRecaptchaSuccess = false; checkSubmitStatus(); }
-    function onRecaptchaError() { isRecaptchaSuccess = false; alert("Gagal memuat reCAPTCHA."); checkSubmitStatus(); }
-
-
-
     // --- FUNGSI UTAMA PENGECEKAN TOMBOL SUBMIT ---
     function checkSubmitStatus() {
         const submitBtn = document.getElementById('submitBtn');
-        const lat = document.getElementById('latitude').value.trim();
-        const lng = document.getElementById('longitude').value.trim();
+        const lat = document.getElementById('latitude') ? document.getElementById('latitude').value.trim() : '';
+        const lng = document.getElementById('longitude') ? document.getElementById('longitude').value.trim() : '';
         const captcha = document.getElementById('captchaInput') ? document.getElementById('captchaInput').value.trim() : '';
-        const isAgreed = document.getElementById('agreeCheckbox').checked;
+        const isAgreed = document.getElementById('agreeCheckbox') ? document.getElementById('agreeCheckbox').checked : false;
 
-        // Cek apakah SEMUA syarat sudah terpenuhi (Tambahan isRecaptchaSuccess)
-        if (hasScrolledToBottom && isAgreed && lat !== '' && lng !== '' && captcha !== '' && isTurnstileSuccess && isRecaptchaSuccess) {
+        // Cek apakah SEMUA syarat sudah terpenuhi (Syarat reCAPTCHA dihapus dari sini)
+        if (hasScrolledToBottom && isAgreed && lat !== '' && lng !== '' && captcha !== '' && isTurnstileSuccess) {
             submitBtn.disabled = false;
             submitBtn.classList.replace('btn-secondary', 'btn-danger');
             submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Kirim Berkas Pendaftaran Mitra';
@@ -700,85 +693,93 @@
         if(captchaInput) captchaInput.addEventListener('input', checkSubmitStatus);
 
         // 2. EVENT FORM SUBMIT (MENGGUNAKAN reCAPTCHA ENTERPRISE INVISIBLE)
-        form.addEventListener('submit', function(e) {
-            // Tahan form agar tidak langsung terkirim
-            e.preventDefault();
+        if(form) {
+            form.addEventListener('submit', function(e) {
+                // Tahan form agar tidak langsung terkirim
+                e.preventDefault();
 
-            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Sistem Keamanan Google Bekerja...';
-            submitBtn.classList.replace('btn-danger', 'btn-secondary');
-            submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Sistem Keamanan Google Bekerja...';
+                submitBtn.classList.replace('btn-danger', 'btn-secondary');
+                submitBtn.disabled = true;
 
-            // Eksekusi reCAPTCHA persis seperti panduan di screenshot
-            grecaptcha.enterprise.ready(async () => {
-                try {
-                    // Gunakan Site Key yang ada di screenshot
-                    const token = await grecaptcha.enterprise.execute('6Lcl1VktAAAAAF08veZxdCGBDlsSppcrELGoSfAN', {action: 'REGISTER_DRIVER'});
+                // Eksekusi reCAPTCHA Enterprise
+                grecaptcha.enterprise.ready(async () => {
+                    try {
+                        // Gunakan Site Key Enterprise Anda
+                        const token = await grecaptcha.enterprise.execute('6Lcl1VktAAAAAF08veZxdCGBDlsSppcrELGoSfAN', {action: 'REGISTER_DRIVER'});
 
-                    // Masukkan token ke input hidden untuk dikirim ke Controller
-                    let hiddenInput = document.getElementById('g-recaptcha-enterprise-response');
-                    if (!hiddenInput) {
-                        hiddenInput = document.createElement('input');
-                        hiddenInput.type = 'hidden';
-                        hiddenInput.name = 'g-recaptcha-enterprise-response';
-                        hiddenInput.id = 'g-recaptcha-enterprise-response';
-                        form.appendChild(hiddenInput);
+                        // Masukkan token ke input hidden
+                        let hiddenInput = document.getElementById('g-recaptcha-enterprise-response');
+                        if (!hiddenInput) {
+                            hiddenInput = document.createElement('input');
+                            hiddenInput.type = 'hidden';
+                            hiddenInput.name = 'g-recaptcha-enterprise-response';
+                            hiddenInput.id = 'g-recaptcha-enterprise-response';
+                            form.appendChild(hiddenInput);
+                        }
+                        hiddenInput.value = token;
+
+                        // Lanjutkan pengiriman form (Gunakan requestSubmit agar HTML5 validation tidak di-bypass)
+                        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Mengunggah Berkas...';
+                        form.requestSubmit();
+
+                    } catch (error) {
+                        console.error("Gagal verifikasi reCAPTCHA:", error);
+                        alert("Gagal memverifikasi keamanan Google. Silakan coba lagi.");
+                        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Kirim Ulang';
+                        submitBtn.classList.replace('btn-secondary', 'btn-danger');
+                        submitBtn.disabled = false;
                     }
-                    hiddenInput.value = token;
-
-                    // Lanjutkan pengiriman form
-                    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Mengunggah Berkas...';
-                    form.submit();
-
-                } catch (error) {
-                    console.error("Gagal verifikasi reCAPTCHA:", error);
-                    alert("Gagal memverifikasi keamanan Google. Silakan coba lagi.");
-                    submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Kirim Ulang';
-                    submitBtn.classList.replace('btn-secondary', 'btn-danger');
-                    submitBtn.disabled = false;
-                }
+                });
             });
-        });
+        }
 
         // 3. EVENT DETEKSI GPS MAPS
-        btnGetLocation.addEventListener('click', function() {
-            if (navigator.geolocation) {
-                btnGetLocation.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Sinkronisasi Koordinat...';
-                btnGetLocation.disabled = true;
-                statusText.innerHTML = '<span class="text-muted">Meminta izin GPS satelit...</span>';
+        if(btnGetLocation) {
+            btnGetLocation.addEventListener('click', function() {
+                if (navigator.geolocation) {
+                    btnGetLocation.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Sinkronisasi Koordinat...';
+                    btnGetLocation.disabled = true;
+                    statusText.innerHTML = '<span class="text-muted">Meminta izin GPS satelit...</span>';
 
-                navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        latInput.value = position.coords.latitude;
-                        lngInput.value = position.coords.longitude;
-                        btnGetLocation.innerHTML = '<i class="fa-solid fa-check text-success me-2"></i> Lokasi Terkunci';
-                        btnGetLocation.classList.replace('btn-get-location', 'btn-light');
-                        btnGetLocation.disabled = false;
-                        statusText.innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-check-circle"></i> Koordinat berhasil dimasukkan otomatis!</span>';
-                        checkSubmitStatus(); // Jalankan cek validasi
-                    },
-                    function(error) {
-                        btnGetLocation.disabled = false;
-                        btnGetLocation.innerHTML = '<i class="fa-solid fa-location-crosshairs me-2 text-danger"></i> Dapatkan Lokasi GPS Otomatis';
-                        statusText.innerHTML = '<span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> GPS Gagal dideteksi. Silakan input manual.</span>';
-                    },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                );
-            }
-        });
+                    navigator.geolocation.getCurrentPosition(
+                        function(position) {
+                            if(latInput) latInput.value = position.coords.latitude;
+                            if(lngInput) lngInput.value = position.coords.longitude;
+                            btnGetLocation.innerHTML = '<i class="fa-solid fa-check text-success me-2"></i> Lokasi Terkunci';
+                            btnGetLocation.classList.replace('btn-get-location', 'btn-light');
+                            btnGetLocation.disabled = false;
+                            statusText.innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-check-circle"></i> Koordinat berhasil dimasukkan otomatis!</span>';
+                            checkSubmitStatus(); // Jalankan cek validasi
+                        },
+                        function(error) {
+                            btnGetLocation.disabled = false;
+                            btnGetLocation.innerHTML = '<i class="fa-solid fa-location-crosshairs me-2 text-danger"></i> Dapatkan Lokasi GPS Otomatis';
+                            statusText.innerHTML = '<span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> GPS Gagal dideteksi. Silakan input manual.</span>';
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                }
+            });
+        }
 
         // 4. EVENT SCROLL PERATURAN & CENTANG
-        tosBox.addEventListener('scroll', function() {
-            if (!hasScrolledToBottom && (tosBox.scrollHeight - tosBox.scrollTop <= tosBox.clientHeight + 6)) {
-                hasScrolledToBottom = true;
-                checkboxWrapper.style.opacity = "1";
-                checkboxWrapper.style.pointerEvents = "auto";
-                agreeCheckbox.disabled = false;
-                tosBox.style.borderColor = "#10b981";
-                checkSubmitStatus(); // Jalankan cek validasi
-            }
-        });
+        if(tosBox) {
+            tosBox.addEventListener('scroll', function() {
+                if (!hasScrolledToBottom && (tosBox.scrollHeight - tosBox.scrollTop <= tosBox.clientHeight + 6)) {
+                    hasScrolledToBottom = true;
+                    if(checkboxWrapper) {
+                        checkboxWrapper.style.opacity = "1";
+                        checkboxWrapper.style.pointerEvents = "auto";
+                    }
+                    if(agreeCheckbox) agreeCheckbox.disabled = false;
+                    tosBox.style.borderColor = "#10b981";
+                    checkSubmitStatus(); // Jalankan cek validasi
+                }
+            });
+        }
 
-        agreeCheckbox.addEventListener('change', checkSubmitStatus);
+        if(agreeCheckbox) agreeCheckbox.addEventListener('change', checkSubmitStatus);
     });
 </script>
 @endsection
