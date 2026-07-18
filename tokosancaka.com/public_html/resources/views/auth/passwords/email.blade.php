@@ -131,7 +131,7 @@
             </div>
 
             <div class="text-center">
-                <a href="{{ route('customer.login') }}" class="text-decoration-none text-muted small">
+                <a href="https://tokosancaka.com/login" class="text-decoration-none text-muted small">
                     <i class="fas fa-arrow-left me-1"></i> Kembali ke Login
                 </a>
             </div>
