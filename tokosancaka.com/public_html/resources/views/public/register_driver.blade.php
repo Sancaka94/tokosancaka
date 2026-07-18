@@ -565,7 +565,7 @@
                                     <i class="fa-solid fa-shield-halved text-success"></i> Verifikasi Keamanan Akhir
                                 </div>
 
-                                <div class="row g-3 mb-4">
+                                <div class="row g-2 mb-4">
                                     {{-- 1. Panel Captcha Lokal --}}
                                     <div class="col-lg-4 col-md-12">
                                         <div class="security-panel shadow-sm">
