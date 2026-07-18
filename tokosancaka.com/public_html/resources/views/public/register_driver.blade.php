@@ -563,39 +563,52 @@
                                     <i class="fa-solid fa-shield-halved text-success"></i> Verifikasi Keamanan Akhir
                                 </div>
 
-                                <div class="row g-4 mb-4">
-                                    {{-- 1. Panel Captcha --}}
-                                    <div class="col-md-6">
+                                <div class="row g-3 mb-4">
+                                    {{-- 1. Panel Captcha Lokal --}}
+                                    <div class="col-lg-4 col-md-12">
                                         <div class="security-panel shadow-sm">
                                             <label class="form-label fw-bold text-slate-700 small mb-3">
-                                                <i class="fa-solid fa-keyboard text-secondary me-1"></i> Ketik Karakter Captcha <span class="text-danger">*</span>
+                                                <i class="fa-solid fa-keyboard text-secondary me-1"></i> 1. Ketik Captcha <span class="text-danger">*</span>
                                             </label>
-
                                             <div class="security-inner-box justify-content-between mb-3 px-3">
                                                 <span id="captcha-container">{!! captcha_img('flat') !!}</span>
                                                 <button type="button" class="btn btn-outline-danger btn-sm" onclick="refreshCaptcha()" title="Muat ulang Captcha">
                                                     <i class="fa-solid fa-arrows-rotate"></i>
                                                 </button>
                                             </div>
-
-                                            <input type="text" id="captchaInput" class="form-control custom-input mt-auto" name="captcha" placeholder="Masukkan karakter gambar..." required autocomplete="off">
+                                            <input type="text" id="captchaInput" class="form-control custom-input mt-auto" name="captcha" placeholder="Ketik gambar di atas..." required autocomplete="off">
                                         </div>
                                     </div>
 
                                     {{-- 2. Panel Cloudflare Turnstile --}}
-                                    <div class="col-md-6">
+                                    <div class="col-lg-4 col-md-12">
                                         <div class="security-panel shadow-sm">
                                             <label class="form-label fw-bold text-slate-700 small mb-3">
-                                                <i class="fa-solid fa-robot text-secondary me-1"></i> Verifikasi Anti-Bot <span class="text-danger">*</span>
+                                                <i class="fa-solid fa-robot text-secondary me-1"></i> 2. Cloudflare <span class="text-danger">*</span>
                                             </label>
-
                                             <div class="security-inner-box flex-grow-1">
-                                                {{-- Widget Cloudflare --}}
                                                 <div class="cf-turnstile"
                                                     data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}"
                                                     data-callback="onTurnstileSuccess"
                                                     data-expired-callback="onTurnstileExpired"
                                                     data-error-callback="onTurnstileError">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- 3. Panel Google reCAPTCHA --}}
+                                    <div class="col-lg-4 col-md-12">
+                                        <div class="security-panel shadow-sm">
+                                            <label class="form-label fw-bold text-slate-700 small mb-3">
+                                                <i class="fa-brands fa-google text-secondary me-1"></i> 3. reCAPTCHA <span class="text-danger">*</span>
+                                            </label>
+                                            <div class="security-inner-box flex-grow-1">
+                                                <div class="g-recaptcha"
+                                                    data-sitekey="{{ env('RECAPTCHA_SITE_KEY') }}"
+                                                    data-callback="onRecaptchaSuccess"
+                                                    data-expired-callback="onRecaptchaExpired"
+                                                    data-error-callback="onRecaptchaError">
                                                 </div>
                                             </div>
                                         </div>
@@ -626,13 +639,16 @@
     </div>
 </div>
 
-{{-- SCRIPT CLOUDFLARE TURNSTILE --}}
+
+{{-- SCRIPT CLOUDFLARE & GOOGLE RECAPTCHA --}}
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
 
 <script>
-    // --- VARIABLES GLOBAL UNTUK TRACKING VALIDASI ---
+   // --- VARIABLES GLOBAL UNTUK TRACKING VALIDASI ---
     let hasScrolledToBottom = false;
     let isTurnstileSuccess = false;
+    let isRecaptchaSuccess = false; // <-- Tambahan baru
 
     // --- FUNGSI REFRESH CAPTCHA ---
     function refreshCaptcha() {
@@ -645,6 +661,11 @@
     function onTurnstileExpired() { isTurnstileSuccess = false; checkSubmitStatus(); }
     function onTurnstileError() { isTurnstileSuccess = false; alert("Gagal memuat Cloudflare."); checkSubmitStatus(); }
 
+    // --- FUNGSI GOOGLE RECAPTCHA (BARU) ---
+    function onRecaptchaSuccess(token) { isRecaptchaSuccess = true; checkSubmitStatus(); }
+    function onRecaptchaExpired() { isRecaptchaSuccess = false; checkSubmitStatus(); }
+    function onRecaptchaError() { isRecaptchaSuccess = false; alert("Gagal memuat reCAPTCHA."); checkSubmitStatus(); }
+
     // --- FUNGSI UTAMA PENGECEKAN TOMBOL SUBMIT ---
     function checkSubmitStatus() {
         const submitBtn = document.getElementById('submitBtn');
@@ -653,8 +674,8 @@
         const captcha = document.getElementById('captchaInput') ? document.getElementById('captchaInput').value.trim() : '';
         const isAgreed = document.getElementById('agreeCheckbox').checked;
 
-        // Cek apakah SEMUA syarat sudah terpenuhi
-        if (hasScrolledToBottom && isAgreed && lat !== '' && lng !== '' && captcha !== '' && isTurnstileSuccess) {
+        // Cek apakah SEMUA syarat sudah terpenuhi (Tambahan isRecaptchaSuccess)
+        if (hasScrolledToBottom && isAgreed && lat !== '' && lng !== '' && captcha !== '' && isTurnstileSuccess && isRecaptchaSuccess) {
             submitBtn.disabled = false;
             submitBtn.classList.replace('btn-secondary', 'btn-danger');
             submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Kirim Berkas Pendaftaran Mitra';
