@@ -166,9 +166,21 @@
                 <form action="{{ route('register') }}" method="POST" class="px-xl-2">
                     @csrf
                     
-                    {{-- TAMBAHAN: Hidden Input untuk koordinat --}}
-                    <input type="hidden" name="latitude" id="latitude" value="">
-                    <input type="hidden" name="longitude" id="longitude" value="">
+                   {{-- Form Koordinat GPS (Terisi Otomatis) --}}
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-sm-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="latitude" name="latitude" placeholder="Latitude" readonly>
+                                <label for="latitude" class="text-muted">Latitude (Otomatis)</label>
+                            </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                            <div class="form-floating">
+                                <input type="text" class="form-control" id="longitude" name="longitude" placeholder="Longitude" readonly>
+                                <label for="longitude" class="text-muted">Longitude (Otomatis)</label>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="row g-3 mb-4">
                         <div class="col-12 col-sm-6">
@@ -216,6 +228,20 @@
                         </div>
                     </div>
 
+                    {{-- Keamanan Captcha --}}
+                    <div class="mb-3 p-3 bg-light rounded-3 border">
+                        <label class="form-label text-muted small mb-2 d-block text-center">Keamanan: Ketik karakter pada gambar</label>
+                        <div class="text-center mb-2 captcha-wrapper">
+                            {!! captcha_img('flat') !!}
+                        </div>
+                        <input type="text" class="form-control text-center" name="captcha" placeholder="Masukkan karakter di atas" required autocomplete="off">
+                    </div>
+
+                    {{-- WIDGET CLOUDFLARE TURNSTILE --}}
+                    <div class="mb-4 d-flex justify-content-center">
+                        <div class="cf-turnstile" data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}" data-callback="onTurnstileSuccess"></div>
+                    </div>
+
                     <div class="d-flex justify-content-end mb-4">
                         <a href="{{ route('login') }}" class="small text-danger text-decoration-none fw-medium">Already have an account? Login</a>
                     </div>
@@ -259,6 +285,9 @@
 @endsection
 
 @push('scripts')
+{{-- Script Cloudflare API --}}
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
 <script>
     function togglePasswordVisibility(fieldId) {
         const input = document.getElementById(fieldId);
@@ -272,14 +301,49 @@
         }
     }
 
-    // Melacak status aktivasi GPS
+    // Melacak status aktivasi GPS dan Cloudflare
     let isGpsActive = false;
+    let isTurnstileSuccess = false;
 
-    // Fungsi memunculkan alert jika tombol abu-abu diklik
+    // Cek apakah kedua syarat keamanan terpenuhi
+    function checkAllValidations() {
+        if (isGpsActive && isTurnstileSuccess) {
+            // Aktifkan tombol manual register
+            const btnManual = document.getElementById('btn-submit-manual');
+            if(btnManual) btnManual.removeAttribute('disabled');
+            
+            // Aktifkan tombol Google register
+            const btnGoogle = document.getElementById('btn-submit-google');
+            if(btnGoogle) {
+                btnGoogle.classList.remove('disabled');
+                btnGoogle.removeAttribute('aria-disabled');
+            }
+            
+            // Ubah box status alert menjadi sukses hijau
+            const statusAlert = document.getElementById('gps-status-alert');
+            if(statusAlert) {
+                statusAlert.classList.replace('alert-warning', 'alert-success');
+                statusAlert.innerHTML = '<i class="fas fa-check-circle me-1"></i> Keamanan tervalidasi: GPS & Cloudflare Berhasil. Silakan melanjutkan pendaftaran.';
+            }
+        }
+    }
+
+    // Fungsi dipanggil otomatis oleh Cloudflare saat berhasil
+    function onTurnstileSuccess(token) {
+        isTurnstileSuccess = true;
+        checkAllValidations();
+    }
+
+    // Fungsi memunculkan alert jika tombol abu-abu diklik sebelum syarat terpenuhi
     function checkGpsClick() {
-        if (!isGpsActive) {
-            alert("Akses Ditolak! Anda wajib mengaktifkan GPS dan mengizinkan lokasi pada browser/perangkat Anda sebelum dapat menekan tombol Register.");
-            requestLocation();
+        if (!isGpsActive || !isTurnstileSuccess) {
+            let alertMsg = "Akses Ditolak!\n";
+            if (!isGpsActive) alertMsg += "- Anda wajib mengaktifkan dan mengizinkan GPS lokasi.\n";
+            if (!isTurnstileSuccess) alertMsg += "- Anda wajib menyelesaikan verifikasi keamanan (Cloudflare).\n";
+            
+            alert(alertMsg);
+            
+            if (!isGpsActive) requestLocation();
         }
     }
 
@@ -290,31 +354,19 @@
                 function(position) {
                     isGpsActive = true;
                     
-                    // Masukkan koordinat ke hidden input
+                    // Masukkan koordinat ke form yang terlihat oleh pengguna
                     document.getElementById('latitude').value = position.coords.latitude;
                     document.getElementById('longitude').value = position.coords.longitude;
                     
-                    // Aktifkan tombol manual register
-                    const btnManual = document.getElementById('btn-submit-manual');
-                    if(btnManual) btnManual.removeAttribute('disabled');
-                    
-                    // Aktifkan tombol Google register & pasang parameter koordinat
+                    // Sisipkan koordinat ke URL redirect Google agar terbaca di Controller
                     const btnGoogle = document.getElementById('btn-submit-google');
                     if(btnGoogle) {
-                        btnGoogle.classList.remove('disabled');
-                        btnGoogle.removeAttribute('aria-disabled');
-                        
-                        // Dinamis menyelipkan koordinat ke URL redirect Google agar terbaca di Controller intermediate
                         let baseUrl = "{{ route('register.google') }}";
                         btnGoogle.href = baseUrl + "?latitude=" + position.coords.latitude + "&longitude=" + position.coords.longitude;
                     }
-                    
-                    // Ubah box status alert menjadi sukses hijau
-                    const statusAlert = document.getElementById('gps-status-alert');
-                    if(statusAlert) {
-                        statusAlert.classList.replace('alert-warning', 'alert-success');
-                        statusAlert.innerHTML = '<i class="fas fa-check-circle me-1"></i> Keamanan tervalidasi: GPS Berhasil Aktif. Silakan melanjutkan pendaftaran.';
-                    }
+
+                    // Cek apakah Turnstile juga sudah sukses
+                    checkAllValidations();
                 },
                 function(error) {
                     isGpsActive = false;
