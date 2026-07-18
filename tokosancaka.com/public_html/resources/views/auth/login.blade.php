@@ -276,7 +276,7 @@
 
                     @if (Route::has('password.request') && !request()->is('admin/*'))
                         <div class="text-center mt-3">
-                            <a href="https://tokosancaka.com/password/reset" class="small text-muted text-decoration-none">Lupa password?</a>
+                            <a href="https://tokosancaka.com/forgot-password" class="small text-muted text-decoration-none">Lupa password?</a>
                         </div>
                     @endif
 
