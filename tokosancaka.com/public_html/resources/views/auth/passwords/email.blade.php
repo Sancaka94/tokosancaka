@@ -62,6 +62,7 @@
 </style>
 @endpush
 
+
 @section('content')
 <div class="auth-wrapper">
     <div class="card auth-card bg-white p-4 p-md-5">
