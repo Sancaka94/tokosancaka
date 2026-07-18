@@ -225,7 +225,7 @@
                     {{-- ========================================== --}}
                     {{-- WIDGET CLOUDFLARE TURNSTILE --}}
                     <div class="mb-3 d-flex justify-content-center">
-                        <div class="cf-turnstile" data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}"></div>
+                        <div class="cf-turnstile" data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}" data-callback="onTurnstileSuccess"></div>
                     </div>
                     {{-- ========================================== --}}
 
@@ -312,14 +312,57 @@
         }
     }
 
-    // Variabel untuk melacak status aktivasi GPS
+    // Variabel untuk melacak status kedua keamanan
     let isGpsActive = false;
+    let isTurnstileSuccess = false;
+
+    // Fungsi untuk mengecek apakah kedua syarat sudah terpenuhi
+    function checkAllValidations() {
+        if (isGpsActive && isTurnstileSuccess) {
+            // Buka kunci tombol Login Manual
+            const btnManual = document.getElementById('btn-submit-manual');
+            if(btnManual) btnManual.removeAttribute('disabled');
+            
+            // Buka kunci tombol Google
+            const btnGoogle = document.getElementById('btn-submit-google');
+            if(btnGoogle) {
+                btnGoogle.classList.remove('disabled');
+                btnGoogle.removeAttribute('aria-disabled');
+            }
+
+            // Buka kunci tombol Facebook
+            const btnFacebook = document.getElementById('btn-submit-facebook');
+            if(btnFacebook) {
+                btnFacebook.classList.remove('disabled');
+                btnFacebook.removeAttribute('aria-disabled');
+            }
+            
+            // Perbarui teks alert
+            const statusAlert = document.getElementById('gps-status-alert');
+            if(statusAlert) {
+                statusAlert.classList.replace('alert-warning', 'alert-success');
+                statusAlert.innerHTML = '<i class="fas fa-check-circle me-1"></i> Keamanan tervalidasi: GPS & Cloudflare Berhasil. Silakan login.';
+            }
+        }
+    }
+
+    // Fungsi ini otomatis dipanggil oleh Cloudflare saat centang berhasil
+    function onTurnstileSuccess(token) {
+        isTurnstileSuccess = true;
+        checkAllValidations();
+    }
 
     // Fungsi untuk memunculkan alert jika tombol yang abu-abu diklik
     function checkGpsClick() {
-        if (!isGpsActive) {
-            alert("Akses Ditolak! Anda wajib mengaktifkan GPS dan mengizinkan lokasi pada browser/perangkat Anda sebelum dapat menekan tombol Login.");
-            requestLocation();
+        if (!isGpsActive || !isTurnstileSuccess) {
+            let alertMsg = "Akses Ditolak!\n";
+            if (!isGpsActive) alertMsg += "- Anda wajib mengaktifkan dan mengizinkan GPS lokasi.\n";
+            if (!isTurnstileSuccess) alertMsg += "- Anda wajib menyelesaikan verifikasi keamanan (Cloudflare).\n";
+            
+            alert(alertMsg);
+            
+            // Jika GPS belum aktif, panggil lagi permintaan lokasi
+            if (!isGpsActive) requestLocation();
         }
     }
 
@@ -333,26 +376,8 @@
                     document.getElementById('latitude').value = position.coords.latitude;
                     document.getElementById('longitude').value = position.coords.longitude;
                     
-                    const btnManual = document.getElementById('btn-submit-manual');
-                    if(btnManual) btnManual.removeAttribute('disabled');
-                    
-                    const btnGoogle = document.getElementById('btn-submit-google');
-                    if(btnGoogle) {
-                        btnGoogle.classList.remove('disabled');
-                        btnGoogle.removeAttribute('aria-disabled');
-                    }
-
-                    const btnFacebook = document.getElementById('btn-submit-facebook');
-                    if(btnFacebook) {
-                        btnFacebook.classList.remove('disabled');
-                        btnFacebook.removeAttribute('aria-disabled');
-                    }
-                    
-                    const statusAlert = document.getElementById('gps-status-alert');
-                    if(statusAlert) {
-                        statusAlert.classList.replace('alert-warning', 'alert-success');
-                        statusAlert.innerHTML = '<i class="fas fa-check-circle me-1"></i> Keamanan tervalidasi: GPS Berhasil Aktif. Silakan login.';
-                    }
+                    // Cek apakah turnstile juga sudah sukses untuk membuka tombol
+                    checkAllValidations();
                 },
                 function(error) {
                     isGpsActive = false;
@@ -369,7 +394,7 @@
         }
     }
 
-    // Panggil fungsi saat halaman selesai dimuat sepenuhnya
+    // Panggil fungsi lokasi saat halaman selesai dimuat
     document.addEventListener("DOMContentLoaded", function() {
         requestLocation();
     });
