@@ -649,7 +649,7 @@
     // Fungsi ini akan dieksekusi setelah script enterprise.js selesai dimuat
     var renderRecaptchaV2 = function() {
         grecaptcha.enterprise.render('recaptcha-v2-container', {
-            'sitekey' : '{{ $recaptchaEntSiteKey }}', // Gunakan Key Enterprise Anda
+            'sitekey' : '{{  $recaptchaSiteKey }}', // Gunakan Key Enterprise Anda
             'action'  : 'REGISTER_DRIVER',            // Tindakan disarankan oleh dokumen
             'callback' : onRecaptchaSuccess,
             'expired-callback' : onRecaptchaExpired,
