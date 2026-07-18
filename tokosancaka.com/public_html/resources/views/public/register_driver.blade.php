@@ -644,9 +644,7 @@
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-{{-- Panggil 1 script reCAPTCHA saja, gunakan render key v3/Enterprise agar otomatis jalan di latar belakang,
-sedangkan v2 akan otomatis ter-render oleh class "g-recaptcha" --}}
-<script src="https://www.google.com/recaptcha/api.js?render={{ $recaptchaEntSiteKey }}" async defer></script>
+
 
 <script>
    // --- VARIABLES GLOBAL UNTUK TRACKING VALIDASI ---
