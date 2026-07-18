@@ -222,6 +222,13 @@
                         <input type="text" class="form-control text-center" name="captcha" placeholder="Masukkan karakter di atas" required autocomplete="off">
                     </div>
 
+                    {{-- ========================================== --}}
+                    {{-- WIDGET CLOUDFLARE TURNSTILE --}}
+                    <div class="mb-3 d-flex justify-content-center">
+                        <div class="cf-turnstile" data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}"></div>
+                    </div>
+                    {{-- ========================================== --}}
+
                     {{-- Opsi Bawah Form --}}
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <div class="form-check">
@@ -288,6 +295,10 @@
 @endsection
 
 @push('scripts')
+
+{{-- SCRIPT CLOUDFLARE TURNSTILE --}}
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
 <script>
     function togglePasswordVisibility(fieldId) {
         const input = document.getElementById(fieldId);
