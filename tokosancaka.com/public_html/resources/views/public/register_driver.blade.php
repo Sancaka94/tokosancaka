@@ -605,7 +605,7 @@
                                             </label>
                                             <div class="security-inner-box flex-grow-1">
                                                 <div class="g-recaptcha"
-                                                    data-sitekey="{{ $recaptchaSiteKey }}"
+                                                    data-sitekey="6LeQJVotAAAAAOdh57UlxcBjE54UQsI4ukU7YaB-"
                                                     data-callback="onRecaptchaSuccess"
                                                     data-expired-callback="onRecaptchaExpired"
                                                     data-error-callback="onRecaptchaError">
