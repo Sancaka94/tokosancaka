@@ -606,8 +606,8 @@
                                                 <i class="fa-brands fa-google text-secondary me-1"></i> 3. reCAPTCHA <span class="text-danger">*</span>
                                             </label>
                                             <div class="security-inner-box flex-grow-1">
-                                                <div class="g-recaptcha"
-                                                    data-sitekey="{{ $recaptchaSiteKey }}"
+                                               <div class="g-recaptcha"
+                                                    data-sitekey="6LeqLFotAAAAAM3DPXcw62rxP83ZQqpkBkfQdWQl"
                                                     data-callback="onRecaptchaSuccess"
                                                     data-expired-callback="onRecaptchaExpired"
                                                     data-error-callback="onRecaptchaError">
