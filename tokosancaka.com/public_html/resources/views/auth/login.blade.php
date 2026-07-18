@@ -156,13 +156,6 @@
                     <p class="mt-4 small text-white-50">Solusi pengiriman paket cepat, aman, dan terpercaya ke seluruh penjuru negeri.</p>
                 </div>
 
-                   {{-- ========================================== --}}
-                    {{-- WIDGET CLOUDFLARE TURNSTILE --}}
-                    <div class="mb-3 d-flex justify-content-center">
-                        <div class="cf-turnstile" data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}" data-callback="onTurnstileSuccess"></div>
-                    </div>
-                    {{-- ========================================== --}}
-
 
             </div>
 
@@ -272,6 +265,13 @@
                             </div>
                         </div>
                     @endif
+                    {{-- ========================================== --}}
+
+                    {{-- ========================================== --}}
+                    {{-- WIDGET CLOUDFLARE TURNSTILE --}}
+                    <div class="mb-3 d-flex justify-content-center">
+                        <div class="cf-turnstile" data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}" data-callback="onTurnstileSuccess"></div>
+                    </div>
                     {{-- ========================================== --}}
 
                     @if (Route::has('password.request') && !request()->is('admin/*'))
