@@ -599,14 +599,13 @@
                                         </div>
                                     </div>
 
-                                    {{-- 3. Panel Google reCAPTCHA --}}
+                                   {{-- 3. Panel Google reCAPTCHA --}}
                                     <div class="col-lg-4 col-md-12">
                                         <div class="security-panel shadow-sm">
                                             <label class="form-label fw-bold text-slate-700 small mb-3">
                                                 <i class="fa-brands fa-google text-secondary me-1"></i> 3. reCAPTCHA <span class="text-danger">*</span>
                                             </label>
                                             <div class="security-inner-box flex-grow-1">
-                                                <!-- PERBAIKAN -->
                                                 <div class="g-recaptcha"
                                                     data-sitekey="{{ $recaptchaSiteKey }}"
                                                     data-callback="onRecaptchaSuccess"
@@ -644,9 +643,10 @@
 
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<script src="https://www.google.com/recaptcha/api.js" async defer></script>
-{{-- Script khusus Enterprise / v3 --}}
-<script src="https://www.google.com/recaptcha/enterprise.js?render={{ $recaptchaEntSiteKey }}"></script>
+
+{{-- Panggil 1 script reCAPTCHA saja, gunakan render key v3/Enterprise agar otomatis jalan di latar belakang,
+sedangkan v2 akan otomatis ter-render oleh class "g-recaptcha" --}}
+<script src="https://www.google.com/recaptcha/api.js?render={{ $recaptchaEntSiteKey }}" async defer></script>
 
 <script>
    // --- VARIABLES GLOBAL UNTUK TRACKING VALIDASI ---
@@ -710,22 +710,20 @@
         if(lngInput) lngInput.addEventListener('input', checkSubmitStatus);
         if(captchaInput) captchaInput.addEventListener('input', checkSubmitStatus);
 
-        // 2. EVENT FORM SUBMIT (LOADING & ENTERPRISE TOKEN)
+        // 2. EVENT FORM SUBMIT (LOADING & ENTERPRISE/V3 TOKEN)
         form.addEventListener('submit', function(e) {
-            // Cegah submit bawaan browser agar kita bisa ambil token Enterprise dulu
+            // Cegah submit bawaan browser
             e.preventDefault();
 
             submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Menganalisis Pola (AI Google)...';
             submitBtn.classList.replace('btn-danger', 'btn-secondary');
             submitBtn.disabled = true;
 
-            // Eksekusi reCAPTCHA Enterprise secara asynchronous
-            grecaptcha.enterprise.ready(async () => {
-                try {
-                    // Ambil token dari Google
-                    const token = await grecaptcha.enterprise.execute('{{ $recaptchaEntSiteKey }}', {action: 'REGISTER_DRIVER'});
+            // Eksekusi reCAPTCHA v3 secara asynchronous
+            grecaptcha.ready(function() {
+                grecaptcha.execute('{{ $recaptchaEntSiteKey }}', {action: 'REGISTER_DRIVER'}).then(function(token) {
 
-                    // Masukkan token ke input hidden (pastikan Anda sudah membuat input hidden ini di form blade)
+                    // Masukkan token ke input hidden
                     let hiddenInput = document.getElementById('g-recaptcha-enterprise-response');
                     if (!hiddenInput) {
                         hiddenInput = document.createElement('input');
@@ -737,15 +735,16 @@
                     hiddenInput.value = token;
 
                     // Setelah token didapat, barulah form benar-benar dikirim
-                    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Mengunggah...';
+                    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Mengunggah Berkas...';
                     form.submit();
-                } catch (error) {
-                    console.error("Gagal mendapatkan token Enterprise:", error);
-                    alert("Keamanan latar belakang gagal. Silakan coba lagi.");
+
+                }).catch(function(error) {
+                    console.error("Gagal mendapatkan token reCAPTCHA v3:", error);
+                    alert("Sistem keamanan latar belakang gagal terhubung ke Google. Silakan coba lagi.");
                     submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Kirim Ulang';
                     submitBtn.classList.replace('btn-secondary', 'btn-danger');
                     submitBtn.disabled = false;
-                }
+                });
             });
         });
 
