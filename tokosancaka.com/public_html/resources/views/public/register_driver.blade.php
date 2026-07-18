@@ -599,19 +599,17 @@
                                         </div>
                                     </div>
 
-                                   {{-- 3. Panel Google reCAPTCHA --}}
+                                  {{-- 3. Panel Google reCAPTCHA --}}
                                     <div class="col-lg-4 col-md-12">
                                         <div class="security-panel shadow-sm">
                                             <label class="form-label fw-bold text-slate-700 small mb-3">
                                                 <i class="fa-brands fa-google text-secondary me-1"></i> 3. reCAPTCHA <span class="text-danger">*</span>
                                             </label>
                                             <div class="security-inner-box flex-grow-1">
-                                               <div class="g-recaptcha"
-                                                    data-sitekey="6LeqLFotAAAAAM3DPXcw62rxP83ZQqpkBkfQdWQl"
-                                                    data-callback="onRecaptchaSuccess"
-                                                    data-expired-callback="onRecaptchaExpired"
-                                                    data-error-callback="onRecaptchaError">
-                                                </div>
+
+                                                <!-- Elemen kosong yang akan diinjeksi paksa oleh JavaScript -->
+                                                <div id="recaptcha-v2-container"></div>
+
                                             </div>
                                         </div>
                                     </div>
@@ -644,7 +642,8 @@
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-
+{{-- Panggil script reCAPTCHA dengan perintah render=explicit --}}
+<script src="https://www.google.com/recaptcha/api.js?onload=renderRecaptchaV2&render=explicit" async defer></script>
 
 <script>
    // --- VARIABLES GLOBAL UNTUK TRACKING VALIDASI ---
@@ -658,6 +657,15 @@
         if (captchaImg) captchaImg.src = '/captcha/flat?' + Math.random();
     }
 
+    function renderRecaptchaV2() {
+        grecaptcha.render('recaptcha-v2-container', {
+            'sitekey' : '6LeqLFotAAAAAM3DPXcw62rxP83ZQqpkBkfQdWQl', // Gunakan Key v2 yang sudah di-hardcode
+            'callback' : onRecaptchaSuccess,
+            'expired-callback' : onRecaptchaExpired,
+            'error-callback' : onRecaptchaError
+        });
+    }
+
     // --- FUNGSI CLOUDFLARE TURNSTILE ---
     function onTurnstileSuccess(token) { isTurnstileSuccess = true; checkSubmitStatus(); }
     function onTurnstileExpired() { isTurnstileSuccess = false; checkSubmitStatus(); }
@@ -667,6 +675,8 @@
     function onRecaptchaSuccess(token) { isRecaptchaSuccess = true; checkSubmitStatus(); }
     function onRecaptchaExpired() { isRecaptchaSuccess = false; checkSubmitStatus(); }
     function onRecaptchaError() { isRecaptchaSuccess = false; alert("Gagal memuat reCAPTCHA."); checkSubmitStatus(); }
+
+
 
     // --- FUNGSI UTAMA PENGECEKAN TOMBOL SUBMIT ---
     function checkSubmitStatus() {
