@@ -530,30 +530,74 @@
                                 </div>
 
                                 {{-- ================= TAMBAHAN KEAMANAN CAPTCHA & TURNSTILE ================= --}}
-                                <div class="form-section-title border-bottom pb-2 mt-4">
-                                    <i class="fa-solid fa-shield-halved"></i> Verifikasi Keamanan Akhir
+                                <style>
+                                    /* Memaksa gambar captcha agar responsif dan rapi */
+                                    #captcha-container img {
+                                        max-width: 100%;
+                                        height: 45px;
+                                        object-fit: cover;
+                                        border-radius: 4px;
+                                    }
+                                    .security-panel {
+                                        background-color: #f8fafc;
+                                        border: 1px solid #e2e8f0;
+                                        border-radius: 0.75rem;
+                                        padding: 1.25rem;
+                                        height: 100%; /* Memaksa tinggi sejajar */
+                                        display: flex;
+                                        flex-direction: column;
+                                    }
+                                    .security-inner-box {
+                                        background-color: #ffffff;
+                                        border: 1px dashed #cbd5e1;
+                                        border-radius: 0.5rem;
+                                        padding: 0.5rem;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        min-height: 80px;
+                                    }
+                                </style>
+
+                                <div class="form-section-title border-bottom pb-2 mt-5">
+                                    <i class="fa-solid fa-shield-halved text-success"></i> Verifikasi Keamanan Akhir
                                 </div>
-                                <div class="row g-4 align-items-center mb-4">
-                                    {{-- Captcha --}}
+
+                                <div class="row g-4 mb-4">
+                                    {{-- 1. Panel Captcha --}}
                                     <div class="col-md-6">
-                                        <label class="form-label text-muted small mb-2 d-block">Ketik karakter pada gambar <span class="text-danger">*</span></label>
-                                        <div class="d-flex align-items-center mb-2 captcha-wrapper">
-                                            <span id="captcha-container">{!! captcha_img('flat') !!}</span>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="refreshCaptcha()" title="Muat ulang Captcha">
-                                                <i class="fa-solid fa-sync-alt"></i>
-                                            </button>
+                                        <div class="security-panel shadow-sm">
+                                            <label class="form-label fw-bold text-slate-700 small mb-3">
+                                                <i class="fa-solid fa-keyboard text-secondary me-1"></i> Ketik Karakter Captcha <span class="text-danger">*</span>
+                                            </label>
+
+                                            <div class="security-inner-box justify-content-between mb-3 px-3">
+                                                <span id="captcha-container">{!! captcha_img('flat') !!}</span>
+                                                <button type="button" class="btn btn-outline-danger btn-sm" onclick="refreshCaptcha()" title="Muat ulang Captcha">
+                                                    <i class="fa-solid fa-arrows-rotate"></i>
+                                                </button>
+                                            </div>
+
+                                            <input type="text" id="captchaInput" class="form-control custom-input mt-auto" name="captcha" placeholder="Masukkan karakter gambar..." required autocomplete="off">
                                         </div>
-                                        <input type="text" id="captchaInput" class="form-control custom-input w-100" name="captcha" placeholder="Masukkan karakter di atas" required autocomplete="off">
                                     </div>
 
-                                    {{-- Cloudflare Turnstile --}}
-                                    <div class="col-md-6 d-flex flex-column justify-content-center">
-                                        <label class="form-label text-muted small mb-2 d-block">Verifikasi Anti-Bot <span class="text-danger">*</span></label>
-                                        <div class="cf-turnstile"
-                                            data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}"
-                                            data-callback="onTurnstileSuccess"
-                                            data-expired-callback="onTurnstileExpired"
-                                            data-error-callback="onTurnstileError">
+                                    {{-- 2. Panel Cloudflare Turnstile --}}
+                                    <div class="col-md-6">
+                                        <div class="security-panel shadow-sm">
+                                            <label class="form-label fw-bold text-slate-700 small mb-3">
+                                                <i class="fa-solid fa-robot text-secondary me-1"></i> Verifikasi Anti-Bot <span class="text-danger">*</span>
+                                            </label>
+
+                                            <div class="security-inner-box flex-grow-1">
+                                                {{-- Widget Cloudflare --}}
+                                                <div class="cf-turnstile"
+                                                    data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}"
+                                                    data-callback="onTurnstileSuccess"
+                                                    data-expired-callback="onTurnstileExpired"
+                                                    data-error-callback="onTurnstileError">
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
