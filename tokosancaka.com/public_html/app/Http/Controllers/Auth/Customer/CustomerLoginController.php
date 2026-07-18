@@ -17,6 +17,7 @@ use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Http\RedirectResponse;
 use Jenssegers\Agent\Agent;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 
 class CustomerLoginController extends Controller
 {
@@ -109,6 +110,26 @@ class CustomerLoginController extends Controller
     {
         Log::info('Proses login (sebelum OTP) dimulai.');
 
+        // ====================================================================
+        // LIMITER: MAKSIMAL 3X GAGAL, KUNCI 5 MENIT
+        // ====================================================================
+        $throttleKey = Str::lower($request->input('login')) . '|' . $request->ip();
+        
+        if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            $minutes = ceil($seconds / 60);
+            
+            Log::warning('Login diblokir sementara karena terlalu banyak percobaan.', [
+                'ip' => $request->ip(), 
+                'login_input' => $request->login
+            ]);
+            
+            throw ValidationException::withMessages([
+                'login' => "Terlalu banyak percobaan login yang gagal. Silakan coba lagi dalam {$minutes} menit.",
+            ]);
+        }
+        // ====================================================================
+
         // BYPASS AKUN DUMMY/WHITELIST
         $loginValue = $request->login;
         $loginField = str_contains($loginValue, '@') ? 'email' : 'no_wa';
@@ -169,6 +190,11 @@ class CustomerLoginController extends Controller
         $credentials = $this->credentials($request);
 
         if ($this->guard()->validate($credentials)) {
+
+            // ================================================================
+            RateLimiter::clear($throttleKey); // Reset hitungan menjadi 0 karena sukses
+            // ================================================================
+
             Log::info('Kredensial valid. Melanjutkan ke proses OTP.');
 
             $loginField = isset($credentials['email']) ? 'email' : 'no_wa';
@@ -239,6 +265,12 @@ class CustomerLoginController extends Controller
             return redirect()->route('login.otp.form')
                              ->with('info', 'Kode OTP telah dikirim ke WhatsApp dan Email Anda.');
         }
+
+        // ====================================================================
+        // TAMBAHKAN HITUNGAN GAGAL JIKA PASSWORD/KREDENSIAL SALAH
+        // ====================================================================
+        RateLimiter::hit($throttleKey, 5 * 60); // 5 menit = 300 detik
+        // ====================================================================
 
         Log::warning('Login attempt gagal. Kredensial tidak valid.', ['login_input' => $request->login]);
         return $this->sendFailedLoginResponse($request);

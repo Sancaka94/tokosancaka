@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Laravel\Socialite\Facades\Socialite;
 use Jenssegers\Agent\Agent;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -35,6 +36,26 @@ class AuthenticatedSessionController extends Controller
     public function store(Request $request): RedirectResponse
     {
         Log::info('Proses login (sebelum OTP) dimulai.');
+
+        // ====================================================================
+        // LIMITER: MAKSIMAL 3X GAGAL, KUNCI 5 MENIT
+        // ====================================================================
+        $throttleKey = Str::lower($request->input('login')) . '|' . $request->ip();
+        
+        if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            $minutes = ceil($seconds / 60);
+            
+            Log::warning('Login diblokir sementara karena terlalu banyak percobaan.', [
+                'ip' => $request->ip(), 
+                'login_input' => $request->login
+            ]);
+            
+            throw ValidationException::withMessages([
+                'login' => "Terlalu banyak percobaan login yang gagal. Silakan coba lagi dalam {$minutes} menit.",
+            ]);
+        }
+        // ====================================================================
 
         // ====================================================================
         // BYPASS AKUN DUMMY/WHITELIST (DINAMIS via Database)
@@ -134,6 +155,11 @@ class AuthenticatedSessionController extends Controller
 
         // 3. Cek Kredensial
         if (Auth::guard('web')->validate($credentials)) {
+
+            // ================================================================
+            RateLimiter::clear($throttleKey); // Reset hitungan menjadi 0 karena sukses
+            // ================================================================
+            
             Log::info('Kredensial valid. Melanjutkan ke proses OTP.');
 
             $user = DB::table('Pengguna')->where($loginField, $loginValue)->first();
@@ -219,6 +245,12 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('login.otp.form')
                  ->with('info', 'Kode OTP telah dikirim ke WhatsApp dan Email Anda. Silakan cek pesan masuk.');
         }
+
+        // ====================================================================
+        // TAMBAHKAN HITUNGAN GAGAL JIKA PASSWORD/KREDENSIAL SALAH
+        // ====================================================================
+        RateLimiter::hit($throttleKey, 5 * 60); // 5 menit = 300 detik
+        // ====================================================================
 
         Log::warning('Login attempt gagal. Kredensial tidak valid.', ['login_input' => $request->login]);
         throw ValidationException::withMessages([
