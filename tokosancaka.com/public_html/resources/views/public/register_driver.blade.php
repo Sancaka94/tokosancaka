@@ -565,9 +565,11 @@
                                     <i class="fa-solid fa-shield-halved text-success"></i> Verifikasi Keamanan Akhir
                                 </div>
 
-                                <div class="row g-2 mb-4">
+                               <div class="row g-3 mb-4">
+
                                     {{-- 1. Panel Captcha Lokal --}}
-                                    <div class="col-lg-4 col-md-12">
+                                    <!-- UBAH col-lg-4 MENJADI col-lg-6 -->
+                                    <div class="col-lg-6 col-md-6">
                                         <div class="security-panel shadow-sm">
                                             <label class="form-label fw-bold text-slate-700 small mb-3">
                                                 <i class="fa-solid fa-keyboard text-secondary me-1"></i> 1. Ketik Captcha <span class="text-danger">*</span>
@@ -583,7 +585,8 @@
                                     </div>
 
                                     {{-- 2. Panel Cloudflare Turnstile --}}
-                                    <div class="col-lg-4 col-md-12">
+                                    <!-- UBAH col-lg-4 MENJADI col-lg-6 -->
+                                    <div class="col-lg-6 col-md-6">
                                         <div class="security-panel shadow-sm">
                                             <label class="form-label fw-bold text-slate-700 small mb-3">
                                                 <i class="fa-solid fa-robot text-secondary me-1"></i> 2. Cloudflare <span class="text-danger">*</span>
@@ -598,7 +601,6 @@
                                             </div>
                                         </div>
                                     </div>
-
 
                                 </div>
 
