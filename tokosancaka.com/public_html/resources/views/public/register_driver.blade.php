@@ -145,6 +145,8 @@
                     <form action="{{ route('driver.register.store') }}" method="POST" enctype="multipart/form-data" id="formPendaftaran">
                         @csrf
 
+                        <input type="hidden" name="g-recaptcha-enterprise-response" id="g-recaptcha-enterprise-response">
+
                         <div class="row g-5">
                             {{-- ================= KOLOM KIRI (Informasi Pribadi & Kendaraan) ================= --}}
                             <div class="col-lg-6">
@@ -640,9 +642,10 @@
 </div>
 
 
-{{-- SCRIPT CLOUDFLARE & GOOGLE RECAPTCHA --}}
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+{{-- Script khusus Enterprise / v3 --}}
+<script src="https://www.google.com/recaptcha/enterprise.js?render={{ $recaptchaEntSiteKey }}"></script>
 
 <script>
    // --- VARIABLES GLOBAL UNTUK TRACKING VALIDASI ---
@@ -706,13 +709,43 @@
         if(lngInput) lngInput.addEventListener('input', checkSubmitStatus);
         if(captchaInput) captchaInput.addEventListener('input', checkSubmitStatus);
 
-        // 2. EVENT FORM SUBMIT (LOADING)
-        form.addEventListener('submit', function() {
-            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Mengunggah & Memindai Berkas...';
+        // 2. EVENT FORM SUBMIT (LOADING & ENTERPRISE TOKEN)
+        form.addEventListener('submit', function(e) {
+            // Cegah submit bawaan browser agar kita bisa ambil token Enterprise dulu
+            e.preventDefault();
+
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Menganalisis Pola (AI Google)...';
             submitBtn.classList.replace('btn-danger', 'btn-secondary');
-            submitBtn.style.opacity = '0.8';
-            submitBtn.style.cursor = 'not-allowed';
             submitBtn.disabled = true;
+
+            // Eksekusi reCAPTCHA Enterprise secara asynchronous
+            grecaptcha.enterprise.ready(async () => {
+                try {
+                    // Ambil token dari Google
+                    const token = await grecaptcha.enterprise.execute('{{ $recaptchaEntSiteKey }}', {action: 'REGISTER_DRIVER'});
+
+                    // Masukkan token ke input hidden (pastikan Anda sudah membuat input hidden ini di form blade)
+                    let hiddenInput = document.getElementById('g-recaptcha-enterprise-response');
+                    if (!hiddenInput) {
+                        hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = 'g-recaptcha-enterprise-response';
+                        hiddenInput.id = 'g-recaptcha-enterprise-response';
+                        form.appendChild(hiddenInput);
+                    }
+                    hiddenInput.value = token;
+
+                    // Setelah token didapat, barulah form benar-benar dikirim
+                    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Mengunggah...';
+                    form.submit();
+                } catch (error) {
+                    console.error("Gagal mendapatkan token Enterprise:", error);
+                    alert("Keamanan latar belakang gagal. Silakan coba lagi.");
+                    submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Kirim Ulang';
+                    submitBtn.classList.replace('btn-secondary', 'btn-danger');
+                    submitBtn.disabled = false;
+                }
+            });
         });
 
         // 3. EVENT DETEKSI GPS MAPS
