@@ -599,7 +599,7 @@
                                         </div>
                                     </div>
 
-                                  {{-- 3. Panel Google reCAPTCHA --}}
+                                    {{-- 3. Panel Google reCAPTCHA Enterprise --}}
                                     <div class="col-lg-4 col-md-12">
                                         <div class="security-panel shadow-sm">
                                             <label class="form-label fw-bold text-slate-700 small mb-3">
@@ -607,7 +607,7 @@
                                             </label>
                                             <div class="security-inner-box flex-grow-1">
 
-                                                <!-- Elemen kosong yang akan diinjeksi paksa oleh JavaScript -->
+                                                <!-- Tempat widget dirender secara eksplisit -->
                                                 <div id="recaptcha-v2-container"></div>
 
                                             </div>
@@ -642,8 +642,22 @@
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-{{-- Panggil script reCAPTCHA dengan perintah render=explicit --}}
-<script src="https://www.google.com/recaptcha/api.js?onload=renderRecaptchaV2&render=explicit" async defer></script>
+{{-- Panggil enterprise.js dengan parameter onload dan render=explicit --}}
+<script src="https://www.google.com/recaptcha/enterprise.js?onload=renderRecaptchaV2&render=explicit" async defer></script>
+
+<script>
+    // Fungsi ini akan dieksekusi setelah script enterprise.js selesai dimuat
+    var renderRecaptchaV2 = function() {
+        grecaptcha.enterprise.render('recaptcha-v2-container', {
+            'sitekey' : '{{ $recaptchaEntSiteKey }}', // Gunakan Key Enterprise Anda
+            'action'  : 'REGISTER_DRIVER',            // Tindakan disarankan oleh dokumen
+            'callback' : onRecaptchaSuccess,
+            'expired-callback' : onRecaptchaExpired,
+            'error-callback' : onRecaptchaError
+        });
+    };
+
+</script>
 
 <script>
    // --- VARIABLES GLOBAL UNTUK TRACKING VALIDASI ---
@@ -655,15 +669,6 @@
     function refreshCaptcha() {
         let captchaImg = document.querySelector('#captcha-container img');
         if (captchaImg) captchaImg.src = '/captcha/flat?' + Math.random();
-    }
-
-    function renderRecaptchaV2() {
-        grecaptcha.render('recaptcha-v2-container', {
-            'sitekey' : '6LeqLFotAAAAAM3DPXcw62rxP83ZQqpkBkfQdWQl', // Gunakan Key v2 yang sudah di-hardcode
-            'callback' : onRecaptchaSuccess,
-            'expired-callback' : onRecaptchaExpired,
-            'error-callback' : onRecaptchaError
-        });
     }
 
     // --- FUNGSI CLOUDFLARE TURNSTILE ---
