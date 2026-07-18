@@ -296,8 +296,8 @@
 </div>
 @endsection
 
-@push('scripts')
 
+@push('scripts')
 {{-- SCRIPT CLOUDFLARE TURNSTILE --}}
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
@@ -314,32 +314,54 @@
         }
     }
 
-    // Variabel untuk melacak status kedua keamanan
     let isGpsActive = false;
     let isTurnstileSuccess = false;
 
+    // ====================================================================
+    // 1. TANGKAP PESAN ERROR LIMIT DARI BACKEND LARAVEL
+    // ====================================================================
+    let isRateLimited = false;
+    @if($errors->any())
+        @foreach($errors->all() as $error)
+            @if(str_contains(strtolower($error), 'terlalu banyak percobaan'))
+                isRateLimited = true;
+            @endif
+        @endforeach
+    @endif
+
     // Fungsi untuk mengecek apakah kedua syarat sudah terpenuhi
     function checkAllValidations() {
+        // ====================================================================
+        // 2. CEK LIMIT SEBELUM MEMBUKA KUNCI TOMBOL
+        // ====================================================================
+        if (isRateLimited) {
+            // Ubah box alert menjadi merah/danger dan hentikan eksekusi
+            const statusAlert = document.getElementById('gps-status-alert');
+            if(statusAlert) {
+                statusAlert.classList.remove('alert-warning', 'alert-success');
+                statusAlert.classList.add('alert-danger');
+                statusAlert.innerHTML = '<i class="fas fa-lock me-1"></i> Form terkunci. Silakan tunggu 5 menit sebelum mencoba lagi.';
+            }
+            return; // Hentikan fungsi di sini, tombol tidak akan pernah dibuka!
+        }
+
+        // Jika tidak ada limit, buka kunci seperti biasa
         if (isGpsActive && isTurnstileSuccess) {
-            // Buka kunci tombol Login Manual
             const btnManual = document.getElementById('btn-submit-manual');
             if(btnManual) btnManual.removeAttribute('disabled');
             
-            // Buka kunci tombol Google
             const btnGoogle = document.getElementById('btn-submit-google');
             if(btnGoogle) {
                 btnGoogle.classList.remove('disabled');
                 btnGoogle.removeAttribute('aria-disabled');
             }
 
-            // Buka kunci tombol Facebook
             const btnFacebook = document.getElementById('btn-submit-facebook');
             if(btnFacebook) {
                 btnFacebook.classList.remove('disabled');
                 btnFacebook.removeAttribute('aria-disabled');
             }
             
-            // Perbarui teks alert
             const statusAlert = document.getElementById('gps-status-alert');
             if(statusAlert) {
                 statusAlert.classList.replace('alert-warning', 'alert-success');
@@ -356,6 +378,11 @@
 
     // Fungsi untuk memunculkan alert jika tombol yang abu-abu diklik
     function checkGpsClick() {
+        if (isRateLimited) {
+            alert("Akses Ditolak! Form sedang dikunci karena terlalu banyak percobaan gagal. Silakan tunggu.");
+            return;
+        }
+
         if (!isGpsActive || !isTurnstileSuccess) {
             let alertMsg = "Akses Ditolak!\n";
             if (!isGpsActive) alertMsg += "- Anda wajib mengaktifkan dan mengizinkan GPS lokasi.\n";
@@ -363,7 +390,6 @@
             
             alert(alertMsg);
             
-            // Jika GPS belum aktif, panggil lagi permintaan lokasi
             if (!isGpsActive) requestLocation();
         }
     }
@@ -378,7 +404,6 @@
                     document.getElementById('latitude').value = position.coords.latitude;
                     document.getElementById('longitude').value = position.coords.longitude;
                     
-                    // Cek apakah turnstile juga sudah sukses untuk membuka tombol
                     checkAllValidations();
                 },
                 function(error) {
@@ -396,9 +421,9 @@
         }
     }
 
-    // Panggil fungsi lokasi saat halaman selesai dimuat
     document.addEventListener("DOMContentLoaded", function() {
         requestLocation();
     });
 </script>
+
 @endpush
