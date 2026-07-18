@@ -529,6 +529,35 @@
                                     </label>
                                 </div>
 
+                                {{-- ================= TAMBAHAN KEAMANAN CAPTCHA & TURNSTILE ================= --}}
+                                <div class="form-section-title border-bottom pb-2 mt-4">
+                                    <i class="fa-solid fa-shield-halved"></i> Verifikasi Keamanan Akhir
+                                </div>
+                                <div class="row g-4 align-items-center mb-4">
+                                    {{-- Captcha --}}
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small mb-2 d-block">Ketik karakter pada gambar <span class="text-danger">*</span></label>
+                                        <div class="d-flex align-items-center mb-2 captcha-wrapper">
+                                            <span id="captcha-container">{!! captcha_img('flat') !!}</span>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary ms-2" onclick="refreshCaptcha()" title="Muat ulang Captcha">
+                                                <i class="fa-solid fa-sync-alt"></i>
+                                            </button>
+                                        </div>
+                                        <input type="text" id="captchaInput" class="form-control custom-input w-100" name="captcha" placeholder="Masukkan karakter di atas" required autocomplete="off">
+                                    </div>
+
+                                    {{-- Cloudflare Turnstile --}}
+                                    <div class="col-md-6 d-flex flex-column justify-content-center">
+                                        <label class="form-label text-muted small mb-2 d-block">Verifikasi Anti-Bot <span class="text-danger">*</span></label>
+                                        <div class="cf-turnstile"
+                                            data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}"
+                                            data-callback="onTurnstileSuccess"
+                                            data-expired-callback="onTurnstileExpired"
+                                            data-error-callback="onTurnstileError">
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {{-- INFO SISTEM ANTI-VIRUS --}}
                                 <div class="text-center mb-3">
                                     <p class="text-sm text-gray-500 mb-0" style="font-size: 0.85rem; color: #64748b;">
@@ -553,27 +582,75 @@
     </div>
 </div>
 
+{{-- SCRIPT CLOUDFLARE TURNSTILE --}}
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
 <script>
+    // --- VARIABLES GLOBAL UNTUK TRACKING VALIDASI ---
+    let hasScrolledToBottom = false;
+    let isTurnstileSuccess = false;
+
+    // --- FUNGSI REFRESH CAPTCHA ---
+    function refreshCaptcha() {
+        let captchaImg = document.querySelector('#captcha-container img');
+        if (captchaImg) captchaImg.src = '/captcha/flat?' + Math.random();
+    }
+
+    // --- FUNGSI CLOUDFLARE TURNSTILE ---
+    function onTurnstileSuccess(token) { isTurnstileSuccess = true; checkSubmitStatus(); }
+    function onTurnstileExpired() { isTurnstileSuccess = false; checkSubmitStatus(); }
+    function onTurnstileError() { isTurnstileSuccess = false; alert("Gagal memuat Cloudflare."); checkSubmitStatus(); }
+
+    // --- FUNGSI UTAMA PENGECEKAN TOMBOL SUBMIT ---
+    function checkSubmitStatus() {
+        const submitBtn = document.getElementById('submitBtn');
+        const lat = document.getElementById('latitude').value.trim();
+        const lng = document.getElementById('longitude').value.trim();
+        const captcha = document.getElementById('captchaInput') ? document.getElementById('captchaInput').value.trim() : '';
+        const isAgreed = document.getElementById('agreeCheckbox').checked;
+
+        // Cek apakah SEMUA syarat sudah terpenuhi
+        if (hasScrolledToBottom && isAgreed && lat !== '' && lng !== '' && captcha !== '' && isTurnstileSuccess) {
+            submitBtn.disabled = false;
+            submitBtn.classList.replace('btn-secondary', 'btn-danger');
+            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Kirim Berkas Pendaftaran Mitra';
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.classList.replace('btn-danger', 'btn-secondary');
+            submitBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i> Silakan Lengkapi Syarat & Keamanan';
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
-        // --- LOGIC FORM SUBMIT (LOADING STATE) ---
         const form = document.getElementById('formPendaftaran');
         const submitBtn = document.getElementById('submitBtn');
+        const latInput = document.getElementById('latitude');
+        const lngInput = document.getElementById('longitude');
+        const captchaInput = document.getElementById('captchaInput');
+        const agreeCheckbox = document.getElementById('agreeCheckbox');
+        const tosBox = document.getElementById('tosScrollBox');
+        const checkboxWrapper = document.getElementById('checkboxWrapper');
+        const btnGetLocation = document.getElementById('btnGetLocation');
+        const statusText = document.getElementById('gpsStatus');
 
+        // Panggil cek awal
+        checkSubmitStatus();
+
+        // 1. EVENT KETIK MANUAL (GPS & CAPTCHA)
+        if(latInput) latInput.addEventListener('input', checkSubmitStatus);
+        if(lngInput) lngInput.addEventListener('input', checkSubmitStatus);
+        if(captchaInput) captchaInput.addEventListener('input', checkSubmitStatus);
+
+        // 2. EVENT FORM SUBMIT (LOADING)
         form.addEventListener('submit', function() {
-            // Ubah tampilan tombol saat form di-submit
-            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Mengunggah & Memindai Berkas... Mohon tunggu!';
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Mengunggah & Memindai Berkas...';
             submitBtn.classList.replace('btn-danger', 'btn-secondary');
             submitBtn.style.opacity = '0.8';
             submitBtn.style.cursor = 'not-allowed';
-            submitBtn.disabled = true; // Mencegah multiple submit
+            submitBtn.disabled = true;
         });
 
-        // --- LOGIC DETEKSI GPS MAPS ---
-        const btnGetLocation = document.getElementById('btnGetLocation');
-        const latInput = document.getElementById('latitude');
-        const lngInput = document.getElementById('longitude');
-        const statusText = document.getElementById('gpsStatus');
-
+        // 3. EVENT DETEKSI GPS MAPS
         btnGetLocation.addEventListener('click', function() {
             if (navigator.geolocation) {
                 btnGetLocation.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Sinkronisasi Koordinat...';
@@ -587,46 +664,32 @@
                         btnGetLocation.innerHTML = '<i class="fa-solid fa-check text-success me-2"></i> Lokasi Terkunci';
                         btnGetLocation.classList.replace('btn-get-location', 'btn-light');
                         btnGetLocation.disabled = false;
-                        statusText.innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-check-circle"></i> Titik koordinat berhasil dimasukkan otomatis! Lebih akurat, Gunakan GPS HP Anda</span>';
+                        statusText.innerHTML = '<span class="text-success fw-bold"><i class="fa-solid fa-check-circle"></i> Koordinat berhasil dimasukkan otomatis!</span>';
+                        checkSubmitStatus(); // Jalankan cek validasi
                     },
                     function(error) {
                         btnGetLocation.disabled = false;
                         btnGetLocation.innerHTML = '<i class="fa-solid fa-location-crosshairs me-2 text-danger"></i> Dapatkan Lokasi GPS Otomatis';
-                        statusText.innerHTML = '<span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> GPS Gagal dideteksi. Silakan input manual. Cek Koordinat Anda Di Google Maps</span>';
+                        statusText.innerHTML = '<span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> GPS Gagal dideteksi. Silakan input manual.</span>';
                     },
                     { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
                 );
             }
         });
 
-        // --- LOGIC SCROLL VALIDATION ---
-        const tosBox = document.getElementById('tosScrollBox');
-        const agreeCheckbox = document.getElementById('agreeCheckbox');
-        const checkboxWrapper = document.getElementById('checkboxWrapper');
-
-        let hasScrolledToBottom = false;
-
+        // 4. EVENT SCROLL PERATURAN & CENTANG
         tosBox.addEventListener('scroll', function() {
             if (!hasScrolledToBottom && (tosBox.scrollHeight - tosBox.scrollTop <= tosBox.clientHeight + 6)) {
                 hasScrolledToBottom = true;
                 checkboxWrapper.style.opacity = "1";
                 checkboxWrapper.style.pointerEvents = "auto";
                 agreeCheckbox.disabled = false;
-                tosBox.style.borderColor = "#10b981"; // Ganti border box jadi hijau tanda lulus baca
+                tosBox.style.borderColor = "#10b981";
+                checkSubmitStatus(); // Jalankan cek validasi
             }
         });
 
-        agreeCheckbox.addEventListener('change', function() {
-            if (agreeCheckbox.checked && hasScrolledToBottom) {
-                submitBtn.disabled = false;
-                submitBtn.classList.replace('btn-secondary', 'btn-danger');
-                submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Kirim Berkas Pendaftaran Mitra';
-            } else {
-                submitBtn.disabled = true;
-                submitBtn.classList.replace('btn-danger', 'btn-secondary');
-                submitBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i> Silakan Scroll Peraturan Terlebih Dahulu';
-            }
-        });
+        agreeCheckbox.addEventListener('change', checkSubmitStatus);
     });
 </script>
 @endsection
