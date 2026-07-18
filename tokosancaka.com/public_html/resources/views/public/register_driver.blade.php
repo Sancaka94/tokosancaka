@@ -588,7 +588,7 @@
                                             </label>
                                             <div class="security-inner-box flex-grow-1">
                                                 <div class="cf-turnstile"
-                                                    data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}"
+                                                    data-sitekey="{{ $turnstileSiteKey }}"
                                                     data-callback="onTurnstileSuccess"
                                                     data-expired-callback="onTurnstileExpired"
                                                     data-error-callback="onTurnstileError">
@@ -605,7 +605,7 @@
                                             </label>
                                             <div class="security-inner-box flex-grow-1">
                                                 <div class="g-recaptcha"
-                                                    data-sitekey="{{ env('RECAPTCHA_SITE_KEY') }}"
+                                                    data-sitekey="{{ $recaptchaSiteKey }}"
                                                     data-callback="onRecaptchaSuccess"
                                                     data-expired-callback="onRecaptchaExpired"
                                                     data-error-callback="onRecaptchaError">

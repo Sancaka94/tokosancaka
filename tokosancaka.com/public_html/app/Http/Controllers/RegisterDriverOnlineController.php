@@ -16,7 +16,12 @@ class RegisterDriverOnlineController extends Controller
 {
     public function create()
     {
-        return view('public.register_driver');
+        // Panggil key dari env di sini
+        $turnstileSiteKey = env('TURNSTILE_SITE_KEY');
+        $recaptchaSiteKey = env('RECAPTCHA_SITE_KEY');
+
+        // Lempar variabel ke view blade
+        return view('public.register_driver', compact('turnstileSiteKey', 'recaptchaSiteKey'));
     }
 
     public function store(Request $request)
@@ -25,12 +30,47 @@ class RegisterDriverOnlineController extends Controller
 
         $minTahun = date('Y') - 8;
 
+        // --- 1. VALIDASI KEAMANAN CLOUDFLARE TURNSTILE ---
+        $turnstileResponse = $request->input('cf-turnstile-response');
+        if (empty($turnstileResponse)) {
+            return redirect()->back()->withInput()->with('error', 'Sistem Anti-Bot Cloudflare belum diselesaikan.');
+        }
+
+        $verifyTurnstile = Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+            'secret' => env('TURNSTILE_SECRET_KEY'),
+            'response' => $turnstileResponse,
+            'remoteip' => $request->ip()
+        ]);
+
+        if (!$verifyTurnstile->json('success')) {
+            return redirect()->back()->withInput()->with('error', 'Validasi Cloudflare gagal. Terindikasi sebagai Bot/Spam.');
+        }
+
+        // --- 2. VALIDASI KEAMANAN GOOGLE RECAPTCHA V2 ---
+        $recaptchaResponse = $request->input('g-recaptcha-response');
+        if (empty($recaptchaResponse)) {
+            return redirect()->back()->withInput()->with('error', 'Google reCAPTCHA wajib dicentang.');
+        }
+
+        $verifyRecaptcha = Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify', [
+            'secret' => env('RECAPTCHA_SECRET_KEY'),
+            'response' => $recaptchaResponse,
+            'remoteip' => $request->ip()
+        ]);
+
+        if (!$verifyRecaptcha->json('success')) {
+            return redirect()->back()->withInput()->with('error', 'Validasi Google reCAPTCHA gagal. Terindikasi sebagai Bot/Spam.');
+        }
+
         $messages = [
             'tanggal_lahir.before' => 'Usia Anda harus minimal 18 tahun untuk mendaftar.',
             'tahun_kendaraan.min'  => "Tahun pembuatan kendaraan maksimal berusia 8 tahun (Minimal {$minTahun}).",
+            'captcha.required'     => 'Kode Captcha gambar wajib diisi.', // <-- Tambahan
+            'captcha.captcha'      => 'Kode Captcha gambar yang Anda masukkan salah.', // <-- Tambahan
         ];
 
         $request->validate([
+            'captcha'         => 'required|captcha',
             'nama_lengkap'    => 'required|string|max:255',
             'tempat_lahir'    => 'required|string|max:100',
             'tanggal_lahir'   => 'required|date|before:-18 years',
