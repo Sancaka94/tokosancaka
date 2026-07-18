@@ -147,6 +147,24 @@ class CustomerLoginController extends Controller
             }
         }
 
+        // ====================================================================
+        // TAMBAHKAN VALIDASI CLOUDFLARE TURNSTILE DI SINI
+        // ====================================================================
+        $turnstileResponse = $request->input('cf-turnstile-response');
+        $verifyResponse = \Illuminate\Support\Facades\Http::asForm()->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
+            'secret' => env('TURNSTILE_SECRET_KEY'),
+            'response' => $turnstileResponse,
+            'remoteip' => $request->ip(),
+        ]);
+
+        if (!$verifyResponse->json('success')) {
+            Log::warning('Validasi Cloudflare Turnstile gagal.', ['ip' => $request->ip(), 'login_input' => $request->login]);
+            throw ValidationException::withMessages([
+                'captcha' => 'Keamanan Cloudflare gagal. Pastikan Anda bukan robot.',
+            ]);
+        }
+        // ====================================================================
+
         $this->validateLogin($request);
         $credentials = $this->credentials($request);
 
