@@ -91,8 +91,9 @@ class CustomerResetPasswordController extends Controller
         // ====================================================================
         try {
             DB::transaction(function () use ($user, $request, $table, $identifierForToken) {
-                // Update menggunakan Hash facade
-                $user->password = Hash::make($request->password);
+                
+                // UBAH 'password' menjadi 'password_hash' sesuai database Anda
+                $user->password_hash = Hash::make($request->password);
                 $user->save();
 
                 // Hapus token yang sudah terpakai
