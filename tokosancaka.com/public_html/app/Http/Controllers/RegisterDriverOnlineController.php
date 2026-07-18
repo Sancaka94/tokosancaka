@@ -17,10 +17,8 @@ class RegisterDriverOnlineController extends Controller
     public function create()
     {
         $turnstileSiteKey = env('TURNSTILE_SITE_KEY');
-        $recaptchaSiteKey = env('RECAPTCHA_SITE_KEY'); // v2
-        $recaptchaEntSiteKey = env('RECAPTCHA_ENT_SITE_KEY'); // Enterprise
 
-        return view('public.register_driver', compact('turnstileSiteKey', 'recaptchaSiteKey', 'recaptchaEntSiteKey'));
+        return view('public.register_driver', compact('turnstileSiteKey'));
     }
 
     public function store(Request $request)
@@ -43,41 +41,6 @@ class RegisterDriverOnlineController extends Controller
 
         if (!$verifyTurnstile->json('success')) {
             return redirect()->back()->withInput()->with('error', 'Validasi Cloudflare gagal. Terindikasi sebagai Bot/Spam.');
-        }
-
-        // --- 2. VALIDASI KEAMANAN GOOGLE RECAPTCHA V2 ---
-        $recaptchaResponse = $request->input('g-recaptcha-response');
-        if (empty($recaptchaResponse)) {
-            return redirect()->back()->withInput()->with('error', 'Google reCAPTCHA wajib dicentang.');
-        }
-
-        $verifyRecaptcha = Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify', [
-            'secret' => env('RECAPTCHA_SECRET_KEY'),
-            'response' => $recaptchaResponse,
-            'remoteip' => $request->ip()
-        ]);
-
-        if (!$verifyRecaptcha->json('success')) {
-            return redirect()->back()->withInput()->with('error', 'Validasi Google reCAPTCHA gagal. Terindikasi sebagai Bot/Spam.');
-        }
-
-        // --- 3. VALIDASI KEAMANAN GOOGLE RECAPTCHA ENTERPRISE / v3 ---
-        $recaptchaEntResponse = $request->input('g-recaptcha-enterprise-response');
-        if (empty($recaptchaEntResponse)) {
-            return redirect()->back()->withInput()->with('error', 'Sistem Keamanan Latar Belakang (Enterprise) gagal mendeteksi aktivitas Anda.');
-        }
-
-        $verifyRecaptchaEnt = Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify', [
-            'secret' => env('RECAPTCHA_ENT_SECRET_KEY'),
-            'response' => $recaptchaEntResponse,
-            'remoteip' => $request->ip()
-        ]);
-
-        $entData = $verifyRecaptchaEnt->json();
-
-        // Cek skor v3 (Score 0.0 - 1.0). Di bawah 0.5 biasanya bot.
-        if (!$entData['success'] || (isset($entData['score']) && $entData['score'] < 0.5)) {
-            return redirect()->back()->withInput()->with('error', 'Aktivitas Anda terdeteksi sebagai Bot oleh AI Google (Skor rendah). Pendaftaran ditolak.');
         }
 
         $messages = [

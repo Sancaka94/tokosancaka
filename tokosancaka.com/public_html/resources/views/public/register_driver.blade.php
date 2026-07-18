@@ -145,7 +145,6 @@
                     <form action="{{ route('driver.register.store') }}" method="POST" enctype="multipart/form-data" id="formPendaftaran">
                         @csrf
 
-                        <input type="hidden" name="g-recaptcha-enterprise-response" id="g-recaptcha-enterprise-response">
 
                         <div class="row g-5">
                             {{-- ================= KOLOM KIRI (Informasi Pribadi & Kendaraan) ================= --}}
@@ -631,8 +630,6 @@
 
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
-{{-- Script reCAPTCHA Enterprise persis seperti panduan di screenshot --}}
-<script src="https://www.google.com/recaptcha/enterprise.js?render=6Lcl1VktAAAAAF08veZxdCGBDlsSppcrELGoSfAN" async defer></script>
 
 
 <script>
@@ -692,47 +689,6 @@
         if(lngInput) lngInput.addEventListener('input', checkSubmitStatus);
         if(captchaInput) captchaInput.addEventListener('input', checkSubmitStatus);
 
-        // 2. EVENT FORM SUBMIT (MENGGUNAKAN reCAPTCHA ENTERPRISE INVISIBLE)
-        if(form) {
-            form.addEventListener('submit', function(e) {
-                // Tahan form agar tidak langsung terkirim
-                e.preventDefault();
-
-                submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Sistem Keamanan Google Bekerja...';
-                submitBtn.classList.replace('btn-danger', 'btn-secondary');
-                submitBtn.disabled = true;
-
-                // Eksekusi reCAPTCHA Enterprise
-                grecaptcha.enterprise.ready(async () => {
-                    try {
-                        // Gunakan Site Key Enterprise Anda
-                        const token = await grecaptcha.enterprise.execute('6Lcl1VktAAAAAF08veZxdCGBDlsSppcrELGoSfAN', {action: 'REGISTER_DRIVER'});
-
-                        // Masukkan token ke input hidden
-                        let hiddenInput = document.getElementById('g-recaptcha-enterprise-response');
-                        if (!hiddenInput) {
-                            hiddenInput = document.createElement('input');
-                            hiddenInput.type = 'hidden';
-                            hiddenInput.name = 'g-recaptcha-enterprise-response';
-                            hiddenInput.id = 'g-recaptcha-enterprise-response';
-                            form.appendChild(hiddenInput);
-                        }
-                        hiddenInput.value = token;
-
-                        // Lanjutkan pengiriman form (Gunakan requestSubmit agar HTML5 validation tidak di-bypass)
-                        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Mengunggah Berkas...';
-                        form.requestSubmit();
-
-                    } catch (error) {
-                        console.error("Gagal verifikasi reCAPTCHA:", error);
-                        alert("Gagal memverifikasi keamanan Google. Silakan coba lagi.");
-                        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i> Kirim Ulang';
-                        submitBtn.classList.replace('btn-secondary', 'btn-danger');
-                        submitBtn.disabled = false;
-                    }
-                });
-            });
-        }
 
         // 3. EVENT DETEKSI GPS MAPS
         if(btnGetLocation) {
