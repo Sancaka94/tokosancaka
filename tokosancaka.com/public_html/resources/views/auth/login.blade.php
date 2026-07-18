@@ -155,6 +155,15 @@
                     <hr class="w-25 mx-auto opacity-100 border-2 rounded">
                     <p class="mt-4 small text-white-50">Solusi pengiriman paket cepat, aman, dan terpercaya ke seluruh penjuru negeri.</p>
                 </div>
+
+                   {{-- ========================================== --}}
+                    {{-- WIDGET CLOUDFLARE TURNSTILE --}}
+                    <div class="mb-3 d-flex justify-content-center">
+                        <div class="cf-turnstile" data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}" data-callback="onTurnstileSuccess"></div>
+                    </div>
+                    {{-- ========================================== --}}
+
+
             </div>
 
             {{-- 2. SISI KANAN (Form & Aksi) --}}
@@ -221,13 +230,6 @@
                         </div>
                         <input type="text" class="form-control text-center" name="captcha" placeholder="Masukkan karakter di atas" required autocomplete="off">
                     </div>
-
-                    {{-- ========================================== --}}
-                    {{-- WIDGET CLOUDFLARE TURNSTILE --}}
-                    <div class="mb-3 d-flex justify-content-center">
-                        <div class="cf-turnstile" data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}" data-callback="onTurnstileSuccess"></div>
-                    </div>
-                    {{-- ========================================== --}}
 
                     {{-- Opsi Bawah Form --}}
                     <div class="d-flex justify-content-between align-items-center mb-4">
