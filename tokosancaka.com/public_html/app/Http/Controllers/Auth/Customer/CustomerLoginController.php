@@ -119,6 +119,9 @@ class CustomerLoginController extends Controller
             $seconds = RateLimiter::availableIn($throttleKey);
             $minutes = ceil($seconds / 60);
             
+            // TAMBAHAN: Simpan waktu kedaluwarsa ke session agar tahan dari Refresh
+            session()->put('login_locked_until', now()->addSeconds($seconds));
+            
             Log::warning('Login diblokir sementara karena terlalu banyak percobaan.', [
                 'ip' => $request->ip(), 
                 'login_input' => $request->login

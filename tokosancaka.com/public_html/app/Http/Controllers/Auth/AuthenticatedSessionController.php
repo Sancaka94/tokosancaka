@@ -37,7 +37,7 @@ class AuthenticatedSessionController extends Controller
     {
         Log::info('Proses login (sebelum OTP) dimulai.');
 
-        // ====================================================================
+       // ====================================================================
         // LIMITER: MAKSIMAL 3X GAGAL, KUNCI 5 MENIT
         // ====================================================================
         $throttleKey = Str::lower($request->input('login')) . '|' . $request->ip();
@@ -45,6 +45,9 @@ class AuthenticatedSessionController extends Controller
         if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
             $seconds = RateLimiter::availableIn($throttleKey);
             $minutes = ceil($seconds / 60);
+            
+            // TAMBAHAN: Simpan waktu kedaluwarsa ke session agar tahan dari Refresh
+            session()->put('login_locked_until', now()->addSeconds($seconds));
             
             Log::warning('Login diblokir sementara karena terlalu banyak percobaan.', [
                 'ip' => $request->ip(), 
@@ -159,7 +162,7 @@ class AuthenticatedSessionController extends Controller
             // ================================================================
             RateLimiter::clear($throttleKey); // Reset hitungan menjadi 0 karena sukses
             // ================================================================
-            
+
             Log::info('Kredensial valid. Melanjutkan ke proses OTP.');
 
             $user = DB::table('Pengguna')->where($loginField, $loginValue)->first();

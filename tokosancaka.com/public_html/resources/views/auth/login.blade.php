@@ -317,10 +317,17 @@
     let isGpsActive = false;
     let isTurnstileSuccess = false;
 
-    // ====================================================================
-    // 1. TANGKAP PESAN ERROR LIMIT DARI BACKEND LARAVEL
+   // ====================================================================
+    // 1. TANGKAP PESAN ERROR DAN SESSION DARI BACKEND
     // ====================================================================
     let isRateLimited = false;
+
+    // Cek Session: Apakah waktu saat ini masih di bawah batas waktu tunggu?
+    @if(session()->has('login_locked_until') && now()->lessThan(session('login_locked_until')))
+        isRateLimited = true;
+    @endif
+
+    // Cek Pesan Error (sebagai lapisan pelindung ganda)
     @if($errors->any())
         @foreach($errors->all() as $error)
             @if(str_contains(strtolower($error), 'terlalu banyak percobaan'))
