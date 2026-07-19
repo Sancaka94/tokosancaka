@@ -157,14 +157,19 @@ use App\Http\Controllers\Auth\Customer\CustomerLoginController;
 
 use App\Http\Controllers\ShortUrlController;
 
+// 1. ROUTE UNTUK HALAMAN ADMIN
+Route::get('/admin/short-urls', [ShortUrlController::class, 'index']);
+Route::get('/admin/short-urls/create', [ShortUrlController::class, 'create']); // Tambahkan rute untuk halaman form tambah
+Route::delete('/admin/short-urls/{id}', [ShortUrlController::class, 'destroy']); // Tambahkan rute untuk aksi hapus (delete)
+
+// 2. ROUTE UNTUK SUBMIT/GENERATE (KODE ANDA)
 // Route untuk submit/generate URL (Contoh menggunakan POST)
 Route::post('/shorten', [ShortUrlController::class, 'store']);
 
+// 3. ROUTE UNTUK REDIRECT (KODE ANDA - DIPINDAH KE PALING BAWAH)
 // Route untuk menangkap URL Pendek dan melakukan redirect
 // Pastikan route ini diletakkan di paling bawah agar tidak bentrok dengan route lain
 Route::get('/{short_code}', [ShortUrlController::class, 'redirect']);
-
-Route::get('/admin/short-urls', [ShortUrlController::class, 'index']);
 
 
 

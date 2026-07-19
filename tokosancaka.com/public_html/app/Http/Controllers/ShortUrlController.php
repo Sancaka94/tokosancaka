@@ -9,60 +9,60 @@ use Illuminate\Support\Str;
 class ShortUrlController extends Controller
 {
     public function index()
-{
-    // Mengambil data untuk tabel
-    $shortUrls = \App\Models\ShortUrl::paginate(10);
-    // Menghitung total data
-    $totalLinks = \App\Models\ShortUrl::count();
+    {
+        // PERBAIKAN: Dibuat latest() agar data terbaru tampil paling atas
+        $shortUrls = ShortUrl::latest()->paginate(10);
+        $totalLinks = ShortUrl::count();
 
-    // Pastikan path view sesuai dengan lokasi file Anda (resources/views/short-urls/index.blade.php)
-    return view('short-urls.index', compact('shortUrls', 'totalLinks'));
-}
+        return view('short-urls.index', compact('shortUrls', 'totalLinks'));
+    }
 
-    // Fungsi untuk menggenerate URL Pendek
+    // Tambahkan di dalam ShortUrlController
+    public function create()
+    {
+        return view('short-urls.create'); // Pastikan Anda membuat file view ini nantinya
+    }
+
     public function store(Request $request)
     {
         $request->validate([
             'original_url' => 'required|url'
         ]);
 
-        // Generate kode acak 6 karakter
         $shortCode = Str::random(6);
 
-        // Pastikan kode acak belum pernah ada di database
         while (ShortUrl::where('short_code', $shortCode)->exists()) {
             $shortCode = Str::random(6);
         }
 
-        // Simpan ke database
         $shortUrl = ShortUrl::create([
             'original_url' => $request->original_url,
             'short_code' => $shortCode
         ]);
 
-        // Kembalikan response (Bisa diubah ke view atau JSON API)
-        return response()->json([
-            'success' => true,
-            'short_link' => url('/' . $shortCode),
-            'original_url' => $shortUrl->original_url
-        ]);
+        // PERBAIKAN: Redirect kembali ke halaman index daripada menampilkan JSON
+        return redirect('/admin/short-urls')->with('success', 'Short URL berhasil dibuat!');
     }
 
-    // Fungsi untuk melakukan Redirect saat link pendek diakses
     public function redirect($short_code)
     {
-        // Cari data berdasarkan kode pendek
         $shortUrl = ShortUrl::where('short_code', $short_code)->first();
 
-        // Jika tidak ditemukan, tampilkan error 404
         if (!$shortUrl) {
             abort(404, 'Link tidak ditemukan');
         }
 
-        // (Opsional) Tambah counter klik
         $shortUrl->increment('clicks');
 
-        // Redirect ke link panjang yang asli
         return redirect()->away($shortUrl->original_url);
+    }
+
+    // PENAMBAHAN: Fungsi untuk menghapus data dari database
+    public function destroy($id)
+    {
+        $shortUrl = ShortUrl::findOrFail($id);
+        $shortUrl->delete();
+
+        return redirect()->back()->with('success', 'Short URL berhasil dihapus!');
     }
 }

@@ -5,7 +5,7 @@
 @section('content')
 <div class="max-w-7xl mx-auto p-6 space-y-6">
 
-    <!-- Header Section (Next.js inspired: semantic & clean) -->
+    <!-- Header Section -->
     <header class="flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold text-gray-900">Short URLs</h1>
@@ -16,7 +16,7 @@
         </a>
     </header>
 
-    <!-- Stats Overview (Optional, feels like dashboard components) -->
+    <!-- Stats Overview -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
             <p class="text-sm text-gray-500 uppercase tracking-wider font-semibold">Total Links</p>
@@ -24,14 +24,21 @@
         </div>
     </div>
 
-    <!-- Data Table (Clean, Responsive) -->
+    <!-- Alert Success (Opsional untuk notifikasi aksi sukses) -->
+    @if(session('success'))
+    <div class="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-lg" role="alert">
+        {{ session('success') }}
+    </div>
+    @endif
+
+    <!-- Data Table -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm text-left">
                 <thead class="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-100">
                     <tr>
                         <th class="px-6 py-4 font-semibold">Short Code</th>
-                        <th class="px-6 py-4 font-semibold">Destination</th>
+                        <th class="px-6 py-4 font-semibold">Original URL</th>
                         <th class="px-6 py-4 font-semibold">Created</th>
                         <th class="px-6 py-4 font-semibold text-right">Actions</th>
                     </tr>
@@ -39,11 +46,21 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse($shortUrls as $url)
                     <tr class="hover:bg-gray-50 transition">
-                        <td class="px-6 py-4 font-mono text-blue-600 font-medium">{{ $url->short_code }}</td>
-                        <td class="px-6 py-4 text-gray-600 truncate max-w-xs">{{ $url->destination_url }}</td>
+                        <td class="px-6 py-4 font-mono text-blue-600 font-medium">
+                            <a href="{{ url('/' . $url->short_code) }}" target="_blank">{{ $url->short_code }}</a>
+                        </td>
+                        <!-- PERBAIKAN: Mengubah destination_url menjadi original_url -->
+                        <td class="px-6 py-4 text-gray-600 truncate max-w-xs" title="{{ $url->original_url }}">
+                            {{ $url->original_url }}
+                        </td>
                         <td class="px-6 py-4 text-gray-500">{{ $url->created_at->format('d M Y') }}</td>
                         <td class="px-6 py-4 text-right">
-                            <button class="text-gray-400 hover:text-red-500 transition">Delete</button>
+                            <!-- PERBAIKAN: Menambahkan Form Delete -->
+                            <form action="{{ url('/admin/short-urls/' . $url->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin ingin menghapus URL ini?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-gray-400 hover:text-red-500 transition">Delete</button>
+                            </form>
                         </td>
                     </tr>
                     @empty
