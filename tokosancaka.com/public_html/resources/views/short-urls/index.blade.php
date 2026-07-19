@@ -11,9 +11,9 @@
             <h1 class="text-2xl font-bold text-gray-900">Short URLs</h1>
             <p class="text-gray-500">Kelola semua link singkat Anda di satu tempat.</p>
         </div>
-        <button class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm">
+        <a href="/admin/short-urls/create" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm no-underline">
             <span class="mr-2">+</span> Tambah Link Baru
-        </button>
+        </a>
     </header>
 
     <!-- Stats Overview (Optional, feels like dashboard components) -->
