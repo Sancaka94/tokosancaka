@@ -235,6 +235,14 @@
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Generate Barcode</span>
             </a>
 
+            {{-- Manage Short URL --}}
+            <a href="{{ url('admin/short-urls') }}" wire:navigate
+               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+               class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->is('admin/short-urls*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                <i class="fa-solid fa-link fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->is('admin/short-urls*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Short URLs</span>
+            </a>
+
             {{-- ================= MARKETPLACE ================= --}}
 
             {{-- Marketplace Dropdown --}}
