@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\RegistrasiDriverSancaka; // <-- TAMBAHAN: Import Model Driver
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -12,13 +13,13 @@ use Illuminate\Http\Request;
 use App\Services\FonnteService;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth; 
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 
 use App\Notifications\NotifikasiUmum;
-use Laravel\Socialite\Facades\Socialite; // <-- TAMBAHAN: Import Socialite
-use Illuminate\Http\RedirectResponse;    // <-- TAMBAHAN: Untuk tipe return redirect
-use Jenssegers\Agent\Agent;              // <-- TAMBAHAN: Import library Agent
+use Laravel\Socialite\Facades\Socialite;
+use Illuminate\Http\RedirectResponse;
+use Jenssegers\Agent\Agent;
 
 class CustomerRegisterController extends Controller
 {
@@ -72,7 +73,7 @@ class CustomerRegisterController extends Controller
             'role'         => 'Pelanggan',
             'is_verified'  => 1,
             'status'       => 'Tidak Aktif',
-            'setup_token'  => $otp, 
+            'setup_token'  => $otp,
         ]);
 
         $user->refresh();
@@ -80,28 +81,54 @@ class CustomerRegisterController extends Controller
         Log::info('User berhasil disimpan ke database.', ['id_pengguna' => $user->id_pengguna ?? $user->id]);
 
         // ====================================================================
-        // TAMBAHAN: UPDATE LOKASI, IP, & USER AGENT (REGISTER MANUAL)
+        // TAMBAHAN: AUTO JOIN AKUN DENGAN DATA DRIVER (BERDASARKAN WA / NAMA)
+        // ====================================================================
+        try {
+            $driverMatch = RegistrasiDriverSancaka::where('nomor_wa', $data['no_wa'])
+                            ->orWhere('nama_lengkap', $data['nama_lengkap'])
+                            ->first();
+
+            // Jika ada data driver yang cocok dan belum punya akun (id_pengguna kosong)
+            if ($driverMatch && empty($driverMatch->id_pengguna)) {
+                // Tautkan ID pengguna
+                $driverMatch->update(['id_pengguna' => $user->id_pengguna ?? $user->id]);
+
+                // Jika status driver sudah di-approve oleh admin, otomatis jadikan user ini Driver
+                if ($driverMatch->status === 'approved') {
+                    $user->update([
+                        'role' => 'Driver',
+                        'status' => 'Aktif' // Opsional: Langsung aktifkan akunnya
+                    ]);
+                }
+
+                Log::info('Berhasil Auto-Join akun baru dengan data Pendaftaran Driver.', [
+                    'user_id' => $user->id_pengguna ?? $user->id,
+                    'driver_id' => $driverMatch->id
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Gagal melakukan auto-join data driver manual: ' . $e->getMessage());
+        }
+        // ====================================================================
+
+        // ====================================================================
+        // UPDATE LOKASI, IP, & USER AGENT (REGISTER MANUAL)
         // ====================================================================
         try {
             $agent = new Agent();
             $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
 
-            // Menggunakan helper request() untuk mengambil data dari form
             $user->update([
                 'ip_address' => request()->ip(),
                 'user_agent' => $deviceInfo,
                 'latitude'   => request()->input('latitude'),
                 'longitude'  => request()->input('longitude'),
             ]);
-            
-            Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Manual Register).', [
-                'user_id' => $user->id_pengguna ?? $user->id, 
-                'ip' => request()->ip()
-            ]);
+
+            Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Manual Register).');
         } catch (\Exception $e) {
             Log::error('Gagal menyimpan data keamanan register manual: ' . $e->getMessage());
         }
-        // ====================================================================
 
         // --- Notifikasi ke Admin ---
         try {
@@ -124,8 +151,6 @@ class CustomerRegisterController extends Controller
         // ====================================================================
         // 3. PEMBUATAN LINK OTP OTOMATIS & PENGIRIMAN WHATSAPP
         // ====================================================================
-        
-        // Link mengarah ke form OTP Registrasi (customer.otp.form)
         $otpLink = route('customer.otp.form') . '?otp=' . $otp;
 
         $message = <<<TEXT
@@ -147,31 +172,26 @@ TEXT;
 
         $noWa = preg_replace('/^0/', '62', $user->no_wa);
 
-        Log::info('Mencoba mengirim OTP Registrasi ke WhatsApp.', ['no_wa' => $noWa]);
         try {
             FonnteService::sendMessage($noWa, $message);
             FonnteService::sendMessage('085745808809', $message); // Copy notif owner
-            Log::info('OTP Registrasi berhasil dikirim ke WhatsApp.', ['no_wa' => $noWa]);
         } catch (\Exception $e) {
-            Log::error('FonnteService gagal kirim OTP Registrasi: ' . $e->getMessage(), ['no_wa' => $noWa]);
+            Log::error('FonnteService gagal kirim OTP Registrasi: ' . $e->getMessage());
         }
 
         // ====================================================================
         // 4. KIRIM KODE OTP KE EMAIL JIKA TERSEDIA
         // ====================================================================
         if (!empty($user->email)) {
-            Log::info('Mencoba mengirim OTP Registrasi ke Email.', ['email' => $user->email]);
             try {
                 $emailBody = "Halo Kak {$user->nama_lengkap},\n\nPendaftaran akun Sancaka Express Anda berhasil. Berikut adalah KODE OTP rahasia Anda:\n\n{$otp}\n\nAtau klik link berikut untuk verifikasi otomatis:\n{$otpLink}\n\nJika butuh bantuan, silakan hubungi Admin.\n\nHormat kami,\nManajemen Sancaka";
-                
+
                 Mail::raw($emailBody, function ($mail) use ($user) {
                     $mail->to($user->email)
                          ->subject('Kode Verifikasi (OTP) Registrasi Sancaka');
                 });
-                
-                Log::info('OTP Registrasi berhasil dikirim ke Email: ' . $user->email);
             } catch (\Exception $e) {
-                Log::error('Gagal kirim OTP Registrasi ke Email: ' . $e->getMessage(), ['email' => $user->email]);
+                Log::error('Gagal kirim OTP Registrasi ke Email: ' . $e->getMessage());
             }
         }
 
@@ -189,7 +209,7 @@ TEXT;
 
         // Simpan nomor WA ke session sementara untuk dicek di halaman verifikasi OTP
         session(['otp_no_wa' => $user->no_wa]);
-        $request->session()->save(); 
+        $request->session()->save();
 
         return redirect()->route('customer.otp.form')
                          ->with('info', 'Pendaftaran berhasil. Silakan cek WhatsApp atau Email Anda untuk mendapatkan kode OTP.');
@@ -209,7 +229,7 @@ TEXT;
     {
         try {
             Log::info('Proses callback Google Auth (Registrasi) dimulai.');
-            
+
             $googleUser = Socialite::driver('google')->user();
             Log::info('Data Google diterima.', ['email' => $googleUser->getEmail()]);
 
@@ -219,7 +239,7 @@ TEXT;
             if (!$user) {
                 // Jika tidak ada, buat akun baru secara otomatis
                 Log::info('Email tidak ditemukan, membuat user baru dari Google.', ['email' => $googleUser->getEmail()]);
-                
+
                 $user = User::create([
                     'nama_lengkap' => $googleUser->getName(),
                     'email'        => $googleUser->getEmail(),
@@ -227,10 +247,34 @@ TEXT;
                     'status'       => 'Menunggu Setup', // STATUS INI AKAN MEMAKSA MEREKA KE HALAMAN SETUP
                     'password'     => bcrypt(Str::random(16)), // Generate password acak
                 ]);
+
+                // ====================================================================
+                // TAMBAHAN: AUTO JOIN AKUN DENGAN DATA DRIVER (BERDASARKAN NAMA GOOGLE)
+                // ====================================================================
+                try {
+                    // Karena Google tidak memberikan Nomor WA, kita cocokkan dari Namanya
+                    $driverMatch = RegistrasiDriverSancaka::where('nama_lengkap', $googleUser->getName())->first();
+
+                    if ($driverMatch && empty($driverMatch->id_pengguna)) {
+                        $driverMatch->update(['id_pengguna' => $user->id_pengguna ?? $user->id]);
+
+                        if ($driverMatch->status === 'approved') {
+                            $user->update(['role' => 'Driver']);
+                        }
+
+                        Log::info('Berhasil Auto-Join akun Google baru dengan data Driver.', [
+                            'user_id' => $user->id_pengguna ?? $user->id,
+                            'driver_id' => $driverMatch->id
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Gagal melakukan auto-join data driver via Google: ' . $e->getMessage());
+                }
+                // ====================================================================
             }
 
             // ====================================================================
-            // TAMBAHAN: UPDATE LOKASI, IP, & USER AGENT (REGISTER GOOGLE)
+            // UPDATE LOKASI, IP, & USER AGENT (REGISTER GOOGLE)
             // ====================================================================
             try {
                 $agent = new Agent();
@@ -242,15 +286,9 @@ TEXT;
                     'latitude'   => $request->input('latitude'),
                     'longitude'  => $request->input('longitude'),
                 ]);
-
-                Log::info('Data IP, Agent, dan Koordinat berhasil disimpan (Google Register).', [
-                    'user_id' => $user->id_pengguna ?? $user->id, 
-                    'ip' => $request->ip()
-                ]);
             } catch (\Exception $e) {
                 Log::error('Gagal menyimpan data keamanan register Google: ' . $e->getMessage());
             }
-            // ====================================================================
 
             // Langsung login-kan user tersebut
             Auth::guard('web')->login($user);
@@ -259,17 +297,13 @@ TEXT;
             Log::info('Registrasi/Login Google berhasil.', ['email' => $user->email]);
 
             // ====================================================================
-            // CEK KELENGKAPAN PROFIL (Sesuai Permintaan)
+            // CEK KELENGKAPAN PROFIL
             // ====================================================================
-            // Jika status masih menunggu setup ATAU nomor WA masih kosong, lempar ke Setup Profil
             if ($user->status !== 'Aktif' || empty($user->no_wa)) {
-                Log::info('Profil belum lengkap. Mengarahkan pengguna ke halaman Setup Profile.', ['user_id' => $user->id_pengguna]);
                 return redirect()->route('customer.profile.setup')
                                  ->with('info', 'Akun berhasil ditautkan! Silakan lengkapi profil Anda terlebih dahulu.');
             }
 
-            // Jika kebetulan dia sudah punya akun lengkap dan mengklik tombol Daftar Google,
-            // arahkan langsung ke dashboard sesuai role-nya.
             $role = strtolower(trim($user->role));
             if ($role === 'admin') {
                 return redirect()->route('admin.dashboard');

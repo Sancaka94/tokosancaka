@@ -48,7 +48,7 @@ class RegisterController extends Controller
         try {
             // 1. Cari semua admin
             $admins = User::where('role', 'admin')->get();
-            
+
             if ($admins->count() > 0) {
                 // 2. Buat payload notifikasi
                 $dataNotifAdmin = [
@@ -58,7 +58,7 @@ class RegisterController extends Controller
                     'url'         => route('admin.registrations.index'), // Link ke halaman registrasi
                     'icon'        => 'fas fa-user-plus',
                 ];
-                
+
                 // 3. Kirim notifikasi ke semua admin
                 Notification::send($admins, new NotifikasiUmum($dataNotifAdmin));
             }
