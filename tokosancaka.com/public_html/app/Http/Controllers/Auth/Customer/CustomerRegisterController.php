@@ -63,7 +63,11 @@ class CustomerRegisterController extends Controller
         // 1. Generate OTP DULU SEBELUM CREATE
         $otp = strtoupper(Str::random(6));
 
-        // 2. Masukkan ke dalam proses create
+        // Ambil data device
+        $agent = new Agent();
+        $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
+
+        // 2. Masukkan ke dalam proses create LANGSUNG DENGAN LOKASI
         $user = User::create([
             'store_name'   => $data['store_name'],
             'nama_lengkap' => $data['nama_lengkap'],
@@ -74,6 +78,11 @@ class CustomerRegisterController extends Controller
             'is_verified'  => 1,
             'status'       => 'Tidak Aktif',
             'setup_token'  => $otp,
+            // LANGSUNG MASUKKAN DI SINI:
+            'ip_address'   => request()->ip(),
+            'user_agent'   => $deviceInfo,
+            'latitude'     => request()->input('latitude'),
+            'longitude'  => request()->input('longitude'),
         ]);
 
         $user->refresh();
@@ -245,7 +254,8 @@ TEXT;
                     'email'        => $googleUser->getEmail(),
                     'role'         => 'Pelanggan', // Role default pendaftar
                     'status'       => 'Menunggu Setup', // STATUS INI AKAN MEMAKSA MEREKA KE HALAMAN SETUP
-                    'password'     => bcrypt(Str::random(16)), // Generate password acak
+                    // PERBAIKAN: Hapus bcrypt() karena Model sudah menghandlenya
+                    'password'     => Str::random(16),
                 ]);
 
                 // ====================================================================

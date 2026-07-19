@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Pengguna;
+use App\Models\RegistrasiDriverSancaka; // <-- PERBAIKAN: Import Model Driver
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
@@ -143,7 +144,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function register(Request $request)
+  public function register(Request $request)
     {
         // 1. Validasi Input
         $validator = Validator::make($request->all(), [
@@ -158,21 +159,63 @@ class AuthController extends Controller
             return response()->json(['success' => false, 'message' => 'Validasi gagal', 'errors' => $validator->errors()], 422);
         }
 
-        // 2. Buat User Baru
+        // --- Deteksi Device API ---
+        $deviceInfo = $request->header('User-Agent');
+        if (class_exists(\Jenssegers\Agent\Agent::class)) {
+            $agent = new Agent();
+            $agent->setUserAgent($request->header('User-Agent'));
+            $deviceInfo = $agent->browser() . ' on ' . $agent->platform();
+        }
+
+        // 2. Buat User Baru (DENGAN MENYISIPKAN LOKASI & IP)
         $user = User::create([
             'store_name'   => $request->store_name,
             'nama_lengkap' => $request->nama_lengkap,
             'email'        => $request->email,
             'no_wa'        => $request->no_wa,
+            // PERBAIKAN: Hapus bcrypt() karena Model User sudah memiliki Mutator password
             'password'     => $request->password,
             'role'         => 'Pelanggan',
             'is_verified'  => 1,
             'status'       => 'Tidak Aktif',
+            'ip_address'   => $request->ip(),
+            'user_agent'   => $deviceInfo,
+            'latitude'     => $request->latitude,
+            'longitude'    => $request->longitude,
         ]);
 
         $token = strtoupper(Str::random(6));
         $user->setup_token = $token;
         $user->save();
+
+        // ====================================================================
+        // PERBAIKAN: TAMBAHAN AUTO-JOIN DATA DRIVER DI API MOBILE
+        // ====================================================================
+        try {
+            $driverMatch = RegistrasiDriverSancaka::where('nomor_wa', $request->no_wa)
+                            ->orWhere('nama_lengkap', $request->nama_lengkap)
+                            ->first();
+
+            // Jika ada data driver yang cocok dan belum punya akun (id_pengguna kosong)
+            if ($driverMatch && empty($driverMatch->id_pengguna)) {
+                $driverMatch->update(['id_pengguna' => $user->id_pengguna ?? $user->id]);
+
+                // Jika status driver sudah di-approve oleh admin, otomatis jadikan user ini Driver
+                if ($driverMatch->status === 'approved') {
+                    $user->update([
+                        'role' => 'Driver',
+                        'status' => 'Aktif'
+                    ]);
+                }
+                Log::info('Berhasil Auto-Join akun API Mobile dengan data Pendaftaran Driver.', [
+                    'user_id' => $user->id_pengguna ?? $user->id,
+                    'driver_id' => $driverMatch->id
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Gagal melakukan auto-join data driver via API: ' . $e->getMessage());
+        }
+        // ====================================================================
 
         // 3. Kirim OTP (Hanya Email)
         $this->sendDualOtp($user, $token);
@@ -374,10 +417,16 @@ class AuthController extends Controller
                     'email'        => $googleUser->getEmail(),
                     'role'         => 'Pelanggan',
                     'status'       => 'Aktif',
-                    'password'     => bcrypt(Str::random(16)),
+                    // PERBAIKAN: Hapus bcrypt()
+                    'password'     => Str::random(16),
                     'is_verified'  => 1,
+                    'ip_address'   => $request->ip(),
+                    'latitude'     => $request->latitude,
+                    'longitude'    => $request->longitude,
                 ]);
                 $isNewUser = true;
+            } else {
+                $user->update(['ip_address' => $request->ip(), 'latitude' => $request->latitude, 'longitude' => $request->longitude]);
             }
 
             if ($user->status === 'Tidak Aktif') {
@@ -446,10 +495,16 @@ class AuthController extends Controller
                     'facebook_id'  => $facebookUser->getId(),
                     'role'         => 'Pelanggan',
                     'status'       => 'Aktif',
-                    'password'     => bcrypt(Str::random(16)),
+                    // PERBAIKAN: Hapus bcrypt()
+                    'password'     => Str::random(16),
                     'is_verified'  => 1,
+                    'ip_address'   => $request->ip(),
+                    'latitude'     => $request->latitude,
+                    'longitude'    => $request->longitude,
                 ]);
                 $isNewUser = true;
+            } else {
+                $user->update(['ip_address' => $request->ip(), 'latitude' => $request->latitude, 'longitude' => $request->longitude]);
             }
 
             if ($user->status === 'Tidak Aktif') {
@@ -496,8 +551,9 @@ class AuthController extends Controller
         try {
             $ip = $request->ip();
             $userAgent = $request->header('User-Agent');
-            $latitude = $request->input('latitude', 'Tidak diketahui');
-            $longitude = $request->input('longitude', 'Tidak diketahui');
+            // PERBAIKAN: Pastikan membaca dari object User yang sudah tersimpan di database
+            $latitude = !empty($user->latitude) ? $user->latitude : $request->input('latitude', 'Tidak diketahui');
+            $longitude = !empty($user->longitude) ? $user->longitude : $request->input('longitude', 'Tidak diketahui');
 
             // Deteksi jenis perangkat menggunakan Jenssegers\Agent\Agent
             $deviceInfo = $userAgent;
@@ -579,8 +635,9 @@ class AuthController extends Controller
         try {
             $ip = $request->ip();
             $userAgent = $request->header('User-Agent');
-            $latitude = $request->input('latitude', 'Tidak diketahui');
-            $longitude = $request->input('longitude', 'Tidak diketahui');
+            // PERBAIKAN: Pastikan membaca dari object User yang sudah tersimpan di database
+            $latitude = !empty($user->latitude) ? $user->latitude : $request->input('latitude', 'Tidak diketahui');
+            $longitude = !empty($user->longitude) ? $user->longitude : $request->input('longitude', 'Tidak diketahui');
 
             // Deteksi jenis perangkat
             $deviceInfo = $userAgent;
