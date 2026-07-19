@@ -155,6 +155,17 @@ use App\Http\Controllers\Admin\ProdukController; // Pastikan namespace controlle
 
 use App\Http\Controllers\Auth\Customer\CustomerLoginController;
 
+use App\Http\Controllers\ShortUrlController;
+
+// Route untuk submit/generate URL (Contoh menggunakan POST)
+Route::post('/shorten', [ShortUrlController::class, 'store']);
+
+// Route untuk menangkap URL Pendek dan melakukan redirect
+// Pastikan route ini diletakkan di paling bawah agar tidak bentrok dengan route lain
+Route::get('/{short_code}', [ShortUrlController::class, 'redirect']);
+
+
+
 // Website fontend WA Integration
 //use App\Http\Controllers\WhatsappController;
 
@@ -1859,7 +1870,7 @@ Route::post('/kontak/{id}/lengkapi-profil', [\App\Http\Controllers\PublicScanCon
 
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
-    
+
     // =========================================================================
     // 1. RUTE BARU: PERSENTASE AGENT (DataAutoKirimController)
     // =========================================================================
@@ -1868,10 +1879,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
     Route::get('data-autokirim/export/pdf', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'exportPdf'])->name('data-autokirim.export.pdf');
     // Tombol Download Template Excel
     Route::get('data-autokirim/template', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'downloadTemplate'])->name('data-autokirim.template');
-    
+
     Route::post('data-autokirim/bulk-destroy', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'bulkDestroy'])->name('data-autokirim.bulk-destroy');
     Route::post('data-autokirim/bulk-update', [\App\Http\Controllers\Admin\DataAutoKirimController::class, 'bulkUpdate'])->name('data-autokirim.bulk-update');
-    
+
     Route::resource('data-autokirim', \App\Http\Controllers\Admin\DataAutoKirimController::class);
 
     // =========================================================================
