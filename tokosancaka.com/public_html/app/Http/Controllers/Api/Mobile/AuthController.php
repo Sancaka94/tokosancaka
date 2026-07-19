@@ -176,7 +176,7 @@ class AuthController extends Controller
 
         // 3. Kirim OTP (Hanya Email)
         $this->sendDualOtp($user, $token);
-        
+
         // 4. Kirim Notifikasi Registrasi ke Admin dan CC ke Pendaftar
         $this->sendRegistrationNotification($user, $request);
 
@@ -386,7 +386,7 @@ class AuthController extends Controller
                     'message' => 'Akun belum aktif.',
                 ], 403);
             }
-            
+
             // Jika user baru daftar via Google, kirim notif registrasi
             if ($isNewUser) {
                 $this->sendRegistrationNotification($user, $request);
@@ -458,7 +458,7 @@ class AuthController extends Controller
                     'message' => 'Akun belum aktif.',
                 ], 403);
             }
-            
+
             // Jika user baru daftar via Facebook, kirim notif registrasi
             if ($isNewUser) {
                 $this->sendRegistrationNotification($user, $request);
@@ -521,7 +521,7 @@ class AuthController extends Controller
                 <div style='padding: 30px; color: #334155;'>
                     <p>Halo,</p>
                     <p>Akun atas nama <strong>{$user->nama_lengkap}</strong> baru saja melakukan login ke aplikasi Sancaka Express. Berikut adalah rincian aktivitas tersebut:</p>
-                    
+
                     <table style='width: 100%; border-collapse: collapse; margin-top: 20px; text-align: left;'>
                         <tr>
                             <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc; width: 35%;'>Metode Login</td>
@@ -558,7 +558,7 @@ class AuthController extends Controller
                 $message->to('salafy94@gmail.com')
                         ->subject("Notifikasi Keamanan: Login Baru ({$user->nama_lengkap})")
                         ->html($html);
-                
+
                 // Pastikan user punya email yang valid sebelum di CC
                 if (filter_var($emailTujuan, FILTER_VALIDATE_EMAIL) && !str_contains($emailTujuan, '@facebook.sancaka.com')) {
                     $message->cc($emailTujuan);
@@ -595,7 +595,7 @@ class AuthController extends Controller
 
             $waktu = now()->timezone('Asia/Jakarta')->format('d M Y, H:i:s T');
             $emailTujuan = !empty($user->email) ? $user->email : 'tidak-ada-email@sancaka.com';
-            
+
             // Penyesuaian tampilan agar admin tau jika ada data yang kosong (khusus login sosial media)
             $storeName = !empty($user->store_name) ? $user->store_name : '-';
             $noWa = !empty($user->no_wa) ? $user->no_wa : '-';
@@ -608,7 +608,7 @@ class AuthController extends Controller
                 <div style='padding: 30px; color: #334155;'>
                     <p>Halo,</p>
                     <p>Terdapat pendaftaran akun baru di aplikasi Sancaka Express. Berikut adalah rincian pendaftar tersebut:</p>
-                    
+
                     <table style='width: 100%; border-collapse: collapse; margin-top: 20px; text-align: left;'>
                         <tr>
                             <td style='padding: 10px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #f8fafc; width: 35%;'>Nama Lengkap</td>
@@ -653,7 +653,7 @@ class AuthController extends Controller
                 $message->to('salafy94@gmail.com')
                         ->subject("Pendaftaran Baru: {$user->nama_lengkap}")
                         ->html($html);
-                
+
                 // Pastikan user punya email yang valid sebelum di CC
                 if (filter_var($emailTujuan, FILTER_VALIDATE_EMAIL) && !str_contains($emailTujuan, '@facebook.sancaka.com')) {
                     $message->cc($emailTujuan);
@@ -664,5 +664,31 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             Log::error('Gagal mengirim notifikasi registrasi: ' . $e->getMessage());
         }
+    }
+
+    // LOG LOG: Fungsi Request Reset PIN
+    public function requestResetPin(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Email tidak terdaftar.'], 404);
+        }
+
+        // Buat token OTP 6 karakter
+        $otp = strtoupper(Str::random(6));
+
+        // Simpan ke cache selama 15 menit sesuai key yang Anda gunakan di fungsi verifikasi
+        $cacheKey = 'otp_reset_pin_' . $user->id_pengguna;
+        \Illuminate\Support\Facades\Cache::put($cacheKey, $otp, now()->addMinutes(15));
+
+        // Buat fungsi kirim email khusus Reset PIN (Bisa adaptasi dari sendDualOtp)
+        $this->sendResetPinOtp($user, $otp);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Kode OTP untuk reset PIN telah dikirim ke email Anda.'
+        ]);
     }
 }
