@@ -254,7 +254,7 @@ class ApiMapboxController extends Controller
         }
     }
 
-   public function getNearbyDrivers(Request $request)
+  public function getNearbyDrivers(Request $request)
     {
         try {
             $lat = $request->query('lat');
@@ -268,9 +268,29 @@ class ApiMapboxController extends Controller
                 ]);
             }
 
-            // 1. TARIK DRIVER BIASA (Dari tabel registrasi_driver_sancaka)
+            // ==========================================================
+            // 🔥 1. AMBIL DATA PENUMPANG UNTUK FILTER SYARIAH 🔥
+            // ==========================================================
+            $user = $request->user();
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'Sesi tidak valid / Unauthorized.'], 401);
+            }
+
+            $passengerGender = $user->jenis_kelamin;
+
+            // Wajibkan penumpang mengisi jenis kelamin di profil
+            if (empty($passengerGender)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Mohon lengkapi profil (Jenis Kelamin) Anda di pengaturan untuk menggunakan layanan Ojek Sancaka.'
+                ], 400); // 400 = Bad Request
+            }
+
+            // ==========================================================
+            // 🔥 2. TARIK DRIVER BIASA DENGAN FILTER SYARIAH 🔥
+            // ==========================================================
             $drivers = DB::table('registrasi_driver_sancaka')
-                ->selectRaw("id, id_pengguna, nama_lengkap, latitude, longitude, status, is_active_map,
+                ->selectRaw("id, id_pengguna, nama_lengkap, jenis_kelamin, latitude, longitude, status, is_active_map,
                     ( 6371 * acos( cos( radians(?) ) *
                       cos( radians( latitude ) ) *
                       cos( radians( longitude ) - radians(?) ) +
@@ -281,6 +301,7 @@ class ApiMapboxController extends Controller
                 ->where('is_active_map', 1)
                 ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
+                ->where('jenis_kelamin', $passengerGender) // <-- FILTER SYARIAH BEKERJA DI SINI
                 ->having('distance', '<=', $radius)
                 ->get();
 
@@ -298,9 +319,11 @@ class ApiMapboxController extends Controller
                 ];
             })->toArray();
 
-           // 2. TARIK ADMIN BEBAS (User ID 4 dari tabel Pengguna)
+            // ==========================================================
+            // 🔥 3. TARIK ADMIN BEBAS (DENGAN PENGECEKAN SYARIAH) 🔥
+            // ==========================================================
             $admin = DB::table('Pengguna')
-                ->selectRaw("id_pengguna, nama_lengkap, latitude, longitude, last_seen,
+                ->selectRaw("id_pengguna, nama_lengkap, jenis_kelamin, latitude, longitude, last_seen,
                     ( 6371 * acos( cos( radians(?) ) *
                       cos( radians( latitude ) ) *
                       cos( radians( longitude ) - radians(?) ) +
@@ -312,11 +335,19 @@ class ApiMapboxController extends Controller
                 ->whereNotNull('longitude')
                 ->first();
 
-            // Jika admin memiliki koordinat dan masih dalam radius
-            if ($admin && $admin->distance <= $radius) {
+            // Evaluasi Syariah untuk Admin
+            // (Jika profil admin tidak diisi jenis kelaminnya, kita anggap dia sebagai darurat/lolos otomatis)
+            $isAdminSyariahPass = true;
+            if ($admin && !empty($admin->jenis_kelamin)) {
+                if ($admin->jenis_kelamin !== $passengerGender) {
+                    $isAdminSyariahPass = false;
+                }
+            }
 
-                // 🔥 LOGIKA DINAMIS ADMIN 🔥
-                // Cek apakah Admin Online: Jika update GPS terakhir kurang dari 3 menit yang lalu
+            // Jika admin memiliki koordinat, masih dalam radius, dan lolos filter
+            if ($admin && $admin->distance <= $radius && $isAdminSyariahPass) {
+
+                // Cek apakah Admin Online (update GPS kurang dari 3 menit lalu)
                 $isAdminOnline = false;
                 if (!empty($admin->last_seen)) {
                     $lastSeenTime = \Carbon\Carbon::parse($admin->last_seen);
@@ -325,7 +356,7 @@ class ApiMapboxController extends Controller
                     }
                 }
 
-                // Kita HANYA memunculkan Admin jika statusnya benar-benar sedang Online
+                // Tampilkan Admin hanya jika Online
                 if ($isAdminOnline) {
                     $formattedDrivers[] = [
                         'id'           => 4,
@@ -336,12 +367,12 @@ class ApiMapboxController extends Controller
                         'distance_raw' => (float) $admin->distance,
                         'lat'          => (float) $admin->latitude,
                         'lng'          => (float) $admin->longitude,
-                        'is_online'    => $isAdminOnline // <-- SEKARANG SUDAH DINAMIS
+                        'is_online'    => $isAdminOnline
                     ];
                 }
             }
 
-            // 3. URUTKAN SEMUANYA BERDASARKAN JARAK (Paling dekat ke paling jauh)
+            // 4. URUTKAN SEMUANYA BERDASARKAN JARAK (Paling dekat ke paling jauh)
             usort($formattedDrivers, function($a, $b) {
                 return $a['distance_raw'] <=> $b['distance_raw'];
             });
