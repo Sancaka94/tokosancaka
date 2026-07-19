@@ -144,15 +144,17 @@ class AuthController extends Controller
         ]);
     }
 
-  public function register(Request $request)
+ public function register(Request $request)
     {
         // 1. Validasi Input
         $validator = Validator::make($request->all(), [
-            'nama_lengkap' => ['required', 'string', 'max:255'],
-            'email'        => ['required', 'string', 'email', 'max:255', 'unique:Pengguna,email'],
-            'password'     => ['required', 'string', 'min:8', 'confirmed'],
-            'no_wa'        => ['required', 'string', 'max:15', 'unique:Pengguna,no_wa'],
-            'store_name'   => ['required', 'string'],
+            'nama_lengkap'  => ['required', 'string', 'max:255'],
+            'email'         => ['required', 'string', 'email', 'max:255', 'unique:Pengguna,email'],
+            'password'      => ['required', 'string', 'min:8', 'confirmed'],
+            'no_wa'         => ['required', 'string', 'max:15', 'unique:Pengguna,no_wa'],
+            'store_name'    => ['required', 'string'],
+            // PERBAIKAN: Tambahkan validasi jenis kelamin
+            'jenis_kelamin' => ['required', 'string', 'in:Laki-laki,Perempuan'],
         ]);
 
         if ($validator->fails()) {
@@ -169,19 +171,19 @@ class AuthController extends Controller
 
         // 2. Buat User Baru (DENGAN MENYISIPKAN LOKASI & IP)
         $user = User::create([
-            'store_name'   => $request->store_name,
-            'nama_lengkap' => $request->nama_lengkap,
-            'email'        => $request->email,
-            'no_wa'        => $request->no_wa,
-            // PERBAIKAN: Hapus bcrypt() karena Model User sudah memiliki Mutator password
-            'password'     => $request->password,
-            'role'         => 'Pelanggan',
-            'is_verified'  => 1,
-            'status'       => 'Tidak Aktif',
-            'ip_address'   => $request->ip(),
-            'user_agent'   => $deviceInfo,
-            'latitude'     => $request->latitude,
-            'longitude'    => $request->longitude,
+            'store_name'    => $request->store_name,
+            'nama_lengkap'  => $request->nama_lengkap,
+            'email'         => $request->email,
+            'no_wa'         => $request->no_wa,
+            'jenis_kelamin' => $request->jenis_kelamin, // PERBAIKAN: Simpan ke database
+            'password'      => $request->password,
+            'role'          => 'Pelanggan',
+            'is_verified'   => 1,
+            'status'        => 'Tidak Aktif',
+            'ip_address'    => $request->ip(),
+            'user_agent'    => $deviceInfo,
+            'latitude'      => $request->latitude,
+            'longitude'     => $request->longitude,
         ]);
 
         $token = strtoupper(Str::random(6));
@@ -189,7 +191,7 @@ class AuthController extends Controller
         $user->save();
 
         // ====================================================================
-        // PERBAIKAN: TAMBAHAN AUTO-JOIN DATA DRIVER DI API MOBILE
+        // AUTO-JOIN DATA DRIVER DI API MOBILE
         // ====================================================================
         try {
             $driverMatch = RegistrasiDriverSancaka::where('nomor_wa', $request->no_wa)
