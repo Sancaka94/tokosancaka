@@ -164,6 +164,8 @@ Route::post('/shorten', [ShortUrlController::class, 'store']);
 // Pastikan route ini diletakkan di paling bawah agar tidak bentrok dengan route lain
 Route::get('/{short_code}', [ShortUrlController::class, 'redirect']);
 
+Route::get('/admin/short-urls', [ShortUrlController::class, 'index']);
+
 
 
 // Website fontend WA Integration
