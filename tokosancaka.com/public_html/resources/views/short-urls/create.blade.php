@@ -35,12 +35,16 @@
                 <label for="custom_code" class="block text-sm font-medium text-gray-700 mb-2">
                     Custom Short URL (Opsional)
                 </label>
-                <div class="flex items-center">
+                <div class="flex items-center relative">
                     <span class="px-4 py-2 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-gray-500">
                         {{ url('/') }}/
                     </span>
-                    <input type="text" name="custom_code" id="custom_code" class="w-full px-4 py-2 rounded-r-lg border focus:border-blue-500 focus:ring-1 outline-none transition-colors @error('custom_code') border-red-500 @else border-gray-300 @enderror" placeholder="promo-2026" value="{{ old('custom_code') }}">
+                    <input type="text" name="custom_code" id="custom_code" autocomplete="off" class="w-full px-4 py-2 rounded-r-lg border focus:border-blue-500 focus:ring-1 outline-none transition-colors @error('custom_code') border-red-500 @else border-gray-300 @enderror" placeholder="promo-2026" value="{{ old('custom_code') }}">
                 </div>
+
+                <!-- TEMPAT MUNCULNYA TEKS TERSEDIA / TIDAK TERSEDIA -->
+                <p id="code-feedback" class="mt-2 text-sm font-bold hidden"></p>
+
                 <p class="mt-2 text-xs text-gray-400">Biarkan kosong jika ingin dibuatkan kode acak otomatis.</p>
                 @error('custom_code')
                     <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
@@ -56,4 +60,38 @@
         </form>
     </div>
 </div>
+
+<script>
+    const codeInput = document.getElementById('custom_code');
+    const feedback = document.getElementById('code-feedback');
+    let debounceTimer;
+
+    codeInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        let code = this.value.trim();
+
+        // Sembunyikan teks jika input kosong
+        if (code === '') {
+            feedback.classList.add('hidden');
+            return;
+        }
+
+        // Delay 500ms agar tidak membanjiri request ke server saat mengetik cepat
+        debounceTimer = setTimeout(() => {
+            fetch(`/admin/short-urls/check-code?code=${code}`)
+                .then(response => response.json())
+                .then(data => {
+                    feedback.classList.remove('hidden', 'text-green-600', 'text-red-600');
+                    if (data.is_available) {
+                        feedback.textContent = 'Tersedia';
+                        feedback.classList.add('text-green-600');
+                    } else {
+                        feedback.textContent = 'Tidak tersedia';
+                        feedback.classList.add('text-red-600');
+                    }
+                })
+                .catch(error => console.error('Error checking code:', error));
+        }, 500);
+    });
+</script>
 @endsection

@@ -119,4 +119,35 @@ class ShortUrlController extends Controller
 
         return redirect()->away($shortUrl->original_url);
     }
+
+    // Fungsi untuk mengecek ketersediaan custom code via AJAX
+    public function checkCode(Request $request)
+    {
+        $code = $request->query('code');
+        $currentId = $request->query('current_id'); // Digunakan saat halaman Edit
+
+        if (!$code) {
+            return response()->json(['status' => 'empty']);
+        }
+
+        // Daftar kata yang dilarang (reserved keywords)
+        $restricted = ['admin', 'login', 'register', 'shorten', 'api'];
+
+        if (in_array(strtolower($code), $restricted)) {
+            return response()->json(['is_available' => false]);
+        }
+
+        // Cek ke database
+        $query = ShortUrl::where('short_code', $code);
+
+        // Jika sedang mode edit, abaikan pengecekan untuk ID milik URL ini sendiri
+        if ($currentId) {
+            $query->where('id', '!=', $currentId);
+        }
+
+        $exists = $query->exists();
+
+        // Jika exists = true (sudah ada), maka is_available = false (tidak tersedia)
+        return response()->json(['is_available' => !$exists]);
+    }
 }
