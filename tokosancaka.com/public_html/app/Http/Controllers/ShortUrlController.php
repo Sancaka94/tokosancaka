@@ -8,6 +8,17 @@ use Illuminate\Support\Str;
 
 class ShortUrlController extends Controller
 {
+    public function index()
+{
+    // Mengambil data untuk tabel
+    $shortUrls = \App\Models\ShortUrl::paginate(10);
+    // Menghitung total data
+    $totalLinks = \App\Models\ShortUrl::count();
+
+    // Pastikan path view sesuai dengan lokasi file Anda (resources/views/short-urls/index.blade.php)
+    return view('short-urls.index', compact('shortUrls', 'totalLinks'));
+}
+
     // Fungsi untuk menggenerate URL Pendek
     public function store(Request $request)
     {
