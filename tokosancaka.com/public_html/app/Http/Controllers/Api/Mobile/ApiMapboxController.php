@@ -289,9 +289,15 @@ class ApiMapboxController extends Controller
             }
 
             // ==========================================================
-            // 🔥 2. TARIK DRIVER DARI REDIS GEOSPATIAL (100x LEBIH CEPAT) 🔥
+            // 🔥 2. TARIK DRIVER DARI REDIS GEOSPATIAL DENGAN AMAN 🔥
             // ==========================================================
-            $nearbyRaw = Redis::georadius('active_drivers', $lng, $lat, $radius, 'km', ['WITHDIST', 'ASC']);
+            $nearbyRaw = [];
+            try {
+                $nearbyRaw = Redis::georadius('active_drivers', $lng, $lat, $radius, 'km', ['WITHDIST', 'ASC']);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("[REDIS CRASH] Gagal baca georadius: " . $e->getMessage());
+                // Biarkan $nearbyRaw kosong, kode akan lanjut mencari Admin di bawah tanpa error 500
+            }
 
             $driverIds = [];
             $distances = [];
@@ -806,11 +812,12 @@ public function notify_driver(Request $request)
             Log::info("LOG LOG: Sukses Insert ke Database MySQL!");
 
             // ==========================================================
-            // 🔥 FIREBASE RTDB PUSH: KIRIM DATA ORDER KE DASHBOARD DRIVER 🔥
+            // 🔥 FIREBASE RTDB PUSH DENGAN PENCATATAN ERROR (LOG) 🔥
             // ==========================================================
             try {
                 $firebaseDbUrl = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/incoming_orders/{$driver->driver_user_id}/{$orderId}.json";
-                Http::put($firebaseDbUrl, [
+
+                $fbResponse = Http::put($firebaseDbUrl, [
                     'order_id'       => $orderId,
                     'origin_lat'     => $customerLat,
                     'origin_lng'     => $customerLng,
@@ -819,9 +826,15 @@ public function notify_driver(Request $request)
                     'tarif'          => $tarif,
                     'timestamp'      => now()->timestamp
                 ]);
-                Log::info("LOG LOG: Sukses Insert pesanan ke Firebase RTDB (Realtime UI Update).");
+
+                if ($fbResponse->successful()) {
+                    Log::info("LOG LOG: Sukses Insert pesanan ke Firebase RTDB.");
+                } else {
+                    // INI YANG PALING PENTING: Menangkap alasan Firebase menolak request
+                    Log::error("LOG LOG: 💥 FIREBASE PUT GAGAL! Status: " . $fbResponse->status() . " | Pesan: " . $fbResponse->body());
+                }
             } catch (\Exception $e) {
-                Log::warning("LOG LOG: Firebase RTDB Push Gagal: " . $e->getMessage());
+                Log::error("LOG LOG: 💥 CRASH JARINGAN SERVER KE FIREBASE: " . $e->getMessage());
             }
 
             // 3. MESIN FIREBASE CERDAS FCM (HYBRID TOKEN SYSTEM)
@@ -923,6 +936,7 @@ public function notify_driver(Request $request)
             // 3. UPDATE STATUS ORDER DI DATABASE
             $affected = DB::table('order_ojek_online')
                 ->where('order_id', $orderId)
+                ->where('status', 'pending') // 🔥 TAMBAHKAN BARIS INI (Kunci Pengaman)
                 ->update([
                     'driver_id'  => $driverUser->id_pengguna,
                     'status'     => 'accepted',
@@ -930,8 +944,11 @@ public function notify_driver(Request $request)
                 ]);
 
             if ($affected === 0) {
-                Log::warning("LOG LOG: Gagal update status menjadi accepted di database.");
-                return response()->json(['success' => false, 'message' => 'Gagal memperbarui status pesanan.'], 500);
+                Log::warning("LOG LOG: Order {$orderId} gagal diambil oleh {$driverUser->id_pengguna} (Mungkin sudah diambil driver lain).");
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Maaf, pesanan ini baru saja diambil oleh driver lain atau telah dibatalkan.'
+                ], 409); // Kembalikan error 409 Conflict
             }
 
             Log::info("LOG LOG: Pesanan {$orderId} resmi diterima oleh Driver ID: {$driverUser->id_pengguna}");
@@ -939,9 +956,16 @@ public function notify_driver(Request $request)
             // HAPUS DARI FIREBASE RTDB AGAR HILANG DARI DASHBOARD
             try {
                 $firebaseDbUrl = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/incoming_orders/{$driverUser->id_pengguna}/{$orderId}.json";
-                Http::delete($firebaseDbUrl);
-                Log::info("LOG LOG: Pesanan berhasil dihapus dari Firebase RTDB Dashboard driver.");
-            } catch (\Exception $e) {}
+                $fbResponse = Http::delete($firebaseDbUrl);
+
+                if ($fbResponse->successful()) {
+                    Log::info("LOG LOG: Pesanan berhasil dihapus dari Firebase RTDB Dashboard driver.");
+                } else {
+                    Log::error("LOG LOG: 💥 FIREBASE DELETE GAGAL! Status: " . $fbResponse->status() . " | Pesan: " . $fbResponse->body());
+                }
+            } catch (\Exception $e) {
+                Log::error("LOG LOG: 💥 CRASH JARINGAN SERVER KE FIREBASE (DELETE): " . $e->getMessage());
+            }
 
             // 4. KIRIM NOTIFIKASI KE PELANGGAN (HYBRID TOKEN SYSTEM)
             // Tarik dua jenis token milik pelanggan
