@@ -13,11 +13,13 @@ class ApiBlogController extends Controller
     {
         try {
             // 1. Ambil Kategori untuk Menu Horizontal di Expo
-            $categories = Category::withCount(['posts' => function($q) {
-                $q->where('status', 'published');
-            }])->having('posts_count', '>', 0)
+            // PERBAIKAN: select() dipindah ke atas SEBELUM withCount()
+            $categories = Category::select('id', 'name', 'slug')
+              ->withCount(['posts' => function($q) {
+                  $q->where('status', 'published');
+              }])
+              ->having('posts_count', '>', 0)
               ->orderBy('posts_count', 'desc')
-              ->select('id', 'name', 'slug')
               ->get();
 
             // 2. Query Postingan
@@ -74,7 +76,13 @@ class ApiBlogController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan sistem.'], 500);
+            // PERBAIKAN: Menampilkan error asli dari Laravel untuk mempermudah debug
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem.',
+                'debug_error' => $e->getMessage(), // Hapus baris ini nanti jika sudah masuk tahap Production
+                'line' => $e->getLine()
+            ], 500);
         }
     }
 }
