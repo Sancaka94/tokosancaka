@@ -969,7 +969,7 @@
                         </div>
 
                         {{-- 🔥 PENGATURAN KOMISI & PAJAK 🔥 --}}
-                                    <div class="pt-8 mt-6 border-t border-zinc-200">
+                                    <div class="px-6 pt-6 pb-6 mt-4 border-t border-zinc-200">
                                         <div class="mb-4">
                                             <h4 class="text-sm font-semibold text-zinc-900">Potongan Komisi Aplikasi (Fee Driver)</h4>
                                             <p class="text-xs text-zinc-500 mt-1">Atur potongan otomatis untuk Admin (User ID 4), Driver Reguler, serta Pajak Tambahan.</p>
