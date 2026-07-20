@@ -559,9 +559,9 @@ class ApiMapboxController extends Controller
             }
 
             // ==========================================================
-            // 2. RADAR SUPER ADMIN (BISA MENDETEKSI USER HINGGA 100 KM)
+            // 2. RADAR SUPER ADMIN (BISA MENDETEKSI USER HINGGA 80 KM)
             // ==========================================================
-            $adminRadarRadius = 100; // Admin punya radius 100 KM!
+            $adminRadarRadius = 80; // Admin punya radius 80 KM!
 
             $admin = DB::table('Pengguna')
                 ->selectRaw("id_pengguna, nama_lengkap, jenis_kelamin, latitude, longitude, last_seen,
