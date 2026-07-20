@@ -41,19 +41,19 @@ class AuthenticatedSessionController extends Controller
         // LIMITER: MAKSIMAL 3X GAGAL, KUNCI 5 MENIT
         // ====================================================================
         $throttleKey = Str::lower($request->input('login')) . '|' . $request->ip();
-        
+
         if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
             $seconds = RateLimiter::availableIn($throttleKey);
             $minutes = ceil($seconds / 60);
-            
+
             // TAMBAHAN: Simpan waktu kedaluwarsa ke session agar tahan dari Refresh
             session()->put('login_locked_until', now()->addSeconds($seconds));
-            
+
             Log::warning('Login diblokir sementara karena terlalu banyak percobaan.', [
-                'ip' => $request->ip(), 
+                'ip' => $request->ip(),
                 'login_input' => $request->login
             ]);
-            
+
             throw ValidationException::withMessages([
                 'login' => "Terlalu banyak percobaan login yang gagal. Silakan coba lagi dalam {$minutes} menit.",
             ]);
@@ -290,7 +290,7 @@ class AuthenticatedSessionController extends Controller
         try {
             Log::info('Proses callback Google Auth dimulai.');
 
-            $googleUser = Socialite::driver('google')->user();
+            $googleUser = Socialite::driver('google')->stateless()->user();
             Log::info('Data Google diterima.', ['email' => $googleUser->getEmail()]);
 
             $user = User::where('email', $googleUser->getEmail())->first();
@@ -379,8 +379,8 @@ class AuthenticatedSessionController extends Controller
         try {
             Log::info('Proses callback Facebook Auth dimulai.');
 
-            $facebookUser = Socialite::driver('facebook')->user();
-            
+            $facebookUser = Socialite::driver('facebook')->stateless()->user();
+
             // Fallback email: Jika akun FB daftar pakai nomor HP, email bisa null.
             $email = $facebookUser->getEmail() ?? $facebookUser->getId() . '@facebook.sancaka.com';
             Log::info('Data Facebook diterima.', ['email' => $email]);
@@ -449,7 +449,7 @@ class AuthenticatedSessionController extends Controller
                 } catch (\Exception $e) {
                 // Menambahkan array konteks ['exception' => $e] agar Laravel mencatat detail error secara lengkap
                 Log::error('Facebook Auth Gagal: ' . $e->getMessage(), ['exception' => $e]);
-                
+
                 return redirect()->route('login')->withErrors([
                     'login' => 'Terjadi kesalahan saat otentikasi menggunakan Facebook. Silakan coba lagi.'
                 ]);
