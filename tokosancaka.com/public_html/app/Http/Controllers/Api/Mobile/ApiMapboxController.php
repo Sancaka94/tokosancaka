@@ -257,174 +257,55 @@ class ApiMapboxController extends Controller
     }
 
   public function getNearbyDrivers(Request $request)
-    {
-        try {
-            $lat = (float) $request->query('lat');
-            $lng = (float) $request->query('lng');
-            $radius = 5; // Jarak maksimal dalam KM
+{
+    try {
+        $lat = (float) $request->query('lat');
+        $lng = (float) $request->query('lng');
+        $radius = 5; // KM
 
-            if (!$lat || !$lng) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Titik kordinat asal tidak ditemukan.'
-                ]);
-            }
+        if (!$lat || !$lng) return response()->json(['success' => false, 'message' => 'Kordinat tidak ditemukan.']);
 
-            // ==========================================================
-            // 🔥 1. AMBIL DATA PENUMPANG UNTUK FILTER SYARIAH 🔥
-            // ==========================================================
-            $user = $request->user();
-            if (!$user) {
-                return response()->json(['success' => false, 'message' => 'Sesi tidak valid / Unauthorized.'], 401);
-            }
+        $user = $request->user();
+        $passengerGender = $user->jenis_kelamin;
+        if (empty($passengerGender)) {
+            return response()->json(['success' => false, 'message' => 'Lengkapi Jenis Kelamin di profil Anda.'], 400);
+        }
 
-            $passengerGender = $user->jenis_kelamin;
+        // 1. TARIK DARI REDIS GEOSPATIAL
+        $nearbyRaw = Redis::georadius('active_drivers', $lng, $lat, $radius, 'km', ['WITHDIST', 'ASC']);
+        $formattedDrivers = [];
 
-            // Wajibkan penumpang mengisi jenis kelamin di profil
-            if (empty($passengerGender)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Mohon lengkapi profil (Jenis Kelamin) Anda di pengaturan untuk menggunakan layanan Ojek Sancaka.'
-                ], 400);
-            }
+        // 2. [REFACTOR]: TARIK METADATA DARI REDIS HASH (ZERO MYSQL QUERY!)
+        if (!empty($nearbyRaw)) {
+            foreach ($nearbyRaw as $item) {
+                $dId = is_array($item) ? $item[0] : ($item->member ?? $item);
+                $dist = is_array($item) ? (float) $item[1] : ((float) $item->distance ?? 0);
 
-            // ==========================================================
-            // 🔥 2. TARIK DRIVER DARI REDIS GEOSPATIAL DENGAN AMAN 🔥
-            // ==========================================================
-            $nearbyRaw = [];
-            try {
-                $nearbyRaw = Redis::georadius('active_drivers', $lng, $lat, $radius, 'km', ['WITHDIST', 'ASC']);
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("[REDIS CRASH] Gagal baca georadius: " . $e->getMessage());
-                // Biarkan $nearbyRaw kosong, kode akan lanjut mencari Admin di bawah tanpa error 500
-            }
+                // Ambil profil driver dari memory Redis
+                $meta = Redis::hgetall("driver_meta:{$dId}");
 
-            $driverIds = [];
-            $distances = [];
-
-            if (!empty($nearbyRaw)) {
-                foreach ($nearbyRaw as $item) {
-                    if (is_array($item) && count($item) >= 2) {
-                        $dId = $item[0];
-                        $dist = (float) $item[1];
-                    } elseif (is_object($item)) {
-                        $dId = $item->member ?? $item->name;
-                        $dist = (float) $item->distance;
-                    } else {
-                        $dId = is_array($item) ? $item[0] : $item;
-                        $dist = 0;
-                    }
-                    $driverIds[] = $dId;
-                    $distances[$dId] = $dist;
-                }
-            }
-
-            $formattedDrivers = [];
-
-            // Fetch Driver detail dari DB hanya jika ID ketemu di Redis
-            if (!empty($driverIds)) {
-                $drivers = DB::table('registrasi_driver_sancaka')
-                    ->selectRaw("id, id_pengguna, nama_lengkap, jenis_kelamin, latitude, longitude, status, is_active_map")
-                    ->whereIn('id_pengguna', $driverIds)
-                    ->where('status', 'approved')
-                    ->where('is_active_map', 1)
-                    ->where('jenis_kelamin', $passengerGender) // <-- FILTER SYARIAH BEKERJA DI SINI
-                    ->get();
-
-                foreach ($drivers as $driver) {
-                    $distance = $distances[$driver->id_pengguna] ?? 0;
+                // Jika meta ada di Redis dan lolos filter Syariah (Gender)
+                if (!empty($meta) && isset($meta['gender']) && $meta['gender'] === $passengerGender) {
                     $formattedDrivers[] = [
-                        'id'           => $driver->id,
-                        'id_pengguna'  => $driver->id_pengguna,
-                        'name'         => $driver->nama_lengkap,
-                        'vehicle'      => 'Ojek Sancaka',
-                        'distance'     => round($distance, 1) . ' KM',
-                        'distance_raw' => (float) $distance,
-                        'lat'          => (float) $driver->latitude,
-                        'lng'          => (float) $driver->longitude,
-                        'is_online'    => $driver->is_active_map == 1
+                        'id' => (int) ($meta['id'] ?? $dId),
+                        'id_pengguna' => (int) $dId,
+                        'name' => $meta['name'] ?? 'Driver Sancaka',
+                        'vehicle' => $meta['vehicle'] ?? 'Ojek Sancaka',
+                        'distance' => round($dist, 1) . ' KM',
+                        'distance_raw' => $dist,
+                        'lat' => (float) ($meta['lat'] ?? 0),
+                        'lng' => (float) ($meta['lng'] ?? 0),
+                        'is_online' => true
                     ];
                 }
             }
-
-            // ==========================================================
-            // 🔥 3. TARIK ADMIN BEBAS (DENGAN PENGECEKAN SYARIAH) 🔥
-            // ==========================================================
-            // Tetap pertahankan MySQL Haversine ini khusus untuk ID 4 buat jaga-jaga kalau dia nggak terdaftar di Redis
-            $admin = DB::table('Pengguna')
-                ->selectRaw("id_pengguna, nama_lengkap, jenis_kelamin, latitude, longitude, last_seen,
-                    ( 6371 * acos( cos( radians(?) ) *
-                      cos( radians( latitude ) ) *
-                      cos( radians( longitude ) - radians(?) ) +
-                      sin( radians(?) ) *
-                      sin( radians( latitude ) ) )
-                    ) AS distance", [$lat, $lng, $lat])
-                ->where('id_pengguna', 4)
-                ->whereNotNull('latitude')
-                ->whereNotNull('longitude')
-                ->first();
-
-            // Evaluasi Syariah untuk Admin
-            $isAdminSyariahPass = true;
-            if ($admin && !empty($admin->jenis_kelamin)) {
-                if ($admin->jenis_kelamin !== $passengerGender) {
-                    $isAdminSyariahPass = false;
-                }
-            }
-
-            // Jika admin memiliki koordinat, masih dalam radius, dan lolos filter
-            if ($admin && $admin->distance <= $radius && $isAdminSyariahPass) {
-                // Cek apakah Admin Online (update GPS kurang dari 3 menit lalu)
-                $isAdminOnline = false;
-                if (!empty($admin->last_seen)) {
-                    $lastSeenTime = \Carbon\Carbon::parse($admin->last_seen);
-                    if ($lastSeenTime->diffInMinutes(now()) <= 3) {
-                        $isAdminOnline = true;
-                    }
-                }
-
-                // Tampilkan Admin hanya jika Online
-                if ($isAdminOnline) {
-                    // Hindari duplikasi jika Admin sudah ditarik via Redis
-                    $adminSudahAda = array_filter($formattedDrivers, function($d) {
-                        return $d['id_pengguna'] == 4;
-                    });
-
-                    if (empty($adminSudahAda)) {
-                        $formattedDrivers[] = [
-                            'id'           => 4,
-                            'id_pengguna'  => 4,
-                            'name'         => 'Pusat Radar Sancaka (Admin)',
-                            'vehicle'      => 'Sancaka Express',
-                            'distance'     => round($admin->distance, 1) . ' KM',
-                            'distance_raw' => (float) $admin->distance,
-                            'lat'          => (float) $admin->latitude,
-                            'lng'          => (float) $admin->longitude,
-                            'is_online'    => $isAdminOnline
-                        ];
-                    }
-                }
-            }
-
-            // 4. URUTKAN SEMUANYA BERDASARKAN JARAK (Paling dekat ke paling jauh)
-            usort($formattedDrivers, function($a, $b) {
-                return $a['distance_raw'] <=> $b['distance_raw'];
-            });
-
-            return response()->json([
-                'success' => true,
-                'data'    => $formattedDrivers
-            ]);
-
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("[API DRIVER NEARBY] Error: " . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan sistem saat mencari driver.',
-                'error'   => $e->getMessage()
-            ], 500);
         }
+
+        return response()->json(['success' => true, 'data' => $formattedDrivers]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => 'Gagal sistem: ' . $e->getMessage()], 500);
     }
+}
 
     /**
      * 1. CEK STATUS DRIVER BERDASARKAN ID PENGGUNA AUTH
@@ -581,89 +462,79 @@ class ApiMapboxController extends Controller
         }
     }
 
-   public function toggleMap(Request $request)
-    {
-        try {
-            $user = $request->user();
-            $idPengguna = $user->id_pengguna;
-            $isActive = $request->input('is_active_map'); // 1 atau 0
+  public function toggleMap(Request $request)
+{
+    try {
+        $user = $request->user();
+        $idPengguna = $user->id_pengguna;
+        $isActive = $request->input('is_active_map'); // 1 atau 0
 
-            // HAPUS KOORDINAT DARI REDIS & FIREBASE JIKA OFFLINE
-            if ($isActive == 0) {
-                try {
-                    Redis::zrem('active_drivers', $idPengguna);
-
-                    $firebaseUrl = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/incoming_orders/{$idPengguna}.json";
-                    Http::delete($firebaseUrl);
-                } catch (\Exception $e) {
-                    Log::warning("Gagal hapus Redis/Firebase saat offline: " . $e->getMessage());
-                }
+        if ($isActive == 1) {
+            // [REFACTOR]: Ambil data dari MySQL SEKALI SAJA saat online, lalu simpan ke Redis Hash
+            $driver = DB::table('registrasi_driver_sancaka')->where('id_pengguna', $idPengguna)->first();
+            if ($driver) {
+                Redis::hmset("driver_meta:{$idPengguna}", [
+                    'id' => $driver->id,
+                    'id_pengguna' => $driver->id_pengguna,
+                    'name' => $driver->nama_lengkap,
+                    'gender' => $driver->jenis_kelamin,
+                    'vehicle' => 'Ojek Sancaka',
+                    'is_online' => 1
+                ]);
             }
+        } else {
+            // HAPUS DARI REDIS & FIREBASE SAAT OFFLINE
+            Redis::zrem('active_drivers', $idPengguna);
+            Redis::del("driver_meta:{$idPengguna}");
 
-            // 👇 DETEKSI JIKA YANG MENEKAN SAKLAR ADALAH ADMIN
-            if ($idPengguna == 4 || $user->role === 'Admin') {
-                if ($isActive == 0) {
-                    DB::table('Pengguna')->where('id_pengguna', $idPengguna)->update([
-                        'latitude'  => null,
-                        'longitude' => null
-                    ]);
-                }
-            } else {
-                // 👇 JIKA DRIVER BIASA
-                DB::table('registrasi_driver_sancaka')
-                    ->where('id_pengguna', $idPengguna)
-                    ->update([
-                        'is_active_map' => $isActive,
-                        'updated_at'    => now()
-                    ]);
-            }
-
-            return response()->json(['success' => true, 'message' => 'Status aktif berhasil diubah.']);
-        } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            $firebaseUrl = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/incoming_orders/{$idPengguna}.json";
+            Http::delete($firebaseUrl);
         }
+
+        // Simpan status online ke MySQL hanya untuk persistensi jangka panjang (tidak apa-apa karena jarang dilakukan)
+        DB::table('registrasi_driver_sancaka')->where('id_pengguna', $idPengguna)->update(['is_active_map' => $isActive]);
+
+        return response()->json(['success' => true, 'message' => 'Status aktif berhasil diubah.']);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
+}
 
    public function updateLocation(Request $request)
-    {
+{
+    try {
+        $user = $request->user();
+        $idPengguna = $user->id_pengguna;
+        $lat = (float) $request->input('latitude');
+        $lng = (float) $request->input('longitude');
+
+        // 1. SIMPAN KE REDIS GEOSPATIAL (Untuk Radar Penumpang & Jarak)
         try {
-            $user = $request->user();
-            $idPengguna = $user->id_pengguna;
-            $lat = $request->input('latitude');
-            $lng = $request->input('longitude');
-
-            // 1. TAMBAHKAN LOKASI KE REDIS GEOSPATIAL
-            try {
-                Redis::geoadd('active_drivers', $lng, $lat, $idPengguna);
-            } catch (\Exception $e) {
-                Log::warning("LOG LOG: Gagal update lokasi di Redis: " . $e->getMessage());
-            }
-
-            // 👇 DETEKSI: Jika Admin, simpan koordinat ke tabel Pengguna
-            if ($idPengguna == 4 || $user->role === 'Admin') {
-                DB::table('Pengguna')
-                    ->where('id_pengguna', $idPengguna)
-                    ->update([
-                        'latitude'   => $lat,
-                        'longitude'  => $lng,
-                        'last_seen'  => now() // Memanfaatkan kolom last_seen
-                    ]);
-            } else {
-                // 👇 Jika driver biasa, simpan ke tabel registrasi driver
-                DB::table('registrasi_driver_sancaka')
-                    ->where('id_pengguna', $idPengguna)
-                    ->update([
-                        'latitude'   => $lat,
-                        'longitude'  => $lng,
-                        'updated_at' => now()
-                    ]);
-            }
-
-            return response()->json(['success' => true, 'message' => 'Koordinat GPS sinkron ke server Redis & MySQL.']);
+            Redis::geoadd('active_drivers', $lng, $lat, $idPengguna);
+            // Simpan juga koordinat terakhir ke Redis Hash untuk fallback cepat
+            Redis::hset("driver_meta:{$idPengguna}", 'lat', $lat, 'lng', $lng, 'last_updated', time());
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            Log::warning("Gagal update lokasi di Redis: " . $e->getMessage());
         }
+
+        // 2. SIMPAN KE FIREBASE RTDB (Agar Penumpang Bisa Melacak via SDK tanpa Polling API)
+        // [REFACTOR]: Hapus total update ke MySQL (registrasi_driver_sancaka & Pengguna)!
+        try {
+            $firebaseUrl = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/drivers_live_gps/{$idPengguna}.json";
+            Http::put($firebaseUrl, [
+                'lat' => $lat,
+                'lng' => $lng,
+                'updated_at' => time()
+            ]);
+        } catch (\Exception $e) {
+            Log::warning("Gagal sync GPS ke Firebase RTDB: " . $e->getMessage());
+        }
+
+        return response()->json(['success' => true, 'message' => 'GPS Tersinkron ke Redis & Firebase.']);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
     }
+}
 
    /**
      * Hitung Jarak Haversine antar dua titik koordinat (dalam Meter)
@@ -1356,25 +1227,36 @@ public function notify_driver(Request $request)
         }
     }
 
-    /**
-  * Endpoint GET: /api/mobile/order/track-driver/{driver_id}
-  * Digunakan oleh pelanggan untuk menarik koordinat realtime driver
-  */
  public function track_driver($driver_id)
- {
-     $driver = DB::table('registrasi_driver_sancaka')->where('id_pengguna', $driver_id)->first();
+{
+    try {
+        // [REFACTOR]: Ambil langsung dari Redis Geopos atau Redis Meta
+        $meta = Redis::hgetall("driver_meta:{$driver_id}");
 
-     if (!$driver) {
-         return response()->json(['success' => false, 'message' => 'Driver tidak ditemukan']);
-     }
+        if (empty($meta) || !isset($meta['lat'])) {
+            // Fallback cari di Geopos jika di hash kosong
+            $pos = Redis::geopos('active_drivers', $driver_id);
+            if (!empty($pos) && !empty($pos[0])) {
+                return response()->json([
+                    'success' => true,
+                    'latitude' => (float) $pos[0][1],
+                    'longitude' => (float) $pos[0][0],
+                    'is_online' => true
+                ]);
+            }
+            return response()->json(['success' => false, 'message' => 'Driver sedang offline atau GPS tidak aktif.']);
+        }
 
-     return response()->json([
-         'success' => true,
-         'latitude' => (float) $driver->latitude,
-         'longitude' => (float) $driver->longitude,
-         'is_online' => $driver->is_active_map
-     ]);
- }
+        return response()->json([
+            'success' => true,
+            'latitude' => (float) $meta['lat'],
+            'longitude' => (float) $meta['lng'],
+            'is_online' => ($meta['is_online'] ?? 0) == 1
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => 'Gagal melacak: ' . $e->getMessage()], 500);
+    }
+}
 
 /**
      * Endpoint GET: /api/mobile/order/history
