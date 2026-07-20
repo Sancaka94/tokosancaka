@@ -85,4 +85,44 @@ class ApiBlogController extends Controller
             ], 500);
         }
     }
+
+    public function getPostDetail($slug)
+{
+    try {
+        // Cari postingan berdasarkan slug
+        $post = Post::where('slug', $slug)
+            ->where('status', 'published')
+            ->with('category:id,name') // Ambil relasi kategori
+            ->first();
+
+        // Jika tidak ketemu
+        if (!$post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Artikel tidak ditemukan.'
+            ], 404);
+        }
+
+        // Jika ketemu, format datanya agar sesuai dengan React Native
+        $formattedPost = [
+            'id' => $post->id,
+            'title' => $post->title,
+            'content' => $post->content, // Ini berisi teks HTML utuh
+            'featured_image' => $post->featured_image,
+            'category_name' => $post->category ? $post->category->name : 'Berita',
+            'date' => $post->created_at->format('d M Y'),
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => $formattedPost
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Terjadi kesalahan sistem.'
+        ], 500);
+    }
+}
 }
