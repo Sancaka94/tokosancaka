@@ -1436,58 +1436,89 @@ public function notify_driver(Request $request)
     }
 
    /**
-     * Helper Private: Generate Access Token FCM V1 Murni Tanpa Package Google
+     * Helper Private: Generate Access Token FCM V1 (Sistem Kebal / Auto-Fallback)
      */
     private function getGoogleAccessToken()
     {
         return Cache::remember('fcm_access_token', 3000, function () {
             $jsonKeyPath = storage_path('app/firebase-auth.json');
 
+            // Cek keberadaan file kunci rahasia
             if (!file_exists($jsonKeyPath)) {
-                \Illuminate\Support\Facades\Log::error("File firebase-auth.json tidak ditemukan di storage/app/");
+                \Illuminate\Support\Facades\Log::error("FCM Token: File firebase-auth.json tidak ditemukan di storage/app/");
                 return null;
             }
 
             $keyData = json_decode(file_get_contents($jsonKeyPath), true);
             if (!$keyData || !isset($keyData['private_key'])) {
-                \Illuminate\Support\Facades\Log::error("Format JSON firebase-auth.json tidak valid.");
+                \Illuminate\Support\Facades\Log::error("FCM Token: Format JSON firebase-auth.json tidak valid.");
                 return null;
             }
 
-            // 1. Buat Header & Claim JWT
-            $header = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
-            $now = time();
-            $claim = json_encode([
-                'iss' => $keyData['client_email'],
-                'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
-                'aud' => 'https://oauth2.googleapis.com/token',
-                'exp' => $now + 3600,
-                'iat' => $now
-            ]);
+            // ========================================================
+            // PERCOBAAN 1: JALUR NINJA (Murni PHP OpenSSL) - Paling Cepat
+            // ========================================================
+            try {
+                $header = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
+                $now = time();
+                $claim = json_encode([
+                    'iss' => $keyData['client_email'],
+                    'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+                    'aud' => 'https://oauth2.googleapis.com/token',
+                    'exp' => $now + 3600,
+                    'iat' => $now
+                ]);
 
-            // 2. Base64Url Encode
-            $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
-            $base64UrlClaim = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($claim));
+                $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+                $base64UrlClaim = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($claim));
 
-            // 3. Buat Signature menggunakan Private Key (Murni PHP OpenSSL)
-            $signature = '';
-            openssl_sign($base64UrlHeader . '.' . $base64UrlClaim, $signature, $keyData['private_key'], 'SHA256');
-            $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+                $signature = '';
+                openssl_sign($base64UrlHeader . '.' . $base64UrlClaim, $signature, $keyData['private_key'], 'SHA256');
+                $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
 
-            // 4. Gabungkan menjadi JWT utuh
-            $jwt = $base64UrlHeader . '.' . $base64UrlClaim . '.' . $base64UrlSignature;
+                $jwt = $base64UrlHeader . '.' . $base64UrlClaim . '.' . $base64UrlSignature;
 
-            // 5. Tembak ke server Google untuk ditukar dengan Access Token
-            $response = \Illuminate\Support\Facades\Http::asForm()->post('https://oauth2.googleapis.com/token', [
-                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-                'assertion' => $jwt
-            ]);
+                // Set timeout 5 detik agar tidak membebani server jika Google sedang lemot
+                $response = \Illuminate\Support\Facades\Http::timeout(5)->asForm()->post('https://oauth2.googleapis.com/token', [
+                    'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                    'assertion' => $jwt
+                ]);
 
-            if ($response->successful()) {
-                return $response->json('access_token');
+                if ($response->successful() && $response->json('access_token')) {
+                    // Sukses menggunakan Jalur Ninja
+                    return $response->json('access_token');
+                }
+            } catch (\Throwable $th) {
+                // Jika Jalur Ninja error, kita biarkan lolos untuk mencoba Jalur Kedua
+                \Illuminate\Support\Facades\Log::warning("FCM Token: Jalur Ninja gagal (" . $th->getMessage() . "). Beralih mencoba Jalur Resmi...");
             }
 
-            \Illuminate\Support\Facades\Log::error("Gagal buat token FCM V1 manual: " . $response->body());
+            // ========================================================
+            // PERCOBAAN 2: JALUR RESMI (Google Auth Library) - Fallback
+            // ========================================================
+            try {
+                // PENGAMAN: Cek dulu apakah library Google di folder vendor benar-benar ada
+                // Ini mencegah terjadinya error 'Class not found' yang bikin web down
+                if (!class_exists('\Google\Auth\Credentials\ServiceAccountCredentials')) {
+                    throw new \Exception("Library Google tidak ditemukan di folder vendor.");
+                }
+
+                $credentials = new \Google\Auth\Credentials\ServiceAccountCredentials(
+                    'https://www.googleapis.com/auth/firebase.messaging',
+                    $keyData
+                );
+
+                $token = $credentials->fetchAuthToken()['access_token'];
+
+                if ($token) {
+                    // Sukses menggunakan Jalur Resmi
+                    return $token;
+                }
+            } catch (\Throwable $th) {
+                \Illuminate\Support\Facades\Log::error("FCM Token: Jalur Resmi Google juga gagal (" . $th->getMessage() . ")");
+            }
+
+            // Jika kedua jalur gagal, kembalikan null
             return null;
         });
     }
