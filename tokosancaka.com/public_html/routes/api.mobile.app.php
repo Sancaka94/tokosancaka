@@ -157,6 +157,8 @@ Route::prefix('public')->group(function () {
     // Marketplace & PPOB Publik (Katalog)
     Route::get('/etalase', [\App\Http\Controllers\Api\Mobile\MarketplaceController::class, 'katalog']);
     Route::get('/ppob/pricelist', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'pricelist']);
+
+    Route::get('/blog/posts', [\App\Http\Controllers\Api\Mobile\ApiBlogController::class, 'getPosts']);
 });
 
 // -------------------------------------------------------------------------
