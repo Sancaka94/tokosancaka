@@ -1515,10 +1515,15 @@ public function notify_driver(Request $request)
     {
         try {
             $user = $request->user();
-            $userId = $user->id_pengguna;
+
+            // PERBAIKAN: Jika id_pengguna null, gunakan id default laravel
+            $userId = $user->id_pengguna ?? $user->id;
+
+            // PERBAIKAN: Pastikan status admin konsisten
             $isAdmin = ($userId == 4 || $user->role === 'Admin');
 
             // 1. Tarik Aturan Komisi & Pajak Saat Ini
+            // (Kode ke bawahnya tetap sama, biarkan tidak berubah...)
             $adminFeeType = \App\Models\Api::getValue('KOMISI_ADMIN_TYPE', 'global', 'percent');
             $adminFeeAmount = (float) \App\Models\Api::getValue('KOMISI_ADMIN_AMOUNT', 'global', 0);
 
@@ -1641,7 +1646,11 @@ public function notify_driver(Request $request)
     {
         try {
             $user = $request->user();
-            if ($user->id_pengguna != 4 && $user->role !== 'Admin') {
+
+            // PERBAIKAN: Gunakan fallback null coalescing
+            $userId = $user->id_pengguna ?? $user->id;
+
+            if ($userId != 4 && $user->role !== 'Admin') {
                 return response()->json(['success' => false, 'message' => 'Hanya Admin yang dapat menghapus riwayat komisi.'], 403);
             }
 
