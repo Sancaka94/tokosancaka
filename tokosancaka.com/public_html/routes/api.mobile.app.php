@@ -159,6 +159,8 @@ Route::prefix('public')->group(function () {
     Route::get('/ppob/pricelist', [\App\Http\Controllers\Api\Mobile\PpobController::class, 'pricelist']);
 
     Route::get('/blog/posts', [\App\Http\Controllers\Api\Mobile\ApiBlogController::class, 'getPosts']);
+    // Tambahkan di bawah rute getPosts yang sudah ada
+    Route::get('/blog/posts/{slug}', [\App\Http\Controllers\Api\Mobile\ApiBlogController::class, 'getPostDetail']);
 });
 
 // -------------------------------------------------------------------------
