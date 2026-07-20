@@ -33,7 +33,7 @@ class ProfileController extends Controller
         // 1. Menggunakan Validator::make agar bisa mengembalikan response JSON manual jika gagal
         $validator = Validator::make($request->all(), [
             'nama_lengkap'          => ['required', 'string', 'max:255'],
-            // Menggunakan ignore berdasarkan id user yang sedang login
+            'jenis_kelamin'         => ['required', 'string', 'in:Laki-laki,Perempuan'],
             'no_wa'                 => ['required', 'string', 'max:20', Rule::unique('Pengguna', 'no_wa')->ignore($user->id_pengguna, 'id_pengguna')],
             'store_name'            => ['nullable', 'string', 'max:255'],
             'store_logo'            => ['nullable', 'image', 'max:4096'], // Diperbesar menjadi 4MB untuk berjaga-jaga dari kamera HP
