@@ -741,5 +741,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     });
 
-Route::get('/order/komisi-fee', [ApiMapboxController::class, 'getKomisiFee']);
-Route::post('/order/komisi-fee/bulk-delete', [ApiMapboxController::class, 'bulkDeleteKomisiFee']);
+// CONTOH YANG BENAR:
+Route::middleware('auth:sanctum')->group(function () {
+    // Pastikan route ini ada DI DALAM kurung kurawal middleware ini!
+    Route::get('/order/komisi-fee', [ApiMapboxController::class, 'getKomisiFee']);
+    Route::post('/order/komisi-fee/bulk-delete', [ApiMapboxController::class, 'bulkDeleteKomisiFee']);
+});
