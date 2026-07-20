@@ -968,6 +968,76 @@
                             </div>
                         </div>
 
+                        {{-- 🔥 TAMBAHAN: PENGATURAN KOMISI DRIVER 🔥 --}}
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 mt-6 border-t border-zinc-200">
+                                        <div class="md:col-span-3 mb-2">
+                                            <h4 class="text-sm font-semibold text-zinc-900">Potongan Komisi Aplikasi (Fee Driver)</h4>
+                                            <p class="text-xs text-zinc-500 mt-1">Atur potongan otomatis untuk Admin (User ID 4) dan Driver Reguler.</p>
+                                        </div>
+
+                                        {{-- KOMISI ADMIN --}}
+                                        <div class="bg-zinc-50 border border-zinc-200 p-4 rounded-lg space-y-4">
+                                            <h6 class="font-bold text-xs text-zinc-800 uppercase border-b border-zinc-200 pb-2">Komisi Admin (ID 4)</h6>
+                                            <div>
+                                                <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Tipe Potongan</label>
+                                                <select name="komisi_admin_type" x-model="mapboxData.komisi.admin_type" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-xs p-2 border bg-white">
+                                                    <option value="percent">Persentase (%)</option>
+                                                    <option value="nominal">Nominal Tetap (Rp)</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Besaran / Nilai</label>
+                                                <input type="number" name="komisi_admin_amount" x-model="mapboxData.komisi.admin_amount" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 sm:text-xs p-2 border" required min="0">
+                                                <p class="text-[10px] text-zinc-500 mt-1">Isi 0 jika Admin bebas potongan.</p>
+                                            </div>
+                                        </div>
+
+                                        {{-- KOMISI DRIVER REGULER --}}
+                                        <div class="bg-zinc-50 border border-zinc-200 p-4 rounded-lg space-y-4 md:col-span-2">
+                                            <h6 class="font-bold text-xs text-zinc-800 uppercase border-b border-zinc-200 pb-2">Komisi Driver Reguler</h6>
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Tipe Potongan</label>
+                                                    <select name="komisi_driver_type" x-model="mapboxData.komisi.driver_type" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-xs p-2 border bg-white">
+                                                        <option value="percent">Persentase (%)</option>
+                                                        <option value="nominal">Nominal Tetap (Rp)</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Besaran / Nilai</label>
+                                                    <input type="number" name="komisi_driver_amount" x-model="mapboxData.komisi.driver_amount" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 sm:text-xs p-2 border" required min="0">
+                                                    <p class="text-[10px] text-zinc-500 mt-1">Misal: Tipe % isi 10. Tipe Rp isi 2000.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {{-- 🔥 PAJAK & BIAYA TAMBAHAN (MUNCUL DI HALAMAN DRIVER) 🔥 --}}
+                                        <div class="bg-zinc-50 border border-zinc-200 p-4 rounded-lg space-y-4 md:col-span-3 mt-2">
+                                            <h6 class="font-bold text-xs text-zinc-800 uppercase border-b border-zinc-200 pb-2">Pajak & Biaya Tambahan (Global)</h6>
+                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                {{-- Input Pajak --}}
+                                                <div>
+                                                    <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Pajak Aplikasi (%)</label>
+                                                    <input type="number" step="0.1" name="komisi_pajak_percent" x-model="mapboxData.komisi.pajak_percent" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 sm:text-xs p-2 border" required min="0">
+                                                    <p class="text-[10px] text-zinc-500 mt-1">Dipotong dari total tarif.</p>
+                                                </div>
+                                                {{-- Input Nominal Tambahan --}}
+                                                <div>
+                                                    <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Biaya Tambahan (Rp)</label>
+                                                    <input type="number" name="komisi_biaya_nominal" x-model="mapboxData.komisi.biaya_nominal" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 sm:text-xs p-2 border" required min="0">
+                                                    <p class="text-[10px] text-zinc-500 mt-1">Potongan flat/nominal tetap.</p>
+                                                </div>
+                                                {{-- Input Keterangan Nominal --}}
+                                                <div>
+                                                    <label class="block text-[10px] font-medium text-zinc-700 uppercase mb-1">Keterangan Biaya Tambahan</label>
+                                                    <input type="text" name="komisi_biaya_ket" x-model="mapboxData.komisi.biaya_ket" class="block w-full rounded-md border-zinc-300 focus:border-zinc-900 sm:text-xs p-2 border font-medium text-blue-700" required>
+                                                    <p class="text-[10px] text-zinc-500 mt-1">Teks ini akan muncul di aplikasi driver.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    {{-- 🔥 AKHIR TAMBAHAN KOMISI 🔥 --}}
+
                         <div class="flex justify-end p-6 bg-zinc-50 rounded-b-lg">
                             <button type="submit" class="bg-zinc-900 text-white px-5 py-2 rounded shadow-sm hover:bg-zinc-800 text-sm font-medium transition-colors">Simpan Pengaturan</button>
                         </div>

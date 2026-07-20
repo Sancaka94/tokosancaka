@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
 use Intervention\Image\Laravel\Facades\Image;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -1029,6 +1030,18 @@ public function notify_driver(Request $request)
         Log::info("=== [API DRIVER UPDATE STATUS] REQUEST MASUK ===");
         Log::info("LOG LOG: Payload Request: ", $request->all());
 
+        // =========================================================================
+        // 🔥 1. FITUR IDEMPOTENCY (PENCEGAH DOUBLE REQUEST SAAT JARINGAN LAG) 🔥
+        // =========================================================================
+        $idempotencyKey = $request->header('Idempotency-Key');
+        if ($idempotencyKey) {
+            // Jika request yang sama sudah pernah diproses, langsung kembalikan respon sukses yang tersimpan
+            if (\Illuminate\Support\Facades\Cache::has('idempotency_' . $idempotencyKey)) {
+                Log::warning("LOG LOG: Idempotency Terdeteksi! Request duplikat dicegah untuk key: " . $idempotencyKey);
+                return \Illuminate\Support\Facades\Cache::get('idempotency_' . $idempotencyKey);
+            }
+        }
+
         try {
             $orderId = $request->input('order_id');
             $newStatus = $request->input('status');
@@ -1038,63 +1051,135 @@ public function notify_driver(Request $request)
                 return response()->json(['success' => false, 'message' => 'Data tidak lengkap.'], 400);
             }
 
-            // 1. CEK DULU KONDISI ORDER SAAT INI (MENCEGAH SALDO MASUK 2X)
-            $order = DB::table('order_ojek_online')->where('order_id', $orderId)->first();
-
-            if (!$order) {
-                return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404);
-            }
-
-            // PENGAMAN MUTLAK: Jika sudah completed, hentikan eksekusi!
-            if ($order->status === 'completed' || $order->status === 'selesai') {
-                Log::warning("LOG LOG: Pencegahan Dobel Saldo! Order {$orderId} sudah selesai sebelumnya.");
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Pesanan ini sudah selesai sebelumnya.'
-                ]);
-            }
-
-            // 2. UPDATE STATUS DI DATABASE
-            $affected = DB::table('order_ojek_online')
-                ->where('order_id', $orderId)
-                ->where('driver_id', $driverUser->id_pengguna)
-                ->update([
-                    'status'     => $newStatus,
-                    'updated_at' => now()
-                ]);
-
-            if ($affected === 0) {
-                Log::warning("LOG LOG: Gagal update status! Order ID {$orderId} tidak valid untuk Driver ID {$driverUser->id_pengguna}.");
-                return response()->json(['success' => false, 'message' => 'Gagal mengubah status. Pesanan tidak ditemukan atau akses ditolak.'], 403);
-            }
-            Log::info("LOG LOG: Database berhasil diupdate ke status: {$newStatus}");
-
             // =========================================================================
-            // 🔥 LOGIKA SALDO MASUK KE AKUN DRIVER (Hanya Jika Status = completed) 🔥
+            // 🔥 2. DATABASE TRANSACTION & LOCK (PENCEGAH RACE CONDITION SALDO) 🔥
             // =========================================================================
-            if ($newStatus === 'completed' || $newStatus === 'selesai') {
-                $tarifBersih = (float) $order->tarif;
-                // Jika aplikasi potong komisi admin misal 10%, rumusnya: $tarifBersih * 0.9;
+            // Kita pisahkan proses edit DB di dalam blok transaksi khusus agar aman
+            $transactionResult = DB::transaction(function () use ($orderId, $newStatus, $driverUser) {
 
-                // 1. Tambahkan saldo ke akun Driver
-                DB::table('Pengguna')
-                    ->where('id_pengguna', $driverUser->id_pengguna)
-                    ->increment('saldo', $tarifBersih);
+                // 1. CEK KONDISI ORDER + MENGUNCI BARIS (lockForUpdate)
+                // Ini mencegah 2 request memodifikasi row pesanan ini dalam waktu bersamaan
+                $order = DB::table('order_ojek_online')
+                    ->where('order_id', $orderId)
+                    ->lockForUpdate()
+                    ->first();
 
-                Log::info("LOG LOG: SALDO Rp {$tarifBersih} MASUK KE DRIVER ID {$driverUser->id_pengguna} UNTUK ORDER {$orderId}");
-
-                // 2. Potong saldo dari akun Penumpang (JIKA METODE PEMBAYARAN = SALDO)
-                if (strtoupper($order->metode_pembayaran) === 'SALDO') {
-                    DB::table('Pengguna')
-                        ->where('id_pengguna', $order->customer_id)
-                        ->decrement('saldo', $tarifBersih);
-
-                    Log::info("LOG LOG: SALDO PENUMPANG ID {$order->customer_id} BERHASIL DIPOTONG Rp {$tarifBersih}");
+                if (!$order) {
+                    return ['status' => 404, 'response' => response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan.'], 404)];
                 }
+
+                // PENGAMAN MUTLAK: Jika sudah completed, hentikan eksekusi!
+                if ($order->status === 'completed' || $order->status === 'selesai') {
+                    Log::warning("LOG LOG: Pencegahan Dobel Saldo! Order {$orderId} sudah selesai sebelumnya.");
+                    return ['status' => 200, 'response' => response()->json([
+                        'success' => true,
+                        'message' => 'Pesanan ini sudah selesai sebelumnya.'
+                    ])];
+                }
+
+                // 2. UPDATE STATUS DI DATABASE
+                $affected = DB::table('order_ojek_online')
+                    ->where('order_id', $orderId)
+                    ->where('driver_id', $driverUser->id_pengguna)
+                    ->update([
+                        'status'     => $newStatus,
+                        'updated_at' => now()
+                    ]);
+
+                if ($affected === 0) {
+                    Log::warning("LOG LOG: Gagal update status! Order ID {$orderId} tidak valid untuk Driver ID {$driverUser->id_pengguna}.");
+                    return ['status' => 403, 'response' => response()->json(['success' => false, 'message' => 'Gagal mengubah status. Pesanan tidak ditemukan atau akses ditolak.'], 403)];
+                }
+                Log::info("LOG LOG: Database berhasil diupdate ke status: {$newStatus}");
+
+               // =========================================================================
+                // 🔥 LOGIKA SALDO MASUK KE AKUN DRIVER & POTONGAN KOMISI DINAMIS 🔥
+                // =========================================================================
+                if ($newStatus === 'completed' || $newStatus === 'selesai') {
+                    $tarifTotal = (float) $order->tarif;
+                    $driverId = $driverUser->id_pengguna;
+
+                    // 1. AMBIL PENGATURAN KOMISI DARI DATABASE (Via ApiSettings)
+                    if ($driverId == 4) {
+                        // Admin (ID 4)
+                        $feeType = \App\Models\Api::getValue('KOMISI_ADMIN_TYPE', 'global', 'percent');
+                        $feeAmount = (float) \App\Models\Api::getValue('KOMISI_ADMIN_AMOUNT', 'global', 0);
+                    } else {
+                        // Driver Reguler
+                        $feeType = \App\Models\Api::getValue('KOMISI_DRIVER_TYPE', 'global', 'percent');
+                        $feeAmount = (float) \App\Models\Api::getValue('KOMISI_DRIVER_AMOUNT', 'global', 10);
+                    }
+
+                    // 2. HITUNG POTONGAN KOMISI APLIKASI
+                    $potonganAplikasi = 0;
+                    if ($feeType === 'percent') {
+                        $potonganAplikasi = $tarifTotal * ($feeAmount / 100);
+                    } else {
+                        $potonganAplikasi = $feeAmount;
+                    }
+
+                    // 3. HITUNG PAJAK & BIAYA TAMBAHAN (Fitur Baru)
+                    $pajakPercent = (float) \App\Models\Api::getValue('KOMISI_PAJAK_PERCENT', 'global', 0);
+                    $biayaTambahanNominal = (float) \App\Models\Api::getValue('KOMISI_BIAYA_NOMINAL', 'global', 0);
+                    $keteranganBiaya = \App\Models\Api::getValue('KOMISI_BIAYA_KETERANGAN', 'global', 'Biaya Layanan Sancaka');
+
+                    $potonganPajak = $tarifTotal * ($pajakPercent / 100);
+
+                    // Total Seluruh Potongan yang dikenakan ke Driver
+                    $totalPotongan = $potonganAplikasi + $potonganPajak + $biayaTambahanNominal;
+
+                    // Pengaman Mutlak: Pastikan total potongan tidak membuat saldo driver minus (maksimal = tarif total)
+                    if ($totalPotongan > $tarifTotal) {
+                        $totalPotongan = $tarifTotal;
+                    }
+
+                    // Tarif bersih yang didapat oleh driver
+                    $tarifBersihDriver = $tarifTotal - $totalPotongan;
+
+                    // 4. TAMBAHKAN SALDO BERSIH KE AKUN DRIVER
+                    DB::table('Pengguna')
+                        ->where('id_pengguna', $driverId)
+                        ->increment('saldo', $tarifBersihDriver);
+
+                    Log::info("LOG LOG: ORDER {$orderId} SELESAI.");
+                    Log::info("LOG LOG: Tarif Total Rp {$tarifTotal} | Komisi App: Rp {$potonganAplikasi} | Pajak ({$pajakPercent}%): Rp {$potonganPajak} | Tambahan ({$keteranganBiaya}): Rp {$biayaTambahanNominal}");
+                    Log::info("LOG LOG: Saldo Bersih Masuk ke Driver ID {$driverId}: Rp {$tarifBersihDriver}");
+
+                    // 5. POTONG SALDO PENUMPANG (Jika bayar pakai Saldo)
+                    if (strtoupper($order->metode_pembayaran) === 'SALDO') {
+                        DB::table('Pengguna')
+                            ->where('id_pengguna', $order->customer_id)
+                            ->decrement('saldo', $tarifTotal);
+
+                        Log::info("LOG LOG: SALDO PENUMPANG ID {$order->customer_id} BERHASIL DIPOTONG Rp {$tarifTotal}");
+                    }
+
+                    // 6. UANG POTONGAN (KOMISI+PAJAK+TAMBAHAN) DIMASUKKAN KE AKUN ADMIN
+                    if ($driverId != 4 && $totalPotongan > 0) {
+                        DB::table('Pengguna')
+                            ->where('id_pengguna', 4)
+                            ->increment('saldo', $totalPotongan);
+                        Log::info("LOG LOG: TOTAL POTONGAN Rp {$totalPotongan} OTOMATIS DITAMBAHKAN KE SALDO ADMIN ID 4");
+                    }
+                }
+                // =========================================================================
+
+                return ['status' => 200, 'order' => $order];
+            });
+
+            // Jika transaksi digagalkan dari dalam (404/403/Pengaman Mutlak), return response-nya
+            if (isset($transactionResult['response'])) {
+                if ($idempotencyKey) {
+                    \Illuminate\Support\Facades\Cache::put('idempotency_' . $idempotencyKey, $transactionResult['response'], now()->addMinutes(5));
+                }
+                return $transactionResult['response'];
             }
-            // =========================================================================
+
+            // Transaksi sukses, ambil data order terbaru untuk notifikasi
+            $order = $transactionResult['order'];
 
             // 3. KIRIM NOTIFIKASI KE PELANGGAN (HYBRID TOKEN SYSTEM)
+            // Sengaja ditaruh di luar DB::transaction agar proses Firebase lambat tidak menahan database
             $customer = DB::table('Pengguna')
                 ->where('id_pengguna', $order->customer_id)
                 ->select('fcm_token', 'fcm_token_debug')
@@ -1159,7 +1244,14 @@ public function notify_driver(Request $request)
                 }
             }
 
-            return response()->json(['success' => true, 'message' => 'Status perjalanan berhasil diperbarui.']);
+            $finalResponse = response()->json(['success' => true, 'message' => 'Status perjalanan berhasil diperbarui.']);
+
+            // Simpan hasil ke memori selama 5 menit jika idemptotencyKey digunakan
+            if ($idempotencyKey) {
+                \Illuminate\Support\Facades\Cache::put('idempotency_' . $idempotencyKey, $finalResponse, now()->addMinutes(5));
+            }
+
+            return $finalResponse;
 
         } catch (\Exception $e) {
             Log::error("[API DRIVER UPDATE STATUS] Crash: " . $e->getMessage());
@@ -1343,29 +1435,32 @@ public function notify_driver(Request $request)
         }
     }
 
-    /**
+   /**
      * Helper Private: Generate Access Token FCM V1 Resmi (Menggunakan google/auth)
      */
     private function getGoogleAccessToken()
     {
-        $jsonKeyPath = storage_path('app/firebase-auth.json');
+        // PERBAIKAN: Menyimpan token ke memory Cache selama 3000 detik (50 menit)
+        return Cache::remember('fcm_access_token', 3000, function () {
+            $jsonKeyPath = storage_path('app/firebase-auth.json');
 
-        if (!file_exists($jsonKeyPath)) {
-            \Illuminate\Support\Facades\Log::error("File firebase-auth.json tidak ditemukan di storage/app/");
-            return null;
-        }
+            if (!file_exists($jsonKeyPath)) {
+                \Illuminate\Support\Facades\Log::error("File firebase-auth.json tidak ditemukan di storage/app/");
+                return null;
+            }
 
-        try {
-            $credentials = new \Google\Auth\Credentials\ServiceAccountCredentials(
-                'https://www.googleapis.com/auth/firebase.messaging',
-                json_decode(file_get_contents($jsonKeyPath), true)
-            );
+            try {
+                $credentials = new \Google\Auth\Credentials\ServiceAccountCredentials(
+                    'https://www.googleapis.com/auth/firebase.messaging',
+                    json_decode(file_get_contents($jsonKeyPath), true)
+                );
 
-            return $credentials->fetchAuthToken()['access_token'];
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Gagal buat token FCM V1: " . $e->getMessage());
-            return null;
-        }
+                return $credentials->fetchAuthToken()['access_token'];
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Gagal buat token FCM V1: " . $e->getMessage());
+                return null;
+            }
+        });
     }
 
   public function saveFcmToken(Request $request)
@@ -1409,6 +1504,161 @@ public function notify_driver(Request $request)
                 'success' => false,
                 'message' => 'Terjadi kesalahan sistem saat menyimpan FCM token.'
             ], 500);
+        }
+    }
+
+    /**
+     * GET: /api/mobile/order/komisi-fee
+     * Mengambil riwayat komisi khusus untuk Driver (Pribadi) dan Admin (Keseluruhan)
+     */
+    public function getKomisiFee(Request $request)
+    {
+        try {
+            $user = $request->user();
+            $userId = $user->id_pengguna;
+            $isAdmin = ($userId == 4 || $user->role === 'Admin');
+
+            // 1. Tarik Aturan Komisi & Pajak Saat Ini
+            $adminFeeType = \App\Models\Api::getValue('KOMISI_ADMIN_TYPE', 'global', 'percent');
+            $adminFeeAmount = (float) \App\Models\Api::getValue('KOMISI_ADMIN_AMOUNT', 'global', 0);
+
+            $driverFeeType = \App\Models\Api::getValue('KOMISI_DRIVER_TYPE', 'global', 'percent');
+            $driverFeeAmount = (float) \App\Models\Api::getValue('KOMISI_DRIVER_AMOUNT', 'global', 10);
+
+            $pajakPercent = (float) \App\Models\Api::getValue('KOMISI_PAJAK_PERCENT', 'global', 0);
+            $biayaNominal = (float) \App\Models\Api::getValue('KOMISI_BIAYA_NOMINAL', 'global', 0);
+            $biayaKet = \App\Models\Api::getValue('KOMISI_BIAYA_KETERANGAN', 'global', 'Biaya Layanan');
+
+            // 2. Query Data Order (Hanya yang sudah selesai)
+            $query = DB::table('order_ojek_online')
+                ->leftJoin('registrasi_driver_sancaka as driver', 'order_ojek_online.driver_id', '=', 'driver.id_pengguna')
+                ->whereIn('order_ojek_online.status', ['completed', 'selesai'])
+                ->select(
+                    'order_ojek_online.order_id',
+                    'order_ojek_online.tarif',
+                    'order_ojek_online.driver_id',
+                    'order_ojek_online.created_at',
+                    'driver.nama_lengkap as driver_name'
+                )
+                ->orderBy('order_ojek_online.created_at', 'desc');
+
+            // Filter jika bukan Admin
+            if (!$isAdmin) {
+                $query->where('order_ojek_online.driver_id', $userId);
+            }
+
+            $orders = $query->get();
+
+            // 3. Kalkulasi dan Pemrosesan Format Data
+            $formattedTransactions = [];
+            $todayStr = now()->toDateString();
+            $yesterdayStr = now()->subDay()->toDateString();
+            $thisMonthStr = now()->format('Y-m');
+            $lastMonthStr = now()->subMonth()->format('Y-m');
+
+            $txToday = 0; $txYesterday = 0; $txThisMonth = 0; $txLastMonth = 0;
+            $totalFeeCollected = 0; $totalTaxCollected = 0;
+
+            foreach ($orders as $o) {
+                $tarifTotal = (float) $o->tarif;
+                $dateStr = date('Y-m-d', strtotime($o->created_at));
+                $monthStr = date('Y-m', strtotime($o->created_at));
+
+                // Hitung Statistik Waktu
+                if ($dateStr === $todayStr) $txToday++;
+                if ($dateStr === $yesterdayStr) $txYesterday++;
+                if ($monthStr === $thisMonthStr) $txThisMonth++;
+                if ($monthStr === $lastMonthStr) $txLastMonth++;
+
+                // Logika Potongan Dinamis (Simulasi Retroaktif)
+                $potonganAplikasi = 0;
+                if ($o->driver_id == 4) {
+                    $potonganAplikasi = ($adminFeeType === 'percent') ? ($tarifTotal * ($adminFeeAmount / 100)) : $adminFeeAmount;
+                } else {
+                    $potonganAplikasi = ($driverFeeType === 'percent') ? ($tarifTotal * ($driverFeeAmount / 100)) : $driverFeeAmount;
+                }
+
+                $potonganPajak = $tarifTotal * ($pajakPercent / 100);
+
+                // Mencegah minus
+                $totalPotongan = $potonganAplikasi + $potonganPajak + $biayaNominal;
+                if ($totalPotongan > $tarifTotal) $totalPotongan = $tarifTotal;
+
+                $pendapatanBersih = $tarifTotal - $totalPotongan;
+
+                // Akumulasi Pusat
+                $totalFeeCollected += $potonganAplikasi + $biayaNominal;
+                $totalTaxCollected += $potonganPajak;
+
+                $formattedTransactions[] = [
+                    'order_id' => $o->order_id,
+                    'date' => date('d M Y H:i', strtotime($o->created_at)),
+                    'driver_id' => $o->driver_id,
+                    'driver_name' => $o->driver_name ?? 'Admin / Pusat',
+                    'tarif_total' => $tarifTotal,
+                    'potongan_aplikasi' => $potonganAplikasi,
+                    'potongan_pajak' => $potonganPajak,
+                    'persen_pajak' => $pajakPercent,
+                    'biaya_tambahan' => $biayaNominal,
+                    'keterangan_tambahan' => $biayaKet,
+                    'pendapatan_bersih' => $pendapatanBersih,
+                ];
+            }
+
+            // Hitung Total Driver Aktif
+            $totalDrivers = DB::table('registrasi_driver_sancaka')->where('status', 'approved')->count();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'stats' => [
+                        'today' => $txToday,
+                        'yesterday' => $txYesterday,
+                        'this_month' => $txThisMonth,
+                        'last_month' => $txLastMonth,
+                    ],
+                    'admin_stats' => $isAdmin ? [
+                        'total_drivers' => $totalDrivers,
+                        'total_transactions' => count($orders),
+                        'total_fee_collected' => $totalFeeCollected,
+                        'total_tax_collected' => $totalTaxCollected,
+                    ] : null,
+                    'transactions' => $formattedTransactions
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG LOG: Crash getKomisiFee: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal memuat data keuangan.'], 500);
+        }
+    }
+
+    /**
+     * POST: /api/mobile/order/komisi-fee/bulk-delete
+     * Menghapus riwayat transaksi (HANYA ADMIN ID 4)
+     */
+    public function bulkDeleteKomisiFee(Request $request)
+    {
+        try {
+            $user = $request->user();
+            if ($user->id_pengguna != 4 && $user->role !== 'Admin') {
+                return response()->json(['success' => false, 'message' => 'Hanya Admin yang dapat menghapus riwayat komisi.'], 403);
+            }
+
+            $ids = $request->input('ids');
+            if (empty($ids) || !is_array($ids)) {
+                return response()->json(['success' => false, 'message' => 'Tidak ada ID yang dipilih.'], 400);
+            }
+
+            DB::table('order_ojek_online')->whereIn('order_id', $ids)->delete();
+
+            \Illuminate\Support\Facades\Log::info("LOG LOG: Admin ID 4 menghapus " . count($ids) . " riwayat pesanan (Komisi).");
+
+            return response()->json(['success' => true, 'message' => 'Riwayat berhasil dihapus.']);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG LOG: Crash bulkDeleteKomisiFee: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal menghapus riwayat.'], 500);
         }
     }
 

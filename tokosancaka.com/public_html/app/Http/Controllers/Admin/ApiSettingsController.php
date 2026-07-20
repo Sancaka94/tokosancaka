@@ -148,7 +148,18 @@ class ApiSettingsController extends Controller
             'cod_fee_percent' => Api::getValue('SANCAKA_EXPRESS_COD_FEE_PERCENT', 'global', 3),
             'ojek_base_fare'    => Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 5000), // Default fallback
             'ojek_price_per_km' => Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 2500),    // Default fallback
-            'zonasi' => $zonasi 
+            'zonasi' => $zonasi
+
+            // 👇 TAMBAHKAN BLOK KOMISI INI 👇
+            'komisi' => [
+                'admin_type'    => Api::getValue('KOMISI_ADMIN_TYPE', 'global', 'percent'),
+                'admin_amount'  => Api::getValue('KOMISI_ADMIN_AMOUNT', 'global', 0),
+                'driver_type'   => Api::getValue('KOMISI_DRIVER_TYPE', 'global', 'percent'),
+                'driver_amount' => Api::getValue('KOMISI_DRIVER_AMOUNT', 'global', 10),
+                'pajak_percent' => Api::getValue('KOMISI_PAJAK_PERCENT', 'global', 0),
+                'biaya_nominal' => Api::getValue('KOMISI_BIAYA_NOMINAL', 'global', 0),
+                'biaya_ket'     => Api::getValue('KOMISI_BIAYA_KETERANGAN', 'global', 'Biaya Layanan Sancaka'),
+            ]
         ];
 
         $dana = [
@@ -380,6 +391,18 @@ class ApiSettingsController extends Controller
                 if ($request->has('ojek_price_per_km')) {
                     Api::setValue('SANCAKA_OJEK_PER_KM', $request->ojek_price_per_km, 'mapbox', 'global');
                 }
+
+                // 👇 TAMBAHKAN KODE PENYIMPANAN KOMISI INI 👇
+                if ($request->has('komisi_admin_type')) {
+                    Api::setValue('KOMISI_ADMIN_TYPE', $request->komisi_admin_type, 'mapbox', 'global');
+                    Api::setValue('KOMISI_ADMIN_AMOUNT', $request->komisi_admin_amount, 'mapbox', 'global');
+                    Api::setValue('KOMISI_DRIVER_TYPE', $request->komisi_driver_type, 'mapbox', 'global');
+                    Api::setValue('KOMISI_DRIVER_AMOUNT', $request->komisi_driver_amount, 'mapbox', 'global');
+                    Api::setValue('KOMISI_PAJAK_PERCENT', $request->komisi_pajak_percent, 'mapbox', 'global');
+                    Api::setValue('KOMISI_BIAYA_NOMINAL', $request->komisi_biaya_nominal, 'mapbox', 'global');
+                    Api::setValue('KOMISI_BIAYA_KETERANGAN', $request->komisi_biaya_ket, 'mapbox', 'global');
+                }
+                // 👆 SELESAI TAMBAHAN KOMISI 👆
 
                 Log::info("LOG LOG: Pengaturan Mapbox & Sancaka Express (Zonasi) berhasil diperbarui.");
 
@@ -757,7 +780,7 @@ class ApiSettingsController extends Controller
 
         // 1. Tembak rute ke Mapbox
         $url = "https://api.mapbox.com/directions/v5/mapbox/driving/{$lngAsal},{$latAsal};{$lngTujuan},{$latTujuan}";
-        
+
         try {
             $response = Http::get($url, [
                 'access_token' => $mapboxToken,

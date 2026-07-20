@@ -736,3 +736,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
         });
 
     });
+
+Route::get('/order/komisi-fee', [ApiMapboxController::class, 'getKomisiFee']);
+Route::post('/order/komisi-fee/bulk-delete', [ApiMapboxController::class, 'bulkDeleteKomisiFee']);
