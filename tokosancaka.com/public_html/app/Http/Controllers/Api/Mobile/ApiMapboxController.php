@@ -271,32 +271,50 @@ class ApiMapboxController extends Controller
             return response()->json(['success' => false, 'message' => 'Lengkapi Jenis Kelamin di profil Anda.'], 400);
         }
 
-        // 1. TARIK DARI REDIS GEOSPATIAL
+       // 1. TARIK DARI REDIS GEOSPATIAL
         $nearbyRaw = Redis::georadius('active_drivers', $lng, $lat, $radius, 'km', ['WITHDIST', 'ASC']);
         $formattedDrivers = [];
 
-        // 2. [REFACTOR]: TARIK METADATA DARI REDIS HASH (ZERO MYSQL QUERY!)
+        // 2. [PERBAIKAN BUG]: Parsing data Redis dengan aman
         if (!empty($nearbyRaw)) {
             foreach ($nearbyRaw as $item) {
-                $dId = is_array($item) ? $item[0] : ($item->member ?? $item);
-                $dist = is_array($item) ? (float) $item[1] : ((float) $item->distance ?? 0);
+                $dId = null;
+                $dist = 0;
 
-                // Ambil profil driver dari memory Redis
-                $meta = Redis::hgetall("driver_meta:{$dId}");
+                // A. Jika Redis mengembalikan Array
+                if (is_array($item)) {
+                    $dId = $item[0] ?? null;
+                    $dist = isset($item[1]) ? (float) $item[1] : 0;
+                }
+                // B. Jika Redis mengembalikan Object
+                elseif (is_object($item)) {
+                    $dId = $item->member ?? $item->name ?? null;
+                    // CEK DENGAN ISSET AGAR TIDAK CRASH DI PHP 8
+                    $dist = isset($item->distance) ? (float) $item->distance : 0;
+                }
+                // C. Jika Redis mengembalikan String biasa
+                else {
+                    $dId = $item;
+                    $dist = 0; // Jarak default jika tidak terbaca
+                }
 
-                // Jika meta ada di Redis dan lolos filter Syariah (Gender)
-                if (!empty($meta) && isset($meta['gender']) && $meta['gender'] === $passengerGender) {
-                    $formattedDrivers[] = [
-                        'id' => (int) ($meta['id'] ?? $dId),
-                        'id_pengguna' => (int) $dId,
-                        'name' => $meta['name'] ?? 'Driver Sancaka',
-                        'vehicle' => $meta['vehicle'] ?? 'Ojek Sancaka',
-                        'distance' => round($dist, 1) . ' KM',
-                        'distance_raw' => $dist,
-                        'lat' => (float) ($meta['lat'] ?? 0),
-                        'lng' => (float) ($meta['lng'] ?? 0),
-                        'is_online' => true
-                    ];
+                if ($dId) {
+                    $meta = Redis::hgetall("driver_meta:{$dId}");
+
+                    // Filter Syariah
+                    if (!empty($meta) && isset($meta['gender']) && $meta['gender'] === $passengerGender) {
+                        $formattedDrivers[] = [
+                            'id' => (int) ($meta['id'] ?? $dId),
+                            'id_pengguna' => (int) $dId,
+                            'name' => $meta['name'] ?? 'Driver Sancaka',
+                            'vehicle' => $meta['vehicle'] ?? 'Ojek Sancaka',
+                            'distance' => round($dist, 1) . ' KM',
+                            'distance_raw' => $dist,
+                            'lat' => (float) ($meta['lat'] ?? 0),
+                            'lng' => (float) ($meta['lng'] ?? 0),
+                            'is_online' => true
+                        ];
+                    }
                 }
             }
         }
