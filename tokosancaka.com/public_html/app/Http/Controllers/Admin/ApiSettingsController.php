@@ -148,7 +148,7 @@ class ApiSettingsController extends Controller
             'cod_fee_percent' => Api::getValue('SANCAKA_EXPRESS_COD_FEE_PERCENT', 'global', 3),
             'ojek_base_fare'    => Api::getValue('SANCAKA_OJEK_BASE_FARE', 'global', 5000), // Default fallback
             'ojek_price_per_km' => Api::getValue('SANCAKA_OJEK_PER_KM', 'global', 2500),    // Default fallback
-            'zonasi' => $zonasi
+            'zonasi' => $zonasi,
 
             // 👇 TAMBAHKAN BLOK KOMISI INI 👇
             'komisi' => [
