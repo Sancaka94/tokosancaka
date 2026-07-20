@@ -1436,11 +1436,10 @@ public function notify_driver(Request $request)
     }
 
    /**
-     * Helper Private: Generate Access Token FCM V1 Resmi (Menggunakan google/auth)
+     * Helper Private: Generate Access Token FCM V1 Murni Tanpa Package Google
      */
     private function getGoogleAccessToken()
     {
-        // PERBAIKAN: Menyimpan token ke memory Cache selama 3000 detik (50 menit)
         return Cache::remember('fcm_access_token', 3000, function () {
             $jsonKeyPath = storage_path('app/firebase-auth.json');
 
@@ -1449,17 +1448,47 @@ public function notify_driver(Request $request)
                 return null;
             }
 
-            try {
-                $credentials = new \Google\Auth\Credentials\ServiceAccountCredentials(
-                    'https://www.googleapis.com/auth/firebase.messaging',
-                    json_decode(file_get_contents($jsonKeyPath), true)
-                );
-
-                return $credentials->fetchAuthToken()['access_token'];
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("Gagal buat token FCM V1: " . $e->getMessage());
+            $keyData = json_decode(file_get_contents($jsonKeyPath), true);
+            if (!$keyData || !isset($keyData['private_key'])) {
+                \Illuminate\Support\Facades\Log::error("Format JSON firebase-auth.json tidak valid.");
                 return null;
             }
+
+            // 1. Buat Header & Claim JWT
+            $header = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
+            $now = time();
+            $claim = json_encode([
+                'iss' => $keyData['client_email'],
+                'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+                'aud' => 'https://oauth2.googleapis.com/token',
+                'exp' => $now + 3600,
+                'iat' => $now
+            ]);
+
+            // 2. Base64Url Encode
+            $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+            $base64UrlClaim = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($claim));
+
+            // 3. Buat Signature menggunakan Private Key (Murni PHP OpenSSL)
+            $signature = '';
+            openssl_sign($base64UrlHeader . '.' . $base64UrlClaim, $signature, $keyData['private_key'], 'SHA256');
+            $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+
+            // 4. Gabungkan menjadi JWT utuh
+            $jwt = $base64UrlHeader . '.' . $base64UrlClaim . '.' . $base64UrlSignature;
+
+            // 5. Tembak ke server Google untuk ditukar dengan Access Token
+            $response = \Illuminate\Support\Facades\Http::asForm()->post('https://oauth2.googleapis.com/token', [
+                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                'assertion' => $jwt
+            ]);
+
+            if ($response->successful()) {
+                return $response->json('access_token');
+            }
+
+            \Illuminate\Support\Facades\Log::error("Gagal buat token FCM V1 manual: " . $response->body());
+            return null;
         });
     }
 
