@@ -260,13 +260,13 @@ class ApiMapboxController extends Controller
         try {
             $lat = $request->query('lat');
             $lng = $request->query('lng');
-            $radius = 15; // PERBAIKAN: Radius radar diperlebar jadi 15 KM
+            $radius = 5; // Jarak maksimal dalam KM
 
             if (!$lat || !$lng) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Titik kordinat asal tidak ditemukan.'
-                ], 400);
+                ]);
             }
 
             // ==========================================================
@@ -284,7 +284,7 @@ class ApiMapboxController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Mohon lengkapi profil (Jenis Kelamin) Anda di pengaturan untuk menggunakan layanan Ojek Sancaka.'
-                ], 400);
+                ], 400); // 400 = Bad Request
             }
 
             // ==========================================================
@@ -308,7 +308,7 @@ class ApiMapboxController extends Controller
 
             $formattedDrivers = $drivers->map(function ($driver) {
                 return [
-                    'id'           => $driver->id,
+                    'id'           => $driver->id, // ID pendaftaran driver
                     'id_pengguna'  => $driver->id_pengguna,
                     'name'         => $driver->nama_lengkap,
                     'vehicle'      => 'Ojek Sancaka',
@@ -332,10 +332,12 @@ class ApiMapboxController extends Controller
                       sin( radians( latitude ) ) )
                     ) AS distance", [$lat, $lng, $lat])
                 ->where('id_pengguna', 4)
-                ->whereNotNull('latitude') // Jika toggleMap dimatikan, latitude akan jadi Null
+                ->whereNotNull('latitude')
                 ->whereNotNull('longitude')
                 ->first();
 
+            // Evaluasi Syariah untuk Admin
+            // (Jika profil admin tidak diisi jenis kelaminnya, kita anggap dia sebagai darurat/lolos otomatis)
             $isAdminSyariahPass = true;
             if ($admin && !empty($admin->jenis_kelamin)) {
                 if ($admin->jenis_kelamin !== $passengerGender) {
@@ -343,23 +345,35 @@ class ApiMapboxController extends Controller
                 }
             }
 
-            // PERBAIKAN: Menghapus batas timeout 3 menit.
-            // Selama Admin tidak mematikan tombol radarnya (latitude tidak null), Admin tetap tampil!
+            // Jika admin memiliki koordinat, masih dalam radius, dan lolos filter
             if ($admin && $admin->distance <= $radius && $isAdminSyariahPass) {
-                $formattedDrivers[] = [
-                    'id'           => 4,
-                    'id_pengguna'  => 4,
-                    'name'         => 'Pusat Radar Sancaka (Admin)',
-                    'vehicle'      => 'Sancaka Express',
-                    'distance'     => round($admin->distance, 1) . ' KM',
-                    'distance_raw' => (float) $admin->distance,
-                    'lat'          => (float) $admin->latitude,
-                    'lng'          => (float) $admin->longitude,
-                    'is_online'    => true
-                ];
+
+                // Cek apakah Admin Online (update GPS kurang dari 3 menit lalu)
+                $isAdminOnline = false;
+                if (!empty($admin->last_seen)) {
+                    $lastSeenTime = \Carbon\Carbon::parse($admin->last_seen);
+                    if ($lastSeenTime->diffInMinutes(now()) <= 3) {
+                        $isAdminOnline = true;
+                    }
+                }
+
+                // Tampilkan Admin hanya jika Online
+                if ($isAdminOnline) {
+                    $formattedDrivers[] = [
+                        'id'           => 4,
+                        'id_pengguna'  => 4,
+                        'name'         => 'Pusat Radar Sancaka (Admin)',
+                        'vehicle'      => 'Sancaka Express',
+                        'distance'     => round($admin->distance, 1) . ' KM',
+                        'distance_raw' => (float) $admin->distance,
+                        'lat'          => (float) $admin->latitude,
+                        'lng'          => (float) $admin->longitude,
+                        'is_online'    => $isAdminOnline
+                    ];
+                }
             }
 
-            // 4. URUTKAN SEMUANYA BERDASARKAN JARAK (Terdekat ke Terjauh)
+            // 4. URUTKAN SEMUANYA BERDASARKAN JARAK (Paling dekat ke paling jauh)
             usort($formattedDrivers, function($a, $b) {
                 return $a['distance_raw'] <=> $b['distance_raw'];
             });
