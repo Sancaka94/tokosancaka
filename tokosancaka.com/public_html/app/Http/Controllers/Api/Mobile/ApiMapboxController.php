@@ -256,74 +256,7 @@ class ApiMapboxController extends Controller
         }
     }
 
-  public function getNearbyDrivers(Request $request)
-{
-    try {
-        $lat = (float) $request->query('lat');
-        $lng = (float) $request->query('lng');
-        $radius = 5; // KM
 
-        if (!$lat || !$lng) return response()->json(['success' => false, 'message' => 'Kordinat tidak ditemukan.']);
-
-        $user = $request->user();
-        $passengerGender = $user->jenis_kelamin;
-        if (empty($passengerGender)) {
-            return response()->json(['success' => false, 'message' => 'Lengkapi Jenis Kelamin di profil Anda.'], 400);
-        }
-
-       // 1. TARIK DARI REDIS GEOSPATIAL
-        $nearbyRaw = Redis::georadius('active_drivers', $lng, $lat, $radius, 'km', ['WITHDIST', 'ASC']);
-        $formattedDrivers = [];
-
-        // 2. [PERBAIKAN BUG]: Parsing data Redis dengan aman
-        if (!empty($nearbyRaw)) {
-            foreach ($nearbyRaw as $item) {
-                $dId = null;
-                $dist = 0;
-
-                // A. Jika Redis mengembalikan Array
-                if (is_array($item)) {
-                    $dId = $item[0] ?? null;
-                    $dist = isset($item[1]) ? (float) $item[1] : 0;
-                }
-                // B. Jika Redis mengembalikan Object
-                elseif (is_object($item)) {
-                    $dId = $item->member ?? $item->name ?? null;
-                    // CEK DENGAN ISSET AGAR TIDAK CRASH DI PHP 8
-                    $dist = isset($item->distance) ? (float) $item->distance : 0;
-                }
-                // C. Jika Redis mengembalikan String biasa
-                else {
-                    $dId = $item;
-                    $dist = 0; // Jarak default jika tidak terbaca
-                }
-
-                if ($dId) {
-                    $meta = Redis::hgetall("driver_meta:{$dId}");
-
-                    // Filter Syariah
-                    if (!empty($meta) && isset($meta['gender']) && $meta['gender'] === $passengerGender) {
-                        $formattedDrivers[] = [
-                            'id' => (int) ($meta['id'] ?? $dId),
-                            'id_pengguna' => (int) $dId,
-                            'name' => $meta['name'] ?? 'Driver Sancaka',
-                            'vehicle' => $meta['vehicle'] ?? 'Ojek Sancaka',
-                            'distance' => round($dist, 1) . ' KM',
-                            'distance_raw' => $dist,
-                            'lat' => (float) ($meta['lat'] ?? 0),
-                            'lng' => (float) ($meta['lng'] ?? 0),
-                            'is_online' => true
-                        ];
-                    }
-                }
-            }
-        }
-
-        return response()->json(['success' => true, 'data' => $formattedDrivers]);
-    } catch (\Exception $e) {
-        return response()->json(['success' => false, 'message' => 'Gagal sistem: ' . $e->getMessage()], 500);
-    }
-}
 
     /**
      * 1. CEK STATUS DRIVER BERDASARKAN ID PENGGUNA AUTH
@@ -569,19 +502,147 @@ class ApiMapboxController extends Controller
         return round($earthRadius * $c);
     }
 
-public function notify_driver(Request $request)
+    public function getNearbyDrivers(Request $request)
+    {
+        try {
+            $lat = (float) $request->query('lat');
+            $lng = (float) $request->query('lng');
+            $radius = 5; // Radius driver biasa (5 KM)
+
+            if (!$lat || !$lng) return response()->json(['success' => false, 'message' => 'Kordinat tidak ditemukan.']);
+
+            $user = $request->user();
+            $passengerGender = $user->jenis_kelamin;
+            if (empty($passengerGender)) {
+                return response()->json(['success' => false, 'message' => 'Lengkapi Jenis Kelamin di profil Anda.'], 400);
+            }
+
+            // ==========================================================
+            // 1. TARIK DARI REDIS GEOSPATIAL (DRIVER BIASA MAKSIMAL 5 KM)
+            // ==========================================================
+            $nearbyRaw = Redis::georadius('active_drivers', $lng, $lat, $radius, 'km', ['WITHDIST', 'ASC']);
+            $formattedDrivers = [];
+
+            if (!empty($nearbyRaw)) {
+                foreach ($nearbyRaw as $item) {
+                    $dId = null;
+                    $dist = 0;
+
+                    if (is_array($item)) {
+                        $dId = $item[0] ?? null;
+                        $dist = isset($item[1]) ? (float) $item[1] : 0;
+                    } elseif (is_object($item)) {
+                        $dId = $item->member ?? $item->name ?? null;
+                        $dist = isset($item->distance) ? (float) $item->distance : 0;
+                    } else {
+                        $dId = $item;
+                    }
+
+                    if ($dId) {
+                        $meta = Redis::hgetall("driver_meta:{$dId}");
+                        // Filter Syariah
+                        if (!empty($meta) && isset($meta['gender']) && $meta['gender'] === $passengerGender) {
+                            $formattedDrivers[] = [
+                                'id' => (int) ($meta['id'] ?? $dId),
+                                'id_pengguna' => (int) $dId,
+                                'name' => $meta['name'] ?? 'Driver Sancaka',
+                                'vehicle' => $meta['vehicle'] ?? 'Ojek Sancaka',
+                                'distance' => round($dist, 1) . ' KM',
+                                'distance_raw' => $dist,
+                                'lat' => (float) ($meta['lat'] ?? 0),
+                                'lng' => (float) ($meta['lng'] ?? 0),
+                                'is_online' => true
+                            ];
+                        }
+                    }
+                }
+            }
+
+            // ==========================================================
+            // 2. RADAR SUPER ADMIN (BISA MENDETEKSI USER HINGGA 100 KM)
+            // ==========================================================
+            $adminRadarRadius = 100; // Admin punya radius 100 KM!
+
+            $admin = DB::table('Pengguna')
+                ->selectRaw("id_pengguna, nama_lengkap, jenis_kelamin, latitude, longitude, last_seen,
+                    ( 6371 * acos( cos( radians(?) ) *
+                      cos( radians( latitude ) ) *
+                      cos( radians( longitude ) - radians(?) ) +
+                      sin( radians(?) ) *
+                      sin( radians( latitude ) ) )
+                    ) AS distance", [$lat, $lng, $lat])
+                ->where('id_pengguna', 4)
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->first();
+
+            // Evaluasi Syariah Admin
+            $isAdminSyariahPass = true;
+            if ($admin && !empty($admin->jenis_kelamin)) {
+                if ($admin->jenis_kelamin !== $passengerGender) {
+                    $isAdminSyariahPass = false;
+                }
+            }
+
+            // Masukkan admin jika masih dalam 100 KM dan Online
+            if ($admin && $admin->distance <= $adminRadarRadius && $isAdminSyariahPass) {
+                $isAdminOnline = false;
+                if (!empty($admin->last_seen)) {
+                    $lastSeenTime = \Carbon\Carbon::parse($admin->last_seen);
+                    if ($lastSeenTime->diffInMinutes(now()) <= 3) {
+                        $isAdminOnline = true;
+                    }
+                }
+
+                if ($isAdminOnline) {
+                    $adminSudahAda = array_filter($formattedDrivers, function($d) {
+                        return $d['id_pengguna'] == 4;
+                    });
+
+                    if (empty($adminSudahAda)) {
+                        $formattedDrivers[] = [
+                            'id'           => 4,
+                            'id_pengguna'  => 4,
+                            'name'         => 'Pusat Radar Sancaka (Admin)',
+                            'vehicle'      => 'Sancaka Express',
+                            'distance'     => round($admin->distance, 1) . ' KM',
+                            'distance_raw' => (float) $admin->distance, // Ini bisa 30 KM!
+                            'lat'          => (float) $admin->latitude,
+                            'lng'          => (float) $admin->longitude,
+                            'is_online'    => true
+                        ];
+                    }
+                }
+            }
+
+            // ==========================================================
+            // 3. URUTKAN SEMUANYA DARI YANG PALING DEKAT
+            // ==========================================================
+            usort($formattedDrivers, function($a, $b) {
+                return $a['distance_raw'] <=> $b['distance_raw'];
+            });
+
+            return response()->json(['success' => true, 'data' => $formattedDrivers]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Gagal sistem: ' . $e->getMessage()], 500);
+        }
+    }
+
+
+    public function notify_driver(Request $request)
     {
         Log::info("=== [API MAPBOX] REQUEST NOTIFY DRIVER / ADMIN (ORDER BARU) MASUK ===");
         Log::info("LOG LOG: Payload dari HP Pelanggan: ", $request->all());
 
         $customerLat = $request->input('origin_lat');
         $customerLng = $request->input('origin_lng');
-        $layanan     = $request->input('layanan', 'ojek_online'); // <-- TANGKAP PARAMETER LAYANAN
+        $layanan     = $request->input('layanan', 'ojek_online');
+        $driverId    = $request->input('driver_id'); // 🔥 TANGKAP ID DRIVER DARI HP
 
         $customer = $request->user();
 
         // ==========================================================
-        // 🔥 VALIDASI SALDO PENUMPANG SEBELUM ORDER DIBUAT 🔥
+        // VALIDASI SALDO PENUMPANG
         // ==========================================================
         $metodePembayaran = strtoupper($request->input('metode_pembayaran', 'CASH'));
         $tarif = (float) $request->input('tarif', 0);
@@ -595,77 +656,55 @@ public function notify_driver(Request $request)
                 Log::warning("LOG LOG: Order ditolak! Saldo Penumpang kurang.");
                 return response()->json([
                     'status' => false,
-                    'message' => 'Saldo Sancaka Anda tidak mencukupi (Sisa: Rp ' . number_format($cekSaldoUser, 0, ',', '.') . '). Silakan Top Up atau ubah metode ke Tunai/CASH.'
+                    'message' => 'Saldo Sancaka Anda tidak mencukupi. Silakan Top Up atau ubah metode ke Tunai/CASH.'
                 ], 400);
             }
         }
-        // ==========================================================
 
         // ==========================================================
-        // 🔥 LOGIKA CERDAS: TARGET FCM BERDASARKAN JENIS LAYANAN 🔥
+        // TENTUKAN PREFIX BERDASARKAN LAYANAN
         // ==========================================================
         if ($layanan === 'sancaka_express') {
-            Log::info("LOG LOG: Layanan Sancaka Express. Mengarahkan notifikasi ke Admin (ID 4).");
+            Log::info("LOG LOG: Layanan Sancaka Express. Target: Driver ID {$driverId}");
+            $orderPrefix = 'S-EXP-';
+        } else {
+            Log::info("LOG LOG: Layanan Ojek Online. Target: Driver ID {$driverId}");
+            $orderPrefix = 'S-RIDE-';
+        }
 
-            // Langsung tarik FCM dari tabel Pengguna ID 4 (Admin)
+        // ==========================================================
+        // CARI TARGET FCM (APAKAH ITU ADMIN ATAU DRIVER BIASA?)
+        // ==========================================================
+        if ($driverId == 4) {
             $driver = DB::table('Pengguna')
                 ->where('id_pengguna', 4)
-                ->select(
-                    'fcm_token',
-                    'fcm_token_debug',
-                    'nama_lengkap',
-                    'id_pengguna as driver_user_id'
-                )
+                ->select('fcm_token', 'fcm_token_debug', 'nama_lengkap', 'latitude', 'longitude', 'id_pengguna as driver_user_id')
                 ->first();
 
             // Set default koordinat admin (misal: pusat Ngawi) agar jarak tidak error
-            if ($driver) {
+            if ($driver && !$driver->latitude) {
                 $driver->latitude = -7.4025;
                 $driver->longitude = 111.4558;
             }
-
-            $orderPrefix = 'S-EXP-'; // Prefix resi Sancaka Express
         } else {
-            Log::info("LOG LOG: Layanan Ojek Online. Mengarahkan notifikasi ke Driver Pilihan.");
-
-            $driverId = $request->input('driver_id');
-
-            // 🔥 TAMBAHKAN PENGECEKAN KHUSUS UNTUK ADMIN (ID 4) 🔥
-            if ($driverId == 4) {
-                $driver = DB::table('Pengguna')
-                    ->where('id_pengguna', 4)
-                    ->select(
-                        'fcm_token',
-                        'fcm_token_debug',
-                        'nama_lengkap',
-                        'latitude',
-                        'longitude',
-                        'id_pengguna as driver_user_id'
-                    )
-                    ->first();
-            } else {
-                // Logika driver reguler
-                $driver = DB::table('registrasi_driver_sancaka')
-                    ->join('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
-                    ->where('registrasi_driver_sancaka.id', $driverId)
-                    ->select(
-                        'Pengguna.fcm_token',
-                        'Pengguna.fcm_token_debug',
-                        'registrasi_driver_sancaka.nama_lengkap',
-                        'registrasi_driver_sancaka.latitude',
-                        'registrasi_driver_sancaka.longitude',
-                        'registrasi_driver_sancaka.id_pengguna as driver_user_id'
-                    )
-                    ->first();
-            }
-
-            $orderPrefix = 'S-RIDE-'; // Prefix resi Ojek
+            $driver = DB::table('registrasi_driver_sancaka')
+                ->join('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
+                ->where('registrasi_driver_sancaka.id', $driverId)
+                ->select(
+                    'Pengguna.fcm_token',
+                    'Pengguna.fcm_token_debug',
+                    'registrasi_driver_sancaka.nama_lengkap',
+                    'registrasi_driver_sancaka.latitude',
+                    'registrasi_driver_sancaka.longitude',
+                    'registrasi_driver_sancaka.id_pengguna as driver_user_id'
+                )
+                ->first();
         }
 
-        // CEK KEDUA TOKEN, HENTIKAN JIKA DUA-DUANYA KOSONG
+        // CEK TOKEN FCM
         if (!$driver || (empty($driver->fcm_token) && empty($driver->fcm_token_debug))) {
-            Log::warning("LOG LOG: Target Offline atau Kedua FCM Token Kosong (Null).");
-            return response()->json(['status' => false, 'message' => 'Admin/Driver belum melakukan aktivasi notifikasi (FCM Token kosong).'], 404);
+            Log::warning("LOG LOG: Target Offline atau FCM Kosong untuk Driver ID: {$driverId}.");
+            return response()->json(['status' => false, 'message' => 'Driver/Admin belum mengaktifkan notifikasi.'], 404);
         }
 
         $jarakKePemesanMeter = $this->getDistanceMeter(
@@ -673,7 +712,7 @@ public function notify_driver(Request $request)
             (float)$customerLat, (float)$customerLng
         );
 
-        // 2. GENERATE ORDER ID
+        // GENERATE ORDER ID
         $orderId = $orderPrefix . strtoupper(uniqid());
         Log::info("LOG LOG: Order ID di-generate: " . $orderId);
 
@@ -681,7 +720,7 @@ public function notify_driver(Request $request)
             DB::table('order_ojek_online')->insert([
                 'order_id'          => $orderId,
                 'customer_id'       => $customer->id_pengguna,
-                'driver_id'         => $driver->driver_user_id, // Jika Express, otomatis terisi '4' (ID Admin)
+                'driver_id'         => $driver->driver_user_id, // Masuk sesuai ID target yang dilempar dari HP
                 'origin_lat'        => $customerLat,
                 'origin_lng'        => $customerLng,
                 'origin_address'    => $request->input('origin_address', 'Lokasi Jemput'),
@@ -700,12 +739,9 @@ public function notify_driver(Request $request)
 
             Log::info("LOG LOG: Sukses Insert ke Database MySQL!");
 
-            // ==========================================================
-            // 🔥 FIREBASE RTDB PUSH DENGAN PENCATATAN ERROR (LOG) 🔥
-            // ==========================================================
+            // FIREBASE RTDB PUSH
             try {
                 $firebaseDbUrl = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/incoming_orders/{$driver->driver_user_id}/{$orderId}.json";
-
                 $fbResponse = Http::put($firebaseDbUrl, [
                     'order_id'       => $orderId,
                     'origin_lat'     => $customerLat,
@@ -719,14 +755,13 @@ public function notify_driver(Request $request)
                 if ($fbResponse->successful()) {
                     Log::info("LOG LOG: Sukses Insert pesanan ke Firebase RTDB.");
                 } else {
-                    // INI YANG PALING PENTING: Menangkap alasan Firebase menolak request
                     Log::error("LOG LOG: 💥 FIREBASE PUT GAGAL! Status: " . $fbResponse->status() . " | Pesan: " . $fbResponse->body());
                 }
             } catch (\Exception $e) {
                 Log::error("LOG LOG: 💥 CRASH JARINGAN SERVER KE FIREBASE: " . $e->getMessage());
             }
 
-            // 3. MESIN FIREBASE CERDAS FCM (HYBRID TOKEN SYSTEM)
+            // FIREBASE FCM (PUSH NOTIFICATION)
             $accessToken = $this->getGoogleAccessToken();
             $projectId = 'sancaka-express';
 
@@ -735,8 +770,6 @@ public function notify_driver(Request $request)
             if (!empty($driver->fcm_token_debug)) $tokensToTry[] = ['mode' => 'DEBUG', 'token' => $driver->fcm_token_debug];
 
             if ($accessToken && count($tokensToTry) > 0) {
-                $notifTerkirim = false;
-
                 foreach ($tokensToTry as $target) {
                     $mode = $target['mode'];
                     $tokenStr = $target['token'];
@@ -750,7 +783,7 @@ public function notify_driver(Request $request)
                             'android' => ['priority' => 'HIGH'],
                             'data' => [
                                 'action'           => 'new_order',
-                                'layanan'          => (string) $layanan, // <-- Kirim data layanan ke HP
+                                'layanan'          => (string) $layanan,
                                 'order_id'         => (string) $orderId,
                                 'customer_id'      => (string) ($customer->id_pengguna ?? $customer->id),
                                 'tarif'            => (string) $tarif,
@@ -770,7 +803,6 @@ public function notify_driver(Request $request)
 
                     if ($response->successful()) {
                         Log::info("LOG LOG: SUKSES! Notif terkirim ke Target menggunakan Token {$mode}.");
-                        $notifTerkirim = true;
                         break;
                     }
                 }
