@@ -1507,23 +1507,27 @@ public function notify_driver(Request $request)
         }
     }
 
-    /**
-     * GET: /api/mobile/order/komisi-fee
-     * Mengambil riwayat komisi khusus untuk Driver (Pribadi) dan Admin (Keseluruhan)
-     */
     public function getKomisiFee(Request $request)
     {
+        \Illuminate\Support\Facades\Log::info("=== [DEBUG] API KOMISI FEE DIAKSES ===");
+
         try {
             $user = $request->user();
 
-            // PERBAIKAN: Jika id_pengguna null, gunakan id default laravel
-            $userId = $user->id_pengguna ?? $user->id;
+            if (!$user) {
+                \Illuminate\Support\Facades\Log::error("[DEBUG] Token Ditolak / User tidak ditemukan!");
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sesi tidak valid / Token Kadaluarsa. Silakan Logout dan Login lagi.'
+                ], 401);
+            }
 
-            // PERBAIKAN: Pastikan status admin konsisten
+            $userId = $user->id_pengguna ?? $user->id;
             $isAdmin = ($userId == 4 || $user->role === 'Admin');
 
+            \Illuminate\Support\Facades\Log::info("[DEBUG] User ID: {$userId} | Is Admin: " . ($isAdmin ? "YES" : "NO"));
+
             // 1. Tarik Aturan Komisi & Pajak Saat Ini
-            // (Kode ke bawahnya tetap sama, biarkan tidak berubah...)
             $adminFeeType = \App\Models\Api::getValue('KOMISI_ADMIN_TYPE', 'global', 'percent');
             $adminFeeAmount = (float) \App\Models\Api::getValue('KOMISI_ADMIN_AMOUNT', 'global', 0);
 
@@ -1533,6 +1537,8 @@ public function notify_driver(Request $request)
             $pajakPercent = (float) \App\Models\Api::getValue('KOMISI_PAJAK_PERCENT', 'global', 0);
             $biayaNominal = (float) \App\Models\Api::getValue('KOMISI_BIAYA_NOMINAL', 'global', 0);
             $biayaKet = \App\Models\Api::getValue('KOMISI_BIAYA_KETERANGAN', 'global', 'Biaya Layanan');
+
+            \Illuminate\Support\Facades\Log::info("[DEBUG] Menarik data dari Database order_ojek_online...");
 
             // 2. Query Data Order (Hanya yang sudah selesai)
             $query = DB::table('order_ojek_online')
@@ -1553,6 +1559,7 @@ public function notify_driver(Request $request)
             }
 
             $orders = $query->get();
+            \Illuminate\Support\Facades\Log::info("[DEBUG] Ditemukan " . $orders->count() . " Transaksi.");
 
             // 3. Kalkulasi dan Pemrosesan Format Data
             $formattedTransactions = [];
@@ -1575,7 +1582,7 @@ public function notify_driver(Request $request)
                 if ($monthStr === $thisMonthStr) $txThisMonth++;
                 if ($monthStr === $lastMonthStr) $txLastMonth++;
 
-                // Logika Potongan Dinamis (Simulasi Retroaktif)
+                // Logika Potongan Dinamis
                 $potonganAplikasi = 0;
                 if ($o->driver_id == 4) {
                     $potonganAplikasi = ($adminFeeType === 'percent') ? ($tarifTotal * ($adminFeeAmount / 100)) : $adminFeeAmount;
@@ -1584,14 +1591,11 @@ public function notify_driver(Request $request)
                 }
 
                 $potonganPajak = $tarifTotal * ($pajakPercent / 100);
-
-                // Mencegah minus
                 $totalPotongan = $potonganAplikasi + $potonganPajak + $biayaNominal;
                 if ($totalPotongan > $tarifTotal) $totalPotongan = $tarifTotal;
 
                 $pendapatanBersih = $tarifTotal - $totalPotongan;
 
-                // Akumulasi Pusat
                 $totalFeeCollected += $potonganAplikasi + $biayaNominal;
                 $totalTaxCollected += $potonganPajak;
 
@@ -1610,8 +1614,9 @@ public function notify_driver(Request $request)
                 ];
             }
 
-            // Hitung Total Driver Aktif
             $totalDrivers = DB::table('registrasi_driver_sancaka')->where('status', 'approved')->count();
+
+            \Illuminate\Support\Facades\Log::info("[DEBUG] SUKSES! Data siap dilempar ke HP.");
 
             return response()->json([
                 'success' => true,
@@ -1633,8 +1638,15 @@ public function notify_driver(Request $request)
             ]);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("LOG LOG: Crash getKomisiFee: " . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Gagal memuat data keuangan.'], 500);
+            // TANGKAP ERROR DAN KIRIM LANGSUNG KE LAYAR HP!
+            $errorDetail = "File: " . basename($e->getFile()) . " | Baris: " . $e->getLine() . " | Pesan: " . $e->getMessage();
+            \Illuminate\Support\Facades\Log::error("[DEBUG CRASH] " . $errorDetail);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Backend Crash / Terjadi kegagalan query.',
+                'debug_error' => $errorDetail // <--- DIKIRIM KE REACT NATIVE
+            ], 500);
         }
     }
 
