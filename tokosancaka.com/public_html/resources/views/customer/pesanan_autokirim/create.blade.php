@@ -51,16 +51,14 @@
                     <div class="col-span-2 relative" @click.away="showSenderDropdown = false">
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Kecamatan / Kabupaten Pengirim</label>
                         <div class="relative">
-                            <input type="text" x-model="senderQuery" @input.debounce.400ms="searchAddress('sender')" @focus="showSenderDropdown = true" placeholder="Ketik minimal 3 karakter wilayah pengirim..." class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 pl-4 pr-10 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                            <input type="text" x-model="senderQuery" @input.debounce.400ms="searchAddress('sender')" @focus="showSenderDropdown = true" placeholder="Ketik minimal 3 karakter wilayah pengirim..." class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 pl-4 pr-10 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200" autocomplete="off">
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 text-xs">
                                 <i class="fa-solid fa-magnifying-glass" x-show="!isSearchingSender"></i>
                                 <i class="fa-solid fa-spinner fa-spin text-blue-500" x-show="isSearchingSender" x-cloak></i>
                             </div>
                         </div>
-                        <!-- 🔥 Input Tersembunyi District ID Pengirim -->
                         <input type="hidden" name="pengirim_district_id" x-model="senderDistrictId">
 
-                        <!-- Dropdown Hasil Pencarian Alamat PENGIRIM -->
                         <div x-show="showSenderDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
                             <template x-if="senderResults.length > 0">
                                 <div>
@@ -107,16 +105,14 @@
                     <div class="col-span-2 relative" @click.away="showReceiverDropdown = false">
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Kecamatan / Kabupaten Penerima</label>
                         <div class="relative">
-                            <input type="text" x-model="receiverQuery" @input.debounce.400ms="searchAddress('receiver')" @focus="showReceiverDropdown = true" placeholder="Ketik minimal 3 karakter wilayah penerima..." class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 pl-4 pr-10 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                            <input type="text" x-model="receiverQuery" @input.debounce.400ms="searchAddress('receiver')" @focus="showReceiverDropdown = true" placeholder="Ketik minimal 3 karakter wilayah penerima..." class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 pl-4 pr-10 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200" autocomplete="off">
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 text-xs">
                                 <i class="fa-solid fa-magnifying-glass" x-show="!isSearchingReceiver"></i>
                                 <i class="fa-solid fa-spinner fa-spin text-blue-500" x-show="isSearchingReceiver" x-cloak></i>
                             </div>
                         </div>
-                        <!-- 🔥 Input Tersembunyi District ID Penerima -->
                         <input type="hidden" name="penerima_district_id" x-model="receiverDistrictId">
 
-                        <!-- Dropdown Hasil Pencarian Alamat PENERIMA -->
                         <div x-show="showReceiverDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
                             <template x-if="receiverResults.length > 0">
                                 <div>
@@ -210,34 +206,64 @@
                 </div>
             </div>
 
-            <!-- TAMPILAN PILIHAN JASA EKSPEDISI DARI AUTOKIRIM -->
+            <!-- ======================================================= -->
+            <!-- TAMPILAN PILIHAN JASA EKSPEDISI + LOGO DARI HELPER LOGISTIC -->
+            <!-- ======================================================= -->
             <div x-show="ongkirList.length > 0" x-transition.duration.300ms class="bg-white p-6 rounded-2xl shadow-sm border border-blue-400" x-cloak>
                 <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Pilih Jasa Kurir & Layanan</h2>
 
-                <!-- Input Hidden yang Mengirim Data ke Method Store Backend -->
+                <!-- Input Hidden ke Backend -->
                 <input type="hidden" name="kurir_terpilih" x-model="selectedKurir">
                 <input type="hidden" name="layanan_terpilih" x-model="selectedLayanan">
                 <input type="hidden" name="ongkir_terpilih" x-model="selectedOngkir">
-                <!-- 🔥 Wajib untuk Autokirim API -->
                 <input type="hidden" name="service_code_terpilih" x-model="selectedServiceCode">
 
-                <div class="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                <div class="space-y-3 max-h-[380px] overflow-y-auto pr-2 custom-scrollbar">
                     <template x-for="(ongkir, index) in ongkirList" :key="index">
-                        <label class="flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all duration-200"
-                               :class="selectedServiceCode === ongkir.kode_layanan ? 'border-blue-500 bg-blue-50/60 shadow-sm ring-1 ring-blue-500' : 'border-gray-200 hover:border-blue-300'">
-                            <div class="flex items-center gap-3">
-                                <input type="radio" name="pilih_kurir" class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer"
-                                       :checked="selectedServiceCode === ongkir.kode_layanan"
-                                       @click="selectOngkir(ongkir)">
-                                <div>
-                                    <p class="font-bold text-gray-900 text-sm" x-text="ongkir.kurir"></p>
-                                    <p class="text-xs text-gray-500 mt-0.5" x-text="ongkir.layanan + ' (' + ongkir.estimasi + ')'"></p>
+                        <div @click="selectOngkir(ongkir)"
+                             class="p-4 border rounded-xl cursor-pointer transition-all duration-200 flex flex-col justify-between gap-2.5"
+                             :class="selectedServiceCode === ongkir.kode_layanan ? 'border-blue-600 bg-blue-50/70 shadow-sm ring-1 ring-blue-600' : 'border-gray-200 hover:border-blue-300 bg-white'">
+
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3.5">
+                                    <input type="radio" name="pilih_kurir_radio" class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 pointer-events-none"
+                                           :checked="selectedServiceCode === ongkir.kode_layanan">
+
+                                    <!-- 🔥 KOTAK LOGO EKSPEDISI DARI HELPER -->
+                                    <div class="w-12 h-12 bg-white rounded-xl border border-gray-100 flex items-center justify-center p-1.5 shadow-sm shrink-0 overflow-hidden relative">
+                                        <template x-if="ongkir.logo_url">
+                                            <!-- onerror trigger otomatis menghilangkan gambar jika link mati agar layout tidak berantakan -->
+                                            <img :src="ongkir.logo_url" :alt="ongkir.kurir"
+                                                 class="max-w-full max-h-full object-contain"
+                                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                        </template>
+                                        <!-- Fallback Icon jika logo rusak / url mati -->
+                                        <i class="fa-solid fa-truck-fast text-gray-400 text-lg" style="display: none;"></i>
+                                        <template x-if="!ongkir.logo_url">
+                                            <i class="fa-solid fa-truck-fast text-gray-400 text-lg"></i>
+                                        </template>
+                                    </div>
+
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <p class="font-extrabold text-gray-900 text-sm" x-text="ongkir.kurir"></p>
+                                            <span x-show="ongkir.is_pickup" class="text-[10px] bg-green-100 text-green-700 font-bold px-1.5 py-0.5 rounded">Free Pickup</span>
+                                        </div>
+                                        <p class="text-xs font-semibold text-gray-600 mt-0.5" x-text="ongkir.layanan"></p>
+                                    </div>
+                                </div>
+
+                                <div class="text-right">
+                                    <p class="font-black text-blue-700 text-base">Rp <span x-text="ongkir.harga.toLocaleString('id-ID')"></span></p>
                                 </div>
                             </div>
-                            <div class="text-right">
-                                <p class="font-extrabold text-blue-700 text-sm">Rp <span x-text="ongkir.harga.toLocaleString('id-ID')"></span></p>
+
+                            <!-- Baris Info Waktu: Estimasi Hari dan Tanggal Tiba (ETD) -->
+                            <div class="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-2.5 mt-0.5 pl-7">
+                                <span><i class="fa-regular fa-clock text-gray-400 mr-1"></i> Durasi: <strong class="text-gray-700" x-text="ongkir.estimasi"></strong></span>
+                                <span><i class="fa-regular fa-calendar-check text-green-500 mr-1"></i> Tiba: <strong class="text-gray-700" x-text="ongkir.etd"></strong></span>
                             </div>
-                        </label>
+                        </div>
                     </template>
                 </div>
 
@@ -286,11 +312,8 @@ document.addEventListener('alpine:init', () => {
         selectedOngkir: 0,
         selectedServiceCode: '',
 
-        // Pemicu AJAX Pencarian Alamat Lokal
         async searchAddress(type) {
             let query = type === 'sender' ? this.senderQuery : this.receiverQuery;
-
-            console.log("Mencari wilayah:", query); // Debugging log
 
             if (query.length < 3) {
                 if(type === 'sender') { this.senderResults = []; this.showSenderDropdown = false; }
@@ -318,21 +341,19 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // Handler saat salah satu alamat di dropdown diklik
         selectAddress(type, res) {
             let formatText = `${res.district_name}, ${res.regency_name}`;
             if(type === 'sender') {
                 this.senderQuery = formatText;
-                this.senderDistrictId = res.district_id; // Set ID Autokirim
+                this.senderDistrictId = res.district_id;
                 this.showSenderDropdown = false;
             } else {
                 this.receiverQuery = formatText;
-                this.receiverDistrictId = res.district_id; // Set ID Autokirim
+                this.receiverDistrictId = res.district_id;
                 this.showReceiverDropdown = false;
             }
         },
 
-        // Pemicu AJAX Cek Tarif Ke Server Autokirim via Backend
         async cekOngkir() {
             if(!this.senderDistrictId || !this.receiverDistrictId || !this.berat) {
                 alert("Mohon lengkapi wilayah Pengirim, wilayah Penerima dari dropdown yang muncul, dan Berat paket Anda!");
@@ -388,7 +409,6 @@ document.addEventListener('alpine:init', () => {
 </script>
 
 <style>
-/* Desain Scrollbar Tipis Khas Next.js untuk Area Kurir */
 .custom-scrollbar::-webkit-scrollbar { width: 5px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
