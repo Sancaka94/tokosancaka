@@ -111,16 +111,30 @@
                             </div>
                         </td>
 
-                        <!-- KOLOM 4: KURIR & RESI -->
+                        <!-- KOLOM 4: KURIR & RESI (DENGAN GAMBAR LOGO) -->
                         <td class="p-4 align-top">
+                            @php
+                                $parsedKurir = \App\Helpers\ShippingHelper::parseShippingMethod($item->kurir);
+                            @endphp
+
+                            @if($parsedKurir['logo_url'])
+                                <img src="{{ $parsedKurir['logo_url'] }}"
+                                    alt="{{ $parsedKurir['courier_name'] }}"
+                                    class="h-8 w-auto object-contain mb-2"
+                                    onerror="this.style.display='none';">
+                            @endif
+
                             <p class="font-bold text-gray-800 uppercase">{{ $item->kurir }}</p>
                             <p class="text-[11px] text-gray-500 mb-2">{{ $item->layanan }}</p>
+
                             @if($item->awb_number)
-                                <span class="bg-blue-50 text-blue-700 font-bold font-mono px-2 py-1 rounded text-sm border border-blue-200">
+                                <div class="inline-block bg-blue-50 text-blue-700 font-bold font-mono px-3 py-1.5 rounded text-sm border border-blue-200">
                                     {{ $item->awb_number }}
-                                </span>
+                                </div>
                             @else
-                                <span class="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded italic">Menunggu Resi</span>
+                                <div class="inline-block bg-gray-100 text-gray-500 text-xs px-3 py-1.5 rounded italic border border-gray-200">
+                                    Menunggu Resi
+                                </div>
                             @endif
                         </td>
 
