@@ -40,11 +40,11 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2 sm:col-span-1">
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Lengkap</label>
-                        <input type="text" name="pengirim_nama" value="{{ old('pengirim_nama') }}" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                        <input type="text" id="pengirim_nama" name="pengirim_nama" value="{{ old('pengirim_nama') }}" required class="w-full font-bold border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                     </div>
                     <div class="col-span-2 sm:col-span-1">
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor HP / WA</label>
-                        <input type="number" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                        <input type="text" id="pengirim_hp" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required class="w-full font-bold border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                     </div>
 
                     <!-- Autocomplete Alamat Pengirim -->
@@ -82,8 +82,15 @@
                         <label class="block text-xs font-semibold text-gray-600 mb-1">
                             Alamat Jalan Pengirim <span class="text-red-500">*</span>
                         </label>
-                        <textarea name="pengirim_alamat" rows="2" required minlength="15" placeholder="Contoh: Jl. Ronggowarsito No. 15, RT 01 / RW 02 (Wajib detail jalan/nomor rumah, jangan hanya nama kota)" class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">{{ old('pengirim_alamat') }}</textarea>
-                        <p class="text-[10px] text-gray-400 mt-1">* Tanpa perlu menuliskan Kecamatan/Kabupaten/Kodepos lagi (sudah otomatis terwakili oleh pilihan dropdown di atas).</p>
+                        <textarea id="pengirim_alamat" name="pengirim_alamat" rows="2" required minlength="15" placeholder="Contoh: Jl Ronggowarsito No 15 RT 01 RW 02" class="w-full font-bold border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">{{ old('pengirim_alamat') }}</textarea>
+
+                        <!-- PESAN PERINGATAN MERAH -->
+                        <div class="mt-1.5 p-2 bg-red-50 border border-red-200 rounded-lg">
+                            <p class="text-[10px] text-red-600 font-bold flex items-start gap-1.5 leading-tight">
+                                <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                                <span>PENTING: from.address hanya diisi alamat jalan saja tanpa kecamatan, kabupaten, provinsi dan kode pos.</span>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -97,11 +104,11 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2 sm:col-span-1">
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Lengkap</label>
-                        <input type="text" name="penerima_nama" value="{{ old('penerima_nama') }}" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                        <input type="text" id="penerima_nama" name="penerima_nama" value="{{ old('penerima_nama') }}" required class="w-full font-bold border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                     </div>
                     <div class="col-span-2 sm:col-span-1">
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor HP / WA</label>
-                        <input type="number" name="penerima_hp" value="{{ old('penerima_hp') }}" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                        <input type="text" id="penerima_hp" name="penerima_hp" value="{{ old('penerima_hp') }}" required class="w-full font-bold border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                     </div>
 
                     <!-- Autocomplete Alamat Penerima -->
@@ -139,8 +146,15 @@
                         <label class="block text-xs font-semibold text-gray-600 mb-1">
                             Alamat Jalan Penerima <span class="text-red-500">*</span>
                         </label>
-                        <textarea name="penerima_alamat" rows="2" required minlength="15" placeholder="Contoh: Perum Graha Kebraon Regency 2 Block A No. 3, RT 04 / RW 05" class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">{{ old('penerima_alamat') }}</textarea>
-                        <p class="text-[10px] text-gray-400 mt-1">* Wajib mengetikkan nama jalan dan nomor rumah/gedung minimal 15 huruf agar resi ekspedisi tidak gagal terbit.</p>
+                        <textarea id="penerima_alamat" name="penerima_alamat" rows="2" required minlength="15" placeholder="Contoh: Perum Graha Kebraon Regency 2 Block A No 3 RT 04 RW 05" class="w-full font-bold border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">{{ old('penerima_alamat') }}</textarea>
+
+                        <!-- PESAN PERINGATAN MERAH -->
+                        <div class="mt-1.5 p-2 bg-red-50 border border-red-200 rounded-lg">
+                            <p class="text-[10px] text-red-600 font-bold flex items-start gap-1.5 leading-tight">
+                                <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                                <span>PENTING: to.address hanya diisi alamat jalan saja tanpa kecamatan, kabupaten, provinsi dan kode pos.</span>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -287,9 +301,20 @@
                             <div class="flex items-center gap-3">
                                 <input type="radio" name="payment_radio" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 pointer-events-none"
                                        :checked="selectedPayment === '{{ $bayar['id'] }}'">
-                                <div class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center shrink-0">
-                                    <i class="{{ $bayar['icon'] }} text-base"></i>
+
+                                <!-- ICON / LOGO PAYMENT GATEWAY -->
+                                <div class="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center shrink-0 p-1">
+                                    @if(str_contains(strtolower($bayar['id']), 'dana'))
+                                        <img src="https://tokosancaka.com/public/assets/dana.png" alt="DANA" class="w-full h-full object-contain">
+                                    @elseif(str_contains(strtolower($bayar['id']), 'doku'))
+                                        <img src="https://tokosancaka.com/public/assets/doku.png" alt="DOKU" class="w-full h-full object-contain">
+                                    @elseif(str_contains(strtolower($bayar['id']), 'tripay'))
+                                        <img src="https://tokosancaka.com/public/assets/tripay.png" alt="TRIPAY" class="w-full h-full object-contain">
+                                    @else
+                                        <i class="{{ $bayar['icon'] }} text-xl"></i>
+                                    @endif
                                 </div>
+
                                 <div>
                                     <p class="font-bold text-gray-900 text-xs sm:text-sm">{{ $bayar['nama'] }}</p>
                                     <p class="text-[11px] text-gray-500">{{ $bayar['deskripsi'] }}</p>
@@ -641,6 +666,62 @@ document.addEventListener('alpine:init', () => {
             alert(`Fitur Sukses: Kontak ${role} berhasil diamankan ke Buku Alamat Anda!`);
         }
     }));
+});
+
+// ==========================================
+// AUTO-FORMATTER INPUT (NAMA, HP, ALAMAT)
+// ==========================================
+document.addEventListener('DOMContentLoaded', function() {
+
+    // 1. Format Nama (Huruf & Spasi Saja + Kapital)
+    const nameInputs = ['pengirim_nama', 'penerima_nama'];
+    nameInputs.forEach(id => {
+        let el = document.getElementById(id);
+        if(el) {
+            el.addEventListener('input', function() {
+                // Murni huruf dan spasi saja (angka dan karakter aneh otomatis terhapus)
+                let val = this.value.replace(/[^a-zA-Z\s]/g, '');
+                this.value = val.toUpperCase();
+            });
+        }
+    });
+
+    // 2. Format HP (Murni Angka, Hapus +62/62, Otomatis tambah 0)
+    const phoneInputs = ['pengirim_hp', 'penerima_hp'];
+    phoneInputs.forEach(id => {
+        let el = document.getElementById(id);
+        if(el) {
+            el.addEventListener('input', function() {
+                // Hapus semua selain angka (strip, spasi, plus, huruf, dll)
+                let val = this.value.replace(/\D/g, '');
+
+                // Ubah awalan 62 menjadi 0
+                if(val.startsWith('62')) {
+                    val = '0' + val.substring(2);
+                }
+                // Tambahkan 0 jika user mulai mengetik tanpa 0
+                else if(val.length > 0 && !val.startsWith('0')) {
+                    val = '0' + val;
+                }
+
+                this.value = val;
+            });
+        }
+    });
+
+    // 3. Format Alamat (Hanya Huruf, Angka, Spasi + Kapital) -> Murni Tanpa Tanda Baca
+    const addressInputs = ['pengirim_alamat', 'penerima_alamat'];
+    addressInputs.forEach(id => {
+        let el = document.getElementById(id);
+        if(el) {
+            el.addEventListener('input', function() {
+                // Murni Huruf, Angka, dan Spasi (Koma, titik, garis miring, strip DIHAPUS)
+                let val = this.value.replace(/[^a-zA-Z0-9\s]/g, '');
+                this.value = val.toUpperCase();
+            });
+        }
+    });
+
 });
 </script>
 
