@@ -16,6 +16,8 @@ use App\Http\Controllers\Rsud\AdminOrderObatController;
 // Tambahkan di bawah // Pembayaran
 use App\Http\Controllers\PayPalController;
 
+use App\Http\Controllers\PesananAutokirimController;
+
 
 use App\Http\Controllers\RegisterDriverOnlineController;
 
@@ -1912,3 +1914,25 @@ Route::post('/shorten', [ShortUrlController::class, 'store']);
 
 // 3. ROUTE UNTUK REDIRECT (WAJIB DI PALING BAWAH)
 Route::get('/{short_code}', [ShortUrlController::class, 'redirect']);
+
+
+
+// ------------------------ AREA AUTOKIRIM -------------------------------
+
+
+// --- GRUP CUSTOMER ---
+Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(function () {
+    Route::get('/pesanan-autokirim', [PesananAutokirimController::class, 'createCustomer'])->name('pesanan-autokirim.create');
+    Route::post('/pesanan-autokirim', [PesananAutokirimController::class, 'store'])->name('pesanan-autokirim.store');
+});
+
+// --- GRUP ADMIN ---
+Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/pesanan-autokirim', [PesananAutokirimController::class, 'indexAdmin'])->name('pesanan-autokirim.index');
+});
+
+// --- GRUP AJAX/API INTERNAL ---
+Route::prefix('api/autokirim')->name('api.autokirim.')->group(function () {
+    Route::get('/search-address', [PesananAutokirimController::class, 'searchAddressAjax'])->name('search_address');
+    Route::post('/cek-ongkir', [PesananAutokirimController::class, 'cekOngkirAjax'])->name('cek_ongkir');
+});

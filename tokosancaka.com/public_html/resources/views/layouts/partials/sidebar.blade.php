@@ -467,6 +467,14 @@
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Level & Performa Driver</span>
             </a>
 
+            {{-- Menu Pesanan Autokirim --}}
+            <a href="{{ route('admin.pesanan-autokirim.index') }}" wire:navigate
+               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+               class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.pesanan-autokirim.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                <i class="fa-solid fa-box-fast fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.pesanan-autokirim.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Order Autokirim</span>
+            </a>
+
             {{-- PPOB --}}
             <div x-data="{ open: {{ request()->routeIs('admin.ppob.*') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
