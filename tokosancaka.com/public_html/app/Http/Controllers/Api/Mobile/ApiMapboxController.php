@@ -414,29 +414,30 @@ class ApiMapboxController extends Controller
     }
 
   public function toggleMap(Request $request)
-{
-    try {
-        $user = $request->user();
-        $idPengguna = $user->id_pengguna;
-        $isActive = $request->input('is_active_map'); // 1 atau 0
+    {
+        try {
+            $user = $request->user();
+            $idPengguna = $user->id_pengguna;
+            $isActive = $request->input('is_active_map'); // 1 atau 0
 
-        if ($isActive == 1) {
-            // [REFACTOR]: Ambil data dari MySQL SEKALI SAJA saat online, lalu simpan ke Redis Hash
-            $driver = DB::table('registrasi_driver_sancaka')->where('id_pengguna', $idPengguna)->first();
-            if ($driver) {
-                Redis::hmset("driver_meta:{$idPengguna}", [
-                    'id' => $driver->id,
-                    'id_pengguna' => $driver->id_pengguna,
-                    'name' => $driver->nama_lengkap,
-                    'gender' => $driver->jenis_kelamin,
-                    'vehicle' => 'Ojek Sancaka',
-                    'is_online' => 1
-                ]);
-            }
-        } else {
-            // HAPUS DARI REDIS & FIREBASE SAAT OFFLINE
-            Redis::zrem('active_drivers', $idPengguna);
-            Redis::del("driver_meta:{$idPengguna}");
+            if ($isActive == 1) {
+                $driver = DB::table('registrasi_driver_sancaka')->where('id_pengguna', $idPengguna)->first();
+                if ($driver) {
+                    Redis::hmset("driver_meta:{$idPengguna}", [
+                        'id' => $driver->id,
+                        'id_pengguna' => $driver->id_pengguna,
+                        'name' => $driver->nama_lengkap,
+                        'gender' => $driver->jenis_kelamin,
+                        'vehicle' => 'Ojek Sancaka',
+                        'is_online' => 1
+                    ]);
+
+                    // 🔥 TAMBAHAN REDIS: Expired otomatis 12 Jam (43200 detik)
+                    Redis::expire("driver_meta:{$idPengguna}", 43200);
+                }
+            } else {
+                Redis::zrem('active_drivers', $idPengguna);
+                Redis::del("driver_meta:{$idPengguna}");
 
             $firebaseUrl = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/incoming_orders/{$idPengguna}.json";
             Http::delete($firebaseUrl);
@@ -452,18 +453,27 @@ class ApiMapboxController extends Controller
 }
 
    public function updateLocation(Request $request)
-{
-    try {
-        $user = $request->user();
-        $idPengguna = $user->id_pengguna;
-        $lat = (float) $request->input('latitude');
-        $lng = (float) $request->input('longitude');
+    {
+        try {
+            $user = $request->user();
+            $idPengguna = $user->id_pengguna;
+            $lat = (float) $request->input('latitude');
+            $lng = (float) $request->input('longitude');
 
-        // 1. SIMPAN KE REDIS GEOSPATIAL (Untuk Radar Penumpang & Jarak)
+            // ==========================================================
+            // 🛡️ [PERISAI 3]: ANTI REDIS GEO-CRASH (Bypass Fake GPS ekstrim)
+            // ==========================================================
+            if ($lat < -85.0 || $lat > 85.0 || $lng < -180.0 || $lng > 180.0) {
+                Log::warning("LOG LOG: ⛔ Koordinat tidak masuk akal (Fake GPS / Error Device) dari Driver ID {$idPengguna}. Lat: {$lat}, Lng: {$lng}");
+                return response()->json(['success' => false, 'message' => 'Koordinat GPS Anda tidak valid.'], 400);
+            }
+
+            // 1. SIMPAN KE REDIS GEOSPATIAL (Untuk Radar Penumpang & Jarak)
         try {
             Redis::geoadd('active_drivers', $lng, $lat, $idPengguna);
             // Simpan juga koordinat terakhir ke Redis Hash untuk fallback cepat
             Redis::hset("driver_meta:{$idPengguna}", 'lat', $lat, 'lng', $lng, 'last_updated', time());
+            Redis::expire("driver_meta:{$idPengguna}", 43200);
         } catch (\Exception $e) {
             Log::warning("Gagal update lokasi di Redis: " . $e->getMessage());
         }
@@ -517,13 +527,17 @@ class ApiMapboxController extends Controller
                 return response()->json(['success' => false, 'message' => 'Lengkapi Jenis Kelamin di profil Anda.'], 400);
             }
 
-            // ==========================================================
+           // ==========================================================
             // 1. TARIK DARI REDIS GEOSPATIAL (DRIVER BIASA MAKSIMAL 5 KM)
             // ==========================================================
             $nearbyRaw = Redis::georadius('active_drivers', $lng, $lat, $radius, 'km', ['WITHDIST', 'ASC']);
             $formattedDrivers = [];
 
             if (!empty($nearbyRaw)) {
+                // 🛠️ PERBAIKAN N+1 REDIS: Gunakan Pipeline agar tarikan massal jadi 1 Query
+                $pipeline = Redis::pipeline();
+                $driverDistances = []; // Menyimpan jarak untuk dicocokkan nanti
+
                 foreach ($nearbyRaw as $item) {
                     $dId = null;
                     $dist = 0;
@@ -539,21 +553,34 @@ class ApiMapboxController extends Controller
                     }
 
                     if ($dId) {
-                        $meta = Redis::hgetall("driver_meta:{$dId}");
-                        // Filter Syariah
-                        if (!empty($meta) && isset($meta['gender']) && $meta['gender'] === $passengerGender) {
-                            $formattedDrivers[] = [
-                                'id' => (int) ($meta['id'] ?? $dId),
-                                'id_pengguna' => (int) $dId,
-                                'name' => $meta['name'] ?? 'Driver Sancaka',
-                                'vehicle' => $meta['vehicle'] ?? 'Ojek Sancaka',
-                                'distance' => round($dist, 1) . ' KM',
-                                'distance_raw' => $dist,
-                                'lat' => (float) ($meta['lat'] ?? 0),
-                                'lng' => (float) ($meta['lng'] ?? 0),
-                                'is_online' => true
-                            ];
-                        }
+                        // Daftarkan perintah ke Pipeline (belum dieksekusi)
+                        $pipeline->hgetall("driver_meta:{$dId}");
+                        // Simpan jarak ke memori array PHP dengan ID sebagai Key
+                        $driverDistances[$dId] = $dist;
+                    }
+                }
+
+                // Eksekusi SEMUA perintah hgetall sekaligus (Tembak Redis HANYA 1 KALI)
+                $metaResults = $pipeline->execute();
+
+                // Proses hasil dari Pipeline
+                foreach ($metaResults as $meta) {
+                    // Filter Syariah
+                    if (!empty($meta) && isset($meta['id_pengguna']) && isset($meta['gender']) && $meta['gender'] === $passengerGender) {
+                        $dId = $meta['id_pengguna'];
+                        $dist = $driverDistances[$dId] ?? 0;
+
+                        $formattedDrivers[] = [
+                            'id' => (int) ($meta['id'] ?? $dId),
+                            'id_pengguna' => (int) $dId,
+                            'name' => $meta['name'] ?? 'Driver Sancaka',
+                            'vehicle' => $meta['vehicle'] ?? 'Ojek Sancaka',
+                            'distance' => round($dist, 1) . ' KM',
+                            'distance_raw' => $dist,
+                            'lat' => (float) ($meta['lat'] ?? 0),
+                            'lng' => (float) ($meta['lng'] ?? 0),
+                            'is_online' => true
+                        ];
                     }
                 }
             }
@@ -642,11 +669,41 @@ class ApiMapboxController extends Controller
         $customer = $request->user();
 
         // ==========================================================
-        // VALIDASI SALDO PENUMPANG
+        // 🛡️ [PERISAI 1]: ANTI SPAM ORDER FIKTIF BERUNTUN
+        // ==========================================================
+        $cekOrderAktif = DB::table('order_ojek_online')
+            ->where('customer_id', $customer->id_pengguna ?? $customer->id)
+            ->whereIn('status', ['pending', 'accepted', 'otw_jemput', 'otw_antar'])
+            ->exists();
+
+        if ($cekOrderAktif) {
+            Log::warning("LOG LOG: ⛔ SPAM DETECTED! User ID {$customer->id_pengguna} mencoba membuat order fiktif berlapis.");
+            return response()->json([
+                'status' => false,
+                'message' => 'Anda masih memiliki pesanan yang sedang berlangsung. Selesaikan atau batalkan terlebih dahulu!'
+            ], 403);
+        }
+
+        // ==========================================================
+        // 🛡️ [PERISAI 2]: ANTI MANIPULASI TARIF (HACKER BYPASS)
         // ==========================================================
         $metodePembayaran = strtoupper($request->input('metode_pembayaran', 'CASH'));
         $tarif = (float) $request->input('tarif', 0);
 
+        // Ambil batas bawah tarif dari settingan atau set default 3000 (Sancaka Express termurah)
+        $tarifMinimal = ($layanan === 'ojek_online') ? 5000 : 3000;
+
+        if ($tarif < $tarifMinimal) {
+            Log::error("LOG LOG: ☠️ HACKING DETECTED! Manipulasi harga! User ID {$customer->id_pengguna} mengirim tarif Rp {$tarif}");
+            return response()->json([
+                'status' => false,
+                'message' => 'Tarif tidak valid atau terindikasi dimanipulasi oleh sistem pihak ketiga.'
+            ], 400);
+        }
+
+        // ==========================================================
+        // VALIDASI SALDO PENUMPANG (Kode asli Anda lanjut di bawah sini)
+        // ==========================================================
         if ($metodePembayaran === 'SALDO') {
             $cekSaldoUser = DB::table('Pengguna')
                 ->where('id_pengguna', $customer->id_pengguna ?? $customer->id)
@@ -738,6 +795,25 @@ class ApiMapboxController extends Controller
             ]);
 
             Log::info("LOG LOG: Sukses Insert ke Database MySQL!");
+
+            // ==========================================================
+            // 🔥 TAMBAHAN REDIS: Simpan Order Sementara (Auto Expire 30 Menit)
+            // ==========================================================
+            try {
+                $orderDataRedis = [
+                    'order_id'    => $orderId,
+                    'customer_id' => $customer->id_pengguna,
+                    'driver_id'   => $driver->driver_user_id,
+                    'status'      => 'pending',
+                    'layanan'     => $layanan,
+                    'tarif'       => $tarif
+                ];
+                // 1800 detik = 30 menit. Jika 30 menit tidak diapa-apakan, auto hapus dari memori!
+                Redis::setex("order_active:{$orderId}", 1800, json_encode($orderDataRedis));
+                Log::info("LOG LOG: Sukses simpan order {$orderId} ke Redis (Expire 30 Menit)");
+            } catch (\Exception $e) {
+                Log::warning("LOG LOG: Gagal simpan ke Redis: " . $e->getMessage());
+            }
 
             // FIREBASE RTDB PUSH
             try {
@@ -1178,6 +1254,29 @@ class ApiMapboxController extends Controller
                             ->where('id_pengguna', 4)
                             ->increment('saldo', $totalPotongan);
                         Log::info("LOG LOG: TOTAL POTONGAN Rp {$totalPotongan} OTOMATIS DITAMBAHKAN KE SALDO ADMIN ID 4");
+                    }
+
+                    // ==========================================================
+                    // 🔥 TAMBAHAN REDIS: Hapus Data Karena Sudah Sukses/Selesai
+                    // ==========================================================
+                    try {
+                        Redis::del("order_active:{$orderId}");
+                        Log::info("LOG LOG: Memori Redis dibersihkan. Order {$orderId} dihapus karena status COMPLETED.");
+                    } catch (\Exception $e) {
+                        Log::warning("LOG LOG: Gagal hapus dari Redis: " . $e->getMessage());
+                    }
+
+                } else {
+                    // Jika status berubah ke 'otw_jemput' atau 'otw_antar', kita perbarui Redis
+                    // dan perpanjang waktu hidupnya (misal jadi 2 jam / 7200 detik)
+                    try {
+                        if (Redis::exists("order_active:{$orderId}")) {
+                            $redisData = json_decode(Redis::get("order_active:{$orderId}"), true);
+                            $redisData['status'] = $newStatus;
+                            Redis::setex("order_active:{$orderId}", 7200, json_encode($redisData));
+                        }
+                    } catch (\Exception $e) {
+                        // Abaikan jika Redis fail, DB adalah sumber kebenaran utama
                     }
                 }
                 // =========================================================================
