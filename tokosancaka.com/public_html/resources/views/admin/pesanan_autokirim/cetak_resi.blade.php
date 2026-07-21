@@ -19,86 +19,104 @@
             margin: 0;
         }
 
+        /* --- RESPONSIVE WRAPPER --- */
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 20px;
             background: #525659;
             display: flex;
-            align-items: flex-start; /* Posisi pojok kiri atas */
-            justify-content: flex-start; /* Posisi pojok kiri atas */
-            gap: 20px; /* Jarak antara resi dan panel tombol */
+            flex-wrap: wrap; /* Agar responsif di HP */
+            align-items: flex-start;
+            justify-content: center; /* Posisikan ke tengah layar */
+            gap: 20px;
         }
 
-        /* Container Resi (Ukuran Pasti 100x150mm) */
+        /* --- WADAH RESI --- */
         .receipt-container {
             background: #fff;
             width: 100mm;
-            height: 150mm; /* Tinggi statis 150mm */
+            min-height: 150mm; /* Gunakan min-height agar bisa menyesuaikan konten */
             padding: 15px;
-            box-sizing: border-box; /* Agar padding tidak menambah lebar 100mm */
-            border-radius: 4px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            position: relative;
+            box-sizing: border-box;
+            border-radius: 6px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column; /* Ubah ke column agar footer terdorong rapi */
             overflow: hidden;
+            position: relative;
         }
 
-        /* Panel Tombol Aksi */
+        /* --- PANEL TOMBOL --- */
         .action-panel {
             background: #ffffff;
-            padding: 15px;
+            padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            width: 250px;
+            gap: 12px;
+            width: 100%;
+            max-width: 280px;
         }
         .action-panel h3 { margin: 0 0 10px 0; font-size: 16px; color: #333; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 10px;}
-        .btn { padding: 12px 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px; color: white; font-size: 13px; transition: 0.2s; width: 100%; justify-content: center;}
-        .btn:hover { opacity: 0.9; transform: translateY(-1px); }
-        .btn-print { background-color: #3b82f6; } /* Biru */
-        .btn-png { background-color: #10b981; } /* Hijau */
-        .btn-pdf { background-color: #ef4444; } /* Merah */
+        .btn { padding: 12px 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px; color: white; font-size: 13px; transition: all 0.2s; justify-content: center;}
+        .btn:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15);}
+        .btn-print { background-color: #3b82f6; }
+        .btn-png { background-color: #10b981; }
+        .btn-pdf { background-color: #ef4444; }
 
-        /* --- Elemen Internal Resi --- */
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
-        .logo-left img { max-height: 35px; }
-        .logo-right img { max-height: 35px; }
-        .title { text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 10px; }
+        /* --- INTERNAL RESI ELEMEN --- */
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
+        .logo-left img { max-height: 32px; }
+        .logo-right img { max-height: 32px; }
+        .title { text-align: center; font-size: 13px; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px;}
 
-        .barcode-container { text-align: center; margin-bottom: 15px; }
-        .barcode-container img { width: 100%; height: 55px; object-fit: cover; }
-        .barcode-text { font-size: 13px; font-weight: bold; margin-top: 3px; letter-spacing: 1px; }
+        .barcode-container { text-align: center; margin-bottom: 12px; }
+        .barcode-container img { width: 100%; height: 50px; object-fit: cover; }
+        .barcode-text { font-size: 13px; font-weight: bold; margin-top: 2px; letter-spacing: 1px; }
 
-        .address-grid { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+        .address-grid { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
         .col { width: 48%; font-size: 11px; line-height: 1.4; }
-        .col-title { font-weight: 900; font-size: 12px; margin-bottom: 4px; text-transform: uppercase; }
+        .col-title { font-weight: 900; font-size: 11px; margin-bottom: 3px; text-transform: uppercase; }
         .name { font-weight: bold; text-transform: uppercase; }
 
-        .middle-grid { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .middle-grid { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .rincian { font-size: 10px; line-height: 1.5; width: 60%; }
         .rincian strong { font-size: 11px; display: block; margin-bottom: 2px;}
         .qr-box { width: 35%; text-align: center; }
-        .qr-box img { width: 80px; height: 80px; margin: 0 auto; border: 1px solid #ccc; padding: 4px; border-radius: 5px; }
+        .qr-box img { width: 75px; height: 75px; margin: 0 auto; border: 1px solid #ccc; padding: 4px; border-radius: 5px; }
         .qr-text { font-size: 9px; font-weight: bold; margin-top: 4px; }
 
-        .total-box { margin-bottom: 10px; }
-        .total-title { color: #16a34a; font-size: 13px; font-weight: bold; margin-bottom: 2px; }
-        .total-amount { color: #dc2626; font-size: 22px; font-weight: 900; }
+        .total-box { margin-bottom: 5px; }
+        .total-title { color: #16a34a; font-size: 12px; font-weight: bold; margin-bottom: 2px; }
+        .total-amount { color: #dc2626; font-size: 20px; font-weight: 900; }
 
-        .helpdesk { text-align: center; font-size: 9px; margin-bottom: 10px; line-height: 1.4; }
+        .helpdesk { text-align: center; font-size: 9px; margin-bottom: 8px; line-height: 1.4; }
 
-        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 8px 0; text-align: center; font-size: 9px; }
-        .info-item .lbl { font-weight: 900; text-transform: uppercase; margin-bottom: 2px; font-size: 10px;}
+        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 6px 0; text-align: center; font-size: 9px; }
+        .info-item .lbl { font-weight: 900; text-transform: uppercase; margin-bottom: 2px; font-size: 9px;}
 
-        .footer { text-align: center; font-size: 10px; margin-top: 12px; position: absolute; bottom: 15px; left: 0; right: 0; }
+        /* --- FOOTER FIX --- */
+        .footer {
+            text-align: center;
+            font-size: 9px;
+            margin-top: auto; /* Mendorong footer otomatis ke bagian paling bawah tanpa overlap */
+            padding-top: 10px;
+        }
 
-        /* Hilangkan UI ekstra saat diprint */
+        /* --- ATURAN KHUSUS SAAT DICETAK PRINTER --- */
         @media print {
-            body { background: #fff; padding: 0; display: block; }
+            body { background: #fff; padding: 0; justify-content: flex-start; align-items: flex-start;}
             .action-panel { display: none; }
-            .receipt-container { box-shadow: none; border-radius: 0; margin: 0; }
+            .receipt-container {
+                box-shadow: none;
+                border-radius: 0;
+                margin: 0;
+                width: 100mm;
+                height: 148mm; /* Dikunci tingginya untuk mencegah blank page kedua di printer */
+                page-break-after: avoid;
+            }
         }
     </style>
 </head>
@@ -140,6 +158,15 @@
         <img src="https://barcode.tec-it.com/barcode.ashx?data={{ $resiTrack }}&code=Code128&translate-esc=on" alt="Barcode">
         <div class="barcode-text">{{ strtoupper($resiTrack) }}</div>
     </div>
+
+    <!-- KODE TLC / SORTING (Jika Ada) -->
+    @if(!empty($pesanan->tlc_code))
+    <div style="text-align: center; margin-bottom: 10px;">
+        <span style="font-size: 20px; font-weight: 900; border: 2px solid #000; padding: 2px 15px; display: inline-block; letter-spacing: 1px;">
+            {{ $pesanan->tlc_code }}
+        </span>
+    </div>
+    @endif
 
     <!-- ALAMAT -->
     <div class="address-grid">
@@ -201,7 +228,7 @@
         </div>
     </div>
 
-    <div class="info-grid" style="border-top: none; padding-top: 8px;">
+    <div class="info-grid" style="border-top: none; padding-top: 6px;">
         <div class="info-item">
             <div class="lbl">LAYANAN</div>
             <div>{{ $pesanan->layanan }}</div>
@@ -224,7 +251,7 @@
 
 </div>
 
-<!-- PANEL TOMBOL (Tidak akan ikut tercetak) -->
+<!-- PANEL TOMBOL -->
 <div class="action-panel">
     <h3>Aksi Resi</h3>
     <button class="btn btn-print" onclick="window.print()">
@@ -240,7 +267,7 @@
 
 <!-- SCRIPTS LOGIC DOWNLOAD -->
 <script>
-    // Konfigurasi Scale HTML2Canvas (Agar gambar jernih/HD)
+    // Konfigurasi Scale HTML2Canvas (Resolusi HD)
     const scaleOption = { scale: 3, useCORS: true, logging: false };
 
     // Fungsi Download PNG
