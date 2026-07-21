@@ -1,7 +1,7 @@
 @extends('layouts.customer')
 
 @section('content')
-<div class="max-w-6xl mx-auto px-4 py-8 font-sans" x-data="orderForm()">
+<div class="max-w-6xl mx-auto px-4 py-8 font-sans" x-data="orderForm">
     <div class="mb-8">
         <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Kirim Paket <span class="text-blue-600">Autokirim</span></h1>
         <p class="text-gray-500 mt-2">Isi detail pengiriman dengan cepat, akurat, dan dapatkan tarif terbaik dari server logistik.</p>
@@ -40,16 +40,16 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2 sm:col-span-1">
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Lengkap</label>
-                        <input type="text" name="pengirim_nama" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                        <input type="text" name="pengirim_nama" value="{{ old('pengirim_nama') }}" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                     </div>
                     <div class="col-span-2 sm:col-span-1">
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor HP / WA</label>
-                        <input type="number" name="pengirim_hp" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                        <input type="number" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                     </div>
 
                     <!-- Autocomplete Alamat Pengirim -->
                     <div class="col-span-2 relative" @click.away="showSenderDropdown = false">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Kecamatan / Kabupaten / Kodepos Pengirim</label>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Kecamatan / Kabupaten Pengirim</label>
                         <div class="relative">
                             <input type="text" x-model="senderQuery" @input.debounce.400ms="searchAddress('sender')" @focus="showSenderDropdown = true" placeholder="Ketik minimal 3 karakter wilayah pengirim..." class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 pl-4 pr-10 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 text-xs">
@@ -57,14 +57,24 @@
                                 <i class="fa-solid fa-spinner fa-spin text-blue-500" x-show="isSearchingSender" x-cloak></i>
                             </div>
                         </div>
-                        <input type="hidden" name="pengirim_kodepos" x-model="senderZip">
+                        <!-- 🔥 Input Tersembunyi District ID Pengirim -->
+                        <input type="hidden" name="pengirim_district_id" x-model="senderDistrictId">
 
-                        <!-- Dropdown Hasil Pencarian Alamat -->
-                        <div x-show="showSenderDropdown && senderResults.length > 0" x-transition class="absolute {{ 'z-[110]' }} w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
-                            <template x-for="res in senderResults">
-                                <div @click="selectAddress('sender', res)" class="px-4 py-3 hover:bg-blue-50/80 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
-                                    <p class="font-bold text-gray-800" x-text="res.district_name + ', ' + res.regency_name"></p>
-                                    <p class="text-xs text-gray-500 mt-0.5" x-text="res.province_name + ' (Kodepos: ' + res.zip + ')'"></p>
+                        <!-- Dropdown Hasil Pencarian Alamat PENGIRIM -->
+                        <div x-show="showSenderDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
+                            <template x-if="senderResults.length > 0">
+                                <div>
+                                    <template x-for="res in senderResults">
+                                        <div @click="selectAddress('sender', res)" class="px-4 py-3 hover:bg-blue-50/80 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
+                                            <p class="font-bold text-gray-800" x-text="res.district_name + ', ' + res.regency_name"></p>
+                                            <p class="text-xs text-gray-500 mt-0.5" x-text="res.province_name + ' (Kodepos: ' + res.zip + ')'"></p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="senderResults.length === 0 && !isSearchingSender && senderQuery.length >= 3">
+                                <div class="px-4 py-3 text-sm text-red-500 italic text-center font-medium bg-red-50">
+                                    <i class="fa-solid fa-circle-exclamation mr-1"></i> Wilayah tidak ditemukan di database.
                                 </div>
                             </template>
                         </div>
@@ -72,7 +82,7 @@
 
                     <div class="col-span-2">
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Alamat Lengkap (Nama Jalan, RT/RW, Nomor Rumah)</label>
-                        <textarea name="pengirim_alamat" rows="2" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200"></textarea>
+                        <textarea name="pengirim_alamat" rows="2" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">{{ old('pengirim_alamat') }}</textarea>
                     </div>
                 </div>
             </div>
@@ -86,16 +96,16 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2 sm:col-span-1">
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Lengkap</label>
-                        <input type="text" name="penerima_nama" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                        <input type="text" name="penerima_nama" value="{{ old('penerima_nama') }}" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                     </div>
                     <div class="col-span-2 sm:col-span-1">
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor HP / WA</label>
-                        <input type="number" name="penerima_hp" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                        <input type="number" name="penerima_hp" value="{{ old('penerima_hp') }}" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                     </div>
 
                     <!-- Autocomplete Alamat Penerima -->
                     <div class="col-span-2 relative" @click.away="showReceiverDropdown = false">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Kecamatan / Kabupaten / Kodepos Penerima</label>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Kecamatan / Kabupaten Penerima</label>
                         <div class="relative">
                             <input type="text" x-model="receiverQuery" @input.debounce.400ms="searchAddress('receiver')" @focus="showReceiverDropdown = true" placeholder="Ketik minimal 3 karakter wilayah penerima..." class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 pl-4 pr-10 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 text-xs">
@@ -103,14 +113,24 @@
                                 <i class="fa-solid fa-spinner fa-spin text-blue-500" x-show="isSearchingReceiver" x-cloak></i>
                             </div>
                         </div>
-                        <input type="hidden" name="penerima_kodepos" x-model="receiverZip">
+                        <!-- 🔥 Input Tersembunyi District ID Penerima -->
+                        <input type="hidden" name="penerima_district_id" x-model="receiverDistrictId">
 
-                        <!-- Dropdown Hasil Pencarian Alamat -->
-                        <div x-show="showReceiverDropdown && receiverResults.length > 0" x-transition class="absolute {{ 'z-[110]' }} w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
-                            <template x-for="res in receiverResults">
-                                <div @click="selectAddress('receiver', res)" class="px-4 py-3 hover:bg-blue-50/80 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
-                                    <p class="font-bold text-gray-800" x-text="res.district_name + ', ' + res.regency_name"></p>
-                                    <p class="text-xs text-gray-500 mt-0.5" x-text="res.province_name + ' (Kodepos: ' + res.zip + ')'"></p>
+                        <!-- Dropdown Hasil Pencarian Alamat PENERIMA -->
+                        <div x-show="showReceiverDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
+                            <template x-if="receiverResults.length > 0">
+                                <div>
+                                    <template x-for="res in receiverResults">
+                                        <div @click="selectAddress('receiver', res)" class="px-4 py-3 hover:bg-blue-50/80 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
+                                            <p class="font-bold text-gray-800" x-text="res.district_name + ', ' + res.regency_name"></p>
+                                            <p class="text-xs text-gray-500 mt-0.5" x-text="res.province_name + ' (Kodepos: ' + res.zip + ')'"></p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="receiverResults.length === 0 && !isSearchingReceiver && receiverQuery.length >= 3">
+                                <div class="px-4 py-3 text-sm text-red-500 italic text-center font-medium bg-red-50">
+                                    <i class="fa-solid fa-circle-exclamation mr-1"></i> Wilayah tidak ditemukan di database.
                                 </div>
                             </template>
                         </div>
@@ -118,7 +138,7 @@
 
                     <div class="col-span-2">
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Alamat Lengkap (Nama Jalan, RT/RW, Nomor Rumah)</label>
-                        <textarea name="penerima_alamat" rows="2" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200"></textarea>
+                        <textarea name="penerima_alamat" rows="2" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">{{ old('penerima_alamat') }}</textarea>
                     </div>
                 </div>
             </div>
@@ -198,6 +218,7 @@
                 <input type="hidden" name="kurir_terpilih" x-model="selectedKurir">
                 <input type="hidden" name="layanan_terpilih" x-model="selectedLayanan">
                 <input type="hidden" name="ongkir_terpilih" x-model="selectedOngkir">
+                <!-- 🔥 Wajib untuk Autokirim API -->
                 <input type="hidden" name="service_code_terpilih" x-model="selectedServiceCode">
 
                 <div class="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
@@ -232,11 +253,11 @@
 </div>
 
 <!-- ========================================== -->
-<!-- SCRIPTS ENGINE LOGIC (ALPINE.JS) -->
+<!-- SCRIPTS ENGINE LOGIC (ALPINE.JS V3) -->
 <!-- ========================================== -->
 <script>
-function orderForm() {
-    return {
+document.addEventListener('alpine:init', () => {
+    Alpine.data('orderForm', () => ({
         berat: 1000,
         asuransi: false,
         panjang: '',
@@ -245,14 +266,14 @@ function orderForm() {
 
         // Autocomplete Pengirim
         senderQuery: '',
-        senderZip: '',
+        senderDistrictId: '',
         senderResults: [],
         showSenderDropdown: false,
         isSearchingSender: false,
 
         // Autocomplete Penerima
         receiverQuery: '',
-        receiverZip: '',
+        receiverDistrictId: '',
         receiverResults: [],
         showReceiverDropdown: false,
         isSearchingReceiver: false,
@@ -269,30 +290,28 @@ function orderForm() {
         async searchAddress(type) {
             let query = type === 'sender' ? this.senderQuery : this.receiverQuery;
 
-            // Aturan: Hanya jalankan Ajax jika ketikan minimal 3 huruf
+            console.log("Mencari wilayah:", query); // Debugging log
+
             if (query.length < 3) {
-                if(type === 'sender') this.senderResults = [];
-                else this.receiverResults = [];
+                if(type === 'sender') { this.senderResults = []; this.showSenderDropdown = false; }
+                else { this.receiverResults = []; this.showReceiverDropdown = false; }
                 return;
             }
 
-            if (type === 'sender') this.isSearchingSender = true;
-            else this.isSearchingReceiver = true;
+            if (type === 'sender') { this.isSearchingSender = true; this.showSenderDropdown = true; }
+            else { this.isSearchingReceiver = true; this.showReceiverDropdown = true; }
 
             try {
-                // 🔥 PERBAIKAN UTAMA: Sinkronisasi URL Endpoint sesuai Route Web Laravel Anda
                 let response = await fetch(`/api/autokirim/search-address?q=${encodeURIComponent(query)}`);
                 let data = await response.json();
 
                 if(type === 'sender') {
                     this.senderResults = data;
-                    this.showSenderDropdown = true;
                 } else {
                     this.receiverResults = data;
-                    this.showReceiverDropdown = true;
                 }
             } catch (error) {
-                console.error("Gagal memuat alamat:", error);
+                console.error("Gagal memuat alamat dari server:", error);
             } finally {
                 if (type === 'sender') this.isSearchingSender = false;
                 else this.isSearchingReceiver = false;
@@ -304,19 +323,19 @@ function orderForm() {
             let formatText = `${res.district_name}, ${res.regency_name}`;
             if(type === 'sender') {
                 this.senderQuery = formatText;
-                this.senderZip = res.zip; // Mengisi input pengirim_kodepos
+                this.senderDistrictId = res.district_id; // Set ID Autokirim
                 this.showSenderDropdown = false;
             } else {
                 this.receiverQuery = formatText;
-                this.receiverZip = res.zip; // Mengisi input penerima_kodepos
+                this.receiverDistrictId = res.district_id; // Set ID Autokirim
                 this.showReceiverDropdown = false;
             }
         },
 
         // Pemicu AJAX Cek Tarif Ke Server Autokirim via Backend
         async cekOngkir() {
-            if(!this.senderZip || !this.receiverZip || !this.berat) {
-                alert("Mohon lengkapi wilayah Pengirim, wilayah Penerima, dan Berat aktual paket Anda!");
+            if(!this.senderDistrictId || !this.receiverDistrictId || !this.berat) {
+                alert("Mohon lengkapi wilayah Pengirim, wilayah Penerima dari dropdown yang muncul, dan Berat paket Anda!");
                 return;
             }
 
@@ -327,8 +346,8 @@ function orderForm() {
 
             try {
                 let formData = new FormData();
-                formData.append('origin_zip', this.senderZip);
-                formData.append('destination_zip', this.receiverZip);
+                formData.append('origin_id', this.senderDistrictId);
+                formData.append('destination_id', this.receiverDistrictId);
                 formData.append('berat_gram', this.berat);
                 formData.append('panjang_cm', this.panjang);
                 formData.append('lebar_cm', this.lebar);
@@ -348,25 +367,24 @@ function orderForm() {
                 }
             } catch (error) {
                 console.error("Error Cek Ongkir:", error);
-                alert("Terjadi masalah jaringan atau internal server error.");
+                alert("Terjadi masalah jaringan saat menghubungi server logistik.");
             } finally {
                 this.isLoading = false;
             }
         },
 
-        // Handler saat radio button kurir dipilih
         selectOngkir(ongkir) {
             this.selectedKurir = ongkir.kurir;
             this.selectedLayanan = ongkir.layanan;
             this.selectedOngkir = ongkir.harga;
-            this.selectedServiceCode = ongkir.kode_layanan; // Diperlukan mutlak untuk payload API Create Order
+            this.selectedServiceCode = ongkir.kode_layanan;
         },
 
         saveContact(role) {
             alert(`Fitur Sukses: Kontak ${role} berhasil diamankan ke Buku Alamat Anda!`);
         }
-    }
-}
+    }));
+});
 </script>
 
 <style>
