@@ -125,7 +125,7 @@
                                         <p class="text-[11px] font-bold text-indigo-800 truncate" title="{{ $item->user->store_name }}">{{ $item->user->store_name ?? $item->user->nama_lengkap }}</p>
                                     </div>
 
-                                    <!-- Tombol Pemicu Modal (SUDAH DIPERBAIKI SINTAKSNYA) -->
+                                    <!-- Tombol Pemicu Modal (Data Attributes Pattern) -->
                                     @php
                                         $agentData = [
                                             "id" => $item->user->id_pengguna ?? "-",
@@ -138,7 +138,11 @@
                                             "saldo" => number_format($item->user->saldo ?? 0, 0, ",", ".")
                                         ];
                                     @endphp
-                                    <button type="button" onclick="openAgentModal({{ htmlspecialchars(json_encode($agentData), ENT_QUOTES, 'UTF-8') }})" class="bg-indigo-600 hover:bg-indigo-700 text-white w-7 h-7 rounded flex items-center justify-center transition shadow shrink-0" title="Lihat Detail Agen">
+                                    <button type="button"
+                                            data-agent="{{ json_encode($agentData) }}"
+                                            onclick="openAgentModal(this)"
+                                            class="bg-indigo-600 hover:bg-indigo-700 text-white w-7 h-7 rounded flex items-center justify-center transition shadow shrink-0"
+                                            title="Lihat Detail Agen">
                                         <i class="fa-solid fa-eye text-xs"></i>
                                     </button>
                                 </div>
@@ -331,6 +335,7 @@
         </div>
     </div>
 
+    <!-- SCRIPT LOGIC DELETE & CANCEL -->
     <script>
         document.getElementById('selectAll').addEventListener('change', function(e) {
             let checkboxes = document.querySelectorAll('.rowCheckbox');
@@ -367,16 +372,19 @@
         }
     </script>
 
-    <!-- SCRIPT KONTROL MODAL AGEN -->
+    <!-- SCRIPT KONTROL MODAL AGEN (SAFE PARSING) -->
     <script>
-        function openAgentModal(data) {
+        function openAgentModal(buttonElement) {
+            // Ambil dan parse data dari HTML attributes dengan aman
+            const data = JSON.parse(buttonElement.getAttribute('data-agent'));
+
             document.getElementById('m_agent_id').innerText = data.id;
             document.getElementById('m_agent_name').innerText = data.name;
             document.getElementById('m_agent_store').innerText = data.store;
             document.getElementById('m_agent_phone').innerText = data.phone;
             document.getElementById('m_agent_email').innerText = data.email;
             document.getElementById('m_agent_saldo').innerText = 'Rp ' + data.saldo;
-            document.getElementById('m_agent_address').innerText = data.address.replace(/^,\s*/, ''); // Hapus koma berlebih di awal jika alamat kosong
+            document.getElementById('m_agent_address').innerText = data.address.replace(/^,\s*/, ''); // Hapus koma berlebih
             document.getElementById('m_agent_postal').innerText = data.postal;
 
             const modal = document.getElementById('agentModal');
