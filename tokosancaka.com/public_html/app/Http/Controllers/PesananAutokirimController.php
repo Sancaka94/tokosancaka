@@ -3,12 +3,13 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\PesananAutokirim;
-use App\Models\AutoKirim; // Tabel lokal kodepos & district_id
-use App\Models\Api; // Tabel konfigurasi API
+use Illuminate\Support\Facades\DB;   // 🔥 INI DIA TERSANGKANYA, SUDAH DITAMBAHKAN!
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use App\Models\PesananAutokirim;
+use App\Models\AutoKirim; // Tabel lokal kodepos & district_id
+use App\Models\Api; // Tabel konfigurasi API
 
 class PesananAutokirimController extends Controller
 {
@@ -49,6 +50,7 @@ class PesananAutokirimController extends Controller
             return response()->json([]);
         }
 
+        // Karena kita sudah menambahkan facade DB, kita bisa pakai Eloquent atau DB murni dengan aman
         $data = AutoKirim::where('district_name', 'like', "%{$keyword}%")
             ->orWhere('regency_name', 'like', "%{$keyword}%")
             ->orWhere('zip', 'like', "%{$keyword}%")
@@ -59,12 +61,12 @@ class PesananAutokirimController extends Controller
         return response()->json($data);
     }
 
-   // ==========================================
+    // ==========================================
     // API 2: CEK ONGKIR KE SERVER AUTOKIRIM
     // ==========================================
     public function cekOngkirAjax(Request $request)
     {
-        // 1. Langsung tangkap district_id dari frontend (Super Cepat, Tanpa Query DB)
+        // Langsung tangkap district_id dari frontend
         $origin_id = $request->origin_id;
         $destination_id = $request->destination_id;
         $berat = $request->berat_gram;
@@ -73,11 +75,11 @@ class PesananAutokirimController extends Controller
             return response()->json(['success' => false, 'message' => 'Wilayah asal atau tujuan tidak valid. Pastikan Anda memilih dari dropdown.']);
         }
 
-        // 2. Siapkan Payload Persis Sesuai Dokumentasi Autokirim V1.1
+        // Siapkan Payload Persis Sesuai Dokumentasi Autokirim V1.1
         $payload = [
             'origin_id'      => (int) $origin_id,
             'destination_id' => (int) $destination_id,
-            'weight'         => (string) $berat, // Autokirim menggunakan format string "400"
+            'weight'         => (string) $berat,
             'length'         => $request->panjang_cm ? (int) $request->panjang_cm : 1,
             'width'          => $request->lebar_cm ? (int) $request->lebar_cm : 1,
             'height'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
@@ -90,19 +92,18 @@ class PesananAutokirimController extends Controller
             $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
             $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
-            // 3. Tembak Endpoint POST /api/v2/check-price
+            // Tembak Endpoint POST /api/v2/check-price
             $response = Http::timeout(15)
                             ->withToken($token)
                             ->post("{$baseUrl}/api/v2/check-price", $payload);
 
             $result = $response->json();
 
-            // 4. Parsing Nested Array dari Autokirim jika Sukses (rc == '00')
+            // Parsing Nested Array dari Autokirim jika Sukses (rc == '00')
             if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
                 $flatOngkir = [];
 
                 foreach ($result['data'] as $courier) {
-                    // Bypass kurir tertentu jika tidak mendukung layanan
                     if (!isset($courier['service_detail']) || empty($courier['service_detail'])) {
                         continue;
                     }
@@ -114,7 +115,7 @@ class PesananAutokirimController extends Controller
                             'kode_layanan' => $service['service_code'],
                             'harga'        => $service['price'],
                             'estimasi'     => $service['duration'],
-                            'asuransi_fee' => $service['insurance'], // Persentase asuransi
+                            'asuransi_fee' => $service['insurance'],
                         ];
                     }
                 }
@@ -141,20 +142,24 @@ class PesananAutokirimController extends Controller
     // ==========================================
     public function store(Request $request)
     {
+        // Sesuaikan validasi dengan inputan district_id yang baru
         $request->validate([
-            'service_code_terpilih' => 'required', // Wajib ada dari hasil cek ongkir
+            'service_code_terpilih' => 'required',
             'pengirim_nama'         => 'required',
             'pengirim_hp'           => 'required',
+            'pengirim_district_id'  => 'required',
             'penerima_nama'         => 'required',
             'penerima_hp'           => 'required',
+            'penerima_district_id'  => 'required',
             'berat_gram'            => 'required|numeric',
         ]);
 
-        $origin = AutoKirim::where('zip', $request->pengirim_kodepos)->first();
-        $destination = AutoKirim::where('zip', $request->penerima_kodepos)->first();
+        // Karena frontend sekarang mengirim district_id, kita cari data wilayah aslinya (kodepos dll) dari DB
+        $origin = AutoKirim::where('district_id', $request->pengirim_district_id)->first();
+        $destination = AutoKirim::where('district_id', $request->penerima_district_id)->first();
 
         if (!$origin || !$destination) {
-            return redirect()->back()->with('error', 'Kodepos wilayah tidak valid.');
+            return redirect()->back()->withInput()->with('error', 'Wilayah pengirim atau penerima tidak valid. Mohon pilih dari dropdown yang tersedia.');
         }
 
         $localOrderId = 'AK-' . strtoupper(Str::random(8));
@@ -166,14 +171,14 @@ class PesananAutokirimController extends Controller
             'reff_client_id' => $localOrderId, // ID Referensi sistem kita
             'origin_id'      => (int) $origin->district_id,
             'destination_id' => (int) $destination->district_id,
-            'weight'         => $request->berat_gram,
-            'qty'            => 1,
-            'length'         => $request->panjang_cm ?: 1,
-            'width'          => $request->lebar_cm ?: 1,
-            'height'         => $request->tinggi_cm ?: 1,
+            'weight'         => (string) $request->berat_gram,
+            'qty'            => 1, // Fix 1 koli untuk form ini
+            'length'         => $request->panjang_cm ? (int) $request->panjang_cm : 1,
+            'width'          => $request->lebar_cm ? (int) $request->lebar_cm : 1,
+            'height'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
             'description'    => $request->deskripsi_barang,
             'remarks'        => $request->kategori_barang,
-            'is_cod'         => false, // Set false untuk cashless standard
+            'is_cod'         => false,
             'cod_value'      => 0,
             'is_sender_pp'   => 1, // Pickup dari alamat pengirim
             'is_insurance'   => $isInsurance,
@@ -195,10 +200,15 @@ class PesananAutokirimController extends Controller
         }
 
         try {
+            // Ambil Kredensial Terbaru
+            $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
+            $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
+            $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
+
             // 2. Tembak Endpoint POST /api/order
             $response = Http::timeout(15)
-                            ->withToken($this->token)
-                            ->post("{$this->baseUrl}/api/order", $payload);
+                            ->withToken($token)
+                            ->post("{$baseUrl}/api/order", $payload);
 
             $result = $response->json();
 
@@ -207,9 +217,9 @@ class PesananAutokirimController extends Controller
 
                 // Ambil data penting dari Autokirim
                 $awbNumber = $result['data']['awb'] ?? null;
-                $reff1 = $result['data']['reff_1'] ?? null; // ID Referensi internal Autokirim (untuk cancel)
+                $reff1 = $result['data']['reff_1'] ?? null;
 
-                // 4. Simpan ke Database Lokal
+                // 4. Simpan ke Database Lokal menggunakan Eloquent
                 PesananAutokirim::create([
                     'user_id'          => auth()->id() ?? null,
                     'order_id'         => $localOrderId,
@@ -217,12 +227,12 @@ class PesananAutokirimController extends Controller
                     'pengirim_nama'    => $request->pengirim_nama,
                     'pengirim_hp'      => $request->pengirim_hp,
                     'pengirim_alamat'  => $request->pengirim_alamat,
-                    'pengirim_kodepos' => $request->pengirim_kodepos,
+                    'pengirim_kodepos' => $origin->zip, // Kita ambil zip aslinya dari tabel
 
                     'penerima_nama'    => $request->penerima_nama,
                     'penerima_hp'      => $request->penerima_hp,
                     'penerima_alamat'  => $request->penerima_alamat,
-                    'penerima_kodepos' => $request->penerima_kodepos,
+                    'penerima_kodepos' => $destination->zip, // Kita ambil zip aslinya dari tabel
 
                     'deskripsi_barang' => $request->deskripsi_barang,
                     'kategori_barang'  => $request->kategori_barang,
@@ -237,7 +247,6 @@ class PesananAutokirimController extends Controller
                     'layanan'          => $request->layanan_terpilih,
                     'ongkir'           => $request->ongkir_terpilih ?? 0,
                     'awb_number'       => $awbNumber,
-                    // Opsional: Anda bisa menambahkan field 'autokirim_ref_id' di tabel DB Anda untuk menyimpan $reff1
 
                     'status'           => 'booking_created'
                 ]);
@@ -245,13 +254,13 @@ class PesananAutokirimController extends Controller
                 return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbNumber}");
             }
 
-            // GAGAL dari sisi server Autokirim (Misal: saldo habis / rute tidak tersedia)
+            // GAGAL dari sisi server Autokirim
             Log::error("Autokirim Order Failed: ", $result ?? []);
             return redirect()->back()->withInput()->with('error', 'Gagal membuat pesanan: ' . ($result['rd'] ?? 'Unknown Error'));
 
         } catch (\Exception $e) {
             Log::error("Autokirim HTTP Error: " . $e->getMessage());
-            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan sistem saat menghubungi logistik.');
+            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan sistem saat menghubungi logistik. Pastikan internet server stabil.');
         }
     }
 }
