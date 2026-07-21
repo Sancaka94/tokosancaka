@@ -94,10 +94,9 @@
                                 <input type="checkbox" id="selectAll" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                             </th>
                             <th class="p-4 font-bold">Waktu & Order ID</th>
-                            <th class="p-4 font-bold min-w-[200px]">Rute & Resi</th>
+                            <th class="p-4 font-bold min-w-[280px]">Rute & Resi</th>
                             <th class="p-4 font-bold min-w-[180px]">Detail Paket</th>
                             <th class="p-4 font-bold min-w-[200px]">Status & Rincian Profit</th>
-                            <!-- Kolom Aksi di Kanan -->
                             <th class="p-4 font-bold text-right">Aksi</th>
                         </tr>
                     </thead>
@@ -114,14 +113,14 @@
                             <td class="p-4 align-top">
                                 <p class="font-bold text-gray-800">{{ $item->created_at->format('d M Y') }}</p>
                                 <p class="text-xs text-gray-500">{{ $item->created_at->format('H:i:s') }} WIB</p>
-                                <div class="mt-2 text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-600 font-mono inline-block">
+                                <div class="mt-2 text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-600 font-mono inline-block border border-gray-200">
                                     {{ $item->order_id }}
                                 </div>
                             </td>
 
-                            <!-- KOLOM 2: RUTE & RESI -->
-                            <td class="p-4 align-top">
-                                <div class="mb-2 flex items-center">
+                            <!-- KOLOM 2: RUTE & RESI LENGKAP -->
+                            <td class="p-4 align-top min-w-[280px]">
+                                <div class="mb-3 flex items-center">
                                     @php $parsedKurir = \App\Helpers\ShippingHelper::parseShippingMethod($item->kurir); @endphp
                                     @if($parsedKurir['logo_url'])
                                         <img src="{{ $parsedKurir['logo_url'] }}" alt="{{ $parsedKurir['courier_name'] }}" class="h-6 w-auto object-contain inline-block mr-2" onerror="this.style.display='none';">
@@ -130,15 +129,28 @@
                                 </div>
 
                                 @if($item->awb_number)
-                                    <div class="inline-block bg-blue-50 text-blue-700 font-bold font-mono px-2 py-1 rounded text-xs border border-blue-200 mb-2">
+                                    <div class="inline-block bg-blue-50 text-blue-700 font-bold font-mono px-2 py-1 rounded text-xs border border-blue-200 mb-4 shadow-sm">
                                         {{ $item->awb_number }}
                                     </div>
                                 @else
-                                    <div class="inline-block bg-gray-100 text-gray-500 px-2 py-1 rounded italic text-xs mb-2">Menunggu Resi</div>
+                                    <div class="inline-block bg-gray-100 text-gray-500 px-2 py-1 rounded italic text-xs mb-4">Menunggu Resi</div>
                                 @endif
 
-                                <p class="text-xs font-semibold text-gray-700"><i class="fa-solid fa-arrow-right-from-bracket text-blue-500 mr-1"></i> Dari: {{ $item->pengirim_nama }}</p>
-                                <p class="text-xs font-semibold text-gray-700 mt-1"><i class="fa-solid fa-location-dot text-red-500 mr-1"></i> Ke: {{ $item->penerima_nama }}</p>
+                                <!-- DATA PENGIRIM LENGKAP -->
+                                <div class="mb-3 border-l-2 border-blue-400 pl-2">
+                                    <span class="text-[9px] font-black text-blue-500 uppercase tracking-widest"><i class="fa-solid fa-box-open mr-1"></i> Pengirim</span>
+                                    <p class="font-bold text-gray-800 text-xs mt-0.5">{{ $item->pengirim_nama }} <span class="font-normal text-gray-500">({{ $item->pengirim_hp }})</span></p>
+                                    <p class="text-[11px] text-gray-600 mt-1 leading-tight line-clamp-2" title="{{ $item->pengirim_alamat }}">{{ $item->pengirim_alamat }}</p>
+                                    <p class="text-[10px] text-gray-400 mt-0.5">Kodepos: {{ $item->pengirim_kodepos }}</p>
+                                </div>
+
+                                <!-- DATA PENERIMA LENGKAP -->
+                                <div class="border-l-2 border-red-400 pl-2">
+                                    <span class="text-[9px] font-black text-red-500 uppercase tracking-widest"><i class="fa-solid fa-location-dot mr-1"></i> Penerima</span>
+                                    <p class="font-bold text-gray-800 text-xs mt-0.5">{{ $item->penerima_nama }} <span class="font-normal text-gray-500">({{ $item->penerima_hp }})</span></p>
+                                    <p class="text-[11px] text-gray-600 mt-1 leading-tight line-clamp-2" title="{{ $item->penerima_alamat }}">{{ $item->penerima_alamat }}</p>
+                                    <p class="text-[10px] text-gray-400 mt-0.5">Kodepos: {{ $item->penerima_kodepos }}</p>
+                                </div>
                             </td>
 
                             <!-- KOLOM 3: DETAIL PAKET -->
