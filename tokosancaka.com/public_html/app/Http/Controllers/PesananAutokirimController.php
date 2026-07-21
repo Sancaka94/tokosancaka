@@ -6,72 +6,114 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use App\Models\PesananAutokirim;
 use App\Models\AutoKirim;
-use App\Models\User; // 🔥 Wajib untuk cek Saldo
-use App\Models\Api;  // 🔥 Wajib untuk kredensial Tripay & Autokirim
+use App\Models\Api;
+use App\Models\User;
 use App\Helpers\ShippingHelper;
+use App\Services\DokuJokulService;
+use Exception;
 
 class PesananAutokirimController extends Controller
 {
-    // ==========================================
-    // AREA CUSTOMER: HALAMAN FORM
-    // ==========================================
+    protected $baseUrl;
+    protected $token;
+
+    public function __construct()
+    {
+        $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
+        $this->baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
+        $this->token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
+    }
+
     public function createCustomer()
     {
         $kategoriBarang = [
-            'Pakaian / Fashion', 'Elektronik & Gadget', 'Dokumen / Surat',
-            'Makanan Kering / Herbal', 'Kosmetik & Kecantikan', 'Aksesoris & Sparepart', 'Lainnya'
+            'Pakaian / Fashion',
+            'Elektronik & Gadget',
+            'Dokumen / Surat',
+            'Makanan Kering / Herbal',
+            'Kosmetik & Kecantikan',
+            'Aksesoris & Sparepart',
+            'Lainnya'
         ];
 
-        // 💡 Metode pembayaran online sekarang diambil otomatis dari Tripay via AJAX (getTripayChannels)
-        return view('customer.pesanan_autokirim.create', compact('kategoriBarang'));
+        $metodePembayaran = [
+            [
+                'id'          => 'potong_saldo',
+                'nama'        => 'Potong Saldo Akun / Wallet',
+                'icon'        => 'fa-solid fa-wallet text-blue-600',
+                'deskripsi'   => 'Potong saldo otomatis dari akun Anda (Proses Instan)'
+            ],
+            [
+                'id'          => 'dana_binding',
+                'nama'        => 'DANA (One-Click Binding)',
+                'icon'        => 'fa-solid fa-mobile-screen-button text-blue-500',
+                'deskripsi'   => 'Bayar instan dengan akun DANA yang sudah terhubung'
+            ],
+            [
+                'id'          => 'dana_pg',
+                'nama'        => 'DANA Payment Gateway',
+                'icon'        => 'fa-solid fa-qrcode text-blue-400',
+                'deskripsi'   => 'Redirect ke aplikasi atau web DANA untuk pembayaran'
+            ],
+            [
+                'id'          => 'doku_jokul',
+                'nama'        => 'DOKU Payment Gateway',
+                'icon'        => 'fa-solid fa-shield-halved text-red-600',
+                'deskripsi'   => 'Bayar via DOKU (Kartu Kredit, VA, Retail, E-Wallet)'
+            ],
+            [
+                'id'          => 'tripay_qris',
+                'nama'        => 'QRIS by Tripay (Gopay, OVO, Dana, ShopeePay)',
+                'icon'        => 'fa-solid fa-qrcode text-green-600',
+                'deskripsi'   => 'Scan barcode via aplikasi e-wallet atau m-banking'
+            ],
+            [
+                'id'          => 'tripay_va_bca',
+                'nama'        => 'BCA Virtual Account (Tripay)',
+                'icon'        => 'fa-solid fa-building-columns text-blue-800',
+                'deskripsi'   => 'Konfirmasi otomatis 24/7'
+            ],
+            [
+                'id'          => 'tripay_va_mandiri',
+                'nama'        => 'Mandiri Virtual Account (Tripay)',
+                'icon'        => 'fa-solid fa-building-columns text-yellow-600',
+                'deskripsi'   => 'Konfirmasi otomatis 24/7'
+            ],
+            [
+                'id'          => 'tripay_va_bri',
+                'nama'        => 'BRI Virtual Account (BRIVA by Tripay)',
+                'icon'        => 'fa-solid fa-building-columns text-blue-500',
+                'deskripsi'   => 'Konfirmasi otomatis 24/7'
+            ]
+        ];
+
+        return view('customer.pesanan_autokirim.create', compact('kategoriBarang', 'metodePembayaran'));
     }
 
-    // ==========================================
-    // API GET TRIPAY CHANNELS (UNTUK BLADE UI)
-    // ==========================================
-    public function getTripayChannels()
+    public function indexAdmin(Request $request)
     {
-        $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
-        $cacheKey = 'tripay_channels_list_' . $mode;
-
-        $channels = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 24, function () use ($mode) {
-            $apiKey = Api::getValue('TRIPAY_API_KEY', $mode);
-            $baseUrl = $mode === 'production'
-                ? 'https://tripay.co.id/api/merchant/payment-channel'
-                : 'https://tripay.co.id/api-sandbox/merchant/payment-channel';
-
-            if (empty($apiKey)) return [];
-
-            try {
-                $response = Http::withToken($apiKey)->get($baseUrl);
-                if ($response->successful()) {
-                    return $response->json()['data'] ?? [];
-                }
-            } catch (\Exception $e) {
-                Log::error('Gagal ambil channel Tripay: ' . $e->getMessage());
-            }
-            return [];
-        });
-
-        return response()->json(['success' => true, 'data' => $channels]);
+        $pesanan = PesananAutokirim::orderBy('created_at', 'desc')->paginate(15);
+        return view('admin.pesanan_autokirim.index', compact('pesanan'));
     }
 
-    // ==========================================
-    // PENCARIAN & CEK ONGKIR (TETAP SAMA)
-    // ==========================================
     public function searchAddressAjax(Request $request)
     {
         $keyword = $request->query('q');
-        if (!$keyword || strlen($keyword) < 3) return response()->json([]);
+        if (!$keyword || strlen($keyword) < 3) {
+            return response()->json([]);
+        }
 
         $data = AutoKirim::where('district_name', 'like', "%{$keyword}%")
             ->orWhere('regency_name', 'like', "%{$keyword}%")
             ->orWhere('zip', 'like', "%{$keyword}%")
             ->select('district_id', 'district_name', 'regency_name', 'province_name', 'zip')
-            ->limit(100)->get();
+            ->limit(100)
+            ->get();
 
         return response()->json($data);
     }
@@ -80,13 +122,18 @@ class PesananAutokirimController extends Controller
     {
         $origin_id      = $request->origin_id;
         $destination_id = $request->destination_id;
+        $berat          = $request->berat_gram;
         $qty            = $request->input('qty', 1);
         $isSenderPp     = $request->input('is_sender_pp', 1);
+
+        if (empty($origin_id) || empty($destination_id)) {
+            return response()->json(['success' => false, 'message' => 'Wilayah asal atau tujuan tidak valid.']);
+        }
 
         $payload = [
             'origin_id'      => (int) $origin_id,
             'destination_id' => (int) $destination_id,
-            'weight'         => (string) $request->berat_gram,
+            'weight'         => (string) $berat,
             'length'         => $request->panjang_cm ? (int) $request->panjang_cm : 1,
             'width'          => $request->lebar_cm ? (int) $request->lebar_cm : 1,
             'height'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
@@ -98,16 +145,28 @@ class PesananAutokirimController extends Controller
             $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
             $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
-            $response = Http::timeout(15)->withToken($token)->post("{$baseUrl}/api/v2/check-price", $payload);
+            Log::info("LOG: [API AUTOKIRIM - CEK ONGKIR] REQUEST:", $payload);
+
+            $response = Http::timeout(15)
+                ->withToken($token)
+                ->post("{$baseUrl}/api/v2/check-price", $payload);
+
             $result = $response->json();
+            Log::info("LOG: [API AUTOKIRIM - CEK ONGKIR] RESPONSE:", $result ?? []);
 
             if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
                 $flatOngkir = [];
+
                 foreach ($result['data'] as $courier) {
-                    if (empty($courier['service_detail'])) continue;
+                    if (!isset($courier['service_detail']) || empty($courier['service_detail'])) {
+                        continue;
+                    }
+
                     $parsedCourier = ShippingHelper::parseShippingMethod($courier['courier_code'] ?? $courier['courier_name']);
 
                     foreach ($courier['service_detail'] as $service) {
+                        $totalHarga = (int) $service['price'] * (int) $qty;
+
                         $flatOngkir[] = [
                             'kurir'          => $parsedCourier['courier_name'],
                             'logo_url'       => $parsedCourier['logo_url'],
@@ -115,24 +174,32 @@ class PesananAutokirimController extends Controller
                             'layanan'        => $service['service_group'] . ' - ' . $service['service'],
                             'kode_layanan'   => $service['service_code'],
                             'harga_satuan'   => (int) $service['price'],
-                            'harga'          => (int) $service['price'] * (int) $qty,
+                            'harga'          => $totalHarga,
                             'estimasi'       => $service['duration'],
                             'etd'            => $service['etd'] ?? '-',
+                            'asuransi_rate'  => $service['insurance'],
                             'is_pickup'      => $service['is_pickup'] ?? false,
                         ];
                     }
                 }
-                return response()->json(['success' => true, 'data' => $flatOngkir]);
+
+                return response()->json([
+                    'success' => true,
+                    'data'    => $flatOngkir
+                ]);
             }
-            return response()->json(['success' => false, 'message' => $result['rd'] ?? 'Layanan tidak tersedia.']);
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['rd'] ?? 'Layanan tidak tersedia untuk rute tersebut.'
+            ]);
+
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Kendala jaringan logistik.']);
+            Log::error("LOG: [API AUTOKIRIM - CEK ONGKIR] ERROR: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Terjadi kendala jaringan saat menghubungi server logistik.']);
         }
     }
 
-    // ==========================================
-    // API 3: CREATE ORDER (INTEGRASI TRIPAY & SALDO)
-    // ==========================================
     public function store(Request $request)
     {
         $request->validate([
@@ -149,26 +216,30 @@ class PesananAutokirimController extends Controller
             'qty'                   => 'required|numeric|min:1',
             'is_sender_pp'          => 'required|in:0,1',
             'metode_pembayaran'     => 'required|string',
+            'ongkir_terpilih'       => 'required|numeric|min:1'
+        ], [
+            'pengirim_alamat.min' => 'Alamat Pengirim terlalu pendek! Wajib menuliskan nama jalan, nomor rumah/gedung, atau RT/RW (Min. 15 karakter).',
+            'penerima_alamat.min' => 'Alamat Penerima terlalu pendek! Wajib menuliskan nama jalan, nomor rumah/gedung, atau RT/RW (Min. 15 karakter).',
         ]);
 
         $origin = AutoKirim::where('district_id', $request->pengirim_district_id)->first();
         $destination = AutoKirim::where('district_id', $request->penerima_district_id)->first();
 
-        if (!$origin || !$destination) return redirect()->back()->withInput()->with('error', 'Wilayah tidak valid.');
+        if (!$origin || !$destination) {
+            return redirect()->back()->withInput()->with('error', 'Wilayah pengirim atau penerima tidak valid.');
+        }
 
         $localOrderId = (string) (date('ymdHis') . mt_rand(1000, 9999));
-        $isInsurance  = $request->has('asuransi');
-        $finalPrice   = $isInsurance && $request->nilai_barang > 0 ? (int) $request->nilai_barang : 10000;
-
-        // Total Bayar (Ongkir dari Frontend)
         $totalTagihan = (int) $request->ongkir_terpilih;
+        $paymentMethod = $request->metode_pembayaran;
+        $hargaBarangInput = (int) $request->nilai_barang;
+        $finalPrice = $hargaBarangInput > 0 ? $hargaBarangInput : 10000;
+        $isInsurance = $request->has('asuransi');
 
         DB::beginTransaction();
         try {
-            // 1. Simpan Pesanan Awal (Status: Menunggu Pembayaran)
-            // ⚠️ PASTIKAN KOLOM 'qty' & 'is_sender_pp' DITAMBAHKAN DI TABEL pesanan_autokirim JIKA BELUM ADA
             $pesanan = PesananAutokirim::create([
-                'user_id'           => auth()->id(),
+                'user_id'           => auth()->id() ?? null,
                 'order_id'          => $localOrderId,
                 'pengirim_nama'     => $request->pengirim_nama,
                 'pengirim_hp'       => $request->pengirim_hp,
@@ -181,199 +252,348 @@ class PesananAutokirimController extends Controller
                 'deskripsi_barang'  => $request->deskripsi_barang,
                 'kategori_barang'   => $request->kategori_barang,
                 'berat_gram'        => $request->berat_gram,
-                'panjang_cm'        => $request->panjang_cm ?? 1,
-                'lebar_cm'          => $request->lebar_cm ?? 1,
-                'tinggi_cm'         => $request->tinggi_cm ?? 1,
+                'panjang_cm'        => $request->panjang_cm ? (int) $request->panjang_cm : 1,
+                'lebar_cm'          => $request->lebar_cm ? (int) $request->lebar_cm : 1,
+                'tinggi_cm'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
                 'asuransi'          => $isInsurance ? 1 : 0,
                 'nilai_barang'      => $finalPrice,
                 'kurir'             => $request->kurir_terpilih,
                 'layanan'           => $request->layanan_terpilih,
                 'ongkir'            => $totalTagihan,
-                'metode_pembayaran' => $request->metode_pembayaran,
-
-                // Tambahan data penting untuk callback Webhook Tripay nanti
-                'qty'               => $request->qty,
-                'is_sender_pp'      => $request->is_sender_pp,
-
-                'status'            => 'Menunggu Pembayaran'
+                'awb_number'        => null,
+                'metode_pembayaran' => $paymentMethod,
+                'status'            => 'waiting_payment'
             ]);
 
-            // ======================================================
-            // 🔥 LOGIKA PEMBAYARAN 🔥
-            // ======================================================
-            if ($request->metode_pembayaran === 'saldo_wallet') {
+            $paymentUrl = null;
 
-                // --- 1. POTONG SALDO INSTAN ---
-                $user = User::find(auth()->id());
-                if ($user->saldo < $totalTagihan) {
-                    throw new \Exception('Saldo Anda tidak mencukupi untuk memproses pesanan ini.');
-                }
-                $user->decrement('saldo', $totalTagihan);
-
-                // --- 2. TEMBAK API AUTOKIRIM (KARENA SUDAH LUNAS) ---
-                $apiResult = $this->_prosesApiAutokirim($pesanan);
-
-                if ($apiResult['success']) {
-                    $pesanan->update([
-                        'awb_number' => $apiResult['awb'],
-                        'status' => 'booking_created'
-                    ]);
-                    DB::commit();
-                    return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pembayaran Lunas! Resi Terbit: {$apiResult['awb']}");
-                } else {
-                    // Jika API Logistik Gagal, Kembalikan Saldo Customer!
-                    $user->increment('saldo', $totalTagihan);
-                    throw new \Exception('Gagal Generate Resi dari Ekspedisi: ' . $apiResult['message']);
+            if (in_array($paymentMethod, ['potong_saldo', 'dana_binding'])) {
+                if ($paymentMethod === 'potong_saldo') {
+                    $user = User::find(auth()->id());
+                    if (!$user) {
+                        throw new Exception('Anda harus login terlebih dahulu untuk menggunakan metode Potong Saldo.');
+                    }
+                    if ($user->saldo < $totalTagihan) {
+                        throw new Exception('Saldo akun Anda tidak mencukupi. Silahkan isi ulang atau pilih metode pembayaran lainnya.');
+                    }
+                    $user->decrement('saldo', $totalTagihan);
+                    Log::info("LOG: [POTONG SALDO SUKSES] User ID {$user->id} dipotong Rp {$totalTagihan} untuk Order ID {$localOrderId}");
+                } elseif ($paymentMethod === 'dana_binding') {
+                    $this->_processDanaBindingCharge($pesanan, $totalTagihan);
                 }
 
+                $awbResult = $this->_executeAutokirimApi($pesanan, $origin, $destination, $request);
+
+                $pesanan->update([
+                    'awb_number' => $awbResult['awb'],
+                    'status'     => 'booking_created'
+                ]);
+
+                DB::commit();
+                return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbResult['awb']} (Metode: {$paymentMethod})");
             } else {
-
-                // --- 3. PEMBAYARAN ONLINE (TRIPAY) ---
-                $orderItems = [[
-                    'sku' => 'ONGKIR',
-                    'name' => 'Pengiriman ' . $pesanan->kurir,
-                    'price' => $totalTagihan,
-                    'quantity' => 1
-                ]];
-
-                $tripayResponse = $this->_createTripayTransactionInternal($pesanan, $totalTagihan, $orderItems);
-
-                if ($tripayResponse['success']) {
-                    $pesanan->update(['payment_url' => $tripayResponse['data']['checkout_url']]);
-                    DB::commit();
-
-                    // Redirect Customer ke Halaman Bayar Tripay
-                    return redirect()->away($tripayResponse['data']['checkout_url']);
-                } else {
-                    throw new \Exception('Tripay Error: ' . $tripayResponse['message']);
+                if ($paymentMethod === 'doku_jokul') {
+                    Log::info("LOG: [DOKU JOKUL] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
+                    $dokuService = new DokuJokulService();
+                    $paymentUrl = $dokuService->createPayment($localOrderId, $totalTagihan);
+                    if (empty($paymentUrl)) {
+                        throw new Exception('Gagal membuat transaksi pembayaran di sistem DOKU Jokul.');
+                    }
+                } elseif ($paymentMethod === 'dana_pg') {
+                    Log::info("LOG: [DANA PG] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
+                    $paymentUrl = $this->_createDanaPgTransaction($pesanan, $totalTagihan);
+                    if (empty($paymentUrl)) {
+                        throw new Exception('Gagal membuat transaksi di sistem DANA Payment Gateway.');
+                    }
+                } elseif (Str::startsWith($paymentMethod, 'tripay_')) {
+                    Log::info("LOG: [TRIPAY] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
+                    $tripayChannel = strtoupper(str_replace('tripay_', '', $paymentMethod));
+                    $tripayResponse = $this->_createTripayTransaction($pesanan, $totalTagihan, $tripayChannel);
+                    if (empty($tripayResponse['success'])) {
+                        throw new Exception($tripayResponse['message'] ?? 'Gagal membuat tagihan pembayaran di sistem Tripay.');
+                    }
+                    $paymentUrl = $tripayResponse['data']['checkout_url'] ?? null;
                 }
+
+                if ($paymentUrl && Schema::hasColumn('pesanan_autokirims', 'payment_url')) {
+                    $pesanan->update(['payment_url' => $paymentUrl]);
+                }
+
+                DB::commit();
+
+                if ($paymentUrl) {
+                    return redirect()->away($paymentUrl);
+                }
+
+                throw new Exception('URL Pembayaran tidak ditemukan dari server Payment Gateway.');
             }
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error("AUTOKIRIM STORE ERROR: " . $e->getMessage());
+            Log::error("LOG: [PESANAN AUTOKIRIM - STORE ERROR] " . $e->getMessage());
             return redirect()->back()->withInput()->with('error', $e->getMessage());
         }
     }
 
-    // ==========================================
-    // HELPER: EKSEKUSI API AUTOKIRIM
-    // ==========================================
-    private function _prosesApiAutokirim(PesananAutokirim $pesanan)
+    public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
     {
-        $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
-        $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
-        $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
+        $pickupPayload = [
+            'name'              => (string) trim($pesanan->pengirim_nama),
+            'phone'             => (string) trim($pesanan->pengirim_hp),
+            'address'           => (string) trim($pesanan->pengirim_alamat),
+            'email'             => auth()->user()->email ?? 'customer@tokosancaka.com',
+            'longitude'         => "",
+            'latitude'          => "",
+            'district_id'       => (int) $origin->district_id,
+            'is_member_deposit' => false
+        ];
 
-        $origin = AutoKirim::where('zip', $pesanan->pengirim_kodepos)->first();
-        $destination = AutoKirim::where('zip', $pesanan->penerima_kodepos)->first();
+        Log::info("LOG: [API AUTOKIRIM - INSERT PICKUP POINT] REQUEST:", $pickupPayload);
 
-        try {
-            // 1. INSERT PICKUP POINT
-            $pickupPayload = [
-                'name'              => (string) $pesanan->pengirim_nama,
-                'phone'             => (string) $pesanan->pengirim_hp,
-                'address'           => (string) $pesanan->pengirim_alamat,
-                'email'             => auth()->user()->email ?? 'customer@mail.com',
-                'longitude'         => "", 'latitude' => "",
-                'district_id'       => (int) $origin->district_id,
-                'is_member_deposit' => false
-            ];
+        $pickupResponse = Http::timeout(15)
+            ->withToken($this->token)
+            ->post("{$this->baseUrl}/api/pickup-point/insert", $pickupPayload);
 
-            $pickupResponse = Http::timeout(15)->withToken($token)->post("{$baseUrl}/api/pickup-point/insert", $pickupPayload);
-            $pickupResult = $pickupResponse->json();
+        $pickupResult = $pickupResponse->json();
+        Log::info("LOG: [API AUTOKIRIM - INSERT PICKUP POINT] RESPONSE:", $pickupResult ?? []);
 
-            if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
-                return ['success' => false, 'message' => $pickupResult['rd'] ?? 'Gagal generate Pickup Point'];
-            }
-            $pickupPointCode = $pickupResult['data']['pickup_point_code'];
-
-            // 2. CREATE ORDER
-            // Ekstrak Service Code Asli dari layanan (misal: "Reguler - ninja_standard" -> ambil "ninja_standard")
-            $serviceCodeRaw = explode(' - ', $pesanan->layanan);
-            $pureServiceCode = end($serviceCodeRaw);
-
-            $payloadOrder = [
-                'service_code'      => $pureServiceCode,
-                'reff_client_id'    => (string) $pesanan->order_id,
-                'pickup_point_code' => $pickupPointCode,
-                'origin_id'         => (int) $origin->district_id,
-                'destination_id'    => (int) $destination->district_id,
-                'weight'            => (string) $pesanan->berat_gram,
-                'qty'               => (string) ($pesanan->qty ?? 1),
-                'length'            => (int) $pesanan->panjang_cm,
-                'width'             => (int) $pesanan->lebar_cm,
-                'height'            => (int) $pesanan->tinggi_cm,
-                'description'       => (string) $pesanan->deskripsi_barang,
-                'remarks'           => (string) $pesanan->kategori_barang,
-                'is_cod'            => false,
-                'price'             => (int) $pesanan->nilai_barang,
-                'cod_value'         => 0,
-                'is_sender_pp'      => (int) ($pesanan->is_sender_pp ?? 1),
-                'is_insurance'      => $pesanan->asuransi == 1,
-                'from' => [
-                    'name'    => (string) $pesanan->pengirim_nama,
-                    'phone'   => (string) $pesanan->pengirim_hp,
-                    'address' => (string) $pesanan->pengirim_alamat,
-                ],
-                'to' => [
-                    'name'    => (string) $pesanan->penerima_nama,
-                    'phone'   => (string) $pesanan->penerima_hp,
-                    'address' => (string) $pesanan->penerima_alamat,
-                ],
-                'commodity'         => ""
-            ];
-
-            $orderResponse = Http::timeout(15)->withToken($token)->post("{$baseUrl}/api/order", $payloadOrder);
-            $orderResult = $orderResponse->json();
-
-            if ($orderResponse->successful() && isset($orderResult['rc']) && $orderResult['rc'] === '00') {
-                return ['success' => true, 'awb' => $orderResult['data']['awb']];
-            }
-
-            return ['success' => false, 'message' => $orderResult['rd'] ?? 'Order Ditolak Ekspedisi (General Error)'];
-
-        } catch (\Exception $e) {
-            return ['success' => false, 'message' => $e->getMessage()];
+        if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
+            throw new Exception('Gagal mendaftarkan alamat jemput ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
         }
+
+        $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
+        $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
+        $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
+        $qtyInput = $requestData ? (string) $requestData->input('qty', '1') : '1';
+
+        $orderPayload = [
+            'service_code'      => $serviceCode,
+            'reff_client_id'    => $pesanan->order_id,
+            'pickup_point_code' => $pickupPointCode,
+            'origin_id'         => (int) $origin->district_id,
+            'destination_id'    => (int) $destination->district_id,
+            'weight'            => (string) $pesanan->berat_gram,
+            'qty'               => $qtyInput,
+            'length'            => (int) $pesanan->panjang_cm,
+            'width'             => (int) $pesanan->lebar_cm,
+            'height'            => (int) $pesanan->tinggi_cm,
+            'description'       => (string) $pesanan->deskripsi_barang,
+            'remarks'           => (string) $pesanan->kategori_barang,
+            'is_cod'            => false,
+            'price'             => (int) $pesanan->nilai_barang > 0 ? (int) $pesanan->nilai_barang : 10000,
+            'cod_value'         => 0,
+            'is_sender_pp'      => $isSenderPp,
+            'is_insurance'      => (bool) $pesanan->asuransi,
+            'from' => [
+                'name'    => (string) trim($pesanan->pengirim_nama),
+                'phone'   => (string) trim($pesanan->pengirim_hp),
+                'address' => (string) trim($pesanan->pengirim_alamat),
+            ],
+            'to' => [
+                'name'    => (string) trim($pesanan->penerima_nama),
+                'phone'   => (string) trim($pesanan->penerima_hp),
+                'address' => (string) trim($pesanan->penerima_alamat),
+            ],
+            'commodity' => ""
+        ];
+
+        Log::info("LOG: [API AUTOKIRIM - CREATE ORDER] REQUEST:", $orderPayload);
+
+        $orderResponse = Http::timeout(15)
+            ->withToken($this->token)
+            ->post("{$this->baseUrl}/api/order", $orderPayload);
+
+        $orderResult = $orderResponse->json();
+        Log::info("LOG: [API AUTOKIRIM - CREATE ORDER] RESPONSE:", $orderResult ?? []);
+
+        if ($orderResponse->successful() && isset($orderResult['rc']) && $orderResult['rc'] === '00') {
+            return [
+                'success' => true,
+                'awb'     => $orderResult['data']['awb'] ?? 'AWB-PENDING'
+            ];
+        }
+
+        throw new Exception('Gagal membuat pesanan di server logistik: ' . ($orderResult['rd'] ?? 'Unknown Error'));
     }
 
-    // ==========================================
-    // HELPER: CREATE TRIPAY INVOICE
-    // ==========================================
-    private function _createTripayTransactionInternal(PesananAutokirim $pesanan, int $total, array $orderItems): array
+    private function _createTripayTransaction($pesanan, $total, $channelCode)
     {
         $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
-        $apiKey = Api::getValue('TRIPAY_API_KEY', $mode);
-        $privateKey = Api::getValue('TRIPAY_PRIVATE_KEY', $mode);
+        $baseUrl = $mode === 'production'
+            ? 'https://tripay.co.id/api/transaction/create'
+            : 'https://tripay.co.id/api-sandbox/transaction/create';
+
+        $apiKey       = Api::getValue('TRIPAY_API_KEY', $mode);
+        $privateKey   = Api::getValue('TRIPAY_PRIVATE_KEY', $mode);
         $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', $mode);
 
-        if (empty($apiKey) || empty($privateKey)) return ['success' => false, 'message' => 'Konfigurasi Tripay Kosong.'];
+        if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+            return ['success' => false, 'message' => 'Konfigurasi API Tripay belum lengkap di database.'];
+        }
 
-        $user = auth()->user();
+        $userEmail = auth()->user()->email ?? 'customer+' . Str::random(5) . '@tokosancaka.com';
+
         $payload = [
-            'method'         => $pesanan->metode_pembayaran,
+            'method'         => $channelCode,
             'merchant_ref'   => $pesanan->order_id,
             'amount'         => $total,
-            'customer_name'  => $user->nama_lengkap ?? $pesanan->pengirim_nama,
-            'customer_email' => $user->email ?? 'customer@tokosancaka.com',
-            'customer_phone' => $user->no_hp ?? $pesanan->pengirim_hp,
-            'order_items'    => $orderItems,
+            'customer_name'  => $pesanan->pengirim_nama,
+            'customer_email' => $userEmail,
+            'customer_phone' => $pesanan->pengirim_hp,
+            'order_items'    => [
+                [
+                    'sku'      => 'ONGKIR-AK',
+                    'name'     => "Ongkos Kirim Autokirim ({$pesanan->kurir})",
+                    'price'    => $total,
+                    'quantity' => 1
+                ]
+            ],
             'return_url'     => route('customer.pesanan-autokirim.create'),
             'expired_time'   => time() + (24 * 60 * 60),
             'signature'      => hash_hmac('sha256', $merchantCode . $pesanan->order_id . $total, $privateKey),
         ];
 
-        $baseUrl = $mode === 'production' ? 'https://tripay.co.id/api/transaction/create' : 'https://tripay.co.id/api-sandbox/transaction/create';
+        try {
+            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+                ->timeout(30)->withoutVerifying()->post($baseUrl, $payload);
+            return $response->json();
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Koneksi ke server Tripay gagal: ' . $e->getMessage()];
+        }
+    }
+
+    private function _createDanaPgTransaction($pesanan, $total)
+    {
+        $mode = Api::getValue('DANA_MODE', 'global', 'sandbox');
+        $baseUrl = $mode === 'production'
+            ? 'https://api.dana.id/v1/acquirer/order/create.htm'
+            : 'https://api-sandbox.dana.id/v1/acquirer/order/create.htm';
+
+        $merchantId = Api::getValue('DANA_MERCHANT_ID', $mode);
+        $secretKey  = Api::getValue('DANA_SECRET_KEY', $mode);
+
+        if (empty($merchantId) || empty($secretKey)) {
+            Log::error("LOG: [DANA PG ERROR] Merchant ID atau Secret Key belum dikonfigurasi.");
+            return null;
+        }
+
+        $timestamp = date('c');
+        $payload = [
+            'head' => [
+                'version'      => '2.0',
+                'function'     => 'dana.acquirer.order.create',
+                'clientId'     => $merchantId,
+                'reqTime'      => $timestamp,
+                'reqMsgId'     => (string) Str::uuid(),
+            ],
+            'body' => [
+                'orderTitle'          => "Ongkos Kirim Autokirim {$pesanan->order_id}",
+                'orderAmount'         => [
+                    'currency' => 'IDR',
+                    'value'    => (string) $total,
+                ],
+                'merchantTransId'     => $pesanan->order_id,
+                'merchantId'          => $merchantId,
+                'orderMemo'           => "Pengiriman {$pesanan->kurir} - {$pesanan->layanan}",
+                'returnUrl'           => route('customer.pesanan-autokirim.create'),
+                'notifyUrl'           => url('/api/callback/dana'),
+                'productCode'         => '51051000100000000001',
+            ]
+        ];
+
+        $jsonPayload = json_encode($payload);
+        $signature = base64_encode(hash_hmac('sha256', $jsonPayload, $secretKey, true));
 
         try {
-            $response = Http::withToken($apiKey)->post($baseUrl, $payload);
-            if ($response->successful() && $response->json()['success'] === true) {
-                return $response->json();
+            $response = Http::withHeaders([
+                'Content-Type'  => 'application/json',
+                'Client-Id'     => $merchantId,
+                'Signature'     => $signature,
+                'Request-Time'  => $timestamp,
+            ])->timeout(30)->post($baseUrl, $payload);
+
+            $result = $response->json();
+            Log::info("LOG: [DANA PG RESPONSE]", $result ?? []);
+
+            if ($response->successful() && isset($result['body']['checkoutUrl'])) {
+                return $result['body']['checkoutUrl'];
             }
-            return ['success' => false, 'message' => $response->json()['message'] ?? 'Tripay API Error'];
+
+            Log::error("LOG: [DANA PG CREATE ORDER ERROR]", $result ?? []);
+            return null;
         } catch (\Exception $e) {
-            return ['success' => false, 'message' => 'Koneksi Tripay Gagal'];
+            Log::error("LOG: [DANA PG EXCEPTION] " . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function _processDanaBindingCharge($pesanan, $total)
+    {
+        $user = User::find(auth()->id());
+        if (!$user || empty($user->dana_token)) {
+            throw new Exception("Akun Anda belum mengikat (bind) token DANA. Silahkan hubungkan akun DANA terlebih dahulu di pengaturan profil.");
+        }
+
+        $mode = Api::getValue('DANA_MODE', 'global', 'sandbox');
+        $baseUrl = $mode === 'production'
+            ? 'https://api.dana.id/v1/acquirer/directdebit/pay.htm'
+            : 'https://api-sandbox.dana.id/v1/acquirer/directdebit/pay.htm';
+
+        $merchantId = Api::getValue('DANA_MERCHANT_ID', $mode);
+        $secretKey  = Api::getValue('DANA_SECRET_KEY', $mode);
+
+        if (empty($merchantId) || empty($secretKey)) {
+            throw new Exception("Konfigurasi API DANA belum lengkap di database.");
+        }
+
+        $timestamp = date('c');
+        $payload = [
+            'head' => [
+                'version'      => '2.0',
+                'function'     => 'dana.acquirer.directdebit.pay',
+                'clientId'     => $merchantId,
+                'reqTime'      => $timestamp,
+                'reqMsgId'     => (string) Str::uuid(),
+            ],
+            'body' => [
+                'merchantId'      => $merchantId,
+                'merchantTransId' => $pesanan->order_id,
+                'orderAmount'     => [
+                    'currency' => 'IDR',
+                    'value'    => (string) $total,
+                ],
+                'payMethod'       => 'BALANCE',
+                'userToken'       => $user->dana_token,
+                'orderTitle'      => "Bayar Ongkir Instan {$pesanan->order_id}",
+                'notifyUrl'       => url('/api/callback/dana'),
+            ]
+        ];
+
+        $jsonPayload = json_encode($payload);
+        $signature = base64_encode(hash_hmac('sha256', $jsonPayload, $secretKey, true));
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type'  => 'application/json',
+                'Client-Id'     => $merchantId,
+                'Signature'     => $signature,
+                'Request-Time'  => $timestamp,
+            ])->timeout(30)->post($baseUrl, $payload);
+
+            $result = $response->json();
+            Log::info("LOG: [DANA BINDING RESPONSE]", $result ?? []);
+
+            if ($response->successful() && isset($result['body']['resultInfo']['resultCode']) && $result['body']['resultInfo']['resultCode'] === 'SUCCESS') {
+                Log::info("LOG: [DANA BINDING SUCCESS] Order ID: {$pesanan->order_id}");
+                return true;
+            }
+
+            $errorMessage = $result['body']['resultInfo']['resultMsg'] ?? 'Gagal memotong saldo DANA Binding Anda.';
+            Log::error("LOG: [DANA BINDING FAILED]", $result ?? []);
+            throw new Exception($errorMessage);
+        } catch (\Exception $e) {
+            Log::error("LOG: [DANA BINDING EXCEPTION] " . $e->getMessage());
+            throw new Exception($e->getMessage());
         }
     }
 }
