@@ -57,117 +57,187 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- TABEL DATA LENGKAP -->
+    <!-- TABEL DATA LENGKAP & AKSI -->
     <!-- ========================================== -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead>
-                    <tr class="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wider">
-                        <th class="p-4 font-bold">Waktu & Order ID</th>
-                        <th class="p-4 font-bold">Rute Pengiriman (Asal & Tujuan)</th>
-                        <th class="p-4 font-bold">Detail Paket</th>
-                        <th class="p-4 font-bold">Ekspedisi & Resi</th>
-                        <th class="p-4 font-bold text-right">Pembayaran & Status</th>
-                    </tr>
-                </thead>
-                <tbody class="text-sm divide-y divide-gray-100">
-                    @forelse($pesanan as $item)
-                    <tr class="hover:bg-gray-50/50 transition">
-                        <!-- KOLOM 1: WAKTU & ID -->
-                        <td class="p-4 align-top">
-                            <p class="font-bold text-gray-800">{{ $item->created_at->format('d M Y') }}</p>
-                            <p class="text-xs text-gray-500">{{ $item->created_at->format('H:i:s') }} WIB</p>
-                            <div class="mt-2 text-[11px] bg-gray-100 px-2 py-1 rounded text-gray-600 font-mono inline-block">
-                                {{ $item->order_id }}
-                            </div>
-                        </td>
 
-                        <!-- KOLOM 2: PENGIRIM & PENERIMA LENGKAP -->
-                        <td class="p-4 align-top min-w-[280px]">
-                            <div class="mb-3 border-l-2 border-blue-400 pl-2">
-                                <span class="text-[10px] font-bold text-blue-500 uppercase">PENGIRIM:</span>
-                                <p class="font-bold text-gray-800">{{ $item->pengirim_nama }} <span class="text-xs font-normal text-gray-500">({{ $item->pengirim_hp }})</span></p>
-                                <p class="text-xs text-gray-600 line-clamp-2" title="{{ $item->pengirim_alamat }}">{{ $item->pengirim_alamat }}</p>
-                                <p class="text-[10px] text-gray-400">Kodepos: {{ $item->pengirim_kodepos }}</p>
-                            </div>
-                            <div class="border-l-2 border-red-400 pl-2">
-                                <span class="text-[10px] font-bold text-red-500 uppercase">PENERIMA:</span>
-                                <p class="font-bold text-gray-800">{{ $item->penerima_nama }} <span class="text-xs font-normal text-gray-500">({{ $item->penerima_hp }})</span></p>
-                                <p class="text-xs text-gray-600 line-clamp-2" title="{{ $item->penerima_alamat }}">{{ $item->penerima_alamat }}</p>
-                                <p class="text-[10px] text-gray-400">Kodepos: {{ $item->penerima_kodepos }}</p>
-                            </div>
-                        </td>
+        <form action="{{ route('admin.pesanan-autokirim.bulk_destroy') }}" method="POST" id="bulkDeleteForm">
+            @csrf
 
-                        <!-- KOLOM 3: DETAIL PAKET (Dimensi, Berat, Asuransi) -->
-                        <td class="p-4 align-top min-w-[200px]">
-                            <p class="font-bold text-gray-800">{{ $item->deskripsi_barang }}</p>
-                            <p class="text-[11px] text-gray-500">{{ $item->kategori_barang }}</p>
-                            <div class="mt-2 grid grid-cols-2 gap-x-2 text-xs">
-                                <div><span class="text-gray-400">Berat:</span> {{ number_format($item->berat_gram) }} gr</div>
-                                <div><span class="text-gray-400">Dimensi:</span> {{ $item->panjang_cm }}x{{ $item->lebar_cm }}x{{ $item->tinggi_cm }} cm</div>
-                                <div><span class="text-gray-400">Nilai:</span> Rp {{ number_format($item->nilai_barang, 0, ',', '.') }}</div>
-                                <div><span class="text-gray-400">Asuransi:</span> {!! $item->asuransi ? '<span class="text-green-500 font-bold">Ya</span>' : '<span class="text-red-400">Tidak</span>' !!}</div>
-                            </div>
-                        </td>
+            <!-- Tombol Bulk Delete -->
+            <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <button type="button" onclick="confirmBulkDelete()" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2 px-4 rounded shadow-sm transition">
+                    <i class="fa-solid fa-trash-can mr-1"></i> Hapus yang Dipilih
+                </button>
+            </div>
 
-                        <!-- KOLOM 4: KURIR & RESI (DENGAN GAMBAR LOGO) -->
-                        <td class="p-4 align-top">
-                            @php
-                                $parsedKurir = \App\Helpers\ShippingHelper::parseShippingMethod($item->kurir);
-                            @endphp
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wider">
+                            <th class="p-4 w-10 text-center">
+                                <input type="checkbox" id="selectAll" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            </th>
+                            <th class="p-4 font-bold">Aksi</th>
+                            <th class="p-4 font-bold">Waktu & Order ID</th>
+                            <th class="p-4 font-bold">Rute & Resi</th>
+                            <th class="p-4 font-bold">Detail Paket</th>
+                            <th class="p-4 font-bold text-right">Harga & Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm divide-y divide-gray-100">
+                        @forelse($pesanan as $item)
+                        <tr class="hover:bg-gray-50/50 transition">
+                            <!-- Checkbox Bulk -->
+                            <td class="p-4 align-top text-center">
+                                <input type="checkbox" name="ids[]" value="{{ $item->id }}" class="rowCheckbox w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            </td>
 
-                            @if($parsedKurir['logo_url'])
-                                <img src="{{ $parsedKurir['logo_url'] }}"
-                                    alt="{{ $parsedKurir['courier_name'] }}"
-                                    class="h-8 w-auto object-contain mb-2"
-                                    onerror="this.style.display='none';">
-                            @endif
+                            <!-- KOLOM AKSI (Tombol-tombol) -->
+                            <td class="p-4 align-top min-w-[150px]">
+                                <div class="flex flex-wrap gap-2">
+                                    <!-- 1. Tracking -->
+                                    @php $resiTrack = $item->awb_number ?? $item->order_id; @endphp
+                                    <a href="https://tokosancaka.com/tracking/search?resi={{ $resiTrack }}" target="_blank" class="bg-blue-100 hover:bg-blue-200 text-blue-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Lacak Paket">
+                                        <i class="fa-solid fa-location-crosshairs"></i>
+                                    </a>
 
-                            <p class="font-bold text-gray-800 uppercase">{{ $item->kurir }}</p>
-                            <p class="text-[11px] text-gray-500 mb-2">{{ $item->layanan }}</p>
+                                    <!-- 2. Download / Cetak Resi -->
+                                    <a href="{{ route('admin.pesanan-autokirim.cetak', $item->id) }}" target="_blank" class="bg-green-100 hover:bg-green-200 text-green-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Cetak / Download Resi">
+                                        <i class="fa-solid fa-print"></i>
+                                    </a>
 
-                            @if($item->awb_number)
-                                <div class="inline-block bg-blue-50 text-blue-700 font-bold font-mono px-3 py-1.5 rounded text-sm border border-blue-200">
-                                    {{ $item->awb_number }}
+                                    <!-- 3. Batal (Locked logic) -->
+                                    @if(in_array($item->status, ['booking_created', 'menunggu_pembayaran']))
+                                        <button type="button" onclick="confirmCancel('{{ route('admin.pesanan-autokirim.cancel', $item->id) }}')" class="bg-orange-100 hover:bg-orange-200 text-orange-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Batalkan Pesanan">
+                                            <i class="fa-solid fa-ban"></i>
+                                        </button>
+                                    @else
+                                        <button type="button" disabled class="bg-gray-100 text-gray-400 w-8 h-8 rounded flex items-center justify-center cursor-not-allowed" title="Sudah diproses, tidak bisa dibatalkan">
+                                            <i class="fa-solid fa-lock"></i>
+                                        </button>
+                                    @endif
+
+                                    <!-- 4. Hapus Satuan -->
+                                    <button type="button" onclick="confirmDelete('{{ route('admin.pesanan-autokirim.destroy', $item->id) }}')" class="bg-red-100 hover:bg-red-200 text-red-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Hapus Data">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
                                 </div>
-                            @else
-                                <div class="inline-block bg-gray-100 text-gray-500 text-xs px-3 py-1.5 rounded italic border border-gray-200">
-                                    Menunggu Resi
+                            </td>
+
+                            <!-- KOLOM 1: WAKTU & ID -->
+                            <td class="p-4 align-top">
+                                <p class="font-bold text-gray-800">{{ $item->created_at->format('d M Y') }}</p>
+                                <p class="text-xs text-gray-500">{{ $item->created_at->format('H:i:s') }} WIB</p>
+                                <div class="mt-2 text-[11px] bg-gray-100 px-2 py-1 rounded text-gray-600 font-mono inline-block">
+                                    {{ $item->order_id }}
                                 </div>
-                            @endif
-                        </td>
+                            </td>
 
-                        <!-- KOLOM 5: HARGA & STATUS -->
-                        <td class="p-4 align-top text-right">
-                            <p class="font-black text-lg text-blue-700">Rp {{ number_format($item->ongkir, 0, ',', '.') }}</p>
-                            <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-2">Via: <strong class="text-gray-600">{{ str_replace('_', ' ', $item->metode_pembayaran) }}</strong></p>
+                            <!-- KOLOM 2: RUTE & RESI -->
+                            <td class="p-4 align-top">
+                                <div class="mb-2">
+                                    @php $parsedKurir = \App\Helpers\ShippingHelper::parseShippingMethod($item->kurir); @endphp
+                                    @if($parsedKurir['logo_url'])
+                                        <img src="{{ $parsedKurir['logo_url'] }}" alt="{{ $parsedKurir['courier_name'] }}" class="h-6 w-auto object-contain inline-block mr-2" onerror="this.style.display='none';">
+                                    @endif
+                                    <span class="font-bold text-gray-800 uppercase text-xs">{{ $item->kurir }}</span>
+                                </div>
 
-                            @if($item->status == 'booking_created' || $item->status == 'paid')
-                                <span class="bg-green-100 text-green-700 font-bold px-2.5 py-1 rounded-full text-[10px] uppercase">Lunas & Diproses</span>
-                            @elseif($item->status == 'menunggu_pembayaran')
-                                <span class="bg-orange-100 text-orange-700 font-bold px-2.5 py-1 rounded-full text-[10px] uppercase">Belum Bayar</span>
-                            @else
-                                <span class="bg-red-100 text-red-700 font-bold px-2.5 py-1 rounded-full text-[10px] uppercase">{{ $item->status }}</span>
-                            @endif
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="5" class="p-8 text-center text-gray-500">
-                            <i class="fa-solid fa-box-open text-4xl mb-3 text-gray-300"></i>
-                            <p>Belum ada riwayat transaksi Autokirim.</p>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                                @if($item->awb_number)
+                                    <div class="inline-block bg-blue-50 text-blue-700 font-bold font-mono px-2 py-1 rounded text-xs border border-blue-200 mb-2">
+                                        {{ $item->awb_number }}
+                                    </div>
+                                @else
+                                    <div class="inline-block bg-gray-100 text-gray-500 px-2 py-1 rounded italic text-xs mb-2">Menunggu Resi</div>
+                                @endif
 
-        <!-- Paginasi -->
+                                <p class="text-xs font-semibold text-gray-700"><i class="fa-solid fa-arrow-right-from-bracket text-blue-500 mr-1"></i> {{ $item->pengirim_nama }}</p>
+                                <p class="text-xs font-semibold text-gray-700 mt-1"><i class="fa-solid fa-location-dot text-red-500 mr-1"></i> {{ $item->penerima_nama }}</p>
+                            </td>
+
+                            <!-- KOLOM 3: DETAIL PAKET -->
+                            <td class="p-4 align-top min-w-[200px]">
+                                <p class="font-bold text-gray-800 text-xs">{{ $item->deskripsi_barang }}</p>
+                                <div class="mt-1 grid grid-cols-1 gap-1 text-[11px]">
+                                    <div><span class="text-gray-400">Berat:</span> {{ number_format($item->berat_gram) }} gr</div>
+                                    <div><span class="text-gray-400">Dimensi:</span> {{ $item->panjang_cm }}x{{ $item->lebar_cm }}x{{ $item->tinggi_cm }} cm</div>
+                                    <div><span class="text-gray-400">Asuransi:</span> {!! $item->asuransi ? '<span class="text-green-500 font-bold">Ya</span>' : '<span class="text-red-400">Tidak</span>' !!}</div>
+                                </div>
+                            </td>
+
+                            <!-- KOLOM 4: HARGA & STATUS -->
+                            <td class="p-4 align-top text-right">
+                                <p class="font-black text-lg text-blue-700">Rp {{ number_format($item->ongkir, 0, ',', '.') }}</p>
+                                <p class="text-[9px] text-gray-400 uppercase tracking-wider mb-2">Via: <strong class="text-gray-600">{{ str_replace('_', ' ', $item->metode_pembayaran) }}</strong></p>
+
+                                @if(in_array($item->status, ['booking_created', 'paid']))
+                                    <span class="bg-green-100 text-green-700 font-bold px-2 py-1 rounded text-[10px] uppercase">Lunas & Diproses</span>
+                                @elseif($item->status == 'menunggu_pembayaran')
+                                    <span class="bg-orange-100 text-orange-700 font-bold px-2 py-1 rounded text-[10px] uppercase">Belum Bayar</span>
+                                @else
+                                    <span class="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-[10px] uppercase">{{ $item->status }}</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="6" class="p-8 text-center text-gray-500">Belum ada riwayat transaksi Autokirim.</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </form>
+
         <div class="p-4 border-t border-gray-100 bg-gray-50">
             {{ $pesanan->links() }}
         </div>
     </div>
+
+    <!-- Form Tersembunyi untuk Hapus & Cancel Satuan -->
+    <form id="actionForm" method="POST" class="hidden">
+        @csrf
+        <input type="hidden" name="_method" id="actionMethod">
+    </form>
+
+    <!-- Javascript untuk Fitur Checkbox & Konfirmasi -->
+    <script>
+        // Checkbox Semua
+        document.getElementById('selectAll').addEventListener('change', function(e) {
+            let checkboxes = document.querySelectorAll('.rowCheckbox');
+            checkboxes.forEach(cb => cb.checked = e.target.checked);
+        });
+
+        function confirmBulkDelete() {
+            let checked = document.querySelectorAll('.rowCheckbox:checked');
+            if(checked.length === 0) {
+                alert('Pilih minimal satu pesanan untuk dihapus!');
+                return;
+            }
+            if(confirm('Apakah Anda yakin ingin menghapus ' + checked.length + ' data terpilih?')) {
+                document.getElementById('bulkDeleteForm').submit();
+            }
+        }
+
+        function confirmDelete(url) {
+            if(confirm('Yakin ingin menghapus data pesanan ini secara permanen?')) {
+                let form = document.getElementById('actionForm');
+                form.action = url;
+                document.getElementById('actionMethod').value = 'DELETE';
+                form.submit();
+            }
+        }
+
+        function confirmCancel(url) {
+            if(confirm('Yakin ingin membatalkan pesanan ini?')) {
+                let form = document.getElementById('actionForm');
+                form.action = url;
+                document.getElementById('actionMethod').value = 'POST';
+                form.submit();
+            }
+        }
+    </script>
+
 </div>
 @endsection

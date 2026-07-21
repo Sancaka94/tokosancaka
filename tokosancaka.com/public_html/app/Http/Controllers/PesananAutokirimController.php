@@ -639,4 +639,48 @@ class PesananAutokirimController extends Controller
             throw new Exception($e->getMessage());
         }
     }
+
+    // ==========================================
+    // AREA ADMIN: AKSI TOMBOL
+    // ==========================================
+
+    // 1. Cetak Resi (PDF / Print Image)
+    public function cetakResi($id)
+    {
+        $pesanan = PesananAutokirim::findOrFail($id);
+        return view('admin.pesanan_autokirim.cetak_resi', compact('pesanan'));
+    }
+
+    // 2. Tombol Cancel Pesanan
+    public function cancelOrder($id)
+    {
+        $pesanan = PesananAutokirim::findOrFail($id);
+
+        // Kunci tombol: Hanya bisa batal jika statusnya baru dibuat / menunggu pembayaran
+        if (in_array($pesanan->status, ['booking_created', 'menunggu_pembayaran'])) {
+            $pesanan->update(['status' => 'batal']);
+            return redirect()->back()->with('success', 'Pesanan berhasil dibatalkan.');
+        }
+
+        return redirect()->back()->with('error', 'Pesanan tidak dapat dibatalkan karena sudah dalam perjalanan atau diproses ekspedisi.');
+    }
+
+    // 3. Hapus Satuan (Icon Sampah)
+    public function destroy($id)
+    {
+        PesananAutokirim::findOrFail($id)->delete();
+        return redirect()->back()->with('success', 'Data pesanan berhasil dihapus.');
+    }
+
+    // 4. Hapus Massal (Bulk Destroy)
+    public function bulkDestroy(Request $request)
+    {
+        $ids = $request->input('ids');
+        if (!empty($ids)) {
+            PesananAutokirim::whereIn('id', $ids)->delete();
+            return redirect()->back()->with('success', count($ids) . ' pesanan berhasil dihapus secara massal.');
+        }
+        return redirect()->back()->with('error', 'Pilih minimal satu pesanan untuk dihapus.');
+    }
+
 }

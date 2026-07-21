@@ -1929,6 +1929,11 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
 // --- GRUP ADMIN ---
 Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/pesanan-autokirim', [PesananAutokirimController::class, 'indexAdmin'])->name('pesanan-autokirim.index');
+    // TAMBAHAN ROUTE AKSI BARU
+    Route::get('/pesanan-autokirim/{id}/cetak', [PesananAutokirimController::class, 'cetakResi'])->name('pesanan-autokirim.cetak');
+    Route::post('/pesanan-autokirim/{id}/cancel', [PesananAutokirimController::class, 'cancelOrder'])->name('pesanan-autokirim.cancel');
+    Route::delete('/pesanan-autokirim/{id}', [PesananAutokirimController::class, 'destroy'])->name('pesanan-autokirim.destroy');
+    Route::post('/pesanan-autokirim/bulk-delete', [PesananAutokirimController::class, 'bulkDestroy'])->name('pesanan-autokirim.bulk_destroy');
 });
 
 // --- GRUP AJAX/API INTERNAL ---
