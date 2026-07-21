@@ -55,7 +55,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth/google/register/callback',
             'api/webhook/ipaymu',  // Jika route ada di api.php
             'webhook/ipaymu',      // Jika route ada di web.php
-            'callback/autokirim',
+            'api/callback/autokirim',
 
             ]);
 

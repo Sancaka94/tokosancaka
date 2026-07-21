@@ -8,9 +8,10 @@
     <!-- FontAwesome untuk Icon Tombol -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-    <!-- Script untuk fitur Download Gambar & PDF -->
+    <!-- Script untuk fitur Download Gambar, PDF & Generator Barcode Lokal -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
 
     <style>
         /* Pengaturan Kertas Thermal 100mm x 150mm */
@@ -26,9 +27,9 @@
             padding: 20px;
             background: #525659;
             display: flex;
-            flex-wrap: wrap; /* Agar responsif di HP */
+            flex-wrap: wrap;
             align-items: flex-start;
-            justify-content: center; /* Posisikan ke tengah layar */
+            justify-content: center;
             gap: 20px;
         }
 
@@ -36,13 +37,13 @@
         .receipt-container {
             background: #fff;
             width: 100mm;
-            min-height: 150mm; /* Gunakan min-height agar bisa menyesuaikan konten */
+            min-height: 150mm;
             padding: 15px;
             box-sizing: border-box;
             border-radius: 6px;
             box-shadow: 0 8px 16px rgba(0,0,0,0.3);
             display: flex;
-            flex-direction: column; /* Ubah ke column agar footer terdorong rapi */
+            flex-direction: column;
             overflow: hidden;
             position: relative;
         }
@@ -70,11 +71,14 @@
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
         .logo-left img { max-height: 32px; }
         .logo-right img { max-height: 32px; }
-        .title { text-align: center; font-size: 13px; font-weight: bold; margin-bottom: 10px; letter-spacing: 0.5px;}
+        .title { text-align: center; font-size: 13px; font-weight: bold; margin-bottom: 5px; letter-spacing: 0.5px;}
 
-        .barcode-container { text-align: center; margin-bottom: 12px; }
-        .barcode-container img { width: 100%; height: 50px; object-fit: cover; }
-        .barcode-text { font-size: 13px; font-weight: bold; margin-top: 2px; letter-spacing: 1px; }
+        .barcode-container { text-align: center; margin-bottom: 8px; }
+        /* Style untuk SVG Barcode bawaan JsBarcode */
+        .barcode-container svg { width: 100%; max-height: 70px; object-fit: contain; }
+
+        .tlc-container { text-align: center; margin-bottom: 10px; }
+        .tlc-box { font-size: 20px; font-weight: 900; border: 2px solid #000; padding: 2px 15px; display: inline-block; letter-spacing: 1px; }
 
         .address-grid { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
         .col { width: 48%; font-size: 11px; line-height: 1.4; }
@@ -101,7 +105,7 @@
         .footer {
             text-align: center;
             font-size: 9px;
-            margin-top: auto; /* Mendorong footer otomatis ke bagian paling bawah tanpa overlap */
+            margin-top: auto;
             padding-top: 10px;
         }
 
@@ -114,7 +118,7 @@
                 border-radius: 0;
                 margin: 0;
                 width: 100mm;
-                height: 148mm; /* Dikunci tingginya untuk mencegah blank page kedua di printer */
+                height: 148mm;
                 page-break-after: avoid;
             }
         }
@@ -123,7 +127,6 @@
 <body>
 
 @php
-    // Fungsi sensor nama & HP
     function maskString($string) {
         $length = strlen($string);
         if ($length <= 4) return $string;
@@ -144,7 +147,7 @@
         </div>
         <div class="logo-right">
             @if($parsedKurir['logo_url'])
-                <img src="{{ $parsedKurir['logo_url'] }}" alt="{{ $parsedKurir['courier_name'] }}">
+                <img src="{{ $parsedKurir['logo_url'] }}" alt="{{ $parsedKurir['courier_name'] }}" crossorigin="anonymous">
             @else
                 <strong>{{ $parsedKurir['courier_name'] }}</strong>
             @endif
@@ -153,16 +156,15 @@
 
     <div class="title">NOMOR RESI TOKOSANCAKA.COM</div>
 
-    <!-- BARCODE -->
+    <!-- BARCODE GENERATED LOCALLY -->
     <div class="barcode-container">
-        <img src="https://barcode.tec-it.com/barcode.ashx?data={{ $resiTrack }}&code=Code128&translate-esc=on" alt="Barcode">
-        <div class="barcode-text">{{ strtoupper($resiTrack) }}</div>
+        <svg id="barcode"></svg>
     </div>
 
-    <!-- KODE TLC / SORTING (Jika Ada) -->
+    <!-- KODE TLC / SORTING -->
     @if(!empty($pesanan->tlc_code))
-    <div style="text-align: center; margin-bottom: 10px;">
-        <span style="font-size: 20px; font-weight: 900; border: 2px solid #000; padding: 2px 15px; display: inline-block; letter-spacing: 1px;">
+    <div class="tlc-container">
+        <span class="tlc-box">
             {{ $pesanan->tlc_code }}
         </span>
     </div>
@@ -190,12 +192,12 @@
             <strong>Rincian Paket:</strong>
             - Berat: {{ number_format($pesanan->berat_gram, 2) }} Gram<br>
             - Harga Barang: Rp {{ number_format($pesanan->nilai_barang, 0, ',', '.') }}<br>
-            - Isi Paket: {{ $pesanan->deskripsi_barang }}<br>
+            - Isi Paket: {{ strtoupper($pesanan->deskripsi_barang) }}<br>
             - Dimensi: {{ $pesanan->panjang_cm }}x{{ $pesanan->lebar_cm }}x{{ $pesanan->tinggi_cm }} cm<br>
             - Layanan: {{ $pesanan->layanan }}
         </div>
         <div class="qr-box">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://tokosancaka.com/tracking/search?resi={{ $resiTrack }}" alt="QR Code">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://tokosancaka.com/tracking/search?resi={{ $resiTrack }}" alt="QR Code" crossorigin="anonymous">
             <div class="qr-text">TRACKING ME</div>
         </div>
     </div>
@@ -223,7 +225,7 @@
             <div>{{ number_format($pesanan->berat_gram, 2) }} Gram</div>
         </div>
         <div class="info-item">
-            <div class="lbl">VOLUME (cm)</div>
+            <div class="lbl">VOLUME (CM)</div>
             <div>{{ $pesanan->panjang_cm }} x {{ $pesanan->lebar_cm }} x {{ $pesanan->tinggi_cm }}</div>
         </div>
     </div>
@@ -265,10 +267,29 @@
     </button>
 </div>
 
-<!-- SCRIPTS LOGIC DOWNLOAD -->
+<!-- SCRIPTS LOGIC -->
 <script>
-    // Konfigurasi Scale HTML2Canvas (Resolusi HD)
-    const scaleOption = { scale: 3, useCORS: true, logging: false };
+    // 1. Generate Barcode secara Lokal (Mengatasi masalah blank saat download)
+    document.addEventListener("DOMContentLoaded", function() {
+        JsBarcode("#barcode", "{{ strtoupper($resiTrack) }}", {
+            format: "CODE128",
+            lineColor: "#000",
+            width: 2.5,
+            height: 60,
+            displayValue: true,
+            fontSize: 14,
+            fontOptions: "bold",
+            textMargin: 5
+        });
+    });
+
+    // 2. Konfigurasi Resolusi Download (HD)
+    const scaleOption = {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        logging: false
+    };
 
     // Fungsi Download PNG
     function downloadImage() {
@@ -288,7 +309,6 @@
             const imgData = canvas.toDataURL('image/png');
             const { jsPDF } = window.jspdf;
 
-            // Atur canvas jsPDF ukuran 100mm x 150mm (Portrait)
             const pdf = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
