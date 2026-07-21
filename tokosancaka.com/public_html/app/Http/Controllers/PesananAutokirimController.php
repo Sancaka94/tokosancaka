@@ -96,7 +96,7 @@ class PesananAutokirimController extends Controller
     }
 
     // ==========================================
-    // AREA ADMIN: TABEL RIWAYAT TRANSAKSI LENGKAP
+    // AREA ADMIN: TABEL RIWAYAT TRANSAKSI LENGKAP & PROFIT SHARING
     // ==========================================
     public function indexAdmin(Request $request)
     {
@@ -130,18 +130,126 @@ class PesananAutokirimController extends Controller
             }
         }
 
-        // STATISTIK CARD
+        // =========================================================
+        // LOGIKA PERHITUNGAN PROFIT SHARING ADMIN (40% Agen : 60% Sancaka)
+        // =========================================================
+        $rates = DB::table('data_auto_kirims')->get();
         $cardQuery = clone $query;
-        $totalTransaksi = $cardQuery->count();
-        $totalOngkir    = $cardQuery->sum('ongkir');
-        $totalBerhasil  = (clone $cardQuery)->whereNotIn('status', ['menunggu_pembayaran', 'gagal', 'batal'])->count();
-        $totalPending   = (clone $cardQuery)->whereIn('status', ['menunggu_pembayaran', 'gagal'])->count();
+        $pesananAll = $cardQuery->get();
 
+        $totalTransaksi = $pesananAll->count();
+        $totalOngkir    = $pesananAll->sum('ongkir');
+
+        $stats = [
+            'total_berhasil' => 0,
+            'total_pending'  => 0,
+            'cashback_pusat' => 0,
+            'komisi_agen'    => 0,
+            'laba_sancaka'   => 0,
+        ];
+
+        foreach ($pesananAll as $p) {
+            if (in_array($p->status, ['batal', 'gagal', 'menunggu_pembayaran'])) {
+                $stats['total_pending']++;
+                continue;
+            }
+
+            $stats['total_berhasil']++;
+            $profit = $this->hitungProfit($p, $rates);
+
+            $stats['cashback_pusat'] += $profit->total_cashback;
+            $stats['komisi_agen']    += $profit->komisi_agen;
+            $stats['laba_sancaka']   += $profit->laba_sancaka;
+        }
+
+        // PAGINASI
         $pesanan = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
+        // Inject data profit ke dalam collection paginasi untuk ditampilkan di tabel
+        $pesanan->getCollection()->transform(function ($item) use ($rates) {
+            if (in_array($item->status, ['batal', 'gagal', 'menunggu_pembayaran'])) {
+                $item->profit = (object)['total_cashback' => 0, 'komisi_agen' => 0, 'laba_sancaka' => 0, 'persen_cashback' => 0];
+            } else {
+                $item->profit = $this->hitungProfit($item, $rates);
+            }
+            return $item;
+        });
+
         return view('admin.pesanan_autokirim.index', compact(
-            'pesanan', 'totalTransaksi', 'totalOngkir', 'totalBerhasil', 'totalPending'
+            'pesanan', 'totalTransaksi', 'totalOngkir', 'stats'
         ));
+    }
+
+    /**
+     * Helper Private untuk Menghitung Profit Sharing Sancaka 60% & Agen 40%
+     */
+    private function hitungProfit($pesanan, $rates)
+    {
+        $kurir = strtolower($pesanan->kurir ?? '');
+        $layanan = strtolower($pesanan->layanan ?? '');
+        $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang']);
+
+        $bestMatch = null;
+        $highestScore = -1;
+
+        // Pencocokan pintar string layanan ke tabel Admin
+        foreach ($rates as $rate) {
+            $serviceStr = strtolower($rate->service);
+            $score = 0;
+
+            // 1. Cocokkan Brand Ekspedisi
+            $kurirMapping = [
+                'j&t' => 'jnt', 'jne' => 'jne', 'id express' => 'idx', 'sicepat' => 'sicepat', 'sap' => 'sap', 'ninja' => 'ninja', 'anteraja' => 'anteraja'
+            ];
+
+            $isBrandMatched = false;
+            foreach ($kurirMapping as $key => $val) {
+                if (str_contains($kurir, $key) && str_contains($serviceStr, $val)) {
+                    $score += 5;
+                    $isBrandMatched = true;
+                    break;
+                }
+            }
+
+            if (!$isBrandMatched) continue;
+
+            // 2. Cocokkan Jenis Layanan (REG, YES, OKE, dll)
+            $layananKeys = explode(' ', str_replace(['-', ' '], ' ', $layanan));
+            foreach ($layananKeys as $k) {
+                if (strlen($k) > 2 && str_contains($serviceStr, $k)) $score += 3;
+            }
+
+            // 3. Cocokkan Tipe Pembayaran (COD / Non-COD)
+            if ($isCod && str_contains($serviceStr, 'cod')) {
+                $score += 4;
+            } elseif (!$isCod && !str_contains($serviceStr, 'cod')) {
+                $score += 2;
+            }
+
+            // Simpan skor tertinggi
+            if ($score > $highestScore && $score > 0) {
+                $highestScore = $score;
+                $bestMatch = $rate;
+            }
+        }
+
+        // Ambil persentase murni CASHBACK dari Logistik
+        $persenCashbackPusat = 0;
+        if ($bestMatch) {
+            $persenCashbackPusat = floatval($bestMatch->cashback ?? 0);
+        }
+
+        // RUMUS BAGI HASIL: 40% AGEN | 60% SANCAKA
+        $totalCashback = $pesanan->ongkir * ($persenCashbackPusat / 100);
+        $komisiAgen    = $totalCashback * 0.40;
+        $labaSancaka   = $totalCashback * 0.60;
+
+        return (object)[
+            'total_cashback'  => $totalCashback,
+            'komisi_agen'     => $komisiAgen,
+            'laba_sancaka'    => $labaSancaka,
+            'persen_cashback' => $persenCashbackPusat
+        ];
     }
 
     // ==========================================
@@ -235,8 +343,8 @@ class PesananAutokirimController extends Controller
         ));
     }
 
-    /**
-     * Helper Private untuk mencocokkan layanan kurir dengan tabel data_auto_kirims
+   /**
+     * Helper Private untuk mencocokkan layanan kurir dan menghitung Skema Profit Sharing 40:60
      */
     private function hitungKomisi($pesanan, $rates)
     {
@@ -252,35 +360,61 @@ class PesananAutokirimController extends Controller
             $serviceStr = strtolower($rate->service);
             $score = 0;
 
+            // 1. Cocokkan Brand Ekspedisi
             $kurirMapping = [
                 'j&t' => 'jnt', 'jne' => 'jne', 'id express' => 'idx', 'sicepat' => 'sicepat', 'sap' => 'sap', 'ninja' => 'ninja', 'anteraja' => 'anteraja'
             ];
 
+            $isBrandMatched = false;
             foreach ($kurirMapping as $key => $val) {
-                if (str_contains($kurir, $key) && str_contains($serviceStr, $val)) $score += 5;
+                if (str_contains($kurir, $key) && str_contains($serviceStr, $val)) {
+                    $score += 5;
+                    $isBrandMatched = true;
+                    break;
+                }
             }
 
+            if (!$isBrandMatched) continue;
+
+            // 2. Cocokkan Jenis Layanan (REG, YES, OKE, dll)
             $layananKeys = explode(' ', str_replace(['-', ' '], ' ', $layanan));
             foreach ($layananKeys as $k) {
                 if (strlen($k) > 2 && str_contains($serviceStr, $k)) $score += 3;
             }
 
-            if ($isCod && str_contains($serviceStr, 'cod')) $score += 4;
-            elseif (!$isCod && !str_contains($serviceStr, 'cod')) $score += 2;
+            // 3. Cocokkan Tipe Pembayaran (COD / Non-COD)
+            if ($isCod && str_contains($serviceStr, 'cod')) {
+                $score += 4;
+            } elseif (!$isCod && !str_contains($serviceStr, 'cod')) {
+                $score += 2;
+            }
 
+            // Simpan skor tertinggi
             if ($score > $highestScore && $score > 0) {
                 $highestScore = $score;
                 $bestMatch = $rate;
             }
         }
 
-        // Gunakan komisi_agen jika di-set admin, jika NULL gunakan cashback
-        $persen = 0;
+        // ==========================================================
+        // RUMUS BAGI HASIL: 40% AGEN | 60% SANCAKA (DARI CASHBACK PUSAT)
+        // ==========================================================
+        $persenCashbackPusat = 0;
+
         if ($bestMatch) {
-            $persen = floatval($bestMatch->komisi_agen ?? $bestMatch->cashback ?? 0);
+            // Ambil persentase murni CASHBACK yang Sancaka dapatkan dari Logistik
+            $persenCashbackPusat = floatval($bestMatch->cashback ?? 0);
         }
 
-        return $pesanan->ongkir * ($persen / 100);
+        // TAHAP 1: Hitung Keuntungan / Laba Sancaka
+        // Contoh: Ongkir Rp 10.000, Cashback Pusat 25% -> Laba Sancaka = Rp 2.500
+        $labaSancaka = $pesanan->ongkir * ($persenCashbackPusat / 100);
+
+        // TAHAP 2: Hitung Jatah Komisi Agen (40% dari Laba Sancaka)
+        // Contoh: 40% x Rp 2.500 = Rp 1.000 (Ini yang tampil di layar Agent)
+        $komisiAgen = $labaSancaka * 0.40;
+
+        return $komisiAgen;
     }
 
     public function searchAddressAjax(Request $request)
