@@ -1774,6 +1774,7 @@ Route::get('/ipaymu', function () {
 // Pastikan ini berada di dalam group route Admin Anda
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
 
+
     // (Route untuk menampilkan halaman log Anda saat ini)
     Route::get('/logs', [AdminLogController::class, 'showLogs'])->name('logs.show');
 
@@ -1865,6 +1866,12 @@ Route::post('/kontak/{id}/lengkapi-profil', [\App\Http\Controllers\PublicScanCon
 
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
+
+    // ==========================================
+    // KHUSUS MANAJEMEN MEDALI & BINTANG DRIVER
+    // ==========================================
+    Route::get('/reward-driver', [\App\Http\Controllers\RewardDriverOnlineController::class, 'index'])->name('reward.index');
+    Route::post('/reward-driver/{id}', [\App\Http\Controllers\RewardDriverOnlineController::class, 'update'])->name('reward.update');
 
     // =========================================================================
     // 1. RUTE BARU: PERSENTASE AGENT (DataAutoKirimController)

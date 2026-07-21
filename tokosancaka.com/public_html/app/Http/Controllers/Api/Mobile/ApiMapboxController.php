@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Cache;
 use Intervention\Image\Laravel\Facades\Image;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redis; // TAMBAHAN REDIS
+use App\Http\Controllers\Api\Mobile\RewardDriverOnlineMobileController;
 use Illuminate\Support\Str;
 use App\Models\Api;
 
