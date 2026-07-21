@@ -145,30 +145,29 @@ class PesananAutokirimController extends Controller
     }
 
     // ==========================================
-    // AREA CUSTOMER: TABEL RIWAYAT TRANSAKSI
+    // AREA CUSTOMER: TABEL RIWAYAT TRANSAKSI & KOMISI
     // ==========================================
     public function indexCustomer(Request $request)
     {
-        // KUNCI UTAMA: Hanya ambil data milik user yang sedang login
         $query = PesananAutokirim::where('user_id', auth()->id());
 
-        // PENCARIAN
+        // PENCARIAN LENGKAP
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
                 $q->where('order_id', 'like', "%{$search}%")
                   ->orWhere('awb_number', 'like', "%{$search}%")
+                  ->orWhere('pengirim_nama', 'like', "%{$search}%")
                   ->orWhere('penerima_nama', 'like', "%{$search}%")
+                  ->orWhere('pengirim_hp', 'like', "%{$search}%")
                   ->orWhere('penerima_hp', 'like', "%{$search}%");
             });
         }
 
-        // FILTER STATUS
+        // FILTER STATUS & TANGGAL
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
-
-        // FILTER TANGGAL
         if ($request->filled('date_range')) {
             $dates = explode(' to ', str_replace([' - ', ' s.d. '], ' to ', $request->date_range));
             if (count($dates) >= 2) {
@@ -178,18 +177,110 @@ class PesananAutokirimController extends Controller
             }
         }
 
-        // STATISTIK CARD KHUSUS USER LOGIN
-        $cardQuery = clone $query;
-        $totalTransaksi = $cardQuery->count();
-        $totalOngkir    = $cardQuery->sum('ongkir');
-        $totalBerhasil  = (clone $cardQuery)->whereNotIn('status', ['menunggu_pembayaran', 'gagal', 'batal'])->count();
-        $totalPending   = (clone $cardQuery)->whereIn('status', ['menunggu_pembayaran', 'gagal'])->count();
+        // =========================================================
+        // LOGIKA PERHITUNGAN KOMISI AGEN (DINAMIS DARI DB ADMIN)
+        // =========================================================
+        $rates = DB::table('data_auto_kirims')->get();
+        $allData = clone $query;
+        $pesananAll = $allData->get();
 
+        $totalTransaksi = $pesananAll->count();
+        $totalOngkir    = $pesananAll->sum('ongkir');
+
+        $now = now();
+        $today = $now->copy()->startOfDay();
+        $yesterday = $now->copy()->subDay()->startOfDay();
+        $thisMonth = $now->copy()->startOfMonth();
+        $lastMonth = $now->copy()->subMonth()->startOfMonth();
+
+        $komisi = [
+            'total' => 0, 'hari_ini' => 0, 'kemarin' => 0, 'bulan_ini' => 0, 'bulan_kemarin' => 0
+        ];
+
+        foreach ($pesananAll as $p) {
+            // Komisi hanya dihitung untuk transaksi yang tidak gagal/batal
+            if (in_array($p->status, ['batal', 'gagal', 'menunggu_pembayaran'])) continue;
+
+            $fee = $this->hitungKomisi($p, $rates);
+            $komisi['total'] += $fee;
+
+            if ($p->created_at >= $today) {
+                $komisi['hari_ini'] += $fee;
+            } elseif ($p->created_at >= $yesterday && $p->created_at < $today) {
+                $komisi['kemarin'] += $fee;
+            }
+
+            if ($p->created_at >= $thisMonth) {
+                $komisi['bulan_ini'] += $fee;
+            } elseif ($p->created_at >= $lastMonth && $p->created_at < $thisMonth) {
+                $komisi['bulan_kemarin'] += $fee;
+            }
+        }
+
+        // Persentase Kenaikan/Penurunan (Growth)
+        $growthHarian = $komisi['kemarin'] > 0 ? (($komisi['hari_ini'] - $komisi['kemarin']) / $komisi['kemarin']) * 100 : ($komisi['hari_ini'] > 0 ? 100 : 0);
+        $growthBulanan = $komisi['bulan_kemarin'] > 0 ? (($komisi['bulan_ini'] - $komisi['bulan_kemarin']) / $komisi['bulan_kemarin']) * 100 : ($komisi['bulan_ini'] > 0 ? 100 : 0);
+
+        // DATA PAGINASI UNTUK TABEL
         $pesanan = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
 
+        // Inject fee komisi ke collection untuk ditampilkan di baris tabel
+        $pesanan->getCollection()->transform(function ($item) use ($rates) {
+            $item->fee_komisi = (in_array($item->status, ['batal', 'gagal', 'menunggu_pembayaran'])) ? 0 : $this->hitungKomisi($item, $rates);
+            return $item;
+        });
+
         return view('customer.pesanan_autokirim.index', compact(
-            'pesanan', 'totalTransaksi', 'totalOngkir', 'totalBerhasil', 'totalPending'
+            'pesanan', 'totalTransaksi', 'totalOngkir', 'komisi', 'growthHarian', 'growthBulanan'
         ));
+    }
+
+    /**
+     * Helper Private untuk mencocokkan layanan kurir dengan tabel data_auto_kirims
+     */
+    private function hitungKomisi($pesanan, $rates)
+    {
+        $kurir = strtolower($pesanan->kurir ?? '');
+        $layanan = strtolower($pesanan->layanan ?? '');
+        $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang']);
+
+        $bestMatch = null;
+        $highestScore = -1;
+
+        // Pencocokan pintar string layanan ke tabel Admin
+        foreach ($rates as $rate) {
+            $serviceStr = strtolower($rate->service);
+            $score = 0;
+
+            $kurirMapping = [
+                'j&t' => 'jnt', 'jne' => 'jne', 'id express' => 'idx', 'sicepat' => 'sicepat', 'sap' => 'sap', 'ninja' => 'ninja', 'anteraja' => 'anteraja'
+            ];
+
+            foreach ($kurirMapping as $key => $val) {
+                if (str_contains($kurir, $key) && str_contains($serviceStr, $val)) $score += 5;
+            }
+
+            $layananKeys = explode(' ', str_replace(['-', ' '], ' ', $layanan));
+            foreach ($layananKeys as $k) {
+                if (strlen($k) > 2 && str_contains($serviceStr, $k)) $score += 3;
+            }
+
+            if ($isCod && str_contains($serviceStr, 'cod')) $score += 4;
+            elseif (!$isCod && !str_contains($serviceStr, 'cod')) $score += 2;
+
+            if ($score > $highestScore && $score > 0) {
+                $highestScore = $score;
+                $bestMatch = $rate;
+            }
+        }
+
+        // Gunakan komisi_agen jika di-set admin, jika NULL gunakan cashback
+        $persen = 0;
+        if ($bestMatch) {
+            $persen = floatval($bestMatch->komisi_agen ?? $bestMatch->cashback ?? 0);
+        }
+
+        return $pesanan->ongkir * ($persen / 100);
     }
 
     public function searchAddressAjax(Request $request)
