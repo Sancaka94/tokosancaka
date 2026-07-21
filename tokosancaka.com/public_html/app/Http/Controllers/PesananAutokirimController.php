@@ -191,7 +191,7 @@ class PesananAutokirimController extends Controller
         }
     }
 
-    // ==========================================
+   // ==========================================
     // API 3: CREATE ORDER (100% DINAMIS & AMAN GOLANG)
     // ==========================================
     public function store(Request $request)
@@ -207,7 +207,7 @@ class PesananAutokirimController extends Controller
             'berat_gram'            => 'required|numeric',
             'qty'                   => 'required|numeric|min:1',
             'is_sender_pp'          => 'required|in:0,1',
-            'metode_pembayaran'     => 'required|string', // 🔥 Validasi Metode Pembayaran
+            'metode_pembayaran'     => 'required|string',
         ]);
 
         $origin = AutoKirim::where('district_id', $request->pengirim_district_id)->first();
@@ -220,21 +220,21 @@ class PesananAutokirimController extends Controller
         $localOrderId = 'AK-' . strtoupper(Str::random(8));
         $isInsurance  = $request->has('asuransi');
 
-        // 🔥 STRUKTUR JSON AMAN UNTUK SERVER GOLANG AUTOKIRIM (Strict String Casting)
+        // 🔥 STRUKTUR JSON AMAN UNTUK SERVER GOLANG AUTOKIRIM (Strict Type Mapping)
         $payload = [
             'service_code'   => (string) $request->service_code_terpilih,
             'reff_client_id' => (string) $localOrderId,
             'origin_id'      => (int) $origin->district_id,
             'destination_id' => (int) $destination->district_id,
             'weight'         => (string) $request->berat_gram,
-            'qty'            => (string) $request->input('qty', '1'),
+            'qty'            => (string) $request->input('qty', '1'), // 🔥 Wajib String (Sudah Benar)
             'length'         => $request->panjang_cm ? (int) $request->panjang_cm : 1,
             'width'          => $request->lebar_cm ? (int) $request->lebar_cm : 1,
             'height'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
             'description'    => (string) $request->deskripsi_barang,
             'remarks'        => (string) $request->kategori_barang,
             'is_cod'         => false,
-            'cod_value'      => "0",
+            'cod_value'      => 0, // 🔥 PERBAIKAN: Diubah kembali menjadi Integer 0 (tanpa tanda kutip)
             'is_sender_pp'   => (int) $request->input('is_sender_pp', 1),
             'is_insurance'   => $isInsurance,
             'from' => [
@@ -249,8 +249,9 @@ class PesananAutokirimController extends Controller
             ]
         ];
 
+        // 🔥 PASTIKAN INTEGER JUGA: Agar tidak error jika asuransi dicentang
         if ($isInsurance) {
-            $payload['price'] = (string) $request->nilai_barang;
+            $payload['price'] = (int) $request->nilai_barang;
         }
 
         try {
@@ -294,7 +295,7 @@ class PesananAutokirimController extends Controller
                     'layanan'           => $request->layanan_terpilih,
                     'ongkir'            => $request->ongkir_terpilih ?? 0,
                     'awb_number'        => $awbNumber,
-                    'metode_pembayaran' => $request->metode_pembayaran, // 🔥 Menyimpan Metode Pembayaran
+                    'metode_pembayaran' => $request->metode_pembayaran,
                     'status'            => 'booking_created'
                 ]);
 
