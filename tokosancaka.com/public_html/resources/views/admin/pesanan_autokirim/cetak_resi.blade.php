@@ -154,7 +154,7 @@
         </div>
     </div>
 
-    <div class="title">NOMOR RESI TOKOSANCAKA.COM</div>
+
 
     <!-- KODE TLC / SORTING -->
     @if(!empty($pesanan->tlc_code))
@@ -164,6 +164,8 @@
         </span>
     </div>
     @endif
+
+    <div class="title">NOMOR RESI TOKOSANCAKA.COM</div>
 
     <!-- BARCODE GENERATED LOCALLY -->
     <div class="barcode-container">
