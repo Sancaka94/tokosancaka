@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use App\Helpers\ShippingHelper;
+use App\Models\PesananAutokirim;
 
 class TrackingController extends Controller
 {
@@ -135,10 +136,45 @@ class TrackingController extends Controller
             }
         }
 
+        // ==========================================================
+        // 1.8. CARI DI TABEL PESANAN AUTOKIRIM
+        // ==========================================================
+        if (!$pesanan) {
+            $autokirim = PesananAutokirim::where('awb_number', $resi)
+                ->orWhere('order_id', $resi)
+                ->first();
+
+            if ($autokirim) {
+                $pesanan = (object)[
+                    'is_autokirim' => true, // Flag identifikasi ke API Autokirim
+                    'resi' => $autokirim->awb_number ?? $autokirim->order_id,
+                    'resi_aktual' => $autokirim->awb_number,
+                    'nomor_invoice' => $autokirim->order_id,
+                    'sender_name' => $autokirim->pengirim_nama,
+                    'sender_address' => $autokirim->pengirim_alamat,
+                    'sender_phone' => $autokirim->pengirim_hp,
+                    'receiver_name' => $autokirim->penerima_nama,
+                    'receiver_address' => $autokirim->penerima_alamat,
+                    'receiver_phone' => $autokirim->penerima_hp,
+                    'status' => $autokirim->status,
+                    'jasa_ekspedisi_aktual' => $autokirim->kurir,
+                    'service_type' => $autokirim->layanan,
+                    'expedition' => $autokirim->kurir,
+                    'created_at' => $autokirim->created_at,
+                ];
+            }
+        }
+
        // PROSES API EKPEDISI (JIKA DB1 / RETUR KETEMU)
         if ($pesanan) {
             // Ambil string nama ekspedisi untuk mendeteksi Deliveree
             $expeditionRaw = strtolower($pesanan->expedition ?? $pesanan->jasa_ekspedisi_aktual ?? $pesanan->service_type ?? '');
+
+            // 🔥 TAMBAHKAN KODE INI DISINI 🔥
+            // JIKA PESANAN BERASAL DARI TABEL AUTOKIRIM
+            if (isset($pesanan->is_autokirim) && $pesanan->is_autokirim) {
+                $result = $this->trackAutokirim($pesanan);
+            }
 
             // ==========================================================
             // LOGIKA CABANG 1: JIKA EKSPEDISI ADALAH DELIVEREE
@@ -1001,6 +1037,84 @@ class TrackingController extends Controller
             'histories' => $sortedHistories,
             'jasa_ekspedisi_aktual' => $jasaEkspedisi,
             'logo_ekspedisi' => 'https://tokosancaka.com/public/assets/ipaymu.jpg', // Tampilkan logo iPaymu
+        ];
+    }
+
+    /**
+     * =========================================================================
+     * HELPER EKSTRAKSI TRACKING AUTOKIRIM
+     * =========================================================================
+     */
+    private function trackAutokirim($pesanan)
+    {
+        $mode = \App\Models\Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
+        $baseUrl = \App\Models\Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
+        $token = \App\Models\Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
+
+        $histories = collect([]);
+        $statusText = $pesanan->status == 'booking_created' ? 'Menunggu Pickup Ekspedisi' : $pesanan->status;
+        $jasaEkspedisi = ($pesanan->jasa_ekspedisi_aktual ?? 'Autokirim') . ' - ' . ($pesanan->service_type ?? 'REG');
+
+        // Lacak ke API Autokirim jika Resi / AWB sudah terbit
+        if (!empty($pesanan->resi_aktual)) {
+            try {
+                $response = Http::timeout(15)
+                    ->withToken($token)
+                    ->post("{$baseUrl}/api/v2/waybill", [
+                        'awb' => $pesanan->resi_aktual
+                    ]);
+
+                $result = $response->json();
+
+                if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
+
+                    if (isset($result['data']['status'])) {
+                        $statusText = $result['data']['status'];
+                    }
+
+                    if (isset($result['data']['history']) && is_array($result['data']['history'])) {
+                        foreach ($result['data']['history'] as $h) {
+                            $histories->push((object)[
+                                'status' => $h['desc'] ?? $h['status'] ?? 'Update Pengiriman',
+                                'lokasi' => $h['city'] ?? $h['location'] ?? 'Ekspedisi',
+                                'keterangan' => $h['note'] ?? '-',
+                                'created_at' => \Carbon\Carbon::parse($h['date'] ?? now())->timezone('Asia/Jakarta')
+                            ]);
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Autokirim Tracking API Error: ' . $e->getMessage());
+            }
+        }
+
+        // Timeline Default Pertama Kali Pesanan Dibuat
+        if ($pesanan->created_at) {
+            $waktuDibuat = \Carbon\Carbon::parse($pesanan->created_at)->timezone('Asia/Jakarta');
+
+            $histories->push((object)[
+                'status' => 'Pesanan Dibuat Oleh TOKOSANCAKA.COM',
+                'lokasi' => 'Sistem Integrasi',
+                'keterangan' => 'Data pesanan berhasil disubmit ke server logistik Autokirim.',
+                'created_at' => $waktuDibuat,
+            ]);
+        }
+
+        return [
+            'is_pesanan' => true,
+            'resi' => $pesanan->resi,
+            'resi_aktual' => $pesanan->resi_aktual,
+            'pengirim' => $pesanan->sender_name,
+            'alamat_pengirim' => $pesanan->sender_address,
+            'no_pengirim' => $pesanan->sender_phone,
+            'penerima' => $pesanan->receiver_name,
+            'alamat_penerima' => $pesanan->receiver_address,
+            'no_penerima' => $pesanan->receiver_phone,
+            'status' => $statusText,
+            'tanggal_dibuat' => $pesanan->created_at,
+            'histories' => $histories->sortByDesc('created_at')->values(),
+            'jasa_ekspedisi_aktual' => $jasaEkspedisi,
+            'logo_ekspedisi' => null, // View blade public.tracking akan memanggil helper logonya otomatis
         ];
     }
 
