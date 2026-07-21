@@ -452,7 +452,8 @@ class PesananAutokirimController extends Controller
         if ($orderResponse->successful() && isset($orderResult['rc']) && $orderResult['rc'] === '00') {
             return [
                 'success' => true,
-                'awb'     => $orderResult['data']['awb'] ?? 'AWB-PENDING'
+                'awb'     => $orderResult['data']['awb'] ?? 'AWB-PENDING',
+                'tlc'     => $orderResult['data']['reff_2'] ?? null // 🔥 TANGKAP KODE TLC DARI reff_2
             ];
         }
 
