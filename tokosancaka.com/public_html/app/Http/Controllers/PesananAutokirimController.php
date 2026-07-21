@@ -55,7 +55,7 @@ class PesananAutokirimController extends Controller
             ->orWhere('regency_name', 'like', "%{$keyword}%")
             ->orWhere('zip', 'like', "%{$keyword}%")
             ->select('district_id', 'district_name', 'regency_name', 'province_name', 'zip')
-            ->limit(10)
+            ->limit(100)
             ->get();
 
         return response()->json($data);
