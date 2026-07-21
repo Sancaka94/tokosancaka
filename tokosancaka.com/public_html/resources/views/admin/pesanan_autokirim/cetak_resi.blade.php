@@ -156,11 +156,6 @@
 
     <div class="title">NOMOR RESI TOKOSANCAKA.COM</div>
 
-    <!-- BARCODE GENERATED LOCALLY -->
-    <div class="barcode-container">
-        <svg id="barcode"></svg>
-    </div>
-
     <!-- KODE TLC / SORTING -->
     @if(!empty($pesanan->tlc_code))
     <div class="tlc-container">
@@ -169,6 +164,13 @@
         </span>
     </div>
     @endif
+
+    <!-- BARCODE GENERATED LOCALLY -->
+    <div class="barcode-container">
+        <svg id="barcode"></svg>
+    </div>
+
+
 
     <!-- ALAMAT -->
     <div class="address-grid">
