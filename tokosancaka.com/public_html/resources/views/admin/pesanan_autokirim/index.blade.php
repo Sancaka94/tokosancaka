@@ -2,27 +2,42 @@
 
 @section('content')
 <div class="container-fluid py-4">
-    <h2 class="font-bold text-2xl mb-4 text-gray-800">Riwayat Transaksi Autokirim</h2>
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h2 class="font-bold text-2xl text-gray-800">Riwayat Transaksi & Profit Autokirim</h2>
+            <p class="text-gray-500 text-sm mt-1">Sistem Bagi Hasil Otomatis (60% Laba Sancaka : 40% Komisi Agen)</p>
+        </div>
+    </div>
 
     <!-- ========================================== -->
-    <!-- CARD STATISTIK -->
+    <!-- CARD STATISTIK PROFIT SHARING -->
     <!-- ========================================== -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-blue-500">
-            <p class="text-xs text-gray-500 font-bold uppercase tracking-wide">Total Transaksi</p>
-            <h3 class="text-2xl font-black text-gray-800">{{ number_format($totalTransaksi) }} <span class="text-sm font-normal">Resi</span></h3>
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-gray-500 relative overflow-hidden">
+            <p class="text-[10px] text-gray-500 font-bold uppercase tracking-wide">Total Transaksi</p>
+            <h3 class="text-xl font-black text-gray-800">{{ number_format($totalTransaksi) }} <span class="text-sm font-normal">Resi</span></h3>
+            <p class="text-[10px] font-semibold text-gray-500 mt-1">Rp {{ number_format($totalOngkir, 0, ',', '.') }} (Omzet Ongkir)</p>
         </div>
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-green-500">
-            <p class="text-xs text-gray-500 font-bold uppercase tracking-wide">Total Omzet Ongkir</p>
-            <h3 class="text-2xl font-black text-green-600">Rp {{ number_format($totalOngkir, 0, ',', '.') }}</h3>
+
+        <div class="bg-blue-50 p-4 rounded-xl shadow-sm border border-blue-200 border-l-4 border-l-blue-500 relative overflow-hidden">
+            <p class="text-[10px] text-blue-600 font-bold uppercase tracking-wide">Cashback Logistik (Kotor)</p>
+            <h3 class="text-xl font-black text-blue-700">Rp {{ number_format($stats['cashback_pusat'], 0, ',', '.') }}</h3>
+            <p class="text-[10px] font-semibold text-blue-500 mt-1">Keuntungan kotor dari Ekspedisi</p>
+            <i class="fa-solid fa-hand-holding-dollar absolute -right-3 -bottom-3 text-5xl text-blue-500 opacity-10"></i>
         </div>
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-indigo-500">
-            <p class="text-xs text-gray-500 font-bold uppercase tracking-wide">Transaksi Berhasil</p>
-            <h3 class="text-2xl font-black text-gray-800">{{ number_format($totalBerhasil) }}</h3>
+
+        <div class="bg-orange-50 p-4 rounded-xl shadow-sm border border-orange-200 border-l-4 border-l-orange-500 relative overflow-hidden">
+            <p class="text-[10px] text-orange-600 font-bold uppercase tracking-wide">Jatah Agen (40%)</p>
+            <h3 class="text-xl font-black text-orange-700">Rp {{ number_format($stats['komisi_agen'], 0, ',', '.') }}</h3>
+            <p class="text-[10px] font-semibold text-orange-500 mt-1">Total Fee dibagikan ke Agen</p>
+            <i class="fa-solid fa-users absolute -right-3 -bottom-3 text-5xl text-orange-500 opacity-10"></i>
         </div>
-        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-orange-500">
-            <p class="text-xs text-gray-500 font-bold uppercase tracking-wide">Menunggu Pembayaran</p>
-            <h3 class="text-2xl font-black text-gray-800">{{ number_format($totalPending) }}</h3>
+
+        <div class="bg-green-50 p-4 rounded-xl shadow-sm border border-green-200 border-l-4 border-l-green-600 relative overflow-hidden">
+            <p class="text-[10px] text-green-700 font-bold uppercase tracking-wide">Laba Bersih Sancaka (60%)</p>
+            <h3 class="text-xl font-black text-green-800">Rp {{ number_format($stats['laba_sancaka'], 0, ',', '.') }}</h3>
+            <p class="text-[10px] font-semibold text-green-600 mt-1">Net profit masuk kas pusat</p>
+            <i class="fa-solid fa-vault absolute -right-3 -bottom-3 text-5xl text-green-600 opacity-10"></i>
         </div>
     </div>
 
@@ -79,16 +94,17 @@
                                 <input type="checkbox" id="selectAll" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                             </th>
                             <th class="p-4 font-bold">Waktu & Order ID</th>
-                            <th class="p-4 font-bold">Rute & Resi</th>
-                            <th class="p-4 font-bold">Detail Paket</th>
-                            <th class="p-4 font-bold text-right">Harga & Status</th>
-                            <!-- Header Aksi Dipindah ke Sini -->
+                            <th class="p-4 font-bold min-w-[200px]">Rute & Resi</th>
+                            <th class="p-4 font-bold min-w-[180px]">Detail Paket</th>
+                            <th class="p-4 font-bold min-w-[200px]">Status & Rincian Profit</th>
+                            <!-- Kolom Aksi di Kanan -->
                             <th class="p-4 font-bold text-right">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="text-sm divide-y divide-gray-100">
                         @forelse($pesanan as $item)
                         <tr class="hover:bg-gray-50/50 transition">
+
                             <!-- Checkbox Bulk -->
                             <td class="p-4 align-top text-center">
                                 <input type="checkbox" name="ids[]" value="{{ $item->id }}" class="rowCheckbox w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
@@ -98,14 +114,14 @@
                             <td class="p-4 align-top">
                                 <p class="font-bold text-gray-800">{{ $item->created_at->format('d M Y') }}</p>
                                 <p class="text-xs text-gray-500">{{ $item->created_at->format('H:i:s') }} WIB</p>
-                                <div class="mt-2 text-[11px] bg-gray-100 px-2 py-1 rounded text-gray-600 font-mono inline-block">
+                                <div class="mt-2 text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-600 font-mono inline-block">
                                     {{ $item->order_id }}
                                 </div>
                             </td>
 
                             <!-- KOLOM 2: RUTE & RESI -->
                             <td class="p-4 align-top">
-                                <div class="mb-2">
+                                <div class="mb-2 flex items-center">
                                     @php $parsedKurir = \App\Helpers\ShippingHelper::parseShippingMethod($item->kurir); @endphp
                                     @if($parsedKurir['logo_url'])
                                         <img src="{{ $parsedKurir['logo_url'] }}" alt="{{ $parsedKurir['courier_name'] }}" class="h-6 w-auto object-contain inline-block mr-2" onerror="this.style.display='none';">
@@ -121,49 +137,73 @@
                                     <div class="inline-block bg-gray-100 text-gray-500 px-2 py-1 rounded italic text-xs mb-2">Menunggu Resi</div>
                                 @endif
 
-                                <p class="text-xs font-semibold text-gray-700"><i class="fa-solid fa-arrow-right-from-bracket text-blue-500 mr-1"></i> {{ $item->pengirim_nama }}</p>
-                                <p class="text-xs font-semibold text-gray-700 mt-1"><i class="fa-solid fa-location-dot text-red-500 mr-1"></i> {{ $item->penerima_nama }}</p>
+                                <p class="text-xs font-semibold text-gray-700"><i class="fa-solid fa-arrow-right-from-bracket text-blue-500 mr-1"></i> Dari: {{ $item->pengirim_nama }}</p>
+                                <p class="text-xs font-semibold text-gray-700 mt-1"><i class="fa-solid fa-location-dot text-red-500 mr-1"></i> Ke: {{ $item->penerima_nama }}</p>
                             </td>
 
                             <!-- KOLOM 3: DETAIL PAKET -->
-                            <td class="p-4 align-top min-w-[200px]">
+                            <td class="p-4 align-top">
                                 <p class="font-bold text-gray-800 text-xs">{{ $item->deskripsi_barang }}</p>
                                 <div class="mt-1 grid grid-cols-1 gap-1 text-[11px]">
+                                    <div><span class="text-gray-400">Layanan:</span> {{ $item->layanan }}</div>
                                     <div><span class="text-gray-400">Berat:</span> {{ number_format($item->berat_gram) }} gr</div>
                                     <div><span class="text-gray-400">Dimensi:</span> {{ $item->panjang_cm }}x{{ $item->lebar_cm }}x{{ $item->tinggi_cm }} cm</div>
-                                    <div><span class="text-gray-400">Asuransi:</span> {!! $item->asuransi ? '<span class="text-green-500 font-bold">Ya</span>' : '<span class="text-red-400">Tidak</span>' !!}</div>
                                 </div>
                             </td>
 
-                            <!-- KOLOM 4: HARGA & STATUS -->
-                            <td class="p-4 align-top text-right">
-                                <p class="font-black text-lg text-blue-700">Rp {{ number_format($item->ongkir, 0, ',', '.') }}</p>
-                                <p class="text-[9px] text-gray-400 uppercase tracking-wider mb-2">Via: <strong class="text-gray-600">{{ str_replace('_', ' ', $item->metode_pembayaran) }}</strong></p>
+                            <!-- KOLOM 4: RINCIAN PROFIT -->
+                            <td class="p-4 align-top">
+                                <!-- Status Transaksi -->
+                                <div class="mb-3">
+                                    @if(in_array($item->status, ['booking_created', 'paid']))
+                                        <span class="bg-green-100 text-green-700 font-bold px-2 py-1 rounded text-[10px] uppercase">Lunas & Diproses</span>
+                                    @elseif($item->status == 'menunggu_pembayaran')
+                                        <span class="bg-orange-100 text-orange-700 font-bold px-2 py-1 rounded text-[10px] uppercase">Pending</span>
+                                    @else
+                                        <span class="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-[10px] uppercase">{{ $item->status }}</span>
+                                    @endif
+                                    <p class="text-[9px] text-gray-400 uppercase tracking-wider mt-1.5 border-b border-gray-100 pb-1">Via: <strong class="text-gray-600">{{ str_replace('_', ' ', $item->metode_pembayaran) }}</strong></p>
+                                </div>
 
-                                @if(in_array($item->status, ['booking_created', 'paid']))
-                                    <span class="bg-green-100 text-green-700 font-bold px-2 py-1 rounded text-[10px] uppercase">Lunas & Diproses</span>
-                                @elseif($item->status == 'menunggu_pembayaran')
-                                    <span class="bg-orange-100 text-orange-700 font-bold px-2 py-1 rounded text-[10px] uppercase">Belum Bayar</span>
-                                @else
-                                    <span class="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-[10px] uppercase">{{ $item->status }}</span>
-                                @endif
+                                <!-- Kalkulasi Bagi Hasil (Sancaka & Agen) -->
+                                <div class="text-[10px] space-y-1">
+                                    <div class="flex justify-between text-gray-800">
+                                        <span>Ongkir Customer:</span>
+                                        <span class="font-bold">Rp {{ number_format($item->ongkir, 0, ',', '.') }}</span>
+                                    </div>
+                                    @if($item->profit->persen_cashback > 0)
+                                        <div class="flex justify-between text-blue-600">
+                                            <span>Cashback ({{ $item->profit->persen_cashback }}%):</span>
+                                            <span class="font-bold">Rp {{ number_format($item->profit->total_cashback, 0, ',', '.') }}</span>
+                                        </div>
+                                        <div class="flex justify-between text-orange-600">
+                                            <span>- Komisi Agen (40%):</span>
+                                            <span class="font-bold border-b border-dashed border-orange-300 pb-0.5">- Rp {{ number_format($item->profit->komisi_agen, 0, ',', '.') }}</span>
+                                        </div>
+                                        <div class="flex justify-between text-green-700 font-black mt-1">
+                                            <span>= Laba Sancaka (60%):</span>
+                                            <span>+ Rp {{ number_format($item->profit->laba_sancaka, 0, ',', '.') }}</span>
+                                        </div>
+                                    @else
+                                        <div class="flex justify-between text-gray-400 italic">
+                                            <span>Belum diset di master data.</span>
+                                        </div>
+                                    @endif
+                                </div>
                             </td>
 
-                            <!-- KOLOM AKSI (Dipindah ke Sini) -->
-                            <td class="p-4 align-top min-w-[150px]">
-                                <div class="flex flex-wrap gap-2 justify-end"> <!-- Tambahan justify-end agar rapi di kanan -->
-                                    <!-- 1. Tracking -->
+                            <!-- KOLOM 5: AKSI (Paling Kanan) -->
+                            <td class="p-4 align-top">
+                                <div class="flex flex-wrap gap-2 justify-end">
                                     @php $resiTrack = $item->awb_number ?? $item->order_id; @endphp
                                     <a href="https://tokosancaka.com/tracking/search?resi={{ $resiTrack }}" target="_blank" class="bg-blue-100 hover:bg-blue-200 text-blue-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Lacak Paket">
                                         <i class="fa-solid fa-location-crosshairs"></i>
                                     </a>
 
-                                    <!-- 2. Download / Cetak Resi -->
                                     <a href="{{ route('admin.pesanan-autokirim.cetak', $item->id) }}" target="_blank" class="bg-green-100 hover:bg-green-200 text-green-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Cetak / Download Resi">
                                         <i class="fa-solid fa-print"></i>
                                     </a>
 
-                                    <!-- 3. Batal (Locked logic) -->
                                     @if(in_array($item->status, ['booking_created', 'menunggu_pembayaran']))
                                         <button type="button" onclick="confirmCancel('{{ route('admin.pesanan-autokirim.cancel', $item->id) }}')" class="bg-orange-100 hover:bg-orange-200 text-orange-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Batalkan Pesanan">
                                             <i class="fa-solid fa-ban"></i>
@@ -174,7 +214,6 @@
                                         </button>
                                     @endif
 
-                                    <!-- 4. Hapus Satuan -->
                                     <button type="button" onclick="confirmDelete('{{ route('admin.pesanan-autokirim.destroy', $item->id) }}')" class="bg-red-100 hover:bg-red-200 text-red-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Hapus Data">
                                         <i class="fa-solid fa-trash-can"></i>
                                     </button>
@@ -203,9 +242,7 @@
         <input type="hidden" name="_method" id="actionMethod">
     </form>
 
-    <!-- Javascript untuk Fitur Checkbox & Konfirmasi -->
     <script>
-        // Checkbox Semua
         document.getElementById('selectAll').addEventListener('change', function(e) {
             let checkboxes = document.querySelectorAll('.rowCheckbox');
             checkboxes.forEach(cb => cb.checked = e.target.checked);
@@ -240,6 +277,5 @@
             }
         }
     </script>
-
 </div>
 @endsection
