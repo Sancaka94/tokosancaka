@@ -92,12 +92,18 @@ class PesananAutokirimController extends Controller
             $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
             $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
+            // LOG LOG: Catat Payload Request Cek Ongkir
+            Log::info("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] REQUEST PAYLOAD:", $payload);
+
             // Tembak Endpoint POST /api/v2/check-price
             $response = Http::timeout(15)
                             ->withToken($token)
                             ->post("{$baseUrl}/api/v2/check-price", $payload);
 
             $result = $response->json();
+
+            // LOG LOG: Catat Response API Cek Ongkir
+            Log::info("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] RESPONSE API:", $result ?? []);
 
             // Parsing Nested Array dari Autokirim jika Sukses (rc == '00')
             if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
@@ -132,7 +138,7 @@ class PesananAutokirimController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error("Autokirim Cek Ongkir Error: " . $e->getMessage());
+            Log::error("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] ERROR EXCEPTION: " . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Terjadi kendala jaringan saat menghubungi server logistik.']);
         }
     }
@@ -205,12 +211,18 @@ class PesananAutokirimController extends Controller
             $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
             $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
+            // LOG LOG: Catat Payload Request Create Order
+            Log::info("LOG LOG: [API AUTOKIRIM - CREATE ORDER] REQUEST PAYLOAD:", $payload);
+
             // 2. Tembak Endpoint POST /api/order
             $response = Http::timeout(15)
                             ->withToken($token)
                             ->post("{$baseUrl}/api/order", $payload);
 
             $result = $response->json();
+
+            // LOG LOG: Catat Response API Create Order
+            Log::info("LOG LOG: [API AUTOKIRIM - CREATE ORDER] RESPONSE API:", $result ?? []);
 
             // 3. Jika API Autokirim merespon Sukses (rc = '00')
             if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
@@ -255,11 +267,11 @@ class PesananAutokirimController extends Controller
             }
 
             // GAGAL dari sisi server Autokirim
-            Log::error("Autokirim Order Failed: ", $result ?? []);
+            Log::error("LOG LOG: [API AUTOKIRIM - CREATE ORDER] FAILED FROM SERVER: ", $result ?? []);
             return redirect()->back()->withInput()->with('error', 'Gagal membuat pesanan: ' . ($result['rd'] ?? 'Unknown Error'));
 
         } catch (\Exception $e) {
-            Log::error("Autokirim HTTP Error: " . $e->getMessage());
+            Log::error("LOG LOG: [API AUTOKIRIM - CREATE ORDER] ERROR EXCEPTION: " . $e->getMessage());
             return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan sistem saat menghubungi logistik. Pastikan internet server stabil.');
         }
     }
