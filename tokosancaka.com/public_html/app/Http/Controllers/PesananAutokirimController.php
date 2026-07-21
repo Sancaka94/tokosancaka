@@ -328,8 +328,10 @@ class PesananAutokirimController extends Controller
                 $awbResult = $this->_executeAutokirimApi($pesanan, $origin, $destination, $request);
 
                 $pesanan->update([
-                    'awb_number' => $awbResult['awb'],
-                    'status'     => 'booking_created'
+                    'awb_number'        => $awbResult['awb'],
+                    'tlc_code'          => $awbResult['tlc'],
+                    'pickup_point_code' => $awbResult['pickup'], // 🔥 SIMPAN KE DATABASE
+                    'status'            => 'booking_created'
                 ]);
 
                 DB::commit();
@@ -453,7 +455,8 @@ class PesananAutokirimController extends Controller
             return [
                 'success' => true,
                 'awb'     => $orderResult['data']['awb'] ?? 'AWB-PENDING',
-                'tlc'     => $orderResult['data']['reff_2'] ?? null // 🔥 TANGKAP KODE TLC DARI reff_2
+                'tlc'     => $orderResult['data']['reff_2'] ?? null,
+                'pickup'  => $pickupPointCode
             ];
         }
 
@@ -682,6 +685,43 @@ class PesananAutokirimController extends Controller
             return redirect()->back()->with('success', count($ids) . ' pesanan berhasil dihapus secara massal.');
         }
         return redirect()->back()->with('error', 'Pilih minimal satu pesanan untuk dihapus.');
+    }
+
+    // ==========================================
+    // AREA WEBHOOK: MENERIMA UPDATE STATUS DARI AUTOKIRIM
+    // ==========================================
+    public function handleWebhook(Request $request)
+    {
+        Log::info('WEBHOOK AUTOKIRIM DITERIMA:', $request->all());
+
+        // Parameter sesuai dokumentasi Autokirim
+        $refId = $request->input('ref_id'); // ID dari sistem Sancaka (order_id)
+        $awb = $request->input('awb_number');
+        $status = $request->input('transactions_stats'); // CREATE, MANIFESTED, DELIVERED, dll
+        $desc = $request->input('transactions_desc');
+
+        if (!$refId && !$awb) {
+            return response()->json(['success' => false, 'message' => 'Invalid Payload: ref_id atau awb_number tidak ditemukan'], 400);
+        }
+
+        // Cari berdasarkan order_id atau awb_number
+        $pesanan = PesananAutokirim::where('order_id', $refId)
+            ->orWhere('awb_number', $awb)
+            ->first();
+
+        if ($pesanan) {
+            // Update status pesanan di database Sancaka
+            $pesanan->update([
+                'status' => $status
+                // Jika Anda punya kolom keterangan di DB, Anda bisa juga simpan $desc ke sana
+            ]);
+
+            Log::info("WEBHOOK AUTOKIRIM SUKSES: Update order {$pesanan->order_id} menjadi status: {$status} - {$desc}");
+            return response()->json(['success' => true, 'message' => 'Status pesanan berhasil diperbarui'], 200);
+        }
+
+        Log::warning("WEBHOOK AUTOKIRIM GAGAL: Pesanan tidak ditemukan untuk ref_id: {$refId} / awb: {$awb}");
+        return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan'], 404);
     }
 
 }

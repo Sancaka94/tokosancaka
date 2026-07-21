@@ -1042,7 +1042,7 @@ class TrackingController extends Controller
 
     /**
      * =========================================================================
-     * HELPER EKSTRAKSI TRACKING AUTOKIRIM
+     * HELPER EKSTRAKSI TRACKING AUTOKIRIM (NEW API)
      * =========================================================================
      */
     private function trackAutokirim($pesanan)
@@ -1058,27 +1058,39 @@ class TrackingController extends Controller
         // Lacak ke API Autokirim jika Resi / AWB sudah terbit
         if (!empty($pesanan->resi_aktual)) {
             try {
+                // 🔥 Penyesuaian Endpoint & Payload Baru
                 $response = Http::timeout(15)
                     ->withToken($token)
-                    ->post("{$baseUrl}/api/v2/waybill", [
-                        'awb' => $pesanan->resi_aktual
+                    ->post("{$baseUrl}/api/tracking", [
+                        'awb' => $pesanan->resi_aktual,
+                        'pickup_point_code' => $pesanan->pickup_point_code ?? '' // Dikirim dari database
                     ]);
 
                 $result = $response->json();
 
                 if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
+                    $data = $result['data'] ?? [];
 
-                    if (isset($result['data']['status'])) {
-                        $statusText = $result['data']['status'];
+                    if (isset($data['stats'])) {
+                        $statusText = $data['stats']; // cth: DELIVERED
+                    }
+                    if (isset($data['courier_name'])) {
+                        $jasaEkspedisi = $data['courier_name'] . ' - ' . ($data['service'] ?? 'REG');
                     }
 
-                    if (isset($result['data']['history']) && is_array($result['data']['history'])) {
-                        foreach ($result['data']['history'] as $h) {
+                    if (isset($data['histories']) && is_array($data['histories'])) {
+                        foreach ($data['histories'] as $h) {
+                            // Format Autokirim memisahkan 'date' dan 'time'
+                            $datetimeString = trim(($h['date'] ?? '') . ' ' . ($h['time'] ?? ''));
+                            $parsedDate = !empty($datetimeString)
+                                ? \Carbon\Carbon::parse($datetimeString)->timezone('Asia/Jakarta')
+                                : now()->timezone('Asia/Jakarta');
+
                             $histories->push((object)[
-                                'status' => $h['desc'] ?? $h['status'] ?? 'Update Pengiriman',
-                                'lokasi' => $h['city'] ?? $h['location'] ?? 'Ekspedisi',
-                                'keterangan' => $h['note'] ?? '-',
-                                'created_at' => \Carbon\Carbon::parse($h['date'] ?? now())->timezone('Asia/Jakarta')
+                                'status' => $h['desc'] ?? 'Update Pengiriman',
+                                'lokasi' => 'Sistem ' . ($data['courier_name'] ?? 'Ekspedisi'),
+                                'keterangan' => 'Status Paket: ' . ($h['desc'] ?? '-'),
+                                'created_at' => $parsedDate
                             ]);
                         }
                     }
@@ -1114,7 +1126,7 @@ class TrackingController extends Controller
             'tanggal_dibuat' => $pesanan->created_at,
             'histories' => $histories->sortByDesc('created_at')->values(),
             'jasa_ekspedisi_aktual' => $jasaEkspedisi,
-            'logo_ekspedisi' => null, // View blade public.tracking akan memanggil helper logonya otomatis
+            'logo_ekspedisi' => null,
         ];
     }
 

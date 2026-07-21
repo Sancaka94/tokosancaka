@@ -60,6 +60,10 @@ use App\Http\Controllers\Api\Mobile\ApiMapboxController;
 use App\Http\Controllers\Api\Mobile\AdminDriverController;
 use App\Http\Controllers\ApiDuitkuController;
 use App\Http\Controllers\Api\Mobile\ApiSettingMobileOjekController;
+use App\Http\Controllers\PesananAutokirimController;
+
+// Webhook Autokirim
+Route::post('/callback/autokirim', [\App\Http\Controllers\PesananAutokirimController::class, 'handleWebhook']);
 
 // Pastikan route ini aman dan terproteksi middleware admin jika ini fitur sensitif
 Route::prefix('mobile/settings/harga-ojek')->group(function () {
