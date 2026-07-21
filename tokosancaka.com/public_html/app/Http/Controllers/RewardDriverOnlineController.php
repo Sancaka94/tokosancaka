@@ -49,10 +49,12 @@ class RewardDriverOnlineController extends Controller
             $performa->id_pengguna = $id_pengguna;
             $performa->total_order_selesai = 0; // Set default awal
             $performa->id_medali = 1; // Set newbie
+            $performa->bintang_manual = 0; // Set default awal abu-abu (0)
         }
 
         // Update nilai dari request form halaman admin
-        $performa->bintang_manual = $request->bintang;
+        // Gunakan fallback '0' jika request bintang tidak dikirim (mencegah error)
+        $performa->bintang_manual = $request->bintang ?? 0;
         $performa->is_trusted_express = $request->is_trusted;
         $performa->catatan_admin = $request->catatan;
 
@@ -103,7 +105,10 @@ class RewardDriverOnlineController extends Controller
             if (!$performa) {
                 $performa = new DriverPerforma();
                 $performa->id_pengguna = $id_pengguna; // Diisi paksa ke objek, pasti masuk!
-                $performa->bintang_manual = 5;
+
+                // UBAH KE 0 AGAR ABU-ABU DI AWAL UNTUK DRIVER BARU
+                $performa->bintang_manual = 0;
+
                 $performa->is_trusted_express = 0; // Default tidak diizinkan bawa paket
                 $performa->catatan_admin = null;
             }
