@@ -78,11 +78,12 @@
                             <th class="p-4 w-10 text-center">
                                 <input type="checkbox" id="selectAll" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                             </th>
-                            <th class="p-4 font-bold">Aksi</th>
                             <th class="p-4 font-bold">Waktu & Order ID</th>
                             <th class="p-4 font-bold">Rute & Resi</th>
                             <th class="p-4 font-bold">Detail Paket</th>
                             <th class="p-4 font-bold text-right">Harga & Status</th>
+                            <!-- Header Aksi Dipindah ke Sini -->
+                            <th class="p-4 font-bold text-right">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="text-sm divide-y divide-gray-100">
@@ -91,38 +92,6 @@
                             <!-- Checkbox Bulk -->
                             <td class="p-4 align-top text-center">
                                 <input type="checkbox" name="ids[]" value="{{ $item->id }}" class="rowCheckbox w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                            </td>
-
-                            <!-- KOLOM AKSI (Tombol-tombol) -->
-                            <td class="p-4 align-top min-w-[150px]">
-                                <div class="flex flex-wrap gap-2">
-                                    <!-- 1. Tracking -->
-                                    @php $resiTrack = $item->awb_number ?? $item->order_id; @endphp
-                                    <a href="https://tokosancaka.com/tracking/search?resi={{ $resiTrack }}" target="_blank" class="bg-blue-100 hover:bg-blue-200 text-blue-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Lacak Paket">
-                                        <i class="fa-solid fa-location-crosshairs"></i>
-                                    </a>
-
-                                    <!-- 2. Download / Cetak Resi -->
-                                    <a href="{{ route('admin.pesanan-autokirim.cetak', $item->id) }}" target="_blank" class="bg-green-100 hover:bg-green-200 text-green-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Cetak / Download Resi">
-                                        <i class="fa-solid fa-print"></i>
-                                    </a>
-
-                                    <!-- 3. Batal (Locked logic) -->
-                                    @if(in_array($item->status, ['booking_created', 'menunggu_pembayaran']))
-                                        <button type="button" onclick="confirmCancel('{{ route('admin.pesanan-autokirim.cancel', $item->id) }}')" class="bg-orange-100 hover:bg-orange-200 text-orange-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Batalkan Pesanan">
-                                            <i class="fa-solid fa-ban"></i>
-                                        </button>
-                                    @else
-                                        <button type="button" disabled class="bg-gray-100 text-gray-400 w-8 h-8 rounded flex items-center justify-center cursor-not-allowed" title="Sudah diproses, tidak bisa dibatalkan">
-                                            <i class="fa-solid fa-lock"></i>
-                                        </button>
-                                    @endif
-
-                                    <!-- 4. Hapus Satuan -->
-                                    <button type="button" onclick="confirmDelete('{{ route('admin.pesanan-autokirim.destroy', $item->id) }}')" class="bg-red-100 hover:bg-red-200 text-red-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Hapus Data">
-                                        <i class="fa-solid fa-trash-can"></i>
-                                    </button>
-                                </div>
                             </td>
 
                             <!-- KOLOM 1: WAKTU & ID -->
@@ -179,6 +148,39 @@
                                     <span class="bg-red-100 text-red-700 font-bold px-2 py-1 rounded text-[10px] uppercase">{{ $item->status }}</span>
                                 @endif
                             </td>
+
+                            <!-- KOLOM AKSI (Dipindah ke Sini) -->
+                            <td class="p-4 align-top min-w-[150px]">
+                                <div class="flex flex-wrap gap-2 justify-end"> <!-- Tambahan justify-end agar rapi di kanan -->
+                                    <!-- 1. Tracking -->
+                                    @php $resiTrack = $item->awb_number ?? $item->order_id; @endphp
+                                    <a href="https://tokosancaka.com/tracking/search?resi={{ $resiTrack }}" target="_blank" class="bg-blue-100 hover:bg-blue-200 text-blue-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Lacak Paket">
+                                        <i class="fa-solid fa-location-crosshairs"></i>
+                                    </a>
+
+                                    <!-- 2. Download / Cetak Resi -->
+                                    <a href="{{ route('admin.pesanan-autokirim.cetak', $item->id) }}" target="_blank" class="bg-green-100 hover:bg-green-200 text-green-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Cetak / Download Resi">
+                                        <i class="fa-solid fa-print"></i>
+                                    </a>
+
+                                    <!-- 3. Batal (Locked logic) -->
+                                    @if(in_array($item->status, ['booking_created', 'menunggu_pembayaran']))
+                                        <button type="button" onclick="confirmCancel('{{ route('admin.pesanan-autokirim.cancel', $item->id) }}')" class="bg-orange-100 hover:bg-orange-200 text-orange-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Batalkan Pesanan">
+                                            <i class="fa-solid fa-ban"></i>
+                                        </button>
+                                    @else
+                                        <button type="button" disabled class="bg-gray-100 text-gray-400 w-8 h-8 rounded flex items-center justify-center cursor-not-allowed" title="Sudah diproses, tidak bisa dibatalkan">
+                                            <i class="fa-solid fa-lock"></i>
+                                        </button>
+                                    @endif
+
+                                    <!-- 4. Hapus Satuan -->
+                                    <button type="button" onclick="confirmDelete('{{ route('admin.pesanan-autokirim.destroy', $item->id) }}')" class="bg-red-100 hover:bg-red-200 text-red-700 w-8 h-8 rounded flex items-center justify-center shadow-sm" title="Hapus Data">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </div>
+                            </td>
+
                         </tr>
                         @empty
                         <tr>
