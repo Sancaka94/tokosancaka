@@ -36,15 +36,28 @@ class RewardDriverOnlineController extends Controller
 
     public function update(Request $request, $id_pengguna)
     {
-        // Update manual dari Form Admin
-        DriverPerforma::updateOrCreate(
-            ['id_pengguna' => $id_pengguna],
-            [
-                'bintang_manual' => $request->bintang,
-                'is_trusted_express' => $request->is_trusted,
-                'catatan_admin' => $request->catatan
-            ]
-        );
+        // 🛡️ PENGAMAN: Mencegah error jika terjadi request tanpa id_pengguna
+        if (empty($id_pengguna)) {
+            return redirect()->back()->with('error', 'ID Pengguna tidak valid.');
+        }
+
+        $performa = DriverPerforma::where('id_pengguna', $id_pengguna)->first();
+
+        // Buat baru jika belum ada di tabel performa
+        if (!$performa) {
+            $performa = new DriverPerforma();
+            $performa->id_pengguna = $id_pengguna;
+            $performa->total_order_selesai = 0; // Set default awal
+            $performa->id_medali = 1; // Set newbie
+        }
+
+        // Update nilai dari request form halaman admin
+        $performa->bintang_manual = $request->bintang;
+        $performa->is_trusted_express = $request->is_trusted;
+        $performa->catatan_admin = $request->catatan;
+
+        // Simpan
+        $performa->save();
 
         return redirect()->back()->with('success', 'Performa & Izin Akses Driver berhasil diperbarui.');
     }
@@ -52,22 +65,29 @@ class RewardDriverOnlineController extends Controller
     // Engine Sinkronisasi Otomatis
     private function syncAllDriverPerformances()
     {
-        // Tarik HANYA driver yang punya id_pengguna (Cegah Crash akibat NULL)
+        // 1. Tarik HANYA driver yang punya id_pengguna (Cegah Crash akibat NULL di tabel utama)
         $activeDrivers = DB::table('registrasi_driver_sancaka')
             ->where('status', 'approved')
             ->whereNotNull('id_pengguna')
             ->pluck('id_pengguna');
 
+        // Tarik master medali urut dari yang paling tinggi skornya ke rendah
         $aturanMedali = DriverMedali::orderBy('minimal_order', 'desc')->get();
 
         foreach ($activeDrivers as $id_pengguna) {
-            // 1. Hitung total orderan real dari database (Order sukses)
+
+            // 🛡️ PENGAMAN EKSTRA: Jika id_pengguna kosong, string kosong, atau 0, lewati loop ini!
+            if (empty($id_pengguna)) {
+                continue;
+            }
+
+            // 2. Hitung total orderan real dari database (Order sukses)
             $totalOrder = DB::table('order_ojek_online')
                 ->where('driver_id', $id_pengguna)
                 ->whereIn('status', ['completed', 'selesai'])
                 ->count();
 
-            // 2. Tentukan Medali
+            // 3. Tentukan Medali
             $id_medali_baru = 1; // Default ID untuk Newbie
             foreach ($aturanMedali as $medali) {
                 if ($totalOrder >= $medali->minimal_order) {
@@ -76,11 +96,13 @@ class RewardDriverOnlineController extends Controller
                 }
             }
 
-            // 3. Simpan Rapor secara Cerdas (Tidak mereset bintang manual admin)
-            $performa = DriverPerforma::firstOrNew(['id_pengguna' => $id_pengguna]);
+            // 4. Simpan Rapor Menggunakan Explicit Assignment (KEBAL ERROR MASS ASSIGNMENT)
+            $performa = DriverPerforma::where('id_pengguna', $id_pengguna)->first();
 
-            // Set default jika ini adalah driver baru yang belum pernah masuk tabel performa
-            if (!$performa->exists) {
+            // Jika driver ini belum punya rapor sama sekali, kita buatkan baris baru
+            if (!$performa) {
+                $performa = new DriverPerforma();
+                $performa->id_pengguna = $id_pengguna; // Diisi paksa ke objek, pasti masuk!
                 $performa->bintang_manual = 5;
                 $performa->is_trusted_express = 0; // Default tidak diizinkan bawa paket
                 $performa->catatan_admin = null;
@@ -90,6 +112,7 @@ class RewardDriverOnlineController extends Controller
             $performa->total_order_selesai = $totalOrder;
             $performa->id_medali = $id_medali_baru;
 
+            // Eksekusi simpan ke tabel performa
             $performa->save();
         }
     }
