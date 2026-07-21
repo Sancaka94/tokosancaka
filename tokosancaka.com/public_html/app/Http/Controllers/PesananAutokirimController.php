@@ -223,40 +223,41 @@ class PesananAutokirimController extends Controller
             return redirect()->back()->withInput()->with('error', 'Wilayah pengirim atau penerima tidak valid. Mohon pilih dari dropdown yang tersedia.');
         }
 
-        $localOrderId = 'AK-' . strtoupper(Str::random(8));
+        $localOrderId = (string) (date('ymdHis') . mt_rand(1000, 9999));
+
         $isInsurance  = $request->has('asuransi');
         $isSenderPp   = (int) $request->input('is_sender_pp', 1);
 
-        // 🔥 2. STRUKTUR JSON 100% PERSIS DENGAN DOKUMENTASI & CURL AUTOKIRIM
+        // Susun Payload
         $payload = [
             'service_code'      => (string) $request->service_code_terpilih,
-            'reff_client_id'    => (string) $localOrderId,
-            'pickup_point_code' => "", // Default empty string untuk menghindari Nil pointer di Golang
+            'reff_client_id'    => $localOrderId, // 🔥 Sekarang isinya full angka!
+            'pickup_point_code' => "",
             'origin_id'         => (int) $origin->district_id,
             'destination_id'    => (int) $destination->district_id,
             'weight'            => (string) $request->berat_gram,
-            'qty'               => (string) $request->input('qty', '1'), // Wajib String
+            'qty'               => (string) $request->input('qty', '1'),
             'length'            => $request->panjang_cm ? (int) $request->panjang_cm : 1,
             'width'             => $request->lebar_cm ? (int) $request->lebar_cm : 1,
             'height'            => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
             'description'       => (string) $request->deskripsi_barang,
             'remarks'           => (string) $request->kategori_barang,
             'is_cod'            => false,
-            'price'             => $isInsurance ? (int) $request->nilai_barang : 0, // 🔥 AMAN: Selalu kirim integer (0 jika tanpa asuransi)
-            'cod_value'         => 0, // Wajib Integer 0
-            'is_sender_pp'      => $isSenderPp, // 1 = Pickup, 0 = Dropoff
+            'price'             => $isInsurance ? (int) $request->nilai_barang : 0,
+            'cod_value'         => 0,
+            'is_sender_pp'      => $isSenderPp,
             'is_insurance'      => $isInsurance,
             'from' => [
                 'name'    => (string) trim($request->pengirim_nama),
                 'phone'   => (string) trim($request->pengirim_hp),
-                'address' => (string) trim($request->pengirim_alamat), // Pastikan bebas spasi berlebih
+                'address' => (string) trim($request->pengirim_alamat),
             ],
             'to' => [
                 'name'    => (string) trim($request->penerima_nama),
                 'phone'   => (string) trim($request->penerima_hp),
                 'address' => (string) trim($request->penerima_alamat),
             ],
-            'commodity'         => "" // Mandatory jika lion parcel, kita set empty string agar siap pakai
+            'commodity'         => ""
         ];
 
         try {
