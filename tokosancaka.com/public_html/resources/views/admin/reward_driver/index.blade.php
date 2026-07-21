@@ -6,7 +6,7 @@
     <div class="mb-6">
         <h2 class="text-2xl font-bold text-gray-800">Manajemen Level & Akses Driver Sancaka</h2>
         <p class="text-sm text-gray-500 mt-1">
-            Penilaian otomatis berdasarkan jumlah pesanan sukses. Ubah bintang secara manual untuk driver bermasalah.
+            Penilaian otomatis berdasarkan jumlah pesanan sukses. Klik langsung pada bintang untuk mengubah rating driver secara manual.
         </p>
     </div>
 
@@ -27,16 +27,16 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nama Driver</th>
-                        <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Total Order Sukses</th>
+                        <th scope="col" class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Total Order Sukses</th>
                         <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Level Medali</th>
-                        <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Bintang (Manual)</th>
+                        <th scope="col" class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Bintang (Manual)</th>
                         <th scope="col" class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Izin Sancaka Express?</th>
                         <th scope="col" class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @foreach($drivers as $d)
-                        <!-- Form HTML5 (Definisikan ID Form di luar tag <td> agar valid) -->
+                        <!-- Form HTML5 (ID Form di luar tag <td> agar struktur HTML valid) -->
                         <form id="form-reward-{{ $d->id_pengguna }}" action="{{ route('admin.reward.update', $d->id_pengguna) }}" method="POST">
                             @csrf
                         </form>
@@ -48,29 +48,52 @@
                             </td>
 
                             <!-- Total Order -->
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
+                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
                                     {{ $d->total_order_selesai ?? 0 }} Order
                                 </span>
                             </td>
 
-                            <!-- Level Medali -->
+                            <!-- Level Medali (Konversi ke FontAwesome) -->
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                                <div class="flex items-center gap-1.5">
-                                    <span class="text-xl">{{ $d->ikon ?? '🔰' }}</span>
-                                    <span class="font-medium">{{ $d->nama_medali ?? 'Newbie' }}</span>
+                                <div class="flex items-center gap-2">
+                                    @php
+                                        // Deteksi warna dan icon berdasarkan nama medali
+                                        $medalColor = 'text-gray-400';
+                                        $medalIcon = 'fa-solid fa-user-shield';
+
+                                        switch(strtolower($d->nama_medali ?? 'newbie')) {
+                                            case 'bronze':
+                                                $medalColor = 'text-amber-700'; $medalIcon = 'fa-solid fa-medal'; break;
+                                            case 'silver':
+                                                $medalColor = 'text-gray-400'; $medalIcon = 'fa-solid fa-medal'; break;
+                                            case 'gold':
+                                                $medalColor = 'text-yellow-500'; $medalIcon = 'fa-solid fa-medal'; break;
+                                            case 'platinum':
+                                                $medalColor = 'text-cyan-500'; $medalIcon = 'fa-solid fa-gem'; break;
+                                            default:
+                                                $medalColor = 'text-emerald-500'; $medalIcon = 'fa-solid fa-user-shield'; break;
+                                        }
+                                    @endphp
+
+                                    <i class="{{ $medalIcon }} {{ $medalColor }} text-xl drop-shadow-sm"></i>
+                                    <span class="font-bold text-gray-800">{{ $d->nama_medali ?? 'Newbie' }}</span>
                                 </div>
                             </td>
 
-                            <!-- Bintang -->
-                            <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                <select name="bintang" form="form-reward-{{ $d->id_pengguna }}" class="block w-full rounded-lg border border-gray-300 bg-white py-2 pl-3 pr-8 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
-                                    @for($i=1; $i<=5; $i++)
-                                        <option value="{{ $i }}" {{ ($d->bintang_manual ?? 5) == $i ? 'selected' : '' }}>
-                                            {{ $i }} Bintang
-                                        </option>
-                                    @endfor
-                                </select>
+                            <!-- Bintang Interaktif Alpine.js -->
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                <div x-data="{ rating: {{ $d->bintang_manual ?? 5 }} }" class="inline-flex items-center gap-1 cursor-pointer">
+                                    <template x-for="i in 5">
+                                        <i @click="rating = i"
+                                           class="fa-solid fa-star text-xl transition-all duration-200 transform hover:scale-110"
+                                           :class="i <= rating ? 'text-yellow-400 drop-shadow-md' : 'text-gray-300 hover:text-yellow-200'">
+                                        </i>
+                                    </template>
+
+                                    <!-- Input tersembunyi yang akan dikirim ke Backend -->
+                                    <input type="hidden" name="bintang" :value="rating" form="form-reward-{{ $d->id_pengguna }}">
+                                </div>
                             </td>
 
                             <!-- Izin Express -->
@@ -106,10 +129,8 @@
         <!-- Kondisi Kosong (Empty State) -->
         @if(count($drivers) == 0)
         <div class="text-center py-10">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada Driver</h3>
+            <i class="fa-solid fa-users-slash text-4xl text-gray-300 mb-3"></i>
+            <h3 class="text-sm font-medium text-gray-900">Belum ada Driver</h3>
             <p class="mt-1 text-sm text-gray-500">Tidak ada data driver yang dapat ditampilkan saat ini.</p>
         </div>
         @endif
