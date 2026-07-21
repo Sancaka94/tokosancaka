@@ -1922,7 +1922,8 @@ Route::get('/{short_code}', [ShortUrlController::class, 'redirect']);
 
 // --- GRUP CUSTOMER ---
 Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(function () {
-    Route::get('/pesanan-autokirim', [PesananAutokirimController::class, 'createCustomer'])->name('pesanan-autokirim.create');
+    // Form Create & Store
+    Route::get('/pesanan-autokirim/create', [PesananAutokirimController::class, 'createCustomer'])->name('pesanan-autokirim.create');
     Route::post('/pesanan-autokirim', [PesananAutokirimController::class, 'store'])->name('pesanan-autokirim.store');
 
     // Halaman Riwayat & Aksi Khusus Customer
