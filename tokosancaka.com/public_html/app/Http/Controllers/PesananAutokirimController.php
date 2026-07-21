@@ -192,78 +192,115 @@ class PesananAutokirimController extends Controller
     }
 
    // ==========================================
-    // API 3: CREATE ORDER (100% COMPLIANT DENGAN CURL AUTOKIRIM)
+    // API 3: CREATE ORDER (+ AUTO INSERT PICKUP POINT & VALID PRICE)
     // ==========================================
     public function store(Request $request)
     {
-        // 🔥 1. VALIDASI KETAT: Alamat wajib min 15 karakter agar TIDAK DITOLAK Ekspedisi (Error 99)
+        // 1. Validasi Ketat
         $request->validate([
             'service_code_terpilih' => 'required',
             'pengirim_nama'         => 'required|string|max:50',
             'pengirim_hp'           => 'required|string|min:9|max:15',
             'pengirim_district_id'  => 'required',
-            'pengirim_alamat'       => 'required|string|min:15', // Wajib detail jalan/no rumah
+            'pengirim_alamat'       => 'required|string|min:15',
             'penerima_nama'         => 'required|string|max:50',
             'penerima_hp'           => 'required|string|min:9|max:15',
             'penerima_district_id'  => 'required',
-            'penerima_alamat'       => 'required|string|min:15', // Wajib detail jalan/no rumah
+            'penerima_alamat'       => 'required|string|min:15',
             'berat_gram'            => 'required|numeric|min:1',
             'qty'                   => 'required|numeric|min:1',
             'is_sender_pp'          => 'required|in:0,1',
             'metode_pembayaran'     => 'required|string',
         ], [
-            'pengirim_alamat.min' => 'Alamat Pengirim terlalu pendek! Wajib menuliskan nama jalan, nomor rumah/gedung, atau RT/RW (Min. 15 karakter). Jangan hanya menuliskan nama kota.',
-            'penerima_alamat.min' => 'Alamat Penerima terlalu pendek! Wajib menuliskan nama jalan, nomor rumah/gedung, atau RT/RW (Min. 15 karakter). Jangan hanya menuliskan nama kota.',
+            'pengirim_alamat.min' => 'Alamat Pengirim terlalu pendek! Wajib menuliskan nama jalan, nomor rumah/gedung, atau RT/RW (Min. 15 karakter).',
+            'penerima_alamat.min' => 'Alamat Penerima terlalu pendek! Wajib menuliskan nama jalan, nomor rumah/gedung, atau RT/RW (Min. 15 karakter).',
         ]);
 
         $origin = AutoKirim::where('district_id', $request->pengirim_district_id)->first();
         $destination = AutoKirim::where('district_id', $request->penerima_district_id)->first();
 
         if (!$origin || !$destination) {
-            return redirect()->back()->withInput()->with('error', 'Wilayah pengirim atau penerima tidak valid. Mohon pilih dari dropdown yang tersedia.');
+            return redirect()->back()->withInput()->with('error', 'Wilayah pengirim atau penerima tidak valid.');
         }
 
-        $localOrderId = (string) (date('ymdHis') . mt_rand(1000, 9999));
-
-        $isInsurance  = $request->has('asuransi');
-        $isSenderPp   = (int) $request->input('is_sender_pp', 1);
-
-        // Susun Payload
-        $payload = [
-            'service_code'      => (string) $request->service_code_terpilih,
-            'reff_client_id'    => $localOrderId, // 🔥 Sekarang isinya full angka!
-            'pickup_point_code' => "",
-            'origin_id'         => (int) $origin->district_id,
-            'destination_id'    => (int) $destination->district_id,
-            'weight'            => (string) $request->berat_gram,
-            'qty'               => (string) $request->input('qty', '1'),
-            'length'            => $request->panjang_cm ? (int) $request->panjang_cm : 1,
-            'width'             => $request->lebar_cm ? (int) $request->lebar_cm : 1,
-            'height'            => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
-            'description'       => (string) $request->deskripsi_barang,
-            'remarks'           => (string) $request->kategori_barang,
-            'is_cod'            => false,
-            'price'             => $isInsurance ? (int) $request->nilai_barang : 0,
-            'cod_value'         => 0,
-            'is_sender_pp'      => $isSenderPp,
-            'is_insurance'      => $isInsurance,
-            'from' => [
-                'name'    => (string) trim($request->pengirim_nama),
-                'phone'   => (string) trim($request->pengirim_hp),
-                'address' => (string) trim($request->pengirim_alamat),
-            ],
-            'to' => [
-                'name'    => (string) trim($request->penerima_nama),
-                'phone'   => (string) trim($request->penerima_hp),
-                'address' => (string) trim($request->penerima_alamat),
-            ],
-            'commodity'         => ""
-        ];
+        $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
+        $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
+        $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
         try {
-            $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
-            $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
-            $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
+            // =========================================================================
+            // 🔥 LANGKAH 1: AUTO-INSERT PICKUP POINT UNTUK MENDAPATKAN KODE (KM12345)
+            // =========================================================================
+            $pickupPayload = [
+                'name'              => (string) trim($request->pengirim_nama),
+                'phone'             => (string) trim($request->pengirim_hp),
+                'address'           => (string) trim($request->pengirim_alamat),
+                'email'             => auth()->user()->email ?? 'customer@tokosancaka.com', // Fallback email
+                'longitude'         => "",
+                'latitude'          => "",
+                'district_id'       => (int) $origin->district_id,
+                'is_member_deposit' => false
+            ];
+
+            Log::info("LOG: [API AUTOKIRIM - INSERT PICKUP POINT] REQUEST:", $pickupPayload);
+
+            $pickupResponse = Http::timeout(15)
+                ->withToken($token)
+                ->post("{$baseUrl}/api/pickup-point/insert", $pickupPayload);
+
+            $pickupResult = $pickupResponse->json();
+            Log::info("LOG: [API AUTOKIRIM - INSERT PICKUP POINT] RESPONSE:", $pickupResult ?? []);
+
+            // Pastikan kita berhasil mendapatkan pickup_point_code
+            if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
+                Log::error("LOG: Gagal mendapatkan Pickup Point Code dari Autokirim.");
+                return redirect()->back()->withInput()->with('error', 'Gagal mendaftarkan alamat jemput ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
+            }
+
+            $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
+            Log::info("LOG: Berhasil mendapatkan Pickup Point Code: {$pickupPointCode}");
+
+            // =========================================================================
+            // 🔥 LANGKAH 2: EKSEKUSI CREATE ORDER DENGAN PARAMETER YANG SUDAH LENGKAP
+            // =========================================================================
+            $localOrderId = (string) (date('ymdHis') . mt_rand(1000, 9999)); // Full 16 Digit Angka
+            $isInsurance  = $request->has('asuransi');
+            $isSenderPp   = (int) $request->input('is_sender_pp', 1);
+
+            // Menentukan nominal price (Wajib ada & > 0 sesuai arahan CS Mas Dhani)
+            $hargaBarangInput = (int) $request->nilai_barang;
+            $finalPrice       = $hargaBarangInput > 0 ? $hargaBarangInput : 10000; // Minimal Rp 10.000 agar tidak reject
+
+            $payload = [
+                'service_code'      => (string) $request->service_code_terpilih,
+                'reff_client_id'    => $localOrderId,
+                'pickup_point_code' => $pickupPointCode, // 🔥 MASUKKAN KODE HASIL DARI LANGKAH 1
+                'origin_id'         => (int) $origin->district_id,
+                'destination_id'    => (int) $destination->district_id,
+                'weight'            => (string) $request->berat_gram,
+                'qty'               => (string) $request->input('qty', '1'),
+                'length'            => $request->panjang_cm ? (int) $request->panjang_cm : 1,
+                'width'             => $request->lebar_cm ? (int) $request->lebar_cm : 1,
+                'height'            => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
+                'description'       => (string) $request->deskripsi_barang,
+                'remarks'           => (string) $request->kategori_barang,
+                'is_cod'            => false,
+                'price'             => $finalPrice, // 🔥 WAJIB DIKIRIM WALAUPUN TANPA ASURANSI
+                'cod_value'         => 0,
+                'is_sender_pp'      => $isSenderPp,
+                'is_insurance'      => $isInsurance,
+                'from' => [
+                    'name'    => (string) trim($request->pengirim_nama),
+                    'phone'   => (string) trim($request->pengirim_hp),
+                    'address' => (string) trim($request->pengirim_alamat),
+                ],
+                'to' => [
+                    'name'    => (string) trim($request->penerima_nama),
+                    'phone'   => (string) trim($request->penerima_hp),
+                    'address' => (string) trim($request->penerima_alamat),
+                ],
+                'commodity'         => ""
+            ];
 
             Log::info("LOG: [API AUTOKIRIM - CREATE ORDER] REQUEST:", $payload);
 
@@ -296,7 +333,7 @@ class PesananAutokirimController extends Controller
                     'lebar_cm'          => $request->lebar_cm ? (int) $request->lebar_cm : 1,
                     'tinggi_cm'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
                     'asuransi'          => $isInsurance ? 1 : 0,
-                    'nilai_barang'      => $request->nilai_barang ?? 0,
+                    'nilai_barang'      => $finalPrice,
                     'kurir'             => $request->kurir_terpilih,
                     'layanan'           => $request->layanan_terpilih,
                     'ongkir'            => $request->ongkir_terpilih ?? 0,
@@ -308,18 +345,11 @@ class PesananAutokirimController extends Controller
                 return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbNumber} (Metode: {$request->metode_pembayaran})");
             }
 
-            // Jika masih error dari server Autokirim/Ekspedisi
             Log::error("LOG: [API AUTOKIRIM - CREATE ORDER] FAILED FROM SERVER: ", $result ?? []);
-
-            $errorMsg = $result['rd'] ?? 'Unknown Error';
-            if ($result['rc'] === '99') {
-                $errorMsg .= " (Sistem Ekspedisi menolak data pesanan. Pastikan Alamat Pengirim & Penerima diketik lengkap dengan Nama Jalan/Nomor Rumah/RT RW, bukan hanya nama daerah/kota).";
-            }
-
-            return redirect()->back()->withInput()->with('error', 'Gagal membuat pesanan: ' . $errorMsg);
+            return redirect()->back()->withInput()->with('error', 'Gagal membuat pesanan: ' . ($result['rd'] ?? 'Unknown Error'));
 
         } catch (\Exception $e) {
-            Log::error("LOG: [API AUTOKIRIM - CREATE ORDER] ERROR: " . $e->getMessage());
+            Log::error("LOG: [API AUTOKIRIM - EXCEPTION] ERROR: " . $e->getMessage());
             return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan sistem saat menghubungi logistik. Pastikan internet server stabil.');
         }
     }
