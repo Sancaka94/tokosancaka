@@ -59,50 +59,62 @@ class PesananAutokirimController extends Controller
         return response()->json($data);
     }
 
-    // ==========================================
+   // ==========================================
     // API 2: CEK ONGKIR KE SERVER AUTOKIRIM
     // ==========================================
     public function cekOngkirAjax(Request $request)
     {
-        // 1. Cari district_id berdasarkan kodepos/zip dari inputan
-        $origin = AutoKirim::where('zip', $request->origin_zip)->first();
-        $destination = AutoKirim::where('zip', $request->destination_zip)->first();
+        // 1. Langsung tangkap district_id dari frontend (Super Cepat, Tanpa Query DB)
+        $origin_id = $request->origin_id;
+        $destination_id = $request->destination_id;
+        $berat = $request->berat_gram;
 
-        if (!$origin || !$destination) {
-            return response()->json(['success' => false, 'message' => 'Wilayah asal atau tujuan tidak valid.']);
+        if (empty($origin_id) || empty($destination_id)) {
+            return response()->json(['success' => false, 'message' => 'Wilayah asal atau tujuan tidak valid. Pastikan Anda memilih dari dropdown.']);
         }
 
-        // 2. Siapkan Payload Sesuai Dokumentasi V1.1
+        // 2. Siapkan Payload Persis Sesuai Dokumentasi Autokirim V1.1
         $payload = [
-            'origin_id'      => (int) $origin->district_id,
-            'destination_id' => (int) $destination->district_id,
-            'weight'         => $request->berat_gram,
-            'length'         => $request->panjang_cm ?: 1,
-            'width'          => $request->lebar_cm ?: 1,
-            'height'         => $request->tinggi_cm ?: 1,
-            'is_sender_pp'   => 1, // Menggunakan alamat pengirim sebagai titik pickup
+            'origin_id'      => (int) $origin_id,
+            'destination_id' => (int) $destination_id,
+            'weight'         => (string) $berat, // Autokirim menggunakan format string "400"
+            'length'         => $request->panjang_cm ? (int) $request->panjang_cm : 1,
+            'width'          => $request->lebar_cm ? (int) $request->lebar_cm : 1,
+            'height'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
+            'is_sender_pp'   => 1, // Wajib 1 agar pickup point menyesuaikan origin_id pengirim
         ];
 
         try {
+            // Ambil kredensial API
+            $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
+            $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
+            $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
+
             // 3. Tembak Endpoint POST /api/v2/check-price
-            $response = Http::timeout(10)
-                            ->withToken($this->token)
-                            ->post("{$this->baseUrl}/api/v2/check-price", $payload);
+            $response = Http::timeout(15)
+                            ->withToken($token)
+                            ->post("{$baseUrl}/api/v2/check-price", $payload);
 
             $result = $response->json();
 
+            // 4. Parsing Nested Array dari Autokirim jika Sukses (rc == '00')
             if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
                 $flatOngkir = [];
 
-                // 4. Ekstrak Nested Array dari Autokirim menjadi Flat Array untuk Frontend
                 foreach ($result['data'] as $courier) {
+                    // Bypass kurir tertentu jika tidak mendukung layanan
+                    if (!isset($courier['service_detail']) || empty($courier['service_detail'])) {
+                        continue;
+                    }
+
                     foreach ($courier['service_detail'] as $service) {
                         $flatOngkir[] = [
                             'kurir'        => $courier['courier_name'],
                             'layanan'      => $service['service_group'] . ' - ' . $service['service'],
-                            'kode_layanan' => $service['service_code'], // PENTING: Dibutuhkan saat create order
+                            'kode_layanan' => $service['service_code'],
                             'harga'        => $service['price'],
                             'estimasi'     => $service['duration'],
+                            'asuransi_fee' => $service['insurance'], // Persentase asuransi
                         ];
                     }
                 }
@@ -113,11 +125,14 @@ class PesananAutokirimController extends Controller
                 ]);
             }
 
-            return response()->json(['success' => false, 'message' => $result['rd'] ?? 'Gagal mendapatkan tarif.']);
+            return response()->json([
+                'success' => false,
+                'message' => $result['rd'] ?? 'Layanan tidak tersedia untuk rute tersebut.'
+            ]);
 
         } catch (\Exception $e) {
             Log::error("Autokirim Cek Ongkir Error: " . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Gagal terhubung ke server logistik.']);
+            return response()->json(['success' => false, 'message' => 'Terjadi kendala jaringan saat menghubungi server logistik.']);
         }
     }
 
