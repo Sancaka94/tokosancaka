@@ -125,17 +125,20 @@
                                         <p class="text-[11px] font-bold text-indigo-800 truncate" title="{{ $item->user->store_name }}">{{ $item->user->store_name ?? $item->user->nama_lengkap }}</p>
                                     </div>
 
-                                    <!-- Tombol Pemicu Modal -->
-                                    <button type="button" onclick='openAgentModal(@json([
-                                        "id" => $item->user->id_pengguna ?? "-",
-                                        "name" => $item->user->nama_lengkap ?? "-",
-                                        "store" => $item->user->store_name ?? "-",
-                                        "phone" => $item->user->no_wa ?? "-",
-                                        "email" => $item->user->email ?? "-",
-                                        "address" => trim(($item->user->address_detail ?? "") . ", " . ($item->user->village ?? "") . ", " . ($item->user->district ?? "") . ", " . ($item->user->regency ?? "") . ", " . ($item->user->province ?? "")),
-                                        "postal" => $item->user->postal_code ?? "-",
-                                        "saldo" => number_format($item->user->saldo ?? 0, 0, ",", ".")
-                                    ]))' class="bg-indigo-600 hover:bg-indigo-700 text-white w-7 h-7 rounded flex items-center justify-center transition shadow shrink-0" title="Lihat Detail Agen">
+                                    <!-- Tombol Pemicu Modal (SUDAH DIPERBAIKI SINTAKSNYA) -->
+                                    @php
+                                        $agentData = [
+                                            "id" => $item->user->id_pengguna ?? "-",
+                                            "name" => $item->user->nama_lengkap ?? "-",
+                                            "store" => $item->user->store_name ?? "-",
+                                            "phone" => $item->user->no_wa ?? "-",
+                                            "email" => $item->user->email ?? "-",
+                                            "address" => trim(($item->user->address_detail ?? "") . ", " . ($item->user->village ?? "") . ", " . ($item->user->district ?? "") . ", " . ($item->user->regency ?? "") . ", " . ($item->user->province ?? "")),
+                                            "postal" => $item->user->postal_code ?? "-",
+                                            "saldo" => number_format($item->user->saldo ?? 0, 0, ",", ".")
+                                        ];
+                                    @endphp
+                                    <button type="button" onclick="openAgentModal({{ htmlspecialchars(json_encode($agentData), ENT_QUOTES, 'UTF-8') }})" class="bg-indigo-600 hover:bg-indigo-700 text-white w-7 h-7 rounded flex items-center justify-center transition shadow shrink-0" title="Lihat Detail Agen">
                                         <i class="fa-solid fa-eye text-xs"></i>
                                     </button>
                                 </div>
