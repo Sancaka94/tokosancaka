@@ -65,7 +65,7 @@
                 <thead>
                     <tr class="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wider">
                         <th class="p-4 font-bold">Waktu & Order ID</th>
-                        <th class="p-4 font-bold">Rute Pengiriman (Asal -> Tujuan)</th>
+                        <th class="p-4 font-bold">Rute Pengiriman (Asal & Tujuan)</th>
                         <th class="p-4 font-bold">Detail Paket</th>
                         <th class="p-4 font-bold">Ekspedisi & Resi</th>
                         <th class="p-4 font-bold text-right">Pembayaran & Status</th>
