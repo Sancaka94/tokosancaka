@@ -96,14 +96,13 @@ class PesananAutokirimController extends Controller
     }
 
     // ==========================================
-    // AREA ADMIN: TABEL RIWAYAT TRANSAKSI
+    // AREA ADMIN: TABEL RIWAYAT TRANSAKSI LENGKAP
     // ==========================================
     public function indexAdmin(Request $request)
     {
-        // 1. Inisialisasi Query Model
         $query = PesananAutokirim::query();
 
-        // 2. LOGIKA PENCARIAN (Search Input)
+        // PENCARIAN (Berdasarkan Resi, Order ID, Nama, HP)
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
@@ -112,64 +111,36 @@ class PesananAutokirimController extends Controller
                   ->orWhere('pengirim_nama', 'like', "%{$search}%")
                   ->orWhere('penerima_nama', 'like', "%{$search}%")
                   ->orWhere('pengirim_hp', 'like', "%{$search}%")
-                  ->orWhere('penerima_hp', 'like', "%{$search}%")
-                  ->orWhere('kurir', 'like', "%{$search}%");
+                  ->orWhere('penerima_hp', 'like', "%{$search}%");
             });
         }
 
-        // 3. LOGIKA FILTER STATUS
+        // FILTER STATUS
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
 
-        // 4. LOGIKA FILTER KURIR (Misal: J&T Express, SiCepat, dll)
-        if ($request->filled('kurir')) {
-            $query->where('kurir', 'like', "%{$request->input('kurir')}%");
-        }
-
-        // 5. LOGIKA FILTER RENTANG TANGGAL
+        // FILTER TANGGAL
         if ($request->filled('date_range')) {
-            $rawDate = $request->date_range;
-            // Normalisasi pemisah tanggal jika admin input " - " atau " s.d. "
-            $normalizedDate = str_replace([' - ', ' s.d. '], ' to ', $rawDate);
-            $dates = explode(' to ', $normalizedDate);
-
+            $dates = explode(' to ', str_replace([' - ', ' s.d. '], ' to ', $request->date_range));
             if (count($dates) >= 2) {
-                // Range Tanggal (Awal s/d Akhir)
-                $startDate = trim($dates[0]) . ' 00:00:00';
-                $endDate   = trim($dates[1]) . ' 23:59:59';
-                $query->whereBetween('created_at', [$startDate, $endDate]);
+                $query->whereBetween('created_at', [trim($dates[0]) . ' 00:00:00', trim($dates[1]) . ' 23:59:59']);
             } elseif (count($dates) == 1) {
-                // Hanya Satu Tanggal
                 $query->whereDate('created_at', trim($dates[0]));
             }
         }
 
-        // 6. CLONE QUERY UNTUK STATISTIK CARD DI DASHBOARD
-        // Data ini otomatis ikut ter-filter jika ada pencarian/filter tanggal
+        // STATISTIK CARD
         $cardQuery = clone $query;
-
         $totalTransaksi = $cardQuery->count();
         $totalOngkir    = $cardQuery->sum('ongkir');
+        $totalBerhasil  = (clone $cardQuery)->whereNotIn('status', ['menunggu_pembayaran', 'gagal', 'batal'])->count();
+        $totalPending   = (clone $cardQuery)->whereIn('status', ['menunggu_pembayaran', 'gagal'])->count();
 
-        // Asumsi status berhasil: 'booking_created', 'paid', 'selesai', dll (Bisa disesuaikan)
-        $totalBerhasil  = (clone $cardQuery)->whereIn('status', ['booking_created', 'paid', 'selesai'])->count();
-
-        // Asumsi status gagal/pending: 'menunggu_pembayaran', 'gagal', 'batal', dll
-        $totalGagal     = (clone $cardQuery)->whereIn('status', ['menunggu_pembayaran', 'batal', 'gagal'])->count();
-
-        // 7. EKSEKUSI DATA (PAGINASI)
-        $pesanan = $query->orderBy('created_at', 'desc')->paginate(15);
-
-        // Appends request agar saat pindah Halaman 2, filter tanggal/search tidak hilang (ter-reset)
-        $pesanan->appends($request->all());
+        $pesanan = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
         return view('admin.pesanan_autokirim.index', compact(
-            'pesanan',
-            'totalTransaksi',
-            'totalOngkir',
-            'totalBerhasil',
-            'totalGagal'
+            'pesanan', 'totalTransaksi', 'totalOngkir', 'totalBerhasil', 'totalPending'
         ));
     }
 
