@@ -192,22 +192,28 @@ class PesananAutokirimController extends Controller
     }
 
    // ==========================================
-    // API 3: CREATE ORDER (100% DINAMIS & AMAN GOLANG)
+    // API 3: CREATE ORDER (100% COMPLIANT DENGAN CURL AUTOKIRIM)
     // ==========================================
     public function store(Request $request)
     {
+        // 🔥 1. VALIDASI KETAT: Alamat wajib min 15 karakter agar TIDAK DITOLAK Ekspedisi (Error 99)
         $request->validate([
             'service_code_terpilih' => 'required',
-            'pengirim_nama'         => 'required',
-            'pengirim_hp'           => 'required',
+            'pengirim_nama'         => 'required|string|max:50',
+            'pengirim_hp'           => 'required|string|min:9|max:15',
             'pengirim_district_id'  => 'required',
-            'penerima_nama'         => 'required',
-            'penerima_hp'           => 'required',
+            'pengirim_alamat'       => 'required|string|min:15', // Wajib detail jalan/no rumah
+            'penerima_nama'         => 'required|string|max:50',
+            'penerima_hp'           => 'required|string|min:9|max:15',
             'penerima_district_id'  => 'required',
-            'berat_gram'            => 'required|numeric',
+            'penerima_alamat'       => 'required|string|min:15', // Wajib detail jalan/no rumah
+            'berat_gram'            => 'required|numeric|min:1',
             'qty'                   => 'required|numeric|min:1',
             'is_sender_pp'          => 'required|in:0,1',
             'metode_pembayaran'     => 'required|string',
+        ], [
+            'pengirim_alamat.min' => 'Alamat Pengirim terlalu pendek! Wajib menuliskan nama jalan, nomor rumah/gedung, atau RT/RW (Min. 15 karakter). Jangan hanya menuliskan nama kota.',
+            'penerima_alamat.min' => 'Alamat Penerima terlalu pendek! Wajib menuliskan nama jalan, nomor rumah/gedung, atau RT/RW (Min. 15 karakter). Jangan hanya menuliskan nama kota.',
         ]);
 
         $origin = AutoKirim::where('district_id', $request->pengirim_district_id)->first();
@@ -219,40 +225,39 @@ class PesananAutokirimController extends Controller
 
         $localOrderId = 'AK-' . strtoupper(Str::random(8));
         $isInsurance  = $request->has('asuransi');
+        $isSenderPp   = (int) $request->input('is_sender_pp', 1);
 
-        // 🔥 STRUKTUR JSON AMAN UNTUK SERVER GOLANG AUTOKIRIM (Strict Type Mapping)
+        // 🔥 2. STRUKTUR JSON 100% PERSIS DENGAN DOKUMENTASI & CURL AUTOKIRIM
         $payload = [
-            'service_code'   => (string) $request->service_code_terpilih,
-            'reff_client_id' => (string) $localOrderId,
-            'origin_id'      => (int) $origin->district_id,
-            'destination_id' => (int) $destination->district_id,
-            'weight'         => (string) $request->berat_gram,
-            'qty'            => (string) $request->input('qty', '1'), // 🔥 Wajib String (Sudah Benar)
-            'length'         => $request->panjang_cm ? (int) $request->panjang_cm : 1,
-            'width'          => $request->lebar_cm ? (int) $request->lebar_cm : 1,
-            'height'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
-            'description'    => (string) $request->deskripsi_barang,
-            'remarks'        => (string) $request->kategori_barang,
-            'is_cod'         => false,
-            'cod_value'      => 0, // 🔥 PERBAIKAN: Diubah kembali menjadi Integer 0 (tanpa tanda kutip)
-            'is_sender_pp'   => (int) $request->input('is_sender_pp', 1),
-            'is_insurance'   => $isInsurance,
+            'service_code'      => (string) $request->service_code_terpilih,
+            'reff_client_id'    => (string) $localOrderId,
+            'pickup_point_code' => "", // Default empty string untuk menghindari Nil pointer di Golang
+            'origin_id'         => (int) $origin->district_id,
+            'destination_id'    => (int) $destination->district_id,
+            'weight'            => (string) $request->berat_gram,
+            'qty'               => (string) $request->input('qty', '1'), // Wajib String
+            'length'            => $request->panjang_cm ? (int) $request->panjang_cm : 1,
+            'width'             => $request->lebar_cm ? (int) $request->lebar_cm : 1,
+            'height'            => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
+            'description'       => (string) $request->deskripsi_barang,
+            'remarks'           => (string) $request->kategori_barang,
+            'is_cod'            => false,
+            'price'             => $isInsurance ? (int) $request->nilai_barang : 0, // 🔥 AMAN: Selalu kirim integer (0 jika tanpa asuransi)
+            'cod_value'         => 0, // Wajib Integer 0
+            'is_sender_pp'      => $isSenderPp, // 1 = Pickup, 0 = Dropoff
+            'is_insurance'      => $isInsurance,
             'from' => [
-                'name'    => (string) $request->pengirim_nama,
-                'phone'   => (string) $request->pengirim_hp,
-                'address' => (string) $request->pengirim_alamat,
+                'name'    => (string) trim($request->pengirim_nama),
+                'phone'   => (string) trim($request->pengirim_hp),
+                'address' => (string) trim($request->pengirim_alamat), // Pastikan bebas spasi berlebih
             ],
             'to' => [
-                'name'    => (string) $request->penerima_nama,
-                'phone'   => (string) $request->penerima_hp,
-                'address' => (string) $request->penerima_alamat,
-            ]
+                'name'    => (string) trim($request->penerima_nama),
+                'phone'   => (string) trim($request->penerima_hp),
+                'address' => (string) trim($request->penerima_alamat),
+            ],
+            'commodity'         => "" // Mandatory jika lion parcel, kita set empty string agar siap pakai
         ];
-
-        // 🔥 PASTIKAN INTEGER JUGA: Agar tidak error jika asuransi dicentang
-        if ($isInsurance) {
-            $payload['price'] = (int) $request->nilai_barang;
-        }
 
         try {
             $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
@@ -302,8 +307,15 @@ class PesananAutokirimController extends Controller
                 return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbNumber} (Metode: {$request->metode_pembayaran})");
             }
 
+            // Jika masih error dari server Autokirim/Ekspedisi
             Log::error("LOG: [API AUTOKIRIM - CREATE ORDER] FAILED FROM SERVER: ", $result ?? []);
-            return redirect()->back()->withInput()->with('error', 'Gagal membuat pesanan: ' . ($result['rd'] ?? 'Unknown Error'));
+
+            $errorMsg = $result['rd'] ?? 'Unknown Error';
+            if ($result['rc'] === '99') {
+                $errorMsg .= " (Sistem Ekspedisi menolak data pesanan. Pastikan Alamat Pengirim & Penerima diketik lengkap dengan Nama Jalan/Nomor Rumah/RT RW, bukan hanya nama daerah/kota).";
+            }
+
+            return redirect()->back()->withInput()->with('error', 'Gagal membuat pesanan: ' . $errorMsg);
 
         } catch (\Exception $e) {
             Log::error("LOG: [API AUTOKIRIM - CREATE ORDER] ERROR: " . $e->getMessage());

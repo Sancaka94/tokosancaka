@@ -79,8 +79,11 @@
                     </div>
 
                     <div class="col-span-2">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Alamat Lengkap (Nama Jalan, RT/RW, Nomor Rumah)</label>
-                        <textarea name="pengirim_alamat" rows="2" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">{{ old('pengirim_alamat') }}</textarea>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">
+                            Alamat Jalan Pengirim <span class="text-red-500">*</span>
+                        </label>
+                        <textarea name="pengirim_alamat" rows="2" required minlength="15" placeholder="Contoh: Jl. Ronggowarsito No. 15, RT 01 / RW 02 (Wajib detail jalan/nomor rumah, jangan hanya nama kota)" class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">{{ old('pengirim_alamat') }}</textarea>
+                        <p class="text-[10px] text-gray-400 mt-1">* Tanpa perlu menuliskan Kecamatan/Kabupaten/Kodepos lagi (sudah otomatis terwakili oleh pilihan dropdown di atas).</p>
                     </div>
                 </div>
             </div>
@@ -133,8 +136,11 @@
                     </div>
 
                     <div class="col-span-2">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Alamat Lengkap (Nama Jalan, RT/RW, Nomor Rumah)</label>
-                        <textarea name="penerima_alamat" rows="2" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">{{ old('penerima_alamat') }}</textarea>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">
+                            Alamat Jalan Penerima <span class="text-red-500">*</span>
+                        </label>
+                        <textarea name="penerima_alamat" rows="2" required minlength="15" placeholder="Contoh: Perum Graha Kebraon Regency 2 Block A No. 3, RT 04 / RW 05" class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">{{ old('penerima_alamat') }}</textarea>
+                        <p class="text-[10px] text-gray-400 mt-1">* Wajib mengetikkan nama jalan dan nomor rumah/gedung minimal 15 huruf agar resi ekspedisi tidak gagal terbit.</p>
                     </div>
                 </div>
             </div>
