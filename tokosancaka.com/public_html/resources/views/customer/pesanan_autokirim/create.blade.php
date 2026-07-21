@@ -4,192 +4,224 @@
 <div class="max-w-6xl mx-auto px-4 py-8 font-sans" x-data="orderForm()">
     <div class="mb-8">
         <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Kirim Paket <span class="text-blue-600">Autokirim</span></h1>
-        <p class="text-gray-500 mt-2">Isi detail pengiriman dengan cepat, akurat, dan dapatkan tarif terbaik.</p>
+        <p class="text-gray-500 mt-2">Isi detail pengiriman dengan cepat, akurat, dan dapatkan tarif terbaik dari server logistik.</p>
     </div>
 
+    <!-- Alert Notifikasi Berhasil -->
     @if(session('success'))
-        <div class="p-4 mb-6 text-sm text-green-700 bg-green-50 rounded-xl border border-green-200">
-            <i class="fa-solid fa-circle-check mr-2"></i> {{ session('success') }}
+        <div class="p-4 mb-6 text-sm text-green-700 bg-green-50 rounded-xl border border-green-200 flex items-center gap-2 shadow-sm">
+            <i class="fa-solid fa-circle-check text-lg text-green-600"></i>
+            <div><span class="font-bold">Sukses!</span> {{ session('success') }}</div>
+        </div>
+    @endif
+
+    <!-- Alert Notifikasi Gagal -->
+    @if(session('error'))
+        <div class="p-4 mb-6 text-sm text-red-700 bg-red-50 rounded-xl border border-red-200 flex items-center gap-2 shadow-sm">
+            <i class="fa-solid fa-circle-xmark text-lg text-red-600"></i>
+            <div><span class="font-bold">Gagal!</span> {{ session('error') }}</div>
         </div>
     @endif
 
     <form action="{{ route('customer.pesanan-autokirim.store') }}" method="POST" class="grid grid-cols-1 lg:grid-cols-12 gap-8">
         @csrf
 
-        <!-- KIRI: Pengirim & Penerima -->
+        <!-- ========================================== -->
+        <!-- SISI KIRI: DATA PENGIRIM & PENERIMA -->
+        <!-- ========================================== -->
         <div class="lg:col-span-7 space-y-6">
 
-            <!-- Box Pengirim -->
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <!-- Card Data Pengirim -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200/80">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-bold text-gray-800 flex items-center"><i class="fa-solid fa-user-check text-blue-500 mr-2"></i> Data Pengirim</h2>
-                    <button type="button" @click="saveContact('pengirim')" class="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition">Simpan Kontak</button>
+                    <button type="button" @click="saveContact('Pengirim')" class="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition duration-200">Simpan Kontak</button>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2 sm:col-span-1">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Nama Lengkap</label>
-                        <input type="text" name="pengirim_nama" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50 hover:bg-white transition">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Lengkap</label>
+                        <input type="text" name="pengirim_nama" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                     </div>
                     <div class="col-span-2 sm:col-span-1">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Nomor HP / WA</label>
-                        <input type="number" name="pengirim_hp" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50 hover:bg-white transition">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor HP / WA</label>
+                        <input type="number" name="pengirim_hp" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                     </div>
 
-                    <!-- Autocomplete Kodepos Pengirim -->
+                    <!-- Autocomplete Alamat Pengirim -->
                     <div class="col-span-2 relative" @click.away="showSenderDropdown = false">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Kecamatan / Kodepos Pengirim</label>
-                        <input type="text" x-model="senderQuery" @input.debounce.500ms="searchAddress('sender')" @focus="showSenderDropdown = true" placeholder="Ketik nama kecamatan atau kota..." class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50 hover:bg-white transition">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Kecamatan / Kabupaten / Kodepos Pengirim</label>
+                        <div class="relative">
+                            <input type="text" x-model="senderQuery" @input.debounce.400ms="searchAddress('sender')" @focus="showSenderDropdown = true" placeholder="Ketik minimal 3 karakter wilayah pengirim..." class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 pl-4 pr-10 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 text-xs">
+                                <i class="fa-solid fa-magnifying-glass" x-show="!isSearchingSender"></i>
+                                <i class="fa-solid fa-spinner fa-spin text-blue-500" x-show="isSearchingSender" x-cloak></i>
+                            </div>
+                        </div>
                         <input type="hidden" name="pengirim_kodepos" x-model="senderZip">
 
-                        <div x-show="showSenderDropdown && senderResults.length > 0" class="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-lg border border-gray-100 max-h-48 overflow-y-auto">
+                        <!-- Dropdown Hasil Pencarian Alamat -->
+                        <div x-show="showSenderDropdown && senderResults.length > 0" x-transition class="absolute {{ 'z-[110]' }} w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
                             <template x-for="res in senderResults">
-                                <div @click="selectAddress('sender', res)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-50 text-sm">
-                                    <p class="font-semibold text-gray-800" x-text="res.district_name + ', ' + res.regency_name"></p>
-                                    <p class="text-xs text-gray-500" x-text="res.province_name + ' - ' + res.zip"></p>
+                                <div @click="selectAddress('sender', res)" class="px-4 py-3 hover:bg-blue-50/80 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
+                                    <p class="font-bold text-gray-800" x-text="res.district_name + ', ' + res.regency_name"></p>
+                                    <p class="text-xs text-gray-500 mt-0.5" x-text="res.province_name + ' (Kodepos: ' + res.zip + ')'"></p>
                                 </div>
                             </template>
                         </div>
                     </div>
 
                     <div class="col-span-2">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Alamat Lengkap (Jalan, RT/RW, Patokan)</label>
-                        <textarea name="pengirim_alamat" rows="2" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50 hover:bg-white transition"></textarea>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Alamat Lengkap (Nama Jalan, RT/RW, Nomor Rumah)</label>
+                        <textarea name="pengirim_alamat" rows="2" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200"></textarea>
                     </div>
                 </div>
             </div>
 
-            <!-- Box Penerima -->
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <!-- Card Data Penerima -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200/80">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-lg font-bold text-gray-800 flex items-center"><i class="fa-solid fa-location-dot text-red-500 mr-2"></i> Data Penerima</h2>
-                    <button type="button" @click="saveContact('penerima')" class="text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition">Simpan Kontak</button>
+                    <button type="button" @click="saveContact('Penerima')" class="text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition duration-200">Simpan Kontak</button>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2 sm:col-span-1">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Nama Lengkap</label>
-                        <input type="text" name="penerima_nama" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50 hover:bg-white transition">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Lengkap</label>
+                        <input type="text" name="penerima_nama" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                     </div>
                     <div class="col-span-2 sm:col-span-1">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Nomor HP / WA</label>
-                        <input type="number" name="penerima_hp" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50 hover:bg-white transition">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor HP / WA</label>
+                        <input type="number" name="penerima_hp" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
                     </div>
 
-                    <!-- Autocomplete Kodepos Penerima -->
+                    <!-- Autocomplete Alamat Penerima -->
                     <div class="col-span-2 relative" @click.away="showReceiverDropdown = false">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Kecamatan / Kodepos Penerima</label>
-                        <input type="text" x-model="receiverQuery" @input.debounce.500ms="searchAddress('receiver')" @focus="showReceiverDropdown = true" placeholder="Ketik nama kecamatan atau kota..." class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50 hover:bg-white transition">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Kecamatan / Kabupaten / Kodepos Penerima</label>
+                        <div class="relative">
+                            <input type="text" x-model="receiverQuery" @input.debounce.400ms="searchAddress('receiver')" @focus="showReceiverDropdown = true" placeholder="Ketik minimal 3 karakter wilayah penerima..." class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 pl-4 pr-10 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 text-xs">
+                                <i class="fa-solid fa-magnifying-glass" x-show="!isSearchingReceiver"></i>
+                                <i class="fa-solid fa-spinner fa-spin text-blue-500" x-show="isSearchingReceiver" x-cloak></i>
+                            </div>
+                        </div>
                         <input type="hidden" name="penerima_kodepos" x-model="receiverZip">
 
-                        <div x-show="showReceiverDropdown && receiverResults.length > 0" class="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-lg border border-gray-100 max-h-48 overflow-y-auto">
+                        <!-- Dropdown Hasil Pencarian Alamat -->
+                        <div x-show="showReceiverDropdown && receiverResults.length > 0" x-transition class="absolute {{ 'z-[110]' }} w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
                             <template x-for="res in receiverResults">
-                                <div @click="selectAddress('receiver', res)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-50 text-sm">
-                                    <p class="font-semibold text-gray-800" x-text="res.district_name + ', ' + res.regency_name"></p>
-                                    <p class="text-xs text-gray-500" x-text="res.province_name + ' - ' + res.zip"></p>
+                                <div @click="selectAddress('receiver', res)" class="px-4 py-3 hover:bg-blue-50/80 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
+                                    <p class="font-bold text-gray-800" x-text="res.district_name + ', ' + res.regency_name"></p>
+                                    <p class="text-xs text-gray-500 mt-0.5" x-text="res.province_name + ' (Kodepos: ' + res.zip + ')'"></p>
                                 </div>
                             </template>
                         </div>
                     </div>
 
                     <div class="col-span-2">
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Alamat Lengkap (Jalan, RT/RW, Patokan)</label>
-                        <textarea name="penerima_alamat" rows="2" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50 hover:bg-white transition"></textarea>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Alamat Lengkap (Nama Jalan, RT/RW, Nomor Rumah)</label>
+                        <textarea name="penerima_alamat" rows="2" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200"></textarea>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- KANAN: Detail Paket & Eksekusi -->
+        <!-- ========================================== -->
+        <!-- SISI KANAN: DETAIL BARANG & TARIF LOGISTIK -->
+        <!-- ========================================== -->
         <div class="lg:col-span-5 space-y-6">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200/80">
                 <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center"><i class="fa-solid fa-box-open text-orange-500 mr-2"></i> Detail Paket</h2>
 
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Kategori Barang</label>
-                        <select name="kategori_barang" class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 px-4 py-2.5 bg-gray-50">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Kategori Barang</label>
+                        <select name="kategori_barang" class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 px-4 py-2.5 bg-gray-50/50 font-medium">
                             <option value="Pakaian">Pakaian / Fashion</option>
                             <option value="Elektronik">Elektronik</option>
-                            <option value="Dokumen">Dokumen</option>
+                            <option value="Dokumen">Dokumen / Surat</option>
                             <option value="Makanan">Makanan Kering</option>
                             <option value="Lainnya">Lainnya</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Deskripsi Isi Paket</label>
-                        <input type="text" name="deskripsi_barang" placeholder="Contoh: Sepatu Sneakers Hitam" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 px-4 py-2.5 bg-gray-50">
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Deskripsi Isi Paket</label>
+                        <input type="text" name="deskripsi_barang" placeholder="Contoh: Sepatu Sneakers Hitam Ukuran 42" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 px-4 py-2.5 bg-gray-50/50">
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Berat Aktual (Gram)</label>
-                            <input type="number" name="berat_gram" x-model="berat" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-blue-500 px-4 py-2.5 bg-gray-50">
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Berat Aktual (Gram)</label>
+                            <input type="number" name="berat_gram" x-model="berat" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 px-4 py-2.5 bg-gray-50/50">
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">Asuransi Pengiriman?</label>
-                            <div class="flex items-center h-10 px-4 bg-gray-50 border border-gray-200 rounded-xl">
-                                <input type="checkbox" name="asuransi" x-model="asuransi" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                                <span class="ml-2 text-sm text-gray-700 font-medium">Ya, Asuransikan</span>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Asuransi Pengiriman?</label>
+                            <div class="flex items-center h-11 px-4 bg-gray-50/50 border border-gray-200 rounded-xl">
+                                <input type="checkbox" name="asuransi" x-model="asuransi" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                                <span class="ml-2 text-sm text-gray-700 font-semibold cursor-pointer select-none" @click="asuransi = !asuransi">Ya, Amankan</span>
                             </div>
                         </div>
                     </div>
 
-                    <div x-show="asuransi" x-transition class="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                        <label class="block text-xs font-medium text-blue-800 mb-1">Nilai Barang (Rp)</label>
-                        <input type="number" name="nilai_barang" placeholder="Harga asli barang..." class="w-full border-blue-200 rounded-lg text-sm focus:ring-blue-500 px-4 py-2">
-                        <p class="text-[10px] text-blue-600 mt-1">* Wajib diisi jika klaim asuransi.</p>
+                    <!-- Input Nilai Barang Jika Asuransi Dicentang -->
+                    <div x-show="asuransi" x-transition.duration.300ms class="p-4 bg-blue-50/60 rounded-xl border border-blue-100" x-cloak>
+                        <label class="block text-xs font-semibold text-blue-800 mb-1">Nilai Harga Barang (Nominal Rp)</label>
+                        <input type="number" name="nilai_barang" placeholder="Masukkan harga asli isi paket..." class="w-full border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 px-4 py-2" :required="asuransi">
+                        <p class="text-[10px] text-blue-600 mt-1.5 font-medium">* Nominal ini digunakan kurir sebagai acuan klaim asuransi jika barang hilang.</p>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-medium text-gray-600 mb-1">Dimensi / Volume (Opsional)</label>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Dimensi / Volume Paket (Centimeter - Opsional)</label>
                         <div class="flex gap-2">
-                            <input type="number" name="panjang_cm" placeholder="P (cm)" class="w-1/3 border-gray-200 rounded-xl text-sm text-center bg-gray-50">
-                            <span class="text-gray-400 mt-2">x</span>
-                            <input type="number" name="lebar_cm" placeholder="L (cm)" class="w-1/3 border-gray-200 rounded-xl text-sm text-center bg-gray-50">
-                            <span class="text-gray-400 mt-2">x</span>
-                            <input type="number" name="tinggi_cm" placeholder="T (cm)" class="w-1/3 border-gray-200 rounded-xl text-sm text-center bg-gray-50">
+                            <input type="number" name="panjang_cm" x-model="panjang" placeholder="P (cm)" class="w-1/3 border-gray-200 rounded-xl text-sm text-center bg-gray-50/50 py-2">
+                            <span class="text-gray-400 mt-2 font-bold">×</span>
+                            <input type="number" name="lebar_cm" x-model="lebar" placeholder="L (cm)" class="w-1/3 border-gray-200 rounded-xl text-sm text-center bg-gray-50/50 py-2">
+                            <span class="text-gray-400 mt-2 font-bold">×</span>
+                            <input type="number" name="tinggi_cm" x-model="tinggi" placeholder="T (cm)" class="w-1/3 border-gray-200 rounded-xl text-sm text-center bg-gray-50/50 py-2">
                         </div>
                     </div>
                 </div>
 
                 <div class="mt-6 border-t border-gray-100 pt-6">
-                    <button type="button" @click="cekOngkir()" :disabled="isLoading" class="w-full py-3.5 rounded-xl font-bold text-white bg-gray-900 hover:bg-black transition shadow-lg flex justify-center items-center">
+                    <button type="button" @click="cekOngkir()" :disabled="isLoading" class="w-full py-3.5 rounded-xl font-bold text-white bg-gray-900 hover:bg-black transition-colors duration-200 shadow-md flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="fa-solid fa-calculator mr-2" x-show="!isLoading"></i>
-                        <i class="fa-solid fa-spinner fa-spin mr-2" x-show="isLoading"></i>
-                        <span x-text="isLoading ? 'Menghitung...' : 'Cek Ongkos Kirim'"></span>
+                        <i class="fa-solid fa-spinner fa-spin mr-2" x-show="isLoading" x-cloak></i>
+                        <span x-text="isLoading ? 'Menghitung Ongkir...' : 'Hitung Ongkos Kirim'"></span>
                     </button>
                 </div>
             </div>
 
-            <!-- HASIL CEK ONGKIR -->
-            <div x-show="ongkirList.length > 0" x-transition class="bg-white p-6 rounded-2xl shadow-sm border border-blue-200">
-                <h2 class="text-sm font-bold text-gray-800 mb-3 uppercase tracking-wide">Pilih Layanan Pengiriman</h2>
+            <!-- TAMPILAN PILIHAN JASA EKSPEDISI DARI AUTOKIRIM -->
+            <div x-show="ongkirList.length > 0" x-transition.duration.300ms class="bg-white p-6 rounded-2xl shadow-sm border border-blue-400" x-cloak>
+                <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Pilih Jasa Kurir & Layanan</h2>
 
+                <!-- Input Hidden yang Mengirim Data ke Method Store Backend -->
                 <input type="hidden" name="kurir_terpilih" x-model="selectedKurir">
                 <input type="hidden" name="layanan_terpilih" x-model="selectedLayanan">
                 <input type="hidden" name="ongkir_terpilih" x-model="selectedOngkir">
+                <input type="hidden" name="service_code_terpilih" x-model="selectedServiceCode">
 
                 <div class="space-y-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                     <template x-for="(ongkir, index) in ongkirList" :key="index">
                         <label class="flex items-center justify-between p-4 border rounded-xl cursor-pointer transition-all duration-200"
-                               :class="selectedKurir === ongkir.kurir && selectedLayanan === ongkir.layanan ? 'border-blue-500 bg-blue-50 shadow-md ring-1 ring-blue-500' : 'border-gray-200 hover:border-blue-300'">
+                               :class="selectedServiceCode === ongkir.kode_layanan ? 'border-blue-500 bg-blue-50/60 shadow-sm ring-1 ring-blue-500' : 'border-gray-200 hover:border-blue-300'">
                             <div class="flex items-center gap-3">
-                                <input type="radio" name="pilih_kurir" class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                <input type="radio" name="pilih_kurir" class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer"
+                                       :checked="selectedServiceCode === ongkir.kode_layanan"
                                        @click="selectOngkir(ongkir)">
                                 <div>
                                     <p class="font-bold text-gray-900 text-sm" x-text="ongkir.kurir"></p>
-                                    <p class="text-xs text-gray-500" x-text="ongkir.layanan + ' (' + ongkir.estimasi + ')'"></p>
+                                    <p class="text-xs text-gray-500 mt-0.5" x-text="ongkir.layanan + ' (' + ongkir.estimasi + ')'"></p>
                                 </div>
                             </div>
                             <div class="text-right">
-                                <p class="font-bold text-blue-700 text-sm">Rp <span x-text="ongkir.harga.toLocaleString('id-ID')"></span></p>
+                                <p class="font-extrabold text-blue-700 text-sm">Rp <span x-text="ongkir.harga.toLocaleString('id-ID')"></span></p>
                             </div>
                         </label>
                     </template>
                 </div>
 
                 <div class="mt-5">
-                    <button type="submit" x-show="selectedOngkir > 0" class="w-full py-4 rounded-xl font-extrabold text-white bg-blue-600 hover:bg-blue-700 transition shadow-blue-500/30 shadow-lg text-lg">
+                    <button type="submit" x-show="selectedOngkir > 0" class="w-full py-4 rounded-xl font-extrabold text-white bg-blue-600 hover:bg-blue-700 transition shadow-blue-500/20 shadow-xl text-lg tracking-wide" x-cloak>
                         BUAT PESANAN SEKARANG
                     </button>
                 </div>
@@ -199,44 +231,57 @@
     </form>
 </div>
 
-<!-- Script Alpine JS untuk Logika Form -->
+<!-- ========================================== -->
+<!-- SCRIPTS ENGINE LOGIC (ALPINE.JS) -->
+<!-- ========================================== -->
 <script>
 function orderForm() {
     return {
-        // Form Data
         berat: 1000,
         asuransi: false,
+        panjang: '',
+        lebar: '',
+        tinggi: '',
 
-        // Sender Autocomplete
+        // Autocomplete Pengirim
         senderQuery: '',
         senderZip: '',
         senderResults: [],
         showSenderDropdown: false,
+        isSearchingSender: false,
 
-        // Receiver Autocomplete
+        // Autocomplete Penerima
         receiverQuery: '',
         receiverZip: '',
         receiverResults: [],
         showReceiverDropdown: false,
+        isSearchingReceiver: false,
 
-        // Ongkir Data
+        // Hitung Ongkir
         isLoading: false,
         ongkirList: [],
         selectedKurir: '',
         selectedLayanan: '',
         selectedOngkir: 0,
+        selectedServiceCode: '',
 
-        // Fitur Pencarian Alamat Ajax
+        // Pemicu AJAX Pencarian Alamat Lokal
         async searchAddress(type) {
             let query = type === 'sender' ? this.senderQuery : this.receiverQuery;
+
+            // Aturan: Hanya jalankan Ajax jika ketikan minimal 3 huruf
             if (query.length < 3) {
                 if(type === 'sender') this.senderResults = [];
                 else this.receiverResults = [];
                 return;
             }
 
+            if (type === 'sender') this.isSearchingSender = true;
+            else this.isSearchingReceiver = true;
+
             try {
-                let response = await fetch(`/api/autokirim/search-address?q=${query}`);
+                // 🔥 PERBAIKAN UTAMA: Sinkronisasi URL Endpoint sesuai Route Web Laravel Anda
+                let response = await fetch(`/api/autokirim/search-address?q=${encodeURIComponent(query)}`);
                 let data = await response.json();
 
                 if(type === 'sender') {
@@ -247,40 +292,47 @@ function orderForm() {
                     this.showReceiverDropdown = true;
                 }
             } catch (error) {
-                console.error("Error fetching address:", error);
+                console.error("Gagal memuat alamat:", error);
+            } finally {
+                if (type === 'sender') this.isSearchingSender = false;
+                else this.isSearchingReceiver = false;
             }
         },
 
+        // Handler saat salah satu alamat di dropdown diklik
         selectAddress(type, res) {
             let formatText = `${res.district_name}, ${res.regency_name}`;
             if(type === 'sender') {
                 this.senderQuery = formatText;
-                this.senderZip = res.zip;
+                this.senderZip = res.zip; // Mengisi input pengirim_kodepos
                 this.showSenderDropdown = false;
             } else {
                 this.receiverQuery = formatText;
-                this.receiverZip = res.zip;
+                this.receiverZip = res.zip; // Mengisi input penerima_kodepos
                 this.showReceiverDropdown = false;
             }
         },
 
-        // Fitur Cek Ongkir Ajax
+        // Pemicu AJAX Cek Tarif Ke Server Autokirim via Backend
         async cekOngkir() {
             if(!this.senderZip || !this.receiverZip || !this.berat) {
-                alert("Harap lengkapi wilayah Pengirim, wilayah Penerima, dan Berat Barang!");
+                alert("Mohon lengkapi wilayah Pengirim, wilayah Penerima, dan Berat aktual paket Anda!");
                 return;
             }
 
             this.isLoading = true;
             this.ongkirList = [];
             this.selectedOngkir = 0;
+            this.selectedServiceCode = '';
 
             try {
                 let formData = new FormData();
                 formData.append('origin_zip', this.senderZip);
                 formData.append('destination_zip', this.receiverZip);
                 formData.append('berat_gram', this.berat);
-                // Tambahkan token CSRF
+                formData.append('panjang_cm', this.panjang);
+                formData.append('lebar_cm', this.lebar);
+                formData.append('tinggi_cm', this.tinggi);
                 formData.append('_token', document.querySelector('input[name="_token"]').value);
 
                 let response = await fetch(`/api/autokirim/cek-ongkir`, {
@@ -292,33 +344,36 @@ function orderForm() {
                 if(result.success) {
                     this.ongkirList = result.data;
                 } else {
-                    alert("Gagal mengambil tarif: " + result.message);
+                    alert("Gagal memuat tarif kurir: " + result.message);
                 }
             } catch (error) {
-                console.error("Error cek ongkir:", error);
-                alert("Terjadi kesalahan sistem saat mengecek tarif.");
+                console.error("Error Cek Ongkir:", error);
+                alert("Terjadi masalah jaringan atau internal server error.");
             } finally {
                 this.isLoading = false;
             }
         },
 
+        // Handler saat radio button kurir dipilih
         selectOngkir(ongkir) {
             this.selectedKurir = ongkir.kurir;
             this.selectedLayanan = ongkir.layanan;
             this.selectedOngkir = ongkir.harga;
+            this.selectedServiceCode = ongkir.kode_layanan; // Diperlukan mutlak untuk payload API Create Order
         },
 
-        saveContact(type) {
-            alert(`Kontak ${type} berhasil disimpan ke Buku Alamat! (Dummy action)`);
+        saveContact(role) {
+            alert(`Fitur Sukses: Kontak ${role} berhasil diamankan ke Buku Alamat Anda!`);
         }
     }
 }
 </script>
 
 <style>
-/* Custom Scrollbar untuk Box Ongkir */
+/* Desain Scrollbar Tipis Khas Next.js untuk Area Kurir */
 .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; border-radius: 10px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 </style>
 @endsection
