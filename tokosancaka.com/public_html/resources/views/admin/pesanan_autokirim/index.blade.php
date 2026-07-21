@@ -109,13 +109,37 @@
                                 <input type="checkbox" name="ids[]" value="{{ $item->id }}" class="rowCheckbox w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                             </td>
 
-                            <!-- KOLOM 1: WAKTU & ID -->
+                           <!-- KOLOM 1: WAKTU, ID & INFO AGEN -->
                             <td class="p-4 align-top">
                                 <p class="font-bold text-gray-800">{{ $item->created_at->format('d M Y') }}</p>
                                 <p class="text-xs text-gray-500">{{ $item->created_at->format('H:i:s') }} WIB</p>
-                                <div class="mt-2 text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-600 font-mono inline-block border border-gray-200">
+                                <div class="mt-1 text-[10px] bg-gray-100 px-2 py-1 rounded text-gray-600 font-mono inline-block mb-3">
                                     {{ $item->order_id }}
                                 </div>
+
+                                <!-- KOTAK INFO AGEN & TOMBOL MATA -->
+                                @if($item->user)
+                                <div class="bg-indigo-50 border border-indigo-100 p-2 rounded-lg flex items-center justify-between shadow-sm">
+                                    <div class="overflow-hidden pr-2">
+                                        <p class="text-[8px] text-indigo-500 font-black uppercase tracking-wider mb-0.5"><i class="fa-solid fa-store mr-1"></i> Agen Logistik</p>
+                                        <p class="text-[11px] font-bold text-indigo-800 truncate" title="{{ $item->user->store_name }}">{{ $item->user->store_name ?? $item->user->nama_lengkap }}</p>
+                                    </div>
+
+                                    <!-- Tombol Pemicu Modal -->
+                                    <button type="button" onclick='openAgentModal(@json([
+                                        "id" => $item->user->id_pengguna ?? "-",
+                                        "name" => $item->user->nama_lengkap ?? "-",
+                                        "store" => $item->user->store_name ?? "-",
+                                        "phone" => $item->user->no_wa ?? "-",
+                                        "email" => $item->user->email ?? "-",
+                                        "address" => trim(($item->user->address_detail ?? "") . ", " . ($item->user->village ?? "") . ", " . ($item->user->district ?? "") . ", " . ($item->user->regency ?? "") . ", " . ($item->user->province ?? "")),
+                                        "postal" => $item->user->postal_code ?? "-",
+                                        "saldo" => number_format($item->user->saldo ?? 0, 0, ",", ".")
+                                    ]))' class="bg-indigo-600 hover:bg-indigo-700 text-white w-7 h-7 rounded flex items-center justify-center transition shadow shrink-0" title="Lihat Detail Agen">
+                                        <i class="fa-solid fa-eye text-xs"></i>
+                                    </button>
+                                </div>
+                                @endif
                             </td>
 
                             <!-- KOLOM 2: RUTE & RESI LENGKAP -->
@@ -254,6 +278,56 @@
         <input type="hidden" name="_method" id="actionMethod">
     </form>
 
+     <!-- ========================================== -->
+    <!-- MODAL DETAIL AGEN -->
+    <!-- ========================================== -->
+    <div id="agentModal" class="fixed inset-0 z-[100] hidden bg-gray-900/60 backdrop-blur-sm flex justify-center items-center">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-all duration-200" id="agentModalContent">
+
+            <div class="bg-gradient-to-r from-indigo-600 to-blue-700 p-5 flex justify-between items-center text-white relative overflow-hidden">
+                <i class="fa-solid fa-user-tie absolute -right-4 -bottom-4 text-7xl opacity-20"></i>
+                <h3 class="font-bold text-lg relative z-10"><i class="fa-solid fa-id-badge mr-2"></i> Profil Agen Logistik</h3>
+                <button onclick="closeAgentModal()" class="text-white/80 hover:text-white focus:outline-none relative z-10"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+
+            <div class="p-5 space-y-3 text-sm">
+                <div class="flex justify-between border-b border-gray-100 pb-2">
+                    <span class="text-gray-500 font-semibold">ID Pengguna</span>
+                    <strong id="m_agent_id" class="text-gray-800 font-mono"></strong>
+                </div>
+                <div class="flex justify-between border-b border-gray-100 pb-2">
+                    <span class="text-gray-500 font-semibold">Nama Lengkap</span>
+                    <strong id="m_agent_name" class="text-gray-800 uppercase"></strong>
+                </div>
+                <div class="flex justify-between border-b border-gray-100 pb-2">
+                    <span class="text-gray-500 font-semibold">Nama Toko</span>
+                    <strong id="m_agent_store" class="text-indigo-600 font-black uppercase"></strong>
+                </div>
+                <div class="flex justify-between border-b border-gray-100 pb-2">
+                    <span class="text-gray-500 font-semibold">No. WhatsApp</span>
+                    <strong id="m_agent_phone" class="text-gray-800"></strong>
+                </div>
+                <div class="flex justify-between border-b border-gray-100 pb-2">
+                    <span class="text-gray-500 font-semibold">Email</span>
+                    <strong id="m_agent_email" class="text-gray-800"></strong>
+                </div>
+                <div class="flex justify-between border-b border-gray-100 pb-2">
+                    <span class="text-gray-500 font-semibold">Sisa Saldo Kas</span>
+                    <strong id="m_agent_saldo" class="text-green-600 font-black text-base"></strong>
+                </div>
+                <div class="flex flex-col pt-1">
+                    <span class="text-gray-500 font-semibold mb-1.5"><i class="fa-solid fa-map-location-dot text-red-500 mr-1"></i> Alamat Lengkap</span>
+                    <p id="m_agent_address" class="text-gray-800 bg-gray-50 p-3 rounded-lg border border-gray-200 leading-relaxed text-xs"></p>
+                    <p class="text-xs text-gray-500 mt-1">Kodepos: <strong id="m_agent_postal"></strong></p>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-4 flex justify-end border-t border-gray-100">
+                <button onclick="closeAgentModal()" class="bg-gray-800 hover:bg-black text-white font-bold py-2 px-5 rounded-xl transition shadow-md">Tutup Panel</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.getElementById('selectAll').addEventListener('change', function(e) {
             let checkboxes = document.querySelectorAll('.rowCheckbox');
@@ -289,5 +363,38 @@
             }
         }
     </script>
+
+    <!-- SCRIPT KONTROL MODAL AGEN -->
+    <script>
+        function openAgentModal(data) {
+            document.getElementById('m_agent_id').innerText = data.id;
+            document.getElementById('m_agent_name').innerText = data.name;
+            document.getElementById('m_agent_store').innerText = data.store;
+            document.getElementById('m_agent_phone').innerText = data.phone;
+            document.getElementById('m_agent_email').innerText = data.email;
+            document.getElementById('m_agent_saldo').innerText = 'Rp ' + data.saldo;
+            document.getElementById('m_agent_address').innerText = data.address.replace(/^,\s*/, ''); // Hapus koma berlebih di awal jika alamat kosong
+            document.getElementById('m_agent_postal').innerText = data.postal;
+
+            const modal = document.getElementById('agentModal');
+            modal.classList.remove('hidden');
+
+            // Animasi pop-up
+            setTimeout(() => {
+                document.getElementById('agentModalContent').classList.remove('scale-95', 'opacity-0');
+                document.getElementById('agentModalContent').classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeAgentModal() {
+            document.getElementById('agentModalContent').classList.remove('scale-100', 'opacity-100');
+            document.getElementById('agentModalContent').classList.add('scale-95', 'opacity-0');
+
+            setTimeout(() => {
+                document.getElementById('agentModal').classList.add('hidden');
+            }, 200);
+        }
+    </script>
+
 </div>
 @endsection

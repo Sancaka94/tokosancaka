@@ -100,9 +100,12 @@ class PesananAutokirimController extends Controller
     // ==========================================
     public function indexAdmin(Request $request)
     {
-        $query = PesananAutokirim::query();
+        // 1. FILTER HANYA DATA MILIK ROLE 'AGENT'
+        $query = PesananAutokirim::with('user')->whereHas('user', function($q) {
+            $q->where('role', 'agent');
+        });
 
-        // PENCARIAN (Berdasarkan Resi, Order ID, Nama, HP)
+        // 2. PENCARIAN (Berdasarkan Resi, Order ID, Nama, HP, dan Nama Agen)
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
@@ -111,7 +114,11 @@ class PesananAutokirimController extends Controller
                   ->orWhere('pengirim_nama', 'like', "%{$search}%")
                   ->orWhere('penerima_nama', 'like', "%{$search}%")
                   ->orWhere('pengirim_hp', 'like', "%{$search}%")
-                  ->orWhere('penerima_hp', 'like', "%{$search}%");
+                  ->orWhere('penerima_hp', 'like', "%{$search}%")
+                  ->orWhereHas('user', function($u) use ($search) {
+                      $u->where('nama_lengkap', 'like', "%{$search}%")
+                        ->orWhere('store_name', 'like', "%{$search}%");
+                  });
             });
         }
 
