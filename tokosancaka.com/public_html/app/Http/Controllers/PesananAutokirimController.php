@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 use App\Models\PesananAutokirim;
 use App\Models\AutoKirim;
 use App\Models\Api;
-use App\Helpers\ShippingHelper; // 🔥 1. IMPORT HELPER LOGISTIC
+use App\Helpers\ShippingHelper; // 🔥 Import Helper Logo Ekspedisi
 
 class PesananAutokirimController extends Controller
 {
@@ -24,11 +24,62 @@ class PesananAutokirimController extends Controller
         $this->token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
     }
 
+    // ==========================================
+    // AREA CUSTOMER: HALAMAN FORM (100% DINAMIS)
+    // ==========================================
     public function createCustomer()
     {
-        return view('customer.pesanan_autokirim.create');
+        // 1. DINAMIS: Kategori Barang
+        $kategoriBarang = [
+            'Pakaian / Fashion',
+            'Elektronik & Gadget',
+            'Dokumen / Surat',
+            'Makanan Kering / Herbal',
+            'Kosmetik & Kecantikan',
+            'Aksesoris & Sparepart',
+            'Lainnya'
+        ];
+
+        // 2. DINAMIS: Metode Pembayaran (Mudah ditambah tanpa edit Blade)
+        $metodePembayaran = [
+            [
+                'id'          => 'saldo_wallet',
+                'nama'        => 'Saldo Akun / Wallet',
+                'icon'        => 'fa-solid fa-wallet text-blue-600',
+                'deskripsi'   => 'Potong saldo akun otomatis (Proses Instan)'
+            ],
+            [
+                'id'          => 'qris',
+                'nama'        => 'QRIS (Gopay, OVO, Dana, ShopeePay)',
+                'icon'        => 'fa-solid fa-qrcode text-green-600',
+                'deskripsi'   => 'Scan barcode via aplikasi e-wallet / m-banking'
+            ],
+            [
+                'id'          => 'va_bca',
+                'nama'        => 'BCA Virtual Account',
+                'icon'        => 'fa-solid fa-building-columns text-blue-800',
+                'deskripsi'   => 'Konfirmasi otomatis 24/7'
+            ],
+            [
+                'id'          => 'va_mandiri',
+                'nama'        => 'Mandiri Virtual Account',
+                'icon'        => 'fa-solid fa-building-columns text-yellow-600',
+                'deskripsi'   => 'Konfirmasi otomatis 24/7'
+            ],
+            [
+                'id'          => 'va_bri',
+                'nama'        => 'BRI Virtual Account (BRIVA)',
+                'icon'        => 'fa-solid fa-building-columns text-blue-500',
+                'deskripsi'   => 'Konfirmasi otomatis 24/7'
+            ]
+        ];
+
+        return view('customer.pesanan_autokirim.create', compact('kategoriBarang', 'metodePembayaran'));
     }
 
+    // ==========================================
+    // AREA ADMIN: TABEL RIWAYAT
+    // ==========================================
     public function indexAdmin(Request $request)
     {
         $pesanan = PesananAutokirim::orderBy('created_at', 'desc')->paginate(15);
@@ -56,13 +107,15 @@ class PesananAutokirimController extends Controller
     }
 
     // ==========================================
-    // API 2: CEK ONGKIR KE SERVER AUTOKIRIM (+ HELPER LOGO)
+    // API 2: CEK ONGKIR (AJAX)
     // ==========================================
     public function cekOngkirAjax(Request $request)
     {
-        $origin_id = $request->origin_id;
+        $origin_id      = $request->origin_id;
         $destination_id = $request->destination_id;
-        $berat = $request->berat_gram;
+        $berat          = $request->berat_gram;
+        $qty            = $request->input('qty', 1);
+        $isSenderPp     = $request->input('is_sender_pp', 1);
 
         if (empty($origin_id) || empty($destination_id)) {
             return response()->json(['success' => false, 'message' => 'Wilayah asal atau tujuan tidak valid.']);
@@ -75,7 +128,7 @@ class PesananAutokirimController extends Controller
             'length'         => $request->panjang_cm ? (int) $request->panjang_cm : 1,
             'width'          => $request->lebar_cm ? (int) $request->lebar_cm : 1,
             'height'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
-            'is_sender_pp'   => 1,
+            'is_sender_pp'   => (int) $isSenderPp,
         ];
 
         try {
@@ -100,17 +153,19 @@ class PesananAutokirimController extends Controller
                         continue;
                     }
 
-                    // 🔥 2. EKSEKUSI HELPER: Cari spesifikasi logo berdasarkan kode/nama kurir
                     $parsedCourier = ShippingHelper::parseShippingMethod($courier['courier_code'] ?? $courier['courier_name']);
 
                     foreach ($courier['service_detail'] as $service) {
+                        $totalHarga = (int) $service['price'] * (int) $qty;
+
                         $flatOngkir[] = [
-                            'kurir'          => $parsedCourier['courier_name'], // Gunakan nama resmi hasil normalisasi Helper
-                            'logo_url'       => $parsedCourier['logo_url'],     // Ambil logo resmi dari Helper
+                            'kurir'          => $parsedCourier['courier_name'],
+                            'logo_url'       => $parsedCourier['logo_url'],
                             'kode_kurir'     => $courier['courier_code'],
                             'layanan'        => $service['service_group'] . ' - ' . $service['service'],
                             'kode_layanan'   => $service['service_code'],
-                            'harga'          => (int) $service['price'],
+                            'harga_satuan'   => (int) $service['price'],
+                            'harga'          => $totalHarga,
                             'estimasi'       => $service['duration'],
                             'etd'            => $service['etd'] ?? '-',
                             'asuransi_rate'  => $service['insurance'],
@@ -137,7 +192,7 @@ class PesananAutokirimController extends Controller
     }
 
     // ==========================================
-    // API 3: CREATE ORDER KE AUTOKIRIM & SIMPAN DB
+    // API 3: CREATE ORDER (100% DINAMIS & AMAN GOLANG)
     // ==========================================
     public function store(Request $request)
     {
@@ -150,6 +205,9 @@ class PesananAutokirimController extends Controller
             'penerima_hp'           => 'required',
             'penerima_district_id'  => 'required',
             'berat_gram'            => 'required|numeric',
+            'qty'                   => 'required|numeric|min:1',
+            'is_sender_pp'          => 'required|in:0,1',
+            'metode_pembayaran'     => 'required|string', // 🔥 Validasi Metode Pembayaran
         ]);
 
         $origin = AutoKirim::where('district_id', $request->pengirim_district_id)->first();
@@ -160,38 +218,39 @@ class PesananAutokirimController extends Controller
         }
 
         $localOrderId = 'AK-' . strtoupper(Str::random(8));
-        $isInsurance = $request->has('asuransi');
+        $isInsurance  = $request->has('asuransi');
 
+        // 🔥 STRUKTUR JSON AMAN UNTUK SERVER GOLANG AUTOKIRIM (Strict String Casting)
         $payload = [
-            'service_code'   => $request->service_code_terpilih,
-            'reff_client_id' => $localOrderId,
+            'service_code'   => (string) $request->service_code_terpilih,
+            'reff_client_id' => (string) $localOrderId,
             'origin_id'      => (int) $origin->district_id,
             'destination_id' => (int) $destination->district_id,
             'weight'         => (string) $request->berat_gram,
-            'qty'            => 1,
+            'qty'            => (string) $request->input('qty', '1'),
             'length'         => $request->panjang_cm ? (int) $request->panjang_cm : 1,
             'width'          => $request->lebar_cm ? (int) $request->lebar_cm : 1,
             'height'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
-            'description'    => $request->deskripsi_barang,
-            'remarks'        => $request->kategori_barang,
+            'description'    => (string) $request->deskripsi_barang,
+            'remarks'        => (string) $request->kategori_barang,
             'is_cod'         => false,
-            'cod_value'      => 0,
-            'is_sender_pp'   => 1,
+            'cod_value'      => "0",
+            'is_sender_pp'   => (int) $request->input('is_sender_pp', 1),
             'is_insurance'   => $isInsurance,
             'from' => [
-                'name'    => $request->pengirim_nama,
-                'phone'   => $request->pengirim_hp,
-                'address' => $request->pengirim_alamat,
+                'name'    => (string) $request->pengirim_nama,
+                'phone'   => (string) $request->pengirim_hp,
+                'address' => (string) $request->pengirim_alamat,
             ],
             'to' => [
-                'name'    => $request->penerima_nama,
-                'phone'   => $request->penerima_hp,
-                'address' => $request->penerima_alamat,
+                'name'    => (string) $request->penerima_nama,
+                'phone'   => (string) $request->penerima_hp,
+                'address' => (string) $request->penerima_alamat,
             ]
         ];
 
         if ($isInsurance) {
-            $payload['price'] = (int) $request->nilai_barang;
+            $payload['price'] = (string) $request->nilai_barang;
         }
 
         try {
@@ -211,33 +270,35 @@ class PesananAutokirimController extends Controller
             if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
                 $awbNumber = $result['data']['awb'] ?? null;
 
+                // Simpan ke Database
                 PesananAutokirim::create([
-                    'user_id'          => auth()->id() ?? null,
-                    'order_id'         => $localOrderId,
-                    'pengirim_nama'    => $request->pengirim_nama,
-                    'pengirim_hp'      => $request->pengirim_hp,
-                    'pengirim_alamat'  => $request->pengirim_alamat,
-                    'pengirim_kodepos' => $origin->zip,
-                    'penerima_nama'    => $request->penerima_nama,
-                    'penerima_hp'      => $request->penerima_hp,
-                    'penerima_alamat'  => $request->penerima_alamat,
-                    'penerima_kodepos' => $destination->zip,
-                    'deskripsi_barang' => $request->deskripsi_barang,
-                    'kategori_barang'  => $request->kategori_barang,
-                    'berat_gram'       => $request->berat_gram,
-                    'panjang_cm'       => $request->panjang_cm ? (int) $request->panjang_cm : 1,
-                    'lebar_cm'         => $request->lebar_cm ? (int) $request->lebar_cm : 1,
-                    'tinggi_cm'        => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
-                    'asuransi'         => $isInsurance ? 1 : 0,
-                    'nilai_barang'     => $request->nilai_barang ?? 0,
-                    'kurir'            => $request->kurir_terpilih,
-                    'layanan'          => $request->layanan_terpilih,
-                    'ongkir'           => $request->ongkir_terpilih ?? 0,
-                    'awb_number'       => $awbNumber,
-                    'status'           => 'booking_created'
+                    'user_id'           => auth()->id() ?? null,
+                    'order_id'          => $localOrderId,
+                    'pengirim_nama'     => $request->pengirim_nama,
+                    'pengirim_hp'       => $request->pengirim_hp,
+                    'pengirim_alamat'   => $request->pengirim_alamat,
+                    'pengirim_kodepos'  => $origin->zip,
+                    'penerima_nama'     => $request->penerima_nama,
+                    'penerima_hp'       => $request->penerima_hp,
+                    'penerima_alamat'   => $request->penerima_alamat,
+                    'penerima_kodepos'  => $destination->zip,
+                    'deskripsi_barang'  => $request->deskripsi_barang,
+                    'kategori_barang'   => $request->kategori_barang,
+                    'berat_gram'        => $request->berat_gram,
+                    'panjang_cm'        => $request->panjang_cm ? (int) $request->panjang_cm : 1,
+                    'lebar_cm'          => $request->lebar_cm ? (int) $request->lebar_cm : 1,
+                    'tinggi_cm'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
+                    'asuransi'          => $isInsurance ? 1 : 0,
+                    'nilai_barang'      => $request->nilai_barang ?? 0,
+                    'kurir'             => $request->kurir_terpilih,
+                    'layanan'           => $request->layanan_terpilih,
+                    'ongkir'            => $request->ongkir_terpilih ?? 0,
+                    'awb_number'        => $awbNumber,
+                    'metode_pembayaran' => $request->metode_pembayaran, // 🔥 Menyimpan Metode Pembayaran
+                    'status'            => 'booking_created'
                 ]);
 
-                return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbNumber}");
+                return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbNumber} (Metode: {$request->metode_pembayaran})");
             }
 
             Log::error("LOG: [API AUTOKIRIM - CREATE ORDER] FAILED FROM SERVER: ", $result ?? []);
