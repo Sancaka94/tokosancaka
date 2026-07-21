@@ -144,6 +144,54 @@ class PesananAutokirimController extends Controller
         ));
     }
 
+    // ==========================================
+    // AREA CUSTOMER: TABEL RIWAYAT TRANSAKSI
+    // ==========================================
+    public function indexCustomer(Request $request)
+    {
+        // KUNCI UTAMA: Hanya ambil data milik user yang sedang login
+        $query = PesananAutokirim::where('user_id', auth()->id());
+
+        // PENCARIAN
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('order_id', 'like', "%{$search}%")
+                  ->orWhere('awb_number', 'like', "%{$search}%")
+                  ->orWhere('penerima_nama', 'like', "%{$search}%")
+                  ->orWhere('penerima_hp', 'like', "%{$search}%");
+            });
+        }
+
+        // FILTER STATUS
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        // FILTER TANGGAL
+        if ($request->filled('date_range')) {
+            $dates = explode(' to ', str_replace([' - ', ' s.d. '], ' to ', $request->date_range));
+            if (count($dates) >= 2) {
+                $query->whereBetween('created_at', [trim($dates[0]) . ' 00:00:00', trim($dates[1]) . ' 23:59:59']);
+            } elseif (count($dates) == 1) {
+                $query->whereDate('created_at', trim($dates[0]));
+            }
+        }
+
+        // STATISTIK CARD KHUSUS USER LOGIN
+        $cardQuery = clone $query;
+        $totalTransaksi = $cardQuery->count();
+        $totalOngkir    = $cardQuery->sum('ongkir');
+        $totalBerhasil  = (clone $cardQuery)->whereNotIn('status', ['menunggu_pembayaran', 'gagal', 'batal'])->count();
+        $totalPending   = (clone $cardQuery)->whereIn('status', ['menunggu_pembayaran', 'gagal'])->count();
+
+        $pesanan = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+
+        return view('customer.pesanan_autokirim.index', compact(
+            'pesanan', 'totalTransaksi', 'totalOngkir', 'totalBerhasil', 'totalPending'
+        ));
+    }
+
     public function searchAddressAjax(Request $request)
     {
         $keyword = $request->query('q');

@@ -1924,6 +1924,11 @@ Route::get('/{short_code}', [ShortUrlController::class, 'redirect']);
 Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(function () {
     Route::get('/pesanan-autokirim', [PesananAutokirimController::class, 'createCustomer'])->name('pesanan-autokirim.create');
     Route::post('/pesanan-autokirim', [PesananAutokirimController::class, 'store'])->name('pesanan-autokirim.store');
+
+    // Halaman Riwayat & Aksi Khusus Customer
+    Route::get('/pesanan-autokirim', [PesananAutokirimController::class, 'indexCustomer'])->name('pesanan-autokirim.index');
+    Route::get('/pesanan-autokirim/{id}/cetak', [PesananAutokirimController::class, 'cetakResi'])->name('pesanan-autokirim.cetak');
+    Route::post('/pesanan-autokirim/{id}/cancel', [PesananAutokirimController::class, 'cancelOrder'])->name('pesanan-autokirim.cancel');
 });
 
 // --- GRUP ADMIN ---
