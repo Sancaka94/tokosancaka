@@ -196,9 +196,24 @@
                             <input type="text" name="resi_cashless" x-model="resiCashless" placeholder="Contoh: JP1234567890" class="w-full font-bold border-green-300 rounded-lg text-sm focus:ring-1 focus:ring-green-500 px-3 py-2 uppercase bg-white">
                         </div>
                         
-                        <!-- Info Ekstra untuk COD -->
-                        <div x-show="tipePesanan === 'cod'" x-transition class="mt-3" x-cloak>
-                            <p class="text-[10px] text-orange-600 font-semibold leading-tight flex items-start gap-1"><i class="fa-solid fa-circle-info mt-0.5"></i> Fitur COD aktif. Harga Barang di bawah wajib diisi sebagai nominal yang akan ditagihkan ke penerima oleh kurir.</p>
+                        <!-- Info & Pilihan Ekstra untuk COD -->
+                        <div x-show="tipePesanan === 'cod'" x-transition class="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-xl" x-cloak>
+                            <label class="block text-xs font-bold text-orange-800 mb-2">Pilih Jenis COD <span class="text-red-500">*</span></label>
+                            <div class="flex flex-col gap-2">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="jenis_cod_radio" value="cod_barang" x-model="jenisCod" class="text-orange-600 focus:ring-orange-500 w-4 h-4">
+                                    <span class="text-xs font-semibold text-orange-900">COD Barang + Ongkir (Tagihan gabungan)</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="radio" name="jenis_cod_radio" value="cod_ongkir" x-model="jenisCod" class="text-orange-600 focus:ring-orange-500 w-4 h-4">
+                                    <span class="text-xs font-semibold text-orange-900">COD Ongkir Saja (Tagihan hanya biaya kurir)</span>
+                                </label>
+                            </div>
+                            <p class="text-[10px] text-orange-700 font-medium leading-tight mt-2 flex items-start gap-1">
+                                <i class="fa-solid fa-circle-info mt-0.5"></i>
+                                <span x-show="jenisCod === 'cod_barang'">Masukkan Total Tagihan di kolom "Nilai Harga Barang" di bawah.</span>
+                                <span x-show="jenisCod === 'cod_ongkir'">Hanya nominal Ongkir yang ditagihkan. Nilai barang di bawah hanya dipakai sebagai acuan klaim asuransi (opsional jika asuransi mati).</span>
+                            </p>
                         </div>
                     </div>
 
@@ -294,7 +309,8 @@
                 <input type="hidden" name="layanan_terpilih" x-model="selectedLayanan">
                 <input type="hidden" name="ongkir_terpilih" x-model="selectedOngkir">
                 <input type="hidden" name="service_code_terpilih" x-model="selectedServiceCode">
-                <input type="hidden" name="metode_pembayaran" x-model="selectedPayment">
+
+                <input type="hidden" name="metode_pembayaran" x-bind:value="tipePesanan === 'cod' ? jenisCod : selectedPayment">
 
                 <!-- Tampilan Card Ringkasan -->
                 <div class="bg-white p-4 rounded-xl border border-blue-100 shadow-sm flex items-center justify-between">
@@ -319,10 +335,10 @@
                     </div>
                 </div>
 
+               <!-- ========================================================================================= -->
+                <!-- 🔥 PILIHAN METODE PEMBAYARAN (POTONG SALDO, DANA BINDING, DANA PG, DLL) 🔥 -->
                 <!-- ========================================================================================= -->
-                <!-- 🔥 PILIHAN METODE PEMBAYARAN (POTONG SALDO, DANA BINDING, DANA PG, DOKU, TRIPAY) 🔥 -->
-                <!-- ========================================================================================= -->
-                <div class="mt-6 pt-5 border-t border-blue-200/60">
+                <div x-show="tipePesanan !== 'cod'" x-transition class="mt-6 pt-5 border-t border-blue-200/60" x-cloak>
                     <h3 class="text-xs font-extrabold text-gray-700 uppercase tracking-wider mb-3 flex items-center">
                         <i class="fa-solid fa-wallet text-indigo-600 mr-2"></i> Pilih Metode Pembayaran
                     </h3>
@@ -410,13 +426,14 @@
 
                 <!-- TOMBOL SUBMIT PESANAN -->
                 <div class="mt-6">
-                    <button type="submit" :disabled="!selectedPayment || (selectedPayment === 'potong_saldo' && selectedOngkir > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) || selectedPayment === 'dana_binding' @endif"
+                    <button type="submit" 
+                            :disabled="(tipePesanan !== 'cod' && (!selectedPayment || (selectedPayment === 'potong_saldo' && selectedOngkir > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) || selectedPayment === 'dana_binding' @endif))"
                             class="w-full py-4 rounded-xl font-extrabold text-white transition shadow-xl text-base tracking-wide flex justify-center items-center gap-2"
-                            :class="(selectedPayment && !(selectedPayment === 'potong_saldo' && selectedOngkir > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) && selectedPayment !== 'dana_binding' @endif) ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25 cursor-pointer' : 'bg-gray-300 cursor-not-allowed opacity-75'">
+                            :class="(tipePesanan === 'cod' || (selectedPayment && !(selectedPayment === 'potong_saldo' && selectedOngkir > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) && selectedPayment !== 'dana_binding' @endif)) ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25 cursor-pointer' : 'bg-gray-300 cursor-not-allowed opacity-75'">
                         <span>SUBMIT KIRIM SEKARANG</span>
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
-                    <p x-show="!selectedPayment" class="text-[11px] text-red-500 font-semibold text-center mt-2 animate-pulse">* Mohon pilih metode pembayaran di atas untuk melanjutkan</p>
+                    <p x-show="tipePesanan !== 'cod' && !selectedPayment" class="text-[11px] text-red-500 font-semibold text-center mt-2 animate-pulse">* Mohon pilih metode pembayaran di atas untuk melanjutkan</p>
                 </div>
             </div>
 
@@ -662,6 +679,46 @@ document.addEventListener('alpine:init', () => {
             this.selectedEtd         = this.tempSelected.etd;
 
             this.showModal           = false; // Tutup Modal
+        },
+
+        // Tambahkan variable ini ke dalam state Alpine:
+        jenisCod: 'cod_barang', // Default COD pilihan
+
+        // Lalu update fungsi validateForm(e) menjadi seperti ini:
+        validateForm(e) {
+            if(!this.selectedServiceCode || !this.selectedOngkir) {
+                e.preventDefault();
+                alert("Silahkan hitung ongkos kirim dan pilih jasa ekspedisi terlebih dahulu!");
+                return;
+            }
+
+            // Jika BUKAN COD, wajib melakukan validasi saldo dan gateway pembayaran
+            if (this.tipePesanan !== 'cod') {
+                if(!this.selectedPayment) {
+                    e.preventDefault();
+                    alert("Silahkan pilih metode pembayaran terlebih dahulu!");
+                    return;
+                }
+
+                // 🔥 Validasi Ekstra untuk Potong Saldo
+                if(this.selectedPayment === 'potong_saldo') {
+                    let userSaldo = {{ auth()->user()->saldo ?? 0 }};
+                    if(this.selectedOngkir > userSaldo) {
+                        e.preventDefault();
+                        alert("Gagal! Saldo akun Anda (Rp " + userSaldo.toLocaleString('id-ID') + ") tidak mencukupi untuk membayar ongkos kirim ini (Rp " + this.selectedOngkir.toLocaleString('id-ID') + "). Silahkan isi ulang atau gunakan metode pembayaran lainnya!");
+                        return;
+                    }
+                }
+
+                // 🔥 Validasi Ekstra untuk DANA Binding
+                @if(empty(auth()->user()->dana_token))
+                if(this.selectedPayment === 'dana_binding') {
+                    e.preventDefault();
+                    alert("Gagal! Akun DANA Anda belum diikat (bind). Silahkan pilih metode 'DANA Payment Gateway' atau hubungkan akun DANA Anda terlebih dahulu di pengaturan profil!");
+                    return;
+                }
+                @endif
+            }
         },
 
         // Validasi Form sebelum kirim (DENGAN PROTEKSI SALDO & TOKEN DANA)

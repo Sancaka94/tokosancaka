@@ -569,7 +569,10 @@ class PesananAutokirimController extends Controller
 
             $paymentUrl = null;
 
-            if (in_array($paymentMethod, ['potong_saldo', 'dana_binding'])) {
+            // TAMBAHKAN cod_barang dan cod_ongkir agar tidak dialihkan ke Payment Gateway
+            if (in_array($paymentMethod, ['potong_saldo', 'dana_binding', 'cod_barang', 'cod_ongkir'])) {
+                
+                // Hanya potong saldo dan DANA Binding jika dipilih
                 if ($paymentMethod === 'potong_saldo') {
                     $user = User::find(auth()->id());
                     if (!$user) {
@@ -583,18 +586,24 @@ class PesananAutokirimController extends Controller
                 } elseif ($paymentMethod === 'dana_binding') {
                     $this->_processDanaBindingCharge($pesanan, $totalTagihan);
                 }
+                
+                // CATATAN: Metode COD akan melewati blok potong saldo di atas tanpa kendala
 
                 $awbResult = $this->_executeAutokirimApi($pesanan, $origin, $destination, $request);
 
                 $pesanan->update([
                     'awb_number'        => $awbResult['awb'],
                     'tlc_code'          => $awbResult['tlc'],
-                    'pickup_point_code' => $awbResult['pickup'], // 🔥 SIMPAN KE DATABASE
+                    'pickup_point_code' => $awbResult['pickup'],
                     'status'            => 'booking_created'
                 ]);
 
                 DB::commit();
-                return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbResult['awb']} (Metode: {$paymentMethod})");
+                
+                // Tampilkan pesan sesuai tipe transaksi
+                $metodeTampil = str_replace('_', ' ', strtoupper($paymentMethod));
+                return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbResult['awb']} (Metode: {$metodeTampil})");
+                
             } else {
                 if ($paymentMethod === 'doku_jokul') {
                     Log::info("LOG: [DOKU JOKUL] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
@@ -670,6 +679,19 @@ class PesananAutokirimController extends Controller
         $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
         $qtyInput = $requestData ? (string) $requestData->input('qty', '1') : '1';
 
+        // 1. Deteksi apakah ini pesanan COD
+        $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
+        
+        // 2. Tentukan nilai tagihan COD yang dikirimkan ke Kurir
+        $codValue = 0;
+        if ($isCod) {
+            if (strtolower($pesanan->metode_pembayaran) === 'cod_ongkir') {
+                $codValue = (int) $pesanan->ongkir; // Jika COD Ongkir, tagihan kurir = Nominal Ongkir
+            } else {
+                $codValue = (int) $pesanan->nilai_barang; // Jika COD Barang, tagihan kurir = Nominal yang diinput user
+            }
+        }
+
         $orderPayload = [
             'service_code'      => $serviceCode,
             'reff_client_id'    => $pesanan->order_id,
@@ -684,8 +706,11 @@ class PesananAutokirimController extends Controller
             'description'       => (string) $pesanan->deskripsi_barang,
             'remarks'           => (string) $pesanan->kategori_barang,
             'price'             => (int) $pesanan->nilai_barang > 0 ? (int) $pesanan->nilai_barang : 10000,
-            'is_cod'            => in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang']),
-            'cod_value'         => in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang']) ? (int) $pesanan->nilai_barang : 0,
+            
+            // 🔥 Terapkan logic COD terbaru ke Payload API 🔥
+            'is_cod'            => $isCod,
+            'cod_value'         => $codValue,
+            
             'is_sender_pp'      => $isSenderPp,
             'is_insurance'      => (bool) $pesanan->asuransi,
             'from' => [
