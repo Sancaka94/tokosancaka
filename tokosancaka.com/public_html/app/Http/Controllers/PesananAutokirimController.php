@@ -815,16 +815,56 @@ class PesananAutokirimController extends Controller
         return view('admin.pesanan_autokirim.cetak_resi', compact('pesanan'));
     }
 
-    public function cancelOrder($id)
+   public function cancelOrder($id)
     {
         $pesanan = PesananAutokirim::findOrFail($id);
 
         if (in_array($pesanan->status, ['booking_created', 'menunggu_pembayaran'])) {
-            $pesanan->update(['status' => 'batal']);
-            return redirect()->back()->with('success', 'Pesanan berhasil dibatalkan.');
+
+            Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] Memulai proses cancel untuk Order ID: {$pesanan->order_id}");
+
+            try {
+                // Panggil Konfigurasi API
+                $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
+                $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
+                $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
+
+                // Menggunakan order_id karena saat Create Order kita mengirimnya sebagai reff_client_id
+                $payload = [
+                    'reff_1' => (string) $pesanan->order_id
+                ];
+
+                Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] REQUEST PAYLOAD:", $payload);
+
+                // Hit API Cancel Autokirim
+                $response = Http::timeout(15)
+                    ->withToken($token)
+                    ->post("{$baseUrl}/api/cancel", $payload);
+
+                $result = $response->json();
+
+                Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] RESPONSE:", $result ?? []);
+
+                if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
+
+                    // Jika sukses dari API, baru ubah status di database lokal
+                    $pesanan->update(['status' => 'batal']);
+
+                    Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] BERHASIL membatalkan Order ID: {$pesanan->order_id}");
+                    return redirect()->back()->with('success', 'Pesanan berhasil dibatalkan di sistem logistik.');
+                }
+
+                // Jika API Autokirim menolak cancel
+                Log::error("LOG LOG: [API AUTOKIRIM - CANCEL] DITOLAK API: " . ($result['rd'] ?? 'Unknown Error'));
+                return redirect()->back()->with('error', 'Gagal membatalkan di server logistik: ' . ($result['rd'] ?? 'Error API'));
+
+            } catch (\Exception $e) {
+                Log::error("LOG LOG: [API AUTOKIRIM - CANCEL] ERROR JARINGAN: " . $e->getMessage());
+                return redirect()->back()->with('error', 'Terjadi kendala jaringan saat membatalkan ke server logistik.');
+            }
         }
 
-        return redirect()->back()->with('error', 'Pesanan tidak dapat dibatalkan.');
+        return redirect()->back()->with('error', 'Status pesanan saat ini tidak dapat dibatalkan.');
     }
 
     public function destroy($id)
@@ -869,4 +909,6 @@ class PesananAutokirimController extends Controller
 
         return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan'], 404);
     }
+
+
 }
