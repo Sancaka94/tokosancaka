@@ -2,22 +2,22 @@
 
 @section('content')
 <div class="max-w-6xl mx-auto px-4 py-8 font-sans" x-data="orderForm">
-    <div class="mb-8">
-        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Kirim Paket <span class="text-blue-600">Sancaka Express</span></h1>
-        <p class="text-gray-500 mt-2">Isi detail pengiriman dengan cepat, akurat, dan dapatkan tarif terbaik dari server logistik.</p>
+    <div class="mb-8 border-b border-gray-200 pb-5">
+        <h1 class="text-3xl font-extrabold text-black tracking-tight">Kirim Paket <span class="text-gray-500 font-medium">Sancaka Express</span></h1>
+        <p class="text-gray-500 mt-2 text-sm">Isi detail pengiriman dengan cepat, akurat, dan dapatkan tarif terbaik dari server logistik.</p>
     </div>
 
-    <!-- Alert Notifikasi Berhasil -->
+    <!-- Alert Notifikasi Berhasil (Grayscale/Clean) -->
     @if(session('success'))
-        <div class="p-4 mb-6 text-sm text-green-700 bg-green-50 rounded-xl border border-green-200 flex items-center gap-2 shadow-sm">
-            <i class="fa-solid fa-circle-check text-lg text-green-600"></i>
+        <div class="p-4 mb-6 text-sm text-gray-800 bg-gray-50 rounded-md border border-gray-300 flex items-center gap-3 shadow-sm">
+            <i class="fa-solid fa-circle-check text-lg text-black"></i>
             <div><span class="font-bold">Sukses!</span> {{ session('success') }}</div>
         </div>
     @endif
 
-    <!-- Alert Notifikasi Gagal -->
+    <!-- Alert Notifikasi Gagal (Merah Penting) -->
     @if(session('error'))
-        <div class="p-4 mb-6 text-sm text-red-700 bg-red-50 rounded-xl border border-red-200 flex items-center gap-2 shadow-sm">
+        <div class="p-4 mb-6 text-sm text-red-700 bg-red-50 rounded-md border border-red-200 flex items-center gap-3 shadow-sm">
             <i class="fa-solid fa-circle-xmark text-lg text-red-600"></i>
             <div><span class="font-bold">Gagal!</span> {{ session('error') }}</div>
         </div>
@@ -32,46 +32,46 @@
         <div class="lg:col-span-7 space-y-6">
 
             <!-- Card Data Pengirim -->
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200/80">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-bold text-gray-800 flex items-center"><i class="fa-solid fa-user-check text-blue-500 mr-2"></i> Data Pengirim</h2>
-                    <button type="button" @click="saveContact('Pengirim')" class="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition duration-200">Simpan Kontak</button>
+            <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                <div class="flex items-center justify-between mb-5">
+                    <h2 class="text-base font-bold text-black flex items-center"><i class="fa-solid fa-user-check text-gray-800 mr-2.5"></i> Data Pengirim</h2>
+                    <button type="button" @click="saveContact('Pengirim')" class="text-xs font-medium text-black bg-white border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-50 transition duration-200">Simpan Kontak</button>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2 sm:col-span-1">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Lengkap</label>
-                        <input type="text" id="pengirim_nama" name="pengirim_nama" value="{{ old('pengirim_nama') }}" required class="w-full font-bold border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">NAMA LENGKAP</label>
+                        <input type="text" id="pengirim_nama" name="pengirim_nama" value="{{ old('pengirim_nama') }}" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
                     </div>
                     <div class="col-span-2 sm:col-span-1">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor HP / WA</label>
-                        <input type="text" id="pengirim_hp" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required class="w-full font-bold border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
+                        <input type="text" id="pengirim_hp" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
                     </div>
 
                     <!-- Autocomplete Alamat Pengirim -->
                     <div class="col-span-2 relative" @click.away="showSenderDropdown = false">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Kecamatan / Kabupaten Pengirim</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">KECAMATAN / KABUPATEN PENGIRIM</label>
                         <div class="relative">
-                            <input type="text" x-model="senderQuery" @input.debounce.400ms="searchAddress('sender')" @focus="showSenderDropdown = true" placeholder="Ketik minimal 3 karakter wilayah pengirim..." class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 pl-4 pr-10 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200" autocomplete="off">
+                            <input type="text" x-model="senderQuery" @input.debounce.400ms="searchAddress('sender')" @focus="showSenderDropdown = true" placeholder="Ketik minimal 3 karakter wilayah pengirim..." class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black pl-4 pr-10 py-2.5 bg-white transition duration-200 placeholder-gray-400" autocomplete="off">
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 text-xs">
                                 <i class="fa-solid fa-magnifying-glass" x-show="!isSearchingSender"></i>
-                                <i class="fa-solid fa-spinner fa-spin text-blue-500" x-show="isSearchingSender" x-cloak></i>
+                                <i class="fa-solid fa-spinner fa-spin text-black" x-show="isSearchingSender" x-cloak></i>
                             </div>
                         </div>
                         <input type="hidden" name="pengirim_district_id" x-model="senderDistrictId">
 
-                        <div x-show="showSenderDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
+                        <div x-show="showSenderDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
                             <template x-if="senderResults.length > 0">
                                 <div>
                                     <template x-for="res in senderResults">
-                                        <div @click="selectAddress('sender', res)" class="px-4 py-3 hover:bg-blue-50/80 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
-                                            <p class="font-bold text-gray-800" x-text="res.district_name + ', ' + res.regency_name"></p>
+                                        <div @click="selectAddress('sender', res)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
+                                            <p class="font-medium text-black" x-text="res.district_name + ', ' + res.regency_name"></p>
                                             <p class="text-xs text-gray-500 mt-0.5" x-text="res.province_name + ' (Kodepos: ' + res.zip + ')'"></p>
                                         </div>
                                     </template>
                                 </div>
                             </template>
                             <template x-if="senderResults.length === 0 && !isSearchingSender && senderQuery.length >= 3">
-                                <div class="px-4 py-3 text-sm text-red-500 italic text-center font-medium bg-red-50">
+                                <div class="px-4 py-3 text-sm text-red-600 italic text-center font-medium bg-red-50">
                                     <i class="fa-solid fa-circle-exclamation mr-1"></i> Wilayah tidak ditemukan di database.
                                 </div>
                             </template>
@@ -79,14 +79,14 @@
                     </div>
 
                     <div class="col-span-2">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">
-                            Alamat Jalan Pengirim <span class="text-red-500">*</span>
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">
+                            ALAMAT JALAN PENGIRIM <span class="text-red-500">*</span>
                         </label>
-                        <textarea id="pengirim_alamat" name="pengirim_alamat" rows="2" required minlength="15" placeholder="Contoh: Jl Ronggowarsito No 15 RT 01 RW 02" class="w-full font-bold border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">{{ old('pengirim_alamat') }}</textarea>
+                        <textarea id="pengirim_alamat" name="pengirim_alamat" rows="2" required minlength="15" placeholder="Contoh: JL RONGGOWARSITO NO 15 RT 01 RW 02" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">{{ old('pengirim_alamat') }}</textarea>
 
-                        <!-- PESAN PERINGATAN MERAH -->
-                        <div class="mt-1.5 p-2 bg-red-50 border border-red-200 rounded-lg">
-                            <p class="text-[10px] text-red-600 font-bold flex items-start gap-1.5 leading-tight">
+                        <!-- PESAN PERINGATAN MERAH (Dipertahankan sesuai instruksi) -->
+                        <div class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700">
+                            <p class="text-[11px] font-bold flex items-start gap-1.5 leading-tight">
                                 <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
                                 <span>PENTING: from.address hanya diisi alamat jalan saja tanpa kecamatan, kabupaten, provinsi dan kode pos.</span>
                             </p>
@@ -96,46 +96,46 @@
             </div>
 
             <!-- Card Data Penerima -->
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200/80">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-lg font-bold text-gray-800 flex items-center"><i class="fa-solid fa-location-dot text-red-500 mr-2"></i> Data Penerima</h2>
-                    <button type="button" @click="saveContact('Penerima')" class="text-xs font-semibold text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 transition duration-200">Simpan Kontak</button>
+            <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                <div class="flex items-center justify-between mb-5">
+                    <h2 class="text-base font-bold text-black flex items-center"><i class="fa-solid fa-location-dot text-gray-800 mr-2.5"></i> Data Penerima</h2>
+                    <button type="button" @click="saveContact('Penerima')" class="text-xs font-medium text-black bg-white border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-50 transition duration-200">Simpan Kontak</button>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2 sm:col-span-1">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Lengkap</label>
-                        <input type="text" id="penerima_nama" name="penerima_nama" value="{{ old('penerima_nama') }}" required class="w-full font-bold border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">NAMA LENGKAP</label>
+                        <input type="text" id="penerima_nama" name="penerima_nama" value="{{ old('penerima_nama') }}" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
                     </div>
                     <div class="col-span-2 sm:col-span-1">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor HP / WA</label>
-                        <input type="text" id="penerima_hp" name="penerima_hp" value="{{ old('penerima_hp') }}" required class="w-full font-bold border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
+                        <input type="text" id="penerima_hp" name="penerima_hp" value="{{ old('penerima_hp') }}" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
                     </div>
 
                     <!-- Autocomplete Alamat Penerima -->
                     <div class="col-span-2 relative" @click.away="showReceiverDropdown = false">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Kecamatan / Kabupaten Penerima</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">KECAMATAN / KABUPATEN PENERIMA</label>
                         <div class="relative">
-                            <input type="text" x-model="receiverQuery" @input.debounce.400ms="searchAddress('receiver')" @focus="showReceiverDropdown = true" placeholder="Ketik minimal 3 karakter wilayah penerima..." class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 pl-4 pr-10 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200" autocomplete="off">
+                            <input type="text" x-model="receiverQuery" @input.debounce.400ms="searchAddress('receiver')" @focus="showReceiverDropdown = true" placeholder="Ketik minimal 3 karakter wilayah penerima..." class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black pl-4 pr-10 py-2.5 bg-white transition duration-200 placeholder-gray-400" autocomplete="off">
                             <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 text-xs">
                                 <i class="fa-solid fa-magnifying-glass" x-show="!isSearchingReceiver"></i>
-                                <i class="fa-solid fa-spinner fa-spin text-blue-500" x-show="isSearchingReceiver" x-cloak></i>
+                                <i class="fa-solid fa-spinner fa-spin text-black" x-show="isSearchingReceiver" x-cloak></i>
                             </div>
                         </div>
                         <input type="hidden" name="penerima_district_id" x-model="receiverDistrictId">
 
-                        <div x-show="showReceiverDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-xl shadow-xl border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
+                        <div x-show="showReceiverDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
                             <template x-if="receiverResults.length > 0">
                                 <div>
                                     <template x-for="res in receiverResults">
-                                        <div @click="selectAddress('receiver', res)" class="px-4 py-3 hover:bg-blue-50/80 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
-                                            <p class="font-bold text-gray-800" x-text="res.district_name + ', ' + res.regency_name"></p>
+                                        <div @click="selectAddress('receiver', res)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
+                                            <p class="font-medium text-black" x-text="res.district_name + ', ' + res.regency_name"></p>
                                             <p class="text-xs text-gray-500 mt-0.5" x-text="res.province_name + ' (Kodepos: ' + res.zip + ')'"></p>
                                         </div>
                                     </template>
                                 </div>
                             </template>
                             <template x-if="receiverResults.length === 0 && !isSearchingReceiver && receiverQuery.length >= 3">
-                                <div class="px-4 py-3 text-sm text-red-500 italic text-center font-medium bg-red-50">
+                                <div class="px-4 py-3 text-sm text-red-600 italic text-center font-medium bg-red-50">
                                     <i class="fa-solid fa-circle-exclamation mr-1"></i> Wilayah tidak ditemukan di database.
                                 </div>
                             </template>
@@ -143,14 +143,14 @@
                     </div>
 
                     <div class="col-span-2">
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">
-                            Alamat Jalan Penerima <span class="text-red-500">*</span>
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">
+                            ALAMAT JALAN PENERIMA <span class="text-red-500">*</span>
                         </label>
-                        <textarea id="penerima_alamat" name="penerima_alamat" rows="2" required minlength="15" placeholder="Contoh: Perum Graha Kebraon Regency 2 Block A No 3 RT 04 RW 05" class="w-full font-bold border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500 px-4 py-2.5 bg-gray-50/50 hover:bg-white transition duration-200">{{ old('penerima_alamat') }}</textarea>
+                        <textarea id="penerima_alamat" name="penerima_alamat" rows="2" required minlength="15" placeholder="Contoh: PERUM GRAHA KEBRAON REGENCY 2 BLOK A NO 3 RT 04 RW 05" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">{{ old('penerima_alamat') }}</textarea>
 
                         <!-- PESAN PERINGATAN MERAH -->
-                        <div class="mt-1.5 p-2 bg-red-50 border border-red-200 rounded-lg">
-                            <p class="text-[10px] text-red-600 font-bold flex items-start gap-1.5 leading-tight">
+                        <div class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700">
+                            <p class="text-[11px] font-bold flex items-start gap-1.5 leading-tight">
                                 <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
                                 <span>PENTING: to.address hanya diisi alamat jalan saja tanpa kecamatan, kabupaten, provinsi dan kode pos.</span>
                             </p>
@@ -164,151 +164,151 @@
         <!-- SISI KANAN: DETAIL BARANG & ACTION -->
         <!-- ========================================== -->
         <div class="lg:col-span-5 space-y-6">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200/80">
-                <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center"><i class="fa-solid fa-box-open text-orange-500 mr-2"></i> Detail Paket</h2>
+            <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                <h2 class="text-base font-bold text-black mb-5 flex items-center"><i class="fa-solid fa-box-open text-gray-800 mr-2.5"></i> Detail Paket</h2>
 
-                <div class="space-y-4">
+                <div class="space-y-5">
 
                     <!-- DINAMIS: Tipe Pesanan (Reguler / COD / Cashless) -->
-                    <div class="p-4 bg-gray-50 border border-gray-200 rounded-xl">
-                        <label class="block text-xs font-bold text-gray-700 mb-2">Tipe Pesanan</label>
+                    <div class="p-4 border border-gray-200 rounded-md">
+                        <label class="block text-xs font-medium text-gray-700 mb-2.5">TIPE PESANAN</label>
                         <div class="grid grid-cols-3 gap-2">
-                            <label class="flex flex-col items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors"
-                                   :class="tipePesanan === 'reguler' ? 'border-blue-500 bg-blue-50 text-blue-700 font-bold shadow-sm' : 'border-gray-200 hover:bg-gray-100 text-gray-600'">
+                            <label class="flex flex-col items-center justify-center p-2.5 border rounded cursor-pointer transition-all duration-200"
+                                   :class="tipePesanan === 'reguler' ? 'border-black bg-black text-white font-medium shadow-sm' : 'border-gray-300 hover:border-gray-400 text-gray-600 bg-white'">
                                 <input type="radio" name="tipe_pesanan" value="reguler" x-model="tipePesanan" class="hidden">
-                                <span class="text-xs">Reguler</span>
+                                <span class="text-xs tracking-wide">REGULER</span>
                             </label>
-                            <label class="flex flex-col items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors"
-                                   :class="tipePesanan === 'cod' ? 'border-orange-500 bg-orange-50 text-orange-700 font-bold shadow-sm' : 'border-gray-200 hover:bg-gray-100 text-gray-600'">
+                            <label class="flex flex-col items-center justify-center p-2.5 border rounded cursor-pointer transition-all duration-200"
+                                   :class="tipePesanan === 'cod' ? 'border-black bg-black text-white font-medium shadow-sm' : 'border-gray-300 hover:border-gray-400 text-gray-600 bg-white'">
                                 <input type="radio" name="tipe_pesanan" value="cod" x-model="tipePesanan" class="hidden">
-                                <span class="text-xs">COD</span>
+                                <span class="text-xs tracking-wide">COD</span>
                             </label>
-                            <label class="flex flex-col items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors"
-                                   :class="tipePesanan === 'cashless' ? 'border-green-500 bg-green-50 text-green-700 font-bold shadow-sm' : 'border-gray-200 hover:bg-gray-100 text-gray-600'">
+                            <label class="flex flex-col items-center justify-center p-2.5 border rounded cursor-pointer transition-all duration-200"
+                                   :class="tipePesanan === 'cashless' ? 'border-black bg-black text-white font-medium shadow-sm' : 'border-gray-300 hover:border-gray-400 text-gray-600 bg-white'">
                                 <input type="radio" name="tipe_pesanan" value="cashless" x-model="tipePesanan" class="hidden">
-                                <span class="text-xs">Cashless</span>
+                                <span class="text-xs tracking-wide">CASHLESS</span>
                             </label>
                         </div>
 
                         <!-- Input Ekstra untuk Cashless -->
-                        <div x-show="tipePesanan === 'cashless'" x-transition class="mt-3" x-cloak>
-                            <label class="block text-xs font-semibold text-green-700 mb-1">Nomor Resi Marketplace (AWB) <span class="text-red-500">*</span></label>
-                            <input type="text" name="resi_cashless" x-model="resiCashless" placeholder="Contoh: JP1234567890" class="w-full font-bold border-green-300 rounded-lg text-sm focus:ring-1 focus:ring-green-500 px-3 py-2 uppercase bg-white">
+                        <div x-show="tipePesanan === 'cashless'" x-transition class="mt-4" x-cloak>
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR RESI MARKETPLACE (AWB) <span class="text-red-500">*</span></label>
+                            <input type="text" name="resi_cashless" x-model="resiCashless" placeholder="CONTOH: JP1234567890" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white">
                         </div>
 
                         <!-- Info & Pilihan Ekstra untuk COD -->
-                        <div x-show="tipePesanan === 'cod'" x-transition class="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-xl" x-cloak>
-                            <label class="block text-xs font-bold text-orange-800 mb-2">Pilih Jenis COD <span class="text-red-500">*</span></label>
-                            <div class="flex flex-col gap-2">
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="radio" name="jenis_cod_radio" value="cod_barang" x-model="jenisCod" class="text-orange-600 focus:ring-orange-500 w-4 h-4">
-                                    <span class="text-xs font-semibold text-orange-900">COD Barang + Ongkir (Tagihan gabungan)</span>
+                        <div x-show="tipePesanan === 'cod'" x-transition class="mt-4 pt-4 border-t border-gray-200" x-cloak>
+                            <label class="block text-xs font-medium text-gray-700 mb-2.5">PILIH JENIS COD <span class="text-red-500">*</span></label>
+                            <div class="flex flex-col gap-3">
+                                <label class="flex items-center gap-2.5 cursor-pointer">
+                                    <input type="radio" name="jenis_cod_radio" value="cod_barang" x-model="jenisCod" class="text-black focus:ring-black border-gray-300 w-4 h-4">
+                                    <span class="text-xs font-medium text-gray-800">COD Barang + Ongkir (Tagihan gabungan)</span>
                                 </label>
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="radio" name="jenis_cod_radio" value="cod_ongkir" x-model="jenisCod" class="text-orange-600 focus:ring-orange-500 w-4 h-4">
-                                    <span class="text-xs font-semibold text-orange-900">COD Ongkir Saja (Tagihan hanya biaya kurir)</span>
+                                <label class="flex items-center gap-2.5 cursor-pointer">
+                                    <input type="radio" name="jenis_cod_radio" value="cod_ongkir" x-model="jenisCod" class="text-black focus:ring-black border-gray-300 w-4 h-4">
+                                    <span class="text-xs font-medium text-gray-800">COD Ongkir Saja (Tagihan hanya biaya kurir)</span>
                                 </label>
                             </div>
-                            <p class="text-[10px] text-orange-700 font-medium leading-tight mt-2 flex items-start gap-1">
+                            <p class="text-[11px] text-gray-500 font-medium leading-tight mt-3 flex items-start gap-1.5">
                                 <i class="fa-solid fa-circle-info mt-0.5"></i>
                                 <span x-show="jenisCod === 'cod_barang'">Masukkan Total Tagihan di kolom "Nilai Harga Barang" di bawah.</span>
-                                <span x-show="jenisCod === 'cod_ongkir'">Hanya nominal Ongkir yang ditagihkan. Nilai barang di bawah hanya dipakai sebagai acuan klaim asuransi (opsional jika asuransi mati).</span>
+                                <span x-show="jenisCod === 'cod_ongkir'">Hanya nominal Ongkir yang ditagihkan. Nilai barang di bawah hanya dipakai sebagai acuan klaim asuransi.</span>
                             </p>
                         </div>
                     </div>
 
                     <!-- DINAMIS: Kategori Barang -->
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Kategori Barang</label>
-                        <select name="kategori_barang" x-model="kategoriBarang" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 px-4 py-2.5 bg-gray-50/50 font-medium">
-                            <option value="" disabled selected>Pilih...</option>
-                            <option value="ELK001">Peralatan Elektronik & Gadget</option>
-                            <option value="PAK001">Pakaian / Baju / Kain</option>
-                            <option value="PCH001">Pecah Belah</option>
-                            <option value="DOC001">Dokumen / Berkas / Buku</option>
-                            <option value="RTG001">Peralatan Rumah Tangga</option>
-                            <option value="AKS001">Aksesoris</option>
-                            <option value="OTH001">Lain-Lain</option>
-                            <option value="DHS001">Dokumen Berharga</option>
-                            <option value="KSM001">Peralatan Kesehatan / Kecantikan / Kosmetik</option>
-                            <option value="OLH001">Peralatan Olahraga & Hiburan</option>
-                            <option value="OTM001">Perlengkapan Mobil & Motor</option>
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">KATEGORI BARANG</label>
+                        <select name="kategori_barang" x-model="kategoriBarang" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white">
+                            <option value="" disabled selected>PILIH...</option>
+                            <option value="ELK001">PERALATAN ELEKTRONIK & GADGET</option>
+                            <option value="PAK001">PAKAIAN / BAJU / KAIN</option>
+                            <option value="PCH001">PECAH BELAH</option>
+                            <option value="DOC001">DOKUMEN / BERKAS / BUKU</option>
+                            <option value="RTG001">PERALATAN RUMAH TANGGA</option>
+                            <option value="AKS001">AKSESORIS</option>
+                            <option value="OTH001">LAIN-LAIN</option>
+                            <option value="DHS001">DOKUMEN BERHARGA</option>
+                            <option value="KSM001">PERALATAN KESEHATAN / KECANTIKAN / KOSMETIK</option>
+                            <option value="OLH001">PERALATAN OLAHRAGA & HIBURAN</option>
+                            <option value="OTM001">PERLENGKAPAN MOBIL & MOTOR</option>
                         </select>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Deskripsi Isi Paket</label>
-                        <input type="text" name="deskripsi_barang" value="{{ old('deskripsi_barang') }}" placeholder="Contoh: Sepatu Sneakers Hitam Ukuran 42" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 px-4 py-2.5 bg-gray-50/50">
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">DESKRIPSI ISI PAKET</label>
+                        <input type="text" name="deskripsi_barang" value="{{ old('deskripsi_barang') }}" placeholder="CONTOH: SEPATU SNEAKERS HITAM UKURAN 42" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white placeholder-gray-400">
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs font-semibold text-gray-600 mb-1">Berat Total (Gram)</label>
-                            <input type="number" name="berat_gram" x-model="berat" min="1" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 px-4 py-2.5 bg-gray-50/50 font-semibold">
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">BERAT TOTAL (GRAM)</label>
+                            <input type="number" name="berat_gram" x-model="berat" min="1" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white">
                         </div>
 
                         <!-- DINAMIS: Jumlah Koli / Barang -->
                         <div>
-                            <label class="block text-xs font-semibold text-gray-600 mb-1">Jumlah Koli / Pcs</label>
-                            <input type="number" name="qty" x-model="qty" min="1" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 px-4 py-2.5 bg-gray-50/50 font-semibold text-center">
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">JUMLAH KOLI / PCS</label>
+                            <input type="number" name="qty" x-model="qty" min="1" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white text-center">
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4 items-center">
                         <div>
-                            <label class="block text-xs font-semibold text-gray-600 mb-1">Asuransi Pengiriman?</label>
-                            <div class="flex items-center h-11 px-4 bg-gray-50/50 border border-gray-200 rounded-xl">
-                                <input type="checkbox" name="asuransi" x-model="asuransi" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
-                                <span class="ml-2 text-sm text-gray-700 font-semibold cursor-pointer select-none" @click="asuransi = !asuransi">Ya, Amankan</span>
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">ASURANSI PENGIRIMAN?</label>
+                            <div class="flex items-center h-[42px] px-4 border border-gray-300 rounded-md bg-white">
+                                <input type="checkbox" name="asuransi" x-model="asuransi" class="w-4 h-4 text-black border-gray-300 rounded focus:ring-black cursor-pointer">
+                                <span class="ml-2.5 text-xs text-gray-700 font-medium cursor-pointer select-none" @click="asuransi = !asuransi">Ya, Amankan</span>
                             </div>
                         </div>
 
                         <!-- DINAMIS: Metode Serah Terima -->
                         <div>
-                            <label class="block text-xs font-semibold text-gray-600 mb-1">Metode Serah Terima</label>
-                            <select name="is_sender_pp" x-model="isSenderPp" class="w-full h-11 border-gray-200 rounded-xl text-xs focus:ring-1 focus:ring-blue-500 px-3 bg-gray-50/50 font-semibold text-gray-700">
-                                <option value="1">🚗 Kurir Jemput (Pickup)</option>
-                                <option value="0">🏢 Antar ke Cabang (Dropoff)</option>
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">METODE SERAH TERIMA</label>
+                            <select name="is_sender_pp" x-model="isSenderPp" class="uppercase w-full h-[42px] border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-3 bg-white text-gray-800">
+                                <option value="1">KURIR JEMPUT (PICKUP)</option>
+                                <option value="0">ANTAR KE CABANG (DROPOFF)</option>
                             </select>
                         </div>
                     </div>
 
-                    <div x-show="asuransi || tipePesanan === 'cod'" x-transition.duration.300ms class="p-4 rounded-xl border" :class="tipePesanan === 'cod' ? 'bg-orange-50/60 border-orange-200' : 'bg-blue-50/60 border-blue-100'" x-cloak>
-                        <label class="block text-xs font-semibold mb-1" :class="tipePesanan === 'cod' ? 'text-orange-800' : 'text-blue-800'">Nilai Harga Barang / Tagihan COD (Rp) <span class="text-red-500">*</span></label>
-                        <input type="number" name="nilai_barang" x-model="nilaiBarang" placeholder="Masukkan nominal rupiah..." class="w-full font-bold rounded-lg text-sm focus:ring-1 px-4 py-2 bg-white" :class="tipePesanan === 'cod' ? 'border-orange-300 focus:ring-orange-500' : 'border-blue-200 focus:ring-blue-500'" :required="asuransi || tipePesanan === 'cod'">
-                        <p class="text-[10px] mt-1.5 font-medium" :class="tipePesanan === 'cod' ? 'text-orange-700' : 'text-blue-600'" x-text="tipePesanan === 'cod' ? '* Nominal ini adalah total Rupiah yang akan ditagihkan kurir kepada penerima paket.' : '* Nominal ini digunakan kurir sebagai acuan klaim asuransi jika barang hilang.'"></p>
+                    <div x-show="asuransi || tipePesanan === 'cod'" x-transition.duration.300ms class="p-4 rounded-md border border-gray-200 bg-gray-50" x-cloak>
+                        <label class="block text-xs font-medium text-black mb-1.5">NILAI HARGA BARANG / TAGIHAN COD (RP) <span class="text-red-500">*</span></label>
+                        <input type="number" name="nilai_barang" x-model="nilaiBarang" placeholder="MASUKKAN NOMINAL RUPIAH..." class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2 bg-white" :required="asuransi || tipePesanan === 'cod'">
+                        <p class="text-[10px] mt-2 text-gray-500" x-text="tipePesanan === 'cod' ? '* Nominal ini adalah total Rupiah yang akan ditagihkan kurir kepada penerima paket.' : '* Nominal ini digunakan kurir sebagai acuan klaim asuransi jika barang hilang.'"></p>
                     </div>
 
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">Dimensi / Volume Paket (Centimeter - Opsional)</label>
-                        <div class="flex gap-2">
-                            <input type="number" name="panjang_cm" x-model="panjang" placeholder="P (cm)" min="1" class="w-1/3 border-gray-200 rounded-xl text-sm text-center bg-gray-50/50 py-2">
-                            <span class="text-gray-400 mt-2 font-bold">×</span>
-                            <input type="number" name="lebar_cm" x-model="lebar" placeholder="L (cm)" min="1" class="w-1/3 border-gray-200 rounded-xl text-sm text-center bg-gray-50/50 py-2">
-                            <span class="text-gray-400 mt-2 font-bold">×</span>
-                            <input type="number" name="tinggi_cm" x-model="tinggi" placeholder="T (cm)" min="1" class="w-1/3 border-gray-200 rounded-xl text-sm text-center bg-gray-50/50 py-2">
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">DIMENSI / VOLUME PAKET (CM - OPSIONAL)</label>
+                        <div class="flex gap-2 items-center">
+                            <input type="number" name="panjang_cm" x-model="panjang" placeholder="P" min="1" class="uppercase w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black">
+                            <span class="text-gray-400 font-medium">×</span>
+                            <input type="number" name="lebar_cm" x-model="lebar" placeholder="L" min="1" class="uppercase w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black">
+                            <span class="text-gray-400 font-medium">×</span>
+                            <input type="number" name="tinggi_cm" x-model="tinggi" placeholder="T" min="1" class="uppercase w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black">
                         </div>
                     </div>
                 </div>
 
-                <div class="mt-6 border-t border-gray-100 pt-6">
-                    <button type="button" @click="cekOngkir()" :disabled="isLoading" class="w-full py-3.5 rounded-xl font-bold text-white bg-gray-900 hover:bg-black transition-colors duration-200 shadow-md flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                <div class="mt-8">
+                    <button type="button" @click="cekOngkir()" :disabled="isLoading" class="w-full py-3.5 rounded-md font-medium text-white bg-black hover:bg-gray-800 transition duration-200 flex justify-center items-center text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="fa-solid fa-calculator mr-2" x-show="!isLoading"></i>
                         <i class="fa-solid fa-spinner fa-spin mr-2" x-show="isLoading" x-cloak></i>
-                        <span x-text="isLoading ? 'Menghitung Ongkir...' : (selectedOngkir > 0 ? 'Ganti / Hitung Ulang Ekspedisi' : 'Hitung & Pilih Ekspedisi')"></span>
+                        <span x-text="isLoading ? 'MENGHITUNG ONGKIR...' : (selectedOngkir > 0 ? 'GANTI / HITUNG ULANG EKSPEDISI' : 'HITUNG & PILIH EKSPEDISI')" class="tracking-wide"></span>
                     </button>
                 </div>
             </div>
 
             <!-- ======================================================= -->
-            <!-- RINGKASAN EKSPEDISI TERPILIH (Muncul setelah pilih di Modal) -->
+            <!-- RINGKASAN EKSPEDISI TERPILIH -->
             <!-- ======================================================= -->
-            <div x-show="selectedOngkir > 0" x-transition.duration.300ms class="bg-gradient-to-br from-blue-50 to-indigo-50/50 p-6 rounded-2xl border border-blue-200/80 shadow-sm relative overflow-hidden" x-cloak>
-                <div class="flex items-center justify-between mb-3">
-                    <span class="text-[11px] font-extrabold text-blue-700 bg-blue-100/80 px-2.5 py-1 rounded-full uppercase tracking-wide flex items-center">
-                        <i class="fa-solid fa-circle-check mr-1.5 text-blue-600"></i> Ekspedisi Terpilih
+            <div x-show="selectedOngkir > 0" x-transition.duration.300ms class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm relative" x-cloak>
+                <div class="flex items-center justify-between mb-4 border-b border-gray-100 pb-3">
+                    <span class="text-[10px] font-bold text-black bg-gray-100 px-2 py-1 rounded-sm uppercase tracking-widest flex items-center">
+                        Ekspedisi Terpilih
                     </span>
-                    <button type="button" @click="showModal = true" class="text-xs font-bold text-blue-600 hover:text-blue-800 underline">Ganti Kurir</button>
+                    <button type="button" @click="showModal = true" class="text-xs font-medium text-gray-500 hover:text-black underline">Ganti Kurir</button>
                 </div>
 
                 <!-- Input Hidden yang Wajib Dikirim ke Backend -->
@@ -316,131 +316,129 @@
                 <input type="hidden" name="layanan_terpilih" x-model="selectedLayanan">
                 <input type="hidden" name="ongkir_terpilih" x-model="selectedOngkir">
                 <input type="hidden" name="service_code_terpilih" x-model="selectedServiceCode">
-
                 <input type="hidden" name="metode_pembayaran" x-bind:value="tipePesanan === 'cod' ? jenisCod : selectedPayment">
 
                 <!-- Tampilan Card Ringkasan -->
-                <div class="bg-white p-4 rounded-xl border border-blue-100 shadow-sm flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-gray-50 rounded border border-gray-200 flex items-center justify-center p-1.5 shrink-0">
                             <template x-if="selectedLogoUrl">
-                                <img :src="selectedLogoUrl" :alt="selectedKurir" class="max-w-full max-h-full object-contain">
+                                <img :src="selectedLogoUrl" :alt="selectedKurir" class="max-w-full max-h-full object-contain grayscale opacity-80">
                             </template>
                             <template x-if="!selectedLogoUrl">
                                 <i class="fa-solid fa-truck-fast text-gray-400 text-lg"></i>
                             </template>
                         </div>
                         <div>
-                            <p class="font-black text-gray-900 text-sm" x-text="selectedKurir"></p>
-                            <p class="text-xs font-semibold text-gray-600" x-text="selectedLayanan"></p>
-                            <p class="text-[11px] text-green-600 font-bold mt-0.5"><i class="fa-regular fa-calendar-check mr-1"></i> Tiba: <span x-text="selectedEtd"></span></p>
+                            <p class="font-bold text-black text-sm uppercase tracking-wide" x-text="selectedKurir"></p>
+                            <p class="text-xs text-gray-500 uppercase mt-0.5" x-text="selectedLayanan"></p>
+                            <p class="text-[11px] text-gray-600 mt-1"><i class="fa-regular fa-calendar-check mr-1.5"></i> Tiba: <span x-text="selectedEtd"></span></p>
                         </div>
                     </div>
                     <div class="text-right">
-                        <span class="text-[10px] text-gray-400 font-medium block">Total Ongkir</span>
-                        <p class="font-black text-blue-700 text-lg">Rp <span x-text="selectedOngkir.toLocaleString('id-ID')"></span></p>
+                        <span class="text-[10px] text-gray-400 uppercase tracking-widest block mb-0.5">Total Ongkir</span>
+                        <p class="font-bold text-black text-lg">Rp <span x-text="selectedOngkir.toLocaleString('id-ID')"></span></p>
                     </div>
                 </div>
 
-               <!-- ========================================================================================= -->
-                <!-- 🔥 PILIHAN METODE PEMBAYARAN (POTONG SALDO, DANA BINDING, DANA PG, DLL) 🔥 -->
                 <!-- ========================================================================================= -->
-                <div x-show="tipePesanan !== 'cod'" x-transition class="mt-6 pt-5 border-t border-blue-200/60" x-cloak>
-                    <h3 class="text-xs font-extrabold text-gray-700 uppercase tracking-wider mb-3 flex items-center">
-                        <i class="fa-solid fa-wallet text-indigo-600 mr-2"></i> Pilih Metode Pembayaran
+                <!-- 🔥 PILIHAN METODE PEMBAYARAN 🔥 -->
+                <!-- ========================================================================================= -->
+                <div x-show="tipePesanan !== 'cod'" x-transition class="mt-6 pt-5 border-t border-gray-200" x-cloak>
+                    <h3 class="text-xs font-medium text-black uppercase tracking-widest mb-4">
+                        Pilih Metode Pembayaran
                     </h3>
 
-                    <div class="space-y-2.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+                    <div class="space-y-3 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
                         @foreach($metodePembayaran as $bayar)
                         <div @click="selectedPayment = '{{ $bayar['id'] }}'"
-                             class="p-3.5 bg-white border rounded-xl cursor-pointer transition-all flex items-center justify-between"
-                             :class="selectedPayment === '{{ $bayar['id'] }}' ? 'border-indigo-600 ring-1 ring-indigo-600 shadow-sm bg-indigo-50/30' : 'border-gray-200 hover:border-gray-300'">
-                            <div class="flex items-center gap-3">
-                                <input type="radio" name="payment_radio" class="w-4 h-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 pointer-events-none"
+                             class="p-4 bg-white border rounded-md cursor-pointer transition-all flex items-center justify-between"
+                             :class="selectedPayment === '{{ $bayar['id'] }}' ? 'border-black ring-1 ring-black shadow-sm' : 'border-gray-300 hover:border-gray-400'">
+                            <div class="flex items-center gap-3.5">
+                                <input type="radio" name="payment_radio" class="w-4 h-4 text-black focus:ring-black border-gray-300 pointer-events-none"
                                        :checked="selectedPayment === '{{ $bayar['id'] }}'">
 
-                                <!-- ICON / LOGO PAYMENT GATEWAY -->
-                                <div class="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center shrink-0 p-1">
+                                <!-- ICON / LOGO PAYMENT GATEWAY (Grayscale applied) -->
+                                <div class="w-10 h-10 rounded bg-gray-50 flex items-center justify-center shrink-0 p-1 border border-gray-100">
                                     @if(str_contains(strtolower($bayar['id']), 'dana'))
-                                        <img src="https://tokosancaka.com/public/assets/dana.png" alt="DANA" class="w-full h-full object-contain">
+                                        <img src="https://tokosancaka.com/public/assets/dana.png" alt="DANA" class="w-full h-full object-contain grayscale">
                                     @elseif(str_contains(strtolower($bayar['id']), 'doku'))
-                                        <img src="https://tokosancaka.com/public/assets/doku.png" alt="DOKU" class="w-full h-full object-contain">
+                                        <img src="https://tokosancaka.com/public/assets/doku.png" alt="DOKU" class="w-full h-full object-contain grayscale">
                                     @elseif(str_contains(strtolower($bayar['id']), 'tripay'))
-                                        <img src="https://tokosancaka.com/public/assets/tripay.png" alt="TRIPAY" class="w-full h-full object-contain">
+                                        <img src="https://tokosancaka.com/public/assets/tripay.png" alt="TRIPAY" class="w-full h-full object-contain grayscale">
                                     @else
-                                        <i class="{{ $bayar['icon'] }} text-xl"></i>
+                                        <i class="{{ $bayar['icon'] }} text-lg text-gray-600"></i>
                                     @endif
                                 </div>
 
                                 <div>
-                                    <p class="font-bold text-gray-900 text-xs sm:text-sm">{{ $bayar['nama'] }}</p>
-                                    <p class="text-[11px] text-gray-500">{{ $bayar['deskripsi'] }}</p>
+                                    <p class="font-medium text-black text-sm uppercase">{{ $bayar['nama'] }}</p>
+                                    <p class="text-[11px] text-gray-500 mt-0.5 uppercase">{{ $bayar['deskripsi'] }}</p>
                                 </div>
                             </div>
-                            <span x-show="selectedPayment === '{{ $bayar['id'] }}'" class="text-indigo-600 text-sm font-bold"><i class="fa-solid fa-check-circle"></i></span>
                         </div>
                         @endforeach
                     </div>
 
                     <!-- ========================================================================= -->
-                    <!-- 🔥 KOTAK INFORMASI REAL-TIME & CEK SALDO / TOKEN DANA 🔥 -->
+                    <!-- KOTAK INFORMASI -->
                     <!-- ========================================================================= -->
 
                     <!-- 1. KOTAK INFORMASI KHUSUS POTONG SALDO -->
-                    <div x-show="selectedPayment === 'potong_saldo'" x-transition class="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900" x-cloak>
-                        <div class="flex items-center justify-between mb-1">
-                            <span class="font-bold flex items-center"><i class="fa-solid fa-wallet text-blue-600 mr-1.5"></i> Saldo Wallet Anda Saat Ini:</span>
-                            <span class="font-black text-sm text-blue-700">Rp {{ number_format(auth()->user()->saldo ?? 0, 0, ',', '.') }}</span>
+                    <div x-show="selectedPayment === 'potong_saldo'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs text-black bg-gray-50" x-cloak>
+                        <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
+                            <span class="font-medium text-gray-600">SALDO WALLET SAAT INI:</span>
+                            <span class="font-bold text-black text-sm">Rp {{ number_format(auth()->user()->saldo ?? 0, 0, ',', '.') }}</span>
                         </div>
                         <template x-if="selectedOngkir > {{ auth()->user()->saldo ?? 0 }}">
-                            <div class="mt-2 p-2 bg-red-100 border border-red-300 text-red-700 rounded-lg font-semibold flex items-center gap-1.5 animate-pulse">
-                                <i class="fa-solid fa-triangle-exclamation text-red-600 text-sm shrink-0"></i>
+                            <div class="mt-2 text-red-600 font-medium flex items-start gap-2">
+                                <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
                                 <span>Saldo tidak mencukupi untuk bayar ongkir ini! Silahkan isi ulang atau pilih metode lain.</span>
                             </div>
                         </template>
                         <template x-if="selectedOngkir <= {{ auth()->user()->saldo ?? 0 }}">
-                            <p class="text-[11px] text-green-700 font-medium mt-1"><i class="fa-solid fa-circle-check text-green-600 mr-1"></i> Saldo mencukupi. Saldo akan otomatis terpotong instan setelah menekan tombol submit.</p>
+                            <p class="text-gray-600 mt-1">Saldo mencukupi. Saldo akan dipotong otomatis setelah menekan submit.</p>
                         </template>
                     </div>
 
                     <!-- 2. KOTAK INFORMASI KHUSUS DANA BINDING -->
-                    <div x-show="selectedPayment === 'dana_binding'" x-transition class="mt-3 p-4 bg-sky-50 border border-sky-200 rounded-xl text-xs text-sky-900" x-cloak>
+                    <div x-show="selectedPayment === 'dana_binding'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs bg-gray-50" x-cloak>
                         @if(!empty(auth()->user()->dana_token))
-                            <div class="flex items-center gap-2 text-green-700 font-bold">
-                                <i class="fa-solid fa-circle-check text-green-600 text-base shrink-0"></i>
-                                <span>Akun DANA Anda sudah terhubung! Pembayaran ongkir akan dipotong instan tanpa perlu repot buka aplikasi.</span>
+                            <div class="flex items-start gap-2 text-black">
+                                <i class="fa-solid fa-circle-check text-gray-800 text-sm mt-0.5"></i>
+                                <span>Akun DANA terhubung. Pembayaran ongkir akan dipotong instan.</span>
                             </div>
                         @else
-                            <div class="p-2.5 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-lg font-semibold flex items-center gap-2">
-                                <i class="fa-solid fa-triangle-exclamation text-yellow-600 text-base shrink-0"></i>
+                            <div class="text-red-600 font-medium flex items-start gap-2">
+                                <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
                                 <div>
-                                    <p>Akun DANA Anda belum diikat (bind)!</p>
-                                    <span class="text-[11px] font-normal text-yellow-900">Silahkan hubungkan akun DANA terlebih dahulu di menu pengaturan profil, atau pilih metode "DANA Payment Gateway".</span>
+                                    <p>AKUN DANA BELUM DIIKAT (BIND)!</p>
+                                    <span class="text-[11px] font-normal text-red-500 block mt-1">Silahkan hubungkan akun di pengaturan profil, atau pilih metode "DANA Payment Gateway".</span>
                                 </div>
                             </div>
                         @endif
                     </div>
 
-                    <!-- 3. KOTAK INFORMASI KHUSUS PAYMENT GATEWAY (DOKU, DANA PG, TRIPAY) -->
-                    <div x-show="selectedPayment && selectedPayment !== 'potong_saldo' && selectedPayment !== 'dana_binding'" x-transition class="mt-3 p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl text-xs text-indigo-900 flex items-center gap-2.5" x-cloak>
-                        <i class="fa-solid fa-shield-halved text-indigo-600 text-lg shrink-0"></i>
+                    <!-- 3. KOTAK INFORMASI KHUSUS PAYMENT GATEWAY -->
+                    <div x-show="selectedPayment && selectedPayment !== 'potong_saldo' && selectedPayment !== 'dana_binding'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs bg-gray-50 flex items-start gap-3" x-cloak>
+                        <i class="fa-solid fa-shield-halved text-gray-500 text-base mt-0.5"></i>
                         <div>
-                            <span class="font-bold block text-indigo-950">Pembayaran Aman & Verifikasi Otomatis</span>
-                            <span class="text-gray-600">Setelah klik submit, Anda akan diarahkan ke halaman pembayaran resmi untuk menyelesaikan transaksi. Resi AWB logistik akan terbit otomatis setelah pembayaran lunas 24/7.</span>
+                            <span class="font-bold block text-black mb-1">PEMBAYARAN AMAN</span>
+                            <span class="text-gray-500 leading-relaxed">Anda akan diarahkan ke halaman pembayaran resmi. Resi AWB logistik akan terbit otomatis setelah pembayaran lunas 24/7.</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- TOMBOL SUBMIT PESANAN -->
-                <div class="mt-6">
+                <div class="mt-6 pt-5 border-t border-gray-200">
                     <button type="submit"
                             :disabled="(tipePesanan !== 'cod' && (!selectedPayment || (selectedPayment === 'potong_saldo' && selectedOngkir > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) || selectedPayment === 'dana_binding' @endif))"
-                            class="w-full py-4 rounded-xl font-extrabold text-white transition shadow-xl text-base tracking-wide flex justify-center items-center gap-2"
-                            :class="(tipePesanan === 'cod' || (selectedPayment && !(selectedPayment === 'potong_saldo' && selectedOngkir > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) && selectedPayment !== 'dana_binding' @endif)) ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25 cursor-pointer' : 'bg-gray-300 cursor-not-allowed opacity-75'">
-                        <span>SUBMIT KIRIM SEKARANG</span>
-                        <i class="fa-solid fa-paper-plane"></i>
+                            class="w-full py-4 rounded-md font-bold text-white transition-all text-sm tracking-widest flex justify-center items-center gap-3 uppercase"
+                            :class="(tipePesanan === 'cod' || (selectedPayment && !(selectedPayment === 'potong_saldo' && selectedOngkir > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) && selectedPayment !== 'dana_binding' @endif)) ? 'bg-black hover:bg-gray-800 cursor-pointer shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'">
+                        <span>Submit Kirim Sekarang</span>
+                        <i class="fa-solid fa-arrow-right"></i>
                     </button>
-                    <p x-show="tipePesanan !== 'cod' && !selectedPayment" class="text-[11px] text-red-500 font-semibold text-center mt-2 animate-pulse">* Mohon pilih metode pembayaran di atas untuk melanjutkan</p>
+                    <p x-show="tipePesanan !== 'cod' && !selectedPayment" class="text-[10px] text-gray-500 font-medium text-center mt-3 uppercase tracking-widest">* Mohon pilih metode pembayaran</p>
                 </div>
             </div>
 
@@ -456,7 +454,7 @@
                 <div x-show="showModal"
                      x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
                      x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                     class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" @click="showModal = false"></div>
+                     class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" @click="showModal = false"></div>
 
                 <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
@@ -464,36 +462,36 @@
                 <div x-show="showModal"
                      x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
                      x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                     class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full border border-gray-100">
+                     class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl w-full border border-gray-200">
 
                     <!-- Modal Header -->
-                    <div class="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                    <div class="bg-white px-6 py-5 border-b border-gray-200 flex items-center justify-between">
                         <div>
-                            <h3 class="text-lg font-black text-gray-800" id="modal-title"><i class="fa-solid fa-truck-fast text-blue-600 mr-2"></i> Pilih Jasa Ekspedisi</h3>
-                            <p class="text-xs text-gray-500 mt-0.5">Tarif real-time langsung dari server logistik resmi</p>
+                            <h3 class="text-base font-bold text-black uppercase tracking-wide" id="modal-title">Pilih Ekspedisi</h3>
+                            <p class="text-xs text-gray-500 mt-1">Tarif real-time dari server logistik resmi</p>
                         </div>
-                        <button type="button" @click="showModal = false" class="text-gray-400 hover:text-gray-600 bg-white hover:bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition border border-gray-200">
-                            <i class="fa-solid fa-xmark"></i>
+                        <button type="button" @click="showModal = false" class="text-gray-400 hover:text-black transition">
+                            <i class="fa-solid fa-xmark text-lg"></i>
                         </button>
                     </div>
 
                     <!-- Modal Body (List Ekspedisi) -->
-                    <div class="p-6 max-h-[60vh] overflow-y-auto space-y-3 custom-scrollbar">
+                    <div class="p-6 max-h-[60vh] overflow-y-auto space-y-3 custom-scrollbar bg-gray-50">
                         <template x-for="(ongkir, index) in ongkirList" :key="index">
                             <div @click="tempSelected = ongkir"
-                                 class="p-4 border rounded-xl cursor-pointer transition-all duration-200 flex flex-col justify-between gap-2.5"
-                                 :class="tempSelected && tempSelected.kode_layanan === ongkir.kode_layanan ? 'border-blue-600 bg-blue-50/70 shadow-md ring-1 ring-blue-600' : 'border-gray-200 hover:border-blue-300 bg-white'">
+                                 class="p-4 border rounded-md cursor-pointer transition-all duration-200 flex flex-col justify-between gap-3 bg-white"
+                                 :class="tempSelected && tempSelected.kode_layanan === ongkir.kode_layanan ? 'border-black ring-1 ring-black shadow-sm' : 'border-gray-200 hover:border-gray-300'">
 
                                 <div class="flex items-center justify-between">
-                                    <div class="flex items-center gap-3.5">
-                                        <input type="radio" name="temp_kurir_radio" class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300 pointer-events-none"
+                                    <div class="flex items-center gap-4">
+                                        <input type="radio" name="temp_kurir_radio" class="w-4 h-4 text-black focus:ring-black border-gray-300 pointer-events-none"
                                                :checked="tempSelected && tempSelected.kode_layanan === ongkir.kode_layanan">
 
-                                        <!-- Logo Ekspedisi dari Helper -->
-                                        <div class="w-12 h-12 bg-white rounded-xl border border-gray-100 flex items-center justify-center p-1.5 shadow-sm shrink-0 overflow-hidden relative">
+                                        <!-- Logo Ekspedisi -->
+                                        <div class="w-12 h-12 rounded border border-gray-100 flex items-center justify-center p-1.5 shrink-0 bg-gray-50">
                                             <template x-if="ongkir.logo_url">
                                                 <img :src="ongkir.logo_url" :alt="ongkir.kurir"
-                                                     class="max-w-full max-h-full object-contain"
+                                                     class="max-w-full max-h-full object-contain grayscale opacity-80"
                                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                                             </template>
                                             <i class="fa-solid fa-truck-fast text-gray-400 text-lg" style="display: none;"></i>
@@ -504,38 +502,37 @@
 
                                         <div>
                                             <div class="flex items-center gap-2">
-                                                <p class="font-extrabold text-gray-900 text-sm" x-text="ongkir.kurir"></p>
-                                                <span x-show="ongkir.is_pickup" class="text-[10px] bg-green-100 text-green-700 font-bold px-1.5 py-0.5 rounded">Free Pickup</span>
+                                                <p class="font-bold text-black text-sm uppercase" x-text="ongkir.kurir"></p>
+                                                <span x-show="ongkir.is_pickup" class="text-[9px] border border-black text-black font-bold px-1.5 py-0.5 rounded-sm uppercase tracking-wider">Pickup</span>
                                             </div>
-                                            <p class="text-xs font-semibold text-gray-600 mt-0.5" x-text="ongkir.layanan"></p>
+                                            <p class="text-xs text-gray-500 uppercase mt-1" x-text="ongkir.layanan"></p>
                                         </div>
                                     </div>
 
                                     <div class="text-right">
-                                        <p class="font-black text-blue-700 text-base">Rp <span x-text="ongkir.harga.toLocaleString('id-ID')"></span></p>
-                                        <span x-show="qty > 1" class="text-[10px] text-gray-400 block" x-text="'(@ Rp ' + ongkir.harga_satuan.toLocaleString('id-ID') + ')'"></span>
+                                        <p class="font-bold text-black text-base">Rp <span x-text="ongkir.harga.toLocaleString('id-ID')"></span></p>
+                                        <span x-show="qty > 1" class="text-[10px] text-gray-400 block mt-0.5" x-text="'(@ Rp ' + ongkir.harga_satuan.toLocaleString('id-ID') + ')'"></span>
                                     </div>
                                 </div>
 
                                 <!-- Waktu Estimasi -->
-                                <div class="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-2.5 mt-0.5 pl-7">
-                                    <span><i class="fa-regular fa-clock text-gray-400 mr-1"></i> Durasi: <strong class="text-gray-700" x-text="ongkir.estimasi"></strong></span>
-                                    <span><i class="fa-regular fa-calendar-check text-green-500 mr-1"></i> Tiba: <strong class="text-gray-700" x-text="ongkir.etd"></strong></span>
+                                <div class="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-3 mt-1 pl-8">
+                                    <span>Durasi: <strong class="text-black font-medium" x-text="ongkir.estimasi"></strong></span>
+                                    <span>Tiba: <strong class="text-black font-medium" x-text="ongkir.etd"></strong></span>
                                 </div>
                             </div>
                         </template>
                     </div>
 
                     <!-- Modal Footer -->
-                    <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3">
-                        <button type="button" @click="showModal = false" class="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-bold text-sm hover:bg-gray-100 transition">
-                            Batal
+                    <div class="bg-white px-6 py-5 border-t border-gray-200 flex items-center justify-end gap-4">
+                        <button type="button" @click="showModal = false" class="px-5 py-2.5 rounded-md text-black font-medium text-sm hover:bg-gray-100 transition border border-transparent">
+                            BATAL
                         </button>
                         <button type="button" @click="applySelection()" :disabled="!tempSelected"
-                                class="px-6 py-2.5 rounded-xl font-bold text-white text-sm transition shadow-md flex items-center gap-2"
-                                :class="tempSelected ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20 cursor-pointer' : 'bg-gray-300 cursor-not-allowed opacity-75'">
-                            <span>Pilih & Gunakan Layanan Ini</span>
-                            <i class="fa-solid fa-arrow-right"></i>
+                                class="px-6 py-2.5 rounded-md font-medium text-white text-sm transition tracking-widest uppercase flex items-center gap-2"
+                                :class="tempSelected ? 'bg-black hover:bg-gray-800 cursor-pointer shadow-sm' : 'bg-gray-200 text-gray-400 cursor-not-allowed'">
+                            <span>Gunakan Layanan</span>
                         </button>
                     </div>
 
@@ -684,7 +681,7 @@ document.addEventListener('alpine:init', () => {
                 } finally {
                     this.isLoading = false;
                 }
-            }
+            },
 
         // Terapkan Pilihan Ekspedisi dari Modal ke Layar Utama
         applySelection() {
@@ -849,9 +846,10 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
-.custom-scrollbar::-webkit-scrollbar { width: 5px; }
-.custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+/* Grayscale Scrollbar */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #fafafa; border-radius: 8px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 8px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
 </style>
 @endsection
