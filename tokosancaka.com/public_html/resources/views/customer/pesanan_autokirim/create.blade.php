@@ -7,7 +7,7 @@
         <p class="text-gray-500 mt-2 text-sm">Isi detail pengiriman dengan cepat, akurat, dan dapatkan tarif terbaik dari server logistik.</p>
     </div>
 
-    <!-- Alert Notifikasi Berhasil (Grayscale/Clean) -->
+    <!-- Alert Notifikasi Berhasil -->
     @if(session('success'))
         <div class="p-4 mb-6 text-sm text-gray-800 bg-gray-50 rounded-md border border-gray-300 flex items-center gap-3 shadow-sm">
             <i class="fa-solid fa-circle-check text-lg text-black"></i>
@@ -84,7 +84,6 @@
                         </label>
                         <textarea id="pengirim_alamat" name="pengirim_alamat" rows="2" required minlength="15" placeholder="Contoh: JL RONGGOWARSITO NO 15 RT 01 RW 02" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">{{ old('pengirim_alamat') }}</textarea>
 
-                        <!-- PESAN PERINGATAN MERAH (Dipertahankan sesuai instruksi) -->
                         <div class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700">
                             <p class="text-[11px] font-bold flex items-start gap-1.5 leading-tight">
                                 <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
@@ -148,7 +147,6 @@
                         </label>
                         <textarea id="penerima_alamat" name="penerima_alamat" rows="2" required minlength="15" placeholder="Contoh: PERUM GRAHA KEBRAON REGENCY 2 BLOK A NO 3 RT 04 RW 05" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">{{ old('penerima_alamat') }}</textarea>
 
-                        <!-- PESAN PERINGATAN MERAH -->
                         <div class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700">
                             <p class="text-[11px] font-bold flex items-start gap-1.5 leading-tight">
                                 <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
@@ -169,7 +167,7 @@
 
                 <div class="space-y-5">
 
-                    <!-- DINAMIS: Tipe Pesanan (Reguler / COD / Cashless) -->
+                    <!-- DINAMIS: Tipe Pesanan -->
                     <div class="p-4 border border-gray-200 rounded-md">
                         <label class="block text-xs font-medium text-gray-700 mb-2.5">TIPE PESANAN</label>
                         <div class="grid grid-cols-3 gap-2">
@@ -217,7 +215,7 @@
                         </div>
                     </div>
 
-                    <!-- DINAMIS: Kategori Barang -->
+                    <!-- Kategori Barang -->
                     <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1.5">KATEGORI BARANG</label>
                         <select name="kategori_barang" x-model="kategoriBarang" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white">
@@ -247,7 +245,6 @@
                             <input type="number" name="berat_gram" x-model="berat" min="1" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white">
                         </div>
 
-                        <!-- DINAMIS: Jumlah Koli / Barang -->
                         <div>
                             <label class="block text-xs font-medium text-gray-700 mb-1.5">JUMLAH KOLI / PCS</label>
                             <input type="number" name="qty" x-model="qty" min="1" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white text-center">
@@ -263,7 +260,6 @@
                             </div>
                         </div>
 
-                        <!-- DINAMIS: Metode Serah Terima -->
                         <div>
                             <label class="block text-xs font-medium text-gray-700 mb-1.5">METODE SERAH TERIMA</label>
                             <select name="is_sender_pp" x-model="isSenderPp" class="uppercase w-full h-[42px] border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-3 bg-white text-gray-800">
@@ -321,9 +317,10 @@
                 <!-- Tampilan Card Ringkasan -->
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-gray-50 rounded border border-gray-200 flex items-center justify-center p-1.5 shrink-0">
+                        <div class="w-12 h-12 bg-white rounded border border-gray-200 flex items-center justify-center p-1.5 shrink-0">
+                            <!-- HAPUS GRAYSCALE DARI SINI -->
                             <template x-if="selectedLogoUrl">
-                                <img :src="selectedLogoUrl" :alt="selectedKurir" class="max-w-full max-h-full object-contain grayscale opacity-80">
+                                <img :src="selectedLogoUrl" :alt="selectedKurir" class="max-w-full max-h-full object-contain">
                             </template>
                             <template x-if="!selectedLogoUrl">
                                 <i class="fa-solid fa-truck-fast text-gray-400 text-lg"></i>
@@ -342,7 +339,7 @@
                 </div>
 
                 <!-- ========================================================================================= -->
-                <!-- 🔥 PILIHAN METODE PEMBAYARAN 🔥 -->
+                <!-- PILIHAN METODE PEMBAYARAN -->
                 <!-- ========================================================================================= -->
                 <div x-show="tipePesanan !== 'cod'" x-transition class="mt-6 pt-5 border-t border-gray-200" x-cloak>
                     <h3 class="text-xs font-medium text-black uppercase tracking-widest mb-4">
@@ -358,16 +355,16 @@
                                 <input type="radio" name="payment_radio" class="w-4 h-4 text-black focus:ring-black border-gray-300 pointer-events-none"
                                        :checked="selectedPayment === '{{ $bayar['id'] }}'">
 
-                                <!-- ICON / LOGO PAYMENT GATEWAY (Grayscale applied) -->
-                                <div class="w-10 h-10 rounded bg-gray-50 flex items-center justify-center shrink-0 p-1 border border-gray-100">
+                                <!-- HAPUS GRAYSCALE DARI SINI JUGA -->
+                                <div class="w-10 h-10 rounded bg-white flex items-center justify-center shrink-0 p-1 border border-gray-100 shadow-sm">
                                     @if(str_contains(strtolower($bayar['id']), 'dana'))
-                                        <img src="https://tokosancaka.com/public/assets/dana.png" alt="DANA" class="w-full h-full object-contain grayscale">
+                                        <img src="https://tokosancaka.com/public/assets/dana.png" alt="DANA" class="w-full h-full object-contain">
                                     @elseif(str_contains(strtolower($bayar['id']), 'doku'))
-                                        <img src="https://tokosancaka.com/public/assets/doku.png" alt="DOKU" class="w-full h-full object-contain grayscale">
+                                        <img src="https://tokosancaka.com/public/assets/doku.png" alt="DOKU" class="w-full h-full object-contain">
                                     @elseif(str_contains(strtolower($bayar['id']), 'tripay'))
-                                        <img src="https://tokosancaka.com/public/assets/tripay.png" alt="TRIPAY" class="w-full h-full object-contain grayscale">
+                                        <img src="https://tokosancaka.com/public/assets/tripay.png" alt="TRIPAY" class="w-full h-full object-contain">
                                     @else
-                                        <i class="{{ $bayar['icon'] }} text-lg text-gray-600"></i>
+                                        <i class="{{ $bayar['icon'] }} text-lg"></i>
                                     @endif
                                 </div>
 
@@ -380,11 +377,7 @@
                         @endforeach
                     </div>
 
-                    <!-- ========================================================================= -->
                     <!-- KOTAK INFORMASI -->
-                    <!-- ========================================================================= -->
-
-                    <!-- 1. KOTAK INFORMASI KHUSUS POTONG SALDO -->
                     <div x-show="selectedPayment === 'potong_saldo'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs text-black bg-gray-50" x-cloak>
                         <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
                             <span class="font-medium text-gray-600">SALDO WALLET SAAT INI:</span>
@@ -401,7 +394,6 @@
                         </template>
                     </div>
 
-                    <!-- 2. KOTAK INFORMASI KHUSUS DANA BINDING -->
                     <div x-show="selectedPayment === 'dana_binding'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs bg-gray-50" x-cloak>
                         @if(!empty(auth()->user()->dana_token))
                             <div class="flex items-start gap-2 text-black">
@@ -419,7 +411,6 @@
                         @endif
                     </div>
 
-                    <!-- 3. KOTAK INFORMASI KHUSUS PAYMENT GATEWAY -->
                     <div x-show="selectedPayment && selectedPayment !== 'potong_saldo' && selectedPayment !== 'dana_binding'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs bg-gray-50 flex items-start gap-3" x-cloak>
                         <i class="fa-solid fa-shield-halved text-gray-500 text-base mt-0.5"></i>
                         <div>
@@ -445,7 +436,7 @@
         </div>
 
         <!-- ========================================================================= -->
-        <!-- MODAL POP-UP PILIH EKSPEDISI (ALPINE.JS CONTROLLER) -->
+        <!-- MODAL POP-UP PILIH EKSPEDISI -->
         <!-- ========================================================================= -->
         <div x-show="showModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true" x-cloak>
             <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
@@ -487,11 +478,11 @@
                                         <input type="radio" name="temp_kurir_radio" class="w-4 h-4 text-black focus:ring-black border-gray-300 pointer-events-none"
                                                :checked="tempSelected && tempSelected.kode_layanan === ongkir.kode_layanan">
 
-                                        <!-- Logo Ekspedisi -->
-                                        <div class="w-12 h-12 rounded border border-gray-100 flex items-center justify-center p-1.5 shrink-0 bg-gray-50">
+                                        <!-- HAPUS GRAYSCALE DARI MODAL LIST EKSPEDISI JUGA -->
+                                        <div class="w-12 h-12 rounded border border-gray-100 flex items-center justify-center p-1.5 shrink-0 bg-white shadow-sm">
                                             <template x-if="ongkir.logo_url">
                                                 <img :src="ongkir.logo_url" :alt="ongkir.kurir"
-                                                     class="max-w-full max-h-full object-contain grayscale opacity-80"
+                                                     class="max-w-full max-h-full object-contain"
                                                      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                                             </template>
                                             <i class="fa-solid fa-truck-fast text-gray-400 text-lg" style="display: none;"></i>
@@ -586,7 +577,7 @@ document.addEventListener('alpine:init', () => {
         selectedServiceCode: '',
         selectedLogoUrl: '',
         selectedEtd: '',
-        selectedPayment: '',      // 🔥 Menampung Metode Pembayaran Terpilih
+        selectedPayment: '',      // Menampung Metode Pembayaran Terpilih
 
         async searchAddress(type) {
             let query = type === 'sender' ? this.senderQuery : this.receiverQuery;
@@ -671,7 +662,7 @@ document.addEventListener('alpine:init', () => {
                     let result = await response.json();
                     if(result.success) {
                         this.ongkirList = result.data;
-                        this.showModal = true; // Modal otomatis terbuka menampilkan list tarif dari Autokirim
+                        this.showModal = true;
                     } else {
                         alert("Gagal memuat tarif kurir: " + result.message);
                     }
@@ -700,7 +691,7 @@ document.addEventListener('alpine:init', () => {
 
             let errors = [];
 
-            // 🔥 Validasi Batas Karakter ANTERAJA
+            // Validasi Batas Karakter ANTERAJA
             if (kurir.includes('ANTERAJA')) {
                 if (pengirimNama.length > 50) errors.push("- Nama Pengirim maksimal 50 karakter");
                 if (penerimaNama.length > 50) errors.push("- Nama Penerima maksimal 50 karakter");
@@ -711,9 +702,8 @@ document.addEventListener('alpine:init', () => {
                 if (deskripsiBarang.length > 50) errors.push("- Deskripsi Barang maksimal 50 karakter");
             }
 
-            // 🔥 Validasi Batas Karakter JNE
+            // Validasi Batas Karakter JNE
             else if (kurir.includes('JNE')) {
-                // Menggunakan aturan terketat berdasarkan limit JNE dari parameter yang ada
                 if (pengirimNama.length > 30) errors.push("- Nama Pengirim maksimal 30 karakter (Aturan JNE)");
                 if (pengirimHp.length > 30) errors.push("- No HP Pengirim maksimal 30 karakter");
                 if (pengirimAlamat.length > 85) errors.push("- Alamat Pengirim maksimal 85 karakter (Aturan Ketat JNE)");
@@ -740,8 +730,7 @@ document.addEventListener('alpine:init', () => {
             this.showModal           = false; // Tutup Modal
         },
 
-        // Tambahkan variable ini ke dalam state Alpine:
-        jenisCod: 'cod_barang', // Default COD pilihan
+        jenisCod: 'cod_barang',
 
        // Validasi Form sebelum kirim (DENGAN PROTEKSI SALDO & TOKEN DANA)
         validateForm(e) {
@@ -754,14 +743,12 @@ document.addEventListener('alpine:init', () => {
             // Jika BUKAN COD, wajib melakukan validasi saldo dan gateway pembayaran
             if (this.tipePesanan !== 'cod') {
 
-                // Pastikan metode pembayaran digital sudah dipilih
                 if(!this.selectedPayment) {
                     e.preventDefault();
                     alert("Silahkan pilih metode pembayaran terlebih dahulu!");
                     return;
                 }
 
-                // 🔥 Validasi Ekstra untuk Potong Saldo
                 if(this.selectedPayment === 'potong_saldo') {
                     let userSaldo = {{ auth()->user()->saldo ?? 0 }};
                     if(this.selectedOngkir > userSaldo) {
@@ -771,7 +758,6 @@ document.addEventListener('alpine:init', () => {
                     }
                 }
 
-                // 🔥 Validasi Ekstra untuk DANA Binding
                 @if(empty(auth()->user()->dana_token))
                 if(this.selectedPayment === 'dana_binding') {
                     e.preventDefault();
@@ -799,7 +785,6 @@ document.addEventListener('DOMContentLoaded', function() {
         let el = document.getElementById(id);
         if(el) {
             el.addEventListener('input', function() {
-                // Murni huruf dan spasi saja (angka dan karakter aneh otomatis terhapus)
                 let val = this.value.replace(/[^a-zA-Z\s]/g, '');
                 this.value = val.toUpperCase();
             });
@@ -812,14 +797,11 @@ document.addEventListener('DOMContentLoaded', function() {
         let el = document.getElementById(id);
         if(el) {
             el.addEventListener('input', function() {
-                // Hapus semua selain angka (strip, spasi, plus, huruf, dll)
                 let val = this.value.replace(/\D/g, '');
 
-                // Ubah awalan 62 menjadi 0
                 if(val.startsWith('62')) {
                     val = '0' + val.substring(2);
                 }
-                // Tambahkan 0 jika user mulai mengetik tanpa 0
                 else if(val.length > 0 && !val.startsWith('0')) {
                     val = '0' + val;
                 }
@@ -835,7 +817,6 @@ document.addEventListener('DOMContentLoaded', function() {
         let el = document.getElementById(id);
         if(el) {
             el.addEventListener('input', function() {
-                // Murni Huruf, Angka, dan Spasi (Koma, titik, garis miring, strip DIHAPUS)
                 let val = this.value.replace(/[^a-zA-Z0-9\s]/g, '');
                 this.value = val.toUpperCase();
             });
