@@ -401,7 +401,7 @@ class PesananAutokirimController extends Controller
         return response()->json($data);
     }
 
-    public function cekOngkirAjax(Request $request)
+   public function cekOngkirAjax(Request $request)
     {
         $origin_id      = $request->origin_id;
         $destination_id = $request->destination_id;
@@ -411,9 +411,6 @@ class PesananAutokirimController extends Controller
 
         // Ambil langsung kode komoditi unik dari frontend
         $commodityCode  = $request->input('kategori_barang', 'THT001');
-        $pengirimNama   = $request->input('pengirim_nama', 'Pengirim Default');
-        $pengirimHp     = $request->input('pengirim_hp', '0800000000');
-        $pengirimAlamat = $request->input('pengirim_alamat', 'Alamat Default');
 
         if (empty($origin_id) || empty($destination_id)) {
             return response()->json(['success' => false, 'message' => 'Wilayah asal atau tujuan tidak valid.']);
@@ -424,31 +421,9 @@ class PesananAutokirimController extends Controller
             $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
             $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
-            $pickupCode = "KM001";
-
             // ========================================================
-            // 1. UPDATE PICKUP POINT DINAMIS SEBELUM CEK ONGKIR
-            // ========================================================
-            $updatePpPayload = [
-                'name'              => $pengirimNama,
-                'phone'             => $pengirimHp,
-                'district_id'       => (int) $origin_id,
-                'address'           => $pengirimAlamat,
-                'longitude'         => "",
-                'latitude'          => "",
-                'pickup_point_code' => $pickupCode
-            ];
-
-            Log::info("LOG LOG: [API AUTOKIRIM - UPDATE PICKUP POINT] REQUEST:", $updatePpPayload);
-
-            $updatePpResponse = Http::timeout(15)
-                ->withToken($token)
-                ->post("{$baseUrl}/api/pickup-point/update", $updatePpPayload);
-
-            Log::info("LOG LOG: [API AUTOKIRIM - UPDATE PICKUP POINT] RESPONSE:", $updatePpResponse->json() ?? []);
-
-            // ========================================================
-            // 2. CHECK PRICE DENGAN PAYLOAD SESUAI DOKUMENTASI V2
+            // CHECK PRICE DENGAN PAYLOAD SESUAI DOKUMENTASI V2
+            // Parameter pickup_point_code dihapus agar sistem menggunakan origin_id
             // ========================================================
             $payload = [
                 'origin_id'         => (int) $origin_id,
@@ -457,7 +432,6 @@ class PesananAutokirimController extends Controller
                 'length'            => $request->panjang_cm ? (int) $request->panjang_cm : 1,
                 'width'             => $request->lebar_cm ? (int) $request->lebar_cm : 1,
                 'height'            => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
-                'pickup_point_code' => $pickupCode,
                 'is_sender_pp'      => (int) $isSenderPp,
                 'additional'        => [
                     'commodity'     => $commodityCode
