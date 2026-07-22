@@ -478,7 +478,7 @@ class PesananAutokirimController extends Controller
 
                     if ($paymentMethod === 'potong_saldo') {
                         // [FITUR IDEMPOTENCY]: Pessimistic Lock untuk mengunci baris user agar saldo tidak minus/dobel potong jika ada request paralel
-                        $user = User::where('id', auth()->id())->lockForUpdate()->first();
+                        $user = User::lockForUpdate()->find(auth()->id());
 
                         if (!$user) {
                             throw new Exception('Anda harus login terlebih dahulu untuk menggunakan metode Potong Saldo.');
@@ -939,7 +939,7 @@ class PesananAutokirimController extends Controller
                 if (in_array(strtolower($status), ['batal', 'gagal', 'cancelled']) && !in_array(strtolower($statusLama), ['batal', 'gagal', 'cancelled'])) {
                     if ($pesanan->metode_pembayaran === 'potong_saldo') {
                         // Kunci juga row user saat melakukan increment (refund)
-                        $userToRefund = User::where('id', $pesanan->user_id)->lockForUpdate()->first();
+                        $userToRefund = User::lockForUpdate()->find($pesanan->user_id);
                         if ($userToRefund) {
                             $userToRefund->increment('saldo', $pesanan->ongkir);
                             Log::info("LOG: [WEBHOOK REFUND] Saldo dikembalikan sebesar Rp {$pesanan->ongkir} via Webhook untuk Order ID {$pesanan->order_id}");
