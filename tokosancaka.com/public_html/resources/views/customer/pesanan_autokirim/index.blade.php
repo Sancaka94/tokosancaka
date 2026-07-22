@@ -170,10 +170,10 @@
                             </div>
 
                             <!-- BOX FEE KOMISI -->
-                            @if($item->fee_komisi > 0)
+                            @if($item->komisi_agen > 0)
                             <div class="p-2 bg-green-50 border border-green-200 rounded-lg inline-block text-right shadow-sm">
                                 <p class="text-[9px] text-green-600 font-bold uppercase mb-0.5"><i class="fa-solid fa-coins mr-1"></i> Fee Komisi</p>
-                                <p class="text-sm font-black text-green-700">+ Rp {{ number_format($item->fee_komisi, 0, ',', '.') }}</p>
+                                <p class="text-sm font-black text-green-700">+ Rp {{ number_format($item->komisi_agen, 0, ',', '.') }}</p>
                             </div>
                             @endif
                         </td>

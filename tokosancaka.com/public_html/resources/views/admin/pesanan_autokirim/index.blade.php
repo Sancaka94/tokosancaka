@@ -214,18 +214,22 @@
                                         <span>Ongkir Customer:</span>
                                         <span class="font-bold">Rp {{ number_format($item->ongkir, 0, ',', '.') }}</span>
                                     </div>
-                                    @if($item->profit->persen_cashback > 0)
+
+                                    {{-- Cek dari kolom total_cashback langsung --}}
+                                    @if($item->total_cashback > 0)
                                         <div class="flex justify-between text-blue-600">
-                                            <span>Cashback ({{ $item->profit->persen_cashback }}%):</span>
-                                            <span class="font-bold">Rp {{ number_format($item->profit->total_cashback, 0, ',', '.') }}</span>
+                                            {{-- Hitung persentase dinamis untuk tampilan (Total Cashback / Ongkir * 100) --}}
+                                            @php $persen_cashback = $item->ongkir > 0 ? round(($item->total_cashback / $item->ongkir) * 100) : 0; @endphp
+                                            <span>Cashback ({{ $persen_cashback }}%):</span>
+                                            <span class="font-bold">Rp {{ number_format($item->total_cashback, 0, ',', '.') }}</span>
                                         </div>
                                         <div class="flex justify-between text-orange-600">
                                             <span>- Komisi Agen (40%):</span>
-                                            <span class="font-bold border-b border-dashed border-orange-300 pb-0.5">- Rp {{ number_format($item->profit->komisi_agen, 0, ',', '.') }}</span>
+                                            <span class="font-bold border-b border-dashed border-orange-300 pb-0.5">- Rp {{ number_format($item->komisi_agen, 0, ',', '.') }}</span>
                                         </div>
                                         <div class="flex justify-between text-green-700 font-black mt-1">
                                             <span>= Laba Sancaka (60%):</span>
-                                            <span>+ Rp {{ number_format($item->profit->laba_sancaka, 0, ',', '.') }}</span>
+                                            <span>+ Rp {{ number_format($item->laba_sistem, 0, ',', '.') }}</span>
                                         </div>
                                     @else
                                         <div class="flex justify-between text-gray-400 italic">

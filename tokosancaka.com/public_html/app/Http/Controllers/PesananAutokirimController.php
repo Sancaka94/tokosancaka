@@ -95,7 +95,7 @@ class PesananAutokirimController extends Controller
         return view('customer.pesanan_autokirim.create', compact('kategoriBarang', 'metodePembayaran'));
     }
 
-    // ==========================================
+   // ==========================================
     // AREA ADMIN: TABEL RIWAYAT TRANSAKSI LENGKAP & PROFIT SHARING
     // ==========================================
     public function indexAdmin(Request $request)
@@ -122,12 +122,12 @@ class PesananAutokirimController extends Controller
             });
         }
 
-        // FILTER STATUS
+        // 3. FILTER STATUS
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
 
-        // FILTER TANGGAL
+        // 4. FILTER TANGGAL
         if ($request->filled('date_range')) {
             $dates = explode(' to ', str_replace([' - ', ' s.d. '], ' to ', $request->date_range));
             if (count($dates) >= 2) {
@@ -138,49 +138,24 @@ class PesananAutokirimController extends Controller
         }
 
         // =========================================================
-        // LOGIKA PERHITUNGAN PROFIT SHARING ADMIN (40% Agen : 60% Sancaka)
+        // AGREGASI STATISTIK LANGSUNG DARI DB (Optimal & Cepat)
         // =========================================================
-        $rates = DB::table('data_auto_kirims')->get();
-        $cardQuery = clone $query;
-        $pesananAll = $cardQuery->get();
+        $totalTransaksi = (clone $query)->count();
+        $totalOngkir    = (clone $query)->sum('ongkir');
 
-        $totalTransaksi = $pesananAll->count();
-        $totalOngkir    = $pesananAll->sum('ongkir');
+        $statusPending  = ['batal', 'gagal', 'menunggu_pembayaran'];
+        $querySukses    = clone $query->whereNotIn('status', $statusPending);
 
         $stats = [
-            'total_berhasil' => 0,
-            'total_pending'  => 0,
-            'cashback_pusat' => 0,
-            'komisi_agen'    => 0,
-            'laba_sancaka'   => 0,
+            'total_berhasil' => (clone $querySukses)->count(),
+            'total_pending'  => (clone $query)->whereIn('status', $statusPending)->count(),
+            'cashback_pusat' => (clone $querySukses)->sum('total_cashback'),
+            'komisi_agen'    => (clone $querySukses)->sum('komisi_agen'),
+            'laba_sancaka'   => (clone $querySukses)->sum('laba_sistem'),
         ];
 
-        foreach ($pesananAll as $p) {
-            if (in_array($p->status, ['batal', 'gagal', 'menunggu_pembayaran'])) {
-                $stats['total_pending']++;
-                continue;
-            }
-
-            $stats['total_berhasil']++;
-            $profit = $this->hitungProfit($p, $rates);
-
-            $stats['cashback_pusat'] += $profit->total_cashback;
-            $stats['komisi_agen']    += $profit->komisi_agen;
-            $stats['laba_sancaka']   += $profit->laba_sancaka;
-        }
-
-        // PAGINASI
+        // 5. PAGINASI (Tanpa loop transform array lagi)
         $pesanan = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
-
-        // Inject data profit ke dalam collection paginasi untuk ditampilkan di tabel
-        $pesanan->getCollection()->transform(function ($item) use ($rates) {
-            if (in_array($item->status, ['batal', 'gagal', 'menunggu_pembayaran'])) {
-                $item->profit = (object)['total_cashback' => 0, 'komisi_agen' => 0, 'laba_sancaka' => 0, 'persen_cashback' => 0];
-            } else {
-                $item->profit = $this->hitungProfit($item, $rates);
-            }
-            return $item;
-        });
 
         return view('admin.pesanan_autokirim.index', compact(
             'pesanan', 'totalTransaksi', 'totalOngkir', 'stats'
@@ -266,7 +241,7 @@ class PesananAutokirimController extends Controller
     {
         $query = PesananAutokirim::where('user_id', auth()->id());
 
-        // PENCARIAN LENGKAP
+        // 1. PENCARIAN LENGKAP
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
@@ -279,7 +254,7 @@ class PesananAutokirimController extends Controller
             });
         }
 
-        // FILTER STATUS & TANGGAL
+        // 2. FILTER STATUS & TANGGAL
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
@@ -293,14 +268,10 @@ class PesananAutokirimController extends Controller
         }
 
         // =========================================================
-        // LOGIKA PERHITUNGAN KOMISI AGEN (DINAMIS DARI DB ADMIN)
+        // AGREGASI KOMISI LANGSUNG DARI DB (Optimal & Cepat)
         // =========================================================
-        $rates = DB::table('data_auto_kirims')->get();
-        $allData = clone $query;
-        $pesananAll = $allData->get();
-
-        $totalTransaksi = $pesananAll->count();
-        $totalOngkir    = $pesananAll->sum('ongkir');
+        $totalTransaksi = (clone $query)->count();
+        $totalOngkir    = (clone $query)->sum('ongkir');
 
         $now = now();
         $today = $now->copy()->startOfDay();
@@ -308,42 +279,31 @@ class PesananAutokirimController extends Controller
         $thisMonth = $now->copy()->startOfMonth();
         $lastMonth = $now->copy()->subMonth()->startOfMonth();
 
+        // Hanya hitung komisi untuk transaksi yang bukan batal/gagal
+        $statusPending = ['batal', 'gagal', 'menunggu_pembayaran'];
+        $querySukses   = clone $query->whereNotIn('status', $statusPending);
+
+        // Agregasi per rentang waktu murni pakai Query Builder
+        $komisiTotal        = (clone $querySukses)->sum('komisi_agen');
+        $komisiHariIni      = (clone $querySukses)->where('created_at', '>=', $today)->sum('komisi_agen');
+        $komisiKemarin      = (clone $querySukses)->whereBetween('created_at', [$yesterday, $today->copy()->subSecond()])->sum('komisi_agen');
+        $komisiBulanIni     = (clone $querySukses)->where('created_at', '>=', $thisMonth)->sum('komisi_agen');
+        $komisiBulanKemarin = (clone $querySukses)->whereBetween('created_at', [$lastMonth, $thisMonth->copy()->subSecond()])->sum('komisi_agen');
+
         $komisi = [
-            'total' => 0, 'hari_ini' => 0, 'kemarin' => 0, 'bulan_ini' => 0, 'bulan_kemarin' => 0
+            'total'         => $komisiTotal,
+            'hari_ini'      => $komisiHariIni,
+            'kemarin'       => $komisiKemarin,
+            'bulan_ini'     => $komisiBulanIni,
+            'bulan_kemarin' => $komisiBulanKemarin
         ];
 
-        foreach ($pesananAll as $p) {
-            // Komisi hanya dihitung untuk transaksi yang tidak gagal/batal
-            if (in_array($p->status, ['batal', 'gagal', 'menunggu_pembayaran'])) continue;
-
-            $fee = $this->hitungKomisi($p, $rates);
-            $komisi['total'] += $fee;
-
-            if ($p->created_at >= $today) {
-                $komisi['hari_ini'] += $fee;
-            } elseif ($p->created_at >= $yesterday && $p->created_at < $today) {
-                $komisi['kemarin'] += $fee;
-            }
-
-            if ($p->created_at >= $thisMonth) {
-                $komisi['bulan_ini'] += $fee;
-            } elseif ($p->created_at >= $lastMonth && $p->created_at < $thisMonth) {
-                $komisi['bulan_kemarin'] += $fee;
-            }
-        }
-
-        // Persentase Kenaikan/Penurunan (Growth)
+        // 3. Persentase Kenaikan/Penurunan (Growth)
         $growthHarian = $komisi['kemarin'] > 0 ? (($komisi['hari_ini'] - $komisi['kemarin']) / $komisi['kemarin']) * 100 : ($komisi['hari_ini'] > 0 ? 100 : 0);
         $growthBulanan = $komisi['bulan_kemarin'] > 0 ? (($komisi['bulan_ini'] - $komisi['bulan_kemarin']) / $komisi['bulan_kemarin']) * 100 : ($komisi['bulan_ini'] > 0 ? 100 : 0);
 
-        // DATA PAGINASI UNTUK TABEL
+        // 4. DATA PAGINASI UNTUK TABEL (Tanpa loop transform array lagi)
         $pesanan = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
-
-        // Inject fee komisi ke collection untuk ditampilkan di baris tabel
-        $pesanan->getCollection()->transform(function ($item) use ($rates) {
-            $item->fee_komisi = (in_array($item->status, ['batal', 'gagal', 'menunggu_pembayaran'])) ? 0 : $this->hitungKomisi($item, $rates);
-            return $item;
-        });
 
         return view('customer.pesanan_autokirim.index', compact(
             'pesanan', 'totalTransaksi', 'totalOngkir', 'komisi', 'growthHarian', 'growthBulanan'
@@ -585,7 +545,10 @@ class PesananAutokirimController extends Controller
                 'ongkir'            => $totalTagihan,
                 'awb_number'        => null,
                 'metode_pembayaran' => $paymentMethod,
-                'status'            => 'waiting_payment'
+                'status'            => 'waiting_payment',
+                'total_cashback'    => $profit->total_cashback,
+                'laba_sistem'       => $profit->laba_sancaka,
+                'komisi_agen'       => $profit->komisi_agen,
             ]);
 
             $paymentUrl = null;
