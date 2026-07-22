@@ -132,6 +132,8 @@
 </head>
 <body>
 
+
+
 @php
     function maskString($string) {
         $length = strlen($string);
@@ -156,6 +158,20 @@
             $nilaiCod = $pesanan->nilai_barang;
         }
     }
+
+    // --- LOGIKA PEMBULATAN KG (TOLERANSI 300 GRAM) ---
+    $beratAsliGram = $pesanan->berat_gram;
+    $kgBase = floor($beratAsliGram / 1000);
+    $sisaGram = $beratAsliGram % 1000;
+
+    // Jika sisa > 300 gram, naik ke Kg selanjutnya. Jika tidak, tetap di Kg bawah.
+    $beratKg = ($sisaGram > 300) ? $kgBase + 1 : $kgBase;
+
+    // Pastikan berat minimal selalu 1 Kg
+    if ($beratKg < 1) {
+        $beratKg = 1;
+    }
+
 @endphp
 
 <!-- WADAH RESI (Target Download/Print) -->
