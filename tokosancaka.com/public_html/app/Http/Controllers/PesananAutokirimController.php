@@ -409,33 +409,70 @@ class PesananAutokirimController extends Controller
         $qty            = $request->input('qty', 1);
         $isSenderPp     = $request->input('is_sender_pp', 1);
 
+        // Ambil langsung kode komoditi unik dari frontend
+        $commodityCode  = $request->input('kategori_barang', 'THT001');
+        $pengirimNama   = $request->input('pengirim_nama', 'Pengirim Default');
+        $pengirimHp     = $request->input('pengirim_hp', '0800000000');
+        $pengirimAlamat = $request->input('pengirim_alamat', 'Alamat Default');
+
         if (empty($origin_id) || empty($destination_id)) {
             return response()->json(['success' => false, 'message' => 'Wilayah asal atau tujuan tidak valid.']);
         }
-
-        $payload = [
-            'origin_id'      => (int) $origin_id,
-            'destination_id' => (int) $destination_id,
-            'weight'         => (string) $berat,
-            'length'         => $request->panjang_cm ? (int) $request->panjang_cm : 1,
-            'width'          => $request->lebar_cm ? (int) $request->lebar_cm : 1,
-            'height'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
-            'is_sender_pp'   => (int) $isSenderPp,
-        ];
 
         try {
             $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
             $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
             $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
-            Log::info("LOG: [API AUTOKIRIM - CEK ONGKIR] REQUEST:", $payload);
+            $pickupCode = "KM001";
+
+            // ========================================================
+            // 1. UPDATE PICKUP POINT DINAMIS SEBELUM CEK ONGKIR
+            // ========================================================
+            $updatePpPayload = [
+                'name'              => $pengirimNama,
+                'phone'             => $pengirimHp,
+                'district_id'       => (int) $origin_id,
+                'address'           => $pengirimAlamat,
+                'longitude'         => "",
+                'latitude'          => "",
+                'pickup_point_code' => $pickupCode
+            ];
+
+            Log::info("LOG LOG: [API AUTOKIRIM - UPDATE PICKUP POINT] REQUEST:", $updatePpPayload);
+
+            $updatePpResponse = Http::timeout(15)
+                ->withToken($token)
+                ->post("{$baseUrl}/api/pickup-point/update", $updatePpPayload);
+
+            Log::info("LOG LOG: [API AUTOKIRIM - UPDATE PICKUP POINT] RESPONSE:", $updatePpResponse->json() ?? []);
+
+            // ========================================================
+            // 2. CHECK PRICE DENGAN PAYLOAD SESUAI DOKUMENTASI V2
+            // ========================================================
+            $payload = [
+                'origin_id'         => (int) $origin_id,
+                'destination_id'    => (int) $destination_id,
+                'weight'            => (string) $berat,
+                'length'            => $request->panjang_cm ? (int) $request->panjang_cm : 1,
+                'width'             => $request->lebar_cm ? (int) $request->lebar_cm : 1,
+                'height'            => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
+                'pickup_point_code' => $pickupCode,
+                'is_sender_pp'      => (int) $isSenderPp,
+                'additional'        => [
+                    'commodity'     => $commodityCode
+                ]
+            ];
+
+            Log::info("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] REQUEST:", $payload);
 
             $response = Http::timeout(15)
                 ->withToken($token)
                 ->post("{$baseUrl}/api/v2/check-price", $payload);
 
             $result = $response->json();
-            Log::info("LOG: [API AUTOKIRIM - CEK ONGKIR] RESPONSE:", $result ?? []);
+
+            Log::info("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] RESPONSE:", $result ?? []);
 
             if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
                 $flatOngkir = [];
@@ -478,7 +515,7 @@ class PesananAutokirimController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error("LOG: [API AUTOKIRIM - CEK ONGKIR] ERROR: " . $e->getMessage());
+            Log::error("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] ERROR: " . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Terjadi kendala jaringan saat menghubungi server logistik.']);
         }
     }
@@ -571,7 +608,7 @@ class PesananAutokirimController extends Controller
 
             // TAMBAHKAN cod_barang dan cod_ongkir agar tidak dialihkan ke Payment Gateway
             if (in_array($paymentMethod, ['potong_saldo', 'dana_binding', 'cod_barang', 'cod_ongkir'])) {
-                
+
                 // Hanya potong saldo dan DANA Binding jika dipilih
                 if ($paymentMethod === 'potong_saldo') {
                     $user = User::find(auth()->id());
@@ -586,7 +623,7 @@ class PesananAutokirimController extends Controller
                 } elseif ($paymentMethod === 'dana_binding') {
                     $this->_processDanaBindingCharge($pesanan, $totalTagihan);
                 }
-                
+
                 // CATATAN: Metode COD akan melewati blok potong saldo di atas tanpa kendala
 
                 $awbResult = $this->_executeAutokirimApi($pesanan, $origin, $destination, $request);
@@ -599,11 +636,11 @@ class PesananAutokirimController extends Controller
                 ]);
 
                 DB::commit();
-                
+
                 // Tampilkan pesan sesuai tipe transaksi
                 $metodeTampil = str_replace('_', ' ', strtoupper($paymentMethod));
                 return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbResult['awb']} (Metode: {$metodeTampil})");
-                
+
             } else {
                 if ($paymentMethod === 'doku_jokul') {
                     Log::info("LOG: [DOKU JOKUL] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
@@ -681,7 +718,7 @@ class PesananAutokirimController extends Controller
 
         // 1. Deteksi apakah ini pesanan COD
         $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
-        
+
         // 2. Tentukan nilai tagihan COD yang dikirimkan ke Kurir
         $codValue = 0;
         if ($isCod) {
@@ -706,11 +743,11 @@ class PesananAutokirimController extends Controller
             'description'       => (string) $pesanan->deskripsi_barang,
             'remarks'           => (string) $pesanan->kategori_barang,
             'price'             => (int) $pesanan->nilai_barang > 0 ? (int) $pesanan->nilai_barang : 10000,
-            
+
             // 🔥 Terapkan logic COD terbaru ke Payload API 🔥
             'is_cod'            => $isCod,
             'cod_value'         => $codValue,
-            
+
             'is_sender_pp'      => $isSenderPp,
             'is_insurance'      => (bool) $pesanan->asuransi,
             'from' => [

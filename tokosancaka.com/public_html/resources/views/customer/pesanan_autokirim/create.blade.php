@@ -195,7 +195,7 @@
                             <label class="block text-xs font-semibold text-green-700 mb-1">Nomor Resi Marketplace (AWB) <span class="text-red-500">*</span></label>
                             <input type="text" name="resi_cashless" x-model="resiCashless" placeholder="Contoh: JP1234567890" class="w-full font-bold border-green-300 rounded-lg text-sm focus:ring-1 focus:ring-green-500 px-3 py-2 uppercase bg-white">
                         </div>
-                        
+
                         <!-- Info & Pilihan Ekstra untuk COD -->
                         <div x-show="tipePesanan === 'cod'" x-transition class="mt-4 p-4 bg-orange-50 border border-orange-200 rounded-xl" x-cloak>
                             <label class="block text-xs font-bold text-orange-800 mb-2">Pilih Jenis COD <span class="text-red-500">*</span></label>
@@ -220,12 +220,19 @@
                     <!-- DINAMIS: Kategori Barang -->
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Kategori Barang</label>
-                        <select name="kategori_barang" class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 px-4 py-2.5 bg-gray-50/50 font-medium">
-                            @foreach($kategoriBarang as $kategori)
-                                <option value="{{ $kategori }}" {{ old('kategori_barang') == $kategori ? 'selected' : '' }}>
-                                    {{ $kategori }}
-                                </option>
-                            @endforeach
+                        <select name="kategori_barang" x-model="kategoriBarang" required class="w-full border-gray-200 rounded-xl text-sm focus:ring-1 focus:ring-blue-500 px-4 py-2.5 bg-gray-50/50 font-medium">
+                            <option value="" disabled selected>Pilih...</option>
+                            <option value="ELK001">Peralatan Elektronik & Gadget</option>
+                            <option value="PAK001">Pakaian / Baju / Kain</option>
+                            <option value="PCH001">Pecah Belah</option>
+                            <option value="DOC001">Dokumen / Berkas / Buku</option>
+                            <option value="RTG001">Peralatan Rumah Tangga</option>
+                            <option value="AKS001">Aksesoris</option>
+                            <option value="OTH001">Lain-Lain</option>
+                            <option value="DHS001">Dokumen Berharga</option>
+                            <option value="KSM001">Peralatan Kesehatan / Kecantikan / Kosmetik</option>
+                            <option value="OLH001">Peralatan Olahraga & Hiburan</option>
+                            <option value="OTM001">Perlengkapan Mobil & Motor</option>
                         </select>
                     </div>
 
@@ -426,7 +433,7 @@
 
                 <!-- TOMBOL SUBMIT PESANAN -->
                 <div class="mt-6">
-                    <button type="submit" 
+                    <button type="submit"
                             :disabled="(tipePesanan !== 'cod' && (!selectedPayment || (selectedPayment === 'potong_saldo' && selectedOngkir > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) || selectedPayment === 'dana_binding' @endif))"
                             class="w-full py-4 rounded-xl font-extrabold text-white transition shadow-xl text-base tracking-wide flex justify-center items-center gap-2"
                             :class="(tipePesanan === 'cod' || (selectedPayment && !(selectedPayment === 'potong_saldo' && selectedOngkir > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) && selectedPayment !== 'dana_binding' @endif)) ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25 cursor-pointer' : 'bg-gray-300 cursor-not-allowed opacity-75'">
@@ -545,6 +552,7 @@
 <script>
 document.addEventListener('alpine:init', () => {
     Alpine.data('orderForm', () => ({
+        kategoriBarang: '',
         tipePesanan: 'reguler',
         resiCashless: '',
         nilaiBarang: '',
@@ -626,51 +634,105 @@ document.addEventListener('alpine:init', () => {
         },
 
         async cekOngkir() {
-            if(!this.senderDistrictId || !this.receiverDistrictId || !this.berat) {
-                alert("Mohon lengkapi wilayah Pengirim, wilayah Penerima dari dropdown yang muncul, dan Berat paket Anda!");
-                return;
-            }
-
-            this.isLoading = true;
-            this.ongkirList = [];
-            this.tempSelected = null; // Reset pilihan sementara di modal
-
-            try {
-                let formData = new FormData();
-                formData.append('origin_id', this.senderDistrictId);
-                formData.append('destination_id', this.receiverDistrictId);
-                formData.append('berat_gram', this.berat);
-                formData.append('qty', this.qty);
-                formData.append('is_sender_pp', this.isSenderPp);
-                formData.append('panjang_cm', this.panjang);
-                formData.append('lebar_cm', this.lebar);
-                formData.append('tinggi_cm', this.tinggi);
-                formData.append('_token', document.querySelector('input[name="_token"]').value);
-
-                let response = await fetch(`/api/autokirim/cek-ongkir`, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                let result = await response.json();
-                if(result.success) {
-                    this.ongkirList = result.data;
-                    this.showModal = true; // 🔥 Buka Modal Pop-up setelah data sukses didapat
-                } else {
-                    alert("Gagal memuat tarif kurir: " + result.message);
+                if(!this.senderDistrictId || !this.receiverDistrictId || !this.berat) {
+                    alert("Mohon lengkapi wilayah Pengirim, wilayah Penerima dari dropdown yang muncul, dan Berat paket Anda!");
+                    return;
                 }
-            } catch (error) {
-                console.error("Error Cek Ongkir:", error);
-                alert("Terjadi masalah jaringan saat menghubungi server logistik.");
-            } finally {
-                this.isLoading = false;
+
+                this.isLoading = true;
+                this.ongkirList = [];
+                this.tempSelected = null;
+
+                try {
+                    let formData = new FormData();
+                    formData.append('origin_id', this.senderDistrictId);
+                    formData.append('destination_id', this.receiverDistrictId);
+                    formData.append('berat_gram', this.berat);
+                    formData.append('qty', this.qty);
+                    formData.append('is_sender_pp', this.isSenderPp);
+                    formData.append('panjang_cm', this.panjang);
+                    formData.append('lebar_cm', this.lebar);
+                    formData.append('tinggi_cm', this.tinggi);
+                    formData.append('kategori_barang', this.kategoriBarang);
+
+                    // TAMBAHKAN KODE INI UNTUK UPDATE PICKUP POINT DINAMIS
+                    let namaVal = document.getElementById('pengirim_nama') ? document.getElementById('pengirim_nama').value : 'Pengirim';
+                    let hpVal = document.getElementById('pengirim_hp') ? document.getElementById('pengirim_hp').value : '0800000000';
+                    let alamatVal = document.getElementById('pengirim_alamat') ? document.getElementById('pengirim_alamat').value : 'Alamat Default';
+
+                    formData.append('pengirim_nama', namaVal);
+                    formData.append('pengirim_hp', hpVal);
+                    formData.append('pengirim_alamat', alamatVal);
+
+                    formData.append('_token', document.querySelector('input[name="_token"]').value);
+
+                    let response = await fetch(`/api/autokirim/cek-ongkir`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    let result = await response.json();
+                    if(result.success) {
+                        this.ongkirList = result.data;
+                        this.showModal = true; // Modal otomatis terbuka menampilkan list tarif dari Autokirim
+                    } else {
+                        alert("Gagal memuat tarif kurir: " + result.message);
+                    }
+                } catch (error) {
+                    console.error("Error Cek Ongkir:", error);
+                    alert("Terjadi masalah jaringan saat menghubungi server logistik.");
+                } finally {
+                    this.isLoading = false;
+                }
             }
-        },
 
         // Terapkan Pilihan Ekspedisi dari Modal ke Layar Utama
         applySelection() {
             if(!this.tempSelected) return;
 
+            let kurir = this.tempSelected.kurir.toUpperCase();
+
+            // Ambil data panjang karakter langsung dari DOM Form
+            let pengirimNama = document.getElementById('pengirim_nama') ? document.getElementById('pengirim_nama').value : '';
+            let pengirimHp = document.getElementById('pengirim_hp') ? document.getElementById('pengirim_hp').value : '';
+            let pengirimAlamat = document.getElementById('pengirim_alamat') ? document.getElementById('pengirim_alamat').value : '';
+            let penerimaNama = document.getElementById('penerima_nama') ? document.getElementById('penerima_nama').value : '';
+            let penerimaHp = document.getElementById('penerima_hp') ? document.getElementById('penerima_hp').value : '';
+            let penerimaAlamat = document.getElementById('penerima_alamat') ? document.getElementById('penerima_alamat').value : '';
+            let deskripsiBarang = document.querySelector('input[name="deskripsi_barang"]') ? document.querySelector('input[name="deskripsi_barang"]').value : '';
+
+            let errors = [];
+
+            // 🔥 Validasi Batas Karakter ANTERAJA
+            if (kurir.includes('ANTERAJA')) {
+                if (pengirimNama.length > 50) errors.push("- Nama Pengirim maksimal 50 karakter");
+                if (penerimaNama.length > 50) errors.push("- Nama Penerima maksimal 50 karakter");
+                if (pengirimHp.length > 16) errors.push("- No HP Pengirim maksimal 16 karakter");
+                if (penerimaHp.length > 16) errors.push("- No HP Penerima maksimal 16 karakter");
+                if (pengirimAlamat.length > 256) errors.push("- Alamat Pengirim maksimal 256 karakter");
+                if (penerimaAlamat.length > 256) errors.push("- Alamat Penerima maksimal 256 karakter");
+                if (deskripsiBarang.length > 50) errors.push("- Deskripsi Barang maksimal 50 karakter");
+            }
+
+            // 🔥 Validasi Batas Karakter JNE
+            else if (kurir.includes('JNE')) {
+                // Menggunakan aturan terketat berdasarkan limit JNE dari parameter yang ada
+                if (pengirimNama.length > 30) errors.push("- Nama Pengirim maksimal 30 karakter (Aturan JNE)");
+                if (pengirimHp.length > 30) errors.push("- No HP Pengirim maksimal 30 karakter");
+                if (pengirimAlamat.length > 85) errors.push("- Alamat Pengirim maksimal 85 karakter (Aturan Ketat JNE)");
+                if (penerimaNama.length > 20) errors.push("- Nama Penerima maksimal 20 karakter (Aturan Ketat JNE)");
+                if (penerimaHp.length > 50) errors.push("- No HP Penerima maksimal 50 karakter");
+                if (penerimaAlamat.length > 85) errors.push("- Alamat Penerima maksimal 85 karakter (Aturan Ketat JNE)");
+                if (deskripsiBarang.length > 60) errors.push("- Deskripsi Barang maksimal 60 karakter");
+            }
+
+            // Jika ada pelanggaran batas karakter, tampilkan Alert dan batalkan pemilihan
+            if (errors.length > 0) {
+                alert("GAGAL MEMILIH " + this.tempSelected.kurir + "\n\nMohon perbaiki data berikut sebelum memilih kurir ini:\n" + errors.join("\n") + "\n\nSilakan tutup pop-up ini (Batal) dan persingkat teks form Anda.");
+                return;
+            }
+
+            // Jika lolos validasi, terapkan data ke layar utama
             this.selectedKurir       = this.tempSelected.kurir;
             this.selectedLayanan     = this.tempSelected.layanan;
             this.selectedOngkir      = this.tempSelected.harga;
@@ -694,7 +756,7 @@ document.addEventListener('alpine:init', () => {
 
             // Jika BUKAN COD, wajib melakukan validasi saldo dan gateway pembayaran
             if (this.tipePesanan !== 'cod') {
-                
+
                 // Pastikan metode pembayaran digital sudah dipilih
                 if(!this.selectedPayment) {
                     e.preventDefault();
