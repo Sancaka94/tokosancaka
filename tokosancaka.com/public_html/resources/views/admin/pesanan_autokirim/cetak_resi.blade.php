@@ -111,6 +111,12 @@
 
         /* --- ATURAN KHUSUS SAAT DICETAK PRINTER --- */
         @media print {
+            /* Memaksa warna background dan border hitam pada kotak COD agar ikut tercetak */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
             body { background: #fff; padding: 0; justify-content: flex-start; align-items: flex-start;}
             .action-panel { display: none; }
             .receipt-container {
@@ -135,6 +141,21 @@
 
     $parsedKurir = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->kurir);
     $resiTrack = $pesanan->awb_number ?? $pesanan->order_id;
+
+    // --- TAMBAHAN LOGIKA CERDAS DETEKSI COD ---
+    $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
+    $jenisCodText = '';
+    $nilaiCod = 0;
+
+    if ($isCod) {
+        if (strtolower($pesanan->metode_pembayaran) === 'cod_ongkir') {
+            $jenisCodText = 'COD ONGKIR';
+            $nilaiCod = $pesanan->ongkir;
+        } else {
+            $jenisCodText = 'COD BARANG & ONGKIR';
+            $nilaiCod = $pesanan->nilai_barang;
+        }
+    }
 @endphp
 
 <!-- WADAH RESI (Target Download/Print) -->
@@ -154,8 +175,6 @@
         </div>
     </div>
 
-
-
     <!-- KODE TLC / SORTING -->
     @if(!empty($pesanan->tlc_code))
     <div class="tlc-container">
@@ -172,7 +191,14 @@
         <svg id="barcode"></svg>
     </div>
 
-
+    <!-- TAMBAHAN: BLOK KHUSUS COD (TAMPIL HANYA JIKA TRANSAKSI COD) -->
+    @if($isCod)
+    <div style="background-color: #000; color: #fff; text-align: center; padding: 6px; margin: 0 0 10px 0; border-radius: 4px; border: 2px solid #000;">
+        <div style="font-size: 16px; font-weight: 900; letter-spacing: 1px;">{{ $jenisCodText }}</div>
+        <div style="font-size: 13px; font-weight: bold; margin-top: 2px;">TAGIHAN KURIR: Rp {{ number_format($nilaiCod, 0, ',', '.') }}</div>
+        <div style="font-size: 9px; font-style: italic; margin-top: 3px;">* Kurir WAJIB menagih nominal di atas kepada penerima</div>
+    </div>
+    @endif
 
     <!-- ALAMAT -->
     <div class="address-grid">
@@ -196,7 +222,9 @@
             <strong>Rincian Paket:</strong>
             - Berat: {{ number_format($pesanan->berat_gram, 2) }} Gram<br>
             - Harga Barang: Rp {{ number_format($pesanan->nilai_barang, 0, ',', '.') }}<br>
-            - Isi Paket: {{ strtoupper($pesanan->deskripsi_barang) }}<br>
+            <!-- TAMBAHAN: ASURANSI DAN REMARK YANG DIPERJELAS -->
+            - Asuransi: @if($pesanan->asuransi) <span style="font-weight:900;">YA</span> @else <span style="font-weight:900;">TIDAK</span> @endif<br>
+            - Remark / Isi Paket: {{ strtoupper($pesanan->deskripsi_barang) }} ({{ strtoupper($pesanan->kategori_barang) }})<br>
             - Dimensi: {{ $pesanan->panjang_cm }}x{{ $pesanan->lebar_cm }}x{{ $pesanan->tinggi_cm }} cm<br>
             - Layanan: {{ $pesanan->layanan }}
         </div>
@@ -249,10 +277,11 @@
         </div>
     </div>
 
-    <!-- FOOTER -->
+    <!-- FOOTER DENGAN TAMBAHAN POWERED BY AUTOKIRIM -->
     <div class="footer">
         Terima kasih telah menggunakan <strong>Sancaka Express</strong>.<br>
-        <strong>{{ $pesanan->created_at->format('d M Y H:i') }} Kirim Paket DI TOKOSANCAKA.COM</strong>
+        <strong>{{ $pesanan->created_at->format('d M Y H:i') }} Kirim Paket DI TOKOSANCAKA.COM</strong><br>
+        <div style="margin-top: 6px; font-size: 11px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase;">Powered by Autokirim</div>
     </div>
 
 </div>
