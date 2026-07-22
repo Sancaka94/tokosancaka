@@ -297,7 +297,7 @@ class PesananAutokirimController extends Controller
         $origin_id      = $request->origin_id;
         $destination_id = $request->destination_id;
 
-        $qty            = (int) $request->input('qty', 1);
+        $qty            = (string) $request->input('qty', 1);
         $isSenderPp     = (int) $request->input('is_sender_pp', 1);
         $commodityCode  = $request->input('kategori_barang', 'OTH001');
 
@@ -566,7 +566,7 @@ class PesananAutokirimController extends Controller
         $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
 
         $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
-        $qtyInput = $requestData ? (int) $requestData->input('qty', 1) : 1;
+        $qtyInput = $requestData ? (string) $requestData->input('qty', 1) : 1;
         $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
 
         $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
@@ -591,7 +591,7 @@ class PesananAutokirimController extends Controller
             'origin_id'         => (int) $origin->district_id,
             'destination_id'    => (int) $destination->district_id,
             'weight'            => (string) $weightApi, // INI KUNCINYA: Integer
-            'qty'               => (int) $qtyInput,
+            'qty'               => (string) $qtyInput,
             'length'            => (int) ($pesanan->panjang_cm > 0 ? $pesanan->panjang_cm : 10),
             'width'             => (int) ($pesanan->lebar_cm > 0 ? $pesanan->lebar_cm : 10),
             'height'            => (int) ($pesanan->tinggi_cm > 0 ? $pesanan->tinggi_cm : 10),
