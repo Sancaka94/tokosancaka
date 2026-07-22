@@ -318,7 +318,7 @@ class PesananAutokirimController extends Controller
             $payload = [
                 'origin_id'         => (int) $origin_id,
                 'destination_id'    => (int) $destination_id,
-                'weight'            => (int) $weightApi, // INI KUNCINYA: (int) menghilangkan tanda kutip pada JSON API
+                'weight'            => (string) $weightApi, // INI KUNCINYA: (int) menghilangkan tanda kutip pada JSON API
                 'length'            => (int) ($request->panjang_cm > 0 ? $request->panjang_cm : 10),
                 'width'             => (int) ($request->lebar_cm > 0 ? $request->lebar_cm : 10),
                 'height'            => (int) ($request->tinggi_cm > 0 ? $request->tinggi_cm : 10),
@@ -590,7 +590,7 @@ class PesananAutokirimController extends Controller
             'pickup_point_code' => $pickupPointCode,
             'origin_id'         => (int) $origin->district_id,
             'destination_id'    => (int) $destination->district_id,
-            'weight'            => (int) $weightApi, // INI KUNCINYA: Integer
+            'weight'            => (string) $weightApi, // INI KUNCINYA: Integer
             'qty'               => (int) $qtyInput,
             'length'            => (int) ($pesanan->panjang_cm > 0 ? $pesanan->panjang_cm : 10),
             'width'             => (int) ($pesanan->lebar_cm > 0 ? $pesanan->lebar_cm : 10),
