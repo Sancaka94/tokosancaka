@@ -15,6 +15,7 @@ use App\Models\Api;
 use App\Models\User;
 use App\Helpers\ShippingHelper;
 use App\Services\DokuJokulService;
+use Illuminate\Support\Facades\Cache; // Wajib untuk fitur Idempotency
 use Exception;
 
 class PesananAutokirimController extends Controller
@@ -210,7 +211,7 @@ class PesananAutokirimController extends Controller
 
     public function indexCustomer(Request $request)
     {
-        $query = PesananAutokirim::where('user_id', auth()->id());
+        $query = PesananAutokirim::with('user')->where('user_id', auth()->id());
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -384,7 +385,7 @@ class PesananAutokirimController extends Controller
         }
     }
 
-    public function store(Request $request)
+  public function store(Request $request)
     {
         $request->validate([
             'service_code_terpilih' => 'required',
@@ -406,137 +407,150 @@ class PesananAutokirimController extends Controller
             'penerima_alamat.min' => 'Alamat Penerima terlalu pendek! Wajib menuliskan nama jalan, nomor rumah/gedung, atau RT/RW (Min. 15 karakter).',
         ]);
 
-        $origin = AutoKirim::where('district_id', $request->pengirim_district_id)->first();
-        $destination = AutoKirim::where('district_id', $request->penerima_district_id)->first();
-
-        if (!$origin || !$destination) {
-            return redirect()->back()->withInput()->with('error', 'Wilayah pengirim atau penerima tidak valid.');
+        // [FITUR IDEMPOTENCY]: Kunci request user ini selama 10 detik untuk mencegah double submit
+        $lock = Cache::lock('create_order_user_' . auth()->id(), 10);
+        if (!$lock->get()) {
+            return redirect()->back()->with('error', 'Pesanan Anda sedang diproses. Mohon jangan klik tombol submit berkali-kali.');
         }
 
-        $localOrderId = (string) (date('ymdHis') . mt_rand(1000, 9999));
-        $totalTagihan = (int) $request->ongkir_terpilih;
-        $paymentMethod = $request->metode_pembayaran;
-
-        $hargaBarangInput = (int) $request->nilai_barang;
-        $finalPrice = $hargaBarangInput > 0 ? $hargaBarangInput : 10000;
-        $isInsurance = $request->has('asuransi');
-
-        DB::beginTransaction();
         try {
-            $rates = DB::table('data_auto_kirims')->get();
+            $origin = AutoKirim::where('district_id', $request->pengirim_district_id)->first();
+            $destination = AutoKirim::where('district_id', $request->penerima_district_id)->first();
 
-            $kalkulasiData = (object) [
-                'kurir' => $request->kurir_terpilih,
-                'layanan' => $request->layanan_terpilih,
-                'metode_pembayaran' => $paymentMethod,
-                'ongkir' => $totalTagihan
-            ];
-
-            $profit = $this->hitungProfit($kalkulasiData, $rates);
-
-            $pesanan = PesananAutokirim::create([
-                'user_id'           => auth()->id() ?? null,
-                'order_id'          => $localOrderId,
-                'pengirim_nama'     => $request->pengirim_nama,
-                'pengirim_hp'       => $request->pengirim_hp,
-                'pengirim_alamat'   => $request->pengirim_alamat,
-                'pengirim_kodepos'  => $origin->zip,
-                'penerima_nama'     => $request->penerima_nama,
-                'penerima_hp'       => $request->penerima_hp,
-                'penerima_alamat'   => $request->penerima_alamat,
-                'penerima_kodepos'  => $destination->zip,
-                'deskripsi_barang'  => $request->deskripsi_barang,
-                'kategori_barang'   => $request->kategori_barang,
-                'berat_gram'        => $request->berat_gram,
-                'panjang_cm'        => $request->panjang_cm ? (int) $request->panjang_cm : 10,
-                'lebar_cm'          => $request->lebar_cm ? (int) $request->lebar_cm : 10,
-                'tinggi_cm'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 10,
-                'asuransi'          => $isInsurance ? 1 : 0,
-                'nilai_barang'      => $finalPrice,
-                'kurir'             => $request->kurir_terpilih,
-                'layanan'           => $request->layanan_terpilih,
-                'ongkir'            => $totalTagihan,
-                'awb_number'        => null,
-                'metode_pembayaran' => $paymentMethod,
-                'status'            => 'waiting_payment',
-                'total_cashback'    => $profit->total_cashback,
-                'laba_sistem'       => $profit->laba_sancaka,
-                'komisi_agen'       => $profit->komisi_agen
-            ]);
-
-            $paymentUrl = null;
-
-            if (in_array($paymentMethod, ['potong_saldo', 'dana_binding', 'cod_barang', 'cod_ongkir'])) {
-
-                if ($paymentMethod === 'potong_saldo') {
-                    $user = User::find(auth()->id());
-                    if (!$user) {
-                        throw new Exception('Anda harus login terlebih dahulu untuk menggunakan metode Potong Saldo.');
-                    }
-                    if ($user->saldo < $totalTagihan) {
-                        throw new Exception('Saldo akun Anda tidak mencukupi. Silahkan isi ulang atau pilih metode pembayaran lainnya.');
-                    }
-                    $user->decrement('saldo', $totalTagihan);
-                    Log::info("LOG: [POTONG SALDO SUKSES] User ID {$user->id} dipotong Rp {$totalTagihan} untuk Order ID {$localOrderId}");
-                } elseif ($paymentMethod === 'dana_binding') {
-                    $this->_processDanaBindingCharge($pesanan, $totalTagihan);
-                }
-
-                $awbResult = $this->_executeAutokirimApi($pesanan, $origin, $destination, $request);
-
-                $pesanan->update([
-                    'awb_number'        => $awbResult['awb'],
-                    'tlc_code'          => $awbResult['tlc'],
-                    'pickup_point_code' => $awbResult['pickup'],
-                    'status'            => 'booking_created'
-                ]);
-
-                DB::commit();
-
-                $metodeTampil = str_replace('_', ' ', strtoupper($paymentMethod));
-                return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbResult['awb']} (Metode: {$metodeTampil})");
-
-            } else {
-                if ($paymentMethod === 'doku_jokul') {
-                    Log::info("LOG: [DOKU JOKUL] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
-                    $dokuService = new DokuJokulService();
-                    $paymentUrl = $dokuService->createPayment($localOrderId, $totalTagihan);
-                    if (empty($paymentUrl)) {
-                        throw new Exception('Gagal membuat transaksi pembayaran di sistem DOKU Jokul.');
-                    }
-                } elseif ($paymentMethod === 'dana_pg') {
-                    Log::info("LOG: [DANA PG] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
-                    $paymentUrl = $this->_createDanaPgTransaction($pesanan, $totalTagihan);
-                    if (empty($paymentUrl)) {
-                        throw new Exception('Gagal membuat transaksi di sistem DANA Payment Gateway.');
-                    }
-                } elseif (Str::startsWith($paymentMethod, 'tripay_')) {
-                    Log::info("LOG: [TRIPAY] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
-                    $tripayChannel = strtoupper(str_replace('tripay_', '', $paymentMethod));
-                    $tripayResponse = $this->_createTripayTransaction($pesanan, $totalTagihan, $tripayChannel);
-                    if (empty($tripayResponse['success'])) {
-                        throw new Exception($tripayResponse['message'] ?? 'Gagal membuat tagihan pembayaran di sistem Tripay.');
-                    }
-                    $paymentUrl = $tripayResponse['data']['checkout_url'] ?? null;
-                }
-
-                if ($paymentUrl && Schema::hasColumn('pesanan_autokirims', 'payment_url')) {
-                    $pesanan->update(['payment_url' => $paymentUrl]);
-                }
-
-                DB::commit();
-
-                if ($paymentUrl) {
-                    return redirect()->away($paymentUrl);
-                }
-
-                throw new Exception('URL Pembayaran tidak ditemukan dari server Payment Gateway.');
+            if (!$origin || !$destination) {
+                return redirect()->back()->withInput()->with('error', 'Wilayah pengirim atau penerima tidak valid.');
             }
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("LOG: [PESANAN AUTOKIRIM - STORE ERROR] " . $e->getMessage());
-            return redirect()->back()->withInput()->with('error', $e->getMessage());
+            $localOrderId = (string) (date('ymdHis') . mt_rand(1000, 9999));
+            $totalTagihan = (int) $request->ongkir_terpilih;
+            $paymentMethod = $request->metode_pembayaran;
+
+            $hargaBarangInput = (int) $request->nilai_barang;
+            $finalPrice = $hargaBarangInput > 0 ? $hargaBarangInput : 10000;
+            $isInsurance = $request->has('asuransi');
+
+            DB::beginTransaction();
+            try {
+                $rates = DB::table('data_auto_kirims')->get();
+
+                $kalkulasiData = (object) [
+                    'kurir' => $request->kurir_terpilih,
+                    'layanan' => $request->layanan_terpilih,
+                    'metode_pembayaran' => $paymentMethod,
+                    'ongkir' => $totalTagihan
+                ];
+
+                $profit = $this->hitungProfit($kalkulasiData, $rates);
+
+                $pesanan = PesananAutokirim::create([
+                    'user_id'           => auth()->id() ?? null,
+                    'order_id'          => $localOrderId,
+                    'pengirim_nama'     => $request->pengirim_nama,
+                    'pengirim_hp'       => $request->pengirim_hp,
+                    'pengirim_alamat'   => $request->pengirim_alamat,
+                    'pengirim_kodepos'  => $origin->zip,
+                    'penerima_nama'     => $request->penerima_nama,
+                    'penerima_hp'       => $request->penerima_hp,
+                    'penerima_alamat'   => $request->penerima_alamat,
+                    'penerima_kodepos'  => $destination->zip,
+                    'deskripsi_barang'  => $request->deskripsi_barang,
+                    'kategori_barang'   => $request->kategori_barang,
+                    'berat_gram'        => $request->berat_gram,
+                    'panjang_cm'        => $request->panjang_cm ? (int) $request->panjang_cm : 10,
+                    'lebar_cm'          => $request->lebar_cm ? (int) $request->lebar_cm : 10,
+                    'tinggi_cm'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 10,
+                    'asuransi'          => $isInsurance ? 1 : 0,
+                    'nilai_barang'      => $finalPrice,
+                    'kurir'             => $request->kurir_terpilih,
+                    'layanan'           => $request->layanan_terpilih,
+                    'ongkir'            => $totalTagihan,
+                    'awb_number'        => null,
+                    'metode_pembayaran' => $paymentMethod,
+                    'status'            => 'waiting_payment',
+                    'total_cashback'    => $profit->total_cashback,
+                    'laba_sistem'       => $profit->laba_sancaka,
+                    'komisi_agen'       => $profit->komisi_agen
+                ]);
+
+                $paymentUrl = null;
+
+                if (in_array($paymentMethod, ['potong_saldo', 'dana_binding', 'cod_barang', 'cod_ongkir'])) {
+
+                    if ($paymentMethod === 'potong_saldo') {
+                        // [FITUR IDEMPOTENCY]: Pessimistic Lock untuk mengunci baris user agar saldo tidak minus/dobel potong jika ada request paralel
+                        $user = User::where('id', auth()->id())->lockForUpdate()->first();
+
+                        if (!$user) {
+                            throw new Exception('Anda harus login terlebih dahulu untuk menggunakan metode Potong Saldo.');
+                        }
+                        if ($user->saldo < $totalTagihan) {
+                            throw new Exception('Saldo akun Anda tidak mencukupi. Silahkan isi ulang atau pilih metode pembayaran lainnya.');
+                        }
+                        $user->decrement('saldo', $totalTagihan);
+                        Log::info("LOG: [POTONG SALDO SUKSES] User ID {$user->id} dipotong Rp {$totalTagihan} untuk Order ID {$localOrderId}");
+                    } elseif ($paymentMethod === 'dana_binding') {
+                        $this->_processDanaBindingCharge($pesanan, $totalTagihan);
+                    }
+
+                    $awbResult = $this->_executeAutokirimApi($pesanan, $origin, $destination, $request);
+
+                    $pesanan->update([
+                        'awb_number'        => $awbResult['awb'],
+                        'tlc_code'          => $awbResult['tlc'],
+                        'pickup_point_code' => $awbResult['pickup'],
+                        'status'            => 'booking_created'
+                    ]);
+
+                    DB::commit();
+
+                    $metodeTampil = str_replace('_', ' ', strtoupper($paymentMethod));
+                    return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbResult['awb']} (Metode: {$metodeTampil})");
+
+                } else {
+                    if ($paymentMethod === 'doku_jokul') {
+                        Log::info("LOG: [DOKU JOKUL] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
+                        $dokuService = new DokuJokulService();
+                        $paymentUrl = $dokuService->createPayment($localOrderId, $totalTagihan);
+                        if (empty($paymentUrl)) {
+                            throw new Exception('Gagal membuat transaksi pembayaran di sistem DOKU Jokul.');
+                        }
+                    } elseif ($paymentMethod === 'dana_pg') {
+                        Log::info("LOG: [DANA PG] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
+                        $paymentUrl = $this->_createDanaPgTransaction($pesanan, $totalTagihan);
+                        if (empty($paymentUrl)) {
+                            throw new Exception('Gagal membuat transaksi di sistem DANA Payment Gateway.');
+                        }
+                    } elseif (Str::startsWith($paymentMethod, 'tripay_')) {
+                        Log::info("LOG: [TRIPAY] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
+                        $tripayChannel = strtoupper(str_replace('tripay_', '', $paymentMethod));
+                        $tripayResponse = $this->_createTripayTransaction($pesanan, $totalTagihan, $tripayChannel);
+                        if (empty($tripayResponse['success'])) {
+                            throw new Exception($tripayResponse['message'] ?? 'Gagal membuat tagihan pembayaran di sistem Tripay.');
+                        }
+                        $paymentUrl = $tripayResponse['data']['checkout_url'] ?? null;
+                    }
+
+                    if ($paymentUrl && Schema::hasColumn('pesanan_autokirims', 'payment_url')) {
+                        $pesanan->update(['payment_url' => $paymentUrl]);
+                    }
+
+                    DB::commit();
+
+                    if ($paymentUrl) {
+                        return redirect()->away($paymentUrl);
+                    }
+
+                    throw new Exception('URL Pembayaran tidak ditemukan dari server Payment Gateway.');
+                }
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error("LOG: [PESANAN AUTOKIRIM - STORE ERROR] " . $e->getMessage());
+                return redirect()->back()->withInput()->with('error', $e->getMessage());
+            }
+        } finally {
+            // [FITUR IDEMPOTENCY]: Melepas lock agar user bisa request (buat pesanan baru) di masa depan
+            $lock->release();
         }
     }
 
@@ -905,33 +919,46 @@ class PesananAutokirimController extends Controller
             return response()->json(['success' => false, 'message' => 'Invalid Payload'], 400);
         }
 
-        $pesanan = PesananAutokirim::where('order_id', $refId)
-            ->orWhere('awb_number', $awb)
-            ->first();
+        DB::beginTransaction();
+        try {
+            // [FITUR IDEMPOTENCY]: lockForUpdate() mengunci row ini selama transaksi berjalan.
+            // Mencegah double hit webhook yang datang bersamaan agar eksekusi tidak saling tabrak.
+            $pesanan = PesananAutokirim::where('order_id', $refId)
+                ->orWhere('awb_number', $awb)
+                ->lockForUpdate()
+                ->first();
 
-        if ($pesanan) {
-            // Cegah double refund dengan mengecek status lama
-            $statusLama = $pesanan->status;
+            if ($pesanan) {
+                $statusLama = $pesanan->status;
 
-            $pesanan->update([
-                'status' => $status
-            ]);
+                $pesanan->update([
+                    'status' => $status
+                ]);
 
-            // Jika status baru adalah batal/gagal dan sebelumnya bukan batal
-            if (in_array(strtolower($status), ['batal', 'gagal', 'cancelled']) && !in_array(strtolower($statusLama), ['batal', 'gagal', 'cancelled'])) {
-                if ($pesanan->metode_pembayaran === 'potong_saldo') {
-                    $userToRefund = User::find($pesanan->user_id);
-                    if ($userToRefund) {
-                        $userToRefund->increment('saldo', $pesanan->ongkir);
-                        Log::info("LOG: [WEBHOOK REFUND] Saldo dikembalikan via Webhook untuk Order ID {$pesanan->order_id}");
+                // [CEGAH DOUBLE REFUND]: Refund otomatis jika status batal/gagal, dan pastikan status lamanya belum batal/gagal
+                if (in_array(strtolower($status), ['batal', 'gagal', 'cancelled']) && !in_array(strtolower($statusLama), ['batal', 'gagal', 'cancelled'])) {
+                    if ($pesanan->metode_pembayaran === 'potong_saldo') {
+                        // Kunci juga row user saat melakukan increment (refund)
+                        $userToRefund = User::where('id', $pesanan->user_id)->lockForUpdate()->first();
+                        if ($userToRefund) {
+                            $userToRefund->increment('saldo', $pesanan->ongkir);
+                            Log::info("LOG: [WEBHOOK REFUND] Saldo dikembalikan sebesar Rp {$pesanan->ongkir} via Webhook untuk Order ID {$pesanan->order_id}");
+                        }
                     }
                 }
+
+                DB::commit();
+                return response()->json(['success' => true, 'message' => 'Status pesanan berhasil diperbarui'], 200);
             }
 
-            return response()->json(['success' => true, 'message' => 'Status pesanan berhasil diperbarui'], 200);
-        }
+            DB::commit();
+            return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan'], 404);
 
-        return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan'], 404);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("LOG: [WEBHOOK ERROR] " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Internal Server Error'], 500);
+        }
     }
 
 
