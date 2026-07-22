@@ -566,7 +566,7 @@ class PesananAutokirimController extends Controller
         $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
 
         $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
-        $qtyInput = $requestData ? (string) $requestData->input('qty', 1) : 1;
+        $qtyInput = $requestData ? (string) $requestData->input('qty', 1) : "1";
         $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
 
         $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
@@ -850,6 +850,15 @@ class PesananAutokirimController extends Controller
                     // Jika sukses dari API, baru ubah status di database lokal
                     $pesanan->update(['status' => 'batal']);
 
+                    // [TAMBAHAN WAJIB]: Kembalikan saldo jika menggunakan potong_saldo
+                    if ($pesanan->metode_pembayaran === 'potong_saldo') {
+                        $userToRefund = User::find($pesanan->user_id);
+                        if ($userToRefund) {
+                            $userToRefund->increment('saldo', $pesanan->ongkir);
+                            Log::info("LOG: [REFUND SALDO] Berhasil mengembalikan Rp {$pesanan->ongkir} ke User ID {$pesanan->user_id} untuk Order ID {$pesanan->order_id}");
+                        }
+                    }
+
                     Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] BERHASIL membatalkan Order ID: {$pesanan->order_id}");
                     return redirect()->back()->with('success', 'Pesanan berhasil dibatalkan di sistem logistik.');
                 }
@@ -901,9 +910,24 @@ class PesananAutokirimController extends Controller
             ->first();
 
         if ($pesanan) {
+            // Cegah double refund dengan mengecek status lama
+            $statusLama = $pesanan->status;
+
             $pesanan->update([
                 'status' => $status
             ]);
+
+            // Jika status baru adalah batal/gagal dan sebelumnya bukan batal
+            if (in_array(strtolower($status), ['batal', 'gagal', 'cancelled']) && !in_array(strtolower($statusLama), ['batal', 'gagal', 'cancelled'])) {
+                if ($pesanan->metode_pembayaran === 'potong_saldo') {
+                    $userToRefund = User::find($pesanan->user_id);
+                    if ($userToRefund) {
+                        $userToRefund->increment('saldo', $pesanan->ongkir);
+                        Log::info("LOG: [WEBHOOK REFUND] Saldo dikembalikan via Webhook untuk Order ID {$pesanan->order_id}");
+                    }
+                }
+            }
+
             return response()->json(['success' => true, 'message' => 'Status pesanan berhasil diperbarui'], 200);
         }
 
