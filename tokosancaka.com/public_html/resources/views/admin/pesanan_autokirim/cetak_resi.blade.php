@@ -236,10 +236,10 @@
     <div class="middle-grid">
         <div class="rincian">
             <strong>Rincian Paket:</strong>
-            - Berat: {{ number_format($pesanan->berat_gram, 2) }} Gram<br>
+            - Berat: {{ $beratKg }} Kg<br>
             - Harga Barang: Rp {{ number_format($pesanan->nilai_barang, 0, ',', '.') }}<br>
             <!-- TAMBAHAN: ASURANSI DAN REMARK YANG DIPERJELAS -->
-            - Asuransi: @if($pesanan->asuransi) <span style="font-weight:900;">YA</span> @else <span style="font-weight:900;">TIDAK</span> @endif<br>
+            - Asuransi: @if($pesanan->asuransi) YA @else TIDAK @endif<br>
             - Remark / Isi Paket: {{ strtoupper($pesanan->deskripsi_barang) }} ({{ strtoupper($pesanan->kategori_barang) }})<br>
             - Dimensi: {{ $pesanan->panjang_cm }}x{{ $pesanan->lebar_cm }}x{{ $pesanan->tinggi_cm }} cm<br>
             - Layanan: {{ $pesanan->layanan }}
@@ -270,7 +270,7 @@
         </div>
         <div class="info-item">
             <div class="lbl">BERAT</div>
-            <div>{{ number_format($pesanan->berat_gram, 2) }} Gram</div>
+            <div>{{ $beratKg }} Kg</div>
         </div>
         <div class="info-item">
             <div class="lbl">VOLUME (CM)</div>
