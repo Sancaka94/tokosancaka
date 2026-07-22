@@ -527,7 +527,7 @@
 <!-- ========================================== -->
 <script>
 document.addEventListener('alpine:init', () => {
-    
+    Alpine.data('orderForm', () => ({
         tipePesanan: 'reguler',
         resiCashless: '',
         nilaiBarang: '',
