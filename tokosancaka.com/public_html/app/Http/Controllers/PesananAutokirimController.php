@@ -31,14 +31,10 @@ class PesananAutokirimController extends Controller
 
     public function createCustomer()
     {
+        // Kategori Barang statis ini bisa Anda pindahkan ke DB di masa depan jika ingin lebih dinamis
         $kategoriBarang = [
-            'Pakaian / Fashion',
-            'Elektronik & Gadget',
-            'Dokumen / Surat',
-            'Makanan Kering / Herbal',
-            'Kosmetik & Kecantikan',
-            'Aksesoris & Sparepart',
-            'Lainnya'
+            'Pakaian / Fashion', 'Elektronik & Gadget', 'Dokumen / Surat',
+            'Makanan Kering / Herbal', 'Kosmetik & Kecantikan', 'Aksesoris & Sparepart', 'Lainnya'
         ];
 
         $metodePembayaran = [
@@ -95,17 +91,12 @@ class PesananAutokirimController extends Controller
         return view('customer.pesanan_autokirim.create', compact('kategoriBarang', 'metodePembayaran'));
     }
 
-   // ==========================================
-    // AREA ADMIN: TABEL RIWAYAT TRANSAKSI LENGKAP & PROFIT SHARING
-    // ==========================================
     public function indexAdmin(Request $request)
     {
-        // 1. FILTER HANYA DATA MILIK ROLE 'AGENT'
         $query = PesananAutokirim::with('user')->whereHas('user', function($q) {
             $q->where('role', 'agent');
         });
 
-        // 2. PENCARIAN (Berdasarkan Resi, Order ID, Nama, HP, dan Nama Agen)
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
@@ -122,12 +113,10 @@ class PesananAutokirimController extends Controller
             });
         }
 
-        // 3. FILTER STATUS
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
 
-        // 4. FILTER TANGGAL
         if ($request->filled('date_range')) {
             $dates = explode(' to ', str_replace([' - ', ' s.d. '], ' to ', $request->date_range));
             if (count($dates) >= 2) {
@@ -137,9 +126,6 @@ class PesananAutokirimController extends Controller
             }
         }
 
-        // =========================================================
-        // AGREGASI STATISTIK LANGSUNG DARI DB (Optimal & Cepat)
-        // =========================================================
         $totalTransaksi = (clone $query)->count();
         $totalOngkir    = (clone $query)->sum('ongkir');
 
@@ -154,7 +140,6 @@ class PesananAutokirimController extends Controller
             'laba_sancaka'   => (clone $querySukses)->sum('laba_sistem'),
         ];
 
-        // 5. PAGINASI (Tanpa loop transform array lagi)
         $pesanan = $query->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
         return view('admin.pesanan_autokirim.index', compact(
@@ -162,9 +147,6 @@ class PesananAutokirimController extends Controller
         ));
     }
 
-    /**
-     * Helper Private untuk Menghitung Profit Sharing Sancaka 60% & Agen 40%
-     */
     private function hitungProfit($pesanan, $rates)
     {
         $kurir = strtolower($pesanan->kurir ?? '');
@@ -174,12 +156,10 @@ class PesananAutokirimController extends Controller
         $bestMatch = null;
         $highestScore = -1;
 
-        // Pencocokan pintar string layanan ke tabel Admin
         foreach ($rates as $rate) {
             $serviceStr = strtolower($rate->service);
             $score = 0;
 
-            // 1. Cocokkan Brand Ekspedisi
             $kurirMapping = [
                 'j&t' => 'jnt', 'jne' => 'jne', 'id express' => 'idx', 'sicepat' => 'sicepat', 'sap' => 'sap', 'ninja' => 'ninja', 'anteraja' => 'anteraja'
             ];
@@ -195,33 +175,28 @@ class PesananAutokirimController extends Controller
 
             if (!$isBrandMatched) continue;
 
-            // 2. Cocokkan Jenis Layanan (REG, YES, OKE, dll)
             $layananKeys = explode(' ', str_replace(['-', ' '], ' ', $layanan));
             foreach ($layananKeys as $k) {
                 if (strlen($k) > 2 && str_contains($serviceStr, $k)) $score += 3;
             }
 
-            // 3. Cocokkan Tipe Pembayaran (COD / Non-COD)
             if ($isCod && str_contains($serviceStr, 'cod')) {
                 $score += 4;
             } elseif (!$isCod && !str_contains($serviceStr, 'cod')) {
                 $score += 2;
             }
 
-            // Simpan skor tertinggi
             if ($score > $highestScore && $score > 0) {
                 $highestScore = $score;
                 $bestMatch = $rate;
             }
         }
 
-        // Ambil persentase murni CASHBACK dari Logistik
         $persenCashbackPusat = 0;
         if ($bestMatch) {
             $persenCashbackPusat = floatval($bestMatch->cashback ?? 0);
         }
 
-        // RUMUS BAGI HASIL: 40% AGEN | 60% SANCAKA
         $totalCashback = $pesanan->ongkir * ($persenCashbackPusat / 100);
         $komisiAgen    = $totalCashback * 0.40;
         $labaSancaka   = $totalCashback * 0.60;
@@ -234,14 +209,10 @@ class PesananAutokirimController extends Controller
         ];
     }
 
-    // ==========================================
-    // AREA CUSTOMER: TABEL RIWAYAT TRANSAKSI & KOMISI
-    // ==========================================
     public function indexCustomer(Request $request)
     {
         $query = PesananAutokirim::where('user_id', auth()->id());
 
-        // 1. PENCARIAN LENGKAP
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
@@ -254,7 +225,6 @@ class PesananAutokirimController extends Controller
             });
         }
 
-        // 2. FILTER STATUS & TANGGAL
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
@@ -267,9 +237,6 @@ class PesananAutokirimController extends Controller
             }
         }
 
-        // =========================================================
-        // AGREGASI KOMISI LANGSUNG DARI DB (Optimal & Cepat)
-        // =========================================================
         $totalTransaksi = (clone $query)->count();
         $totalOngkir    = (clone $query)->sum('ongkir');
 
@@ -279,11 +246,9 @@ class PesananAutokirimController extends Controller
         $thisMonth = $now->copy()->startOfMonth();
         $lastMonth = $now->copy()->subMonth()->startOfMonth();
 
-        // Hanya hitung komisi untuk transaksi yang bukan batal/gagal
         $statusPending = ['batal', 'gagal', 'menunggu_pembayaran'];
         $querySukses   = clone $query->whereNotIn('status', $statusPending);
 
-        // Agregasi per rentang waktu murni pakai Query Builder
         $komisiTotal        = (clone $querySukses)->sum('komisi_agen');
         $komisiHariIni      = (clone $querySukses)->where('created_at', '>=', $today)->sum('komisi_agen');
         $komisiKemarin      = (clone $querySukses)->whereBetween('created_at', [$yesterday, $today->copy()->subSecond()])->sum('komisi_agen');
@@ -298,11 +263,9 @@ class PesananAutokirimController extends Controller
             'bulan_kemarin' => $komisiBulanKemarin
         ];
 
-        // 3. Persentase Kenaikan/Penurunan (Growth)
         $growthHarian = $komisi['kemarin'] > 0 ? (($komisi['hari_ini'] - $komisi['kemarin']) / $komisi['kemarin']) * 100 : ($komisi['hari_ini'] > 0 ? 100 : 0);
         $growthBulanan = $komisi['bulan_kemarin'] > 0 ? (($komisi['bulan_ini'] - $komisi['bulan_kemarin']) / $komisi['bulan_kemarin']) * 100 : ($komisi['bulan_ini'] > 0 ? 100 : 0);
 
-        // 4. DATA PAGINASI UNTUK TABEL (Tanpa loop transform array lagi)
         $pesanan = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
 
         return view('customer.pesanan_autokirim.index', compact(
@@ -310,9 +273,6 @@ class PesananAutokirimController extends Controller
         ));
     }
 
-   /**
-     * Helper Private untuk mencocokkan layanan kurir dan menghitung Skema Profit Sharing 40:60
-     */
     private function hitungKomisi($pesanan, $rates)
     {
         $kurir = strtolower($pesanan->kurir ?? '');
@@ -322,12 +282,10 @@ class PesananAutokirimController extends Controller
         $bestMatch = null;
         $highestScore = -1;
 
-        // Pencocokan pintar string layanan ke tabel Admin
         foreach ($rates as $rate) {
             $serviceStr = strtolower($rate->service);
             $score = 0;
 
-            // 1. Cocokkan Brand Ekspedisi
             $kurirMapping = [
                 'j&t' => 'jnt', 'jne' => 'jne', 'id express' => 'idx', 'sicepat' => 'sicepat', 'sap' => 'sap', 'ninja' => 'ninja', 'anteraja' => 'anteraja'
             ];
@@ -343,42 +301,30 @@ class PesananAutokirimController extends Controller
 
             if (!$isBrandMatched) continue;
 
-            // 2. Cocokkan Jenis Layanan (REG, YES, OKE, dll)
             $layananKeys = explode(' ', str_replace(['-', ' '], ' ', $layanan));
             foreach ($layananKeys as $k) {
                 if (strlen($k) > 2 && str_contains($serviceStr, $k)) $score += 3;
             }
 
-            // 3. Cocokkan Tipe Pembayaran (COD / Non-COD)
             if ($isCod && str_contains($serviceStr, 'cod')) {
                 $score += 4;
             } elseif (!$isCod && !str_contains($serviceStr, 'cod')) {
                 $score += 2;
             }
 
-            // Simpan skor tertinggi
             if ($score > $highestScore && $score > 0) {
                 $highestScore = $score;
                 $bestMatch = $rate;
             }
         }
 
-        // ==========================================================
-        // RUMUS BAGI HASIL: 40% AGEN | 60% SANCAKA (DARI CASHBACK PUSAT)
-        // ==========================================================
         $persenCashbackPusat = 0;
 
         if ($bestMatch) {
-            // Ambil persentase murni CASHBACK yang Sancaka dapatkan dari Logistik
             $persenCashbackPusat = floatval($bestMatch->cashback ?? 0);
         }
 
-        // TAHAP 1: Hitung Keuntungan / Laba Sancaka
-        // Contoh: Ongkir Rp 10.000, Cashback Pusat 25% -> Laba Sancaka = Rp 2.500
         $labaSancaka = $pesanan->ongkir * ($persenCashbackPusat / 100);
-
-        // TAHAP 2: Hitung Jatah Komisi Agen (40% dari Laba Sancaka)
-        // Contoh: 40% x Rp 2.500 = Rp 1.000 (Ini yang tampil di layar Agent)
         $komisiAgen = $labaSancaka * 0.40;
 
         return $komisiAgen;
@@ -401,16 +347,19 @@ class PesananAutokirimController extends Controller
         return response()->json($data);
     }
 
-   public function cekOngkirAjax(Request $request)
+    // ========================================================
+    // FULL DINAMIS: CEK ONGKIR AJAX
+    // ========================================================
+    public function cekOngkirAjax(Request $request)
     {
         $origin_id      = $request->origin_id;
         $destination_id = $request->destination_id;
         $berat          = $request->berat_gram;
+
+        // FULL DINAMIS: Diambil dari frontend
         $qty            = $request->input('qty', 1);
         $isSenderPp     = $request->input('is_sender_pp', 1);
-
-        // Ambil langsung kode komoditi unik dari frontend
-        $commodityCode  = $request->input('kategori_barang', 'THT001');
+        $commodityCode  = $request->input('kategori_barang', 'OTH001');
 
         if (empty($origin_id) || empty($destination_id)) {
             return response()->json(['success' => false, 'message' => 'Wilayah asal atau tujuan tidak valid.']);
@@ -421,10 +370,6 @@ class PesananAutokirimController extends Controller
             $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
             $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
-            // ========================================================
-            // CHECK PRICE DENGAN PAYLOAD SESUAI DOKUMENTASI V2
-            // Parameter pickup_point_code dihapus agar sistem menggunakan origin_id
-            // ========================================================
             $payload = [
                 'origin_id'         => (int) $origin_id,
                 'destination_id'    => (int) $destination_id,
@@ -526,13 +471,14 @@ class PesananAutokirimController extends Controller
         $localOrderId = (string) (date('ymdHis') . mt_rand(1000, 9999));
         $totalTagihan = (int) $request->ongkir_terpilih;
         $paymentMethod = $request->metode_pembayaran;
+
+        // FULL DINAMIS: Fallback 10000 rupiah murni untuk mencegah error logistik jika nilai 0
         $hargaBarangInput = (int) $request->nilai_barang;
         $finalPrice = $hargaBarangInput > 0 ? $hargaBarangInput : 10000;
         $isInsurance = $request->has('asuransi');
 
         DB::beginTransaction();
         try {
-            // 1. TAMBAHKAN LOGIKA PERHITUNGAN INI SEBELUM CREATE PESANAN
             $rates = DB::table('data_auto_kirims')->get();
 
             $kalkulasiData = (object) [
@@ -542,10 +488,8 @@ class PesananAutokirimController extends Controller
                 'ongkir' => $totalTagihan
             ];
 
-            // Variabel $profit akhirnya didefinisikan di sini
             $profit = $this->hitungProfit($kalkulasiData, $rates);
 
-            // 2. CREATE PESANAN KE DATABASE
             $pesanan = PesananAutokirim::create([
                 'user_id'           => auth()->id() ?? null,
                 'order_id'          => $localOrderId,
@@ -571,8 +515,6 @@ class PesananAutokirimController extends Controller
                 'awb_number'        => null,
                 'metode_pembayaran' => $paymentMethod,
                 'status'            => 'waiting_payment',
-
-                // 3. SEKARANG VARIABEL $profit SUDAH BISA DIPANGGIL DENGAN AMAN
                 'total_cashback'    => $profit->total_cashback,
                 'laba_sistem'       => $profit->laba_sancaka,
                 'komisi_agen'       => $profit->komisi_agen
@@ -580,10 +522,8 @@ class PesananAutokirimController extends Controller
 
             $paymentUrl = null;
 
-            // TAMBAHKAN cod_barang dan cod_ongkir agar tidak dialihkan ke Payment Gateway
             if (in_array($paymentMethod, ['potong_saldo', 'dana_binding', 'cod_barang', 'cod_ongkir'])) {
 
-                // Hanya potong saldo dan DANA Binding jika dipilih
                 if ($paymentMethod === 'potong_saldo') {
                     $user = User::find(auth()->id());
                     if (!$user) {
@@ -598,8 +538,7 @@ class PesananAutokirimController extends Controller
                     $this->_processDanaBindingCharge($pesanan, $totalTagihan);
                 }
 
-                // CATATAN: Metode COD akan melewati blok potong saldo di atas tanpa kendala
-
+                // Teruskan $request ke _executeAutokirimApi agar kita bisa passing input 'qty' dan 'is_sender_pp'
                 $awbResult = $this->_executeAutokirimApi($pesanan, $origin, $destination, $request);
 
                 $pesanan->update([
@@ -611,7 +550,6 @@ class PesananAutokirimController extends Controller
 
                 DB::commit();
 
-                // Tampilkan pesan sesuai tipe transaksi
                 $metodeTampil = str_replace('_', ' ', strtoupper($paymentMethod));
                 return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbResult['awb']} (Metode: {$metodeTampil})");
 
@@ -659,6 +597,9 @@ class PesananAutokirimController extends Controller
         }
     }
 
+    // ========================================================
+    // FULL DINAMIS: EKSEKUSI API CREATE ORDER
+    // ========================================================
     public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
     {
         $pickupPayload = [
@@ -686,20 +627,20 @@ class PesananAutokirimController extends Controller
         }
 
         $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
-        $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
-        $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
-        $qtyInput = $requestData ? (string) $requestData->input('qty', '1') : '1';
 
-        // 1. Deteksi apakah ini pesanan COD
+        // FULL DINAMIS: Ambil parameter is_sender_pp dan qty langsung dari form request
+        $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
+        $qtyInput = $requestData ? (string) $requestData->input('qty', '1') : '1';
+        $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
+
         $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
 
-        // 2. Tentukan nilai tagihan COD yang dikirimkan ke Kurir
         $codValue = 0;
         if ($isCod) {
             if (strtolower($pesanan->metode_pembayaran) === 'cod_ongkir') {
-                $codValue = (int) $pesanan->ongkir; // Jika COD Ongkir, tagihan kurir = Nominal Ongkir
+                $codValue = (int) $pesanan->ongkir;
             } else {
-                $codValue = (int) $pesanan->nilai_barang; // Jika COD Barang, tagihan kurir = Nominal yang diinput user
+                $codValue = (int) $pesanan->nilai_barang;
             }
         }
 
@@ -717,11 +658,8 @@ class PesananAutokirimController extends Controller
             'description'       => (string) $pesanan->deskripsi_barang,
             'remarks'           => (string) $pesanan->kategori_barang,
             'price'             => (int) $pesanan->nilai_barang > 0 ? (int) $pesanan->nilai_barang : 10000,
-
-            // 🔥 Terapkan logic COD terbaru ke Payload API 🔥
             'is_cod'            => $isCod,
             'cod_value'         => $codValue,
-
             'is_sender_pp'      => $isSenderPp,
             'is_insurance'      => (bool) $pesanan->asuransi,
             'from' => [
@@ -734,7 +672,8 @@ class PesananAutokirimController extends Controller
                 'phone'   => (string) trim($pesanan->penerima_hp),
                 'address' => (string) trim($pesanan->penerima_alamat),
             ],
-            'commodity' => strtolower($pesanan->kurir) === 'lion parcel' ? (string) $pesanan->kategori_barang : "",
+            // FULL DINAMIS: Tidak lagi dihardcode hanya untuk lion parcel
+            'commodity' => (string) $pesanan->kategori_barang,
         ];
 
         Log::info("LOG: [API AUTOKIRIM - CREATE ORDER] REQUEST:", $orderPayload);
@@ -939,23 +878,16 @@ class PesananAutokirimController extends Controller
         }
     }
 
-    // ==========================================
-    // AREA ADMIN: AKSI TOMBOL
-    // ==========================================
-
-    // 1. Cetak Resi (PDF / Print Image)
     public function cetakResi($id)
     {
         $pesanan = PesananAutokirim::findOrFail($id);
         return view('admin.pesanan_autokirim.cetak_resi', compact('pesanan'));
     }
 
-    // 2. Tombol Cancel Pesanan
     public function cancelOrder($id)
     {
         $pesanan = PesananAutokirim::findOrFail($id);
 
-        // Kunci tombol: Hanya bisa batal jika statusnya baru dibuat / menunggu pembayaran
         if (in_array($pesanan->status, ['booking_created', 'menunggu_pembayaran'])) {
             $pesanan->update(['status' => 'batal']);
             return redirect()->back()->with('success', 'Pesanan berhasil dibatalkan.');
@@ -964,14 +896,12 @@ class PesananAutokirimController extends Controller
         return redirect()->back()->with('error', 'Pesanan tidak dapat dibatalkan karena sudah dalam perjalanan atau diproses ekspedisi.');
     }
 
-    // 3. Hapus Satuan (Icon Sampah)
     public function destroy($id)
     {
         PesananAutokirim::findOrFail($id)->delete();
         return redirect()->back()->with('success', 'Data pesanan berhasil dihapus.');
     }
 
-    // 4. Hapus Massal (Bulk Destroy)
     public function bulkDestroy(Request $request)
     {
         $ids = $request->input('ids');
@@ -982,33 +912,26 @@ class PesananAutokirimController extends Controller
         return redirect()->back()->with('error', 'Pilih minimal satu pesanan untuk dihapus.');
     }
 
-    // ==========================================
-    // AREA WEBHOOK: MENERIMA UPDATE STATUS DARI AUTOKIRIM
-    // ==========================================
     public function handleWebhook(Request $request)
     {
         Log::info('WEBHOOK AUTOKIRIM DITERIMA:', $request->all());
 
-        // Parameter sesuai dokumentasi Autokirim
-        $refId = $request->input('ref_id'); // ID dari sistem Sancaka (order_id)
+        $refId = $request->input('ref_id');
         $awb = $request->input('awb_number');
-        $status = $request->input('transactions_stats'); // CREATE, MANIFESTED, DELIVERED, dll
+        $status = $request->input('transactions_stats');
         $desc = $request->input('transactions_desc');
 
         if (!$refId && !$awb) {
             return response()->json(['success' => false, 'message' => 'Invalid Payload: ref_id atau awb_number tidak ditemukan'], 400);
         }
 
-        // Cari berdasarkan order_id atau awb_number
         $pesanan = PesananAutokirim::where('order_id', $refId)
             ->orWhere('awb_number', $awb)
             ->first();
 
         if ($pesanan) {
-            // Update status pesanan di database Sancaka
             $pesanan->update([
                 'status' => $status
-                // Jika Anda punya kolom keterangan di DB, Anda bisa juga simpan $desc ke sana
             ]);
 
             Log::info("WEBHOOK AUTOKIRIM SUKSES: Update order {$pesanan->order_id} menjadi status: {$status} - {$desc}");
@@ -1018,5 +941,4 @@ class PesananAutokirimController extends Controller
         Log::warning("WEBHOOK AUTOKIRIM GAGAL: Pesanan tidak ditemukan untuk ref_id: {$refId} / awb: {$awb}");
         return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan'], 404);
     }
-
 }
