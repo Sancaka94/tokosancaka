@@ -280,7 +280,7 @@
     <!-- FOOTER YANG SUDAH DIPERBAIKI -->
     <div class="footer">
         Terima kasih telah menggunakan <strong>Sancaka Express</strong>.<br>
-        {{ $pesanan->created_at->format('d M Y H:i') }} Powered By: <strong>Autokirim</strong><br>
+        {{ $pesanan->created_at->format('d M Y H:i') }} Powered By: Autokirim<br>
         <div style="margin-top: 6px; font-size: 11px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase;">KIRIM PAKET DI TOKOSANCAKA.COM</div>
     </div>
 
