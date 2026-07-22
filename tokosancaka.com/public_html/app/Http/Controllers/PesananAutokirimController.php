@@ -290,19 +290,20 @@ class PesananAutokirimController extends Controller
     }
 
     // ========================================================
-    // PERBAIKAN: WEIGHT DIKIRIM MURNI SEBAGAI GRAM
+    // PERBAIKAN: WEIGHT DI PASTIKAN INTEGER MURNI (TANPA KUTIP)
     // ========================================================
     public function cekOngkirAjax(Request $request)
     {
         $origin_id      = $request->origin_id;
         $destination_id = $request->destination_id;
-        $qty            = $request->input('qty', 1);
-        $isSenderPp     = $request->input('is_sender_pp', 1);
+
+        $qty            = (int) $request->input('qty', 1);
+        $isSenderPp     = (int) $request->input('is_sender_pp', 1);
         $commodityCode  = $request->input('kategori_barang', 'OTH001');
 
-        // 🔥 BERAT LANGSUNG MENGGUNAKAN GRAM DARI INPUT FRONTEND
+        // PASTIKAN BERAT GRAM ADALAH INTEGER MURNI
         $beratGram = (int) $request->berat_gram;
-        $weightApi = $beratGram > 0 ? $beratGram : 1000; // Fallback minimal 1000 gram jika kosong/0
+        $weightApi = $beratGram > 0 ? $beratGram : 1000;
 
         if (empty($origin_id) || empty($destination_id)) {
             return response()->json(['success' => false, 'message' => 'Wilayah asal atau tujuan tidak valid.']);
@@ -313,13 +314,14 @@ class PesananAutokirimController extends Controller
             $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
             $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
+            // KITA CASTING SEMUA NUMBER MENJADI (int) AGAR JSONNYA BENAR
             $payload = [
                 'origin_id'         => (int) $origin_id,
                 'destination_id'    => (int) $destination_id,
-                'weight'            => (string) $weightApi, // Mengirim GRAM sesuai permintaan API
-                'length'            => $request->panjang_cm > 0 ? (int) $request->panjang_cm : 10,
-                'width'             => $request->lebar_cm > 0 ? (int) $request->lebar_cm : 10,
-                'height'            => $request->tinggi_cm > 0 ? (int) $request->tinggi_cm : 10,
+                'weight'            => (int) $weightApi, // INI KUNCINYA: (int) menghilangkan tanda kutip pada JSON API
+                'length'            => (int) ($request->panjang_cm > 0 ? $request->panjang_cm : 10),
+                'width'             => (int) ($request->lebar_cm > 0 ? $request->lebar_cm : 10),
+                'height'            => (int) ($request->tinggi_cm > 0 ? $request->tinggi_cm : 10),
                 'is_sender_pp'      => (int) $isSenderPp,
                 'additional'        => [
                     'commodity'     => $commodityCode
@@ -347,7 +349,7 @@ class PesananAutokirimController extends Controller
                     $parsedCourier = ShippingHelper::parseShippingMethod($courier['courier_code'] ?? $courier['courier_name']);
 
                     foreach ($courier['service_detail'] as $service) {
-                        $totalHarga = (int) $service['price'] * (int) $qty;
+                        $totalHarga = (int) $service['price'] * $qty;
 
                         $flatOngkir[] = [
                             'kurir'          => $parsedCourier['courier_name'],
@@ -538,9 +540,6 @@ class PesananAutokirimController extends Controller
         }
     }
 
-    // ========================================================
-    // PERBAIKAN: WEIGHT DIKIRIM MURNI SEBAGAI GRAM
-    // ========================================================
     public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
     {
         $pickupPayload = [
@@ -567,7 +566,7 @@ class PesananAutokirimController extends Controller
         $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
 
         $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
-        $qtyInput = $requestData ? (string) $requestData->input('qty', '1') : '1';
+        $qtyInput = $requestData ? (int) $requestData->input('qty', 1) : 1;
         $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
 
         $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
@@ -581,7 +580,7 @@ class PesananAutokirimController extends Controller
             }
         }
 
-        // 🔥 BERAT LANGSUNG MENGGUNAKAN GRAM
+        // PASTIKAN BERAT GRAM ADALAH INTEGER MURNI SAAT CREATE ORDER
         $beratGram = (int) $pesanan->berat_gram;
         $weightApi = $beratGram > 0 ? $beratGram : 1000;
 
@@ -591,17 +590,17 @@ class PesananAutokirimController extends Controller
             'pickup_point_code' => $pickupPointCode,
             'origin_id'         => (int) $origin->district_id,
             'destination_id'    => (int) $destination->district_id,
-            'weight'            => (string) $weightApi, // Wajib dikirim sebagai GRAM string
-            'qty'               => $qtyInput,
-            'length'            => (int) $pesanan->panjang_cm > 0 ? (int) $pesanan->panjang_cm : 10,
-            'width'             => (int) $pesanan->lebar_cm > 0 ? (int) $pesanan->lebar_cm : 10,
-            'height'            => (int) $pesanan->tinggi_cm > 0 ? (int) $pesanan->tinggi_cm : 10,
+            'weight'            => (int) $weightApi, // INI KUNCINYA: Integer
+            'qty'               => (int) $qtyInput,
+            'length'            => (int) ($pesanan->panjang_cm > 0 ? $pesanan->panjang_cm : 10),
+            'width'             => (int) ($pesanan->lebar_cm > 0 ? $pesanan->lebar_cm : 10),
+            'height'            => (int) ($pesanan->tinggi_cm > 0 ? $pesanan->tinggi_cm : 10),
             'description'       => (string) $pesanan->deskripsi_barang,
             'remarks'           => (string) $pesanan->kategori_barang,
-            'price'             => (int) $pesanan->nilai_barang > 0 ? (int) $pesanan->nilai_barang : 10000,
+            'price'             => (int) ($pesanan->nilai_barang > 0 ? $pesanan->nilai_barang : 10000),
             'is_cod'            => $isCod,
             'cod_value'         => $codValue,
-            'is_sender_pp'      => $isSenderPp,
+            'is_sender_pp'      => (int) $isSenderPp,
             'is_insurance'      => (bool) $pesanan->asuransi,
             'from' => [
                 'name'    => (string) trim($pesanan->pengirim_nama),
