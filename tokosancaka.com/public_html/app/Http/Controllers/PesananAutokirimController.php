@@ -683,9 +683,9 @@ class PesananAutokirimController extends Controller
             'height'            => (int) $pesanan->tinggi_cm,
             'description'       => (string) $pesanan->deskripsi_barang,
             'remarks'           => (string) $pesanan->kategori_barang,
-            'is_cod'            => false,
             'price'             => (int) $pesanan->nilai_barang > 0 ? (int) $pesanan->nilai_barang : 10000,
-            'cod_value'         => 0,
+            'is_cod'            => in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang']),
+            'cod_value'         => in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang']) ? (int) $pesanan->nilai_barang : 0,
             'is_sender_pp'      => $isSenderPp,
             'is_insurance'      => (bool) $pesanan->asuransi,
             'from' => [

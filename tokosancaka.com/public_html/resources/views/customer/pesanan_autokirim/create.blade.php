@@ -168,6 +168,40 @@
                 <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center"><i class="fa-solid fa-box-open text-orange-500 mr-2"></i> Detail Paket</h2>
 
                 <div class="space-y-4">
+
+                    <!-- DINAMIS: Tipe Pesanan (Reguler / COD / Cashless) -->
+                    <div class="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                        <label class="block text-xs font-bold text-gray-700 mb-2">Tipe Pesanan</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <label class="flex flex-col items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors"
+                                   :class="tipePesanan === 'reguler' ? 'border-blue-500 bg-blue-50 text-blue-700 font-bold shadow-sm' : 'border-gray-200 hover:bg-gray-100 text-gray-600'">
+                                <input type="radio" name="tipe_pesanan" value="reguler" x-model="tipePesanan" class="hidden">
+                                <span class="text-xs">Reguler</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors"
+                                   :class="tipePesanan === 'cod' ? 'border-orange-500 bg-orange-50 text-orange-700 font-bold shadow-sm' : 'border-gray-200 hover:bg-gray-100 text-gray-600'">
+                                <input type="radio" name="tipe_pesanan" value="cod" x-model="tipePesanan" class="hidden">
+                                <span class="text-xs">COD</span>
+                            </label>
+                            <label class="flex flex-col items-center justify-center p-2 border rounded-lg cursor-pointer transition-colors"
+                                   :class="tipePesanan === 'cashless' ? 'border-green-500 bg-green-50 text-green-700 font-bold shadow-sm' : 'border-gray-200 hover:bg-gray-100 text-gray-600'">
+                                <input type="radio" name="tipe_pesanan" value="cashless" x-model="tipePesanan" class="hidden">
+                                <span class="text-xs">Cashless</span>
+                            </label>
+                        </div>
+
+                        <!-- Input Ekstra untuk Cashless -->
+                        <div x-show="tipePesanan === 'cashless'" x-transition class="mt-3" x-cloak>
+                            <label class="block text-xs font-semibold text-green-700 mb-1">Nomor Resi Marketplace (AWB) <span class="text-red-500">*</span></label>
+                            <input type="text" name="resi_cashless" x-model="resiCashless" placeholder="Contoh: JP1234567890" class="w-full font-bold border-green-300 rounded-lg text-sm focus:ring-1 focus:ring-green-500 px-3 py-2 uppercase bg-white">
+                        </div>
+                        
+                        <!-- Info Ekstra untuk COD -->
+                        <div x-show="tipePesanan === 'cod'" x-transition class="mt-3" x-cloak>
+                            <p class="text-[10px] text-orange-600 font-semibold leading-tight flex items-start gap-1"><i class="fa-solid fa-circle-info mt-0.5"></i> Fitur COD aktif. Harga Barang di bawah wajib diisi sebagai nominal yang akan ditagihkan ke penerima oleh kurir.</p>
+                        </div>
+                    </div>
+
                     <!-- DINAMIS: Kategori Barang -->
                     <div>
                         <label class="block text-xs font-semibold text-gray-600 mb-1">Kategori Barang</label>
@@ -217,10 +251,10 @@
                         </div>
                     </div>
 
-                    <div x-show="asuransi" x-transition.duration.300ms class="p-4 bg-blue-50/60 rounded-xl border border-blue-100" x-cloak>
-                        <label class="block text-xs font-semibold text-blue-800 mb-1">Nilai Harga Barang (Nominal Rp)</label>
-                        <input type="number" name="nilai_barang" placeholder="Masukkan harga asli isi paket..." class="w-full border-blue-200 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 px-4 py-2" :required="asuransi">
-                        <p class="text-[10px] text-blue-600 mt-1.5 font-medium">* Nominal ini digunakan kurir sebagai acuan klaim asuransi jika barang hilang.</p>
+                    <div x-show="asuransi || tipePesanan === 'cod'" x-transition.duration.300ms class="p-4 rounded-xl border" :class="tipePesanan === 'cod' ? 'bg-orange-50/60 border-orange-200' : 'bg-blue-50/60 border-blue-100'" x-cloak>
+                        <label class="block text-xs font-semibold mb-1" :class="tipePesanan === 'cod' ? 'text-orange-800' : 'text-blue-800'">Nilai Harga Barang / Tagihan COD (Rp) <span class="text-red-500">*</span></label>
+                        <input type="number" name="nilai_barang" x-model="nilaiBarang" placeholder="Masukkan nominal rupiah..." class="w-full font-bold rounded-lg text-sm focus:ring-1 px-4 py-2 bg-white" :class="tipePesanan === 'cod' ? 'border-orange-300 focus:ring-orange-500' : 'border-blue-200 focus:ring-blue-500'" :required="asuransi || tipePesanan === 'cod'">
+                        <p class="text-[10px] mt-1.5 font-medium" :class="tipePesanan === 'cod' ? 'text-orange-700' : 'text-blue-600'" x-text="tipePesanan === 'cod' ? '* Nominal ini adalah total Rupiah yang akan ditagihkan kurir kepada penerima paket.' : '* Nominal ini digunakan kurir sebagai acuan klaim asuransi jika barang hilang.'"></p>
                     </div>
 
                     <div>
@@ -493,7 +527,11 @@
 <!-- ========================================== -->
 <script>
 document.addEventListener('alpine:init', () => {
-    Alpine.data('orderForm', () => ({
+    
+        tipePesanan: 'reguler',
+        resiCashless: '',
+        nilaiBarang: '',
+        
         berat: 1000,
         qty: 1,
         isSenderPp: 1,

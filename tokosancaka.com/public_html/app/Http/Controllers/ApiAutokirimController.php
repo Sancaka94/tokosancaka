@@ -273,4 +273,160 @@ class ApiAutokirimController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * ==============================================================
+     * FITUR CASHLESS
+     * ==============================================================
+     */
+
+    /**
+     * POST: Cashless Check
+     * Mengecek validitas nomor resi cashless dari marketplace
+     */
+    public function checkCashless(Request $request)
+    {
+        $request->validate([
+            'awb_list' => 'required|array',
+            'pickup_point_code' => 'required|string',
+            'courier_code' => 'required|string',
+        ]);
+
+        try {
+            Log::info('LOG LOG: [CASHLESS CHECK REQUEST]', $request->all());
+
+            $response = Http::withToken($this->token)
+                ->post("{$this->baseUrl}/api/cashless/check", $request->all());
+
+            $result = $response->json();
+            Log::info('LOG LOG: [CASHLESS CHECK RESPONSE]', $result ?? []);
+
+            if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
+                return response()->json([
+                    'success' => true,
+                    'data' => $result['data'],
+                    'message' => $result['rd']
+                ], 200);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['rd'] ?? 'Gagal mengecek resi cashless.'
+            ], 400);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [CASHLESS CHECK ERROR] ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * POST: Cashless Order
+     * Memproses pesanan cashless menggunakan resi yang sudah valid
+     */
+    public function orderCashless(Request $request)
+    {
+        $request->validate([
+            'awb_list' => 'required|array',
+            'pickup_point_code' => 'required|string',
+            'courier_code' => 'required|string',
+        ]);
+
+        try {
+            Log::info('LOG LOG: [CASHLESS ORDER REQUEST]', $request->all());
+
+            $response = Http::withToken($this->token)
+                ->post("{$this->baseUrl}/api/cashless/order", $request->all());
+
+            $result = $response->json();
+            Log::info('LOG LOG: [CASHLESS ORDER RESPONSE]', $result ?? []);
+
+            if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
+                return response()->json([
+                    'success' => true,
+                    'data' => $result['data'] ?? [],
+                    'message' => $result['rd'] ?? 'Order cashless berhasil diproses.'
+                ], 200);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['rd'] ?? 'Gagal memproses order cashless.'
+            ], 400);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [CASHLESS ORDER ERROR] ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * ==============================================================
+     * FITUR COD (CASH ON DELIVERY)
+     * ==============================================================
+     */
+
+    /**
+     * POST: Create Order (dengan dukungan COD)
+     * Contoh fungsi untuk menembak API pembuatan pesanan dengan parameter COD dinamis
+     */
+    public function createOrderWithCod(Request $request)
+    {
+        // 1. Validasi input (Silakan sesuaikan dengan kebutuhan validasi Anda)
+        $request->validate([
+            'metode_pembayaran' => 'required|string',
+            'nilai_barang'      => 'required|numeric',
+            // tambahkan validasi lain seperti origin, destination, weight, dll
+        ]);
+
+        // 2. Deteksi otomatis apakah ini transaksi COD
+        $isCod = in_array(strtolower($request->metode_pembayaran), ['cod', 'codbarang']);
+        $nilaiBarang = (int) $request->nilai_barang;
+
+        // 3. Susun Payload API (Contoh sebagian data, silakan lengkapi sesuai parameter Autokirim)
+        $orderPayload = [
+            // ... (masukkan origin, destination, pickup_point, dll dari request)
+            'price'      => $nilaiBarang > 0 ? $nilaiBarang : 10000,
+            
+            // Parameter Kunci untuk COD
+            'is_cod'     => $isCod, // true jika COD, false jika reguler
+            'cod_value'  => $isCod ? $nilaiBarang : 0, // isi harga jika COD, 0 jika reguler
+        ];
+
+        try {
+            Log::info('LOG LOG: [CREATE ORDER COD REQUEST]', $orderPayload);
+
+            $response = Http::withToken($this->token)
+                ->post("{$this->baseUrl}/api/order", $orderPayload);
+
+            $result = $response->json();
+            Log::info('LOG LOG: [CREATE ORDER COD RESPONSE]', $result ?? []);
+
+            if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
+                return response()->json([
+                    'success' => true,
+                    'data'    => $result['data'],
+                    'message' => 'Pesanan berhasil dibuat.'
+                ], 200);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['rd'] ?? 'Gagal membuat pesanan.'
+            ], 400);
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [CREATE ORDER COD ERROR] ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
