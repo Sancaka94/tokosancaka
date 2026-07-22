@@ -290,7 +290,7 @@ class PesananAutokirimController extends Controller
     }
 
     // ========================================================
-    // PERBAIKAN 1: KONVERSI BERAT GRAM -> KG UNTUK CEK ONGKIR
+    // PERBAIKAN: WEIGHT DIKIRIM MURNI SEBAGAI GRAM
     // ========================================================
     public function cekOngkirAjax(Request $request)
     {
@@ -300,12 +300,9 @@ class PesananAutokirimController extends Controller
         $isSenderPp     = $request->input('is_sender_pp', 1);
         $commodityCode  = $request->input('kategori_barang', 'OTH001');
 
-        // 🔥 LOGIKA KONVERSI BERAT (GRAM ke KILOGRAM)
-        $beratGram = (float) $request->berat_gram;
-        $beratKg   = $beratGram / 1000;
-
-        // Minimal berat untuk API Logistik biasanya 1 KG (mencegah angka 0.001)
-        $weightApi = $beratKg < 1 ? 1 : round($beratKg, 2);
+        // 🔥 BERAT LANGSUNG MENGGUNAKAN GRAM DARI INPUT FRONTEND
+        $beratGram = (int) $request->berat_gram;
+        $weightApi = $beratGram > 0 ? $beratGram : 1000; // Fallback minimal 1000 gram jika kosong/0
 
         if (empty($origin_id) || empty($destination_id)) {
             return response()->json(['success' => false, 'message' => 'Wilayah asal atau tujuan tidak valid.']);
@@ -319,8 +316,8 @@ class PesananAutokirimController extends Controller
             $payload = [
                 'origin_id'         => (int) $origin_id,
                 'destination_id'    => (int) $destination_id,
-                'weight'            => (string) $weightApi, // Mengirim data yang sudah berbentuk KG
-                'length'            => $request->panjang_cm > 0 ? (int) $request->panjang_cm : 10, // Default 10cm
+                'weight'            => (string) $weightApi, // Mengirim GRAM sesuai permintaan API
+                'length'            => $request->panjang_cm > 0 ? (int) $request->panjang_cm : 10,
                 'width'             => $request->lebar_cm > 0 ? (int) $request->lebar_cm : 10,
                 'height'            => $request->tinggi_cm > 0 ? (int) $request->tinggi_cm : 10,
                 'is_sender_pp'      => (int) $isSenderPp,
@@ -336,6 +333,8 @@ class PesananAutokirimController extends Controller
                 ->post("{$baseUrl}/api/v2/check-price", $payload);
 
             $result = $response->json();
+
+            Log::info("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] RESPONSE:", $result ?? []);
 
             if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
                 $flatOngkir = [];
@@ -447,7 +446,7 @@ class PesananAutokirimController extends Controller
                 'deskripsi_barang'  => $request->deskripsi_barang,
                 'kategori_barang'   => $request->kategori_barang,
                 'berat_gram'        => $request->berat_gram,
-                'panjang_cm'        => $request->panjang_cm ? (int) $request->panjang_cm : 10, // Default disamakan dgn API
+                'panjang_cm'        => $request->panjang_cm ? (int) $request->panjang_cm : 10,
                 'lebar_cm'          => $request->lebar_cm ? (int) $request->lebar_cm : 10,
                 'tinggi_cm'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 10,
                 'asuransi'          => $isInsurance ? 1 : 0,
@@ -540,7 +539,7 @@ class PesananAutokirimController extends Controller
     }
 
     // ========================================================
-    // PERBAIKAN 2: KONVERSI BERAT GRAM -> KG SAAT CREATE ORDER
+    // PERBAIKAN: WEIGHT DIKIRIM MURNI SEBAGAI GRAM
     // ========================================================
     public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
     {
@@ -582,9 +581,9 @@ class PesananAutokirimController extends Controller
             }
         }
 
-        // 🔥 LOGIKA KONVERSI BERAT (GRAM ke KILOGRAM)
-        $beratKg = (float) $pesanan->berat_gram / 1000;
-        $weightApi = $beratKg < 1 ? 1 : round($beratKg, 2);
+        // 🔥 BERAT LANGSUNG MENGGUNAKAN GRAM
+        $beratGram = (int) $pesanan->berat_gram;
+        $weightApi = $beratGram > 0 ? $beratGram : 1000;
 
         $orderPayload = [
             'service_code'      => $serviceCode,
@@ -592,7 +591,7 @@ class PesananAutokirimController extends Controller
             'pickup_point_code' => $pickupPointCode,
             'origin_id'         => (int) $origin->district_id,
             'destination_id'    => (int) $destination->district_id,
-            'weight'            => (string) $weightApi, // Wajib dikirim sebagai KG
+            'weight'            => (string) $weightApi, // Wajib dikirim sebagai GRAM string
             'qty'               => $qtyInput,
             'length'            => (int) $pesanan->panjang_cm > 0 ? (int) $pesanan->panjang_cm : 10,
             'width'             => (int) $pesanan->lebar_cm > 0 ? (int) $pesanan->lebar_cm : 10,
