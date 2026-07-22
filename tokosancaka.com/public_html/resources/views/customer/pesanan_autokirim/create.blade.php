@@ -3,7 +3,7 @@
 @section('content')
 <div class="max-w-6xl mx-auto px-4 py-8 font-sans" x-data="orderForm">
     <div class="mb-8">
-        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Kirim Paket <span class="text-blue-600">Autokirim</span></h1>
+        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Kirim Paket <span class="text-blue-600">Sancaka Express</span></h1>
         <p class="text-gray-500 mt-2">Isi detail pengiriman dengan cepat, akurat, dan dapatkan tarif terbaik dari server logistik.</p>
     </div>
 
