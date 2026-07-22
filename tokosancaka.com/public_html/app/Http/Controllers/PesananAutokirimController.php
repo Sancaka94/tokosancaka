@@ -31,7 +31,6 @@ class PesananAutokirimController extends Controller
 
     public function createCustomer()
     {
-        // Kategori Barang statis ini bisa Anda pindahkan ke DB di masa depan jika ingin lebih dinamis
         $kategoriBarang = [
             'Pakaian / Fashion', 'Elektronik & Gadget', 'Dokumen / Surat',
             'Makanan Kering / Herbal', 'Kosmetik & Kecantikan', 'Aksesoris & Sparepart', 'Lainnya'
@@ -273,63 +272,6 @@ class PesananAutokirimController extends Controller
         ));
     }
 
-    private function hitungKomisi($pesanan, $rates)
-    {
-        $kurir = strtolower($pesanan->kurir ?? '');
-        $layanan = strtolower($pesanan->layanan ?? '');
-        $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang']);
-
-        $bestMatch = null;
-        $highestScore = -1;
-
-        foreach ($rates as $rate) {
-            $serviceStr = strtolower($rate->service);
-            $score = 0;
-
-            $kurirMapping = [
-                'j&t' => 'jnt', 'jne' => 'jne', 'id express' => 'idx', 'sicepat' => 'sicepat', 'sap' => 'sap', 'ninja' => 'ninja', 'anteraja' => 'anteraja'
-            ];
-
-            $isBrandMatched = false;
-            foreach ($kurirMapping as $key => $val) {
-                if (str_contains($kurir, $key) && str_contains($serviceStr, $val)) {
-                    $score += 5;
-                    $isBrandMatched = true;
-                    break;
-                }
-            }
-
-            if (!$isBrandMatched) continue;
-
-            $layananKeys = explode(' ', str_replace(['-', ' '], ' ', $layanan));
-            foreach ($layananKeys as $k) {
-                if (strlen($k) > 2 && str_contains($serviceStr, $k)) $score += 3;
-            }
-
-            if ($isCod && str_contains($serviceStr, 'cod')) {
-                $score += 4;
-            } elseif (!$isCod && !str_contains($serviceStr, 'cod')) {
-                $score += 2;
-            }
-
-            if ($score > $highestScore && $score > 0) {
-                $highestScore = $score;
-                $bestMatch = $rate;
-            }
-        }
-
-        $persenCashbackPusat = 0;
-
-        if ($bestMatch) {
-            $persenCashbackPusat = floatval($bestMatch->cashback ?? 0);
-        }
-
-        $labaSancaka = $pesanan->ongkir * ($persenCashbackPusat / 100);
-        $komisiAgen = $labaSancaka * 0.40;
-
-        return $komisiAgen;
-    }
-
     public function searchAddressAjax(Request $request)
     {
         $keyword = $request->query('q');
@@ -348,18 +290,22 @@ class PesananAutokirimController extends Controller
     }
 
     // ========================================================
-    // FULL DINAMIS: CEK ONGKIR AJAX
+    // PERBAIKAN 1: KONVERSI BERAT GRAM -> KG UNTUK CEK ONGKIR
     // ========================================================
     public function cekOngkirAjax(Request $request)
     {
         $origin_id      = $request->origin_id;
         $destination_id = $request->destination_id;
-        $berat          = $request->berat_gram;
-
-        // FULL DINAMIS: Diambil dari frontend
         $qty            = $request->input('qty', 1);
         $isSenderPp     = $request->input('is_sender_pp', 1);
         $commodityCode  = $request->input('kategori_barang', 'OTH001');
+
+        // 🔥 LOGIKA KONVERSI BERAT (GRAM ke KILOGRAM)
+        $beratGram = (float) $request->berat_gram;
+        $beratKg   = $beratGram / 1000;
+
+        // Minimal berat untuk API Logistik biasanya 1 KG (mencegah angka 0.001)
+        $weightApi = $beratKg < 1 ? 1 : round($beratKg, 2);
 
         if (empty($origin_id) || empty($destination_id)) {
             return response()->json(['success' => false, 'message' => 'Wilayah asal atau tujuan tidak valid.']);
@@ -373,10 +319,10 @@ class PesananAutokirimController extends Controller
             $payload = [
                 'origin_id'         => (int) $origin_id,
                 'destination_id'    => (int) $destination_id,
-                'weight'            => (string) $berat,
-                'length'            => $request->panjang_cm ? (int) $request->panjang_cm : 1,
-                'width'             => $request->lebar_cm ? (int) $request->lebar_cm : 1,
-                'height'            => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
+                'weight'            => (string) $weightApi, // Mengirim data yang sudah berbentuk KG
+                'length'            => $request->panjang_cm > 0 ? (int) $request->panjang_cm : 10, // Default 10cm
+                'width'             => $request->lebar_cm > 0 ? (int) $request->lebar_cm : 10,
+                'height'            => $request->tinggi_cm > 0 ? (int) $request->tinggi_cm : 10,
                 'is_sender_pp'      => (int) $isSenderPp,
                 'additional'        => [
                     'commodity'     => $commodityCode
@@ -390,8 +336,6 @@ class PesananAutokirimController extends Controller
                 ->post("{$baseUrl}/api/v2/check-price", $payload);
 
             $result = $response->json();
-
-            Log::info("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] RESPONSE:", $result ?? []);
 
             if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
                 $flatOngkir = [];
@@ -472,7 +416,6 @@ class PesananAutokirimController extends Controller
         $totalTagihan = (int) $request->ongkir_terpilih;
         $paymentMethod = $request->metode_pembayaran;
 
-        // FULL DINAMIS: Fallback 10000 rupiah murni untuk mencegah error logistik jika nilai 0
         $hargaBarangInput = (int) $request->nilai_barang;
         $finalPrice = $hargaBarangInput > 0 ? $hargaBarangInput : 10000;
         $isInsurance = $request->has('asuransi');
@@ -504,9 +447,9 @@ class PesananAutokirimController extends Controller
                 'deskripsi_barang'  => $request->deskripsi_barang,
                 'kategori_barang'   => $request->kategori_barang,
                 'berat_gram'        => $request->berat_gram,
-                'panjang_cm'        => $request->panjang_cm ? (int) $request->panjang_cm : 1,
-                'lebar_cm'          => $request->lebar_cm ? (int) $request->lebar_cm : 1,
-                'tinggi_cm'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 1,
+                'panjang_cm'        => $request->panjang_cm ? (int) $request->panjang_cm : 10, // Default disamakan dgn API
+                'lebar_cm'          => $request->lebar_cm ? (int) $request->lebar_cm : 10,
+                'tinggi_cm'         => $request->tinggi_cm ? (int) $request->tinggi_cm : 10,
                 'asuransi'          => $isInsurance ? 1 : 0,
                 'nilai_barang'      => $finalPrice,
                 'kurir'             => $request->kurir_terpilih,
@@ -538,7 +481,6 @@ class PesananAutokirimController extends Controller
                     $this->_processDanaBindingCharge($pesanan, $totalTagihan);
                 }
 
-                // Teruskan $request ke _executeAutokirimApi agar kita bisa passing input 'qty' dan 'is_sender_pp'
                 $awbResult = $this->_executeAutokirimApi($pesanan, $origin, $destination, $request);
 
                 $pesanan->update([
@@ -598,7 +540,7 @@ class PesananAutokirimController extends Controller
     }
 
     // ========================================================
-    // FULL DINAMIS: EKSEKUSI API CREATE ORDER
+    // PERBAIKAN 2: KONVERSI BERAT GRAM -> KG SAAT CREATE ORDER
     // ========================================================
     public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
     {
@@ -613,14 +555,11 @@ class PesananAutokirimController extends Controller
             'is_member_deposit' => false
         ];
 
-        Log::info("LOG: [API AUTOKIRIM - INSERT PICKUP POINT] REQUEST:", $pickupPayload);
-
         $pickupResponse = Http::timeout(15)
             ->withToken($this->token)
             ->post("{$this->baseUrl}/api/pickup-point/insert", $pickupPayload);
 
         $pickupResult = $pickupResponse->json();
-        Log::info("LOG: [API AUTOKIRIM - INSERT PICKUP POINT] RESPONSE:", $pickupResult ?? []);
 
         if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
             throw new Exception('Gagal mendaftarkan alamat jemput ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
@@ -628,7 +567,6 @@ class PesananAutokirimController extends Controller
 
         $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
 
-        // FULL DINAMIS: Ambil parameter is_sender_pp dan qty langsung dari form request
         $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
         $qtyInput = $requestData ? (string) $requestData->input('qty', '1') : '1';
         $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
@@ -644,17 +582,21 @@ class PesananAutokirimController extends Controller
             }
         }
 
+        // 🔥 LOGIKA KONVERSI BERAT (GRAM ke KILOGRAM)
+        $beratKg = (float) $pesanan->berat_gram / 1000;
+        $weightApi = $beratKg < 1 ? 1 : round($beratKg, 2);
+
         $orderPayload = [
             'service_code'      => $serviceCode,
             'reff_client_id'    => $pesanan->order_id,
             'pickup_point_code' => $pickupPointCode,
             'origin_id'         => (int) $origin->district_id,
             'destination_id'    => (int) $destination->district_id,
-            'weight'            => (string) $pesanan->berat_gram,
+            'weight'            => (string) $weightApi, // Wajib dikirim sebagai KG
             'qty'               => $qtyInput,
-            'length'            => (int) $pesanan->panjang_cm,
-            'width'             => (int) $pesanan->lebar_cm,
-            'height'            => (int) $pesanan->tinggi_cm,
+            'length'            => (int) $pesanan->panjang_cm > 0 ? (int) $pesanan->panjang_cm : 10,
+            'width'             => (int) $pesanan->lebar_cm > 0 ? (int) $pesanan->lebar_cm : 10,
+            'height'            => (int) $pesanan->tinggi_cm > 0 ? (int) $pesanan->tinggi_cm : 10,
             'description'       => (string) $pesanan->deskripsi_barang,
             'remarks'           => (string) $pesanan->kategori_barang,
             'price'             => (int) $pesanan->nilai_barang > 0 ? (int) $pesanan->nilai_barang : 10000,
@@ -672,7 +614,6 @@ class PesananAutokirimController extends Controller
                 'phone'   => (string) trim($pesanan->penerima_hp),
                 'address' => (string) trim($pesanan->penerima_alamat),
             ],
-            // FULL DINAMIS: Tidak lagi dihardcode hanya untuk lion parcel
             'commodity' => (string) $pesanan->kategori_barang,
         ];
 
@@ -683,7 +624,6 @@ class PesananAutokirimController extends Controller
             ->post("{$this->baseUrl}/api/order", $orderPayload);
 
         $orderResult = $orderResponse->json();
-        Log::info("LOG: [API AUTOKIRIM - CREATE ORDER] RESPONSE:", $orderResult ?? []);
 
         if ($orderResponse->successful() && isset($orderResult['rc']) && $orderResult['rc'] === '00') {
             return [
@@ -724,7 +664,7 @@ class PesananAutokirimController extends Controller
             'order_items'    => [
                 [
                     'sku'      => 'ONGKIR-AK',
-                    'name'     => "Ongkos Kirim Autokirim ({$pesanan->kurir})",
+                    'name'     => "Ongkos Kirim ({$pesanan->kurir})",
                     'price'    => $total,
                     'quantity' => 1
                 ]
@@ -768,7 +708,7 @@ class PesananAutokirimController extends Controller
                 'reqMsgId'     => (string) Str::uuid(),
             ],
             'body' => [
-                'orderTitle'          => "Ongkos Kirim Autokirim {$pesanan->order_id}",
+                'orderTitle'          => "Ongkir Autokirim {$pesanan->order_id}",
                 'orderAmount'         => [
                     'currency' => 'IDR',
                     'value'    => (string) $total,
@@ -794,16 +734,13 @@ class PesananAutokirimController extends Controller
             ])->timeout(30)->post($baseUrl, $payload);
 
             $result = $response->json();
-            Log::info("LOG: [DANA PG RESPONSE]", $result ?? []);
 
             if ($response->successful() && isset($result['body']['checkoutUrl'])) {
                 return $result['body']['checkoutUrl'];
             }
 
-            Log::error("LOG: [DANA PG CREATE ORDER ERROR]", $result ?? []);
             return null;
         } catch (\Exception $e) {
-            Log::error("LOG: [DANA PG EXCEPTION] " . $e->getMessage());
             return null;
         }
     }
@@ -812,7 +749,7 @@ class PesananAutokirimController extends Controller
     {
         $user = User::find(auth()->id());
         if (!$user || empty($user->dana_token)) {
-            throw new Exception("Akun Anda belum mengikat (bind) token DANA. Silahkan hubungkan akun DANA terlebih dahulu di pengaturan profil.");
+            throw new Exception("Akun Anda belum mengikat (bind) token DANA.");
         }
 
         $mode = Api::getValue('DANA_MODE', 'global', 'sandbox');
@@ -824,7 +761,7 @@ class PesananAutokirimController extends Controller
         $secretKey  = Api::getValue('DANA_SECRET_KEY', $mode);
 
         if (empty($merchantId) || empty($secretKey)) {
-            throw new Exception("Konfigurasi API DANA belum lengkap di database.");
+            throw new Exception("Konfigurasi API DANA belum lengkap.");
         }
 
         $timestamp = date('c');
@@ -845,7 +782,7 @@ class PesananAutokirimController extends Controller
                 ],
                 'payMethod'       => 'BALANCE',
                 'userToken'       => $user->dana_token,
-                'orderTitle'      => "Bayar Ongkir Instan {$pesanan->order_id}",
+                'orderTitle'      => "Bayar Ongkir {$pesanan->order_id}",
                 'notifyUrl'       => url('/api/callback/dana'),
             ]
         ];
@@ -862,18 +799,14 @@ class PesananAutokirimController extends Controller
             ])->timeout(30)->post($baseUrl, $payload);
 
             $result = $response->json();
-            Log::info("LOG: [DANA BINDING RESPONSE]", $result ?? []);
 
             if ($response->successful() && isset($result['body']['resultInfo']['resultCode']) && $result['body']['resultInfo']['resultCode'] === 'SUCCESS') {
-                Log::info("LOG: [DANA BINDING SUCCESS] Order ID: {$pesanan->order_id}");
                 return true;
             }
 
             $errorMessage = $result['body']['resultInfo']['resultMsg'] ?? 'Gagal memotong saldo DANA Binding Anda.';
-            Log::error("LOG: [DANA BINDING FAILED]", $result ?? []);
             throw new Exception($errorMessage);
         } catch (\Exception $e) {
-            Log::error("LOG: [DANA BINDING EXCEPTION] " . $e->getMessage());
             throw new Exception($e->getMessage());
         }
     }
@@ -893,7 +826,7 @@ class PesananAutokirimController extends Controller
             return redirect()->back()->with('success', 'Pesanan berhasil dibatalkan.');
         }
 
-        return redirect()->back()->with('error', 'Pesanan tidak dapat dibatalkan karena sudah dalam perjalanan atau diproses ekspedisi.');
+        return redirect()->back()->with('error', 'Pesanan tidak dapat dibatalkan.');
     }
 
     public function destroy($id)
@@ -922,7 +855,7 @@ class PesananAutokirimController extends Controller
         $desc = $request->input('transactions_desc');
 
         if (!$refId && !$awb) {
-            return response()->json(['success' => false, 'message' => 'Invalid Payload: ref_id atau awb_number tidak ditemukan'], 400);
+            return response()->json(['success' => false, 'message' => 'Invalid Payload'], 400);
         }
 
         $pesanan = PesananAutokirim::where('order_id', $refId)
@@ -933,12 +866,9 @@ class PesananAutokirimController extends Controller
             $pesanan->update([
                 'status' => $status
             ]);
-
-            Log::info("WEBHOOK AUTOKIRIM SUKSES: Update order {$pesanan->order_id} menjadi status: {$status} - {$desc}");
             return response()->json(['success' => true, 'message' => 'Status pesanan berhasil diperbarui'], 200);
         }
 
-        Log::warning("WEBHOOK AUTOKIRIM GAGAL: Pesanan tidak ditemukan untuk ref_id: {$refId} / awb: {$awb}");
         return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan'], 404);
     }
 }
