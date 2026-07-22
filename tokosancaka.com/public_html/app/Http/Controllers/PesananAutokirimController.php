@@ -723,7 +723,7 @@ class PesananAutokirimController extends Controller
                 'phone'   => (string) trim($pesanan->penerima_hp),
                 'address' => (string) trim($pesanan->penerima_alamat),
             ],
-            'commodity' => ""
+            'commodity' => strtolower($pesanan->kurir) === 'lion parcel' ? (string) $pesanan->kategori_barang : "",
         ];
 
         Log::info("LOG: [API AUTOKIRIM - CREATE ORDER] REQUEST:", $orderPayload);
