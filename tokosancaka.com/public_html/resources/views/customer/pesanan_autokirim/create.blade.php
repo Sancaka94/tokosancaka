@@ -684,7 +684,7 @@ document.addEventListener('alpine:init', () => {
         // Tambahkan variable ini ke dalam state Alpine:
         jenisCod: 'cod_barang', // Default COD pilihan
 
-        // Lalu update fungsi validateForm(e) menjadi seperti ini:
+       // Validasi Form sebelum kirim (DENGAN PROTEKSI SALDO & TOKEN DANA)
         validateForm(e) {
             if(!this.selectedServiceCode || !this.selectedOngkir) {
                 e.preventDefault();
@@ -694,6 +694,8 @@ document.addEventListener('alpine:init', () => {
 
             // Jika BUKAN COD, wajib melakukan validasi saldo dan gateway pembayaran
             if (this.tipePesanan !== 'cod') {
+                
+                // Pastikan metode pembayaran digital sudah dipilih
                 if(!this.selectedPayment) {
                     e.preventDefault();
                     alert("Silahkan pilih metode pembayaran terlebih dahulu!");
@@ -719,39 +721,6 @@ document.addEventListener('alpine:init', () => {
                 }
                 @endif
             }
-        },
-
-        // Validasi Form sebelum kirim (DENGAN PROTEKSI SALDO & TOKEN DANA)
-        validateForm(e) {
-            if(!this.selectedServiceCode || !this.selectedOngkir) {
-                e.preventDefault();
-                alert("Silahkan hitung ongkos kirim dan pilih jasa ekspedisi terlebih dahulu!");
-                return;
-            }
-            if(!this.selectedPayment) {
-                e.preventDefault();
-                alert("Silahkan pilih metode pembayaran terlebih dahulu!");
-                return;
-            }
-
-            // 🔥 Validasi Ekstra untuk Potong Saldo
-            if(this.selectedPayment === 'potong_saldo') {
-                let userSaldo = {{ auth()->user()->saldo ?? 0 }};
-                if(this.selectedOngkir > userSaldo) {
-                    e.preventDefault();
-                    alert("Gagal! Saldo akun Anda (Rp " + userSaldo.toLocaleString('id-ID') + ") tidak mencukupi untuk membayar ongkos kirim ini (Rp " + this.selectedOngkir.toLocaleString('id-ID') + "). Silahkan isi ulang atau gunakan metode pembayaran lainnya!");
-                    return;
-                }
-            }
-
-            // 🔥 Validasi Ekstra untuk DANA Binding
-            @if(empty(auth()->user()->dana_token))
-            if(this.selectedPayment === 'dana_binding') {
-                e.preventDefault();
-                alert("Gagal! Akun DANA Anda belum diikat (bind). Silahkan pilih metode 'DANA Payment Gateway' atau hubungkan akun DANA Anda terlebih dahulu di pengaturan profil!");
-                return;
-            }
-            @endif
         },
 
         saveContact(role) {
