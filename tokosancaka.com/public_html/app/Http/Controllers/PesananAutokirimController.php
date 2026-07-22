@@ -521,6 +521,20 @@ class PesananAutokirimController extends Controller
 
         DB::beginTransaction();
         try {
+            // 1. TAMBAHKAN LOGIKA PERHITUNGAN INI SEBELUM CREATE PESANAN
+            $rates = DB::table('data_auto_kirims')->get();
+
+            $kalkulasiData = (object) [
+                'kurir' => $request->kurir_terpilih,
+                'layanan' => $request->layanan_terpilih,
+                'metode_pembayaran' => $paymentMethod,
+                'ongkir' => $totalTagihan
+            ];
+
+            // Variabel $profit akhirnya didefinisikan di sini
+            $profit = $this->hitungProfit($kalkulasiData, $rates);
+
+            // 2. CREATE PESANAN KE DATABASE
             $pesanan = PesananAutokirim::create([
                 'user_id'           => auth()->id() ?? null,
                 'order_id'          => $localOrderId,
@@ -546,9 +560,11 @@ class PesananAutokirimController extends Controller
                 'awb_number'        => null,
                 'metode_pembayaran' => $paymentMethod,
                 'status'            => 'waiting_payment',
+
+                // 3. SEKARANG VARIABEL $profit SUDAH BISA DIPANGGIL DENGAN AMAN
                 'total_cashback'    => $profit->total_cashback,
                 'laba_sistem'       => $profit->laba_sancaka,
-                'komisi_agen'       => $profit->komisi_agen,
+                'komisi_agen'       => $profit->komisi_agen
             ]);
 
             $paymentUrl = null;
