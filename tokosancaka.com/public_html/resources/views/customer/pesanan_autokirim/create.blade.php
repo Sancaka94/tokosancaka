@@ -532,74 +532,72 @@
     </form>
 
 
-<!-- ========================================================================= -->
+        <!-- ========================================================================= -->
         <!-- MODAL POP-UP PILIH PEMBAYARAN -->
         <!-- ========================================================================= -->
-        <div x-show="showPaymentModal" class="fixed inset-0 z-[120] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true" x-cloak>
-            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+        <div x-show="showPaymentModal"
+             style="display: none;"
+             class="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 transition-opacity"
+             x-cloak>
 
-                <!-- Backdrop Blur -->
-                <div x-show="showPaymentModal"
-                     x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
-                     x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
-                     class="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" @click="showPaymentModal = false"></div>
+            <!-- Modal Content Container -->
+            <div x-show="showPaymentModal"
+                 @click.away="showPaymentModal = false"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0 scale-95"
+                 x-transition:enter-end="opacity-100 scale-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="bg-white rounded-xl shadow-2xl w-full max-w-5xl transform transition-all flex flex-col max-h-[90vh] relative z-10 mx-auto">
 
-                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-                <!-- Modal Content Container -->
-                <div x-show="showPaymentModal"
-                     x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                     x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                     class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle w-full max-w-5xl flex flex-col max-h-[90vh]">
-
-                    <!-- Modal Header -->
-                    <div class="bg-white px-6 py-5 border-b border-gray-200 flex items-center justify-between">
-                        <div>
-                            <h3 class="text-base font-bold text-black uppercase tracking-wide">Pilih Metode Pembayaran</h3>
-                        </div>
-                        <button type="button" @click="showPaymentModal = false" class="text-gray-400 hover:text-red-600 bg-gray-100 hover:bg-red-50 p-2 rounded-full transition-colors">
-                            <i class="fa-solid fa-xmark text-lg"></i>
-                        </button>
+                <!-- Modal Header -->
+                <div class="bg-white px-6 py-5 border-b border-gray-200 flex items-center justify-between rounded-t-xl shrink-0">
+                    <div>
+                        <h3 class="text-base font-bold text-black uppercase tracking-wide">Pilih Metode Pembayaran</h3>
                     </div>
-
-                    <!-- Modal Body (Grid Pembayaran) -->
-                    <div class="p-2 overflow-y-auto custom-scrollbar flex-1 bg-gray-50">
-                        <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
-                            @foreach($metodePembayaran as $bayar)
-                                @php
-                                    // Logika memuat gambar/icon persis seperti kode sebelumnya
-                                    $imgUrl = '';
-                                    if(str_contains(strtolower($bayar['id']), 'dana')) $imgUrl = 'https://tokosancaka.com/public/assets/dana.png';
-                                    elseif(str_contains(strtolower($bayar['id']), 'doku')) $imgUrl = 'https://tokosancaka.com/public/assets/doku.png';
-                                    elseif(str_contains(strtolower($bayar['id']), 'tripay')) $imgUrl = 'https://tokosancaka.com/public/assets/tripay.png';
-
-                                    $jsIconParam = $imgUrl ? $imgUrl : $bayar['icon'];
-                                @endphp
-
-                                <li @click="selectPayment('{{ $bayar['id'] }}', '{{ $bayar['nama'] }}', '{{ $jsIconParam }}')"
-                                    class="col-span-1 cursor-pointer flex items-center p-3 border rounded-lg transition-all duration-200 bg-white"
-                                    :class="selectedPayment === '{{ $bayar['id'] }}' ? 'border-black ring-1 ring-black shadow-sm' : 'border-gray-200 hover:border-gray-400 hover:bg-red-50'">
-
-                                    <div class="w-12 h-12 rounded bg-white flex items-center justify-center shrink-0 p-1.5 border border-gray-100 shadow-sm mr-4">
-                                        @if($imgUrl)
-                                            <img src="{{ $imgUrl }}" alt="{{ $bayar['nama'] }}" class="w-full h-full object-contain">
-                                        @else
-                                            <i class="{{ $bayar['icon'] }} text-2xl"></i>
-                                        @endif
-                                    </div>
-
-                                    <div class="flex flex-col">
-                                        <span class="text-sm font-bold text-gray-900 uppercase">{{ $bayar['nama'] }}</span>
-                                        <span class="text-[11px] text-gray-500 uppercase mt-0.5">{{ $bayar['deskripsi'] }}</span>
-                                    </div>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-
+                    <button type="button" @click="showPaymentModal = false" class="text-gray-400 hover:text-red-600 bg-gray-100 hover:bg-red-50 p-2 rounded-full transition-colors">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
                 </div>
+
+                <!-- Modal Body (Grid Pembayaran) -->
+                <div class="p-2 overflow-y-auto custom-scrollbar flex-1 bg-gray-50 rounded-b-xl">
+                    <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
+                        @foreach($metodePembayaran as $bayar)
+                            @php
+                                $imgUrl = '';
+                                if(str_contains(strtolower($bayar['id']), 'dana')) $imgUrl = 'https://tokosancaka.com/public/assets/dana.png';
+                                elseif(str_contains(strtolower($bayar['id']), 'doku')) $imgUrl = 'https://tokosancaka.com/public/assets/doku.png';
+                                elseif(str_contains(strtolower($bayar['id']), 'tripay')) $imgUrl = 'https://tokosancaka.com/public/assets/tripay.png';
+
+                                $jsIconParam = $imgUrl ? $imgUrl : $bayar['icon'];
+                            @endphp
+
+                            <li @click="selectPayment('{{ $bayar['id'] }}', '{{ $bayar['nama'] }}', '{{ $jsIconParam }}')"
+                                class="col-span-1 cursor-pointer flex items-center p-3 border rounded-lg transition-all duration-200 bg-white"
+                                :class="selectedPayment === '{{ $bayar['id'] }}' ? 'border-black ring-1 ring-black shadow-sm' : 'border-gray-200 hover:border-gray-400 hover:bg-red-50'">
+
+                                <div class="w-12 h-12 rounded bg-white flex items-center justify-center shrink-0 p-1.5 border border-gray-100 shadow-sm mr-4">
+                                    @if($imgUrl)
+                                        <img src="{{ $imgUrl }}" alt="{{ $bayar['nama'] }}" class="w-full h-full object-contain">
+                                    @else
+                                        <i class="{{ $bayar['icon'] }} text-2xl"></i>
+                                    @endif
+                                </div>
+
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-bold text-gray-900 uppercase">{{ $bayar['nama'] }}</span>
+                                    <span class="text-[11px] text-gray-500 uppercase mt-0.5">{{ $bayar['deskripsi'] }}</span>
+                                </div>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+
             </div>
         </div>
+        <!-- ========================================================================= -->
 
 </div> {{-- Penutup From X DATA --}}
 
