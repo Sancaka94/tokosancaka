@@ -277,11 +277,11 @@
         </div>
     </div>
 
-    <!-- FOOTER DENGAN TAMBAHAN POWERED BY AUTOKIRIM -->
+    <!-- FOOTER YANG SUDAH DIPERBAIKI -->
     <div class="footer">
         Terima kasih telah menggunakan <strong>Sancaka Express</strong>.<br>
-        <strong>{{ $pesanan->created_at->format('d M Y H:i') }} Kirim Paket DI TOKOSANCAKA.COM</strong><br>
-        <div style="margin-top: 6px; font-size: 11px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase;">Powered by Autokirim</div>
+        {{ $pesanan->created_at->format('d M Y H:i') }} Powered By: <strong>Autokirim</strong><br>
+        <div style="margin-top: 6px; font-size: 11px; font-weight: 900; letter-spacing: 1.5px; text-transform: uppercase;">KIRIM PAKET DI TOKOSANCAKA.COM</div>
     </div>
 
 </div>
