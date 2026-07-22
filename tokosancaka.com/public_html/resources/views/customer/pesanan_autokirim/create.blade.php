@@ -530,7 +530,7 @@
         </div>
 
     </form>
-</div>
+
 
 <!-- ========================================================================= -->
         <!-- MODAL POP-UP PILIH PEMBAYARAN -->
@@ -601,6 +601,8 @@
             </div>
         </div>
 
+</div> {{-- Penutup From X DATA --}}
+
 <!-- ========================================== -->
 <!-- SCRIPTS ENGINE LOGIC (ALPINE.JS V3) -->
 <!-- ========================================== -->
@@ -645,7 +647,6 @@ document.addEventListener('alpine:init', () => {
         selectedLogoUrl: '',
         selectedEtd: '',
         selectedPayment: '',
-
         showPaymentModal: false,
         selectedPaymentName: '',
         selectedPaymentIcon: '',
