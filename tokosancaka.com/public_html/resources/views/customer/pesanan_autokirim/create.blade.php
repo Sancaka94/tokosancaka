@@ -531,7 +531,6 @@ document.addEventListener('alpine:init', () => {
         tipePesanan: 'reguler',
         resiCashless: '',
         nilaiBarang: '',
-        
         berat: 1000,
         qty: 1,
         isSenderPp: 1,
@@ -539,8 +538,6 @@ document.addEventListener('alpine:init', () => {
         panjang: '',
         lebar: '',
         tinggi: '',
-
-        // Autocomplete Pengirim
         senderQuery: '',
         senderDistrictId: '',
         senderResults: [],
