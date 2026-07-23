@@ -149,27 +149,93 @@ class PesananAutokirimController extends Controller
 
     private function hitungProfit($pesanan, $rates)
     {
-        // 1. Standarisasi input dari request (Menggunakan huruf kecil dan hilangkan underscore)
+        // 1. Standarisasi input dari request (Huruf kecil & ubah underscore/strip jadi spasi)
         $kurirInput = strtolower(trim($pesanan->kurir ?? ''));
         $layananInput = str_replace(['_', '-'], ' ', strtolower(trim($pesanan->layanan ?? '')));
 
-        // 2. Kamus Alias: Terjemahkan istilah spesifik API ke istilah umum di Database Anda
+        // 2. KAMUS ALIAS LENGKAP (API ke Database)
+        // Kiri: Format dari API logistik | Kanan: Format di tabel data_auto_kirims
         $aliasMap = [
-            ' ez'       => ' reguler', // J&T EZ -> reguler
-            ' std'      => ' reguler', // ID Express STD -> reguler
-            ' standard' => ' reguler', // Ninja Standard -> reguler
-            ' udrreg'   => ' reguler', // SAP UDRREG -> reguler
-            ' udrons'   => ' oneday',  // SAP UDRONS -> oneday
-            ' bigpack'  => ' cargo'    // Lion BIGPACK -> cargo
+            // J&T Express & Cargo
+            'jnt ez'             => 'jnt reg',
+            'jnt eco'            => 'jnt eco',
+            'jnt jnd'            => 'jnt jnd',
+            'jnt jsd'            => 'jnt jsd',
+            'jntcargo ft'        => 'jntcargo ft',
+
+            // ID Express
+            'idx std'            => 'idx reguler',
+            'idx truck'          => 'idx truck',
+            'idx lite'           => 'idx lite',
+
+            // AnterAja
+            'anteraja reguler'   => 'anteraja reg',
+            'anteraja nextday'   => 'anteraja nextday',
+            'anteraja sameday'   => 'anteraja sameday',
+
+            // Lion Parcel
+            'lionparcel reguler' => 'lionparcel regpack',
+            'lionparcel bigpack' => 'lionparcel bigpack',
+            'lionparcel onepack' => 'lionparcel onepack',
+            'lionparcel jagopack'=> 'lionparcel jagopack',
+
+            // SAPX (SAP Express)
+            'sap udrreg'         => 'sap reguler',
+            'sap udrons'         => 'sap oneday',
+            'sap lite'           => 'sap lite',
+            'sap regulerdarat'   => 'sap regulerdarat',
+
+            // SiCepat Express
+            'sicepat reg'        => 'sicepat reguler', // Jaga-jaga jika API kirim 'reg'
+            'sicepat best'       => 'sicepat best',
+            'sicepat gokil'      => 'sicepat gokil',
+
+            // Ninja Express
+            'ninja standard'     => 'ninja standard',
+            'ninja cargo'        => 'ninja cargo',
+
+            // JNE Express
+            'jne reg'            => 'jne reg',
+            'jne oke'            => 'jne oke',
+            'jne yes'            => 'jne yes',
+            'jne jtr'            => 'jne jtr',
+            'jne ctc'            => 'jne ctc',
+            'jne ctcjtr'         => 'jne ctcjtr',
+            'jne ctcyes'         => 'jne ctcyes',
+
+            // POS AJA
+            'pos reguler'        => 'pos reguler',
+            'pos nextday'        => 'pos nextday',
+            'pos cargo'          => 'pos cargo',
+
+            // Paxel
+            'paxel sameday'      => 'paxel sameday',
+            'paxel oneday'       => 'paxel oneday',
+            'paxel reguler'      => 'paxel reguler',
+            'paxel big'          => 'paxel big',
+            'paxel amplop'       => 'paxel amplop',
+
+            // SPX & LEX
+            'spx standard'       => 'spx standard',
+            'lex standard'       => 'lex standard',
+
+            // Sentral Cargo
+            'sc del'             => 'sc del',
+            'sc dnel'            => 'sc dnel',
+            'sc uel'             => 'sc uel',
+            'sc unel'            => 'sc unel',
         ];
 
-        // Terapkan kamus alias ke input layanan
+        // Terapkan kamus alias ke layanan yang masuk dari API
         foreach ($aliasMap as $apiTerm => $dbTerm) {
+            // Kita replace jika string dari API mengandung key dari dictionary kita
             if (str_contains($layananInput, trim($apiTerm))) {
                 $layananInput = str_replace(trim($apiTerm), trim($dbTerm), $layananInput);
+                break; // Stop loop jika sudah ketemu match-nya
             }
         }
 
+        // Cek mode COD dari input user
         $isCod = in_array(strtolower(trim($pesanan->metode_pembayaran)), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
 
         $bestMatch = null;
@@ -182,7 +248,7 @@ class PesananAutokirimController extends Controller
             $score = 0;
             $isBrandMatched = false;
 
-            // --- PENCARIAN BRAND (KURIR) ---
+            // --- 3. PENCARIAN BRAND (KURIR) ---
             if ($dbBrand !== '' && (str_contains($kurirInput, $dbBrand) || str_contains($dbBrand, $kurirInput))) {
                 $score += 20;
                 $isBrandMatched = true;
@@ -191,24 +257,24 @@ class PesananAutokirimController extends Controller
                 $isBrandMatched = true;
             }
 
-            // Jika kurir beda, lewati agar tidak salah hitung komisi
+            // Skip iterasi jika nama kurir/brand tidak cocok
             if (!$isBrandMatched) continue;
 
-            // --- PENCARIAN SERVICE (LAYANAN) ---
-            // Cek kecocokan langsung (contoh: 'anteraja reguler' vs 'anteraja reg')
-            if (str_contains($layananInput, $dbService) || str_contains($dbService, $layananInput)) {
+            // --- 4. PENCARIAN SERVICE (LAYANAN) ---
+            // Pencocokan langsung (Contoh: "jnt reg" vs "jnt cod reg")
+            if (str_contains($dbService, $layananInput) || str_contains($layananInput, $dbService)) {
                 $score += 20;
             } else {
                 // Pencocokan per kata (Fuzzy logic)
                 $layananKeys = explode(' ', $layananInput);
                 foreach ($layananKeys as $k) {
                     if (strlen($k) > 2 && str_contains($dbService, $k)) {
-                        $score += 5;
+                        $score += 5; // Skor per kata yang cocok
                     }
                 }
             }
 
-            // --- FILTER REGULER VS COD ---
+            // --- 5. FILTER REGULER VS COD ---
             $isDbServiceCod = str_contains($dbService, 'cod');
 
             if ($isCod && $isDbServiceCod) {
@@ -216,17 +282,20 @@ class PesananAutokirimController extends Controller
             } elseif (!$isCod && !$isDbServiceCod) {
                 $score += 50;
             } elseif ($isCod !== $isDbServiceCod) {
-                $score -= 100; // Penalti berat jika silang (COD vs Reguler)
+                // Penalti ekstrim jika User Request COD tapi meloop baris Reguler (atau sebaliknya)
+                $score -= 100;
             }
 
-            // Simpan pencocokan terbaik
+            // Tetapkan pemenang skor tertinggi
             if ($score > $highestScore && $score > 0) {
                 $highestScore = $score;
                 $bestMatch = $rate;
             }
         }
 
+        // --- 6. KALKULASI CASHBACK ---
         $persenCashbackPusat = $bestMatch ? floatval($bestMatch->cashback ?? 0) : 0;
+
         $user = auth()->user();
         $agenFeePercentage = $user ? floatval($user->fee_autokirim ?? 40) : 40;
 
