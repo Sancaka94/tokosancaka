@@ -106,6 +106,8 @@
                                 $total_transaksi = (clone $pesanan_agen)->count();
                                 $omzet_kotor     = (clone $pesanan_agen)->sum('ongkir');
                                 $total_komisi    = (clone $pesanan_agen)->sum('komisi_agen');
+                                $total_dicairkan = \Illuminate\Support\Facades\DB::table('riwayat_pencairans')->where('user_id', $agen->id)->sum('nominal');
+                                $sisa_komisi = $total_komisi - $total_dicairkan;
 
                                 // Siapkan data untuk Modal (HINDARI ERROR QUOTES DENGAN JSON_ENCODE)
                                 $agentData = [
@@ -184,6 +186,16 @@
                                         <span>Total Komisi:</span>
                                         <span class="font-bold text-green-700">+ Rp {{ number_format($total_komisi, 0, ',', '.') }}</span>
                                     </div>
+                                    <!-- --- BARIS BARU UNTUK TAMPILAN PENCAIRAN --- -->
+                                    <div class="flex justify-between text-orange-600">
+                                        <span>Telah Dicairkan:</span>
+                                        <span class="font-bold">- Rp {{ number_format($total_dicairkan, 0, ',', '.') }}</span>
+                                    </div>
+                                    <div class="flex justify-between text-red-600 font-bold border-t border-gray-100 pt-1 mt-1">
+                                        <span>Sisa Komisi:</span>
+                                        <span>Rp {{ number_format($sisa_komisi > 0 ? $sisa_komisi : 0, 0, ',', '.') }}</span>
+                                    </div>
+                                    <!-- ------------------------------------------- -->
                                     <div class="flex justify-between text-indigo-600 font-semibold mt-1 pt-1 border-t border-gray-100">
                                         <span>Saldo Dompet:</span>
                                         <span>Rp {{ number_format($agen->saldo ?? 0, 0, ',', '.') }}</span>
@@ -203,6 +215,15 @@
                                         <i class="fa-solid fa-eye"></i>
                                     </button>
 
+                                    <!-- --- BARIS BARU: TOMBOL PENCAIRAN --- -->
+                                    <button type="button"
+                                            onclick="openCairModal({{ $agen->id }}, '{{ $agen->nama_lengkap }}', {{ $sisa_komisi > 0 ? $sisa_komisi : 0 }})"
+                                            class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold px-3 py-1.5 rounded text-xs transition shadow-sm flex items-center"
+                                            title="Cairkan Komisi ke Saldo">
+                                        <i class="fa-solid fa-money-bill-transfer mr-1"></i> Cairkan
+                                    </button>
+                                    <!-- ------------------------------------ -->
+
                                     <!-- Tombol Edit Fee -->
                                     <button type="button"
                                             onclick="openFeeModal({{ $agen->id_pengguna }}, '{{ $agen->nama_lengkap }}', {{ $fee_agen }})"
@@ -210,6 +231,8 @@
                                             title="Ubah Persentase Komisi">
                                         <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Fee
                                     </button>
+
+
 
                                     <!-- Tombol Reset (Jika Custom) -->
                                     @if($fee_agen != 40)
@@ -503,4 +526,68 @@
         }
     </script>
 </div>
+
+<!-- ========================================== -->
+<!-- MODAL PENCAIRAN KOMISI -->
+<!-- ========================================== -->
+<div id="cairModal" class="fixed inset-0 z-[100] hidden bg-gray-900/60 backdrop-blur-sm flex justify-center items-center">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-all duration-200" id="cairModalContent">
+        <form id="formCairKomisi" method="POST" action="{{ route('admin.komisi-agent.cairkan') }}">
+            @csrf
+            <input type="hidden" name="user_id" id="modal_cair_user_id">
+
+            <div class="bg-gradient-to-r from-emerald-500 to-green-600 p-5 text-white relative overflow-hidden">
+                <h3 class="font-bold text-lg relative z-10"><i class="fa-solid fa-money-bill-transfer mr-2"></i> Cairkan Komisi ke Saldo</h3>
+            </div>
+
+            <div class="p-5 space-y-4">
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                    <span class="text-gray-500 font-semibold block mb-1">Nama Agen:</span>
+                    <strong id="modal_cair_name" class="text-gray-800 uppercase text-lg"></strong>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Sisa Komisi yang Belum Cair</label>
+                    <div class="text-lg font-black text-green-600 mb-3">Rp <span id="modal_cair_sisa_text">0</span></div>
+
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Nominal Pencairan (Rp)</label>
+                    <input type="number" name="nominal_cair" id="modal_cair_input" min="1" required
+                        class="w-full border-2 border-green-200 rounded-xl px-4 py-3 text-xl font-black text-gray-800 focus:ring-green-500 focus:border-green-500" placeholder="Contoh: 50000">
+                    <p class="text-xs text-gray-500 mt-2">Nominal ini akan ditambahkan langsung ke Saldo Agen.</p>
+                </div>
+            </div>
+            <div class="bg-gray-50 p-4 flex justify-end gap-2 border-t border-gray-100">
+                <button type="button" onclick="closeCairModal()" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold py-2 px-4 rounded-xl transition shadow-sm">Batal</button>
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-6 rounded-xl transition shadow-md">Proses Pencairan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    // Script Modal Pencairan
+    function openCairModal(userId, name, sisaKomisi) {
+        document.getElementById('modal_cair_user_id').value = userId;
+        document.getElementById('modal_cair_name').innerText = name;
+        document.getElementById('modal_cair_sisa_text').innerText = new Intl.NumberFormat('id-ID').format(sisaKomisi);
+
+        // Auto isi nominal dengan sisa komisi
+        document.getElementById('modal_cair_input').value = sisaKomisi;
+        document.getElementById('modal_cair_input').max = sisaKomisi;
+
+        const modal = document.getElementById('cairModal');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            document.getElementById('cairModalContent').classList.remove('scale-95', 'opacity-0');
+            document.getElementById('cairModalContent').classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+
+    function closeCairModal() {
+        document.getElementById('cairModalContent').classList.remove('scale-100', 'opacity-100');
+        document.getElementById('cairModalContent').classList.add('scale-95', 'opacity-0');
+        setTimeout(() => { document.getElementById('cairModal').classList.add('hidden'); }, 200);
+    }
+</script>
+
 @endsection

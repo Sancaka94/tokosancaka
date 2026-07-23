@@ -122,27 +122,27 @@ class KomisiAgentController extends Controller
         }
     }
 
-    // FUNGSI BARU: Pencairan Komisi ke Saldo
+    // --- FITUR BARU: CAIRKAN KOMISI ---
     public function cairkanKomisi(Request $request)
     {
         $request->validate([
-            'user_id' => 'required|exists:users,id_pengguna',
+            'user_id' => 'required|exists:users,id',
             'nominal_cair' => 'required|numeric|min:1'
         ]);
 
         try {
             DB::beginTransaction();
 
-            $user = User::where('id_pengguna', $request->user_id)->firstOrFail();
+            $user = User::where('id', $request->user_id)->firstOrFail();
             $nominal = $request->nominal_cair;
 
-            // 1. Tambahkan ke saldo agen
+            // Tambahkan ke saldo agen
             $user->saldo = ($user->saldo ?? 0) + $nominal;
             $user->save();
 
-            // 2. Catat ke tabel riwayat_pencairans (Pastikan Anda sudah membuat migration untuk tabel ini)
+            // Catat ke tabel riwayat_pencairans
             DB::table('riwayat_pencairans')->insert([
-                'user_id' => $user->id_pengguna,
+                'user_id' => $user->id,
                 'nominal' => $nominal,
                 'keterangan' => 'Pencairan komisi ke saldo agen',
                 'created_at' => now(),
@@ -150,7 +150,7 @@ class KomisiAgentController extends Controller
             ]);
 
             DB::commit();
-            Log::info("LOG LOG: [PENCAIRAN KOMISI] Admin mencairkan Rp {$nominal} ke saldo agen ID {$user->id_pengguna}");
+            Log::info("LOG LOG: [PENCAIRAN KOMISI] Admin mencairkan Rp {$nominal} ke saldo agen ID {$user->id}");
 
             return redirect()->back()->with('success', 'Komisi sebesar Rp ' . number_format($nominal, 0, ',', '.') . ' berhasil dicairkan ke saldo agen.');
         } catch (\Exception $e) {
@@ -159,11 +159,11 @@ class KomisiAgentController extends Controller
         }
     }
 
-    // FUNGSI BARU: Halaman Riwayat Pencairan
+    // --- FITUR BARU: HALAMAN RIWAYAT PENCAIRAN ---
     public function riwayatPencairan(Request $request)
     {
         $query = DB::table('riwayat_pencairans')
-            ->join('users', 'riwayat_pencairans.user_id', '=', 'users.id_pengguna')
+            ->join('users', 'riwayat_pencairans.user_id', '=', 'users.id')
             ->select('riwayat_pencairans.*', 'users.nama_lengkap', 'users.store_name', 'users.no_wa')
             ->orderBy('riwayat_pencairans.created_at', 'desc');
 
