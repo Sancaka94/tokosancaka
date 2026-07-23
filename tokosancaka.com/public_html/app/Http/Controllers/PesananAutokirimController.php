@@ -69,6 +69,8 @@ class PesananAutokirimController extends Controller
         $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
         $cacheKey = 'tripay_channels_list_' . $currentMode;
 
+        \Illuminate\Support\Facades\Cache::forget($cacheKey);
+
         $tripayChannels = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 24, function () use ($currentMode) {
             if ($currentMode === 'production') {
                 $baseUrl = 'https://tripay.co.id/api';
