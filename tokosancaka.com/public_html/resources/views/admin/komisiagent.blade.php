@@ -76,14 +76,20 @@
                 </thead>
                 <tbody class="text-sm divide-y divide-gray-100">
                     @forelse($agents as $agen)
-                        @php
-                            // Default 40% jika tidak ada settingan khusus
+                       @php
+                            // Mengambil langsung dari tabel Pengguna
                             $fee_agen = $agen->fee_autokirim ?? 40;
                             $fee_pusat = 100 - $fee_agen;
 
-                            // Hitung transaksi real-time (bisa dipindah ke controller jika query berat)
-                            $total_transaksi = \App\Models\PesananAutokirim::where('user_id', $agen->id)->whereNotIn('status', ['batal', 'gagal'])->count();
-                            $omzet_kotor = \App\Models\PesananAutokirim::where('user_id', $agen->id)->whereNotIn('status', ['batal', 'gagal'])->sum('ongkir');
+                            // Gunakan id_pengguna dan tambahkan filter waiting_payment
+                            $excluded_statuses = ['batal', 'gagal', 'waiting_payment', 'menunggu_pembayaran'];
+
+                            $pesanan_agen = \App\Models\PesananAutokirim::where('user_id', $agen->id_pengguna)
+                                                ->whereNotIn('status', $excluded_statuses);
+
+                            $total_transaksi = (clone $pesanan_agen)->count();
+                            $omzet_kotor     = (clone $pesanan_agen)->sum('ongkir');
+                            $total_komisi    = (clone $pesanan_agen)->sum('komisi_agen');
                         @endphp
                     <tr class="hover:bg-gray-50/50 transition">
 
@@ -121,7 +127,7 @@
                             <span class="text-green-700 font-bold text-lg">{{ $fee_pusat }}%</span>
                         </td>
 
-                        <!-- HISTORI TRANSAKSI -->
+                       <!-- HISTORI TRANSAKSI -->
                         <td class="p-4 align-top">
                             <div class="text-[11px] space-y-1">
                                 <div class="flex justify-between text-gray-600">
@@ -131,6 +137,10 @@
                                 <div class="flex justify-between text-gray-600">
                                     <span>Omzet Ongkir:</span>
                                     <span class="font-bold text-gray-800">Rp {{ number_format($omzet_kotor, 0, ',', '.') }}</span>
+                                </div>
+                                <div class="flex justify-between text-green-600">
+                                    <span>Total Komisi:</span>
+                                    <span class="font-bold text-green-700">+ Rp {{ number_format($total_komisi, 0, ',', '.') }}</span>
                                 </div>
                                 <div class="flex justify-between text-indigo-600 font-semibold mt-1 pt-1 border-t border-gray-100">
                                     <span>Saldo Dompet:</span>

@@ -26,9 +26,13 @@ class KomisiAgentController extends Controller
 
         $agents = $query->paginate(15)->withQueryString();
 
+       // Hitung total statistik (Card Atas)
         $totalAgen = User::where('role', 'agent')->count();
-        $totalPencairan = PesananAutokirim::whereNotIn('status', ['batal', 'gagal', 'menunggu_pembayaran'])->sum('komisi_agen');
-        $totalLabaSancaka = PesananAutokirim::whereNotIn('status', ['batal', 'gagal', 'menunggu_pembayaran'])->sum('laba_sistem');
+
+        $excluded_statuses = ['batal', 'gagal', 'waiting_payment', 'menunggu_pembayaran'];
+
+        $totalPencairan = PesananAutokirim::whereNotIn('status', $excluded_statuses)->sum('komisi_agen');
+        $totalLabaSancaka = PesananAutokirim::whereNotIn('status', $excluded_statuses)->sum('laba_sistem');
 
         $stats = [
             'total_agen' => $totalAgen,
