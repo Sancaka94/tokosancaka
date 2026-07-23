@@ -75,4 +75,50 @@ class KomisiAgentController extends Controller
             return redirect()->back()->with('error', 'Gagal mereset fee agen.');
         }
     }
+
+    // Hapus User (Soft Delete / Permanen tergantung konfigurasi modelmu)
+    public function deleteUser($id)
+    {
+        try {
+            $user = User::findOrFail($id);
+            $user->delete();
+            Log::info("LOG LOG: [DELETE AGENT] Admin menghapus agen ID {$id}");
+            return redirect()->back()->with('success', 'Data Agen berhasil dihapus.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal menghapus agen: ' . $e->getMessage());
+        }
+    }
+
+    // Bulk Edit Komisi
+    public function bulkUpdate(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'fee_percentage' => 'required|numeric|min:1|max:100'
+        ]);
+
+        try {
+            User::whereIn('id_pengguna', $request->ids)->update(['fee_autokirim' => $request->fee_percentage]);
+            Log::info("LOG LOG: [BULK UPDATE FEE] Admin mengubah fee massal untuk " . count($request->ids) . " agen menjadi {$request->fee_percentage}%");
+            return redirect()->back()->with('success', count($request->ids) . ' Agen berhasil diupdate komisinya.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat update massal.');
+        }
+    }
+
+    // Bulk Destroy (Hapus Massal)
+    public function bulkDestroy(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array'
+        ]);
+
+        try {
+            User::whereIn('id_pengguna', $request->ids)->delete();
+            Log::info("LOG LOG: [BULK DELETE AGENT] Admin menghapus " . count($request->ids) . " agen secara massal");
+            return redirect()->back()->with('success', count($request->ids) . ' Agen berhasil dihapus secara massal.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat hapus massal.');
+        }
+    }
 }

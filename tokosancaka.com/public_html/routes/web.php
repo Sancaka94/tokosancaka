@@ -1953,4 +1953,8 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
     Route::get('/komisi-agent', [\App\Http\Controllers\KomisiAgentController::class, 'index'])->name('komisi-agent.index');
     Route::post('/komisi-agent/update/{id}', [\App\Http\Controllers\KomisiAgentController::class, 'update'])->name('komisi-agent.update');
     Route::delete('/komisi-agent/reset/{id}', [\App\Http\Controllers\KomisiAgentController::class, 'destroy'])->name('komisi-agent.destroy');
+
+    Route::delete('/komisi-agent/delete/{id}', [\App\Http\Controllers\KomisiAgentController::class, 'deleteUser'])->name('komisi-agent.delete');
+    Route::post('/komisi-agent/bulk-update', [\App\Http\Controllers\KomisiAgentController::class, 'bulkUpdate'])->name('komisi-agent.bulk-update');
+    Route::post('/komisi-agent/bulk-destroy', [\App\Http\Controllers\KomisiAgentController::class, 'bulkDestroy'])->name('komisi-agent.bulk-destroy');
 });
