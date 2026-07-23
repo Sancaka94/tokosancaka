@@ -338,6 +338,67 @@
                     </div>
                 </div>
 
+                <!-- ======================================================= -->
+                <!-- MONITOR KALKULATOR BIAYA (CALCULATOR DIV) -->
+                <!-- ======================================================= -->
+                <div class="mt-5 p-5 bg-gray-50 border border-gray-200 rounded-lg">
+                    <h3 class="text-xs font-bold text-gray-800 uppercase tracking-widest mb-4 border-b border-gray-200 pb-2 flex items-center">
+                        <i class="fa-solid fa-file-invoice-dollar mr-2"></i> Rincian Biaya
+                    </h3>
+
+                    <div class="space-y-2.5 text-sm">
+                        <!-- Berat -->
+                        <div class="flex justify-between items-center text-gray-600">
+                            <span>Berat Paket</span>
+                            <span class="font-medium text-black" x-text="berat + ' gr'"></span>
+                        </div>
+
+                        <!-- Info Nilai Barang (Hanya tampil jika diisi) -->
+                        <div x-show="nilaiBarang > 0" class="flex justify-between items-center text-gray-600" x-cloak>
+                            <span x-text="asuransi ? 'Harga Barang (Diasuransikan)' : 'Harga Barang'"></span>
+                            <span class="font-medium text-black">Rp <span x-text="parseInt(nilaiBarang).toLocaleString('id-ID')"></span></span>
+                        </div>
+
+                        <!-- Ongkos Kirim Dasar -->
+                        <div class="flex justify-between items-center text-gray-600">
+                            <span>Ongkos Kirim Dasar</span>
+                            <span class="font-medium text-black">Rp <span x-text="parseInt(selectedOngkir).toLocaleString('id-ID')"></span></span>
+                        </div>
+
+                        <!-- Biaya Asuransi (Jika Aktif) -->
+                        <div x-show="asuransi" class="flex justify-between items-center text-gray-600" x-cloak>
+                            <span>Biaya Asuransi (<span x-text="(selectedInsuranceRate * 100) + '%'"></span>)</span>
+                            <span class="font-medium text-black">Rp <span x-text="biayaAsuransi.toLocaleString('id-ID')"></span></span>
+                        </div>
+
+                        <!-- Biaya Admin COD (Jika Tipe COD) -->
+                        <div x-show="tipePesanan === 'cod'" class="flex justify-between items-center text-gray-600" x-cloak>
+                            <span>Admin COD (<span x-text="(selectedCodRate * 100) + '%'"></span>)</span>
+                            <span class="font-medium text-black">Rp <span x-text="biayaCod.toLocaleString('id-ID')"></span></span>
+                        </div>
+                    </div>
+
+                    <!-- Grand Total Potong Saldo (NON COD) -->
+                    <div x-show="tipePesanan !== 'cod'" class="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex justify-between items-center" x-cloak>
+                        <span class="font-bold text-black uppercase">Total Potong Saldo</span>
+                        <span class="font-extrabold text-red-600 text-lg">Rp <span x-text="grandTotalPotongan.toLocaleString('id-ID')"></span></span>
+                    </div>
+
+                    <!-- Grand Total Tagihan Kurir (COD) -->
+                    <div x-show="tipePesanan === 'cod'" class="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex justify-between items-center" x-cloak>
+                        <div class="flex flex-col">
+                            <span class="font-bold text-black uppercase">Total Tagihan Kurir (COD)</span>
+                            <span class="text-[10px] text-gray-500 font-medium mt-0.5" x-text="jenisCod === 'cod_barang' ? '* Akan ditagih ke penerima (Barang + Ongkir + Fee)' : '* Akan ditagih ke penerima (Ongkir + Fee Saja)'"></span>
+                        </div>
+                        <span class="font-extrabold text-blue-600 text-lg">Rp <span x-text="grandTotalCod.toLocaleString('id-ID')"></span></span>
+                    </div>
+                </div>
+
+                <!-- HIDDEN INPUTS UNTUK DIKIRIM KE BACKEND -->
+                <input type="hidden" name="hitung_asuransi" :value="biayaAsuransi">
+                <input type="hidden" name="hitung_cod_fee" :value="biayaCod">
+                <input type="hidden" name="grand_total" :value="tipePesanan === 'cod' ? grandTotalCod : grandTotalPotongan">
+
                 <!-- ========================================================================================= -->
                 <!-- PILIHAN METODE PEMBAYARAN -->
                 <!-- ========================================================================================= -->
@@ -421,12 +482,14 @@
                 <!-- TOMBOL SUBMIT PESANAN -->
                 <div class="mt-6 pt-5 border-t border-gray-200">
                     <button type="submit"
-                            :disabled="(tipePesanan !== 'cod' && (!selectedPayment || (selectedPayment === 'potong_saldo' && selectedOngkir > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) || selectedPayment === 'dana_binding' @endif))"
-                            class="w-full py-4 rounded-md font-bold text-white transition-all text-sm tracking-widest flex justify-center items-center gap-3 uppercase"
-                            :class="(tipePesanan === 'cod' || (selectedPayment && !(selectedPayment === 'potong_saldo' && selectedOngkir > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) && selectedPayment !== 'dana_binding' @endif)) ? 'bg-black hover:bg-gray-800 cursor-pointer shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'">
-                        <span>Submit Kirim Sekarang</span>
-                        <i class="fa-solid fa-arrow-right"></i>
-                    </button>
+                        :disabled="isSubmitting || (tipePesanan !== 'cod' && (!selectedPayment || (selectedPayment === 'potong_saldo' && grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) || selectedPayment === 'dana_binding' @endif))"
+                        class="w-full py-4 rounded-md font-bold text-white transition-all text-sm tracking-widest flex justify-center items-center gap-3 uppercase"
+                        :class="(tipePesanan === 'cod' || (selectedPayment && !(selectedPayment === 'potong_saldo' && grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) && selectedPayment !== 'dana_binding' @endif)) ? 'bg-black hover:bg-gray-800 cursor-pointer shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'">
+
+                    <!-- Teks tombol berubah saat loading -->
+                    <span x-text="isSubmitting ? 'MEMPROSES PESANAN...' : 'SUBMIT KIRIM SEKARANG'"></span>
+                    <i class="fa-solid" :class="isSubmitting ? 'fa-spinner fa-spin' : 'fa-arrow-right'"></i>
+                </button>
                     <p x-show="tipePesanan !== 'cod' && !selectedPayment" class="text-[10px] text-gray-500 font-medium text-center mt-3 uppercase tracking-widest">* Mohon pilih metode pembayaran</p>
                 </div>
             </div>
@@ -612,6 +675,7 @@ document.addEventListener('alpine:init', () => {
         resiCashless: '',
         nilaiBarang: '',
         berat: 1000,
+        isSubmitting: false,
         qty: 1,
         isSenderPp: 1,
         asuransi: false,
@@ -623,6 +687,9 @@ document.addEventListener('alpine:init', () => {
         senderResults: [],
         showSenderDropdown: false,
         isSearchingSender: false,
+        selectedInsuranceRate: 0,
+        selectedCodRate: 0,
+        jenisCod: 'cod_barang',
 
         // Autocomplete Penerima
         receiverQuery: '',
@@ -803,14 +870,63 @@ document.addEventListener('alpine:init', () => {
             this.selectedServiceCode = this.tempSelected.kode_layanan;
             this.selectedLogoUrl     = this.tempSelected.logo_url;
             this.selectedEtd         = this.tempSelected.etd;
+            this.selectedInsuranceRate = this.tempSelected.insurance || 0;
+            this.selectedCodRate     = this.tempSelected.fee_cod || 0;
 
             this.showModal           = false; // Tutup Modal
+        },
+
+       get biayaAsuransi() {
+            if (!this.asuransi || !this.nilaiBarang) return 0;
+            let nilaiVal = parseInt(this.nilaiBarang) || 0;
+            return Math.round(nilaiVal * parseFloat(this.selectedInsuranceRate));
+        },
+
+        get biayaCod() {
+            if (this.tipePesanan !== 'cod') return 0;
+
+            let rate = parseFloat(this.selectedCodRate);
+            if (rate === 0) return 0; // Jika kurir tidak support COD
+
+            // Base hitungan COD
+            let baseCod = parseInt(this.selectedOngkir) || 0;
+            if (this.jenisCod === 'cod_barang') {
+                baseCod += (parseInt(this.nilaiBarang) || 0); // Barang + Ongkir
+            }
+
+            let fee = baseCod * rate;
+
+            // Logika Minimum Fee COD (Sicepat min Rp2000, lainnya min Rp1500)
+            let minFee = 1500;
+            if (this.selectedKurir.toUpperCase().includes('SICEPAT')) minFee = 2000;
+
+            if (fee > 0 && fee < minFee) fee = minFee;
+
+            return Math.round(fee);
+        },
+
+        get grandTotalPotongan() {
+            // Jika Non-COD, potong saldo Anda sebesar Ongkir + Asuransi
+            let ongkir = parseInt(this.selectedOngkir) || 0;
+            return ongkir + this.biayaAsuransi;
+        },
+
+        get grandTotalCod() {
+            // Jika COD, kalkulasi seluruh tagihan ke penerima
+            let ongkir = parseInt(this.selectedOngkir) || 0;
+            let tagihan = ongkir + this.biayaAsuransi + this.biayaCod;
+            if (this.jenisCod === 'cod_barang') {
+                tagihan += (parseInt(this.nilaiBarang) || 0);
+            }
+            return tagihan;
         },
 
         jenisCod: 'cod_barang',
 
        // Validasi Form sebelum kirim (DENGAN PROTEKSI SALDO & TOKEN DANA)
         validateForm(e) {
+
+
             if(!this.selectedServiceCode || !this.selectedOngkir) {
                 e.preventDefault();
                 alert("Silahkan hitung ongkos kirim dan pilih jasa ekspedisi terlebih dahulu!");
@@ -826,11 +942,12 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
 
-                if(this.selectedPayment === 'potong_saldo') {
+               if(this.selectedPayment === 'potong_saldo') {
                     let userSaldo = {{ auth()->user()->saldo ?? 0 }};
-                    if(this.selectedOngkir > userSaldo) {
+                    // Ubah this.selectedOngkir menjadi this.grandTotalPotongan
+                    if(this.grandTotalPotongan > userSaldo) {
                         e.preventDefault();
-                        alert("Gagal! Saldo akun Anda (Rp " + userSaldo.toLocaleString('id-ID') + ") tidak mencukupi untuk membayar ongkos kirim ini (Rp " + this.selectedOngkir.toLocaleString('id-ID') + "). Silahkan isi ulang atau gunakan metode pembayaran lainnya!");
+                        alert("Gagal! Saldo akun Anda (Rp " + userSaldo.toLocaleString('id-ID') + ") tidak mencukupi untuk membayar total biaya ini (Rp " + this.grandTotalPotongan.toLocaleString('id-ID') + "). Silahkan isi ulang!");
                         return;
                     }
                 }
@@ -843,6 +960,15 @@ document.addEventListener('alpine:init', () => {
                 }
                 @endif
             }
+
+            // JIKA SEMUA VALIDASI LOLOS (Tepat sebelum kurung kurawal penutup fungsi):
+            if (this.isSubmitting) {
+                e.preventDefault(); // Cegah jika sedang loading
+                return;
+            }
+
+            this.isSubmitting = true; // Kunci form agar tidak double submit
+
         },
 
         saveContact(role) {
