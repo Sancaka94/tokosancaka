@@ -52,8 +52,8 @@ class DaftarMemberController extends Controller
         }
 
         // 2. Validasi Saldo Minimal
-        if ($user->saldo < 2000000) {
-            return response()->json(['success' => false, 'message' => 'Saldo Anda kurang dari syarat minimal Rp 2.000.000.']);
+        if ($user->saldo < 500000) {
+            return response()->json(['success' => false, 'message' => 'Saldo Anda kurang dari syarat minimal Rp 500.000']);
         }
 
         DB::beginTransaction();

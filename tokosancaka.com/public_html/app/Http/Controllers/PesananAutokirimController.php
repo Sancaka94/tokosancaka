@@ -149,65 +149,100 @@ class PesananAutokirimController extends Controller
 
     private function hitungProfit($pesanan, $rates)
     {
-        $kurir = strtolower($pesanan->kurir ?? '');
-        $layanan = strtolower($pesanan->layanan ?? '');
-        $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang']);
+        // 1. Standarisasi input dari request (Menggunakan huruf kecil dan hilangkan underscore)
+        $kurirInput = strtolower(trim($pesanan->kurir ?? ''));
+        $layananInput = str_replace(['_', '-'], ' ', strtolower(trim($pesanan->layanan ?? '')));
+
+        // 2. Kamus Alias: Terjemahkan istilah spesifik API ke istilah umum di Database Anda
+        $aliasMap = [
+            ' ez'       => ' reguler', // J&T EZ -> reguler
+            ' std'      => ' reguler', // ID Express STD -> reguler
+            ' standard' => ' reguler', // Ninja Standard -> reguler
+            ' udrreg'   => ' reguler', // SAP UDRREG -> reguler
+            ' udrons'   => ' oneday',  // SAP UDRONS -> oneday
+            ' bigpack'  => ' cargo'    // Lion BIGPACK -> cargo
+        ];
+
+        // Terapkan kamus alias ke input layanan
+        foreach ($aliasMap as $apiTerm => $dbTerm) {
+            if (str_contains($layananInput, trim($apiTerm))) {
+                $layananInput = str_replace(trim($apiTerm), trim($dbTerm), $layananInput);
+            }
+        }
+
+        $isCod = in_array(strtolower(trim($pesanan->metode_pembayaran)), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
 
         $bestMatch = null;
         $highestScore = -1;
 
         foreach ($rates as $rate) {
-            $serviceStr = strtolower($rate->service);
+            $dbBrand = strtolower(trim($rate->brand_logistik ?? ''));
+            $dbService = str_replace(['_', '-'], ' ', strtolower(trim($rate->service ?? '')));
+
             $score = 0;
-
-            $kurirMapping = [
-                'j&t' => 'jnt', 'jne' => 'jne', 'id express' => 'idx', 'sicepat' => 'sicepat', 'sap' => 'sap', 'ninja' => 'ninja', 'anteraja' => 'anteraja'
-            ];
-
             $isBrandMatched = false;
-            foreach ($kurirMapping as $key => $val) {
-                if (str_contains($kurir, $key) && str_contains($serviceStr, $val)) {
-                    $score += 5;
-                    $isBrandMatched = true;
-                    break;
+
+            // --- PENCARIAN BRAND (KURIR) ---
+            if ($dbBrand !== '' && (str_contains($kurirInput, $dbBrand) || str_contains($dbBrand, $kurirInput))) {
+                $score += 20;
+                $isBrandMatched = true;
+            } elseif ($dbBrand !== '' && similar_text($kurirInput, $dbBrand, $perc) && $perc > 75) {
+                $score += 15;
+                $isBrandMatched = true;
+            }
+
+            // Jika kurir beda, lewati agar tidak salah hitung komisi
+            if (!$isBrandMatched) continue;
+
+            // --- PENCARIAN SERVICE (LAYANAN) ---
+            // Cek kecocokan langsung (contoh: 'anteraja reguler' vs 'anteraja reg')
+            if (str_contains($layananInput, $dbService) || str_contains($dbService, $layananInput)) {
+                $score += 20;
+            } else {
+                // Pencocokan per kata (Fuzzy logic)
+                $layananKeys = explode(' ', $layananInput);
+                foreach ($layananKeys as $k) {
+                    if (strlen($k) > 2 && str_contains($dbService, $k)) {
+                        $score += 5;
+                    }
                 }
             }
 
-            if (!$isBrandMatched) continue;
+            // --- FILTER REGULER VS COD ---
+            $isDbServiceCod = str_contains($dbService, 'cod');
 
-            $layananKeys = explode(' ', str_replace(['-', ' '], ' ', $layanan));
-            foreach ($layananKeys as $k) {
-                if (strlen($k) > 2 && str_contains($serviceStr, $k)) $score += 3;
+            if ($isCod && $isDbServiceCod) {
+                $score += 50;
+            } elseif (!$isCod && !$isDbServiceCod) {
+                $score += 50;
+            } elseif ($isCod !== $isDbServiceCod) {
+                $score -= 100; // Penalti berat jika silang (COD vs Reguler)
             }
 
-            if ($isCod && str_contains($serviceStr, 'cod')) {
-                $score += 4;
-            } elseif (!$isCod && !str_contains($serviceStr, 'cod')) {
-                $score += 2;
-            }
-
+            // Simpan pencocokan terbaik
             if ($score > $highestScore && $score > 0) {
                 $highestScore = $score;
                 $bestMatch = $rate;
             }
         }
 
-        $persenCashbackPusat = 0;
-        if ($bestMatch) {
-            $persenCashbackPusat = floatval($bestMatch->cashback ?? 0);
-        }
+        $persenCashbackPusat = $bestMatch ? floatval($bestMatch->cashback ?? 0) : 0;
+        $user = auth()->user();
+        $agenFeePercentage = $user ? floatval($user->fee_autokirim ?? 40) : 40;
 
-        $agenFeePercentage = auth()->user()->fee_autokirim ?? 40;
-
-        $totalCashback = $pesanan->ongkir * ($persenCashbackPusat / 100);
-        $komisiAgen    = $totalCashback * 0.40;
-        $labaSancaka   = $totalCashback * 0.60;
+        $ongkir = floatval($pesanan->ongkir ?? 0);
+        $totalCashback = $ongkir * ($persenCashbackPusat / 100);
+        $komisiAgen    = $totalCashback * ($agenFeePercentage / 100);
+        $labaSancaka   = $totalCashback - $komisiAgen;
 
         return (object)[
             'total_cashback'  => $totalCashback,
             'komisi_agen'     => $komisiAgen,
             'laba_sancaka'    => $labaSancaka,
-            'persen_cashback' => $persenCashbackPusat
+            'persen_cashback' => $persenCashbackPusat,
+            'matched_service' => $bestMatch->service ?? 'Unmatched',
+            'matched_brand'   => $bestMatch->brand_logistik ?? 'Unmatched',
+            'debug_score'     => $highestScore
         ];
     }
 
