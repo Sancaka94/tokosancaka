@@ -118,7 +118,7 @@
                                     'rekening' => $agen->bank_account_number ?? '-',
                                     'atas_nama' => $agen->bank_account_name ?? '-',
                                     'alamat' => $agen->address_detail ?? '-',
-                                    'logo' => $agen->store_logo_path ? asset($agen->store_logo_path) : null,
+                                    'logo' => $agen->store_logo_path ? asset('storage/' . $agen->store_logo_path) : null,
                                     'inisial' => strtoupper(substr($agen->nama_lengkap, 0, 1))
                                 ];
                             @endphp
@@ -129,14 +129,14 @@
                                 <input type="checkbox" name="ids[]" value="{{ $agen->id_pengguna }}" class="rowCheckbox w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                             </td>
 
-                            <!-- PROFIL AGEN -->
+                           <!-- PROFIL AGEN -->
                             <td class="p-4 align-top">
                                 <div class="flex items-center gap-3">
-                                    <!-- Menampilkan Logo / Inisial -->
+                                    <!-- Menampilkan Logo Asli atau Inisial Bersih Tanpa Lingkaran Rusak -->
                                     @if($agen->store_logo_path)
-                                        <img src="{{ asset($agen->store_logo_path) }}" alt="Logo Toko" class="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e0e7ff/4f46e5?text={{ strtoupper(substr($agen->nama_lengkap, 0, 1)) }}';">
+                                        <img src="{{ asset('storage/' . $agen->store_logo_path) }}" alt="Logo" class="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-10 h-10 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-sm shrink-0\'>{{ strtoupper(substr($agen->nama_lengkap, 0, 1)) }}</div>';">
                                     @else
-                                        <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold shrink-0">
+                                        <div class="w-10 h-10 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-sm shrink-0">
                                             {{ strtoupper(substr($agen->nama_lengkap, 0, 1)) }}
                                         </div>
                                     @endif
@@ -480,10 +480,10 @@
             document.getElementById('md_rekening').innerText = data.rekening;
             document.getElementById('md_atasnama').innerText = data.atas_nama;
 
-            // Render Logo atau Inisial
+            // Render Logo atau Inisial Bersih Tanpa Placeholder Rusak
             const logoContainer = document.getElementById('md_logo_container');
             if(data.logo) {
-                logoContainer.innerHTML = `<img src="${data.logo}" class="w-14 h-14 rounded-full object-cover border-2 border-indigo-200">`;
+                logoContainer.innerHTML = `<img src="${data.logo}" class="w-14 h-14 rounded-full object-cover border-2 border-indigo-200" onerror="this.onerror=null; this.parentNode.innerHTML='<div class=\'w-14 h-14 bg-indigo-200 rounded-full flex items-center justify-center text-indigo-800 font-black text-2xl\'>${data.inisial}</div>';">`;
             } else {
                 logoContainer.innerHTML = `<div class="w-14 h-14 bg-indigo-200 rounded-full flex items-center justify-center text-indigo-800 font-black text-2xl">${data.inisial}</div>`;
             }
