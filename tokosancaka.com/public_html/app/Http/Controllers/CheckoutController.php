@@ -1674,11 +1674,19 @@ class CheckoutController extends Controller
 
             } elseif (Str::startsWith($merchantRef, 'CUSTP-')) {
                 Log::info('Routing callback to CustomerPesananController', ['ref' => $merchantRef]);
-                // CustomerPesananController::processCallback($merchantRef, $status, $data);
+                CustomerPesananController::processCallback($merchantRef, $status, $data);
 
             } elseif (Str::startsWith($merchantRef, 'CUSTO-')) {
                 Log::info('Routing callback to CustomerOrderController', ['ref' => $merchantRef]);
-                // CustomerOrderController::processCallback($merchantRef, $status, $data);
+                CustomerOrderController::processCallback($merchantRef, $status, $data);
+
+            // ====================================================================
+            // 🔥 TAMBAHKAN INI: ROUTING UNTUK PESANAN AUTOKIRIM 🔥
+            // ====================================================================
+            } elseif (\App\Models\PesananAutokirim::where('order_id', $merchantRef)->exists()) {
+                Log::info('Routing callback to PesananAutokirimController', ['ref' => $merchantRef]);
+                app(\App\Http\Controllers\PesananAutokirimController::class)->processPaymentCallback($merchantRef, $status, $data);
+            // ====================================================================
 
             } else {
                 Log::warning('CheckoutController Callback: Unrecognized merchant_ref prefix.', ['merchant_ref' => $merchantRef]);

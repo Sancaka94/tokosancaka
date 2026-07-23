@@ -1144,4 +1144,73 @@ class PesananAutokirimController extends Controller
         }
     }
 
+    /**
+     * =========================================================================
+     * PROCESSOR WEBHOOK DARI PAYMENT GATEWAY (TRIPAY / DOKU / DANA)
+     * =========================================================================
+     */
+    public function processPaymentCallback($orderId, $status, $data = [])
+    {
+        Log::info("LOG LOG: [WEBHOOK AUTOKIRIM] Memulai proses update pembayaran untuk Order ID: {$orderId} | Status: {$status}");
+
+        DB::beginTransaction();
+        try {
+            // Gunakan Pessimistic Lock agar aman dari double webhook
+            $pesanan = PesananAutokirim::lockForUpdate()->where('order_id', $orderId)->first();
+
+            if (!$pesanan) {
+                Log::warning("LOG LOG: [WEBHOOK AUTOKIRIM] Pesanan tidak ditemukan.");
+                DB::rollBack();
+                return;
+            }
+
+            // Cegah proses berulang jika sudah berhasil dibooking sebelumnya
+            if (in_array(strtolower($pesanan->status), ['batal', 'gagal', 'booking_created'])) {
+                Log::info("LOG LOG: [WEBHOOK AUTOKIRIM] Pesanan sudah diproses sebelumnya (Status saat ini: {$pesanan->status}). Skip.");
+                DB::rollBack();
+                return;
+            }
+
+            if ($status === 'PAID') {
+                try {
+                    // 1. Ambil data origin & destination berdasarkan kode pos
+                    $origin = AutoKirim::where('zip', $pesanan->pengirim_kodepos)->first();
+                    $destination = AutoKirim::where('zip', $pesanan->penerima_kodepos)->first();
+
+                    if (!$origin || !$destination) {
+                        throw new Exception("Kode Pos origin/destination tidak ditemukan di database.");
+                    }
+
+                    // 2. Eksekusi Booking ke API Server Autokirim
+                    $awbResult = $this->_executeAutokirimApi($pesanan, $origin, $destination);
+
+                    // 3. Simpan Resi dan Ubah Status
+                    $pesanan->update([
+                        'awb_number'        => $awbResult['awb'],
+                        'tlc_code'          => $awbResult['tlc'],
+                        'pickup_point_code' => $awbResult['pickup'],
+                        'status'            => 'booking_created', // Lunas & Resi Terbit
+                        'updated_at'        => now()
+                    ]);
+
+                    Log::info("LOG LOG: ✅ [WEBHOOK AUTOKIRIM] Sukses! Booking API berhasil via Payment Gateway.", ['AWB' => $awbResult['awb']]);
+
+                } catch (Exception $e) {
+                    // Jika pelanggan sudah bayar tapi API Autokirim gangguan/error
+                    Log::error("LOG LOG: ❌ [WEBHOOK AUTOKIRIM] Pembayaran sukses, TAPI Gagal Booking API. Perlu Cek Manual!", ['error' => $e->getMessage()]);
+                    $pesanan->update(['status' => 'paid_but_failed_booking']);
+                }
+            }
+            elseif (in_array($status, ['EXPIRED', 'FAILED', 'UNPAID'])) {
+                $pesanan->update(['status' => 'gagal']);
+                Log::info("LOG LOG: [WEBHOOK AUTOKIRIM] Pesanan digagalkan karena status Tripay: {$status}");
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("LOG LOG: [WEBHOOK AUTOKIRIM] Fatal Error: " . $e->getMessage());
+        }
+    }
+
 }
