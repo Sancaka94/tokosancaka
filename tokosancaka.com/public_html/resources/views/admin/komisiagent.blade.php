@@ -100,19 +100,21 @@
                                 $fee_agen = $agen->fee_autokirim ?? 40;
                                 $fee_pusat = 100 - $fee_agen;
 
-                                $excluded_statuses = ['batal', 'gagal', 'waiting_payment', 'menunggu_pembayaran'];
-                                $pesanan_agen = \App\Models\PesananAutokirim::where('user_id', $agen->id_pengguna)->whereNotIn('status', $excluded_statuses);
+                                // TIDAK ADA LAGI N+1 QUERY DI SINI
+                                // Langsung ambil data hasil subquery dari Controller
+                                $total_transaksi = $agen->total_transaksi ?? 0;
+                                $omzet_kotor     = $agen->omzet_kotor ?? 0;
+                                $total_komisi    = $agen->total_komisi ?? 0;
+                                $total_dicairkan = $agen->total_dicairkan ?? 0;
 
-                                $total_transaksi = (clone $pesanan_agen)->count();
-                                $omzet_kotor     = (clone $pesanan_agen)->sum('ongkir');
-                                $total_komisi    = (clone $pesanan_agen)->sum('komisi_agen');
-                                // FIXED: Gunakan id_pengguna untuk menghindari error data kosong
-                                $total_dicairkan = \Illuminate\Support\Facades\DB::table('riwayat_pencairans')->where('user_id', $agen->id_pengguna)->sum('nominal');
                                 $sisa_komisi = $total_komisi - $total_dicairkan;
+
+                                // Pastikan ID yang digunakan adalah id (atau id_pengguna)
+                                $agen_id = $agen->id ?? $agen->id_pengguna;
 
                                 // Siapkan data untuk Modal (HINDARI ERROR QUOTES DENGAN JSON_ENCODE)
                                 $agentData = [
-                                    'id' => $agen->id_pengguna,
+                                    'id' => $agen_id,
                                     'name' => $agen->nama_lengkap,
                                     'store' => $agen->store_name ?? '-',
                                     'email' => $agen->email ?? '-',
@@ -535,6 +537,8 @@
             @csrf
             <input type="hidden" name="user_id" id="modal_cair_user_id">
 
+            <input type="hidden" name="idempotency_key" id="modal_idempotency_key">
+
             <div class="bg-gradient-to-r from-emerald-500 to-green-600 p-5 text-white relative overflow-hidden">
                 <h3 class="font-bold text-lg relative z-10"><i class="fa-solid fa-money-bill-transfer mr-2"></i> Cairkan Komisi ke Saldo</h3>
             </div>
@@ -573,6 +577,9 @@
         // Auto isi nominal dengan sisa komisi
         document.getElementById('modal_cair_input').value = sisaKomisi;
         document.getElementById('modal_cair_input').max = sisaKomisi;
+
+        // TAMBAHKAN BARIS INI: Generate Idempotency Key Unik (Time based + Random)
+        document.getElementById('modal_idempotency_key').value = Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 10);
 
         const modal = document.getElementById('cairModal');
         modal.classList.remove('hidden');

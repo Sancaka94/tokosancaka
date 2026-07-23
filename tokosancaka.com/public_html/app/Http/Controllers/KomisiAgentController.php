@@ -7,13 +7,37 @@ use App\Models\User;
 use App\Models\PesananAutokirim;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 
 class KomisiAgentController extends Controller
 {
     public function index(Request $request)
     {
-        // Tidak perlu lagi pakai with('agentFee')
-        $query = User::where('role', 'agent');
+        $excluded_statuses = ['batal', 'gagal', 'waiting_payment', 'menunggu_pembayaran'];
+
+        // MENGHINDARI N+1 MENGGUNAKAN SUBQUERY SELECT
+        $query = User::where('role', 'agent')
+            ->select('users.*') // Pastikan mengambil semua data user
+            // Subquery Total Transaksi
+            ->addSelect(['total_transaksi' => PesananAutokirim::selectRaw('count(*)')
+                ->whereColumn('user_id', 'users.id') // Jika kolom di tabel user adalah id_pengguna, ganti menjadi 'users.id_pengguna'
+                ->whereNotIn('status', $excluded_statuses)
+            ])
+            // Subquery Omzet Kotor
+            ->addSelect(['omzet_kotor' => PesananAutokirim::selectRaw('COALESCE(sum(ongkir), 0)')
+                ->whereColumn('user_id', 'users.id')
+                ->whereNotIn('status', $excluded_statuses)
+            ])
+            // Subquery Total Komisi
+            ->addSelect(['total_komisi' => PesananAutokirim::selectRaw('COALESCE(sum(komisi_agen), 0)')
+                ->whereColumn('user_id', 'users.id')
+                ->whereNotIn('status', $excluded_statuses)
+            ])
+            // Subquery Total Dicairkan
+            ->addSelect(['total_dicairkan' => DB::table('riwayat_pencairans')
+                ->selectRaw('COALESCE(sum(nominal), 0)')
+                ->whereColumn('user_id', 'users.id')
+            ]);
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -26,11 +50,8 @@ class KomisiAgentController extends Controller
 
         $agents = $query->paginate(15)->withQueryString();
 
-       // Hitung total statistik (Card Atas)
+        // Hitung total statistik (Card Atas) - Ini biarkan saja, hanya 3 query
         $totalAgen = User::where('role', 'agent')->count();
-
-        $excluded_statuses = ['batal', 'gagal', 'waiting_payment', 'menunggu_pembayaran'];
-
         $totalPencairan = PesananAutokirim::whereNotIn('status', $excluded_statuses)->sum('komisi_agen');
         $totalLabaSancaka = PesananAutokirim::whereNotIn('status', $excluded_statuses)->sum('laba_sistem');
 
@@ -122,40 +143,76 @@ class KomisiAgentController extends Controller
         }
     }
 
-    // --- FITUR BARU: CAIRKAN KOMISI ---
-    public function cairkanKomisi(Request $request)
+   public function cairkanKomisi(Request $request)
     {
+        // 1. Validasi Input + Idempotency Key
         $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'nominal_cair' => 'required|numeric|min:1'
+            'user_id' => 'required',
+            'nominal_cair' => 'required|numeric|min:1',
+            'idempotency_key' => 'required|string'
         ]);
+
+        // 2. Cek Idempotency (Apakah token submit ini sudah pernah diproses?)
+        $idempotencyKey = 'payout_idemp_' . $request->idempotency_key;
+        if (Cache::has($idempotencyKey)) {
+            return redirect()->back()->with('error', 'Transaksi ini sudah diproses sebelumnya (Double submit terdeteksi).');
+        }
+
+        // 3. Cache Lock (Mencegah klik tombol 2 kali secara bersamaan / Race Condition)
+        $lock = Cache::lock('payout_lock_user_' . $request->user_id, 10); // Kunci 10 detik
+
+        if (!$lock->get()) {
+            return redirect()->back()->with('error', 'Sistem sedang memproses pencairan untuk agen ini. Harap tunggu.');
+        }
 
         try {
             DB::beginTransaction();
 
-            $user = User::where('id', $request->user_id)->firstOrFail();
+            // Mendukung id atau id_pengguna secara dinamis
+            $user = User::where('id', $request->user_id)->orWhere('id_pengguna', $request->user_id)->firstOrFail();
             $nominal = $request->nominal_cair;
 
-            // Tambahkan ke saldo agen
+            // 4. Hitung ulang sisa komisi di Backend (Mencegah by-pass Inspect Element)
+            $excluded_statuses = ['batal', 'gagal', 'waiting_payment', 'menunggu_pembayaran'];
+            $total_komisi = PesananAutokirim::where('user_id', $request->user_id)
+                                ->whereNotIn('status', $excluded_statuses)
+                                ->sum('komisi_agen');
+
+            $total_dicairkan = DB::table('riwayat_pencairans')
+                                ->where('user_id', $request->user_id)
+                                ->sum('nominal');
+
+            $sisa_komisi = $total_komisi - $total_dicairkan;
+
+            if ($nominal > $sisa_komisi) {
+                throw new \Exception("Gagal: Nominal pencairan (Rp " . number_format($nominal, 0, ',', '.') . ") melebihi sisa komisi yang tersedia (Rp " . number_format($sisa_komisi, 0, ',', '.') . ").");
+            }
+
+            // 5. Eksekusi Pencairan ke Saldo
             $user->saldo = ($user->saldo ?? 0) + $nominal;
             $user->save();
 
-            // Catat ke tabel riwayat_pencairans
             DB::table('riwayat_pencairans')->insert([
-                'user_id' => $user->id,
+                'user_id' => $request->user_id,
                 'nominal' => $nominal,
                 'keterangan' => 'Pencairan komisi ke saldo agen',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
+            // 6. Tandai Idempotency Key sukses (Simpan selama 1 Hari)
+            Cache::put($idempotencyKey, true, now()->addDay());
+
             DB::commit();
-            Log::info("LOG LOG: [PENCAIRAN KOMISI] Admin mencairkan Rp {$nominal} ke saldo agen ID {$user->id}");
+            Log::info("LOG LOG: [PENCAIRAN KOMISI] Admin mencairkan Rp {$nominal} ke saldo agen ID {$request->user_id}");
 
             return redirect()->back()->with('success', 'Komisi sebesar Rp ' . number_format($nominal, 0, ',', '.') . ' berhasil dicairkan ke saldo agen.');
         } catch (\Exception $e) {
             DB::rollBack();
             return redirect()->back()->with('error', 'Gagal mencairkan komisi: ' . $e->getMessage());
+        } finally {
+            // 7. Selalu lepaskan Lock apapun hasilnya, agar agen bisa melakukan transaksi lain
+            $lock->release();
         }
     }
 
