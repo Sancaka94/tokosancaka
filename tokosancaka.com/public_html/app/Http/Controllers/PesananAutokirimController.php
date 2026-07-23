@@ -798,62 +798,137 @@ class PesananAutokirimController extends Controller
 
     private function _createDanaPgTransaction($pesanan, $total)
     {
-        $mode = Api::getValue('DANA_MODE', 'global', 'sandbox');
-        $baseUrl = $mode === 'production'
-            ? 'https://api.dana.id/v1/acquirer/order/create.htm'
-            : 'https://api-sandbox.dana.id/v1/acquirer/order/create.htm';
+        // 1. Ambil config dinamis persis seperti di CheckoutController
+        $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
+        $isProduction = ($danaMode == '1');
 
-        $merchantId = Api::getValue('DANA_MERCHANT_ID', $mode);
-        $secretKey  = Api::getValue('DANA_SECRET_KEY', $mode);
+        if ($isProduction) {
+            $merchantIdConf = \App\Models\Api::getValue('dana_prod_merchant_id', 'production');
+            $partnerIdConf  = \App\Models\Api::getValue('dana_prod_client_id', 'production');
+            $privateKey     = \App\Models\Api::getValue('dana_prod_private_key', 'production');
+            $clientSecret   = \App\Models\Api::getValue('dana_prod_client_secret', 'production');
+            $publicKey      = \App\Models\Api::getValue('dana_prod_public_key', 'production');
+            $baseUrl        = 'https://api.saas.dana.id';
+        } else {
+            $merchantIdConf = \App\Models\Api::getValue('dana_sandbox_merchant_id', 'sandbox');
+            $partnerIdConf  = \App\Models\Api::getValue('dana_sandbox_client_id', 'sandbox');
+            $privateKey     = \App\Models\Api::getValue('dana_sandbox_private_key', 'sandbox');
+            $clientSecret   = \App\Models\Api::getValue('dana_sandbox_client_secret', 'sandbox');
+            $publicKey      = \App\Models\Api::getValue('dana_sandbox_public_key', 'sandbox');
+            $baseUrl        = 'https://api.sandbox.dana.id';
+        }
 
-        if (empty($merchantId) || empty($secretKey)) {
-            Log::error("LOG: [DANA PG ERROR] Merchant ID atau Secret Key belum dikonfigurasi.");
+        if (empty($merchantIdConf) || empty($privateKey)) {
+            Log::error("LOG: [DANA PG ERROR] Merchant ID atau Private Key belum dikonfigurasi di database.");
             return null;
         }
 
-        $timestamp = date('c');
-        $payload = [
-            'head' => [
-                'version'      => '2.0',
-                'function'     => 'dana.acquirer.order.create',
-                'clientId'     => $merchantId,
-                'reqTime'      => $timestamp,
-                'reqMsgId'     => (string) Str::uuid(),
+        // Timpa config runtime untuk DanaSignatureService
+        config([
+            'services.dana.merchant_id'   => $merchantIdConf,
+            'services.dana.client_id'     => $partnerIdConf,
+            'services.dana.x_partner_id'  => $partnerIdConf,
+            'services.dana.private_key'   => $privateKey,
+            'services.dana.public_key'    => $publicKey,
+            'services.dana.client_secret' => $clientSecret,
+            'services.dana.base_url'      => $baseUrl,
+            'services.dana.dana_env'      => $isProduction ? 'PRODUCTION' : 'SANDBOX',
+            'services.dana.origin'        => url('/')
+        ]);
+
+        $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $pesanan->order_id);
+        $timestamp    = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $validUpTo    = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+        $amountValue  = number_format((float)$total, 2, '.', '');
+        $path         = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+
+        $bodyArray = [
+            "partnerReferenceNo" => $cleanInvoice,
+            "merchantId"         => $merchantIdConf,
+            "validUpTo"          => $validUpTo,
+            "amount"             => [
+                "value"    => $amountValue,
+                "currency" => "IDR"
             ],
-            'body' => [
-                'orderTitle'          => "Ongkir Autokirim {$pesanan->order_id}",
-                'orderAmount'         => [
-                    'currency' => 'IDR',
-                    'value'    => (string) $total,
+            "urlParams"          => [
+                [
+                    "url"        => route('customer.pesanan-autokirim.create'), // URL Return Autokirim
+                    "type"       => "PAY_RETURN",
+                    "isDeeplink" => "N"
                 ],
-                'merchantTransId'     => $pesanan->order_id,
-                'merchantId'          => $merchantId,
-                'orderMemo'           => "Pengiriman {$pesanan->kurir} - {$pesanan->layanan}",
-                'returnUrl'           => route('customer.pesanan-autokirim.create'),
-                'notifyUrl'           => url('/api/callback/dana'),
-                'productCode'         => '51051000100000000001',
+                [
+                    "url"        => url('/api/callback/dana'),
+                    "type"       => "NOTIFICATION",
+                    "isDeeplink" => "N"
+                ]
+            ],
+            "additionalInfo"     => [
+                "mcc" => "5732",
+                "envInfo" => [
+                    "sourcePlatform"    => "IPG",
+                    "terminalType"      => "SYSTEM",
+                    "orderTerminalType" => "WEB"
+                ],
+                "order" => [
+                    "orderTitle"        => substr("Ongkir Autokirim " . $cleanInvoice, 0, 64),
+                    "scenario"          => "REDIRECT",
+                    "merchantTransType" => "01",
+                    "buyer" => [
+                        "externalUserId"   => (string) ($pesanan->user_id ?? 'GUEST'.rand(100,999)),
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $pesanan->pengirim_nama ?? 'Customer'), 0, 64),
+                    ],
+                    "goods" => [
+                        [
+                            "name"            => "Pembayaran Ongkir",
+                            "merchantGoodsId" => substr("AK" . $cleanInvoice, 0, 64),
+                            "description"     => "Pengiriman " . $pesanan->kurir . " - " . $pesanan->layanan,
+                            "category"        => "DIGITAL_GOODS",
+                            "price"           => ["value" => $amountValue, "currency" => "IDR"],
+                            "unit"            => "pcs",
+                            "quantity"        => "1"
+                        ]
+                    ]
+                ]
             ]
         ];
 
-        $jsonPayload = json_encode($payload);
-        $signature = base64_encode(hash_hmac('sha256', $jsonPayload, $secretKey, true));
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         try {
-            $response = Http::withHeaders([
-                'Content-Type'  => 'application/json',
-                'Client-Id'     => $merchantId,
-                'Signature'     => $signature,
-                'Request-Time'  => $timestamp,
-            ])->timeout(30)->post($baseUrl, $payload);
+            // Panggil Service DANA yang sama seperti di CheckoutController
+            $danaSignature = app(\App\Services\DanaSignatureService::class);
+            $accessToken   = $danaSignature->getAccessToken();
+            $signature     = $danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+            $headers = [
+                'Authorization'  => 'Bearer ' . $accessToken,
+                'X-PARTNER-ID'   => $partnerIdConf,
+                'X-EXTERNAL-ID'  => (string) time() . \Illuminate\Support\Str::random(6),
+                'X-TIMESTAMP'    => $timestamp,
+                'X-SIGNATURE'    => $signature,
+                'Content-Type'   => 'application/json',
+                'CHANNEL-ID'     => '95221',
+                'ORIGIN'         => url('/'),
+            ];
+
+            Log::info("LOG: [DANA PG AUTOKIRIM] Mengirim Request API...", ['URL' => $baseUrl . $path]);
+
+            $response = Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post($baseUrl . $path);
 
             $result = $response->json();
 
-            if ($response->successful() && isset($result['body']['checkoutUrl'])) {
-                return $result['body']['checkoutUrl'];
+            Log::info("LOG: [DANA PG AUTOKIRIM] Respon API DANA:", $result ?? []);
+
+            if ($response->successful() && isset($result['responseCode']) && $result['responseCode'] == '2005400') {
+                return $result['webRedirectUrl'] ?? null;
             }
 
             return null;
         } catch (\Exception $e) {
+            Log::error("LOG: [DANA PG AUTOKIRIM] Exception: " . $e->getMessage());
             return null;
         }
     }
