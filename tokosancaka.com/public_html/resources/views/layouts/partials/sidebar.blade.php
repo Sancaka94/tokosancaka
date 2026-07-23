@@ -512,6 +512,16 @@
                                 <span>Komisi Agent</span>
                             </a>
                         </li>
+
+                        <li>
+                            <a href="{{ route('admin.riwayat-pencairan.index') }}" wire:navigate
+                            x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                            class="flex items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.riwayat-pencairan.*') ? 'text-emerald-600 font-bold bg-emerald-50' : 'text-gray-500 hover:text-emerald-600 hover:bg-gray-50' }}">
+                                <i class="fa-solid fa-money-bill-transfer w-4 text-center mr-2 {{ request()->routeIs('admin.riwayat-pencairan.*') ? 'text-emerald-500' : 'text-gray-400 group-hover:text-emerald-500' }}"></i>
+                                <span>Riwayat Pencairan</span>
+                            </a>
+                        </li>
+
                         <li>
                             <a href="{{ route('admin.data-autokirim.index') }}" wire:navigate
                                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"

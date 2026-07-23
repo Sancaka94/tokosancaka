@@ -121,4 +121,64 @@ class KomisiAgentController extends Controller
             return redirect()->back()->with('error', 'Terjadi kesalahan saat hapus massal.');
         }
     }
+
+    // FUNGSI BARU: Pencairan Komisi ke Saldo
+    public function cairkanKomisi(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id_pengguna',
+            'nominal_cair' => 'required|numeric|min:1'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $user = User::where('id_pengguna', $request->user_id)->firstOrFail();
+            $nominal = $request->nominal_cair;
+
+            // 1. Tambahkan ke saldo agen
+            $user->saldo = ($user->saldo ?? 0) + $nominal;
+            $user->save();
+
+            // 2. Catat ke tabel riwayat_pencairans (Pastikan Anda sudah membuat migration untuk tabel ini)
+            DB::table('riwayat_pencairans')->insert([
+                'user_id' => $user->id_pengguna,
+                'nominal' => $nominal,
+                'keterangan' => 'Pencairan komisi ke saldo agen',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::commit();
+            Log::info("LOG LOG: [PENCAIRAN KOMISI] Admin mencairkan Rp {$nominal} ke saldo agen ID {$user->id_pengguna}");
+
+            return redirect()->back()->with('success', 'Komisi sebesar Rp ' . number_format($nominal, 0, ',', '.') . ' berhasil dicairkan ke saldo agen.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal mencairkan komisi: ' . $e->getMessage());
+        }
+    }
+
+    // FUNGSI BARU: Halaman Riwayat Pencairan
+    public function riwayatPencairan(Request $request)
+    {
+        $query = DB::table('riwayat_pencairans')
+            ->join('users', 'riwayat_pencairans.user_id', '=', 'users.id_pengguna')
+            ->select('riwayat_pencairans.*', 'users.nama_lengkap', 'users.store_name', 'users.no_wa')
+            ->orderBy('riwayat_pencairans.created_at', 'desc');
+
+        if ($request->filled('search')) {
+            $search = $request->input('search');
+            $query->where(function($q) use ($search) {
+                $q->where('users.nama_lengkap', 'like', "%{$search}%")
+                  ->orWhere('users.store_name', 'like', "%{$search}%")
+                  ->orWhere('users.no_wa', 'like', "%{$search}%");
+            });
+        }
+
+        $riwayat = $query->paginate(15)->withQueryString();
+
+        return view('admin.riwayatpencairan', compact('riwayat'));
+    }
+
 }

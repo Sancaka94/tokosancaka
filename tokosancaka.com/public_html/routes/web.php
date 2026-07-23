@@ -1957,4 +1957,8 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
     Route::delete('/komisi-agent/delete/{id}', [\App\Http\Controllers\KomisiAgentController::class, 'deleteUser'])->name('komisi-agent.delete');
     Route::post('/komisi-agent/bulk-update', [\App\Http\Controllers\KomisiAgentController::class, 'bulkUpdate'])->name('komisi-agent.bulk-update');
     Route::post('/komisi-agent/bulk-destroy', [\App\Http\Controllers\KomisiAgentController::class, 'bulkDestroy'])->name('komisi-agent.bulk-destroy');
-});
+
+    Route::post('/komisi-agent/cairkan', [\App\Http\Controllers\KomisiAgentController::class, 'cairkanKomisi'])->name('komisi-agent.cairkan');
+    Route::get('/riwayat-pencairan', [\App\Http\Controllers\KomisiAgentController::class, 'riwayatPencairan'])->name('riwayat-pencairan.index');
+
+    });
