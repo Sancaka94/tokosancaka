@@ -37,6 +37,7 @@ class PesananAutokirimController extends Controller
             'Makanan Kering / Herbal', 'Kosmetik & Kecantikan', 'Aksesoris & Sparepart', 'Lainnya'
         ];
 
+        // 1. Metode Pembayaran Dasar (Internal & DANA/DOKU)
         $metodePembayaran = [
             [
                 'id'          => 'potong_saldo',
@@ -61,32 +62,40 @@ class PesananAutokirimController extends Controller
                 'nama'        => 'DOKU Payment Gateway',
                 'icon'        => 'fa-solid fa-shield-halved text-red-600',
                 'deskripsi'   => 'Bayar via DOKU (Kartu Kredit, VA, Retail, E-Wallet)'
-            ],
-            [
-                'id'          => 'tripay_qris',
-                'nama'        => 'QRIS by Tripay (Gopay, OVO, Dana, ShopeePay)',
-                'icon'        => 'fa-solid fa-qrcode text-green-600',
-                'deskripsi'   => 'Scan barcode via aplikasi e-wallet atau m-banking'
-            ],
-            [
-                'id'          => 'tripay_va_bca',
-                'nama'        => 'BCA Virtual Account (Tripay)',
-                'icon'        => 'fa-solid fa-building-columns text-blue-800',
-                'deskripsi'   => 'Konfirmasi otomatis 24/7'
-            ],
-            [
-                'id'          => 'tripay_va_mandiri',
-                'nama'        => 'Mandiri Virtual Account (Tripay)',
-                'icon'        => 'fa-solid fa-building-columns text-yellow-600',
-                'deskripsi'   => 'Konfirmasi otomatis 24/7'
-            ],
-            [
-                'id'          => 'tripay_va_bri',
-                'nama'        => 'BRI Virtual Account (BRIVA by Tripay)',
-                'icon'        => 'fa-solid fa-building-columns text-blue-500',
-                'deskripsi'   => 'Konfirmasi otomatis 24/7'
             ]
         ];
+
+        // 2. MENGAMBIL METODE TRIPAY SECARA DINAMIS DARI API
+        $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+        $cacheKey = 'tripay_channels_list_' . $currentMode;
+
+        $tripayChannels = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 24, function () use ($currentMode) {
+            if ($currentMode === 'production') {
+                $baseUrl = 'https://tripay.co.id/api';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
+            } else {
+                $baseUrl = 'https://tripay.co.id/api-sandbox';
+                $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            }
+            try {
+                $response = \Illuminate\Support\Facades\Http::withToken($apiKey)->timeout(10)->get($baseUrl . '/merchant/payment-channel');
+                if ($response->successful()) { return $response->json()['data'] ?? []; }
+            } catch (\Exception $e) {}
+            return [];
+        });
+
+        // 3. Gabungkan Data Tripay ke List Metode Pembayaran
+        foreach ($tripayChannels as $channel) {
+            // Hanya tampilkan metode yang sedang aktif di Tripay
+            if ($channel['active']) {
+                $metodePembayaran[] = [
+                    'id'        => 'tripay_' . $channel['code'], // Contoh: tripay_QRISC, tripay_MYBVA
+                    'nama'      => $channel['name'],
+                    'icon'      => $channel['icon_url'], // Menggunakan Logo Asli Bank/E-Wallet dari Tripay
+                    'deskripsi' => 'Biaya Admin Tripay: Rp ' . number_format($channel['total_fee']['flat'] ?? 0, 0, ',', '.')
+                ];
+            }
+        }
 
         return view('customer.pesanan_autokirim.create', compact('kategoriBarang', 'metodePembayaran'));
     }
@@ -1086,5 +1095,75 @@ class PesananAutokirimController extends Controller
         }
     }
 
+    private function _createTripayTransaction($pesanan, $total, $channelCode)
+    {
+        // 1. Cek Mode Apa yang Aktif di Database (Sandbox / Production)
+        $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+        $baseUrl      = '';
+        $apiKey       = '';
+        $privateKey   = '';
+        $merchantCode = '';
+
+        // 2. Isi Kredensial Berdasarkan Mode
+        if ($mode === 'production') {
+            $baseUrl      = 'https://tripay.co.id/api/transaction/create';
+            $apiKey       = Api::getValue('TRIPAY_API_KEY', 'production');
+            $privateKey   = Api::getValue('TRIPAY_PRIVATE_KEY', 'production');
+            $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', 'production');
+        } else {
+            $baseUrl      = 'https://tripay.co.id/api-sandbox/transaction/create';
+            $apiKey       = Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            $privateKey   = Api::getValue('TRIPAY_PRIVATE_KEY', 'sandbox');
+            $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', 'sandbox');
+        }
+
+        if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
+            return ['success' => false, 'message' => 'Konfigurasi API Tripay belum lengkap di database.'];
+        }
+
+        $userEmail = auth()->user()->email ?? 'customer+' . Str::random(5) . '@tokosancaka.com';
+
+        // 3. Setup Payload untuk Autokirim
+        $payload = [
+            'method'         => $channelCode,
+            'merchant_ref'   => $pesanan->order_id,
+            'amount'         => $total,
+            'customer_name'  => $pesanan->pengirim_nama,
+            'customer_email' => $userEmail,
+            'customer_phone' => $pesanan->pengirim_hp,
+            'order_items'    => [
+                [
+                    'sku'      => 'ONGKIR-AK',
+                    'name'     => "Ongkos Kirim ({$pesanan->kurir} - {$pesanan->layanan})",
+                    'price'    => $total,
+                    'quantity' => 1
+                ]
+            ],
+            // Jika berhasil, arahkan kembali ke daftar pesanan pengguna
+            'return_url'     => route('customer.pesanan-autokirim.index'),
+            'expired_time'   => time() + (24 * 60 * 60),
+            'signature'      => hash_hmac('sha256', $merchantCode . $pesanan->order_id . $total, $privateKey),
+        ];
+
+        try {
+            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+                ->timeout(30)->withoutVerifying()->post($baseUrl, $payload);
+
+            $body = $response->json();
+
+            // Pengecekan status sukses dari Tripay
+            if ($response->successful() && ($body['success'] ?? false) === true) {
+                return ['success' => true, 'data' => $body['data']];
+            }
+
+            Log::error('Tripay API Error Autokirim:', ['response' => $body]);
+            return ['success' => false, 'message' => $body['message'] ?? 'Gagal membuat tagihan pembayaran di sistem Tripay.'];
+
+        } catch (\Exception $e) {
+            Log::error("Tripay Connection Exception: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Koneksi ke server Tripay gagal: ' . $e->getMessage()];
+        }
+    }
 
 }

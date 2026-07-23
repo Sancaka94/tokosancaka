@@ -643,10 +643,16 @@
                         @foreach($metodePembayaran as $bayar)
                             @php
                                 $imgUrl = '';
-                                if(str_contains(strtolower($bayar['id']), 'dana')) $imgUrl = 'https://tokosancaka.com/public/assets/dana.png';
-                                elseif(str_contains(strtolower($bayar['id']), 'doku')) $imgUrl = 'https://tokosancaka.com/public/assets/doku.png';
-                                elseif(str_contains(strtolower($bayar['id']), 'tripay')) $imgUrl = 'https://tokosancaka.com/public/assets/tripay.png';
+                                if(str_contains(strtolower($bayar['id']), 'dana')) {
+                                    $imgUrl = 'https://tokosancaka.com/public/assets/dana.png';
+                                } elseif(str_contains(strtolower($bayar['id']), 'doku')) {
+                                    $imgUrl = 'https://tokosancaka.com/public/assets/doku.png';
+                                } elseif(str_contains(strtolower($bayar['id']), 'tripay')) {
+                                    // Biarkan kosong agar menggunakan logo bawaan dari API Tripay
+                                    $imgUrl = '';
+                                }
 
+                                // Jika imgUrl kosong (artinya Tripay), maka gunakan icon bawaan dari Controller (yang isinya URL gambar Tripay)
                                 $jsIconParam = $imgUrl ? $imgUrl : $bayar['icon'];
                             @endphp
 
