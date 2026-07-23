@@ -91,6 +91,11 @@ class User extends Authenticatable
         return $this->hasOne(Store::class, 'user_id', 'id_pengguna');
     }
 
+    public function agentFee(): HasOne
+    {
+        return $this->hasOne(AgentFee::class, 'user_id', 'id_pengguna');
+    }
+
     public function pesanans(): HasMany
     {
         return $this->hasMany(Pesanan::class, 'id_pengguna_pembeli', 'id_pengguna');
