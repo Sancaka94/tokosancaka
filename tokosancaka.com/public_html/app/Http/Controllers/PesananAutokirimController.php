@@ -468,6 +468,8 @@ class PesananAutokirimController extends Controller
                             'harga'          => $totalHarga,
                             'estimasi'       => $service['duration'],
                             'etd'            => $service['etd'] ?? '-',
+                            'asuransi_rate'  => $service['insurance'] ?? 0,
+                            'fee_cod'        => $service['fee_cod'] ?? 0,
                             'asuransi_rate'  => $service['insurance'],
                             'is_pickup'      => $service['is_pickup'] ?? false,
                         ];

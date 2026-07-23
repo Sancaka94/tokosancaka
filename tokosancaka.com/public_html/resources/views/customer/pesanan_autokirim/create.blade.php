@@ -883,8 +883,8 @@ document.addEventListener('alpine:init', () => {
             this.selectedServiceCode = this.tempSelected.kode_layanan;
             this.selectedLogoUrl     = this.tempSelected.logo_url;
             this.selectedEtd         = this.tempSelected.etd;
-            this.selectedInsuranceRate = this.tempSelected.insurance || 0;
-            this.selectedCodRate     = this.tempSelected.fee_cod || 0;
+            this.selectedInsuranceRate = this.tempSelected.asuransi_rate || 0;
+            this.selectedCodRate       = this.tempSelected.fee_cod || 0;
 
             this.showModal           = false; // Tutup Modal
         },
