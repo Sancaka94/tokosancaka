@@ -15,42 +15,47 @@ class KomisiAgentController extends Controller
     {
         $excluded_statuses = ['batal', 'gagal', 'waiting_payment', 'menunggu_pembayaran'];
 
+        // DETEKSI NAMA TABEL & PRIMARY KEY SECARA DINAMIS
+        $userTable = (new User)->getTable(); // Otomatis menjadi 'Pengguna'
+        $userKey = (new User)->getKeyName(); // Otomatis mencari 'id' atau 'id_pengguna'
+        $userCol = $userTable . '.' . $userKey;
+
         // MENGHINDARI N+1 MENGGUNAKAN SUBQUERY SELECT
         $query = User::where('role', 'agent')
-            ->select('users.*') // Pastikan mengambil semua data user
+            ->select($userTable . '.*')
             // Subquery Total Transaksi
             ->addSelect(['total_transaksi' => PesananAutokirim::selectRaw('count(*)')
-                ->whereColumn('user_id', 'users.id') // Jika kolom di tabel user adalah id_pengguna, ganti menjadi 'users.id_pengguna'
+                ->whereColumn('user_id', $userCol)
                 ->whereNotIn('status', $excluded_statuses)
             ])
             // Subquery Omzet Kotor
             ->addSelect(['omzet_kotor' => PesananAutokirim::selectRaw('COALESCE(sum(ongkir), 0)')
-                ->whereColumn('user_id', 'users.id')
+                ->whereColumn('user_id', $userCol)
                 ->whereNotIn('status', $excluded_statuses)
             ])
             // Subquery Total Komisi
             ->addSelect(['total_komisi' => PesananAutokirim::selectRaw('COALESCE(sum(komisi_agen), 0)')
-                ->whereColumn('user_id', 'users.id')
+                ->whereColumn('user_id', $userCol)
                 ->whereNotIn('status', $excluded_statuses)
             ])
             // Subquery Total Dicairkan
             ->addSelect(['total_dicairkan' => DB::table('riwayat_pencairans')
                 ->selectRaw('COALESCE(sum(nominal), 0)')
-                ->whereColumn('user_id', 'users.id')
+                ->whereColumn('user_id', $userCol)
             ]);
 
         if ($request->filled('search')) {
             $search = $request->input('search');
-            $query->where(function($q) use ($search) {
-                $q->where('nama_lengkap', 'like', "%{$search}%")
-                  ->orWhere('store_name', 'like', "%{$search}%")
-                  ->orWhere('no_wa', 'like', "%{$search}%");
+            $query->where(function($q) use ($search, $userTable) {
+                $q->where($userTable . '.nama_lengkap', 'like', "%{$search}%")
+                  ->orWhere($userTable . '.store_name', 'like', "%{$search}%")
+                  ->orWhere($userTable . '.no_wa', 'like', "%{$search}%");
             });
         }
 
         $agents = $query->paginate(15)->withQueryString();
 
-        // Hitung total statistik (Card Atas) - Ini biarkan saja, hanya 3 query
+        // Hitung total statistik (Card Atas)
         $totalAgen = User::where('role', 'agent')->count();
         $totalPencairan = PesananAutokirim::whereNotIn('status', $excluded_statuses)->sum('komisi_agen');
         $totalLabaSancaka = PesananAutokirim::whereNotIn('status', $excluded_statuses)->sum('laba_sistem');
