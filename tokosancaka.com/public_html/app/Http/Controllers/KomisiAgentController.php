@@ -249,24 +249,104 @@ class KomisiAgentController extends Controller
         return view('admin.riwayatpencairan', compact('riwayat'));
     }
 
-    // --- FUNGSI BARU UNTUK HALAMAN CUSTOMER/AGEN ---
+    // --- FUNGSI HALAMAN RIWAYAT CUSTOMER DENGAN SISA KOMISI ---
     public function riwayatPencairanCustomer()
     {
-        // Mendapatkan ID user yang sedang login secara dinamis
         $userKey = (new User)->getKeyName();
         $userId = Auth::user()->{$userKey};
 
-        // Mengambil riwayat khusus untuk user ini saja
         $riwayat = DB::table('riwayat_pencairans')
             ->where('user_id', $userId)
             ->orderBy('created_at', 'desc')
             ->paginate(15);
 
-        // Hitung total semua komisi yang sudah pernah dicairkan user ini
         $totalDicairkan = DB::table('riwayat_pencairans')
             ->where('user_id', $userId)
             ->sum('nominal');
 
-        return view('customer.riwayatpencairan', compact('riwayat', 'totalDicairkan'));
+        // Hitung total komisi dari pesanan autokirim user ini
+        $excluded_statuses = ['batal', 'gagal', 'waiting_payment', 'menunggu_pembayaran'];
+        $totalKomisi = PesananAutokirim::where('user_id', $userId)
+            ->whereNotIn('status', $excluded_statuses)
+            ->sum('komisi_agen');
+
+        $sisaKomisi = $totalKomisi - $totalDicairkan;
+        if ($sisaKomisi < 0) {
+            $sisaKomisi = 0;
+        }
+
+        return view('customer.riwayatpencairan', compact('riwayat', 'totalDicairkan', 'totalKomisi', 'sisaKomisi'));
+    }
+
+    // --- FUNGSI PROSES PENCAIRAN MANDIRI (WITHDRAW) ---
+    public function tarikKomisiMandiri(Request $request)
+    {
+        $request->validate([
+            'nominal_cair' => 'required|numeric|min:1',
+            'idempotency_key' => 'required|string'
+        ]);
+
+        $userKey = (new User)->getKeyName();
+        $userId = Auth::user()->{$userKey};
+
+        // Idempotency check
+        $idempotencyKey = 'cust_payout_idemp_' . $request->idempotency_key;
+        if (Cache::has($idempotencyKey)) {
+            return redirect()->back()->with('error', 'Permintaan pencairan ini sudah diproses sebelumnya.');
+        }
+
+        // Cache Lock (Mencegah double click / race condition)
+        $lock = Cache::lock('payout_lock_user_' . $userId, 10);
+        if (!$lock->get()) {
+            return redirect()->back()->with('error', 'Sistem sedang memproses pencairan Anda. Harap tunggu.');
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $user = User::where($userKey, $userId)->firstOrFail();
+            $nominal = $request->nominal_cair;
+
+            // Hitung ulang sisa komisi aktual di backend
+            $excluded_statuses = ['batal', 'gagal', 'waiting_payment', 'menunggu_pembayaran'];
+            $totalKomisi = PesananAutokirim::where('user_id', $userId)
+                ->whereNotIn('status', $excluded_statuses)
+                ->sum('komisi_agen');
+
+            $totalDicairkan = DB::table('riwayat_pencairans')
+                ->where('user_id', $userId)
+                ->sum('nominal');
+
+            $sisaKomisi = $totalKomisi - $totalDicairkan;
+
+            if ($nominal > $sisaKomisi) {
+                throw new \Exception("Nominal penarikan (Rp " . number_format($nominal, 0, ',', '.') . ") melebihi sisa komisi yang tersedia (Rp " . number_format($sisaKomisi, 0, ',', '.') . ").");
+            }
+
+            // Tambahkan ke saldo user
+            $user->saldo = ($user->saldo ?? 0) + $nominal;
+            $user->save();
+
+            // Catat riwayat pencairan
+            DB::table('riwayat_pencairans')->insert([
+                'user_id' => $userId,
+                'nominal' => $nominal,
+                'keterangan' => 'Pencairan mandiri komisi ke saldo',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            Cache::put($idempotencyKey, true, now()->addDay());
+
+            DB::commit();
+            Log::info("LOG LOG: [PENCAIRAN MANDIRI] User ID {$userId} menarik komisi sebesar Rp {$nominal}");
+
+            return redirect()->back()->with('success', 'Pencairan komisi sebesar Rp ' . number_format($nominal, 0, ',', '.') . ' berhasil masuk ke saldo Anda.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Gagal mencairkan komisi: ' . $e->getMessage());
+        } finally {
+            $lock->release();
+        }
     }
 }

@@ -1932,6 +1932,7 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
     Route::post('/pesanan-autokirim/{id}/cancel', [PesananAutokirimController::class, 'cancelOrder'])->name('pesanan-autokirim.cancel');
 
     Route::get('/riwayat-pencairan', [\App\Http\Controllers\KomisiAgentController::class, 'riwayatPencairanCustomer'])->name('riwayat-pencairan');
+    Route::post('/riwayat-pencairan/tarik', [\App\Http\Controllers\KomisiAgentController::class, 'tarikKomisiMandiri'])->name('riwayat-pencairan.tarik');
 
     });
 

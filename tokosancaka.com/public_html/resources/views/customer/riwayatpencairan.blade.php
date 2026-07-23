@@ -3,17 +3,48 @@
 @section('content')
 <div class="container mx-auto px-4 py-6 max-w-5xl">
 
-    <!-- Header Section -->
+    <!-- NOTIFIKASI -->
+    @if(session('success'))
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-xl mb-4 text-sm font-medium">
+            <i class="fa-solid fa-circle-check mr-1"></i> {{ session('success') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl mb-4 text-sm font-medium">
+            <i class="fa-solid fa-circle-exclamation mr-1"></i> {{ session('error') }}
+        </div>
+    @endif
+
+    <!-- Header & Cards Statistik -->
     <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
         <div>
             <h2 class="font-bold text-2xl text-gray-800">Riwayat Pencairan Komisi</h2>
             <p class="text-gray-500 text-sm mt-1">Daftar histori saldo komisi yang berhasil dicairkan ke akun Anda.</p>
         </div>
 
-        <!-- Card Ringkasan Total Dicairkan -->
-        <div class="bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl p-4 shadow-lg text-white min-w-[250px]">
-            <p class="text-xs font-semibold text-emerald-100 uppercase tracking-wide mb-1">Total Telah Dicairkan</p>
-            <h3 class="text-2xl font-black">Rp {{ number_format($totalDicairkan, 0, ',', '.') }}</h3>
+        <!-- Cards Grid (Sisa Komisi & Total Dicairkan) -->
+        <div class="flex flex-col sm:flex-row gap-3">
+            <!-- Card Sisa Komisi -->
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-xl p-4 shadow-lg text-white min-w-[220px] flex flex-col justify-between">
+                <div>
+                    <p class="text-[11px] font-semibold text-blue-100 uppercase tracking-wide mb-1">Sisa Komisi Bisa Ditarik</p>
+                    <h3 class="text-xl font-black">Rp {{ number_format($sisaKomisi, 0, ',', '.') }}</h3>
+                </div>
+                @if($sisaKomisi > 0)
+                <button type="button" onclick="openWithdrawModal({{ $sisaKomisi }})" class="mt-3 bg-white hover:bg-blue-50 text-blue-700 font-bold py-1.5 px-3 rounded-lg text-xs transition shadow-sm flex items-center justify-center">
+                    <i class="fa-solid fa-money-bill-transfer mr-1"></i> Tarik Komisi (Withdraw)
+                </button>
+                @else
+                <div class="mt-3 text-[11px] text-blue-200 italic">Komisi sudah habis ditarik</div>
+                @endif
+            </div>
+
+            <!-- Card Total Telah Dicairkan -->
+            <div class="bg-gradient-to-r from-emerald-500 to-green-600 rounded-xl p-4 shadow-lg text-white min-w-[200px]">
+                <p class="text-[11px] font-semibold text-emerald-100 uppercase tracking-wide mb-1">Total Telah Dicairkan</p>
+                <h3 class="text-xl font-black mt-2">Rp {{ number_format($totalDicairkan, 0, ',', '.') }}</h3>
+                <p class="text-[10px] text-emerald-100 mt-2"><i class="fa-solid fa-wallet"></i> Masuk ke saldo dompet</p>
+            </div>
         </div>
     </div>
 
@@ -82,4 +113,67 @@
         @endif
     </div>
 </div>
+
+<!-- ========================================== -->
+<!-- MODAL PENCAIRAN MANDIRI (WITHDRAW) -->
+<!-- ========================================== -->
+<div id="withdrawModal" class="fixed inset-0 z-[100] hidden bg-gray-900/60 backdrop-blur-sm flex justify-center items-center px-4">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform scale-95 transition-all duration-200" id="withdrawModalContent">
+        <form method="POST" action="{{ route('customer.riwayat-pencairan.tarik') }}">
+            @csrf
+            <input type="hidden" name="idempotency_key" id="modal_withdraw_idempotency">
+
+            <div class="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 text-white relative">
+                <h3 class="font-bold text-lg"><i class="fa-solid fa-money-bill-transfer mr-2"></i> Tarik Komisi (Withdraw)</h3>
+                <p class="text-xs text-blue-100 mt-0.5">Pindahkan sisa komisi ke saldo utama akun Anda.</p>
+            </div>
+
+            <div class="p-5 space-y-4">
+                <div class="bg-blue-50 border border-blue-100 rounded-xl p-3.5 text-sm">
+                    <span class="text-blue-700 font-semibold block mb-1">Maksimal Sisa Komisi:</span>
+                    <strong class="text-blue-900 text-lg font-black">Rp <span id="max_sisa_komisi_text">0</span></strong>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Nominal Penarikan (Rp)</label>
+                    <input type="number" name="nominal_cair" id="modal_withdraw_input" min="1" required
+                        class="w-full border-2 border-blue-200 rounded-xl px-4 py-3 text-xl font-black text-gray-800 focus:ring-blue-500 focus:border-blue-500" placeholder="Contoh: 50000">
+                    <p class="text-xs text-gray-500 mt-2">Dana akan langsung bertambah ke Saldo Dompet Anda setelah diproses.</p>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 p-4 flex justify-end gap-2 border-t border-gray-100">
+                <button type="button" onclick="closeWithdrawModal()" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold py-2 px-4 rounded-xl transition shadow-sm text-sm">Batal</button>
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-xl transition shadow-md text-sm">Konfirmasi Tarik</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openWithdrawModal(maxSisa) {
+        document.getElementById('max_sisa_komisi_text').innerText = new Intl.NumberFormat('id-ID').format(maxSisa);
+
+        // Default isi input dengan total sisa komisi (bisa diubah jika ingin parsial)
+        let inputEl = document.getElementById('modal_withdraw_input');
+        inputEl.value = maxSisa;
+        inputEl.max = maxSisa;
+
+        // Generate Idempotency Key unik agar aman dari double submit
+        document.getElementById('modal_withdraw_idempotency').value = Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 10);
+
+        const modal = document.getElementById('withdrawModal');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            document.getElementById('withdrawModalContent').classList.remove('scale-95', 'opacity-0');
+            document.getElementById('withdrawModalContent').classList.add('scale-100', 'opacity-100');
+        }, 10);
+    }
+
+    function closeWithdrawModal() {
+        document.getElementById('withdrawModalContent').classList.remove('scale-100', 'opacity-100');
+        document.getElementById('withdrawModalContent').classList.add('scale-95', 'opacity-0');
+        setTimeout(() => { document.getElementById('withdrawModal').classList.add('hidden'); }, 200);
+    }
+</script>
 @endsection
