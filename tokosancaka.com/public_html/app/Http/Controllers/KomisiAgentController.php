@@ -221,20 +221,23 @@ class KomisiAgentController extends Controller
         }
     }
 
-    // --- FITUR BARU: HALAMAN RIWAYAT PENCAIRAN ---
     public function riwayatPencairan(Request $request)
     {
+        // DETEKSI NAMA TABEL & PRIMARY KEY SECARA DINAMIS
+        $userTable = (new User)->getTable();
+        $userKey = (new User)->getKeyName();
+
         $query = DB::table('riwayat_pencairans')
-            ->join('users', 'riwayat_pencairans.user_id', '=', 'users.id')
-            ->select('riwayat_pencairans.*', 'users.nama_lengkap', 'users.store_name', 'users.no_wa')
+            ->join($userTable, 'riwayat_pencairans.user_id', '=', $userTable . '.' . $userKey)
+            ->select('riwayat_pencairans.*', $userTable . '.nama_lengkap', $userTable . '.store_name', $userTable . '.no_wa')
             ->orderBy('riwayat_pencairans.created_at', 'desc');
 
         if ($request->filled('search')) {
             $search = $request->input('search');
-            $query->where(function($q) use ($search) {
-                $q->where('users.nama_lengkap', 'like', "%{$search}%")
-                  ->orWhere('users.store_name', 'like', "%{$search}%")
-                  ->orWhere('users.no_wa', 'like', "%{$search}%");
+            $query->where(function($q) use ($search, $userTable) {
+                $q->where($userTable . '.nama_lengkap', 'like', "%{$search}%")
+                  ->orWhere($userTable . '.store_name', 'like', "%{$search}%")
+                  ->orWhere($userTable . '.no_wa', 'like', "%{$search}%");
             });
         }
 
