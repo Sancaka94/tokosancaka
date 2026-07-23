@@ -1949,8 +1949,7 @@ Route::prefix('api/autokirim')->name('api.autokirim.')->group(function () {
 });
 
 
-Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(function () {
-    // Route untuk manajemen komisi agen
+Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () {
     Route::get('/komisi-agent', [\App\Http\Controllers\KomisiAgentController::class, 'index'])->name('komisi-agent.index');
     Route::post('/komisi-agent/update/{id}', [\App\Http\Controllers\KomisiAgentController::class, 'update'])->name('komisi-agent.update');
     Route::delete('/komisi-agent/reset/{id}', [\App\Http\Controllers\KomisiAgentController::class, 'destroy'])->name('komisi-agent.destroy');
