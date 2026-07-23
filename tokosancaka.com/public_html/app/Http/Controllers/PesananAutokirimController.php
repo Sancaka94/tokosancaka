@@ -701,9 +701,25 @@ class PesananAutokirimController extends Controller
             $codValue = $requestData ? (int) $requestData->grand_total : 0;
         }
 
-        // PASTIKAN BERAT GRAM ADALAH INTEGER MURNI SAAT CREATE ORDER
+        // 1. Ambil data berat & dimensi
         $beratGram = (int) $pesanan->berat_gram;
-        $weightApi = $beratGram > 0 ? $beratGram : 1000;
+        $panjang   = (int) ($pesanan->panjang_cm > 0 ? $pesanan->panjang_cm : 10);
+        $lebar     = (int) ($pesanan->lebar_cm > 0 ? $pesanan->lebar_cm : 10);
+        $tinggi    = (int) ($pesanan->tinggi_cm > 0 ? $pesanan->tinggi_cm : 10);
+
+        // 2. Tentukan Pembagi (Divider) berdasarkan layanan
+        $layanan = strtolower($pesanan->layanan ?? '');
+        $isCargo = preg_match('/cargo|bigpack|truck|gokil|jtr/', $layanan);
+        $divider = $isCargo ? 4000 : 6000;
+
+        // 3. Kalkulasi Berat Volume (Jadikan Gram)
+        $beratVolumeGram = (int) ceil((($panjang * $lebar * $tinggi) / $divider) * 1000);
+
+        // 4. Ambil yang terberat (Chargeable Weight)
+        $chargeableWeight = max($beratGram, $beratVolumeGram);
+        $weightApi = $chargeableWeight > 0 ? $chargeableWeight : 1000;
+
+        Log::info("LOG: [VOLUMETRIC CALC] Layanan: {$layanan}, Divider: {$divider}, Aktual: {$beratGram}gr, Volume: {$beratVolumeGram}gr => Ditagihkan (Payload): {$weightApi}gr");
 
         $orderPayload = [
             'service_code'      => $serviceCode,
