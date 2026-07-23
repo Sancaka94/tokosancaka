@@ -173,8 +173,9 @@ class KomisiAgentController extends Controller
         try {
             DB::beginTransaction();
 
-            // Mendukung id atau id_pengguna secara dinamis
-            $user = User::where('id', $request->user_id)->orWhere('id_pengguna', $request->user_id)->firstOrFail();
+            // Mendeteksi primary key otomatis dari model ('id_pengguna')
+            $userKey = (new User)->getKeyName();
+            $user = User::where($userKey, $request->user_id)->firstOrFail();
             $nominal = $request->nominal_cair;
 
             // 4. Hitung ulang sisa komisi di Backend (Mencegah by-pass Inspect Element)
