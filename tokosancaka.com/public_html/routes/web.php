@@ -1947,3 +1947,11 @@ Route::prefix('api/autokirim')->name('api.autokirim.')->group(function () {
     Route::get('/search-address', [PesananAutokirimController::class, 'searchAddressAjax'])->name('search_address');
     Route::post('/cek-ongkir', [PesananAutokirimController::class, 'cekOngkirAjax'])->name('cek_ongkir');
 });
+
+
+Route::prefix('admin')->middleware(['auth', 'admin'])->name('admin.')->group(function () {
+    // Route untuk manajemen komisi agen
+    Route::get('/komisi-agent', [\App\Http\Controllers\KomisiAgentController::class, 'index'])->name('komisi-agent.index');
+    Route::post('/komisi-agent/update/{id}', [\App\Http\Controllers\KomisiAgentController::class, 'update'])->name('komisi-agent.update');
+    Route::delete('/komisi-agent/reset/{id}', [\App\Http\Controllers\KomisiAgentController::class, 'destroy'])->name('komisi-agent.destroy');
+});
