@@ -197,6 +197,8 @@ class PesananAutokirimController extends Controller
             $persenCashbackPusat = floatval($bestMatch->cashback ?? 0);
         }
 
+        $agenFeePercentage = auth()->user()->fee_autokirim ?? 40;
+
         $totalCashback = $pesanan->ongkir * ($persenCashbackPusat / 100);
         $komisiAgen    = $totalCashback * 0.40;
         $labaSancaka   = $totalCashback * 0.60;

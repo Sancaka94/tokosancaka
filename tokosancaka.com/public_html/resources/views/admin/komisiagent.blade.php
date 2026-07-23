@@ -101,9 +101,9 @@
                             </div>
                         </td>
 
-                        <!-- PERSENTASE FEE AGEN -->
+                       <!-- PERSENTASE FEE AGEN -->
                         <td class="p-4 align-middle text-center">
-                            @if($agen->agentFee)
+                            @if($fee_agen != 40)
                                 <span class="bg-orange-100 text-orange-700 font-black px-3 py-1.5 rounded-lg text-sm border border-orange-200 shadow-sm">
                                     {{ $fee_agen }}%
                                 </span>
