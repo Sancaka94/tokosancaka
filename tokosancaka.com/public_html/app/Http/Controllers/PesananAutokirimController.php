@@ -528,8 +528,11 @@ class PesananAutokirimController extends Controller
             }
 
             $localOrderId = (string) (date('ymdHis') . mt_rand(1000, 9999));
-            $totalTagihan = (int) $request->ongkir_terpilih;
+            $ongkirDasar  = (int) $request->ongkir_terpilih; // Ongkir asli untuk laporan profit
             $paymentMethod = $request->metode_pembayaran;
+
+            // TANGKAP GRAND TOTAL DARI FRONTEND
+            $totalTagihan = (int) $request->input('grand_total', $ongkirDasar);
 
             $hargaBarangInput = (int) $request->nilai_barang;
             $finalPrice = $hargaBarangInput > 0 ? $hargaBarangInput : 10000;
@@ -543,7 +546,7 @@ class PesananAutokirimController extends Controller
                     'kurir' => $request->kurir_terpilih,
                     'layanan' => $request->layanan_terpilih,
                     'metode_pembayaran' => $paymentMethod,
-                    'ongkir' => $totalTagihan
+                    'ongkir' => $ongkirDasar
                 ];
 
                 $profit = $this->hitungProfit($kalkulasiData, $rates);
@@ -569,7 +572,8 @@ class PesananAutokirimController extends Controller
                     'nilai_barang'      => $finalPrice,
                     'kurir'             => $request->kurir_terpilih,
                     'layanan'           => $request->layanan_terpilih,
-                    'ongkir'            => $totalTagihan,
+                    'ongkir'            => $ongkirDasar,
+                    'grand_total'       => $totalTagihan,
                     'awb_number'        => null,
                     'metode_pembayaran' => $paymentMethod,
                     'status'            => 'waiting_payment',
@@ -693,11 +697,8 @@ class PesananAutokirimController extends Controller
 
         $codValue = 0;
         if ($isCod) {
-            if (strtolower($pesanan->metode_pembayaran) === 'cod_ongkir') {
-                $codValue = (int) $pesanan->ongkir;
-            } else {
-                $codValue = (int) $pesanan->nilai_barang;
-            }
+            // LANGSUNG TEMBAK PAKAI GRAND TOTAL DARI FRONTEND
+            $codValue = $requestData ? (int) $requestData->grand_total : 0;
         }
 
         // PASTIKAN BERAT GRAM ADALAH INTEGER MURNI SAAT CREATE ORDER
