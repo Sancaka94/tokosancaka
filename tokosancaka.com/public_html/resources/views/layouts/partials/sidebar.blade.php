@@ -433,21 +433,48 @@
                 </div>
             </div>
 
-            {{-- Manajemen Driver Sancaka --}}
-            <a href="{{ route('admin.drivers.index') }}" wire:navigate
-               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
-               class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.drivers.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
-                <i class="fa-solid fa-id-card fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.drivers.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
-                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Manajemen Driver</span>
-            </a>
+           {{-- ================= MANAJEMEN OJEK ONLINE ================= --}}
+            <div x-data="{ open: {{ request()->routeIs('admin.drivers.*') || request()->routeIs('admin.reward.*') ? 'true' : 'false' }} }"
+                 x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                 x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true"
+                 class="mt-0.5">
 
-            {{-- Manajemen Medali & Bintang Driver --}}
-            <a href="{{ route('admin.reward.index') }}" wire:navigate
-               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
-               class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('admin.reward.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
-                <i class="fa-solid fa-ranking-star fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.reward.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
-                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Level & Performa Driver</span>
-            </a>
+                <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
+                        class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('admin.drivers.*') || request()->routeIs('admin.reward.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                    <span class="flex items-center">
+                        <i class="fa-solid fa-motorcycle fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.drivers.*') || request()->routeIs('admin.reward.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Menejemen Ojek Online</span>
+                    </span>
+                    <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
+                        <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
+                           :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->routeIs('admin.drivers.*') || request()->routeIs('admin.reward.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
+                    </div>
+                </button>
+
+                <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
+                    <ul class="pl-9 pr-2 py-1 space-y-1">
+                        {{-- Manajemen Driver --}}
+                        <li>
+                            <a href="{{ route('admin.drivers.index') }}" wire:navigate
+                               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                               class="flex items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.drivers.*') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                <i class="fa-solid fa-id-card w-4 text-center mr-2 {{ request()->routeIs('admin.drivers.*') ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500' }}"></i>
+                                <span>Manajemen Driver</span>
+                            </a>
+                        </li>
+
+                        {{-- Manajemen Medali & Bintang Driver --}}
+                        <li>
+                            <a href="{{ route('admin.reward.index') }}" wire:navigate
+                               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                               class="flex items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.reward.*') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                <i class="fa-solid fa-ranking-star w-4 text-center mr-2 {{ request()->routeIs('admin.reward.*') ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500' }}"></i>
+                                <span>Level & Performa Driver</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
 
            {{-- ================= MANAJEMEN AUTOKIRIM ================= --}}
             <div x-data="{ open: {{ request()->routeIs('admin.pesanan-autokirim.*') || request()->routeIs('admin.komisi-agent.*') || request()->routeIs('admin.data-autokirim.*') || request()->routeIs('admin.autokirim.*') ? 'true' : 'false' }} }"
