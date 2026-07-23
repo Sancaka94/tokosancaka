@@ -106,7 +106,8 @@
                                 $total_transaksi = (clone $pesanan_agen)->count();
                                 $omzet_kotor     = (clone $pesanan_agen)->sum('ongkir');
                                 $total_komisi    = (clone $pesanan_agen)->sum('komisi_agen');
-                                $total_dicairkan = \Illuminate\Support\Facades\DB::table('riwayat_pencairans')->where('user_id', $agen->id)->sum('nominal');
+                                // FIXED: Gunakan id_pengguna untuk menghindari error data kosong
+                                $total_dicairkan = \Illuminate\Support\Facades\DB::table('riwayat_pencairans')->where('user_id', $agen->id_pengguna)->sum('nominal');
                                 $sisa_komisi = $total_komisi - $total_dicairkan;
 
                                 // Siapkan data untuk Modal (HINDARI ERROR QUOTES DENGAN JSON_ENCODE)
@@ -186,7 +187,7 @@
                                         <span>Total Komisi:</span>
                                         <span class="font-bold text-green-700">+ Rp {{ number_format($total_komisi, 0, ',', '.') }}</span>
                                     </div>
-                                    <!-- --- BARIS BARU UNTUK TAMPILAN PENCAIRAN --- -->
+                                    <!-- --- TAMPILAN PENCAIRAN --- -->
                                     <div class="flex justify-between text-orange-600">
                                         <span>Telah Dicairkan:</span>
                                         <span class="font-bold">- Rp {{ number_format($total_dicairkan, 0, ',', '.') }}</span>
@@ -215,24 +216,22 @@
                                         <i class="fa-solid fa-eye"></i>
                                     </button>
 
-                                    <!-- --- BARIS BARU: TOMBOL PENCAIRAN --- -->
+                                    <!-- FIXED: TOMBOL PENCAIRAN (Pakai id_pengguna dan addslashes) -->
                                     <button type="button"
-                                            onclick="openCairModal({{ $agen->id }}, '{{ $agen->nama_lengkap }}', {{ $sisa_komisi > 0 ? $sisa_komisi : 0 }})"
+                                            onclick="openCairModal({{ $agen->id_pengguna }}, '{{ addslashes($agen->nama_lengkap) }}', {{ $sisa_komisi > 0 ? $sisa_komisi : 0 }})"
                                             class="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold px-3 py-1.5 rounded text-xs transition shadow-sm flex items-center"
                                             title="Cairkan Komisi ke Saldo">
                                         <i class="fa-solid fa-money-bill-transfer mr-1"></i> Cairkan
                                     </button>
                                     <!-- ------------------------------------ -->
 
-                                    <!-- Tombol Edit Fee -->
+                                    <!-- FIXED: Tombol Edit Fee (Pakai id_pengguna dan addslashes) -->
                                     <button type="button"
-                                            onclick="openFeeModal({{ $agen->id_pengguna }}, '{{ $agen->nama_lengkap }}', {{ $fee_agen }})"
+                                            onclick="openFeeModal({{ $agen->id_pengguna }}, '{{ addslashes($agen->nama_lengkap) }}', {{ $fee_agen }})"
                                             class="bg-blue-100 hover:bg-blue-200 text-blue-700 font-bold px-3 py-1.5 rounded text-xs transition shadow-sm flex items-center"
                                             title="Ubah Persentase Komisi">
                                         <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Fee
                                     </button>
-
-
 
                                     <!-- Tombol Reset (Jika Custom) -->
                                     @if($fee_agen != 40)
