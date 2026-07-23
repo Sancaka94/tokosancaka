@@ -467,7 +467,7 @@
                     </div>
 
                     <div x-show="selectedPayment === 'dana_binding'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs bg-gray-50" x-cloak>
-                        @if(!empty(auth()->user()->dana_token))
+                        @if(!empty(auth()->user()->dana_access_token))
                             <div class="flex items-start gap-2 text-black">
                                 <i class="fa-solid fa-circle-check text-gray-800 text-sm mt-0.5"></i>
                                 <span>Akun DANA terhubung. Pembayaran ongkir akan dipotong instan.</span>
@@ -495,9 +495,10 @@
                 <!-- TOMBOL SUBMIT PESANAN -->
                 <div class="mt-6 pt-5 border-t border-gray-200">
                     <button type="submit"
-                        :disabled="isSubmitting || (tipePesanan !== 'cod' && (!selectedPayment || (selectedPayment === 'potong_saldo' && grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) || selectedPayment === 'dana_binding' @endif))"
-                        class="w-full py-4 rounded-md font-bold text-white transition-all text-sm tracking-widest flex justify-center items-center gap-3 uppercase"
-                        :class="(tipePesanan === 'cod' || (selectedPayment && !(selectedPayment === 'potong_saldo' && grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_token)) && selectedPayment !== 'dana_binding' @endif)) ? 'bg-black hover:bg-gray-800 cursor-pointer shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'">
+
+                    :disabled="isSubmitting || (tipePesanan !== 'cod' && (!selectedPayment || (selectedPayment === 'potong_saldo' && grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_access_token)) || selectedPayment === 'dana_binding' @endif))"
+                    class="w-full py-4 rounded-md font-bold text-white transition-all text-sm tracking-widest flex justify-center items-center gap-3 uppercase"
+                    :class="(tipePesanan === 'cod' || (selectedPayment && !(selectedPayment === 'potong_saldo' && grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_access_token)) && selectedPayment !== 'dana_binding' @endif)) ? 'bg-black hover:bg-gray-800 cursor-pointer shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'">
 
                     <!-- Teks tombol berubah saat loading -->
                     <span x-text="isSubmitting ? 'MEMPROSES PESANAN...' : 'SUBMIT KIRIM SEKARANG'"></span>
@@ -1006,7 +1007,7 @@ document.addEventListener('alpine:init', () => {
                     }
                 }
 
-                @if(empty(auth()->user()->dana_token))
+                @if(empty(auth()->user()->dana_access_token))
                 if(this.selectedPayment === 'dana_binding') {
                     e.preventDefault();
                     alert("Gagal! Akun DANA Anda belum diikat (bind). Silahkan pilih metode 'DANA Payment Gateway' atau hubungkan akun DANA Anda terlebih dahulu di pengaturan profil!");
