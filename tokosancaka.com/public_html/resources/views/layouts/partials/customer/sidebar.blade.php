@@ -392,6 +392,46 @@
                     </a>
                 @endif
 
+                {{-- ========================================================== --}}
+                {{-- BAGIAN 8.5: KHUSUS AGENT (MENU BARU AUTOKIRIM)              --}}
+                {{-- ========================================================== --}}
+                @if (auth()->user()->role === 'agent' || auth()->user()->role === 'admin')
+                    <p :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="px-4 pt-4 pb-2 text-xs text-gray-400 uppercase tracking-wider">Agen Logistik</p>
+                    <hr x-show="!(isExpanded || isHovered)" class="border-gray-700 my-4 hidden lg:block">
+
+                    <!-- Menu 1: Form Order Paket -->
+                    <a href="{{ route('customer.pesanan-autokirim.create') }}"
+                       :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
+                       class="flex items-center py-2.5 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.pesanan-autokirim.create') ? 'bg-gray-900 text-white' : '' }}">
+                        <i class="fas fa-truck-fast fa-fw w-6 text-xl text-yellow-400"></i>
+                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 flex items-center w-full whitespace-nowrap">
+                            Order Paket
+                            <span class="ml-auto bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">NEW</span>
+                        </span>
+                    </a>
+
+                    <!-- Menu 2: Riwayat Transaksi -->
+                    <a href="{{ route('customer.pesanan-autokirim.index') }}"
+                       :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
+                       class="flex items-center py-2.5 mt-1 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.pesanan-autokirim.index') ? 'bg-gray-900 text-white' : '' }}">
+                        <i class="fas fa-list-alt fa-fw w-6 text-xl text-blue-400"></i>
+                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 flex items-center w-full whitespace-nowrap">
+                            Riwayat Transaksi
+                        </span>
+                    </a>
+
+                    <!-- --- MENU 3: RIWAYAT PENCAIRAN KOMISI (BARU) --- -->
+                    <a href="{{ route('customer.riwayat-pencairan') }}"
+                       :class="(isExpanded || isHovered) ? 'justify-start px-4' : 'justify-start px-4 lg:justify-center lg:px-0'"
+                       class="flex items-center py-2.5 mt-1 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors duration-200 {{ request()->routeIs('customer.riwayat-pencairan') ? 'bg-gray-900 text-white' : '' }}">
+                        <i class="fas fa-money-bill-transfer fa-fw w-6 text-xl text-emerald-400"></i>
+                        <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="ml-3 flex items-center w-full whitespace-nowrap">
+                            Riwayat Pencairan
+                        </span>
+                    </a>
+                    <!-- -------------------------------------------- -->
+                @endif
+
                 {{-- BAGIAN 9: PENGATURAN USER --}}
                 <div class="mt-auto">
                     <a href="{{ route('customer.profile.edit') }}"
