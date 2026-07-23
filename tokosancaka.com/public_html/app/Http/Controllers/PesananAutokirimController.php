@@ -935,67 +935,155 @@ class PesananAutokirimController extends Controller
 
     private function _processDanaBindingCharge($pesanan, $total)
     {
-        $user = User::find(auth()->id());
-        if (!$user || empty($user->dana_token)) {
-            throw new Exception("Akun Anda belum mengikat (bind) token DANA.");
+        $user = \App\Models\User::find(auth()->id());
+
+        // 1. SESUAIKAN KOLOM DENGAN DATABASE (dana_access_token)
+        $tokenCustomer = $user->dana_access_token ?? null;
+
+        if (!$user || empty($tokenCustomer)) {
+            throw new \Exception("Akun Anda belum mengikat (bind) token DANA. Silakan hubungkan di pengaturan profil.");
         }
 
-        $mode = Api::getValue('DANA_MODE', 'global', 'sandbox');
-        $baseUrl = $mode === 'production'
-            ? 'https://api.dana.id/v1/acquirer/directdebit/pay.htm'
-            : 'https://api-sandbox.dana.id/v1/acquirer/directdebit/pay.htm';
+        // 2. Ambil config dinamis persis seperti di CheckoutController
+        $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
+        $isProduction = ($danaMode == '1');
 
-        $merchantId = Api::getValue('DANA_MERCHANT_ID', $mode);
-        $secretKey  = Api::getValue('DANA_SECRET_KEY', $mode);
-
-        if (empty($merchantId) || empty($secretKey)) {
-            throw new Exception("Konfigurasi API DANA belum lengkap.");
+        if ($isProduction) {
+            $merchantIdConf = \App\Models\Api::getValue('dana_prod_merchant_id', 'production');
+            $partnerIdConf  = \App\Models\Api::getValue('dana_prod_client_id', 'production');
+            $privateKey     = \App\Models\Api::getValue('dana_prod_private_key', 'production');
+            $clientSecret   = \App\Models\Api::getValue('dana_prod_client_secret', 'production');
+            $publicKey      = \App\Models\Api::getValue('dana_prod_public_key', 'production');
+            $baseUrl        = 'https://api.saas.dana.id';
+        } else {
+            $merchantIdConf = \App\Models\Api::getValue('dana_sandbox_merchant_id', 'sandbox');
+            $partnerIdConf  = \App\Models\Api::getValue('dana_sandbox_client_id', 'sandbox');
+            $privateKey     = \App\Models\Api::getValue('dana_sandbox_private_key', 'sandbox');
+            $clientSecret   = \App\Models\Api::getValue('dana_sandbox_client_secret', 'sandbox');
+            $publicKey      = \App\Models\Api::getValue('dana_sandbox_public_key', 'sandbox');
+            $baseUrl        = 'https://api.sandbox.dana.id';
         }
 
-        $timestamp = date('c');
-        $payload = [
-            'head' => [
-                'version'      => '2.0',
-                'function'     => 'dana.acquirer.directdebit.pay',
-                'clientId'     => $merchantId,
-                'reqTime'      => $timestamp,
-                'reqMsgId'     => (string) Str::uuid(),
+        if (empty($merchantIdConf) || empty($privateKey)) {
+            throw new \Exception("Konfigurasi API DANA belum lengkap.");
+        }
+
+        // Timpa config runtime untuk DanaSignatureService
+        config([
+            'services.dana.merchant_id'   => $merchantIdConf,
+            'services.dana.client_id'     => $partnerIdConf,
+            'services.dana.x_partner_id'  => $partnerIdConf,
+            'services.dana.private_key'   => $privateKey,
+            'services.dana.public_key'    => $publicKey,
+            'services.dana.client_secret' => $clientSecret,
+            'services.dana.base_url'      => $baseUrl,
+            'services.dana.dana_env'      => $isProduction ? 'PRODUCTION' : 'SANDBOX',
+            'services.dana.origin'        => url('/')
+        ]);
+
+        $cleanInvoice = preg_replace('/[^a-zA-Z0-9]/', '', $pesanan->order_id);
+        $timestamp    = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $validUpTo    = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+        $amountValue  = number_format((float)$total, 2, '.', '');
+
+        // Endpoint SNAP BI untuk Direct Debit
+        $path         = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+
+        $bodyArray = [
+            "partnerReferenceNo" => $cleanInvoice,
+            "merchantId"         => $merchantIdConf,
+            "validUpTo"          => $validUpTo,
+            "amount"             => [
+                "value"    => $amountValue,
+                "currency" => "IDR"
             ],
-            'body' => [
-                'merchantId'      => $merchantId,
-                'merchantTransId' => $pesanan->order_id,
-                'orderAmount'     => [
-                    'currency' => 'IDR',
-                    'value'    => (string) $total,
+            "urlParams"          => [
+                [
+                    "url"        => route('customer.pesanan-autokirim.create'),
+                    "type"       => "PAY_RETURN",
+                    "isDeeplink" => "N"
                 ],
-                'payMethod'       => 'BALANCE',
-                'userToken'       => $user->dana_token,
-                'orderTitle'      => "Bayar Ongkir {$pesanan->order_id}",
-                'notifyUrl'       => url('/api/callback/dana'),
+                [
+                    "url"        => url('/api/callback/dana'),
+                    "type"       => "NOTIFICATION",
+                    "isDeeplink" => "N"
+                ]
+            ],
+            "payOptionDetails"   => [
+                [
+                    "payMethod"   => "BALANCE",
+                    "payOption"   => "BALANCE",
+                    "transAmount" => [
+                        "value"    => $amountValue,
+                        "currency" => "IDR"
+                    ]
+                ]
+            ],
+            "additionalInfo"     => [
+                "mcc" => "5732",
+                "envInfo" => [
+                    "sourcePlatform"    => "IPG",
+                    "terminalType"      => "SYSTEM",
+                    "orderTerminalType" => "WEB"
+                ],
+                "order" => [
+                    "orderTitle"        => substr("Bayar Ongkir " . $cleanInvoice, 0, 64),
+                    "scenario"          => "DIRECT_DEBIT", // Wajib Direct Debit untuk Binding
+                    "merchantTransType" => "01",
+                    "buyer" => [
+                        // 3. SESUAIKAN KOLOM DENGAN DATABASE (id_pengguna & nama_lengkap)
+                        "externalUserId"   => (string) ($user->id_pengguna ?? $user->id),
+                        "externalUserType" => "MERCHANT_USER",
+                        "nickname"         => substr(preg_replace('/[^a-zA-Z0-9 ]/', '', $user->nama_lengkap ?? 'Customer'), 0, 64),
+                    ]
+                ]
             ]
         ];
 
-        $jsonPayload = json_encode($payload);
-        $signature = base64_encode(hash_hmac('sha256', $jsonPayload, $secretKey, true));
+        $jsonBody = json_encode($bodyArray, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         try {
-            $response = Http::withHeaders([
-                'Content-Type'  => 'application/json',
-                'Client-Id'     => $merchantId,
-                'Signature'     => $signature,
-                'Request-Time'  => $timestamp,
-            ])->timeout(30)->post($baseUrl, $payload);
+            $danaSignature = app(\App\Services\DanaSignatureService::class);
+            $accessToken   = $danaSignature->getAccessToken();
+            $signature     = $danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+            $headers = [
+                'Authorization'          => 'Bearer ' . $accessToken,
+                'Authorization-Customer' => 'Bearer ' . $tokenCustomer, // Kunci utama: Token Binding User
+                'X-PARTNER-ID'           => $partnerIdConf,
+                'X-EXTERNAL-ID'          => (string) time() . \Illuminate\Support\Str::random(6),
+                'X-TIMESTAMP'            => $timestamp,
+                'X-SIGNATURE'            => $signature,
+                'Content-Type'           => 'application/json',
+                'CHANNEL-ID'             => '95221',
+                'ORIGIN'                 => url('/'),
+            ];
+
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [DANA BINDING AUTOKIRIM] Memulai Request Auto-Debit...", ['URL' => $baseUrl . $path]);
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post($baseUrl . $path);
 
             $result = $response->json();
 
-            if ($response->successful() && isset($result['body']['resultInfo']['resultCode']) && $result['body']['resultInfo']['resultCode'] === 'SUCCESS') {
-                return true;
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [DANA BINDING AUTOKIRIM] Respon API:", $result ?? []);
+
+            if ($response->successful() && isset($result['responseCode']) && $result['responseCode'] === '2005400') {
+
+                // Mencegah resi tercetak otomatis jika DANA mendadak meminta verifikasi PIN
+                if (!empty($result['webRedirectUrl'])) {
+                    throw new \Exception("DANA meminta verifikasi PIN keamanan. Silakan ubah metode pembayaran menjadi 'DANA Payment Gateway' untuk menginput PIN.");
+                }
+
+                return true; // Lunas seketika tanpa PIN
             }
 
-            $errorMessage = $result['body']['resultInfo']['resultMsg'] ?? 'Gagal memotong saldo DANA Binding Anda.';
-            throw new Exception($errorMessage);
+            $errorMessage = $result['responseMessage'] ?? 'Gagal memotong saldo DANA Binding Anda.';
+            throw new \Exception($errorMessage);
+
         } catch (\Exception $e) {
-            throw new Exception($e->getMessage());
+            throw new \Exception($e->getMessage());
         }
     }
 
