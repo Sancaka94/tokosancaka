@@ -8,6 +8,7 @@ use App\Models\PesananAutokirim;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Auth; // Tambahan untuk mengecek user login
 
 class KomisiAgentController extends Controller
 {
@@ -148,7 +149,7 @@ class KomisiAgentController extends Controller
         }
     }
 
-   public function cairkanKomisi(Request $request)
+    public function cairkanKomisi(Request $request)
     {
         // 1. Validasi Input + Idempotency Key
         $request->validate([
@@ -222,6 +223,7 @@ class KomisiAgentController extends Controller
         }
     }
 
+    // UNTUK HALAMAN ADMIN
     public function riwayatPencairan(Request $request)
     {
         // DETEKSI NAMA TABEL & PRIMARY KEY SECARA DINAMIS
@@ -247,4 +249,24 @@ class KomisiAgentController extends Controller
         return view('admin.riwayatpencairan', compact('riwayat'));
     }
 
+    // --- FUNGSI BARU UNTUK HALAMAN CUSTOMER/AGEN ---
+    public function riwayatPencairanCustomer()
+    {
+        // Mendapatkan ID user yang sedang login secara dinamis
+        $userKey = (new User)->getKeyName();
+        $userId = Auth::user()->{$userKey};
+
+        // Mengambil riwayat khusus untuk user ini saja
+        $riwayat = DB::table('riwayat_pencairans')
+            ->where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
+
+        // Hitung total semua komisi yang sudah pernah dicairkan user ini
+        $totalDicairkan = DB::table('riwayat_pencairans')
+            ->where('user_id', $userId)
+            ->sum('nominal');
+
+        return view('customer.riwayatpencairan', compact('riwayat', 'totalDicairkan'));
+    }
 }
