@@ -78,7 +78,7 @@
                     @forelse($agents as $agen)
                         @php
                             // Default 40% jika tidak ada settingan khusus
-                            $fee_agen = $agen->agentFee ? $agen->agentFee->fee_percentage : 40;
+                            $fee_agen = $agen->fee_autokirim ?? 40;
                             $fee_pusat = 100 - $fee_agen;
 
                             // Hitung transaksi real-time (bisa dipindah ke controller jika query berat)
@@ -150,10 +150,10 @@
                                     <i class="fa-solid fa-pen-to-square mr-1"></i> Edit Fee
                                 </button>
 
-                                @if($agen->agentFee)
-                                    <!-- Tombol Reset Fee (Hanya muncul jika fee custom) -->
+                               @if($fee_agen != 40)
+                                    <!-- Tombol Reset Fee (Hanya muncul jika fee bukan 40%) -->
                                     <button type="button"
-                                            onclick="confirmReset('{{ route('admin.komisi-agent.destroy', $agen->id) }}')"
+                                            onclick="confirmReset('{{ route('admin.komisi-agent.destroy', $agen->id_pengguna) }}')"
                                             class="bg-red-100 hover:bg-red-200 text-red-700 w-8 h-8 rounded flex items-center justify-center shadow-sm"
                                             title="Reset ke Default Sistem (40%)">
                                         <i class="fa-solid fa-rotate-left"></i>

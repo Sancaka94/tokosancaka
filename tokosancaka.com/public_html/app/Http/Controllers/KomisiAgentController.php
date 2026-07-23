@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
-use App\Models\AgentFee;
 use App\Models\PesananAutokirim;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,8 +12,8 @@ class KomisiAgentController extends Controller
 {
     public function index(Request $request)
     {
-        // Ambil semua user dengan role agen beserta relasi custom fee & pesanannya
-        $query = User::where('role', 'agent')->with('agentFee');
+        // Tidak perlu lagi pakai with('agentFee')
+        $query = User::where('role', 'agent');
 
         if ($request->filled('search')) {
             $search = $request->input('search');
@@ -27,7 +26,6 @@ class KomisiAgentController extends Controller
 
         $agents = $query->paginate(15)->withQueryString();
 
-        // Hitung total statistik (Card Atas)
         $totalAgen = User::where('role', 'agent')->count();
         $totalPencairan = PesananAutokirim::whereNotIn('status', ['batal', 'gagal', 'menunggu_pembayaran'])->sum('komisi_agen');
         $totalLabaSancaka = PesananAutokirim::whereNotIn('status', ['batal', 'gagal', 'menunggu_pembayaran'])->sum('laba_sistem');
@@ -48,19 +46,13 @@ class KomisiAgentController extends Controller
         ]);
 
         try {
-            DB::beginTransaction();
-
-            $fee = AgentFee::updateOrCreate(
-                ['user_id' => $id],
-                ['fee_percentage' => $request->fee_percentage]
-            );
+            $user = User::findOrFail($id);
+            $user->update(['fee_autokirim' => $request->fee_percentage]);
 
             Log::info("LOG LOG: [UPDATE FEE AGENT] Admin mengubah fee agen ID {$id} menjadi {$request->fee_percentage}%");
 
-            DB::commit();
             return redirect()->back()->with('success', 'Persentase Fee Agen berhasil diperbarui.');
         } catch (\Exception $e) {
-            DB::rollBack();
             return redirect()->back()->with('error', 'Gagal memperbarui fee: ' . $e->getMessage());
         }
     }
@@ -68,8 +60,9 @@ class KomisiAgentController extends Controller
     public function destroy($id)
     {
         try {
-            // Hapus custom fee (akan kembali ke default 40% di perhitungan)
-            AgentFee::where('user_id', $id)->delete();
+            // Reset ke default 40
+            $user = User::findOrFail($id);
+            $user->update(['fee_autokirim' => 40]);
 
             Log::info("LOG LOG: [RESET FEE AGENT] Admin mereset fee agen ID {$id} ke default (40%)");
 
