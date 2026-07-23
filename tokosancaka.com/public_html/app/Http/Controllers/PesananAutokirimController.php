@@ -77,10 +77,21 @@ class PesananAutokirimController extends Controller
                 $baseUrl = 'https://tripay.co.id/api-sandbox';
                 $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
             }
+
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [TRIPAY CHANNELS] Request list metode pembayaran ke API Tripay (Mode: {$currentMode})");
+
             try {
                 $response = \Illuminate\Support\Facades\Http::withToken($apiKey)->timeout(10)->get($baseUrl . '/merchant/payment-channel');
-                if ($response->successful()) { return $response->json()['data'] ?? []; }
-            } catch (\Exception $e) {}
+
+                if ($response->successful()) {
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: [TRIPAY CHANNELS] Sukses mendapatkan data metode pembayaran.");
+                    return $response->json()['data'] ?? [];
+                } else {
+                    \Illuminate\Support\Facades\Log::error("LOG LOG: [TRIPAY CHANNELS] Gagal mendapatkan data dari Tripay. Status: " . $response->status(), $response->json() ?? []);
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("LOG LOG: [TRIPAY CHANNELS] Exception Error: " . $e->getMessage());
+            }
             return [];
         });
 
@@ -1094,28 +1105,39 @@ class PesananAutokirimController extends Controller
                     'quantity' => 1
                 ]
             ],
-            // Jika berhasil, arahkan kembali ke daftar pesanan pengguna
             'return_url'     => route('customer.pesanan-autokirim.index'),
             'expired_time'   => time() + (24 * 60 * 60),
             'signature'      => hash_hmac('sha256', $merchantCode . $pesanan->order_id . $total, $privateKey),
         ];
 
+        // --- TAMBAHKAN LOG REQUEST DI SINI ---
+        // (Sengaja tidak melog 'signature' utuh demi keamanan credential)
+        \Illuminate\Support\Facades\Log::info("LOG LOG: [API TRIPAY - CREATE TRANSACTION] REQUEST PAYLOAD:", [
+            'method'       => $payload['method'],
+            'merchant_ref' => $payload['merchant_ref'],
+            'amount'       => $payload['amount'],
+            'return_url'   => $payload['return_url']
+        ]);
+
         try {
-            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
+            $response = \Illuminate\Support\Facades\Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
                 ->timeout(30)->withoutVerifying()->post($baseUrl, $payload);
 
             $body = $response->json();
+
+            // --- TAMBAHKAN LOG RESPONSE DI SINI ---
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [API TRIPAY - CREATE TRANSACTION] RESPONSE:", $body ?? []);
 
             // Pengecekan status sukses dari Tripay
             if ($response->successful() && ($body['success'] ?? false) === true) {
                 return ['success' => true, 'data' => $body['data']];
             }
 
-            Log::error('Tripay API Error Autokirim:', ['response' => $body]);
+            \Illuminate\Support\Facades\Log::error('LOG LOG: [API TRIPAY - CREATE TRANSACTION] ERROR DARI TRIPAY:', ['response' => $body]);
             return ['success' => false, 'message' => $body['message'] ?? 'Gagal membuat tagihan pembayaran di sistem Tripay.'];
 
         } catch (\Exception $e) {
-            Log::error("Tripay Connection Exception: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("LOG LOG: [API TRIPAY - CREATE TRANSACTION] CONNECTION EXCEPTION: " . $e->getMessage());
             return ['success' => false, 'message' => 'Koneksi ke server Tripay gagal: ' . $e->getMessage()];
         }
     }
