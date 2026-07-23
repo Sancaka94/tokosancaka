@@ -642,30 +642,35 @@
                     <ul class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
                         @foreach($metodePembayaran as $bayar)
                             @php
-                                $imgUrl = '';
-                                if(str_contains(strtolower($bayar['id']), 'dana')) {
-                                    $imgUrl = 'https://tokosancaka.com/public/assets/dana.png';
+                                // 1. Ambil icon asli (Bisa berupa class font-awesome ATAU Link http dari Tripay)
+                                $finalIcon = $bayar['icon'] ?? '';
+
+                                // 2. Override manual KHUSUS untuk internal DANA dan DOKU
+                                if(str_contains(strtolower($bayar['id']), 'dana') && !str_contains(strtolower($bayar['id']), 'tripay')) {
+                                    $finalIcon = 'https://tokosancaka.com/public/assets/dana.png';
                                 } elseif(str_contains(strtolower($bayar['id']), 'doku')) {
-                                    $imgUrl = 'https://tokosancaka.com/public/assets/doku.png';
-                                } elseif(str_contains(strtolower($bayar['id']), 'tripay')) {
-                                    // Biarkan kosong agar menggunakan logo bawaan dari API Tripay
-                                    $imgUrl = '';
+                                    $finalIcon = 'https://tokosancaka.com/public/assets/doku.png';
                                 }
 
-                                // Jika imgUrl kosong (artinya Tripay), maka gunakan icon bawaan dari Controller (yang isinya URL gambar Tripay)
-                                $jsIconParam = $imgUrl ? $imgUrl : $bayar['icon'];
+                                // 3. DETEKSI OTOMATIS: Apakah string ini mengandung 'http'?
+                                $isImageLink = str_contains($finalIcon, 'http');
                             @endphp
 
-                            <li @click="selectPayment('{{ $bayar['id'] }}', '{{ $bayar['nama'] }}', '{{ $jsIconParam }}')"
+                            <li @click="selectPayment('{{ $bayar['id'] }}', '{{ $bayar['nama'] }}', '{{ $finalIcon }}')"
                                 class="col-span-1 cursor-pointer flex items-center p-3 border rounded-lg transition-all duration-200 bg-white"
                                 :class="selectedPayment === '{{ $bayar['id'] }}' ? 'border-black ring-1 ring-black shadow-sm' : 'border-gray-200 hover:border-gray-400 hover:bg-red-50'">
 
                                 <div class="w-12 h-12 rounded bg-white flex items-center justify-center shrink-0 p-1.5 border border-gray-100 shadow-sm mr-4">
-                                    @if($imgUrl)
-                                        <img src="{{ $imgUrl }}" alt="{{ $bayar['nama'] }}" class="w-full h-full object-contain">
+
+                                    <!-- 4. CETAK HTML BERDASARKAN HASIL DETEKSI DI ATAS -->
+                                    @if($isImageLink)
+                                        <!-- Jika berupa link http (seperti OVO, BCA, Alfamidi dari Tripay) -->
+                                        <img src="{{ $finalIcon }}" alt="{{ $bayar['nama'] }}" class="w-full h-full object-contain">
                                     @else
-                                        <i class="{{ $bayar['icon'] }} text-2xl"></i>
+                                        <!-- Jika berupa teks biasa (seperti fa-solid fa-wallet) -->
+                                        <i class="{{ $finalIcon }} text-2xl"></i>
                                     @endif
+
                                 </div>
 
                                 <div class="flex flex-col">
