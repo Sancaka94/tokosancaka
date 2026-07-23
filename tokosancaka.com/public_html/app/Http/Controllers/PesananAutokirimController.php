@@ -783,52 +783,6 @@ class PesananAutokirimController extends Controller
         throw new Exception('Gagal membuat pesanan di server logistik: ' . ($orderResult['rd'] ?? 'Unknown Error'));
     }
 
-    private function _createTripayTransaction($pesanan, $total, $channelCode)
-    {
-        $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
-        $baseUrl = $mode === 'production'
-            ? 'https://tripay.co.id/api/transaction/create'
-            : 'https://tripay.co.id/api-sandbox/transaction/create';
-
-        $apiKey       = Api::getValue('TRIPAY_API_KEY', $mode);
-        $privateKey   = Api::getValue('TRIPAY_PRIVATE_KEY', $mode);
-        $merchantCode = Api::getValue('TRIPAY_MERCHANT_CODE', $mode);
-
-        if (empty($apiKey) || empty($privateKey) || empty($merchantCode)) {
-            return ['success' => false, 'message' => 'Konfigurasi API Tripay belum lengkap di database.'];
-        }
-
-        $userEmail = auth()->user()->email ?? 'customer+' . Str::random(5) . '@tokosancaka.com';
-
-        $payload = [
-            'method'         => $channelCode,
-            'merchant_ref'   => $pesanan->order_id,
-            'amount'         => $total,
-            'customer_name'  => $pesanan->pengirim_nama,
-            'customer_email' => $userEmail,
-            'customer_phone' => $pesanan->pengirim_hp,
-            'order_items'    => [
-                [
-                    'sku'      => 'ONGKIR-AK',
-                    'name'     => "Ongkos Kirim ({$pesanan->kurir})",
-                    'price'    => $total,
-                    'quantity' => 1
-                ]
-            ],
-            'return_url'     => route('customer.pesanan-autokirim.create'),
-            'expired_time'   => time() + (24 * 60 * 60),
-            'signature'      => hash_hmac('sha256', $merchantCode . $pesanan->order_id . $total, $privateKey),
-        ];
-
-        try {
-            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])
-                ->timeout(30)->withoutVerifying()->post($baseUrl, $payload);
-            return $response->json();
-        } catch (\Exception $e) {
-            return ['success' => false, 'message' => 'Koneksi ke server Tripay gagal: ' . $e->getMessage()];
-        }
-    }
-
     private function _createDanaPgTransaction($pesanan, $total)
     {
         $mode = Api::getValue('DANA_MODE', 'global', 'sandbox');
