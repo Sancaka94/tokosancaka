@@ -515,16 +515,25 @@ class ApiMapboxController extends Controller
 
     public function getNearbyDrivers(Request $request)
     {
+        Log::info("=== [API RADAR] MENCARI DRIVER TERDEKAT MASUK ===");
         try {
             $lat = (float) $request->query('lat');
             $lng = (float) $request->query('lng');
             $radius = 5; // Radius driver biasa (5 KM)
 
-            if (!$lat || !$lng) return response()->json(['success' => false, 'message' => 'Kordinat tidak ditemukan.']);
+            Log::info("LOG LOG: [Radar] Koordinat Penjemputan -> Lat: {$lat}, Lng: {$lng}");
+
+            if (!$lat || !$lng) {
+                Log::warning("LOG LOG: [Radar] Koordinat kosong!");
+                return response()->json(['success' => false, 'message' => 'Kordinat tidak ditemukan.']);
+            }
 
             $user = $request->user();
             $passengerGender = $user->jenis_kelamin;
+            Log::info("LOG LOG: [Radar] User ID Pemesan: {$user->id_pengguna}, Gender Penumpang: {$passengerGender}");
+
             if (empty($passengerGender)) {
+                Log::warning("LOG LOG: [Radar] Gender penumpang kosong. Pencarian dihentikan.");
                 return response()->json(['success' => false, 'message' => 'Lengkapi Jenis Kelamin di profil Anda.'], 400);
             }
 
@@ -532,6 +541,8 @@ class ApiMapboxController extends Controller
             // 1. TARIK DARI REDIS GEOSPATIAL (DRIVER BIASA MAKSIMAL 5 KM)
             // ==========================================================
             $nearbyRaw = Redis::georadius('active_drivers', $lng, $lat, $radius, 'km', ['WITHDIST', 'ASC']);
+            Log::info("LOG LOG: [Radar] Hasil Tarik Redis (Radius {$radius} KM): ", $nearbyRaw ?: ['Kosong/Tidak Ada Driver']);
+
             $formattedDrivers = [];
 
             if (!empty($nearbyRaw)) {
@@ -563,25 +574,34 @@ class ApiMapboxController extends Controller
 
                 // Eksekusi SEMUA perintah hgetall sekaligus (Tembak Redis HANYA 1 KALI)
                 $metaResults = $pipeline->execute();
+                Log::info("LOG LOG: [Radar] Hasil Pipeline HGETALL: ", $metaResults ?: ['Kosong']);
 
                 // Proses hasil dari Pipeline
                 foreach ($metaResults as $meta) {
-                    // Filter Syariah
-                    if (!empty($meta) && isset($meta['id_pengguna']) && isset($meta['gender']) && $meta['gender'] === $passengerGender) {
+                    if (!empty($meta) && isset($meta['id_pengguna'])) {
                         $dId = $meta['id_pengguna'];
+                        $driverGender = $meta['gender'] ?? 'KOSONG';
                         $dist = $driverDistances[$dId] ?? 0;
 
-                        $formattedDrivers[] = [
-                            'id' => (int) ($meta['id'] ?? $dId),
-                            'id_pengguna' => (int) $dId,
-                            'name' => $meta['name'] ?? 'Driver Sancaka',
-                            'vehicle' => $meta['vehicle'] ?? 'Ojek Sancaka',
-                            'distance' => round($dist, 1) . ' KM',
-                            'distance_raw' => $dist,
-                            'lat' => (float) ($meta['lat'] ?? 0),
-                            'lng' => (float) ($meta['lng'] ?? 0),
-                            'is_online' => true
-                        ];
+                        Log::info("LOG LOG: [Radar] Evaluasi Driver Reguler ID: {$dId} | Jarak: {$dist} KM | Gender Driver: {$driverGender}");
+
+                        // Filter Syariah
+                        if ($driverGender === $passengerGender) {
+                            $formattedDrivers[] = [
+                                'id' => (int) ($meta['id'] ?? $dId),
+                                'id_pengguna' => (int) $dId,
+                                'name' => $meta['name'] ?? 'Driver Sancaka',
+                                'vehicle' => $meta['vehicle'] ?? 'Ojek Sancaka',
+                                'distance' => round($dist, 1) . ' KM',
+                                'distance_raw' => $dist,
+                                'lat' => (float) ($meta['lat'] ?? 0),
+                                'lng' => (float) ($meta['lng'] ?? 0),
+                                'is_online' => true
+                            ];
+                            Log::info("LOG LOG: [Radar] ✅ Driver ID: {$dId} LOLOS Filter!");
+                        } else {
+                            Log::warning("LOG LOG: [Radar] ❌ Driver ID: {$dId} DITOLAK (Filter Syariah / Beda Gender)");
+                        }
                     }
                 }
             }
@@ -604,43 +624,62 @@ class ApiMapboxController extends Controller
                 ->whereNotNull('longitude')
                 ->first();
 
-            // Evaluasi Syariah Admin
-            $isAdminSyariahPass = true;
-            if ($admin && !empty($admin->jenis_kelamin)) {
-                if ($admin->jenis_kelamin !== $passengerGender) {
-                    $isAdminSyariahPass = false;
-                }
-            }
+            if ($admin) {
+                Log::info("LOG LOG: [Radar Admin] Data Admin 4 Ditemukan | Jarak: {$admin->distance} KM | Gender: {$admin->jenis_kelamin} | Last Seen: {$admin->last_seen}");
 
-            // Masukkan admin jika masih dalam 100 KM dan Online
-            if ($admin && $admin->distance <= $adminRadarRadius && $isAdminSyariahPass) {
-                $isAdminOnline = false;
-                if (!empty($admin->last_seen)) {
-                    $lastSeenTime = \Carbon\Carbon::parse($admin->last_seen);
-                    if ($lastSeenTime->diffInMinutes(now()) <= 3) {
-                        $isAdminOnline = true;
+                // Evaluasi Syariah Admin
+                $isAdminSyariahPass = true;
+                if (!empty($admin->jenis_kelamin)) {
+                    if ($admin->jenis_kelamin !== $passengerGender) {
+                        $isAdminSyariahPass = false;
+                        Log::warning("LOG LOG: [Radar Admin] ❌ Admin DITOLAK (Filter Syariah / Beda Gender)");
                     }
                 }
 
-                if ($isAdminOnline) {
-                    $adminSudahAda = array_filter($formattedDrivers, function($d) {
-                        return $d['id_pengguna'] == 4;
-                    });
+                // Masukkan admin jika masih dalam jangkauan dan Online
+                if ($admin->distance <= $adminRadarRadius && $isAdminSyariahPass) {
+                    $isAdminOnline = false;
+                    if (!empty($admin->last_seen)) {
+                        $lastSeenTime = \Carbon\Carbon::parse($admin->last_seen);
+                        $diffMin = $lastSeenTime->diffInMinutes(now());
 
-                    if (empty($adminSudahAda)) {
-                        $formattedDrivers[] = [
-                            'id'           => 4,
-                            'id_pengguna'  => 4,
-                            'name'         => 'Pusat Radar Sancaka (Admin)',
-                            'vehicle'      => 'Sancaka Express',
-                            'distance'     => round($admin->distance, 1) . ' KM',
-                            'distance_raw' => (float) $admin->distance, // Ini bisa 30 KM!
-                            'lat'          => (float) $admin->latitude,
-                            'lng'          => (float) $admin->longitude,
-                            'is_online'    => true
-                        ];
+                        Log::info("LOG LOG: [Radar Admin] Selisih waktu Last Seen Admin: {$diffMin} menit");
+
+                        if ($diffMin <= 3) {
+                            $isAdminOnline = true;
+                            Log::info("LOG LOG: [Radar Admin] ✅ Admin Dinyatakan ONLINE (Aktivitas kurang dari 3 menit)");
+                        } else {
+                            Log::warning("LOG LOG: [Radar Admin] ❌ Admin Dinyatakan OFFLINE (Aktivitas lebih dari 3 menit)");
+                        }
+                    } else {
+                        Log::warning("LOG LOG: [Radar Admin] ❌ Admin Dinyatakan OFFLINE (Kolom last_seen KOSONG)");
                     }
+
+                    if ($isAdminOnline) {
+                        $adminSudahAda = array_filter($formattedDrivers, function($d) {
+                            return $d['id_pengguna'] == 4;
+                        });
+
+                        if (empty($adminSudahAda)) {
+                            $formattedDrivers[] = [
+                                'id'           => 4,
+                                'id_pengguna'  => 4,
+                                'name'         => 'Pusat Radar Sancaka (Admin)',
+                                'vehicle'      => 'Sancaka Express',
+                                'distance'     => round($admin->distance, 1) . ' KM',
+                                'distance_raw' => (float) $admin->distance, // Ini bisa 30 KM!
+                                'lat'          => (float) $admin->latitude,
+                                'lng'          => (float) $admin->longitude,
+                                'is_online'    => true
+                            ];
+                            Log::info("LOG LOG: [Radar Admin] ✅ Admin berhasil dimasukkan ke List Driver!");
+                        }
+                    }
+                } elseif ($admin->distance > $adminRadarRadius) {
+                    Log::warning("LOG LOG: [Radar Admin] ❌ Admin DITOLAK (Jarak {$admin->distance} KM melebihi batas {$adminRadarRadius} KM)");
                 }
+            } else {
+                Log::warning("LOG LOG: [Radar Admin] Data Admin ID 4 Tidak Ditemukan atau Koordinat GPS Kosong di Database");
             }
 
             // ==========================================================
@@ -650,8 +689,11 @@ class ApiMapboxController extends Controller
                 return $a['distance_raw'] <=> $b['distance_raw'];
             });
 
+            Log::info("LOG LOG: [Radar Final] TOTAL DRIVER YANG DIKIRIM KE APLIKASI: " . count($formattedDrivers));
+
             return response()->json(['success' => true, 'data' => $formattedDrivers]);
         } catch (\Exception $e) {
+            Log::error("LOG LOG: [Radar CRASH] Pesan Error: " . $e->getMessage() . " | Baris: " . $e->getLine());
             return response()->json(['success' => false, 'message' => 'Gagal sistem: ' . $e->getMessage()], 500);
         }
     }
