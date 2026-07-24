@@ -27,7 +27,6 @@ class Kontak extends Model
         'email',           // <-- Tambahan baru
         'jenis_kelamin',   // <-- Tambahan baru
         'instansi_perusahaan', // <-- Tambahan baru
-
         // Kordinat & ID Wilayah KiriminAja
         'lat',
         'lng',
