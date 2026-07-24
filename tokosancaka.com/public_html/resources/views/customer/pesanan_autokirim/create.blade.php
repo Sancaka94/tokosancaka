@@ -47,9 +47,38 @@
                     <input type="hidden" name="simpan_pengirim" :value="simpanPengirim ? 1 : 0">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="col-span-2 sm:col-span-1">
+                    <div class="col-span-2 sm:col-span-1 relative" @click.away="showContactSender = false">
                         <label class="block text-xs font-medium text-gray-700 mb-1.5">NAMA LENGKAP</label>
-                        <input type="text" id="pengirim_nama" name="pengirim_nama" value="{{ old('pengirim_nama') }}" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
+                        <div class="relative">
+                            <input type="text" id="pengirim_nama" name="pengirim_nama"
+                                x-model="pengirimNama"
+                                @input.debounce.400ms="searchContact('sender')"
+                                @focus="if(pengirimNama.length >= 2) showContactSender = true"
+                                required placeholder="Ketik nama atau no hp..."
+                                class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400" autocomplete="off">
+
+                            <!-- Loading Spinner -->
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <i class="fa-solid fa-spinner fa-spin text-black" x-show="isSearchingContactSender" x-cloak></i>
+                            </div>
+                        </div>
+
+                        <!-- Dropdown Hasil Pencarian Kontak Pengirim -->
+                        <div x-show="showContactSender" x-transition class="absolute z-[120] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
+                            <template x-if="contactResultsSender.length > 0">
+                                <div>
+                                    <template x-for="kontak in contactResultsSender">
+                                        <div @click="selectContact('sender', kontak)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
+                                            <p class="font-bold text-black uppercase" x-text="kontak.nama"></p>
+                                            <p class="text-xs text-gray-500 mt-0.5" x-text="kontak.no_hp"></p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="contactResultsSender.length === 0 && !isSearchingContactSender && pengirimNama.length >= 2">
+                                <div class="px-4 py-3 text-sm text-gray-500 italic text-center">Kontak tidak ditemukan.</div>
+                            </template>
+                        </div>
                     </div>
                     <div class="col-span-2 sm:col-span-1">
                         <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
@@ -119,9 +148,38 @@
                     <input type="hidden" name="simpan_penerima" :value="simpanPenerima ? 1 : 0">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <div class="col-span-2 sm:col-span-1">
+                    <div class="col-span-2 sm:col-span-1 relative" @click.away="showContactReceiver = false">
                         <label class="block text-xs font-medium text-gray-700 mb-1.5">NAMA LENGKAP</label>
-                        <input type="text" id="penerima_nama" name="penerima_nama" value="{{ old('penerima_nama') }}" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
+                        <div class="relative">
+                            <input type="text" id="penerima_nama" name="penerima_nama"
+                                x-model="penerimaNama"
+                                @input.debounce.400ms="searchContact('receiver')"
+                                @focus="if(penerimaNama.length >= 2) showContactReceiver = true"
+                                required placeholder="Ketik nama atau no hp..."
+                                class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400" autocomplete="off">
+
+                            <!-- Loading Spinner -->
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <i class="fa-solid fa-spinner fa-spin text-black" x-show="isSearchingContactReceiver" x-cloak></i>
+                            </div>
+                        </div>
+
+                        <!-- Dropdown Hasil Pencarian Kontak Penerima -->
+                        <div x-show="showContactReceiver" x-transition class="absolute z-[120] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
+                            <template x-if="contactResultsReceiver.length > 0">
+                                <div>
+                                    <template x-for="kontak in contactResultsReceiver">
+                                        <div @click="selectContact('receiver', kontak)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
+                                            <p class="font-bold text-black uppercase" x-text="kontak.nama"></p>
+                                            <p class="text-xs text-gray-500 mt-0.5" x-text="kontak.no_hp"></p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+                            <template x-if="contactResultsReceiver.length === 0 && !isSearchingContactReceiver && penerimaNama.length >= 2">
+                                <div class="px-4 py-3 text-sm text-gray-500 italic text-center">Kontak tidak ditemukan.</div>
+                            </template>
+                        </div>
                     </div>
                     <div class="col-span-2 sm:col-span-1">
                         <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
@@ -765,6 +823,60 @@ document.addEventListener('alpine:init', () => {
         showPaymentModal: false,
         selectedPaymentName: '',
         selectedPaymentIcon: '',
+        // --- TAMBAHAN VARIABEL KONTAK PENGIRIM ---
+        pengirimNama: '{!! old('pengirim_nama') !!}',
+        contactResultsSender: [],
+        showContactSender: false,
+        isSearchingContactSender: false,
+
+        // --- TAMBAHAN VARIABEL KONTAK PENERIMA ---
+        penerimaNama: '{!! old('penerima_nama') !!}',
+        contactResultsReceiver: [],
+        showContactReceiver: false,
+        isSearchingContactReceiver: false,
+
+        // --- FUNGSI MENCARI KONTAK KE SERVER ---
+        async searchContact(type) {
+            let query = type === 'sender' ? this.pengirimNama : this.penerimaNama;
+
+            if (query.length < 2) {
+                if (type === 'sender') { this.contactResultsSender = []; this.showContactSender = false; }
+                else { this.contactResultsReceiver = []; this.showContactReceiver = false; }
+                return;
+            }
+
+            if (type === 'sender') { this.isSearchingContactSender = true; this.showContactSender = true; }
+            else { this.isSearchingContactReceiver = true; this.showContactReceiver = true; }
+
+            try {
+                // Fetch ke API Laravel
+                let response = await fetch(`/api/search-kontak?q=${encodeURIComponent(query)}`);
+                let data = await response.json();
+
+                if (type === 'sender') this.contactResultsSender = data;
+                else this.contactResultsReceiver = data;
+            } catch (error) {
+                console.error("Gagal memuat kontak:", error);
+            } finally {
+                if (type === 'sender') this.isSearchingContactSender = false;
+                else this.isSearchingContactReceiver = false;
+            }
+        },
+
+        // --- FUNGSI KETIKA KONTAK DIKLIK DARI DROPDOWN ---
+        selectContact(type, kontak) {
+            if (type === 'sender') {
+                this.pengirimNama = kontak.nama;
+                document.getElementById('pengirim_hp').value = kontak.no_hp;
+                if(kontak.alamat) document.getElementById('pengirim_alamat').value = kontak.alamat;
+                this.showContactSender = false;
+            } else {
+                this.penerimaNama = kontak.nama;
+                document.getElementById('penerima_hp').value = kontak.no_hp;
+                if(kontak.alamat) document.getElementById('penerima_alamat').value = kontak.alamat;
+                this.showContactReceiver = false;
+            }
+        },
 
         selectPayment(id, name, icon) {
             this.selectedPayment = id;

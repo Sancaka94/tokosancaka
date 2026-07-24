@@ -362,6 +362,27 @@ Route::get('/api/cari-alamat', [CustomerOrderController::class, 'searchAddressAp
 Route::get('/api/cari-alamat-kontak', [App\Http\Controllers\Customer\KontakController::class, 'searchAddressApi'])
     ->name('api.alamat.search');
 
+// ==========================================
+// API PENCARIAN KONTAK (Dipanggil oleh Alpine.js Blade)
+// ==========================================
+Route::get('/api/search-kontak', function (\Illuminate\Http\Request $request) {
+    $keyword = $request->query('q');
+
+    if (!$keyword || strlen($keyword) < 2) {
+        return response()->json([]);
+    }
+
+    $kontaks = \App\Models\Kontak::where('user_id', auth()->id())
+        ->where(function($q) use ($keyword) {
+            $q->where('nama', 'like', "%{$keyword}%")
+              ->orWhere('no_hp', 'like', "%{$keyword}%");
+        })
+        ->limit(10)
+        ->get();
+
+    return response()->json($kontaks);
+})->middleware('auth'); // Wajib middleware auth agar auth()->id() tidak error
+
 // =========================================================================
 // RUTE PESANAN PUBLIK (FIX ERROR ROUTE NOT FOUND)
 // =========================================================================
