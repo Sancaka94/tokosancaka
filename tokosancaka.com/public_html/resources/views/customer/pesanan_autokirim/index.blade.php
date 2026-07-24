@@ -137,13 +137,17 @@
                                 <span class="font-extrabold text-gray-800 uppercase text-[11px]">{{ $item->kurir }}</span>
                             </div>
 
-                            @if($item->awb_number)
-                                <div class="inline-block bg-blue-50 text-blue-700 font-bold font-mono px-2 py-1 rounded text-xs border border-blue-200 mb-3 shadow-sm">
-                                    {{ $item->awb_number }}
-                                </div>
-                            @else
-                                <div class="inline-block bg-gray-100 text-gray-500 px-2 py-1 rounded italic text-xs mb-3">Menunggu Resi</div>
-                            @endif
+                            <!-- TAMPILAN RESI & COPY CLIPBOARD -->
+                            <div class="mb-3">
+                                @if($item->awb_number)
+                                    <div onclick="copyResi('{{ $item->awb_number }}')" class="inline-flex items-center justify-between gap-3 bg-blue-50/50 hover:bg-blue-50 text-blue-700 font-bold font-mono px-3 py-1.5 rounded-md border border-blue-200 shadow-sm cursor-pointer transition-colors group" title="Klik untuk menyalin resi">
+                                        <span class="text-sm tracking-wide">{{ $item->awb_number }}</span>
+                                        <i class="fa-regular fa-copy text-blue-400 group-hover:text-blue-600 transition-colors"></i>
+                                    </div>
+                                @else
+                                    <div class="inline-block bg-gray-100 text-gray-500 px-3 py-1.5 rounded-md italic text-xs">Menunggu Resi...</div>
+                                @endif
+                            </div>
 
                             <p class="font-bold text-gray-700 text-[11px] border-t border-gray-100 pt-2 uppercase">{{ $item->deskripsi_barang }}</p>
                             <div class="mt-1 grid grid-cols-1 gap-0.5 text-[10px]">
@@ -156,7 +160,6 @@
                                     $isCodPaket = in_array(strtolower($item->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
                                     $isCodOngkirSaja = strtolower($item->metode_pembayaran) === 'cod_ongkir';
 
-                                    // Hitung mundur untuk mendapatkan Biaya Admin COD + Asuransi
                                     $biayaAdminDanAsuransi = 0;
                                     if ($isCodPaket) {
                                         if ($isCodOngkirSaja) {
@@ -289,4 +292,99 @@
         }
     </script>
 </div>
+
+<!-- ========================================== -->
+    <!-- WADAH TOAST NOTIFICATION COPY RESI -->
+    <!-- ========================================== -->
+    <div id="toast-container" class="fixed top-5 right-5 z-[9999] flex flex-col gap-3"></div>
+
+    <style>
+        /* Animasi Kustom untuk Alert Toast */
+        .toast-enter {
+            transform: translateX(120%);
+            opacity: 0;
+        }
+        .toast-enter-active {
+            transform: translateX(0);
+            opacity: 1;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .toast-leave {
+            transform: translateX(120%);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+
+    <script>
+        // Fungsi untuk Menyalin Resi ke Clipboard
+        function copyResi(resiNumber) {
+            if (!navigator.clipboard) {
+                // Fallback untuk browser lawas
+                fallbackCopyTextToClipboard(resiNumber);
+                return;
+            }
+            navigator.clipboard.writeText(resiNumber).then(function() {
+                showToastResi(resiNumber);
+            }, function(err) {
+                console.error('Gagal menyalin text: ', err);
+            });
+        }
+
+        // Fallback Javascript Lawas
+        function fallbackCopyTextToClipboard(text) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                var successful = document.execCommand('copy');
+                if (successful) showToastResi(text);
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // Fungsi Memunculkan Alert Keren di Kanan Atas
+        function showToastResi(resiNumber) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            // Desain Toast menggunakan class Tailwind
+            toast.className = `bg-white border-l-4 border-blue-500 text-gray-800 px-5 py-4 rounded-lg shadow-xl flex items-center gap-3 min-w-[250px] toast-enter relative overflow-hidden`;
+
+            toast.innerHTML = `
+                <div class="absolute inset-0 bg-blue-50 opacity-50 z-0"></div>
+                <div class="flex items-center justify-center bg-blue-100 text-blue-600 rounded-full w-8 h-8 shrink-0 relative z-10">
+                    <i class="fa-solid fa-check text-sm"></i>
+                </div>
+                <div class="relative z-10">
+                    <p class="text-[11px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Resi Disalin</p>
+                    <p class="font-mono font-bold text-sm text-blue-700">${resiNumber}</p>
+                </div>
+            `;
+
+            container.appendChild(toast);
+
+            // Memicu animasi masuk (Slide In)
+            requestAnimationFrame(() => {
+                toast.classList.remove('toast-enter');
+                toast.classList.add('toast-enter-active');
+            });
+
+            // Menghapus notifikasi otomatis setelah 3.5 detik (Slide Out)
+            setTimeout(() => {
+                toast.classList.add('toast-leave');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300); // Waktu yang sama dengan durasi transisi di CSS
+            }, 3500);
+        }
+    </script>
+
 @endsection
