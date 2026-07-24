@@ -669,6 +669,11 @@ class ApiMapboxController extends Controller
 
         $customer = $request->user();
 
+        // Cek data apa yang sebenarnya dibaca oleh Laravel
+        $debugData = DB::table('order_ojek_online')->get();
+        Log::info("DEBUG ISI TABEL: ", $debugData->toArray());
+        Log::info("DEBUG ID USER: " . ($customer->id_pengguna ?? $customer->id));
+
         // ==========================================================
         // 🛡️ [PERISAI 1]: ANTI SPAM ORDER FIKTIF BERUNTUN
         // ==========================================================
@@ -1173,13 +1178,17 @@ class ApiMapboxController extends Controller
                 }
 
                 // 2. UPDATE STATUS DI DATABASE
-                $affected = DB::table('order_ojek_online')
-                    ->where('order_id', $orderId)
-                    ->where('driver_id', $driverUser->id_pengguna)
-                    ->update([
-                        'status'     => $newStatus,
-                        'updated_at' => now()
-                    ]);
+                $queryUpdate = DB::table('order_ojek_online')->where('order_id', $orderId);
+
+                // Kunci Pengaman: Jika BUKAN Admin (Bukan ID 4 dan Bukan role Admin), wajib cocokkan driver_id
+                if ($driverUser->id_pengguna != 4 && ($driverUser->role ?? '') !== 'Admin') {
+                    $queryUpdate->where('driver_id', $driverUser->id_pengguna);
+                }
+
+                $affected = $queryUpdate->update([
+                    'status'     => $newStatus,
+                    'updated_at' => now()
+                ]);
 
                 if ($affected === 0) {
                     Log::warning("LOG LOG: Gagal update status! Order ID {$orderId} tidak valid untuk Driver ID {$driverUser->id_pengguna}.");
