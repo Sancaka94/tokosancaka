@@ -1124,9 +1124,11 @@ class PesananAutokirimController extends Controller
                 $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
                 $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
-                // Menggunakan order_id karena saat Create Order kita mengirimnya sebagai reff_client_id
+                // ==========================================
+                // PERBAIKAN: Ubah (string) menjadi (int)
+                // ==========================================
                 $payload = [
-                    'reff_1' => (string) $pesanan->order_id
+                    'reff_1' => (int) $pesanan->order_id
                 ];
 
                 Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] REQUEST PAYLOAD:", $payload);
