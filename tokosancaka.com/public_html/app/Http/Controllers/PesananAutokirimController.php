@@ -638,6 +638,35 @@ class PesananAutokirimController extends Controller
                     'komisi_agen'       => $profit->komisi_agen
                 ]);
 
+                // ==========================================================
+                // HYBRID SYSTEM: MANUAL & OTOMATIS SIMPAN KONTAK
+                // (TARUH DI SINI AGAR TIDAK TER-SKIP OLEH RETURN PEMBAYARAN)
+                // ==========================================================
+                if ($request->input('simpan_pengirim') == 1 || $request->input('simpan_pengirim') == 'on') {
+                    \App\Models\Kontak::updateOrCreate(
+                        ['no_hp' => $request->pengirim_hp, 'user_id' => auth()->id()],
+                        ['nama' => $request->pengirim_nama, 'alamat' => $request->pengirim_alamat, 'district_id' => $request->pengirim_district_id, 'tipe' => 'Pengirim']
+                    );
+                } else {
+                    \App\Models\Kontak::firstOrCreate(
+                        ['no_hp' => $request->pengirim_hp, 'user_id' => auth()->id()],
+                        ['nama' => $request->pengirim_nama, 'alamat' => $request->pengirim_alamat, 'district_id' => $request->pengirim_district_id, 'tipe' => 'Pengirim']
+                    );
+                }
+
+                if ($request->input('simpan_penerima') == 1 || $request->input('simpan_penerima') == 'on') {
+                    \App\Models\Kontak::updateOrCreate(
+                        ['no_hp' => $request->penerima_hp, 'user_id' => auth()->id()],
+                        ['nama' => $request->penerima_nama, 'alamat' => $request->penerima_alamat, 'district_id' => $request->penerima_district_id, 'tipe' => 'Penerima']
+                    );
+                } else {
+                    \App\Models\Kontak::firstOrCreate(
+                        ['no_hp' => $request->penerima_hp, 'user_id' => auth()->id()],
+                        ['nama' => $request->penerima_nama, 'alamat' => $request->penerima_alamat, 'district_id' => $request->penerima_district_id, 'tipe' => 'Penerima']
+                    );
+                }
+                // ==========================================================
+
                 $paymentUrl = null;
 
                 if (in_array($paymentMethod, ['potong_saldo', 'dana_binding', 'cod_barang', 'cod_ongkir'])) {
@@ -666,61 +695,6 @@ class PesananAutokirimController extends Controller
                         'pickup_point_code' => $awbResult['pickup'],
                         'status'            => 'booking_created'
                     ]);
-
-                    // ==========================================================
-                    // HYBRID SYSTEM: MANUAL & OTOMATIS SIMPAN KONTAK
-                    // ==========================================================
-
-                    // 1. LOGIKA PENGIRIM
-                    if ($request->input('simpan_pengirim') == 1 || $request->input('simpan_pengirim') == 'on') {
-                        // MANUAL: User sengaja klik simpan -> Update jika sudah ada, Buat baru jika belum
-                        \App\Models\Kontak::updateOrCreate(
-                            ['no_hp' => $request->pengirim_hp, 'user_id' => auth()->id()],
-                            [
-                                'nama' => $request->pengirim_nama,
-                                'alamat' => $request->pengirim_alamat,
-                                'district_id' => $request->pengirim_district_id,
-                                'tipe' => 'Pengirim'
-                            ]
-                        );
-                    } else {
-                        // OTOMATIS: User lupa klik -> Hanya simpan jika nomor HP ini benar-benar belum ada di database
-                        \App\Models\Kontak::firstOrCreate(
-                            ['no_hp' => $request->pengirim_hp, 'user_id' => auth()->id()],
-                            [
-                                'nama' => $request->pengirim_nama,
-                                'alamat' => $request->pengirim_alamat,
-                                'district_id' => $request->pengirim_district_id,
-                                'tipe' => 'Pengirim'
-                            ]
-                        );
-                    }
-
-                    // 2. LOGIKA PENERIMA
-                    if ($request->input('simpan_penerima') == 1 || $request->input('simpan_penerima') == 'on') {
-                        // MANUAL: Update/Create
-                        \App\Models\Kontak::updateOrCreate(
-                            ['no_hp' => $request->penerima_hp, 'user_id' => auth()->id()],
-                            [
-                                'nama' => $request->penerima_nama,
-                                'alamat' => $request->penerima_alamat,
-                                'district_id' => $request->penerima_district_id,
-                                'tipe' => 'Penerima'
-                            ]
-                        );
-                    } else {
-                        // OTOMATIS: Insert Only
-                        \App\Models\Kontak::firstOrCreate(
-                            ['no_hp' => $request->penerima_hp, 'user_id' => auth()->id()],
-                            [
-                                'nama' => $request->penerima_nama,
-                                'alamat' => $request->penerima_alamat,
-                                'district_id' => $request->penerima_district_id,
-                                'tipe' => 'Penerima'
-                            ]
-                        );
-                    }
-                    // ==========================================================
 
                     DB::commit();
 
