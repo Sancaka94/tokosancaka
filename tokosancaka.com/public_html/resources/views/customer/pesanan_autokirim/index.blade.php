@@ -296,7 +296,8 @@
 <!-- ========================================== -->
     <!-- WADAH TOAST NOTIFICATION COPY RESI -->
     <!-- ========================================== -->
-    <div id="toast-container" class="fixed top-5 right-5 z-[9999] flex flex-col gap-3"></div>
+    <!-- WADAH TOAST NOTIFICATION COPY RESI -->
+    <div id="toast-container" class="fixed top-24 right-5 z-[9999] flex flex-col gap-3"></div>
 
     <style>
         /* Animasi Kustom untuk Alert Toast */
