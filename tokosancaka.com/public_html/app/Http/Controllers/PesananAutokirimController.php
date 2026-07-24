@@ -555,14 +555,50 @@ class PesananAutokirimController extends Controller
             $ongkirDasar  = (int) $request->ongkir_terpilih; // Ongkir asli untuk laporan profit
             $paymentMethod = $request->metode_pembayaran;
 
-            // TANGKAP GRAND TOTAL DARI FRONTEND
-            $totalTagihan = (int) $request->input('grand_total', $ongkirDasar);
-
             $hargaBarangInput = (int) $request->nilai_barang;
             $finalPrice = $hargaBarangInput > 0 ? $hargaBarangInput : 10000;
             $isInsurance = $request->has('asuransi');
 
-            DB::beginTransaction();
+            // --- AWAL KODE HITUNG ULANG BACKEND ---
+            $isCod = in_array(strtolower($paymentMethod), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
+
+            // Catatan: Anda harus menambahkan 2 input hidden ini di form blade HTML Anda nanti
+            // <input type="hidden" name="rate_asuransi" x-model="selectedInsuranceRate">
+            // <input type="hidden" name="rate_cod" x-model="selectedCodRate">
+            $rateAsuransi = (float) $request->input('rate_asuransi', 0);
+            $rateCod = (float) $request->input('rate_cod', 0);
+
+            $feeAsuransi = 0;
+            $feeCod = 0;
+
+            if ($isInsurance && $finalPrice > 0) {
+                $feeAsuransi = round($finalPrice * $rateAsuransi);
+            }
+
+            if ($isCod) {
+                $baseCod = $ongkirDasar;
+                if ($paymentMethod === 'cod_barang') {
+                    $baseCod += $finalPrice;
+                }
+
+                $feeCod = round($baseCod * $rateCod);
+                $minFee = stripos($request->kurir_terpilih, 'sicepat') !== false ? 2000 : 1500;
+                if ($feeCod > 0 && $feeCod < $minFee) {
+                    $feeCod = $minFee;
+                }
+            }
+
+            if ($isCod) {
+                $totalTagihan = $ongkirDasar + $feeAsuransi + $feeCod;
+                if ($paymentMethod === 'cod_barang') {
+                    $totalTagihan += $finalPrice;
+                }
+            } else {
+                $totalTagihan = $ongkirDasar + $feeAsuransi; // Ini yang akan memotong saldo!
+            }
+            // --- AKHIR KODE HITUNG ULANG BACKEND ---
+
+            DB::beginTransaction(); // Baris ini dan ke bawah tetap sama persis seperti kode asli Anda
             try {
                 $rates = DB::table('data_auto_kirims')->get();
 
@@ -751,14 +787,14 @@ class PesananAutokirimController extends Controller
             'pickup_point_code' => $pickupPointCode,
             'origin_id'         => (int) $origin->district_id,
             'destination_id'    => (int) $destination->district_id,
-            'weight'            => (string) $weightApi, // INI KUNCINYA: Integer
+            'weight'            => (string) $weightApi,
             'qty'               => (string) $qtyInput,
             'length'            => (int) ($pesanan->panjang_cm > 0 ? $pesanan->panjang_cm : 10),
             'width'             => (int) ($pesanan->lebar_cm > 0 ? $pesanan->lebar_cm : 10),
             'height'            => (int) ($pesanan->tinggi_cm > 0 ? $pesanan->tinggi_cm : 10),
             'description'       => (string) $pesanan->deskripsi_barang,
             'remarks'           => (string) $pesanan->kategori_barang,
-            'price'             => (int) ($pesanan->nilai_barang > 0 ? $pesanan->nilai_barang : 10000),
+            'price'             => (int) ($pesanan->nilai_barang > 0 ? $pesanan->nilai_barang : 1000),
             'is_cod'            => $isCod,
             'cod_value'         => $codValue,
             'is_sender_pp'      => (int) $isSenderPp,

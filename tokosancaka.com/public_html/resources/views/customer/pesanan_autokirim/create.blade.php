@@ -412,6 +412,10 @@
                 <input type="hidden" name="hitung_cod_fee" :value="biayaCod">
                 <input type="hidden" name="grand_total" :value="tipePesanan === 'cod' ? grandTotalCod : grandTotalPotongan">
 
+                <!-- TAMBAHKAN DUA BARIS INI UNTUK BACKEND YANG BARU -->
+                <input type="hidden" name="rate_asuransi" :value="selectedInsuranceRate">
+                <input type="hidden" name="rate_cod" :value="selectedCodRate">
+
                 <!-- ========================================================================================= -->
                 <!-- PILIHAN METODE PEMBAYARAN -->
                 <!-- ========================================================================================= -->

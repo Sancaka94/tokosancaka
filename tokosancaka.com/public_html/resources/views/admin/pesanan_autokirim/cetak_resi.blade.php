@@ -132,8 +132,6 @@
 </head>
 <body>
 
-
-
 @php
     function maskString($string) {
         $length = strlen($string);
@@ -144,18 +142,25 @@
     $parsedKurir = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->kurir);
     $resiTrack = $pesanan->awb_number ?? $pesanan->order_id;
 
-    // --- TAMBAHAN LOGIKA CERDAS DETEKSI COD ---
-    $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
+    // --- LOGIKA CERDAS DETEKSI COD & TAGIHAN ---
+    $metodePembayaran = strtolower($pesanan->metode_pembayaran);
+    $isCod = in_array($metodePembayaran, ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
     $jenisCodText = '';
-    $nilaiCod = 0;
+    $nilaiTagihanCod = 0;
+
+    // Asumsi: nilai asuransi dan fee cod bisa didapat dari grand total dan field lainnya
+    // Kita kalkulasi nilai yang relevan untuk ditampilkan.
+    $hasAsuransi = (bool)$pesanan->asuransi;
 
     if ($isCod) {
-        if (strtolower($pesanan->metode_pembayaran) === 'cod_ongkir') {
+        if ($metodePembayaran === 'cod_ongkir') {
             $jenisCodText = 'COD ONGKIR';
-            $nilaiCod = $pesanan->ongkir;
+            // Jika COD ongkir, kurir hanya menagih ongkos kirim + fee + asuransi (grand total)
+            $nilaiTagihanCod = $pesanan->grand_total;
         } else {
             $jenisCodText = 'COD BARANG & ONGKIR';
-            $nilaiCod = $pesanan->nilai_barang;
+            // Jika COD barang, kurir menagih nilai barang + ongkos kirim + fee + asuransi (grand total)
+            $nilaiTagihanCod = $pesanan->grand_total;
         }
     }
 
@@ -171,7 +176,6 @@
     if ($beratKg < 1) {
         $beratKg = 1;
     }
-
 @endphp
 
 <!-- WADAH RESI (Target Download/Print) -->
@@ -211,8 +215,11 @@
     @if($isCod)
     <div style="background-color: #000; color: #fff; text-align: center; padding: 6px; margin: 0 0 10px 0; border-radius: 4px; border: 2px solid #000;">
         <div style="font-size: 16px; font-weight: 900; letter-spacing: 1px;">{{ $jenisCodText }}</div>
-        <div style="font-size: 13px; font-weight: bold; margin-top: 2px;">TAGIHAN KURIR: Rp {{ number_format($nilaiCod, 0, ',', '.') }}</div>
+        <div style="font-size: 13px; font-weight: bold; margin-top: 2px;">TAGIHAN KURIR: Rp {{ number_format($nilaiTagihanCod, 0, ',', '.') }}</div>
         <div style="font-size: 9px; font-style: italic; margin-top: 3px;">* Kurir WAJIB menagih nominal di atas kepada penerima</div>
+        <div style="font-size: 9px; margin-top: 2px;">
+            (Termasuk @if($metodePembayaran === 'cod_barang') Barang, @endif Ongkir, @if($hasAsuransi) Asuransi, @endif dan Biaya Admin COD)
+        </div>
     </div>
     @endif
 
@@ -238,8 +245,7 @@
             <strong>Rincian Paket:</strong>
             - Berat: {{ $beratKg }} Kg<br>
             - Harga Barang: Rp {{ number_format($pesanan->nilai_barang, 0, ',', '.') }}<br>
-            <!-- TAMBAHAN: ASURANSI DAN REMARK YANG DIPERJELAS -->
-            - Asuransi: @if($pesanan->asuransi) YA @else TIDAK @endif<br>
+            - Asuransi: @if($hasAsuransi) YA @else TIDAK @endif<br>
             - Remark / Isi Paket: {{ strtoupper($pesanan->deskripsi_barang) }} ({{ strtoupper($pesanan->kategori_barang) }})<br>
             - Dimensi: {{ $pesanan->panjang_cm }}x{{ $pesanan->lebar_cm }}x{{ $pesanan->tinggi_cm }} cm<br>
             - Layanan: {{ $pesanan->layanan }}
