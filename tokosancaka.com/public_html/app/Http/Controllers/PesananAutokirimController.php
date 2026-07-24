@@ -667,6 +667,33 @@ class PesananAutokirimController extends Controller
                         'status'            => 'booking_created'
                     ]);
 
+                    // --- TAMBAHAN WAJIB: LOGIKA SIMPAN KE TABEL KONTAK ---
+                    // Menggunakan $request->has() atau input() karena ini controller web (Blade)
+                    if ($request->input('simpan_pengirim') == 1 || $request->input('simpan_pengirim') == 'on') {
+                        \App\Models\Kontak::firstOrCreate(
+                            ['no_hp' => $request->pengirim_hp, 'user_id' => auth()->id()],
+                            [
+                                'nama' => $request->pengirim_nama,
+                                'alamat' => $request->pengirim_alamat,
+                                'district_id' => $request->pengirim_district_id,
+                                'tipe' => 'Pengirim'
+                            ]
+                        );
+                    }
+
+                    if ($request->input('simpan_penerima') == 1 || $request->input('simpan_penerima') == 'on') {
+                        \App\Models\Kontak::firstOrCreate(
+                            ['no_hp' => $request->penerima_hp, 'user_id' => auth()->id()],
+                            [
+                                'nama' => $request->penerima_nama,
+                                'alamat' => $request->penerima_alamat,
+                                'district_id' => $request->penerima_district_id,
+                                'tipe' => 'Penerima'
+                            ]
+                        );
+                    }
+                    // -----------------------------------------------------
+
                     DB::commit();
 
                     $metodeTampil = str_replace('_', ' ', strtoupper($paymentMethod));

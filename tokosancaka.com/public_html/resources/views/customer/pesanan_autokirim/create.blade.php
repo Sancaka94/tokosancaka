@@ -33,9 +33,18 @@
 
             <!-- Card Data Pengirim -->
             <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                <div class="flex items-center justify-between mb-5">
+               <div class="flex items-center justify-between mb-5">
                     <h2 class="text-base font-bold text-black flex items-center"><i class="fa-solid fa-user-check text-gray-800 mr-2.5"></i> Data Pengirim</h2>
-                    <button type="button" @click="saveContact('Pengirim')" class="text-xs font-medium text-black bg-white border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-50 transition duration-200">Simpan Kontak</button>
+
+                    <!-- Tombol Centang Simpan Pengirim -->
+                    <button type="button" @click="simpanPengirim = !simpanPengirim"
+                            class="text-xs font-medium border px-3 py-1.5 rounded transition duration-200 flex items-center gap-1.5"
+                            :class="simpanPengirim ? 'bg-black text-white border-black shadow-inner' : 'bg-white text-black border-gray-300 hover:bg-gray-50'">
+                        <i class="fa-solid" :class="simpanPengirim ? 'fa-circle-check' : 'fa-bookmark'"></i>
+                        <span x-text="simpanPengirim ? 'Akan Disimpan' : 'Simpan Kontak'"></span>
+                    </button>
+                    <!-- Hidden Input untuk Backend -->
+                    <input type="hidden" name="simpan_pengirim" :value="simpanPengirim ? 1 : 0">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2 sm:col-span-1">
@@ -98,7 +107,16 @@
             <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
                 <div class="flex items-center justify-between mb-5">
                     <h2 class="text-base font-bold text-black flex items-center"><i class="fa-solid fa-location-dot text-gray-800 mr-2.5"></i> Data Penerima</h2>
-                    <button type="button" @click="saveContact('Penerima')" class="text-xs font-medium text-black bg-white border border-gray-300 px-3 py-1.5 rounded hover:bg-gray-50 transition duration-200">Simpan Kontak</button>
+
+                    <!-- Tombol Centang Simpan Penerima -->
+                    <button type="button" @click="simpanPenerima = !simpanPenerima"
+                            class="text-xs font-medium border px-3 py-1.5 rounded transition duration-200 flex items-center gap-1.5"
+                            :class="simpanPenerima ? 'bg-black text-white border-black shadow-inner' : 'bg-white text-black border-gray-300 hover:bg-gray-50'">
+                        <i class="fa-solid" :class="simpanPenerima ? 'fa-circle-check' : 'fa-bookmark'"></i>
+                        <span x-text="simpanPenerima ? 'Akan Disimpan' : 'Simpan Kontak'"></span>
+                    </button>
+                    <!-- Hidden Input untuk Backend -->
+                    <input type="hidden" name="simpan_penerima" :value="simpanPenerima ? 1 : 0">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2 sm:col-span-1">
@@ -702,6 +720,8 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('orderForm', () => ({
         kategoriBarang: '',
         tipePesanan: 'reguler',
+        simpanPengirim: false,
+        simpanPenerima: false,
         resiCashless: '',
         nilaiBarang: '',
         berat: 1000,
@@ -962,6 +982,12 @@ document.addEventListener('alpine:init', () => {
         jenisCod: 'cod_barang',
 
        validateForm(e) {
+
+            console.log("=== DEBUG SIMPAN KONTAK BLADE ===");
+            console.log("Simpan Pengirim:", this.simpanPengirim ? 1 : 0);
+            console.log("Simpan Penerima:", this.simpanPenerima ? 1 : 0);
+            console.log("Nama Pengirim:", document.getElementById('pengirim_nama').value);
+            console.log("=================================");
 
             if(!this.selectedServiceCode || !this.selectedOngkir) {
                 e.preventDefault();
