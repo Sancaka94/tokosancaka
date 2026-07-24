@@ -1155,7 +1155,8 @@ class ApiMapboxController extends Controller
             // 🔥 2. DATABASE TRANSACTION & LOCK (PENCEGAH RACE CONDITION SALDO) 🔥
             // =========================================================================
             // Kita pisahkan proses edit DB di dalam blok transaksi khusus agar aman
-            $transactionResult = DB::transaction(function () use ($orderId, $newStatus, $driverUser) {
+            // KODE YANG BENAR
+            $transactionResult = DB::transaction(function () use ($orderId, $newStatus, $driverUser, $request) {
 
                 // 1. CEK KONDISI ORDER + MENGUNCI BARIS (lockForUpdate)
                 // Ini mencegah 2 request memodifikasi row pesanan ini dalam waktu bersamaan
@@ -1177,7 +1178,55 @@ class ApiMapboxController extends Controller
                     ])];
                 }
 
-                // 2. UPDATE STATUS DI DATABASE
+               // 2. SIAPKAN DATA UPDATE
+                $updateData = [
+                    'status'     => $newStatus,
+                    'updated_at' => now()
+                ];
+
+                // =========================================================================
+                // 🛡️ PERISAI SANCAKA EXPRESS: WAJIB FOTO & TTD SAAT SELESAI
+                // =========================================================================
+                // Jika statusnya mau diubah jadi 'completed' DAN ini adalah order Sancaka Express (Prefix S-EXP)
+                if (($newStatus === 'completed' || $newStatus === 'selesai') && str_starts_with($order->order_id, 'S-EXP-')) {
+
+                    $adaFoto = $request->hasFile('foto_penerima') || !empty($order->bukti_foto_penerima);
+                    $adaTtd = $request->hasFile('ttd_penerima') || $request->filled('ttd_penerima') || !empty($order->bukti_ttd_penerima);
+
+                    if (!$adaFoto) {
+                        return ['status' => 422, 'response' => response()->json(['success' => false, 'message' => 'Gagal! Layanan Sancaka Express WAJIB melampirkan Foto Penerima sebelum diselesaikan.'], 422)];
+                    }
+
+                    if (!$adaTtd) {
+                        return ['status' => 422, 'response' => response()->json(['success' => false, 'message' => 'Gagal! Layanan Sancaka Express WAJIB melampirkan Tanda Tangan Penerima sebelum diselesaikan.'], 422)];
+                    }
+
+                    // Proses Simpan Foto (Upload File)
+                    if ($request->hasFile('foto_penerima')) {
+                        $foto = $request->file('foto_penerima');
+                        $namaFoto = 'foto_' . $orderId . '_' . time() . '.' . $foto->getClientOriginalExtension();
+                        $updateData['bukti_foto_penerima'] = $foto->storeAs('bukti_pengiriman/foto', $namaFoto, 'public');
+                    }
+
+                    // Proses Simpan TTD (Bisa berupa Upload File ATAU String Base64 dari React Native Canvas)
+                    if ($request->hasFile('ttd_penerima')) {
+                        $ttd = $request->file('ttd_penerima');
+                        $namaTtd = 'ttd_' . $orderId . '_' . time() . '.' . $ttd->getClientOriginalExtension();
+                        $updateData['bukti_ttd_penerima'] = $ttd->storeAs('bukti_pengiriman/ttd', $namaTtd, 'public');
+                    } elseif ($request->filled('ttd_penerima')) {
+                        // Jika TTD dikirim dalam bentuk Base64 (Mendukung data:image/png;base64,...)
+                        $ttdBase64 = $request->input('ttd_penerima');
+                        if (preg_match('/^data:image\/(\w+);base64,/', $ttdBase64, $type)) {
+                            $ttdData = substr($ttdBase64, strpos($ttdBase64, ',') + 1);
+                            $ttdData = base64_decode($ttdData);
+                            $namaTtd = 'ttd_' . $orderId . '_' . time() . '.' . strtolower($type[1]);
+                            \Illuminate\Support\Facades\Storage::disk('public')->put('bukti_pengiriman/ttd/' . $namaTtd, $ttdData);
+                            $updateData['bukti_ttd_penerima'] = 'bukti_pengiriman/ttd/' . $namaTtd;
+                        }
+                    }
+                }
+                // =========================================================================
+
                 $queryUpdate = DB::table('order_ojek_online')->where('order_id', $orderId);
 
                 // Kunci Pengaman: Jika BUKAN Admin (Bukan ID 4 dan Bukan role Admin), wajib cocokkan driver_id
@@ -1185,10 +1234,7 @@ class ApiMapboxController extends Controller
                     $queryUpdate->where('driver_id', $driverUser->id_pengguna);
                 }
 
-                $affected = $queryUpdate->update([
-                    'status'     => $newStatus,
-                    'updated_at' => now()
-                ]);
+                $affected = $queryUpdate->update($updateData);
 
                 if ($affected === 0) {
                     Log::warning("LOG LOG: Gagal update status! Order ID {$orderId} tidak valid untuk Driver ID {$driverUser->id_pengguna}.");
