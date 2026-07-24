@@ -796,75 +796,65 @@ document.addEventListener('alpine:init', () => {
         },
 
         async cekOngkir() {
-                if(!this.senderDistrictId || !this.receiverDistrictId || !this.berat) {
-                    alert("Mohon lengkapi wilayah Pengirim, wilayah Penerima dari dropdown yang muncul, dan Berat paket Anda!");
-                    return;
-                }
+            if(!this.senderDistrictId || !this.receiverDistrictId || !this.berat) {
+                alert("Mohon lengkapi wilayah Pengirim, wilayah Penerima dari dropdown yang muncul, dan Berat paket Anda!");
+                return;
+            }
 
-               // VALIDASI BATAS HARGA & ONGKIR COD SAAT SUBMIT
+            // VALIDASI BATAS HARGA COD SAAT CEK ONGKIR
             if (this.tipePesanan === 'cod') {
-                // 1. Validasi Ongkir Minimal 10rb
-                if (parseInt(this.selectedOngkir) < 10000) {
-                    e.preventDefault();
-                    alert("Gagal!\n\nMetode COD tidak bisa digunakan karena ongkos kirim di bawah Rp 10.000");
-                    return;
-                }
-
-                // 2. Validasi Harga Barang COD (10rb - 5jt)
                 let harga = parseInt(this.nilaiBarang) || 0;
                 if (harga < 10000 || harga > 5000000) {
-                    e.preventDefault();
                     alert("Gagal!\n\nHarga paket untuk COD minimal Rp 10.000 dan maksimal Rp 5.000.000");
                     return;
                 }
             }
 
-                this.isLoading = true;
-                this.ongkirList = [];
-                this.tempSelected = null;
+            this.isLoading = true;
+            this.ongkirList = [];
+            this.tempSelected = null;
 
-                try {
-                    let formData = new FormData();
-                    formData.append('origin_id', this.senderDistrictId);
-                    formData.append('destination_id', this.receiverDistrictId);
-                    formData.append('berat_gram', this.berat);
-                    formData.append('qty', this.qty);
-                    formData.append('is_sender_pp', this.isSenderPp);
-                    formData.append('panjang_cm', this.panjang);
-                    formData.append('lebar_cm', this.lebar);
-                    formData.append('tinggi_cm', this.tinggi);
-                    formData.append('kategori_barang', this.kategoriBarang);
+            try {
+                let formData = new FormData();
+                formData.append('origin_id', this.senderDistrictId);
+                formData.append('destination_id', this.receiverDistrictId);
+                formData.append('berat_gram', this.berat);
+                formData.append('qty', this.qty);
+                formData.append('is_sender_pp', this.isSenderPp);
+                formData.append('panjang_cm', this.panjang);
+                formData.append('lebar_cm', this.lebar);
+                formData.append('tinggi_cm', this.tinggi);
+                formData.append('kategori_barang', this.kategoriBarang);
 
-                    // TAMBAHKAN KODE INI UNTUK UPDATE PICKUP POINT DINAMIS
-                    let namaVal = document.getElementById('pengirim_nama') ? document.getElementById('pengirim_nama').value : 'Pengirim';
-                    let hpVal = document.getElementById('pengirim_hp') ? document.getElementById('pengirim_hp').value : '0800000000';
-                    let alamatVal = document.getElementById('pengirim_alamat') ? document.getElementById('pengirim_alamat').value : 'Alamat Default';
+                let namaVal = document.getElementById('pengirim_nama') ? document.getElementById('pengirim_nama').value : 'Pengirim';
+                let hpVal = document.getElementById('pengirim_hp') ? document.getElementById('pengirim_hp').value : '0800000000';
+                let alamatVal = document.getElementById('pengirim_alamat') ? document.getElementById('pengirim_alamat').value : 'Alamat Default';
 
-                    formData.append('pengirim_nama', namaVal);
-                    formData.append('pengirim_hp', hpVal);
-                    formData.append('pengirim_alamat', alamatVal);
+                formData.append('pengirim_nama', namaVal);
+                formData.append('pengirim_hp', hpVal);
+                formData.append('pengirim_alamat', alamatVal);
 
-                    formData.append('_token', document.querySelector('input[name="_token"]').value);
+                formData.append('_token', document.querySelector('input[name="_token"]').value);
 
-                    let response = await fetch(`/api/autokirim/cek-ongkir`, {
-                        method: 'POST',
-                        body: formData
-                    });
+                let response = await fetch(`/api/autokirim/cek-ongkir`, {
+                    method: 'POST',
+                    body: formData
+                });
 
-                    let result = await response.json();
-                    if(result.success) {
-                        this.ongkirList = result.data;
-                        this.showModal = true;
-                    } else {
-                        alert("Gagal memuat tarif kurir: " + result.message);
-                    }
-                } catch (error) {
-                    console.error("Error Cek Ongkir:", error);
-                    alert("Terjadi masalah jaringan saat menghubungi server logistik.");
-                } finally {
-                    this.isLoading = false;
+                let result = await response.json();
+                if(result.success) {
+                    this.ongkirList = result.data;
+                    this.showModal = true;
+                } else {
+                    alert("Gagal memuat tarif kurir: " + result.message);
                 }
-            },
+            } catch (error) {
+                console.error("Error Cek Ongkir:", error);
+                alert("Terjadi masalah jaringan saat menghubungi server logistik.");
+            } finally {
+                this.isLoading = false;
+            }
+        },
 
         // Terapkan Pilihan Ekspedisi dari Modal ke Layar Utama
         applySelection() {
@@ -971,9 +961,7 @@ document.addEventListener('alpine:init', () => {
 
         jenisCod: 'cod_barang',
 
-       // Validasi Form sebelum kirim (DENGAN PROTEKSI SALDO & TOKEN DANA)
-        validateForm(e) {
-
+       validateForm(e) {
 
             if(!this.selectedServiceCode || !this.selectedOngkir) {
                 e.preventDefault();
@@ -981,8 +969,16 @@ document.addEventListener('alpine:init', () => {
                 return;
             }
 
-            // VALIDASI BATAS HARGA COD SAAT SUBMIT
+            // VALIDASI BATAS HARGA & ONGKIR COD SAAT KLIK SUBMIT
             if (this.tipePesanan === 'cod') {
+                // 1. Validasi Ongkos Kirim Minimal 10rb
+                if (parseInt(this.selectedOngkir) < 10000) {
+                    e.preventDefault();
+                    alert("Gagal!\n\nMetode COD tidak bisa digunakan karena ongkos kirim di bawah Rp 10.000");
+                    return;
+                }
+
+                // 2. Validasi Harga Barang (10rb - 5jt)
                 let harga = parseInt(this.nilaiBarang) || 0;
                 if (harga < 10000 || harga > 5000000) {
                     e.preventDefault();
@@ -991,7 +987,7 @@ document.addEventListener('alpine:init', () => {
                 }
             }
 
-            // Jika BUKAN COD, wajib melakukan validasi saldo dan gateway pembayaran
+            // Validasi khusus untuk metode Non-COD
             if (this.tipePesanan !== 'cod') {
 
                 if(!this.selectedPayment) {
@@ -1001,32 +997,29 @@ document.addEventListener('alpine:init', () => {
                 }
 
                if(this.selectedPayment === 'potong_saldo') {
-                    let userSaldo = {{ auth()->user()->saldo ?? 0 }};
-                    // Ubah this.selectedOngkir menjadi this.grandTotalPotongan
-                    if(this.grandTotalPotongan > userSaldo) {
-                        e.preventDefault();
-                        alert("Gagal! Saldo akun Anda (Rp " + userSaldo.toLocaleString('id-ID') + ") tidak mencukupi untuk membayar total biaya ini (Rp " + this.grandTotalPotongan.toLocaleString('id-ID') + "). Silahkan isi ulang!");
-                        return;
-                    }
-                }
+                   let userSaldo = {{ auth()->user()->saldo ?? 0 }};
+                   if(this.grandTotalPotongan > userSaldo) {
+                       e.preventDefault();
+                       alert("Gagal! Saldo akun Anda (Rp " + userSaldo.toLocaleString('id-ID') + ") tidak mencukupi untuk membayar total biaya ini (Rp " + this.grandTotalPotongan.toLocaleString('id-ID') + "). Silahkan isi ulang!");
+                       return;
+                   }
+               }
 
-                @if(empty(auth()->user()->dana_access_token))
-                if(this.selectedPayment === 'dana_binding') {
-                    e.preventDefault();
-                    alert("Gagal! Akun DANA Anda belum diikat (bind). Silahkan pilih metode 'DANA Payment Gateway' atau hubungkan akun DANA Anda terlebih dahulu di pengaturan profil!");
-                    return;
-                }
-                @endif
+               @if(empty(auth()->user()->dana_access_token))
+               if(this.selectedPayment === 'dana_binding') {
+                   e.preventDefault();
+                   alert("Gagal! Akun DANA Anda belum diikat (bind). Silahkan pilih metode 'DANA Payment Gateway' atau hubungkan akun DANA Anda terlebih dahulu di pengaturan profil!");
+                   return;
+               }
+               @endif
             }
 
-            // JIKA SEMUA VALIDASI LOLOS (Tepat sebelum kurung kurawal penutup fungsi):
             if (this.isSubmitting) {
-                e.preventDefault(); // Cegah jika sedang loading
+                e.preventDefault();
                 return;
             }
 
-            this.isSubmitting = true; // Kunci form agar tidak double submit
-
+            this.isSubmitting = true;
         },
 
         saveContact(role) {
