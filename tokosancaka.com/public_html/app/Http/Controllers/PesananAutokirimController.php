@@ -116,7 +116,7 @@ class PesananAutokirimController extends Controller
     public function indexAdmin(Request $request)
     {
         $query = PesananAutokirim::with('user')->whereHas('user', function($q) {
-            $q->where('role', 'agent');
+            $q->where('role', 'agent','admin');
         });
 
         if ($request->filled('search')) {
