@@ -311,7 +311,7 @@
                     </div>
 
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">DESKRIPSI ISI PAKET</label>
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">DESKRIPSI ISI PAKET / KETERANGAN</label>
                         <input type="text" name="deskripsi_barang" value="{{ old('deskripsi_barang') }}" placeholder="CONTOH: SEPATU SNEAKERS HITAM UKURAN 42" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white placeholder-gray-400">
                     </div>
 
