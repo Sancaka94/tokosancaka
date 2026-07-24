@@ -273,6 +273,13 @@
                         <label class="block text-xs font-medium text-black mb-1.5">NILAI HARGA BARANG / TAGIHAN COD (RP) <span class="text-red-500">*</span></label>
                         <input type="number" name="nilai_barang" x-model="nilaiBarang" placeholder="MASUKKAN NOMINAL RUPIAH..." class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2 bg-white" :required="asuransi || tipePesanan === 'cod'">
                         <p class="text-[10px] mt-2 text-gray-500" x-text="tipePesanan === 'cod' ? '* Nominal ini adalah total Rupiah yang akan ditagihkan kurir kepada penerima paket.' : '* Nominal ini digunakan kurir sebagai acuan klaim asuransi jika barang hilang.'"></p>
+                        <!-- VALIDASI COD REAL-TIME -->
+                        <div x-show="tipePesanan === 'cod' && nilaiBarang !== '' && (parseInt(nilaiBarang) < 10000 || parseInt(nilaiBarang) > 5000000)"
+                            class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700 text-[11px] font-bold flex items-start gap-1.5 leading-tight" x-cloak>
+                            <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                            <span>Harga paket untuk COD minimal Rp 10.000 dan maksimal Rp 5.000.000</span>
+                        </div>
+
                     </div>
 
                     <div>
@@ -787,6 +794,15 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
 
+                // VALIDASI BATAS HARGA COD
+                if (this.tipePesanan === 'cod') {
+                    let harga = parseInt(this.nilaiBarang) || 0;
+                    if (harga < 10000 || harga > 5000000) {
+                        alert("Gagal!\n\nHarga paket untuk COD minimal Rp 10.000 dan maksimal Rp 5.000.000");
+                        return;
+                    }
+                }
+
                 this.isLoading = true;
                 this.ongkirList = [];
                 this.tempSelected = null;
@@ -947,6 +963,16 @@ document.addEventListener('alpine:init', () => {
                 e.preventDefault();
                 alert("Silahkan hitung ongkos kirim dan pilih jasa ekspedisi terlebih dahulu!");
                 return;
+            }
+
+            // VALIDASI BATAS HARGA COD SAAT SUBMIT
+            if (this.tipePesanan === 'cod') {
+                let harga = parseInt(this.nilaiBarang) || 0;
+                if (harga < 10000 || harga > 5000000) {
+                    e.preventDefault();
+                    alert("Gagal!\n\nHarga paket untuk COD minimal Rp 10.000 dan maksimal Rp 5.000.000");
+                    return;
+                }
             }
 
             // Jika BUKAN COD, wajib melakukan validasi saldo dan gateway pembayaran
