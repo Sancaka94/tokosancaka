@@ -444,14 +444,15 @@ class PesananAutokirimMobileController extends Controller
                         'status'            => 'booking_created'
                     ]);
 
-                    // --- TAMBAHAN BARU: LOGIKA SIMPAN KE TABEL KONTAK ---
+                   // --- PERBAIKAN LOGIKA SIMPAN KE TABEL KONTAK ---
                     if ($request->input('simpan_pengirim') == 1) {
                         \App\Models\Kontak::firstOrCreate(
                             ['no_hp' => $request->pengirim_hp, 'user_id' => auth()->id()],
                             [
                                 'nama' => $request->pengirim_nama,
                                 'alamat' => $request->pengirim_alamat,
-                                'district_id' => $request->pengirim_district_id
+                                'district_id' => $request->pengirim_district_id,
+                                'tipe' => 'Pengirim'
                             ]
                         );
                     }
@@ -462,7 +463,8 @@ class PesananAutokirimMobileController extends Controller
                             [
                                 'nama' => $request->penerima_nama,
                                 'alamat' => $request->penerima_alamat,
-                                'district_id' => $request->penerima_district_id
+                                'district_id' => $request->penerima_district_id,
+                                'tipe' => 'Penerima'
                             ]
                         );
                     }
