@@ -202,7 +202,7 @@ class KomisiAgentController extends Controller
             DB::table('riwayat_pencairans')->insert([
                 'user_id' => $request->user_id,
                 'nominal' => $nominal,
-                'keterangan' => 'Pencairan komisi ke saldo agen',
+                'keterangan' => 'Pencairan komisi ke saldo agen via Admin',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -331,7 +331,7 @@ class KomisiAgentController extends Controller
             DB::table('riwayat_pencairans')->insert([
                 'user_id' => $userId,
                 'nominal' => $nominal,
-                'keterangan' => 'Pencairan mandiri komisi ke saldo',
+                'keterangan' => 'Pencairan mandiri komisi ke saldo Via Web',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
