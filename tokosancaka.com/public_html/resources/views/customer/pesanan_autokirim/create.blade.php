@@ -280,6 +280,13 @@
                             <span>Harga paket untuk COD minimal Rp 10.000 dan maksimal Rp 5.000.000</span>
                         </div>
 
+                        <!-- VALIDASI ONGKIR COD REAL-TIME -->
+                        <div x-show="tipePesanan === 'cod' && selectedOngkir > 0 && selectedOngkir < 10000"
+                            class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700 text-[11px] font-bold flex items-start gap-1.5 leading-tight" x-cloak>
+                            <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                            <span>Metode COD tidak bisa digunakan karena ongkos kirim di bawah Rp 10.000</span>
+                        </div>
+
                     </div>
 
                     <div>
@@ -794,14 +801,23 @@ document.addEventListener('alpine:init', () => {
                     return;
                 }
 
-                // VALIDASI BATAS HARGA COD
-                if (this.tipePesanan === 'cod') {
-                    let harga = parseInt(this.nilaiBarang) || 0;
-                    if (harga < 10000 || harga > 5000000) {
-                        alert("Gagal!\n\nHarga paket untuk COD minimal Rp 10.000 dan maksimal Rp 5.000.000");
-                        return;
-                    }
+               // VALIDASI BATAS HARGA & ONGKIR COD SAAT SUBMIT
+            if (this.tipePesanan === 'cod') {
+                // 1. Validasi Ongkir Minimal 10rb
+                if (parseInt(this.selectedOngkir) < 10000) {
+                    e.preventDefault();
+                    alert("Gagal!\n\nMetode COD tidak bisa digunakan karena ongkos kirim di bawah Rp 10.000");
+                    return;
                 }
+
+                // 2. Validasi Harga Barang COD (10rb - 5jt)
+                let harga = parseInt(this.nilaiBarang) || 0;
+                if (harga < 10000 || harga > 5000000) {
+                    e.preventDefault();
+                    alert("Gagal!\n\nHarga paket untuk COD minimal Rp 10.000 dan maksimal Rp 5.000.000");
+                    return;
+                }
+            }
 
                 this.isLoading = true;
                 this.ongkirList = [];
