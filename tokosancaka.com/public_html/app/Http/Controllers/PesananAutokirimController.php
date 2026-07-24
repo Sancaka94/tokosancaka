@@ -1110,13 +1110,13 @@ class PesananAutokirimController extends Controller
         return view('admin.pesanan_autokirim.cetak_resi', compact('pesanan'));
     }
 
-   public function cancelOrder($id)
+  public function cancelOrder($id)
     {
         $pesanan = PesananAutokirim::findOrFail($id);
 
         if (in_array($pesanan->status, ['booking_created', 'menunggu_pembayaran'])) {
 
-            Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] Memulai proses cancel untuk Order ID: {$pesanan->order_id}");
+            Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] Memulai proses cancel untuk Order ID: {$pesanan->order_id} (AWB: {$pesanan->awb_number})");
 
             try {
                 // Panggil Konfigurasi API
@@ -1125,10 +1125,14 @@ class PesananAutokirimController extends Controller
                 $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
                 // ==========================================
-                // PERBAIKAN: Ubah (string) menjadi (int)
+                // PERBAIKAN: Gunakan parameter 'awb'
                 // ==========================================
+                if (empty($pesanan->awb_number)) {
+                     return redirect()->back()->with('error', 'Gagal membatalkan. Nomor Resi (AWB) belum terbit dari pusat logistik.');
+                }
+
                 $payload = [
-                    'reff_1' => (int) $pesanan->order_id
+                    'awb' => (string) $pesanan->awb_number
                 ];
 
                 Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] REQUEST PAYLOAD:", $payload);
@@ -1151,8 +1155,9 @@ class PesananAutokirimController extends Controller
                     if ($pesanan->metode_pembayaran === 'potong_saldo') {
                         $userToRefund = User::find($pesanan->user_id);
                         if ($userToRefund) {
-                            $userToRefund->increment('saldo', $pesanan->ongkir);
-                            Log::info("LOG: [REFUND SALDO] Berhasil mengembalikan Rp {$pesanan->ongkir} ke User ID {$pesanan->user_id} untuk Order ID {$pesanan->order_id}");
+                            // Kembalikan grand_total, bukan hanya ongkir, karena potongan awal adalah grand_total
+                            $userToRefund->increment('saldo', $pesanan->grand_total);
+                            Log::info("LOG: [REFUND SALDO] Berhasil mengembalikan Rp {$pesanan->grand_total} ke User ID {$pesanan->user_id} untuk Order ID {$pesanan->order_id}");
                         }
                     }
 
