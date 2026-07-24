@@ -85,6 +85,11 @@
                         <input type="text" id="pengirim_hp" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
                     </div>
 
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">EMAIL PENGIRIM (OPSIONAL)</label>
+                        <input type="email" id="pengirim_email" name="pengirim_email" value="{{ old('pengirim_email') }}" class="w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400" placeholder="contoh@email.com">
+                    </div>
+
                     <!-- Autocomplete Alamat Pengirim -->
                     <div class="col-span-2 relative" @click.away="showSenderDropdown = false">
                         <label class="block text-xs font-medium text-gray-700 mb-1.5">KECAMATAN / KABUPATEN PENGIRIM</label>
@@ -184,6 +189,12 @@
                     <div class="col-span-2 sm:col-span-1">
                         <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
                         <input type="text" id="penerima_hp" name="penerima_hp" value="{{ old('penerima_hp') }}" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
+                    </div>
+
+                    <!-- ... input Nama & No HP Penerima ... -->
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-700 mb-1.5">EMAIL PENERIMA (OPSIONAL)</label>
+                        <input type="email" id="penerima_email" name="penerima_email" value="{{ old('penerima_email') }}" class="w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400" placeholder="contoh@email.com">
                     </div>
 
                     <!-- Autocomplete Alamat Penerima -->
@@ -869,11 +880,23 @@ document.addEventListener('alpine:init', () => {
                 this.pengirimNama = kontak.nama;
                 document.getElementById('pengirim_hp').value = kontak.no_hp;
                 if(kontak.alamat) document.getElementById('pengirim_alamat').value = kontak.alamat;
+
+                // Autofill Email jika ada
+                if(document.getElementById('pengirim_email')) {
+                    document.getElementById('pengirim_email').value = kontak.email || '';
+                }
+
                 this.showContactSender = false;
             } else {
                 this.penerimaNama = kontak.nama;
                 document.getElementById('penerima_hp').value = kontak.no_hp;
                 if(kontak.alamat) document.getElementById('penerima_alamat').value = kontak.alamat;
+
+                // Autofill Email jika ada
+                if(document.getElementById('penerima_email')) {
+                    document.getElementById('penerima_email').value = kontak.email || '';
+                }
+
                 this.showContactReceiver = false;
             }
         },

@@ -696,6 +696,33 @@ class PesananAutokirimController extends Controller
                         'status'            => 'booking_created'
                     ]);
 
+                    // ==========================================================
+                    // AUTO-SAVE KONTAK: Selalu buat data baru (Boleh Dobel)
+                    // ==========================================================
+
+                    // Simpan Pengirim
+                    \App\Models\Kontak::create([
+                        'user_id'     => auth()->id(),
+                        'nama'        => $request->pengirim_nama,
+                        'no_hp'       => $request->pengirim_hp,
+                        'email'       => $request->pengirim_email, // <-- Menangkap email
+                        'alamat'      => $request->pengirim_alamat,
+                        'district_id' => $request->pengirim_district_id,
+                        'tipe'        => 'Pengirim'
+                    ]);
+
+                    // Simpan Penerima
+                    \App\Models\Kontak::create([
+                        'user_id'     => auth()->id(),
+                        'nama'        => $request->penerima_nama,
+                        'no_hp'       => $request->penerima_hp,
+                        'email'       => $request->penerima_email, // <-- Menangkap email
+                        'alamat'      => $request->penerima_alamat,
+                        'district_id' => $request->penerima_district_id,
+                        'tipe'        => 'Penerima'
+                    ]);
+                    // ==========================================================
+
                     DB::commit();
 
                     $metodeTampil = str_replace('_', ' ', strtoupper($paymentMethod));
