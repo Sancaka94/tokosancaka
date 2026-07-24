@@ -88,7 +88,7 @@ class KomisiMobileController extends Controller
             DB::table('riwayat_pencairans')->insert([
                 'user_id' => $userId,
                 'nominal' => $nominal,
-                'keterangan' => 'Pencairan mandiri komisi ke saldo',
+                'keterangan' => 'Pencairan mandiri komisi ke saldo Via Apps',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -109,39 +109,6 @@ class KomisiMobileController extends Controller
     // ====================================================================
     // BAGIAN 2: API UNTUK ADMIN (User ID 4) - CRUD & Manajemen Penuh
     // ====================================================================
-
-    public function riwayatAdmin(Request $request)
-    {
-        if (Auth::id() != 4) return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
-
-        $userTable = (new User)->getTable();
-        $userKey = (new User)->getKeyName();
-
-        $query = DB::table('riwayat_pencairans')
-            ->join($userTable, 'riwayat_pencairans.user_id', '=', $userTable . '.' . $userKey)
-            ->select('riwayat_pencairans.*', $userTable . '.nama_lengkap', $userTable . '.store_name', $userTable . '.no_wa')
-            ->orderBy('riwayat_pencairans.created_at', 'desc');
-
-        if ($request->filled('search')) {
-            $search = $request->input('search');
-            $query->where(function($q) use ($search, $userTable) {
-                $q->where($userTable . '.nama_lengkap', 'like', "%{$search}%")
-                  ->orWhere($userTable . '.store_name', 'like', "%{$search}%")
-                  ->orWhere($userTable . '.no_wa', 'like', "%{$search}%");
-            });
-        }
-
-        $riwayat = $query->paginate(15);
-        $totalDicairkanSistem = DB::table('riwayat_pencairans')->sum('nominal');
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'riwayat' => $riwayat,
-                'total_dicairkan_sistem' => $totalDicairkanSistem
-            ]
-        ]);
-    }
 
     public function listAgenAdmin(Request $request)
     {
@@ -186,7 +153,7 @@ class KomisiMobileController extends Controller
 
         $request->validate(['ids' => 'required|array', 'fee_percentage' => 'required|numeric|min:1|max:100']);
 
-        $userKey = (new User)->getKeyName(); // Ambil key dinamis
+        $userKey = (new User)->getKeyName();
         User::whereIn($userKey, $request->ids)->update(['fee_autokirim' => $request->fee_percentage]);
 
         return response()->json(['success' => true, 'message' => count($request->ids) . ' Agen berhasil diupdate komisinya.']);
@@ -198,7 +165,7 @@ class KomisiMobileController extends Controller
 
         $request->validate(['ids' => 'required|array']);
 
-        $userKey = (new User)->getKeyName(); // Ambil key dinamis
+        $userKey = (new User)->getKeyName();
         User::whereIn($userKey, $request->ids)->delete();
 
         return response()->json(['success' => true, 'message' => count($request->ids) . ' Agen berhasil dihapus secara massal.']);
@@ -231,7 +198,7 @@ class KomisiMobileController extends Controller
             ]);
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Komisi berhasil dicairkan paksa ke agen.']);
+            return response()->json(['success' => true, 'message' => 'Komisi berhasil dipaksa cair ke agen.']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal mencairkan komisi: ' . $e->getMessage()]);
