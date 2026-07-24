@@ -347,23 +347,10 @@
                     </h3>
 
                     <div class="space-y-2.5 text-sm">
-                        <!-- Berat -->
-                        <!-- Berat Aktual -->
-                        <div class="flex justify-between items-center text-gray-600">
-                            <span>Berat Aktual (Tonase)</span>
+                        <!-- Berat Paket Saja -->
+                        <div class="flex justify-between items-center text-gray-600 mb-3">
+                            <span>Berat Paket</span>
                             <span class="font-medium text-black" x-text="(parseInt(berat) || 0).toLocaleString('id-ID') + ' gr'"></span>
-                        </div>
-
-                        <!-- Berat Volume (Akan muncul otomatis jika user mengisi dimensi PxLxT) -->
-                        <div x-show="beratVolume > 0" class="flex justify-between items-center text-gray-600" x-cloak>
-                            <span>Berat Volume (Pembagi <span x-text="dividerVolume"></span>)</span>
-                            <span class="font-medium text-black" x-text="beratVolume.toLocaleString('id-ID') + ' gr'"></span>
-                        </div>
-
-                        <!-- Berat Chargeable (Ditagihkan) -->
-                        <div class="flex justify-between items-center text-black bg-yellow-100 px-2 py-1 rounded-sm mt-1 mb-3">
-                            <span class="font-bold text-xs uppercase tracking-wide">Berat Chargeable (Terberat)</span>
-                            <span class="font-extrabold text-sm" x-text="beratDitagihkan.toLocaleString('id-ID') + ' gr'"></span>
                         </div>
 
                         <!-- Info Nilai Barang (Hanya tampil jika diisi) -->
@@ -903,36 +890,6 @@ document.addEventListener('alpine:init', () => {
             this.selectedCodRate       = this.tempSelected.fee_cod || 0;
 
             this.showModal           = false; // Tutup Modal
-        },
-
-        get dividerVolume() {
-            // Jika belum milih ekspedisi, default 6000
-            if (!this.selectedLayanan) return 6000;
-
-            let layanan = this.selectedLayanan.toLowerCase();
-            // Identifikasi layanan Cargo / Trucking / Bigpack
-            if (layanan.includes('cargo') || layanan.includes('bigpack') || layanan.includes('truck') || layanan.includes('gokil') || layanan.includes('jtr')) {
-                return 4000;
-            }
-            return 6000;
-        },
-
-        get beratVolume() {
-            let p = parseFloat(this.panjang) || 0;
-            let l = parseFloat(this.lebar) || 0;
-            let t = parseFloat(this.tinggi) || 0;
-
-            if (p > 0 && l > 0 && t > 0) {
-                // Rumus: (P x L x T) / Pembagi = Hasil dalam KG. Dikali 1000 = Gram
-                return Math.ceil(((p * l * t) / this.dividerVolume) * 1000);
-            }
-            return 0;
-        },
-
-        get beratDitagihkan() {
-            let actual = parseInt(this.berat) || 0;
-            // Ambil yang terberat antara Aktual vs Volume
-            return Math.max(actual, this.beratVolume);
         },
 
        get biayaAsuransi() {

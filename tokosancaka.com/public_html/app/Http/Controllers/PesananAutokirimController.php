@@ -559,18 +559,15 @@ class PesananAutokirimController extends Controller
             $finalPrice = $hargaBarangInput > 0 ? $hargaBarangInput : 10000;
             $isInsurance = $request->has('asuransi');
 
-            // --- AWAL KODE HITUNG ULANG BACKEND ---
             $isCod = in_array(strtolower($paymentMethod), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
 
-            // Catatan: Anda harus menambahkan 2 input hidden ini di form blade HTML Anda nanti
-            // <input type="hidden" name="rate_asuransi" x-model="selectedInsuranceRate">
-            // <input type="hidden" name="rate_cod" x-model="selectedCodRate">
             $rateAsuransi = (float) $request->input('rate_asuransi', 0);
             $rateCod = (float) $request->input('rate_cod', 0);
 
             $feeAsuransi = 0;
             $feeCod = 0;
 
+            // Jika pilih asuransi (IYA), hitung biayanya. Jika tidak, tetap 0.
             if ($isInsurance && $finalPrice > 0) {
                 $feeAsuransi = round($finalPrice * $rateAsuransi);
             }
@@ -588,15 +585,16 @@ class PesananAutokirimController extends Controller
                 }
             }
 
+            // PERHITUNGAN GRAND TOTAL AKHIR
             if ($isCod) {
                 $totalTagihan = $ongkirDasar + $feeAsuransi + $feeCod;
                 if ($paymentMethod === 'cod_barang') {
                     $totalTagihan += $finalPrice;
                 }
             } else {
-                $totalTagihan = $ongkirDasar + $feeAsuransi; // Ini yang akan memotong saldo!
+                // UNTUK NON-COD: Otomatis Ongkir + Asuransi (Jika Asuransi Tidak, maka + 0)
+                $totalTagihan = $ongkirDasar + $feeAsuransi;
             }
-            // --- AKHIR KODE HITUNG ULANG BACKEND ---
 
             DB::beginTransaction(); // Baris ini dan ke bawah tetap sama persis seperti kode asli Anda
             try {
@@ -761,25 +759,10 @@ class PesananAutokirimController extends Controller
             $codValue = $requestData ? (int) $requestData->grand_total : 0;
         }
 
-        // 1. Ambil data berat & dimensi
         $beratGram = (int) $pesanan->berat_gram;
-        $panjang   = (int) ($pesanan->panjang_cm > 0 ? $pesanan->panjang_cm : 10);
-        $lebar     = (int) ($pesanan->lebar_cm > 0 ? $pesanan->lebar_cm : 10);
-        $tinggi    = (int) ($pesanan->tinggi_cm > 0 ? $pesanan->tinggi_cm : 10);
+        $weightApi = $beratGram > 0 ? $beratGram : 1000;
 
-        // 2. Tentukan Pembagi (Divider) berdasarkan layanan
-        $layanan = strtolower($pesanan->layanan ?? '');
-        $isCargo = preg_match('/cargo|bigpack|truck|gokil|jtr/', $layanan);
-        $divider = $isCargo ? 4000 : 6000;
-
-        // 3. Kalkulasi Berat Volume (Jadikan Gram)
-        $beratVolumeGram = (int) ceil((($panjang * $lebar * $tinggi) / $divider) * 1000);
-
-        // 4. Ambil yang terberat (Chargeable Weight)
-        $chargeableWeight = max($beratGram, $beratVolumeGram);
-        $weightApi = $chargeableWeight > 0 ? $chargeableWeight : 1000;
-
-        Log::info("LOG: [VOLUMETRIC CALC] Layanan: {$layanan}, Divider: {$divider}, Aktual: {$beratGram}gr, Volume: {$beratVolumeGram}gr => Ditagihkan (Payload): {$weightApi}gr");
+        Log::info("LOG: [WEIGHT CALC] Aktual: {$beratGram}gr => Ditagihkan (Payload): {$weightApi}gr (Volume PxLxT dikirim terpisah tanpa pembagi manual)");
 
         $orderPayload = [
             'service_code'      => $serviceCode,

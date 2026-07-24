@@ -288,7 +288,9 @@ class PesananAutokirimMobileController extends Controller
                 'totalOngkir' => $totalOngkir,
                 'komisi' => $komisi,
                 'growthHarian' => $growthHarian,
-                'growthBulanan' => $growthBulanan
+                'growthBulanan' => $growthBulanan,
+                'last_page' => $pesanan->lastPage(),
+                'current_page' => $pesanan->currentPage()
             ]
         ]);
     }
@@ -678,20 +680,9 @@ class PesananAutokirimMobileController extends Controller
         }
 
         $beratGram = (int) $pesanan->berat_gram;
-        $panjang   = (int) ($pesanan->panjang_cm > 0 ? $pesanan->panjang_cm : 10);
-        $lebar     = (int) ($pesanan->lebar_cm > 0 ? $pesanan->lebar_cm : 10);
-        $tinggi    = (int) ($pesanan->tinggi_cm > 0 ? $pesanan->tinggi_cm : 10);
+        $weightApi = $beratGram > 0 ? $beratGram : 1000;
 
-        $layanan = strtolower($pesanan->layanan ?? '');
-        $isCargo = preg_match('/cargo|bigpack|truck|gokil|jtr/', $layanan);
-        $divider = $isCargo ? 4000 : 6000;
-
-        $beratVolumeGram = (int) ceil((($panjang * $lebar * $tinggi) / $divider) * 1000);
-
-        $chargeableWeight = max($beratGram, $beratVolumeGram);
-        $weightApi = $chargeableWeight > 0 ? $chargeableWeight : 1000;
-
-        Log::info("LOG: [VOLUMETRIC CALC] Layanan: {$layanan}, Divider: {$divider}, Aktual: {$beratGram}gr, Volume: {$beratVolumeGram}gr => Ditagihkan (Payload): {$weightApi}gr");
+        Log::info("LOG: [WEIGHT CALC] Aktual: {$beratGram}gr => Ditagihkan (Payload): {$weightApi}gr (Volume PxLxT dikirim terpisah tanpa pembagi manual)");
 
         $orderPayload = [
             'service_code'      => $serviceCode,
@@ -1097,5 +1088,71 @@ class PesananAutokirimMobileController extends Controller
             \Illuminate\Support\Facades\Log::error("LOG LOG: [API TRIPAY - CREATE TRANSACTION] CONNECTION EXCEPTION: " . $e->getMessage());
             return ['success' => false, 'message' => 'Koneksi ke server Tripay gagal: ' . $e->getMessage()];
         }
+    }
+
+    public function cancelOrder($id, Request $request)
+    {
+        $pesanan = PesananAutokirim::findOrFail($id);
+
+        if (in_array($pesanan->status, ['booking_created', 'waiting_payment', 'menunggu_pembayaran'])) {
+
+            Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] Memulai proses cancel untuk Order ID: {$pesanan->order_id}");
+
+            try {
+                $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
+                $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
+                $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
+
+                $payload = [
+                    'reff_1' => (string) $pesanan->order_id
+                ];
+
+                Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] REQUEST PAYLOAD:", $payload);
+
+                $response = Http::timeout(15)
+                    ->withToken($token)
+                    ->post("{$baseUrl}/api/cancel", $payload);
+
+                $result = $response->json();
+
+                Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] RESPONSE:", $result ?? []);
+
+                if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
+                    $pesanan->update(['status' => 'batal']);
+
+                    if ($pesanan->metode_pembayaran === 'potong_saldo' || $pesanan->metode_pembayaran === 'cash') {
+                        $userToRefund = User::find($pesanan->user_id);
+                        if ($userToRefund) {
+                            $userToRefund->increment('saldo', $pesanan->grand_total);
+                            Log::info("LOG: [REFUND SALDO] Berhasil mengembalikan Rp {$pesanan->grand_total} ke User ID {$pesanan->user_id} untuk Order ID {$pesanan->order_id}");
+                        }
+                    }
+
+                    Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] BERHASIL membatalkan Order ID: {$pesanan->order_id}");
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Pesanan berhasil dibatalkan di sistem logistik.'
+                    ]);
+                }
+
+                Log::error("LOG LOG: [API AUTOKIRIM - CANCEL] DITOLAK API: " . ($result['rd'] ?? 'Unknown Error'));
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal membatalkan di server logistik: ' . ($result['rd'] ?? 'Error API')
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error("LOG LOG: [API AUTOKIRIM - CANCEL] ERROR JARINGAN: " . $e->getMessage());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Terjadi kendala jaringan saat membatalkan ke server logistik.'
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Status pesanan saat ini tidak dapat dibatalkan.'
+        ]);
     }
 }
