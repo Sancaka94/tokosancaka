@@ -9,140 +9,232 @@ use App\Models\SpxScan;
 use App\Models\Order;
 use App\Models\ScannedPackage;
 use App\Models\ReturnOrder;
+use App\Models\PesananAutokirim; // Tambahkan Model Autokirim
+use App\Models\Api; // Tambahkan Model Api untuk ambil config
 use App\Services\KiriminAjaService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http; // Tambahkan facade Http
 use App\Helpers\ShippingHelper;
 
 class TrackingController extends Controller
 {
     /**
      * [TRACKING API MOBILE]
-     * Logika: DB1 -> DB1 (Retur) -> DB2 (Percetakan) -> SPX -> ScannedPackage
+     * Logika: Autokirim -> DB1 -> DB1 (Retur) -> DB2 (Percetakan) -> SPX -> ScannedPackage
      */
     public function track($resi)
     {
         $result = null;
 
         // ==========================================================
-        // 1. CARI DI TABEL PESANAN & ORDER (DB UTAMA)
+        // 0. CARI DI TABEL AUTOKIRIM (SISTEM BARU)
         // ==========================================================
-        $pesanan = Pesanan::where('resi', $resi)
-            ->orWhere('resi_aktual', $resi)
-            ->orWhere('nomor_invoice', $resi)
-            ->orWhere('shipping_ref', $resi)
+        $pesananAutokirim = PesananAutokirim::where('awb_number', $resi)
+            ->orWhere('order_id', $resi)
             ->first();
 
-        if (!$pesanan) {
-            $orderModel = Order::with(['store', 'user'])
-                ->where('shipping_reference', $resi)
-                ->orWhere('invoice_number', $resi)
-                ->first();
+        if ($pesananAutokirim) {
+            $apiHistories = [];
+            $apiStatus = $pesananAutokirim->status;
 
-            if ($orderModel) {
-                // Gunakan Helper untuk parsing layanan Order DB1
-                $shipInfo = ShippingHelper::parseShippingMethod($orderModel->courier . ' ' . ($orderModel->service_type ?? 'REG'));
+            // Hit API Tracking Autokirim jika resi sudah terbit
+            if ($pesananAutokirim->awb_number) {
+                try {
+                    $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
+                    $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
+                    $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
-                $pesanan = (object)[
-                    'resi' => $orderModel->shipping_reference,
-                    'resi_aktual' => $orderModel->shipping_reference,
-                    'nomor_invoice' => $orderModel->invoice_number,
-                    'sender_name' => $orderModel->store->name ?? 'N/A',
-                    'sender_address' => $orderModel->store->address_detail ?? 'N/A',
-                    'sender_province' => $orderModel->store->province ?? 'N/A',
-                    'sender_regency' => $orderModel->store->regency ?? 'N/A',
-                    'sender_district' => $orderModel->store->district ?? 'N/A',
-                    'sender_village' => $orderModel->store->village ?? 'N/A',
-                    'sender_postal_code' => $orderModel->store->postal_code ?? 'N/A',
-                    'sender_phone' => $orderModel->store->user->no_wa ?? 'N/A',
-                    'receiver_name' => $orderModel->user->nama_lengkap ?? 'N/A',
-                    'receiver_address' => $orderModel->shipping_address ?? 'N/A',
-                    'receiver_province' => $orderModel->user->province ?? 'N/A',
-                    'receiver_regency' => $orderModel->user->regency ?? 'N/A',
-                    'receiver_district' => $orderModel->user->district ?? 'N/A',
-                    'receiver_village' => $orderModel->user->village ?? 'N/A',
-                    'receiver_postal_code' => $orderModel->user->postal_code ?? 'N/A',
-                    'receiver_phone' => $orderModel->user->no_wa ?? 'N/A',
-                    'status' => $orderModel->status ?? 'N/A',
-                    'jasa_ekspedisi_aktual' => $shipInfo['name'],
-                    'service_type' => $shipInfo['service_name'],
-                    'created_at' => $orderModel->created_at,
-                ];
+                    // Asumsi endpoint tracking standar Autokirim
+                    $response = Http::timeout(10)->withToken($token)
+                        ->post("{$baseUrl}/api/track", [
+                            'awb' => $pesananAutokirim->awb_number
+                        ]);
+
+                    $resJson = $response->json();
+
+                    if ($response->successful() && isset($resJson['data']['history'])) {
+                        $apiHistories = $resJson['data']['history'];
+                        $apiStatus = $resJson['data']['status'] ?? $pesananAutokirim->status;
+                    } elseif ($response->successful() && isset($resJson['data'])) {
+                        // Fallback jika array history langsung ada di data
+                        $apiHistories = is_array($resJson['data']) ? $resJson['data'] : [];
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Autokirim Tracking API Error: " . $e->getMessage());
+                }
             }
+
+            // Normalisasi data histories Autokirim
+            $normalizedHistories = collect([]);
+            if (!empty($apiHistories)) {
+                foreach ($apiHistories as $history) {
+                    $normalizedHistories->push((object)[
+                        'status' => $history['status'] ?? $history['desc'] ?? 'Update Resi',
+                        'lokasi' => $history['city'] ?? $history['location'] ?? '-',
+                        'keterangan' => $history['note'] ?? $history['desc'] ?? '-',
+                        'created_at' => Carbon::parse($history['date'] ?? $history['created_at'] ?? now())->timezone('Asia/Jakarta'),
+                    ]);
+                }
+            }
+
+            // Tambahkan history default "Pesanan Dibuat"
+            $waktuDibuat = Carbon::parse($pesananAutokirim->created_at)->timezone('Asia/Jakarta');
+            $alreadyExists = $normalizedHistories->contains(function ($h) use ($waktuDibuat) {
+                return str_contains(strtolower($h->status), 'created') || str_contains(strtolower($h->status), 'dibuat');
+            });
+
+            if (!$alreadyExists) {
+                $normalizedHistories->push((object)[
+                    'status' => 'Pesanan Dibuat',
+                    'lokasi' => strtoupper($pesananAutokirim->pengirim_kodepos ?? 'Sistem'),
+                    'keterangan' => 'Pesanan berhasil dibuat di sistem Autokirim Sancaka.',
+                    'created_at' => $waktuDibuat,
+                ]);
+            }
+
+            $displayStatus = $apiStatus;
+            if (in_array(strtolower($displayStatus), ['booking_created', 'paid'])) {
+                $displayStatus = 'Pesanan Diproses';
+            }
+
+            $result = [
+                'is_pesanan' => true,
+                'resi' => $pesananAutokirim->order_id,
+                'resi_aktual' => $pesananAutokirim->awb_number ?? 'Menunggu Resi',
+                'pengirim' => $pesananAutokirim->pengirim_nama,
+                'alamat_pengirim' => $pesananAutokirim->pengirim_alamat,
+                'no_pengirim' => $pesananAutokirim->pengirim_hp,
+                'penerima' => $pesananAutokirim->penerima_nama,
+                'alamat_penerima' => $pesananAutokirim->penerima_alamat,
+                'no_penerima' => $pesananAutokirim->penerima_hp,
+                'status' => str_replace('_', ' ', strtoupper($displayStatus)),
+                'tanggal_dibuat' => $pesananAutokirim->created_at,
+                'histories' => $normalizedHistories->sortByDesc('created_at')->values(),
+                'jasa_ekspedisi_aktual' => strtoupper($pesananAutokirim->kurir) . ' - ' . strtoupper($pesananAutokirim->layanan),
+            ];
         }
 
         // ==========================================================
-        // 1.5. CARI DI TABEL RETURN ORDER (RESI RETUR)
+        // 1. CARI DI TABEL PESANAN & ORDER (DB UTAMA / KIRIMINAJA)
         // ==========================================================
-        if (!$pesanan) {
-            $returnOrder = ReturnOrder::where('new_resi', $resi)->first();
+        if (!$result) {
+            $pesanan = Pesanan::where('resi', $resi)
+                ->orWhere('resi_aktual', $resi)
+                ->orWhere('nomor_invoice', $resi)
+                ->orWhere('shipping_ref', $resi)
+                ->first();
 
-            if ($returnOrder && $returnOrder->new_resi !== 'PROSES-PICKUP') {
-                $orderModel = Order::with(['store.user', 'user'])->find($returnOrder->order_id);
+            if (!$pesanan) {
+                $orderModel = Order::with(['store', 'user'])
+                    ->where('shipping_reference', $resi)
+                    ->orWhere('invoice_number', $resi)
+                    ->first();
 
                 if ($orderModel) {
-                    $shipInfo = ShippingHelper::parseShippingMethod($returnOrder->courier . ' REG');
+                    $shipInfo = ShippingHelper::parseShippingMethod($orderModel->courier . ' ' . ($orderModel->service_type ?? 'REG'));
 
                     $pesanan = (object)[
-                        'resi' => $returnOrder->new_resi,
-                        'resi_aktual' => $returnOrder->new_resi,
-                        'nomor_invoice' => $returnOrder->new_resi,
-                        'sender_name' => $orderModel->user->nama_lengkap ?? 'Pembeli (Retur)',
-                        'sender_address' => $orderModel->shipping_address ?? 'N/A',
-                        'sender_province' => $orderModel->user->province ?? 'N/A',
-                        'sender_regency' => $orderModel->user->regency ?? 'N/A',
-                        'sender_district' => $orderModel->user->district ?? 'N/A',
-                        'sender_village' => $orderModel->user->village ?? 'N/A',
-                        'sender_postal_code' => $orderModel->user->postal_code ?? 'N/A',
-                        'sender_phone' => $orderModel->user->no_wa ?? 'N/A',
-                        'receiver_name' => $orderModel->store->name ?? 'Toko',
-                        'receiver_address' => $orderModel->store->address_detail ?? 'N/A',
-                        'receiver_province' => $orderModel->store->province ?? 'N/A',
-                        'receiver_regency' => $orderModel->store->regency ?? 'N/A',
-                        'receiver_district' => $orderModel->store->district ?? 'N/A',
-                        'receiver_village' => $orderModel->store->village ?? 'N/A',
-                        'receiver_postal_code' => $orderModel->store->postal_code ?? 'N/A',
-                        'receiver_phone' => $orderModel->store->user->no_wa ?? 'N/A',
-                        'status' => 'Pengembalian Barang (Retur)',
-                        'jasa_ekspedisi_aktual' => $shipInfo['name'] ?? $returnOrder->courier,
-                        'service_type' => $shipInfo['service_name'] ?? 'REG',
-                        'created_at' => $returnOrder->created_at,
+                        'resi' => $orderModel->shipping_reference,
+                        'resi_aktual' => $orderModel->shipping_reference,
+                        'nomor_invoice' => $orderModel->invoice_number,
+                        'sender_name' => $orderModel->store->name ?? 'N/A',
+                        'sender_address' => $orderModel->store->address_detail ?? 'N/A',
+                        'sender_province' => $orderModel->store->province ?? 'N/A',
+                        'sender_regency' => $orderModel->store->regency ?? 'N/A',
+                        'sender_district' => $orderModel->store->district ?? 'N/A',
+                        'sender_village' => $orderModel->store->village ?? 'N/A',
+                        'sender_postal_code' => $orderModel->store->postal_code ?? 'N/A',
+                        'sender_phone' => $orderModel->store->user->no_wa ?? 'N/A',
+                        'receiver_name' => $orderModel->user->nama_lengkap ?? 'N/A',
+                        'receiver_address' => $orderModel->shipping_address ?? 'N/A',
+                        'receiver_province' => $orderModel->user->province ?? 'N/A',
+                        'receiver_regency' => $orderModel->user->regency ?? 'N/A',
+                        'receiver_district' => $orderModel->user->district ?? 'N/A',
+                        'receiver_village' => $orderModel->user->village ?? 'N/A',
+                        'receiver_postal_code' => $orderModel->user->postal_code ?? 'N/A',
+                        'receiver_phone' => $orderModel->user->no_wa ?? 'N/A',
+                        'status' => $orderModel->status ?? 'N/A',
+                        'jasa_ekspedisi_aktual' => $shipInfo['name'],
+                        'service_type' => $shipInfo['service_name'],
+                        'created_at' => $orderModel->created_at,
                     ];
                 }
             }
-        }
 
-        // PROSES API KIRIMINAJA (JIKA DB1 / RETUR KETEMU)
-        if ($pesanan) {
-            $kiriminAja = new KiriminAjaService();
-            $orderId = $pesanan->nomor_invoice ?? $pesanan->resi;
-            $serviceType = $pesanan->service_type ?? 'regular';
+            // ==========================================================
+            // 1.5. CARI DI TABEL RETURN ORDER (RESI RETUR)
+            // ==========================================================
+            if (!$pesanan) {
+                $returnOrder = ReturnOrder::where('new_resi', $resi)->first();
 
-            if (str_contains($serviceType, '-')) {
-                $serviceType = explode('-', $serviceType)[0];
+                if ($returnOrder && $returnOrder->new_resi !== 'PROSES-PICKUP') {
+                    $orderModel = Order::with(['store.user', 'user'])->find($returnOrder->order_id);
+
+                    if ($orderModel) {
+                        $shipInfo = ShippingHelper::parseShippingMethod($returnOrder->courier . ' REG');
+
+                        $pesanan = (object)[
+                            'resi' => $returnOrder->new_resi,
+                            'resi_aktual' => $returnOrder->new_resi,
+                            'nomor_invoice' => $returnOrder->new_resi,
+                            'sender_name' => $orderModel->user->nama_lengkap ?? 'Pembeli (Retur)',
+                            'sender_address' => $orderModel->shipping_address ?? 'N/A',
+                            'sender_province' => $orderModel->user->province ?? 'N/A',
+                            'sender_regency' => $orderModel->user->regency ?? 'N/A',
+                            'sender_district' => $orderModel->user->district ?? 'N/A',
+                            'sender_village' => $orderModel->user->village ?? 'N/A',
+                            'sender_postal_code' => $orderModel->user->postal_code ?? 'N/A',
+                            'sender_phone' => $orderModel->user->no_wa ?? 'N/A',
+                            'receiver_name' => $orderModel->store->name ?? 'Toko',
+                            'receiver_address' => $orderModel->store->address_detail ?? 'N/A',
+                            'receiver_province' => $orderModel->store->province ?? 'N/A',
+                            'receiver_regency' => $orderModel->store->regency ?? 'N/A',
+                            'receiver_district' => $orderModel->store->district ?? 'N/A',
+                            'receiver_village' => $orderModel->store->village ?? 'N/A',
+                            'receiver_postal_code' => $orderModel->store->postal_code ?? 'N/A',
+                            'receiver_phone' => $orderModel->store->user->no_wa ?? 'N/A',
+                            'status' => 'Pengembalian Barang (Retur)',
+                            'jasa_ekspedisi_aktual' => $shipInfo['name'] ?? $returnOrder->courier,
+                            'service_type' => $shipInfo['service_name'] ?? 'REG',
+                            'created_at' => $returnOrder->created_at,
+                        ];
+                    }
+                }
             }
 
-            $trackingData = $kiriminAja->track($serviceType, $orderId);
+            // PROSES API KIRIMINAJA
+            if ($pesanan) {
+                $kiriminAja = new KiriminAjaService();
+                $orderId = $pesanan->nomor_invoice ?? $pesanan->resi;
+                $serviceType = $pesanan->service_type ?? 'regular';
 
-            if ($trackingData && ($trackingData['status'] ?? false)) {
-                $result = $this->normalizeKiriminAjaResponse($trackingData, $pesanan);
-            } else {
-                $result = [
-                    'is_pesanan' => true,
-                    'resi' => $pesanan->resi,
-                    'pengirim' => $pesanan->sender_name ?? 'N/A',
-                    'alamat_pengirim' => $pesanan->sender_address ?? '-',
-                    'penerima' => $pesanan->receiver_name ?? 'N/A',
-                    'alamat_penerima' => $pesanan->receiver_address ?? '-',
-                    'no_pengirim' => $pesanan->sender_phone ?? '-',
-                    'no_penerima' => $pesanan->receiver_phone ?? '-',
-                    'status' => $pesanan->status,
-                    'tanggal_dibuat' => $pesanan->created_at,
-                    'histories' => [],
-                    'resi_aktual' => $pesanan->resi_aktual,
-                    'jasa_ekspedisi_aktual' => $pesanan->jasa_ekspedisi_aktual ?? 'Sancaka Express',
-                ];
+                if (str_contains($serviceType, '-')) {
+                    $serviceType = explode('-', $serviceType)[0];
+                }
+
+                $trackingData = $kiriminAja->track($serviceType, $orderId);
+
+                if ($trackingData && ($trackingData['status'] ?? false)) {
+                    $result = $this->normalizeKiriminAjaResponse($trackingData, $pesanan);
+                } else {
+                    $result = [
+                        'is_pesanan' => true,
+                        'resi' => $pesanan->resi,
+                        'pengirim' => $pesanan->sender_name ?? 'N/A',
+                        'alamat_pengirim' => $pesanan->sender_address ?? '-',
+                        'penerima' => $pesanan->receiver_name ?? 'N/A',
+                        'alamat_penerima' => $pesanan->receiver_address ?? '-',
+                        'no_pengirim' => $pesanan->sender_phone ?? '-',
+                        'no_penerima' => $pesanan->receiver_phone ?? '-',
+                        'status' => $pesanan->status,
+                        'tanggal_dibuat' => $pesanan->created_at,
+                        'histories' => [],
+                        'resi_aktual' => $pesanan->resi_aktual,
+                        'jasa_ekspedisi_aktual' => $pesanan->jasa_ekspedisi_aktual ?? 'Sancaka Express',
+                    ];
+                }
             }
         }
 
@@ -351,17 +443,14 @@ class TrackingController extends Controller
     public function handleDokuCallback($data)
     {
         try {
-            $invoiceNumber = $data['order']['invoice_number']; // Contoh: FLT-12-XJ9P2
-            
-            // Ekstrak ID Order lokal (Angka di tengah)
-            // Format: FLT-{orderId}-{pnr}
+            $invoiceNumber = $data['order']['invoice_number'];
+
             $parts = explode('-', $invoiceNumber);
             if (count($parts) < 2) {
                 return response()->json(['status' => 'error', 'message' => 'Format invoice tidak valid']);
             }
             $transactionId = (int) $parts[1];
 
-            // 1. Cari data pesanan di tabel Pesawat
             $order = DB::table('flight_orders')->where('id', $transactionId)->first();
 
             if (!$order) {
@@ -369,25 +458,20 @@ class TrackingController extends Controller
                 return response()->json(['status' => 'error', 'message' => 'Transaction not found']);
             }
 
-            // 2. Cegah double-update jika tiket sudah ISSUED atau dibayar
             if ($order->status !== 'HOLD') {
                 Log::info("DOKU Webhook Pesawat: Transaksi $transactionId sudah diproses (Status: {$order->status}).");
                 return response()->json(['status' => 'success', 'message' => 'Already processed']);
             }
 
-            // 3. Update status menjadi PAID_PROCESSING (Lunas, siap di-Issued)
             DB::table('flight_orders')->where('id', $transactionId)->update([
-                'status' => 'PAID_PROCESSING', 
+                'status' => 'PAID_PROCESSING',
                 'updated_at' => now()
             ]);
 
             Log::info("DOKU Webhook Pesawat: Uang pesanan $transactionId sudah masuk Sancaka. Silakan jalankan Auto-Issued.");
-            
-            // Catatan: Setelah status menjadi PAID_PROCESSING, kamu perlu membuat script/cronjob
-            // untuk menembak endpoint Airline/Issued ke Darmawisata agar tiketnya benar-benar tercetak.
 
             return response()->json(['status' => 'success', 'message' => 'Webhook Pesawat berhasil']);
-            
+
         } catch (\Exception $e) {
             Log::error("Webhook Pesawat Error: " . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => 'Sistem Error'], 500);
