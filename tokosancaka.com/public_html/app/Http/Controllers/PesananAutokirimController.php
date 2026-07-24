@@ -667,9 +667,24 @@ class PesananAutokirimController extends Controller
                         'status'            => 'booking_created'
                     ]);
 
-                    // --- TAMBAHAN WAJIB: LOGIKA SIMPAN KE TABEL KONTAK ---
-                    // Menggunakan $request->has() atau input() karena ini controller web (Blade)
+                    // ==========================================================
+                    // HYBRID SYSTEM: MANUAL & OTOMATIS SIMPAN KONTAK
+                    // ==========================================================
+
+                    // 1. LOGIKA PENGIRIM
                     if ($request->input('simpan_pengirim') == 1 || $request->input('simpan_pengirim') == 'on') {
+                        // MANUAL: User sengaja klik simpan -> Update jika sudah ada, Buat baru jika belum
+                        \App\Models\Kontak::updateOrCreate(
+                            ['no_hp' => $request->pengirim_hp, 'user_id' => auth()->id()],
+                            [
+                                'nama' => $request->pengirim_nama,
+                                'alamat' => $request->pengirim_alamat,
+                                'district_id' => $request->pengirim_district_id,
+                                'tipe' => 'Pengirim'
+                            ]
+                        );
+                    } else {
+                        // OTOMATIS: User lupa klik -> Hanya simpan jika nomor HP ini benar-benar belum ada di database
                         \App\Models\Kontak::firstOrCreate(
                             ['no_hp' => $request->pengirim_hp, 'user_id' => auth()->id()],
                             [
@@ -681,7 +696,20 @@ class PesananAutokirimController extends Controller
                         );
                     }
 
+                    // 2. LOGIKA PENERIMA
                     if ($request->input('simpan_penerima') == 1 || $request->input('simpan_penerima') == 'on') {
+                        // MANUAL: Update/Create
+                        \App\Models\Kontak::updateOrCreate(
+                            ['no_hp' => $request->penerima_hp, 'user_id' => auth()->id()],
+                            [
+                                'nama' => $request->penerima_nama,
+                                'alamat' => $request->penerima_alamat,
+                                'district_id' => $request->penerima_district_id,
+                                'tipe' => 'Penerima'
+                            ]
+                        );
+                    } else {
+                        // OTOMATIS: Insert Only
                         \App\Models\Kontak::firstOrCreate(
                             ['no_hp' => $request->penerima_hp, 'user_id' => auth()->id()],
                             [
@@ -692,7 +720,7 @@ class PesananAutokirimController extends Controller
                             ]
                         );
                     }
-                    // -----------------------------------------------------
+                    // ==========================================================
 
                     DB::commit();
 
