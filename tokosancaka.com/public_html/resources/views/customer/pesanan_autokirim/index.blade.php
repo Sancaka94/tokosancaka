@@ -145,11 +145,67 @@
                                 <div class="inline-block bg-gray-100 text-gray-500 px-2 py-1 rounded italic text-xs mb-3">Menunggu Resi</div>
                             @endif
 
-                            <p class="font-bold text-gray-700 text-[11px] border-t border-gray-100 pt-2">{{ $item->deskripsi_barang }}</p>
+                            <p class="font-bold text-gray-700 text-[11px] border-t border-gray-100 pt-2 uppercase">{{ $item->deskripsi_barang }}</p>
                             <div class="mt-1 grid grid-cols-1 gap-0.5 text-[10px]">
+                                <div><span class="text-gray-400">Kategori:</span> {{ $item->kategori_barang }}</div>
                                 <div><span class="text-gray-400">Layanan:</span> {{ $item->layanan }}</div>
-                                <div><span class="text-gray-400">Berat:</span> {{ number_format($item->berat_gram) }} gr</div>
+                                <div><span class="text-gray-400">Berat:</span> {{ number_format($item->berat_gram, 0, ',', '.') }} gr</div>
                                 <div><span class="text-gray-400">Dimensi:</span> {{ $item->panjang_cm }}x{{ $item->lebar_cm }}x{{ $item->tinggi_cm }} cm</div>
+
+                                @php
+                                    $isCodPaket = in_array(strtolower($item->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
+                                    $isCodOngkirSaja = strtolower($item->metode_pembayaran) === 'cod_ongkir';
+
+                                    // Hitung mundur untuk mendapatkan Biaya Admin COD + Asuransi
+                                    $biayaAdminDanAsuransi = 0;
+                                    if ($isCodPaket) {
+                                        if ($isCodOngkirSaja) {
+                                            $biayaAdminDanAsuransi = $item->grand_total - $item->ongkir;
+                                        } else {
+                                            $biayaAdminDanAsuransi = $item->grand_total - $item->ongkir - $item->nilai_barang;
+                                        }
+                                    }
+                                @endphp
+
+                                <!-- Status Asuransi (Jika BUKAN COD) -->
+                                @if($item->asuransi && !$isCodPaket)
+                                    <div class="mt-1 pt-1 border-t border-gray-100">
+                                        <span class="text-gray-400">Asuransi:</span>
+                                        <span class="font-bold text-green-600">Ya (Brg: Rp {{ number_format($item->nilai_barang, 0, ',', '.') }})</span>
+                                    </div>
+                                @elseif(!$item->asuransi && !$isCodPaket && $item->nilai_barang > 0 && $item->nilai_barang != 10000)
+                                    <div class="mt-1 pt-1 border-t border-gray-100">
+                                        <span class="text-gray-400">Harga Barang:</span>
+                                        <span class="font-medium text-gray-700">Rp {{ number_format($item->nilai_barang, 0, ',', '.') }}</span>
+                                    </div>
+                                @endif
+
+                                <!-- Blok Khusus Info COD -->
+                                @if($isCodPaket)
+                                    <div class="mt-2 p-2 bg-red-50 border border-red-100 rounded shadow-sm text-[9px]">
+                                        <div class="text-red-600 font-bold mb-1 flex items-center border-b border-red-200 pb-1">
+                                            <i class="fa-solid fa-hand-holding-dollar mr-1.5"></i>
+                                            {{ $isCodOngkirSaja ? 'COD ONGKIR SAJA' : 'COD BARANG & ONGKIR' }}
+                                        </div>
+
+                                        <div class="space-y-0.5 mt-1">
+                                            <div class="flex justify-between" {!! $isCodOngkirSaja ? 'title="Acuan Klaim Asuransi"' : '' !!}>
+                                                <span class="text-gray-500">Nilai Barang:</span>
+                                                <span class="font-medium">Rp {{ number_format($item->nilai_barang, 0, ',', '.') }}</span>
+                                            </div>
+
+                                            <div class="flex justify-between">
+                                                <span class="text-gray-500">Admin + Asuransi:</span>
+                                                <span class="font-medium">+ Rp {{ number_format($biayaAdminDanAsuransi, 0, ',', '.') }}</span>
+                                            </div>
+
+                                            <div class="flex justify-between text-red-700 font-black mt-1 pt-1 border-t border-red-200/50">
+                                                <span>TAGIHAN KURIR:</span>
+                                                <span>Rp {{ number_format($item->grand_total, 0, ',', '.') }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
                         </td>
 
