@@ -245,7 +245,7 @@
             <strong>Rincian Paket:</strong>
             - Berat: {{ $beratKg }} Kg<br>
             - Harga Barang: Rp {{ number_format($pesanan->nilai_barang, 0, ',', '.') }}<br>
-            - Asuransi: @if($hasAsuransi) YA @else TIDAK @endif<br>
+            - Asuransi: @if($hasAsuransi) YA @if(!$isCod && ($pesanan->grand_total > $pesanan->ongkir)) (+ Rp {{ number_format($pesanan->grand_total - $pesanan->ongkir, 0, ',', '.') }}) @endif @else TIDAK @endif<br>
             - Remark / Isi Paket: {{ strtoupper($pesanan->deskripsi_barang) }} ({{ strtoupper($pesanan->kategori_barang) }})<br>
             - Dimensi: {{ $pesanan->panjang_cm }}x{{ $pesanan->lebar_cm }}x{{ $pesanan->tinggi_cm }} cm<br>
             - Layanan: {{ $pesanan->layanan }}
