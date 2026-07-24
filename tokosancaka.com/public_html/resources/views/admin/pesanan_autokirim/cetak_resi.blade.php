@@ -260,7 +260,7 @@
     <div class="middle-grid" style="margin-bottom: 5px;">
         <div class="total-box">
             <div class="total-title">Total Ongkir:</div>
-            <div class="total-amount">Rp {{ number_format($pesanan->ongkir, 0, ',', '.') }}</div>
+            <div class="total-amount">Rp {{ number_format($pesanan->grand_total, 0, ',', '.') }}</div>
         </div>
         <div class="helpdesk">
             CV. SANCAKA KARYA HUTAMA<br>
