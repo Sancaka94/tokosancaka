@@ -329,7 +329,18 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-700 mb-1.5">BERAT TOTAL (GRAM)</label>
-                            <input type="number" name="berat_gram" x-model="berat" min="1" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white">
+
+                            <!-- Input ini yang dikirim ke Server (Angka Murni) -->
+                            <input type="hidden" name="berat_gram" :value="berat">
+
+                            <!-- Input ini hanya untuk tampilan (UI) -->
+                            <input type="text" inputmode="numeric"
+                                x-model="displayBerat"
+                                @input="let clean = $event.target.value.replace(/\D/g, ''); berat = clean; displayBerat = clean ? new Intl.NumberFormat('id-ID').format(clean) : '';"
+                                @focus="displayBerat = berat ? new Intl.NumberFormat('id-ID').format(berat) : ''"
+                                @blur="displayBerat = berat ? new Intl.NumberFormat('id-ID').format(berat) + ' gram' : ''"
+                                required placeholder="1.000 gram"
+                                class="w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white font-medium text-gray-800">
                         </div>
 
                         <div>
@@ -358,32 +369,38 @@
 
                     <div x-show="asuransi || tipePesanan === 'cod'" x-transition.duration.300ms class="p-4 rounded-md border border-gray-200 bg-gray-50" x-cloak>
                         <label class="block text-xs font-medium text-black mb-1.5">NILAI HARGA BARANG / TAGIHAN COD (RP) <span class="text-red-500">*</span></label>
-                        <input type="number" name="nilai_barang" x-model="nilaiBarang" placeholder="MASUKKAN NOMINAL RUPIAH..." class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2 bg-white" :required="asuransi || tipePesanan === 'cod'">
+
+                        <!-- Input ini yang dikirim ke Server (Angka Murni) -->
+                        <input type="hidden" name="nilai_barang" :value="nilaiBarang">
+
+                        <!-- Input ini hanya untuk tampilan (UI) -->
+                        <input type="text" inputmode="numeric"
+                            x-model="displayNilaiBarang"
+                            @input="let clean = $event.target.value.replace(/\D/g, ''); nilaiBarang = clean; displayNilaiBarang = clean ? new Intl.NumberFormat('id-ID').format(clean) : '';"
+                            @focus="displayNilaiBarang = nilaiBarang ? new Intl.NumberFormat('id-ID').format(nilaiBarang) : ''"
+                            @blur="displayNilaiBarang = nilaiBarang ? 'Rp ' + new Intl.NumberFormat('id-ID').format(nilaiBarang) : ''"
+                            placeholder="Rp 0"
+                            class="w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white font-bold text-gray-900"
+                            :required="asuransi || tipePesanan === 'cod'">
+
                         <p class="text-[10px] mt-2 text-gray-500" x-text="tipePesanan === 'cod' ? '* Nominal ini adalah total Rupiah yang akan ditagihkan kurir kepada penerima paket.' : '* Nominal ini digunakan kurir sebagai acuan klaim asuransi jika barang hilang.'"></p>
+
                         <!-- VALIDASI COD REAL-TIME -->
                         <div x-show="tipePesanan === 'cod' && nilaiBarang !== '' && (parseInt(nilaiBarang) < 10000 || parseInt(nilaiBarang) > 5000000)"
                             class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700 text-[11px] font-bold flex items-start gap-1.5 leading-tight" x-cloak>
                             <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
                             <span>Harga paket untuk COD minimal Rp 10.000 dan maksimal Rp 5.000.000</span>
                         </div>
-
-                        <!-- VALIDASI ONGKIR COD REAL-TIME -->
-                        <div x-show="tipePesanan === 'cod' && selectedOngkir > 0 && selectedOngkir < 10000"
-                            class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700 text-[11px] font-bold flex items-start gap-1.5 leading-tight" x-cloak>
-                            <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-                            <span>Metode COD tidak bisa digunakan karena ongkos kirim di bawah Rp 10.000</span>
-                        </div>
-
                     </div>
 
                     <div>
                         <label class="block text-xs font-medium text-gray-700 mb-1.5">DIMENSI / VOLUME PAKET (CM - OPSIONAL)</label>
                         <div class="flex gap-2 items-center">
-                            <input type="number" name="panjang_cm" x-model="panjang" placeholder="P" min="1" class="uppercase w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black">
+                            <input type="text" inputmode="numeric" name="panjang_cm" x-model="panjang" @input="panjang = $event.target.value.replace(/\D/g, '')" placeholder="P" class="w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black font-medium">
                             <span class="text-gray-400 font-medium">×</span>
-                            <input type="number" name="lebar_cm" x-model="lebar" placeholder="L" min="1" class="uppercase w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black">
+                            <input type="text" inputmode="numeric" name="lebar_cm" x-model="lebar" @input="lebar = $event.target.value.replace(/\D/g, '')" placeholder="L" class="w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black font-medium">
                             <span class="text-gray-400 font-medium">×</span>
-                            <input type="number" name="tinggi_cm" x-model="tinggi" placeholder="T" min="1" class="uppercase w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black">
+                            <input type="text" inputmode="numeric" name="tinggi_cm" x-model="tinggi" @input="tinggi = $event.target.value.replace(/\D/g, '')" placeholder="T" class="w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black font-medium">
                         </div>
                     </div>
                 </div>
@@ -839,6 +856,9 @@ document.addEventListener('alpine:init', () => {
         contactResultsSender: [],
         showContactSender: false,
         isSearchingContactSender: false,
+
+        displayBerat: '',
+        displayNilaiBarang: '',
 
         // --- TAMBAHAN VARIABEL KONTAK PENERIMA ---
         penerimaNama: '{!! old('penerima_nama') !!}',
