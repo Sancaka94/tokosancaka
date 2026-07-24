@@ -1156,10 +1156,10 @@ class PesananAutokirimMobileController extends Controller
         ]);
     }
 
-    public function showDetail($identifier)
+   public function showDetail($identifier)
     {
         // Cari data berdasarkan ID, AWB_NUMBER, atau ORDER_ID
-        $pesanan = PesananAutokirim::where('id', $identifier)
+        $pesanan = \App\Models\PesananAutokirim::where('id', $identifier)
                     ->orWhere('order_id', $identifier)
                     ->orWhere('awb_number', $identifier)
                     ->first();
@@ -1178,6 +1178,11 @@ class PesananAutokirimMobileController extends Controller
                 'message' => 'Anda tidak memiliki akses ke resi ini.'
             ], 403);
         }
+
+        // --- TAMBAHAN BARU: Generate URL Logo menggunakan Helper bawaan Anda ---
+        $parsedCourier = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->kurir);
+        $pesanan->logo_url = $parsedCourier['logo_url'] ?? null;
+        // ------------------------------------------------------------------------
 
         return response()->json([
             'success' => true,
