@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\Mobile\CargoDarmaController;
 use App\Http\Controllers\Api\Mobile\ApiMapboxController;
 use App\Http\Controllers\Api\Mobile\AdminDriverController;
 use App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController; // <-- TAMBAHKAN INI
+use App\Http\Controllers\Api\Mobile\KomisiMobileController;
 
 Route::prefix('mapbox')->group(function () {
     Route::post('/cek-tarif', [ApiMapboxController::class, 'cek_tarif']);
@@ -758,4 +759,18 @@ Route::middleware('auth:sanctum')->prefix('autokirim')->group(function () {
     Route::post('/cek-ongkir', [\App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'cekOngkirAjax']);
     Route::post('/store-order', [\App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'storeOrderMobile']);
     Route::get('/riwayat-autokirim', [\App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'indexRiwayatMobile']);
-});
+
+    // --- Rute untuk CUSTOMER / AGENT ---
+    Route::get('/riwayat-pencairan', [KomisiMobileController::class, 'riwayatAgent']);
+    Route::post('/tarik-komisi', [KomisiMobileController::class, 'tarikKomisiMandiri']);
+
+    // --- Rute KHUSUS ADMIN (User ID 4) ---
+    Route::get('/admin/list-agen', [KomisiMobileController::class, 'listAgenAdmin']);
+    Route::post('/admin/agen/update-fee', [KomisiMobileController::class, 'updateFee']);
+    Route::post('/admin/agen/delete', [KomisiMobileController::class, 'destroyAgen']);
+    Route::post('/admin/agen/cairkan', [KomisiMobileController::class, 'cairkanKomisiAdmin']);
+
+
+
+
+    });

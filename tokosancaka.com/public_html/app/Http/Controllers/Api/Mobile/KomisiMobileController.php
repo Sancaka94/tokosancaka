@@ -8,14 +8,112 @@ use App\Models\User;
 use App\Models\PesananAutokirim;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class KomisiMobileController extends Controller
 {
-    // ==========================================
-    // API UNTUK ADMIN (Melihat Semua Data)
-    // ==========================================
+    // ====================================================================
+    // BAGIAN 1: API UNTUK AGENT / CUSTOMER (Hanya melihat datanya sendiri)
+    // ====================================================================
+
+    public function riwayatAgent(Request $request)
+    {
+        $userId = Auth::id(); // Mengambil ID user yang sedang login
+
+        // Riwayat Pencairan Agent
+        $riwayat = DB::table('riwayat_pencairans')
+            ->where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
+
+        // Kalkulasi Total Pencairan Agent
+        $totalDicairkan = DB::table('riwayat_pencairans')->where('user_id', $userId)->sum('nominal');
+
+        // Kalkulasi Total Komisi Keseluruhan
+        $excluded_statuses = ['batal', 'gagal', 'waiting_payment', 'menunggu_pembayaran'];
+        $totalKomisi = PesananAutokirim::where('user_id', $userId)
+            ->whereNotIn('status', $excluded_statuses)
+            ->sum('komisi_agen');
+
+        // Sisa Saldo Komisi yang bisa ditarik
+        $sisaKomisi = max(0, $totalKomisi - $totalDicairkan);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'riwayat' => $riwayat,
+                'total_dicairkan' => $totalDicairkan,
+                'sisa_komisi' => $sisaKomisi
+            ]
+        ]);
+    }
+
+    public function tarikKomisiMandiri(Request $request)
+    {
+        $request->validate([
+            'nominal_cair' => 'required|numeric|min:1',
+            'idempotency_key' => 'required|string'
+        ]);
+        $userId = Auth::id();
+
+        $idempotencyKey = 'cust_payout_idemp_' . $request->idempotency_key;
+        if (Cache::has($idempotencyKey)) {
+            return response()->json(['success' => false, 'message' => 'Permintaan ini sudah diproses sebelumnya.']);
+        }
+
+        $lock = Cache::lock('payout_lock_user_' . $userId, 10);
+        if (!$lock->get()) {
+            return response()->json(['success' => false, 'message' => 'Sistem sedang memproses pencairan Anda.']);
+        }
+
+        try {
+            DB::beginTransaction();
+            $userKey = (new User)->getKeyName();
+            $user = User::where($userKey, $userId)->firstOrFail();
+            $nominal = $request->nominal_cair;
+
+            $excluded_statuses = ['batal', 'gagal', 'waiting_payment', 'menunggu_pembayaran'];
+            $totalKomisi = PesananAutokirim::where('user_id', $userId)->whereNotIn('status', $excluded_statuses)->sum('komisi_agen');
+            $totalDicairkan = DB::table('riwayat_pencairans')->where('user_id', $userId)->sum('nominal');
+            $sisaKomisi = $totalKomisi - $totalDicairkan;
+
+            if ($nominal > $sisaKomisi) {
+                throw new \Exception("Nominal penarikan (Rp " . number_format($nominal, 0, ',', '.') . ") melebihi sisa komisi Anda.");
+            }
+
+            // Tambahkan ke saldo dompet User
+            $user->saldo = ($user->saldo ?? 0) + $nominal;
+            $user->save();
+
+            DB::table('riwayat_pencairans')->insert([
+                'user_id' => $userId,
+                'nominal' => $nominal,
+                'keterangan' => 'Pencairan mandiri komisi ke saldo',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            Cache::put($idempotencyKey, true, now()->addDay());
+            DB::commit();
+
+            return response()->json(['success' => true, 'message' => 'Komisi berhasil ditarik ke Saldo Anda.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        } finally {
+            $lock->release();
+        }
+    }
+
+
+    // ====================================================================
+    // BAGIAN 2: API UNTUK ADMIN (User ID 4) - CRUD & Manajemen Penuh
+    // ====================================================================
+
     public function riwayatAdmin(Request $request)
     {
+        if (Auth::id() != 4) return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+
         $userTable = (new User)->getTable();
         $userKey = (new User)->getKeyName();
 
@@ -24,7 +122,6 @@ class KomisiMobileController extends Controller
             ->select('riwayat_pencairans.*', $userTable . '.nama_lengkap', $userTable . '.store_name', $userTable . '.no_wa')
             ->orderBy('riwayat_pencairans.created_at', 'desc');
 
-        // Fitur Pencarian untuk Admin
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search, $userTable) {
@@ -46,67 +143,21 @@ class KomisiMobileController extends Controller
         ]);
     }
 
-    // ==========================================
-    // API UNTUK AGENT (Hanya Melihat Datanya Sendiri)
-    // ==========================================
-    public function riwayatAgent(Request $request)
-    {
-        $userId = Auth::id(); // Hanya mengambil ID user yang sedang login
-
-        // Riwayat Pencairan Agent
-        $riwayat = DB::table('riwayat_pencairans')
-            ->where('user_id', $userId)
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
-
-        // Kalkulasi Total Pencairan Agent
-        $totalDicairkan = DB::table('riwayat_pencairans')
-            ->where('user_id', $userId)
-            ->sum('nominal');
-
-        // Kalkulasi Total Komisi Keseluruhan
-        $excluded_statuses = ['batal', 'gagal', 'waiting_payment', 'menunggu_pembayaran'];
-        $totalKomisi = PesananAutokirim::where('user_id', $userId)
-            ->whereNotIn('status', $excluded_statuses)
-            ->sum('komisi_agen');
-
-        // Sisa Saldo Komisi yang bisa ditarik
-        $sisaKomisi = $totalKomisi - $totalDicairkan;
-        if ($sisaKomisi < 0) {
-            $sisaKomisi = 0;
-        }
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'riwayat' => $riwayat,
-                'total_dicairkan' => $totalDicairkan,
-                'sisa_komisi' => $sisaKomisi
-            ]
-        ]);
-    }
-
-    // ==========================================
-    // API UNTUK ADMIN: LIST AGEN & STATISTIK
-    // ==========================================
     public function listAgenAdmin(Request $request)
     {
-        // Pastikan hanya admin (misal ID 4) yang bisa akses
-        if (Auth::id() != 4) {
-            return response()->json(['success' => false, 'message' => 'Akses ditolak. Khusus Admin.'], 403);
-        }
+        if (Auth::id() != 4) return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
 
-        $userTable = (new \App\Models\User)->getTable();
-        $userKey = (new \App\Models\User)->getKeyName();
+        $userTable = (new User)->getTable();
+        $userKey = (new User)->getKeyName();
         $userCol = $userTable . '.' . $userKey;
         $excluded_statuses = ['batal', 'gagal', 'waiting_payment', 'menunggu_pembayaran'];
 
-        $query = \App\Models\User::where('role', 'agent')
+        $query = User::where('role', 'agent')
             ->select($userTable . '.*')
-            ->addSelect(['total_komisi' => \App\Models\PesananAutokirim::selectRaw('COALESCE(sum(komisi_agen), 0)')
+            ->addSelect(['total_komisi' => PesananAutokirim::selectRaw('COALESCE(sum(komisi_agen), 0)')
                 ->whereColumn('user_id', $userCol)->whereNotIn('status', $excluded_statuses)
             ])
-            ->addSelect(['total_dicairkan' => \Illuminate\Support\Facades\DB::table('riwayat_pencairans')
+            ->addSelect(['total_dicairkan' => DB::table('riwayat_pencairans')
                 ->selectRaw('COALESCE(sum(nominal), 0)')->whereColumn('user_id', $userCol)
             ]);
 
@@ -129,50 +180,60 @@ class KomisiMobileController extends Controller
         return response()->json(['success' => true, 'data' => $agents]);
     }
 
-    // ==========================================
-    // API UNTUK ADMIN: CRUD & BULK ACTIONS
-    // ==========================================
     public function updateFee(Request $request)
     {
+        if (Auth::id() != 4) return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+
         $request->validate(['ids' => 'required|array', 'fee_percentage' => 'required|numeric|min:1|max:100']);
-        \App\Models\User::whereIn('id_pengguna', $request->ids)->update(['fee_autokirim' => $request->fee_percentage]);
+
+        $userKey = (new User)->getKeyName(); // Ambil key dinamis
+        User::whereIn($userKey, $request->ids)->update(['fee_autokirim' => $request->fee_percentage]);
+
         return response()->json(['success' => true, 'message' => count($request->ids) . ' Agen berhasil diupdate komisinya.']);
     }
 
     public function destroyAgen(Request $request)
     {
+        if (Auth::id() != 4) return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+
         $request->validate(['ids' => 'required|array']);
-        \App\Models\User::whereIn('id_pengguna', $request->ids)->delete();
-        return response()->json(['success' => true, 'message' => count($request->ids) . ' Agen berhasil dihapus.']);
+
+        $userKey = (new User)->getKeyName(); // Ambil key dinamis
+        User::whereIn($userKey, $request->ids)->delete();
+
+        return response()->json(['success' => true, 'message' => count($request->ids) . ' Agen berhasil dihapus secara massal.']);
     }
 
     public function cairkanKomisiAdmin(Request $request)
     {
+        if (Auth::id() != 4) return response()->json(['success' => false, 'message' => 'Akses ditolak.'], 403);
+
         $request->validate([
             'user_id' => 'required',
             'nominal_cair' => 'required|numeric|min:1'
         ]);
 
-        \Illuminate\Support\Facades\DB::beginTransaction();
+        DB::beginTransaction();
         try {
-            $userKey = (new \App\Models\User)->getKeyName();
-            $user = \App\Models\User::where($userKey, $request->user_id)->firstOrFail();
+            $userKey = (new User)->getKeyName();
+            $user = User::where($userKey, $request->user_id)->firstOrFail();
 
-            // Bypass validasi sisa saldo jika admin yang memaksa cairkan, atau Anda bisa tambahkan validasi seperti di web
+            // Admin bypass validasi saldo (paksa cair)
             $user->saldo = ($user->saldo ?? 0) + $request->nominal_cair;
             $user->save();
 
-            \Illuminate\Support\Facades\DB::table('riwayat_pencairans')->insert([
+            DB::table('riwayat_pencairans')->insert([
                 'user_id' => $request->user_id,
                 'nominal' => $request->nominal_cair,
-                'keterangan' => 'Dicairkan oleh Admin',
-                'created_at' => now(), 'updated_at' => now(),
+                'keterangan' => 'Dicairkan oleh Admin Pusat',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
 
-            \Illuminate\Support\Facades\DB::commit();
-            return response()->json(['success' => true, 'message' => 'Komisi berhasil dicairkan ke agen.']);
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Komisi berhasil dicairkan paksa ke agen.']);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\DB::rollBack();
+            DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Gagal mencairkan komisi: ' . $e->getMessage()]);
         }
     }
