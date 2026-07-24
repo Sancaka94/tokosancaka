@@ -1155,4 +1155,33 @@ class PesananAutokirimMobileController extends Controller
             'message' => 'Status pesanan saat ini tidak dapat dibatalkan.'
         ]);
     }
+
+    public function showDetail($identifier)
+    {
+        // Cari data berdasarkan ID, AWB_NUMBER, atau ORDER_ID
+        $pesanan = PesananAutokirim::where('id', $identifier)
+                    ->orWhere('order_id', $identifier)
+                    ->orWhere('awb_number', $identifier)
+                    ->first();
+
+        if (!$pesanan) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data pesanan tidak ditemukan di database.'
+            ], 404);
+        }
+
+        // Keamanan: Pastikan data yang dicetak adalah milik user yang sedang login
+        if ($pesanan->user_id !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke resi ini.'
+            ], 403);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $pesanan
+        ]);
+    }
 }

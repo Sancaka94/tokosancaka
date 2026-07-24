@@ -770,7 +770,7 @@ Route::middleware('auth:sanctum')->prefix('autokirim')->group(function () {
     Route::post('/admin/agen/delete', [KomisiMobileController::class, 'destroyAgen']);
     Route::post('/admin/agen/cairkan', [KomisiMobileController::class, 'cairkanKomisiAdmin']);
 
-
+    Route::get('/detail/{identifier}', [App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'showDetail']);
 
 
     });
