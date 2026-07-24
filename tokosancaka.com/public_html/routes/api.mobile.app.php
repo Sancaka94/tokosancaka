@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\Mobile\PpobDarmaTopupController;
 use App\Http\Controllers\Api\Mobile\CargoDarmaController;
 use App\Http\Controllers\Api\Mobile\ApiMapboxController;
 use App\Http\Controllers\Api\Mobile\AdminDriverController;
+use App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController; // <-- TAMBAHKAN INI
 
 Route::prefix('mapbox')->group(function () {
     Route::post('/cek-tarif', [ApiMapboxController::class, 'cek_tarif']);
@@ -746,4 +747,15 @@ Route::middleware('auth:sanctum')->group(function () {
     // Pastikan route ini ada DI DALAM kurung kurawal middleware ini!
     Route::get('/order/komisi-fee', [ApiMapboxController::class, 'getKomisiFee']);
     Route::post('/order/komisi-fee/bulk-delete', [ApiMapboxController::class, 'bulkDeleteKomisiFee']);
+});
+
+// ==========================================
+// MODULE: AUTOKIRIM (KIRIM PAKET KHUSUS AGENT/CUSTOMER)
+// ==========================================
+Route::middleware('auth:sanctum')->prefix('autokirim')->group(function () {
+    Route::get('/metode-pembayaran', [\App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'getPaymentMethods']);
+    Route::get('/search-address', [\App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'searchAddressAjax']);
+    Route::post('/cek-ongkir', [\App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'cekOngkirAjax']);
+    Route::post('/store-order', [\App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'storeOrderMobile']);
+    Route::get('/riwayat-autokirim', [\App\Http\Controllers\Api\Mobile\PesananAutokirimMobileController::class, 'indexRiwayatMobile']);
 });
