@@ -88,7 +88,7 @@ class KomisiMobileController extends Controller
             DB::table('riwayat_pencairans')->insert([
                 'user_id' => $userId,
                 'nominal' => $nominal,
-                'keterangan' => 'Pencairan mandiri komisi ke saldo Via Apps',
+                'keterangan' => 'Pencairan komisi Via Apps',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
