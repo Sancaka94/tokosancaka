@@ -810,7 +810,7 @@ document.addEventListener('alpine:init', () => {
         simpanPenerima: false,
         resiCashless: '',
         nilaiBarang: '',
-        berat: 1000,
+        berat: '',
         isSubmitting: false,
         qty: 1,
         isSenderPp: 1,
