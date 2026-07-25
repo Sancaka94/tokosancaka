@@ -130,6 +130,27 @@
             print-color-adjust: exact !important;
         }
 
+        /* --- WATERMARK LAYANAN (JIKA TIDAK BATAL) --- */
+        .watermark-layanan {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 45px;
+            font-weight: 900;
+            color: rgba(0, 0, 0, 0.1) !important; /* Warna abu-abu transparan */
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 9999;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
         /* --- ATURAN KHUSUS SAAT DICETAK PRINTER --- */
         @media print {
             /* Memaksa warna background dan border hitam pada kotak COD agar ikut tercetak */
@@ -216,26 +237,19 @@
 <!-- WADAH RESI (Target Download/Print) -->
 <div class="receipt-container" id="printableArea">
 
-    <!-- WATERMARK STATUS BATAL -->
+    <!-- WATERMARK DINAMIS (DIBATALKAN / JENIS LAYANAN) -->
     @if(in_array(strtolower($pesanan->status), ['batal', 'gagal']))
         <div class="watermark-batal">DIBATALKAN</div>
+    @else
+        <div class="watermark-layanan">{{ $jenisLayananHeader }}</div>
     @endif
 
-    <!-- HEADER LOGO -->
-    <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
-
-        <!-- Kiri: Logo Sancaka -->
-        <div class="logo-left" style="flex: 1; text-align: left;">
+    <!-- HEADER LOGO (Dikembalikan ke layout asli) -->
+    <div class="header">
+        <div class="logo-left">
             <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express">
         </div>
-
-        <!-- Tengah: Tulisan Jenis Layanan -->
-        <div class="service-type" style="flex: 1; text-align: center; font-weight: 900; font-size: 16px; letter-spacing: 1.5px; color: #000;">
-            {{ $jenisLayananHeader }}
-        </div>
-
-        <!-- Kanan: Logo Kurir -->
-        <div class="logo-right" style="flex: 1; text-align: right;">
+        <div class="logo-right">
             @if($parsedKurir['logo_url'])
                 <img src="{{ $parsedKurir['logo_url'] }}" alt="{{ $parsedKurir['courier_name'] }}" crossorigin="anonymous">
             @else
