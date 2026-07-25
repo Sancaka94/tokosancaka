@@ -109,6 +109,27 @@
             padding-top: 10px;
         }
 
+        /* --- WATERMARK DIBATALKAN --- */
+        .watermark-batal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 50px;
+            font-weight: 900;
+            color: rgba(220, 38, 38, 0.25) !important; /* Warna merah transparan */
+            border: 4px solid rgba(220, 38, 38, 0.25);
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            white-space: nowrap;
+            pointer-events: none; /* Agar tidak menghalangi klik/blok teks */
+            z-index: 9999;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
         /* --- ATURAN KHUSUS SAAT DICETAK PRINTER --- */
         @media print {
             /* Memaksa warna background dan border hitam pada kotak COD agar ikut tercetak */
@@ -180,6 +201,11 @@
 
 <!-- WADAH RESI (Target Download/Print) -->
 <div class="receipt-container" id="printableArea">
+
+    <!-- WATERMARK STATUS BATAL -->
+    @if(in_array(strtolower($pesanan->status), ['batal', 'gagal']))
+        <div class="watermark-batal">DIBATALKAN</div>
+    @endif
 
     <!-- HEADER LOGO -->
     <div class="header">
