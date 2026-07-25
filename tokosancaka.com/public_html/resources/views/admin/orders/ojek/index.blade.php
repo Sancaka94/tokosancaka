@@ -14,7 +14,6 @@
     </div>
 
     <!-- MONITOR CARDS (Statistik) -->
-    <!-- Catatan: Anda bisa mengirimkan variabel ini dari Controller. Jika tidak, akan tampil 0. -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4">
             <div class="p-3 bg-blue-50 text-blue-600 rounded-xl">
@@ -191,43 +190,94 @@
                                                 </button>
                                             </div>
 
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <!-- Foto Penerima -->
-                                                <div class="flex flex-col items-center">
-                                                    <p class="text-sm font-medium text-gray-700 mb-2">Foto Penerima</p>
-                                                    @if($order->bukti_foto_penerima)
-                                                        <div class="w-full aspect-[4/3] bg-gray-100 rounded-xl border border-gray-200 overflow-hidden flex justify-center items-center">
-                                                            <img src="{{ asset('storage/' . $order->bukti_foto_penerima) }}" alt="Foto Penerima" class="object-contain w-full h-full">
-                                                        </div>
-                                                    @else
-                                                        <div class="w-full aspect-[4/3] bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center">
-                                                            <span class="text-sm text-gray-400">Tidak ada foto</span>
-                                                        </div>
-                                                    @endif
+                                            @if(str_starts_with($order->order_id, 'S-EXP'))
+                                            <!-- SECTION PENGIRIM (AMBIL PAKET) -->
+                                            <div class="mb-8">
+                                                <h4 class="text-md font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">📍 Bukti Ambil Paket (Pengirim)</h4>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <!-- Foto Pengirim -->
+                                                    <div class="flex flex-col items-center">
+                                                        <p class="text-sm font-medium text-gray-700 mb-2">Foto Paket / Pengirim</p>
+                                                        @if($order->bukti_foto_pengirim)
+                                                            <div class="w-full aspect-[4/3] bg-gray-100 rounded-xl border border-gray-200 overflow-hidden flex justify-center items-center">
+                                                                <img src="{{ asset('storage/' . $order->bukti_foto_pengirim) }}" alt="Foto Pengirim" class="object-contain w-full h-full">
+                                                            </div>
+                                                        @else
+                                                            <div class="w-full aspect-[4/3] bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center">
+                                                                <span class="text-sm text-gray-400">Tidak ada foto</span>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+
+                                                    <!-- TTD Pengirim -->
+                                                    <div class="flex flex-col items-center">
+                                                        <p class="text-sm font-medium text-gray-700 mb-2">Tanda Tangan Pengirim</p>
+                                                        @if($order->bukti_ttd_pengirim)
+                                                            <div class="w-full aspect-[4/3] bg-white rounded-xl border border-gray-200 overflow-hidden flex justify-center items-center p-2 shadow-inner">
+                                                                <img src="{{ asset('storage/' . $order->bukti_ttd_pengirim) }}" alt="Tanda Tangan Pengirim" class="object-contain w-full h-full filter contrast-125">
+                                                            </div>
+                                                        @else
+                                                            <div class="w-full aspect-[4/3] bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center">
+                                                                <span class="text-sm text-gray-400">Belum ditandatangani</span>
+                                                            </div>
+                                                        @endif
+                                                    </div>
                                                 </div>
 
-                                                <!-- Tanda Tangan -->
-                                                <div class="flex flex-col items-center">
-                                                    <p class="text-sm font-medium text-gray-700 mb-2">Tanda Tangan</p>
-                                                    @if($order->bukti_ttd_penerima)
-                                                        <div class="w-full aspect-[4/3] bg-white rounded-xl border border-gray-200 overflow-hidden flex justify-center items-center p-2 shadow-inner">
-                                                            <img src="{{ asset('storage/' . $order->bukti_ttd_penerima) }}" alt="Tanda Tangan" class="object-contain w-full h-full filter contrast-125">
-                                                        </div>
-                                                    @else
-                                                        <div class="w-full aspect-[4/3] bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center">
-                                                            <span class="text-sm text-gray-400">Belum ditandatangani</span>
-                                                        </div>
-                                                    @endif
+                                                <!-- Token Pengirim -->
+                                                @if($order->foto_token_id_pengirim)
+                                                <div class="mt-4 bg-gray-50 rounded-lg p-3 flex items-center justify-between border border-gray-100">
+                                                    <span class="text-xs text-gray-500 font-medium uppercase">Security Token (Pengirim)</span>
+                                                    <span class="font-mono text-xs font-bold text-gray-900 bg-gray-200 px-2 py-1 rounded">{{ $order->foto_token_id_pengirim }}</span>
                                                 </div>
-                                            </div>
-
-                                            <!-- Token Bar -->
-                                            @if($order->foto_token_id)
-                                            <div class="mt-6 bg-gray-50 rounded-lg p-3 flex items-center justify-between border border-gray-100">
-                                                <span class="text-xs text-gray-500 font-medium uppercase">Security Token</span>
-                                                <span class="font-mono text-xs font-bold text-gray-900 bg-gray-200 px-2 py-1 rounded">{{ $order->foto_token_id }}</span>
+                                                @endif
                                             </div>
                                             @endif
+
+                                            <!-- SECTION PENERIMA (ANTAR PAKET) -->
+                                            <div>
+                                                <h4 class="text-md font-bold text-gray-800 border-b border-gray-100 pb-2 mb-4">
+                                                    {{ str_starts_with($order->order_id, 'S-EXP') ? '🏁 Bukti Antar Paket (Penerima)' : '🏁 Bukti Selesai (Sancaka Ride)' }}
+                                                </h4>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <!-- Foto Penerima -->
+                                                    <div class="flex flex-col items-center">
+                                                        <p class="text-sm font-medium text-gray-700 mb-2">Foto Penerima / Kondisi</p>
+                                                        @if($order->bukti_foto_penerima)
+                                                            <div class="w-full aspect-[4/3] bg-gray-100 rounded-xl border border-gray-200 overflow-hidden flex justify-center items-center">
+                                                                <img src="{{ asset('storage/' . $order->bukti_foto_penerima) }}" alt="Foto Penerima" class="object-contain w-full h-full">
+                                                            </div>
+                                                        @else
+                                                            <div class="w-full aspect-[4/3] bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center">
+                                                                <span class="text-sm text-gray-400">Tidak ada foto</span>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+
+                                                    <!-- Tanda Tangan Penerima -->
+                                                    <div class="flex flex-col items-center">
+                                                        <p class="text-sm font-medium text-gray-700 mb-2">Tanda Tangan Penerima</p>
+                                                        @if($order->bukti_ttd_penerima)
+                                                            <div class="w-full aspect-[4/3] bg-white rounded-xl border border-gray-200 overflow-hidden flex justify-center items-center p-2 shadow-inner">
+                                                                <img src="{{ asset('storage/' . $order->bukti_ttd_penerima) }}" alt="Tanda Tangan Penerima" class="object-contain w-full h-full filter contrast-125">
+                                                            </div>
+                                                        @else
+                                                            <div class="w-full aspect-[4/3] bg-gray-50 rounded-xl border border-dashed border-gray-300 flex items-center justify-center">
+                                                                <span class="text-sm text-gray-400">Belum ditandatangani</span>
+                                                            </div>
+                                                        @endif
+                                                    </div>
+                                                </div>
+
+                                                <!-- Token Penerima -->
+                                                @if($order->foto_token_id)
+                                                <div class="mt-4 bg-gray-50 rounded-lg p-3 flex items-center justify-between border border-gray-100">
+                                                    <span class="text-xs text-gray-500 font-medium uppercase">Security Token (Penerima)</span>
+                                                    <span class="font-mono text-xs font-bold text-gray-900 bg-gray-200 px-2 py-1 rounded">{{ $order->foto_token_id }}</span>
+                                                </div>
+                                                @endif
+                                            </div>
+
                                         </div>
 
                                         <div class="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6">

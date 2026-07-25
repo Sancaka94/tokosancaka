@@ -52,12 +52,20 @@ class AdminOrderOjekController extends Controller
             $order = DB::table('order_ojek_online')->where('id', $id)->first();
 
             if ($order) {
-                // Hapus file gambar dari server jika ada
+                // Hapus file gambar Penerima
                 if ($order->bukti_foto_penerima && Storage::disk('public')->exists($order->bukti_foto_penerima)) {
                     Storage::disk('public')->delete($order->bukti_foto_penerima);
                 }
                 if ($order->bukti_ttd_penerima && Storage::disk('public')->exists($order->bukti_ttd_penerima)) {
                     Storage::disk('public')->delete($order->bukti_ttd_penerima);
+                }
+
+                // Hapus file gambar Pengirim (Sancaka Express)
+                if ($order->bukti_foto_pengirim && Storage::disk('public')->exists($order->bukti_foto_pengirim)) {
+                    Storage::disk('public')->delete($order->bukti_foto_pengirim);
+                }
+                if ($order->bukti_ttd_pengirim && Storage::disk('public')->exists($order->bukti_ttd_pengirim)) {
+                    Storage::disk('public')->delete($order->bukti_ttd_pengirim);
                 }
 
                 // Hapus record dari database
@@ -83,11 +91,20 @@ class AdminOrderOjekController extends Controller
                 $orders = DB::table('order_ojek_online')->whereIn('id', $ids)->get();
 
                 foreach ($orders as $order) {
+                    // Hapus Penerima
                     if ($order->bukti_foto_penerima && Storage::disk('public')->exists($order->bukti_foto_penerima)) {
                         Storage::disk('public')->delete($order->bukti_foto_penerima);
                     }
                     if ($order->bukti_ttd_penerima && Storage::disk('public')->exists($order->bukti_ttd_penerima)) {
                         Storage::disk('public')->delete($order->bukti_ttd_penerima);
+                    }
+
+                    // Hapus Pengirim
+                    if ($order->bukti_foto_pengirim && Storage::disk('public')->exists($order->bukti_foto_pengirim)) {
+                        Storage::disk('public')->delete($order->bukti_foto_pengirim);
+                    }
+                    if ($order->bukti_ttd_pengirim && Storage::disk('public')->exists($order->bukti_ttd_pengirim)) {
+                        Storage::disk('public')->delete($order->bukti_ttd_pengirim);
                     }
                 }
 

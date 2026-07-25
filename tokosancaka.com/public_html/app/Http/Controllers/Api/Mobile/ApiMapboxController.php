@@ -1228,6 +1228,50 @@ class ApiMapboxController extends Controller
                 ];
 
                 // =========================================================================
+                // 🛡️ PERISAI SANCAKA EXPRESS: WAJIB FOTO & TTD PENGIRIM SAAT AMBIL PAKET
+                // =========================================================================
+                if ($newStatus === 'otw_antar' && str_starts_with($order->order_id, 'S-EXP-')) {
+                    $adaFotoPengirim = $request->hasFile('foto_pengirim') || !empty($order->bukti_foto_pengirim);
+                    $adaTtdPengirim = $request->hasFile('ttd_pengirim') || $request->filled('ttd_pengirim') || !empty($order->bukti_ttd_pengirim);
+
+                    if (!$adaFotoPengirim) {
+                        return ['status' => 422, 'response' => response()->json(['success' => false, 'message' => 'Gagal! Layanan Sancaka Express WAJIB melampirkan Foto Pengirim sebelum mengantar paket.'], 422)];
+                    }
+
+                    if (!$adaTtdPengirim) {
+                        return ['status' => 422, 'response' => response()->json(['success' => false, 'message' => 'Gagal! Layanan Sancaka Express WAJIB melampirkan Tanda Tangan Pengirim sebelum mengantar paket.'], 422)];
+                    }
+
+                    // Proses Simpan Foto Pengirim
+                    if ($request->hasFile('foto_pengirim')) {
+                        $foto = $request->file('foto_pengirim');
+                        $namaFoto = 'foto_pengirim_' . $orderId . '_' . time() . '.' . $foto->getClientOriginalExtension();
+                        $updateData['bukti_foto_pengirim'] = $foto->storeAs('bukti_pengiriman/foto', $namaFoto, 'public');
+                    }
+
+                    // Proses Simpan TTD Pengirim (Mendukung File & Base64)
+                    if ($request->hasFile('ttd_pengirim')) {
+                        $ttd = $request->file('ttd_pengirim');
+                        $namaTtd = 'ttd_pengirim_' . $orderId . '_' . time() . '.' . $ttd->getClientOriginalExtension();
+                        $updateData['bukti_ttd_pengirim'] = $ttd->storeAs('bukti_pengiriman/ttd', $namaTtd, 'public');
+                    } elseif ($request->filled('ttd_pengirim')) {
+                        $ttdBase64 = $request->input('ttd_pengirim');
+                        if (preg_match('/^data:image\/(\w+);base64,/', $ttdBase64, $type)) {
+                            $ttdData = substr($ttdBase64, strpos($ttdBase64, ',') + 1);
+                            $ttdData = base64_decode($ttdData);
+                            $namaTtd = 'ttd_pengirim_' . $orderId . '_' . time() . '.' . strtolower($type[1]);
+                            \Illuminate\Support\Facades\Storage::disk('public')->put('bukti_pengiriman/ttd/' . $namaTtd, $ttdData);
+                            $updateData['bukti_ttd_pengirim'] = 'bukti_pengiriman/ttd/' . $namaTtd;
+                        }
+                    }
+
+                    if ($request->filled('foto_token_id_pengirim')) {
+                        $updateData['foto_token_id_pengirim'] = $request->input('foto_token_id_pengirim');
+                    }
+                }
+                // =========================================================================
+
+                // =========================================================================
                 // 🛡️ PERISAI SANCAKA EXPRESS: WAJIB FOTO & TTD SAAT SELESAI
                 // =========================================================================
                 // Jika statusnya mau diubah jadi 'completed' DAN ini adalah order Sancaka Express (Prefix S-EXP)
