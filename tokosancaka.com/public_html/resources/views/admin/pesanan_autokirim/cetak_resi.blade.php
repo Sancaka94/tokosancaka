@@ -163,6 +163,9 @@
     $parsedKurir = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->kurir);
     $resiTrack = $pesanan->awb_number ?? $pesanan->order_id;
 
+    // --- DEKLARASI AWAL (Harus di atas sebelum logika pengecekan) ---
+    $metodePembayaran = strtolower($pesanan->metode_pembayaran);
+
     // --- LOGIKA JENIS LAYANAN (HEADER TENGAH) ---
     $layananStr = strtolower($pesanan->layanan);
     $jenisLayananHeader = 'REGULER'; // Default nilai jika tidak memenuhi kondisi lain
@@ -176,7 +179,6 @@
     }
 
     // --- LOGIKA CERDAS DETEKSI COD & TAGIHAN ---
-    $metodePembayaran = strtolower($pesanan->metode_pembayaran);
     $isCod = in_array($metodePembayaran, ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
     $jenisCodText = '';
     $nilaiTagihanCod = 0;
