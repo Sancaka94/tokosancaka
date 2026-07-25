@@ -150,7 +150,7 @@ class PesananAutokirimController extends Controller
         $totalOngkir    = (clone $query)->sum('ongkir');
 
         $statusPending  = ['batal', 'gagal', 'menunggu_pembayaran'];
-        $querySukses    = clone $query->whereNotIn('status', $statusPending);
+        $querySukses    = (clone $query)->whereNotIn('status', $statusPending);
 
         $stats = [
             'total_berhasil' => (clone $querySukses)->count(),
