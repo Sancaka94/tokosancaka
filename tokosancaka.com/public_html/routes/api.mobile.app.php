@@ -138,7 +138,7 @@ Route::get('/check-update', function(Request $request) {
         'latest_version' => $latestVersion,
         'download_url'   => 'https://play.google.com/store/apps/details?id=com.sancaka.express.app',
         'force_update'   => true,
-        'notes'          => 'Fix bug dan peningkatan performa. Tambah Fitur Kirim Paket Banyak!'
+        'notes'          => 'Kirim Paket Sehari Sampai Dengan Sancaka Express dan Tambahan fitur Ojek Online!'
     ]);
 });
 
