@@ -519,6 +519,7 @@ class ApiMapboxController extends Controller
         try {
             $lat = (float) $request->query('lat');
             $lng = (float) $request->query('lng');
+            $layanan = $request->query('layanan', 'ojek_online');
             $radius = 5; // Radius driver biasa (5 KM)
 
             Log::info("LOG LOG: [Radar] Koordinat Penjemputan -> Lat: {$lat}, Lng: {$lng}");
@@ -585,8 +586,8 @@ class ApiMapboxController extends Controller
 
                         Log::info("LOG LOG: [Radar] Evaluasi Driver Reguler ID: {$dId} | Jarak: {$dist} KM | Gender Driver: {$driverGender}");
 
-                        // Filter Syariah
-                        if ($driverGender === $passengerGender) {
+                        // Filter Syariah (Bypass jika Sancaka Express)
+                        if ($layanan === 'sancaka_express' || $driverGender === $passengerGender) {
                             $formattedDrivers[] = [
                                 'id' => (int) ($meta['id'] ?? $dId),
                                 'id_pengguna' => (int) $dId,
@@ -629,7 +630,7 @@ class ApiMapboxController extends Controller
 
                 // Evaluasi Syariah Admin
                 $isAdminSyariahPass = true;
-                if (!empty($admin->jenis_kelamin)) {
+                if ($layanan !== 'sancaka_express' && !empty($admin->jenis_kelamin)) { // <--- TAMBAHAN PENGECEKAN LAYANAN
                     if ($admin->jenis_kelamin !== $passengerGender) {
                         $isAdminSyariahPass = false;
                         Log::warning("LOG LOG: [Radar Admin] ❌ Admin DITOLAK (Filter Syariah / Beda Gender)");
