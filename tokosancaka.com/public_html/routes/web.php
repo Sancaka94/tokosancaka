@@ -16,6 +16,8 @@ use App\Http\Controllers\Rsud\AdminOrderObatController;
 // Tambahkan di bawah // Pembayaran
 use App\Http\Controllers\PayPalController;
 
+use App\Http\Controllers\AdminOrderOjekController;
+
 use App\Http\Controllers\PesananAutokirimController;
 
 
@@ -1849,6 +1851,11 @@ Route::post('/driver/register', [RegisterDriverOnlineController::class, 'store']
 // Sangat disarankan rute ini dibungkus dengan middleware 'auth' (atau middleware khusus admin Anda)
 // agar tidak sembarang orang bisa mengaksesnya.
 Route::prefix('admin')->middleware(['auth'])->group(function () {
+
+    // ==========================================
+    // RUTE RIWAYAT PESANAN OJEK & EXPRESS (ADMIN)
+    // ==========================================
+    Route::get('/pesanan-ojek/riwayat', [AdminOrderOjekController::class, 'index'])->name('admin.pesanan_ojek.riwayat');
 
     // Menampilkan halaman tabel manajemen driver
     Route::get('/drivers', [RegisterDriverOnlineController::class, 'index'])->name('admin.drivers.index');

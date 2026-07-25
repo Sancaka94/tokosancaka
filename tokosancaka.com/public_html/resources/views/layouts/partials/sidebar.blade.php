@@ -434,20 +434,20 @@
             </div>
 
            {{-- ================= MANAJEMEN OJEK ONLINE ================= --}}
-            <div x-data="{ open: {{ request()->routeIs('admin.drivers.*') || request()->routeIs('admin.reward.*') ? 'true' : 'false' }} }"
+            <div x-data="{ open: {{ request()->routeIs('admin.drivers.*') || request()->routeIs('admin.reward.*') || request()->routeIs('admin.pesanan_ojek.*') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                  x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true"
                  class="mt-0.5">
 
                 <button @click="open = !open; if(!isExpanded && !isHovered && !isMobile) isExpanded = true"
-                        class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('admin.drivers.*') || request()->routeIs('admin.reward.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                        class="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-left rounded-lg transition-colors duration-200 group {{ request()->routeIs('admin.drivers.*') || request()->routeIs('admin.reward.*') || request()->routeIs('admin.pesanan_ojek.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
                     <span class="flex items-center">
-                        <i class="fa-solid fa-motorcycle fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.drivers.*') || request()->routeIs('admin.reward.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                        <i class="fa-solid fa-motorcycle fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('admin.drivers.*') || request()->routeIs('admin.reward.*') || request()->routeIs('admin.pesanan_ojek.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
                         <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Menejemen Ojek Online</span>
                     </span>
                     <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                         <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200"
-                           :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->routeIs('admin.drivers.*') || request()->routeIs('admin.reward.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
+                           :class="open && (isExpanded || isHovered || isMobile) ? 'rotate-180 text-white' : '{{ request()->routeIs('admin.drivers.*') || request()->routeIs('admin.reward.*') || request()->routeIs('admin.pesanan_ojek.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}'"></i>
                     </div>
                 </button>
 
@@ -460,6 +460,16 @@
                                class="flex items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.drivers.*') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
                                 <i class="fa-solid fa-id-card w-4 text-center mr-2 {{ request()->routeIs('admin.drivers.*') ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500' }}"></i>
                                 <span>Manajemen Driver</span>
+                            </a>
+                        </li>
+
+                        {{-- MENU BARU: Riwayat Pesanan Ojek & Express --}}
+                        <li>
+                            <a href="{{ route('admin.pesanan_ojek.riwayat') }}" wire:navigate
+                               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                               class="flex items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.pesanan_ojek.*') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                <i class="fa-solid fa-clock-rotate-left w-4 text-center mr-2 {{ request()->routeIs('admin.pesanan_ojek.*') ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500' }}"></i>
+                                <span>Riwayat Pesanan</span>
                             </a>
                         </li>
 
