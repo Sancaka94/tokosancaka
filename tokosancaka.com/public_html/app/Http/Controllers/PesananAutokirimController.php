@@ -672,7 +672,7 @@ class PesananAutokirimController extends Controller
                 if (in_array($paymentMethod, ['potong_saldo', 'dana_binding', 'cod_barang', 'cod_ongkir'])) {
 
                     if ($paymentMethod === 'potong_saldo') {
-                        // [FITUR IDEMPOTENCY]: Pessimistic Lock untuk mengunci baris user agar saldo tidak minus/dobel potong jika ada request paralel
+                        // [FITUR IDEMPOTENCY]: Pessimistic Lock untuk mengunci baris user
                         $user = User::lockForUpdate()->find(auth()->id());
 
                         if (!$user) {
@@ -691,10 +691,14 @@ class PesananAutokirimController extends Controller
 
                     $pesanan->update([
                         'awb_number'        => $awbResult['awb'],
-                        'tlc_code'          => $awbResult['tlc'],
+                        'tlc_code'          => $awbResult['reff_2'],
+                        'reff_1'            => $awbResult['reff_1'], // Menyimpan reff_1
                         'pickup_point_code' => $awbResult['pickup'],
                         'status'            => 'booking_created'
                     ]);
+
+                    // 🔥 LOG REF 2: CEK APAKAH DATA BERHASIL DIUPDATE KE DATABASE
+                    Log::info("LOG LOG: [DATABASE UPDATED] Pesanan {$localOrderId} sukses diupdate. REFF_1 yang disimpan: {$awbResult['reff_1']} | REFF_2 (tlc_code): {$awbResult['reff_2']}");
 
                     // ==========================================================
                     // AUTO-SAVE KONTAK: Selalu buat data baru (Boleh Dobel)
@@ -1166,34 +1170,31 @@ class PesananAutokirimController extends Controller
         return view('admin.pesanan_autokirim.cetak_resi', compact('pesanan'));
     }
 
-  public function cancelOrder($id)
+ public function cancelOrder($id)
     {
         $pesanan = PesananAutokirim::findOrFail($id);
 
         if (in_array($pesanan->status, ['booking_created', 'menunggu_pembayaran'])) {
 
-            Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] Memulai proses cancel untuk Order ID: {$pesanan->order_id} (AWB: {$pesanan->awb_number})");
+            // 🔥 LOG REF 3: CEK PAYLOAD SEBELUM CANCEL
+            Log::info("LOG LOG: [API AUTOKIRIM - CANCEL INIT] Memulai cancel untuk Order ID: {$pesanan->order_id}. REFF_1 di database adalah: " . ($pesanan->reff_1 ?? 'KOSONG'));
 
             try {
-                // Panggil Konfigurasi API
                 $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
                 $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
                 $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
 
-                // ==========================================
-                // PERBAIKAN: Gunakan parameter 'awb'
-                // ==========================================
-                if (empty($pesanan->awb_number)) {
-                     return redirect()->back()->with('error', 'Gagal membatalkan. Nomor Resi (AWB) belum terbit dari pusat logistik.');
+                // WAJIB pakai reff_1 sesuai dokumentasi API Autokirim
+                if (empty($pesanan->reff_1)) {
+                     return redirect()->back()->with('error', 'Gagal membatalkan. REFF_1 belum tersedia dari pusat logistik.');
                 }
 
                 $payload = [
-                    'awb' => (string) $pesanan->awb_number
+                    'reff_1' => (string) $pesanan->reff_1 // Menggunakan reff_1
                 ];
 
                 Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] REQUEST PAYLOAD:", $payload);
 
-                // Hit API Cancel Autokirim
                 $response = Http::timeout(15)
                     ->withToken($token)
                     ->post("{$baseUrl}/api/cancel", $payload);
@@ -1204,16 +1205,13 @@ class PesananAutokirimController extends Controller
 
                 if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
 
-                    // Jika sukses dari API, baru ubah status di database lokal
                     $pesanan->update(['status' => 'batal']);
 
-                    // [TAMBAHAN WAJIB]: Kembalikan saldo jika menggunakan potong_saldo
                     if ($pesanan->metode_pembayaran === 'potong_saldo') {
                         $userToRefund = User::find($pesanan->user_id);
                         if ($userToRefund) {
-                            // Kembalikan grand_total, bukan hanya ongkir, karena potongan awal adalah grand_total
                             $userToRefund->increment('saldo', $pesanan->grand_total);
-                            Log::info("LOG: [REFUND SALDO] Berhasil mengembalikan Rp {$pesanan->grand_total} ke User ID {$pesanan->user_id} untuk Order ID {$pesanan->order_id}");
+                            Log::info("LOG: [REFUND SALDO] Berhasil mengembalikan Rp {$pesanan->grand_total} ke User ID {$pesanan->user_id}");
                         }
                     }
 
@@ -1221,7 +1219,6 @@ class PesananAutokirimController extends Controller
                     return redirect()->back()->with('success', 'Pesanan berhasil dibatalkan di sistem logistik.');
                 }
 
-                // Jika API Autokirim menolak cancel
                 Log::error("LOG LOG: [API AUTOKIRIM - CANCEL] DITOLAK API: " . ($result['rd'] ?? 'Unknown Error'));
                 return redirect()->back()->with('error', 'Gagal membatalkan di server logistik: ' . ($result['rd'] ?? 'Error API'));
 
