@@ -11,6 +11,7 @@ use App\Models\RegistrasiDriverSancaka; // <-- PERBAIKAN: Import Model Driver
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http; // <-- PERBAIKAN: Tambahkan Http untuk bypass verifikasi token
 use App\Notifications\NotifikasiUmum;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
@@ -144,7 +145,7 @@ class AuthController extends Controller
         ]);
     }
 
- public function register(Request $request)
+    public function register(Request $request)
     {
         // 1. Validasi Input
         $validator = Validator::make($request->all(), [
@@ -403,20 +404,32 @@ class AuthController extends Controller
         ]);
 
         try {
-            // Memverifikasi token ke server Google secara stateless
-            $googleUser = Socialite::driver('google')->stateless()->userFromToken($request->token);
+            // PERBAIKAN BACKEND: Bypass pengecekan Socialite karena Android umumnya mengirimkan 'id_token',
+            // sementara Socialite membutuhkan 'access_token'.
+            $googleResponse = Http::get('https://oauth2.googleapis.com/tokeninfo?id_token=' . $request->token);
 
-            Log::info('API Mobile Google Login: Data diterima.', ['email' => $googleUser->getEmail()]);
+            if ($googleResponse->successful()) {
+                $googleData = (object) $googleResponse->json();
+                $email = $googleData->email;
+                $name = $googleData->name ?? 'Pengguna Google';
+            } else {
+                // Fallback: Jika ternyata aplikasi tetap mengirim access_token, gunakan Socialite
+                $googleUser = Socialite::driver('google')->stateless()->userFromToken($request->token);
+                $email = $googleUser->getEmail();
+                $name = $googleUser->getName();
+            }
+
+            Log::info('API Mobile Google Login: Data diterima.', ['email' => $email]);
 
             // Cari user berdasarkan email
-            $user = User::where('email', $googleUser->getEmail())->first();
+            $user = User::where('email', $email)->first();
 
             $isNewUser = false;
             if (!$user) {
                 Log::info('API Mobile Google Login: Mendaftarkan user baru.');
                 $user = User::create([
-                    'nama_lengkap' => $googleUser->getName(),
-                    'email'        => $googleUser->getEmail(),
+                    'nama_lengkap' => $name,
+                    'email'        => $email,
                     'role'         => 'Pelanggan',
                     'status'       => 'Aktif',
                     // PERBAIKAN: Hapus bcrypt()
@@ -477,14 +490,27 @@ class AuthController extends Controller
         ]);
 
         try {
-            // Memverifikasi token ke server Facebook secara stateless
-            $facebookUser = Socialite::driver('facebook')->stateless()->userFromToken($request->token);
+            // PERBAIKAN BACKEND: Tarik data secara manual via Graph API Facebook
+            // untuk menghindari potensi mismatch config driver Socialite.
+            $fbResponse = Http::get('https://graph.facebook.com/me?fields=id,name,email&access_token=' . $request->token);
 
-            $email = $facebookUser->getEmail() ?? $facebookUser->getId() . '@facebook.sancaka.com';
+            if ($fbResponse->successful()) {
+                $fbData = (object) $fbResponse->json();
+                $id = $fbData->id;
+                $name = $fbData->name ?? 'Pengguna Facebook';
+                $email = $fbData->email ?? $id . '@facebook.sancaka.com';
+            } else {
+                // Fallback menggunakan Socialite
+                $facebookUser = Socialite::driver('facebook')->stateless()->userFromToken($request->token);
+                $id = $facebookUser->getId();
+                $name = $facebookUser->getName();
+                $email = $facebookUser->getEmail() ?? $id . '@facebook.sancaka.com';
+            }
+
             Log::info('API Mobile Facebook Login: Data diterima.', ['email' => $email]);
 
             // Cari user berdasarkan facebook_id atau email
-            $user = User::where('facebook_id', $facebookUser->getId())
+            $user = User::where('facebook_id', $id)
                         ->orWhere('email', $email)
                         ->first();
 
@@ -492,9 +518,9 @@ class AuthController extends Controller
             if (!$user) {
                 Log::info('API Mobile Facebook Login: Mendaftarkan user baru.');
                 $user = User::create([
-                    'nama_lengkap' => $facebookUser->getName(),
+                    'nama_lengkap' => $name,
                     'email'        => $email,
-                    'facebook_id'  => $facebookUser->getId(),
+                    'facebook_id'  => $id,
                     'role'         => 'Pelanggan',
                     'status'       => 'Aktif',
                     // PERBAIKAN: Hapus bcrypt()
