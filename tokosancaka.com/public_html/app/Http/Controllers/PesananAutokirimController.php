@@ -373,7 +373,7 @@ class PesananAutokirimController extends Controller
         $lastMonth = $now->copy()->subMonth()->startOfMonth();
 
         $statusPending = ['batal', 'gagal', 'menunggu_pembayaran'];
-        $querySukses   = clone $query->whereNotIn('status', $statusPending);
+        $querySukses   = (clone $query)->whereNotIn('status', $statusPending);
 
         $komisiTotal        = (clone $querySukses)->sum('komisi_agen');
         $komisiHariIni      = (clone $querySukses)->where('created_at', '>=', $today)->sum('komisi_agen');
