@@ -399,34 +399,40 @@ class AuthController extends Controller
     // ====================================================================
     public function loginGoogle(Request $request)
     {
+        // LOG LOG: Mencatat request awal masuk
+        Log::info('LOG LOG [Google]: Memulai request login', ['ip' => $request->ip(), 'has_token' => $request->has('token')]);
+
         $request->validate([
             'token' => 'required|string', // Token yang didapat dari SDK Google di Android
         ]);
 
         try {
-            // PERBAIKAN BACKEND: Bypass pengecekan Socialite karena Android umumnya mengirimkan 'id_token',
-            // sementara Socialite membutuhkan 'access_token'.
+            Log::info('LOG LOG [Google]: Memproses verifikasi Token via HTTP (Bypass Socialite)');
             $googleResponse = Http::get('https://oauth2.googleapis.com/tokeninfo?id_token=' . $request->token);
+
+            Log::info('LOG LOG [Google]: Response dari Google API', ['status_code' => $googleResponse->status(), 'response_body' => $googleResponse->json()]);
 
             if ($googleResponse->successful()) {
                 $googleData = (object) $googleResponse->json();
                 $email = $googleData->email;
                 $name = $googleData->name ?? 'Pengguna Google';
+                Log::info('LOG LOG [Google]: Data HTTP Google berhasil diekstrak', ['email' => $email]);
             } else {
+                Log::warning('LOG LOG [Google]: Verifikasi HTTP gagal, mencoba fallback menggunakan Laravel Socialite');
                 // Fallback: Jika ternyata aplikasi tetap mengirim access_token, gunakan Socialite
                 $googleUser = Socialite::driver('google')->stateless()->userFromToken($request->token);
                 $email = $googleUser->getEmail();
                 $name = $googleUser->getName();
+                Log::info('LOG LOG [Google]: Fallback Socialite berhasil', ['email' => $email]);
             }
 
-            Log::info('API Mobile Google Login: Data diterima.', ['email' => $email]);
-
             // Cari user berdasarkan email
+            Log::info('LOG LOG [Google]: Mencari user di Database', ['email' => $email]);
             $user = User::where('email', $email)->first();
 
             $isNewUser = false;
             if (!$user) {
-                Log::info('API Mobile Google Login: Mendaftarkan user baru.');
+                Log::info('LOG LOG [Google]: User tidak ditemukan. Mendaftarkan user baru.', ['email' => $email]);
                 $user = User::create([
                     'nama_lengkap' => $name,
                     'email'        => $email,
@@ -440,11 +446,14 @@ class AuthController extends Controller
                     'longitude'    => $request->longitude,
                 ]);
                 $isNewUser = true;
+                Log::info('LOG LOG [Google]: User baru berhasil dibuat.', ['user_id' => $user->id]);
             } else {
+                Log::info('LOG LOG [Google]: User sudah ada, melakukan update IP dan Lokasi.', ['user_id' => $user->id]);
                 $user->update(['ip_address' => $request->ip(), 'latitude' => $request->latitude, 'longitude' => $request->longitude]);
             }
 
             if ($user->status === 'Tidak Aktif') {
+                Log::warning('LOG LOG [Google]: Proses dihentikan karena akun Tidak Aktif.', ['user_id' => $user->id]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Akun belum aktif.',
@@ -453,15 +462,19 @@ class AuthController extends Controller
 
             // Jika user baru daftar via Google, kirim notif registrasi
             if ($isNewUser) {
+                Log::info('LOG LOG [Google]: Mengirim Notifikasi Registrasi Email ke Admin.');
                 $this->sendRegistrationNotification($user, $request);
             }
 
             // Kirim Notifikasi Keamanan Login
+            Log::info('LOG LOG [Google]: Mengirim Notifikasi Keamanan Login ke Email.');
             $this->sendLoginNotification($user, $request, 'Google Auth');
 
             // Cetak Token Sanctum untuk aplikasi Android
+            Log::info('LOG LOG [Google]: Membuat Personal Access Token (Sanctum).');
             $token = $user->createToken('sancaka-mobile')->plainTextToken;
 
+            Log::info('LOG LOG [Google]: LOGIN SELESAI, MENGIRIM RESPONSE 200 SUCCESS.');
             return response()->json([
                 'success' => true,
                 'message' => 'Login Google Berhasil',
@@ -472,7 +485,11 @@ class AuthController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('API Mobile Google Auth Gagal: ' . $e->getMessage());
+            Log::error('LOG LOG [Google]: Terjadi EXCEPTION / ERROR KRITIS.', [
+                'error_message' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Otentikasi Google gagal atau token kedaluwarsa.',
@@ -485,38 +502,46 @@ class AuthController extends Controller
     // ====================================================================
     public function loginFacebook(Request $request)
     {
+        // LOG LOG: Mencatat request awal masuk
+        Log::info('LOG LOG [Facebook]: Memulai request login', ['ip' => $request->ip(), 'has_token' => $request->has('token')]);
+
         $request->validate([
             'token' => 'required|string', // Token yang didapat dari SDK Facebook di Android
         ]);
 
         try {
+            Log::info('LOG LOG [Facebook]: Memproses verifikasi Token via HTTP Graph API');
             // PERBAIKAN BACKEND: Tarik data secara manual via Graph API Facebook
             // untuk menghindari potensi mismatch config driver Socialite.
             $fbResponse = Http::get('https://graph.facebook.com/me?fields=id,name,email&access_token=' . $request->token);
+
+            Log::info('LOG LOG [Facebook]: Response dari Facebook API', ['status_code' => $fbResponse->status(), 'response_body' => $fbResponse->json()]);
 
             if ($fbResponse->successful()) {
                 $fbData = (object) $fbResponse->json();
                 $id = $fbData->id;
                 $name = $fbData->name ?? 'Pengguna Facebook';
                 $email = $fbData->email ?? $id . '@facebook.sancaka.com';
+                Log::info('LOG LOG [Facebook]: Data HTTP Facebook berhasil diekstrak', ['email' => $email, 'fb_id' => $id]);
             } else {
+                Log::warning('LOG LOG [Facebook]: Verifikasi HTTP Graph API gagal, mencoba fallback menggunakan Laravel Socialite');
                 // Fallback menggunakan Socialite
                 $facebookUser = Socialite::driver('facebook')->stateless()->userFromToken($request->token);
                 $id = $facebookUser->getId();
                 $name = $facebookUser->getName();
                 $email = $facebookUser->getEmail() ?? $id . '@facebook.sancaka.com';
+                Log::info('LOG LOG [Facebook]: Fallback Socialite berhasil', ['email' => $email, 'fb_id' => $id]);
             }
 
-            Log::info('API Mobile Facebook Login: Data diterima.', ['email' => $email]);
-
             // Cari user berdasarkan facebook_id atau email
+            Log::info('LOG LOG [Facebook]: Mencari user di Database', ['email' => $email, 'fb_id' => $id]);
             $user = User::where('facebook_id', $id)
                         ->orWhere('email', $email)
                         ->first();
 
             $isNewUser = false;
             if (!$user) {
-                Log::info('API Mobile Facebook Login: Mendaftarkan user baru.');
+                Log::info('LOG LOG [Facebook]: User tidak ditemukan. Mendaftarkan user baru.', ['email' => $email]);
                 $user = User::create([
                     'nama_lengkap' => $name,
                     'email'        => $email,
@@ -531,11 +556,14 @@ class AuthController extends Controller
                     'longitude'    => $request->longitude,
                 ]);
                 $isNewUser = true;
+                Log::info('LOG LOG [Facebook]: User baru berhasil dibuat.', ['user_id' => $user->id]);
             } else {
+                Log::info('LOG LOG [Facebook]: User sudah ada, melakukan update IP dan Lokasi.', ['user_id' => $user->id]);
                 $user->update(['ip_address' => $request->ip(), 'latitude' => $request->latitude, 'longitude' => $request->longitude]);
             }
 
             if ($user->status === 'Tidak Aktif') {
+                Log::warning('LOG LOG [Facebook]: Proses dihentikan karena akun Tidak Aktif.', ['user_id' => $user->id]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Akun belum aktif.',
@@ -544,15 +572,19 @@ class AuthController extends Controller
 
             // Jika user baru daftar via Facebook, kirim notif registrasi
             if ($isNewUser) {
+                Log::info('LOG LOG [Facebook]: Mengirim Notifikasi Registrasi Email ke Admin.');
                 $this->sendRegistrationNotification($user, $request);
             }
 
             // Kirim Notifikasi Keamanan Login
+            Log::info('LOG LOG [Facebook]: Mengirim Notifikasi Keamanan Login ke Email.');
             $this->sendLoginNotification($user, $request, 'Facebook Auth');
 
             // Cetak Token Sanctum untuk aplikasi Android
+            Log::info('LOG LOG [Facebook]: Membuat Personal Access Token (Sanctum).');
             $token = $user->createToken('sancaka-mobile')->plainTextToken;
 
+            Log::info('LOG LOG [Facebook]: LOGIN SELESAI, MENGIRIM RESPONSE 200 SUCCESS.');
             return response()->json([
                 'success' => true,
                 'message' => 'Login Facebook Berhasil',
@@ -563,7 +595,11 @@ class AuthController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('API Mobile Facebook Auth Gagal: ' . $e->getMessage());
+            Log::error('LOG LOG [Facebook]: Terjadi EXCEPTION / ERROR KRITIS.', [
+                'error_message' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Otentikasi Facebook gagal atau token kedaluwarsa.',
