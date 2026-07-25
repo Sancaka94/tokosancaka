@@ -690,15 +690,14 @@ class PesananAutokirimController extends Controller
                     $awbResult = $this->_executeAutokirimApi($pesanan, $origin, $destination, $request);
 
                     $pesanan->update([
-                        'awb_number'        => $awbResult['awb'],
-                        'tlc_code'          => $awbResult['reff_2'],
-                        'reff_1'            => $awbResult['reff_1'], // Menyimpan reff_1
-                        'pickup_point_code' => $awbResult['pickup'],
+                        'awb_number'        => $awbResult['awb'] ?? null,
+                        'tlc_code'          => $awbResult['reff_2'] ?? null,
+                        'reff_1'            => $awbResult['reff_1'] ?? null,
+                        'pickup_point_code' => $awbResult['pickup'] ?? null,
                         'status'            => 'booking_created'
                     ]);
 
-                    // 🔥 LOG REF 2: CEK APAKAH DATA BERHASIL DIUPDATE KE DATABASE
-                    Log::info("LOG LOG: [DATABASE UPDATED] Pesanan {$localOrderId} sukses diupdate. REFF_1 yang disimpan: {$awbResult['reff_1']} | REFF_2 (tlc_code): {$awbResult['reff_2']}");
+                    Log::info("LOG LOG: [DATABASE UPDATED] Pesanan {$localOrderId} sukses diupdate. REFF_1: " . ($awbResult['reff_1'] ?? 'KOSONG'));
 
                     // ==========================================================
                     // AUTO-SAVE KONTAK (Cek Nama, HP, dan Alamat agar tidak dobel)
@@ -874,10 +873,21 @@ class PesananAutokirimController extends Controller
         $orderResult = $orderResponse->json();
 
         if ($orderResponse->successful() && isset($orderResult['rc']) && $orderResult['rc'] === '00') {
+
+            // Tangkap nilai dari API dengan aman
+            $awb    = $orderResult['data']['awb'] ?? 'AWB-PENDING';
+            $reff_1 = $orderResult['data']['reff_1'] ?? null;
+            $reff_2 = $orderResult['data']['reff_2'] ?? null;
+
+            // Log Sukses
+            Log::info("LOG LOG: [API AUTOKIRIM - SUCCESS] API mengembalikan -> AWB: {$awb} | REFF_1: {$reff_1} | REFF_2: {$reff_2}");
+
+            // KUNCI ARRAY INI YANG HARUS COCOK DENGAN FUNGSI STORE
             return [
                 'success' => true,
-                'awb'     => $orderResult['data']['awb'] ?? 'AWB-PENDING',
-                'tlc'     => $orderResult['data']['reff_2'] ?? null,
+                'awb'     => $awb,
+                'reff_1'  => $reff_1,
+                'reff_2'  => $reff_2,
                 'pickup'  => $pickupPointCode
             ];
         }
