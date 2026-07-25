@@ -1267,6 +1267,11 @@ class ApiMapboxController extends Controller
                             $updateData['bukti_ttd_penerima'] = 'bukti_pengiriman/ttd/' . $namaTtd;
                         }
                     }
+
+                    if ($request->filled('foto_token_id')) {
+                        $updateData['foto_token_id'] = $request->input('foto_token_id');
+                    }
+
                 }
                 // =========================================================================
 
