@@ -1844,6 +1844,25 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 Route::get('/driver/register', [RegisterDriverOnlineController::class, 'create'])->name('driver.register.create');
 Route::post('/driver/register', [RegisterDriverOnlineController::class, 'store'])->name('driver.register.store');
 
+// =========================================================================
+// RUTE RIWAYAT PESANAN OJEK & EXPRESS (ADMIN)
+// =========================================================================
+Route::middleware(['auth'])->group(function () {
+
+    // 1. Halaman Tabel Riwayat
+    Route::get('/admin/pesanan-ojek/riwayat', [\App\Http\Controllers\AdminOrderOjekController::class, 'index'])
+        ->name('admin.pesanan_ojek.riwayat');
+
+    // 2. Hapus Massal (Bulk Delete) -> WAJIB diletakkan di ATAS route {id}
+    Route::delete('/admin/pesanan-ojek/bulk-destroy', [\App\Http\Controllers\AdminOrderOjekController::class, 'bulkDestroy'])
+        ->name('admin.pesanan_ojek.bulk_destroy');
+
+    // 3. Hapus Satuan (Single Delete)
+    Route::delete('/admin/pesanan-ojek/{id}', [\App\Http\Controllers\AdminOrderOjekController::class, 'destroy'])
+        ->name('admin.pesanan_ojek.destroy');
+
+});
+
 
 // ==========================================
 // 2. AREA ADMIN (Manajemen Driver Sancaka)
@@ -1852,10 +1871,6 @@ Route::post('/driver/register', [RegisterDriverOnlineController::class, 'store']
 // agar tidak sembarang orang bisa mengaksesnya.
 Route::prefix('admin')->middleware(['auth'])->group(function () {
 
-    // ==========================================
-    // RUTE RIWAYAT PESANAN OJEK & EXPRESS (ADMIN)
-    // ==========================================
-    Route::get('/pesanan-ojek/riwayat', [AdminOrderOjekController::class, 'index'])->name('admin.pesanan_ojek.riwayat');
 
     // Menampilkan halaman tabel manajemen driver
     Route::get('/drivers', [RegisterDriverOnlineController::class, 'index'])->name('admin.drivers.index');
