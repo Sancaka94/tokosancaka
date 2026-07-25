@@ -163,6 +163,18 @@
     $parsedKurir = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->kurir);
     $resiTrack = $pesanan->awb_number ?? $pesanan->order_id;
 
+    // --- LOGIKA JENIS LAYANAN (HEADER TENGAH) ---
+    $layananStr = strtolower($pesanan->layanan);
+    $jenisLayananHeader = 'REGULER'; // Default nilai jika tidak memenuhi kondisi lain
+
+    if ($metodePembayaran === 'cod_ongkir') {
+        $jenisLayananHeader = 'COD ONGKIR';
+    } elseif (in_array($metodePembayaran, ['cod', 'codbarang', 'cod_barang'])) {
+        $jenisLayananHeader = 'COD BARANG';
+    } elseif (str_contains($layananStr, 'cargo') || str_contains($layananStr, 'jtr') || str_contains($layananStr, 'truck') || str_contains($layananStr, 'gokil') || str_contains($layananStr, 'big')) {
+        $jenisLayananHeader = 'CARGO';
+    }
+
     // --- LOGIKA CERDAS DETEKSI COD & TAGIHAN ---
     $metodePembayaran = strtolower($pesanan->metode_pembayaran);
     $isCod = in_array($metodePembayaran, ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
@@ -208,11 +220,20 @@
     @endif
 
     <!-- HEADER LOGO -->
-    <div class="header">
-        <div class="logo-left">
+    <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
+
+        <!-- Kiri: Logo Sancaka -->
+        <div class="logo-left" style="flex: 1; text-align: left;">
             <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express">
         </div>
-        <div class="logo-right">
+
+        <!-- Tengah: Tulisan Jenis Layanan -->
+        <div class="service-type" style="flex: 1; text-align: center; font-weight: 900; font-size: 16px; letter-spacing: 1.5px; color: #000;">
+            {{ $jenisLayananHeader }}
+        </div>
+
+        <!-- Kanan: Logo Kurir -->
+        <div class="logo-right" style="flex: 1; text-align: right;">
             @if($parsedKurir['logo_url'])
                 <img src="{{ $parsedKurir['logo_url'] }}" alt="{{ $parsedKurir['courier_name'] }}" crossorigin="anonymous">
             @else
