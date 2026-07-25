@@ -701,30 +701,42 @@ class PesananAutokirimController extends Controller
                     Log::info("LOG LOG: [DATABASE UPDATED] Pesanan {$localOrderId} sukses diupdate. REFF_1 yang disimpan: {$awbResult['reff_1']} | REFF_2 (tlc_code): {$awbResult['reff_2']}");
 
                     // ==========================================================
-                    // AUTO-SAVE KONTAK: Selalu buat data baru (Boleh Dobel)
+                    // AUTO-SAVE KONTAK (Cek Nama, HP, dan Alamat agar tidak dobel)
                     // ==========================================================
 
-                    // Simpan Pengirim
-                    \App\Models\Kontak::create([
-                        'user_id'     => auth()->id(),
-                        'nama'        => $request->pengirim_nama,
-                        'no_hp'       => $request->pengirim_hp,
-                        'email'       => $request->pengirim_email, // <-- Menangkap email
-                        'alamat'      => $request->pengirim_alamat,
-                        'district_id' => $request->pengirim_district_id,
-                        'tipe'        => 'Pengirim'
-                    ]);
+                    // 1. Simpan Pengirim
+                    \App\Models\Kontak::firstOrCreate(
+                        [
+                            // Syarat pencarian: Jika 4 kombinasi data ini sudah ada, JANGAN buat baru
+                            'user_id' => auth()->id(),
+                            'nama'    => trim($request->pengirim_nama),
+                            'no_hp'   => trim($request->pengirim_hp),
+                            'alamat'  => trim($request->pengirim_alamat),
+                            'tipe'    => 'Pengirim'
+                        ],
+                        [
+                            // Data pelengkap jika ternyata belum ada dan harus buat baru
+                            'email'       => $request->pengirim_email,
+                            'district_id' => $request->pengirim_district_id,
+                        ]
+                    );
 
-                    // Simpan Penerima
-                    \App\Models\Kontak::create([
-                        'user_id'     => auth()->id(),
-                        'nama'        => $request->penerima_nama,
-                        'no_hp'       => $request->penerima_hp,
-                        'email'       => $request->penerima_email, // <-- Menangkap email
-                        'alamat'      => $request->penerima_alamat,
-                        'district_id' => $request->penerima_district_id,
-                        'tipe'        => 'Penerima'
-                    ]);
+                    // 2. Simpan Penerima
+                    \App\Models\Kontak::firstOrCreate(
+                        [
+                            // Syarat pencarian: Jika 4 kombinasi data ini sudah ada, JANGAN buat baru
+                            'user_id' => auth()->id(),
+                            'nama'    => trim($request->penerima_nama),
+                            'no_hp'   => trim($request->penerima_hp),
+                            'alamat'  => trim($request->penerima_alamat),
+                            'tipe'    => 'Penerima'
+                        ],
+                        [
+                            // Data pelengkap jika ternyata belum ada dan harus buat baru
+                            'email'       => $request->penerima_email,
+                            'district_id' => $request->penerima_district_id,
+                        ]
+                    );
                     // ==========================================================
 
                     DB::commit();
