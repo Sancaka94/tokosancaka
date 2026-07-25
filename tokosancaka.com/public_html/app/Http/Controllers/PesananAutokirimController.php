@@ -1212,7 +1212,7 @@ class PesananAutokirimController extends Controller
                 }
 
                 $payload = [
-                    'reff_1' => (string) $pesanan->reff_1 // Menggunakan reff_1
+                    'reff_1' => (int) $pesanan->reff_1 // Menggunakan reff_1
                 ];
 
                 Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] REQUEST PAYLOAD:", $payload);
