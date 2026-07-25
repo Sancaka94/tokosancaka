@@ -55,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/order/driver-accept', [ApiMapboxController::class, 'accept_order']);
     Route::get('/order/track-driver/{driver_id}', [ApiMapboxController::class, 'track_driver']);
     Route::get('/order/detail/{order_id}', [ApiMapboxController::class, 'get_order_detail']);
+    Route::get('/order/resi/{order_id}', [ApiMapboxController::class, 'get_order_resi_detail']);
     Route::post('/order/update-status', [ApiMapboxController::class, 'update_status_order']);
     Route::get('/order/history', [ApiMapboxController::class, 'get_history']);
 
