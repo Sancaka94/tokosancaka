@@ -1227,8 +1227,19 @@ class PesananAutokirimController extends Controller
 
                 if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
 
+                    // 1. Ubah status jadi batal
                     $pesanan->update(['status' => 'batal']);
 
+                    // 2. 🔥 TARIK KOMISI TRANSAKSI INI DARI SALDO USER
+                    if ($pesanan->komisi_agen > 0) {
+                        $userAgen = User::find($pesanan->user_id);
+                        if ($userAgen) {
+                            $userAgen->decrement('saldo', $pesanan->komisi_agen);
+                            Log::info("LOG: [TARIK KOMISI] Saldo User ID {$pesanan->user_id} ditarik Rp {$pesanan->komisi_agen} karena Order ID {$pesanan->order_id} dibatalkan.");
+                        }
+                    }
+
+                    // 3. Kembalikan modal/ongkir jika pakai potong saldo
                     if ($pesanan->metode_pembayaran === 'potong_saldo') {
                         $userToRefund = User::find($pesanan->user_id);
                         if ($userToRefund) {
@@ -1298,10 +1309,20 @@ class PesananAutokirimController extends Controller
                     'status' => $status
                 ]);
 
-                // [CEGAH DOUBLE REFUND]: Refund otomatis jika status batal/gagal, dan pastikan status lamanya belum batal/gagal
+                // [CEGAH DOUBLE REFUND & DOUBLE TARIK KOMISI]
                 if (in_array(strtolower($status), ['batal', 'gagal', 'cancelled']) && !in_array(strtolower($statusLama), ['batal', 'gagal', 'cancelled'])) {
+
+                    // 1. 🔥 TARIK KOMISI TRANSAKSI INI DARI SALDO USER
+                    if ($pesanan->komisi_agen > 0) {
+                        $userAgen = User::lockForUpdate()->find($pesanan->user_id);
+                        if ($userAgen) {
+                            $userAgen->decrement('saldo', $pesanan->komisi_agen);
+                            Log::info("LOG: [WEBHOOK TARIK KOMISI] Saldo ditarik Rp {$pesanan->komisi_agen} karena Order ID {$pesanan->order_id} batal/gagal.");
+                        }
+                    }
+
+                    // 2. Kembalikan modal/ongkir
                     if ($pesanan->metode_pembayaran === 'potong_saldo') {
-                        // Kunci juga row user saat melakukan increment (refund)
                         $userToRefund = User::lockForUpdate()->find($pesanan->user_id);
                         if ($userToRefund) {
                             $userToRefund->increment('saldo', $pesanan->ongkir);
