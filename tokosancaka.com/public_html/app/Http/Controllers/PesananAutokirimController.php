@@ -1227,7 +1227,13 @@ class PesananAutokirimController extends Controller
 
                 if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
 
-                    $pesanan->update(['status' => 'batal']);
+                    // Update status dan tarik semua komisi menjadi 0
+                    $pesanan->update([
+                        'status'         => 'batal',
+                        'total_cashback' => 0,
+                        'laba_sistem'    => 0,
+                        'komisi_agen'    => 0
+                    ]);
 
                     if ($pesanan->metode_pembayaran === 'potong_saldo') {
                         $userToRefund = User::find($pesanan->user_id);
@@ -1294,9 +1300,18 @@ class PesananAutokirimController extends Controller
             if ($pesanan) {
                 $statusLama = $pesanan->status;
 
-                $pesanan->update([
-                    'status' => $status
-                ]);
+                // Siapkan data update
+                $updateData = ['status' => $status];
+
+                // Jika pusat mengirim status batal/gagal, tarik komisi menjadi 0
+                if (in_array(strtolower($status), ['batal', 'gagal', 'cancelled'])) {
+                    $updateData['total_cashback'] = 0;
+                    $updateData['laba_sistem']    = 0;
+                    $updateData['komisi_agen']    = 0;
+                }
+
+                // Eksekusi update
+                $pesanan->update($updateData);
 
                 // [CEGAH DOUBLE REFUND]: Refund otomatis jika status batal/gagal, dan pastikan status lamanya belum batal/gagal
                 if (in_array(strtolower($status), ['batal', 'gagal', 'cancelled']) && !in_array(strtolower($statusLama), ['batal', 'gagal', 'cancelled'])) {
