@@ -2019,18 +2019,14 @@ class ApiMapboxController extends Controller
         }
     }
 
-      /**
-     * Endpoint khusus untuk menarik data cetak resi (Mapping data agar tidak undefined/NaN)
+     /**
+     * Endpoint khusus untuk menarik data cetak resi (Sifat semi-publik: Siapapun yang punya resi bisa akses)
      */
     public function get_order_resi_detail(Request $request, $order_id)
     {
         Log::info("=== [API MAPBOX] REQUEST GET RESI DETAIL MASUK ===");
 
         try {
-            $user = $request->user();
-            $userId = $user ? $user->id_pengguna : null;
-            $userRole = $user ? ($user->role ?? 'Pelanggan') : 'Pelanggan';
-
             $query = DB::table('order_ojek_online')
                 ->join('Pengguna as customer', 'order_ojek_online.customer_id', '=', 'customer.id_pengguna')
                 ->leftJoin('registrasi_driver_sancaka as driver', 'order_ojek_online.driver_id', '=', 'driver.id_pengguna')
@@ -2050,18 +2046,12 @@ class ApiMapboxController extends Controller
                     'admin_user.longitude as admin_lng'
                 );
 
-            // Kunci keamanan
-            if ($userId != 4 && $userRole !== 'Admin') {
-                $query->where(function($q) use ($userId) {
-                    $q->where('order_ojek_online.customer_id', $userId)
-                      ->orWhere('order_ojek_online.driver_id', $userId);
-                });
-            }
+            // KUNCI KEAMANAN IDOR DIHAPUS AGAR AGEN/PENERIMA BISA TRACKING & CETAK RESI
 
             $order = $query->first();
 
             if (!$order) {
-                return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan atau akses ditolak.'], 404);
+                return response()->json(['success' => false, 'message' => 'Pesanan tidak ditemukan. Pastikan nomor resi benar.'], 404);
             }
 
             // Jika yang ambil order adalah Admin (ID 4)
