@@ -140,6 +140,7 @@ Route::get('/check-update', function(Request $request) {
         'force_update'   => true,
         'notes'          => 'Kirim Paket Sehari Sampai Dengan Sancaka Express dan Tambahan fitur Ojek Online!'
     ]);
+
 });
 
 Route::prefix('public')->group(function () {
