@@ -897,7 +897,7 @@ class ApiMapboxController extends Controller
                         throw new \Exception("Gagal mendapatkan link dari DOKU Jokul.");
                     }
 
-                } else {
+               } else {
                     // JALUR TRIPAY (BCAVA, QRIS, DLL)
                     $orderItems = [
                         ['sku' => 'RIDE', 'name' => 'Layanan Sancaka', 'price' => $tarif, 'quantity' => 1]
@@ -910,6 +910,9 @@ class ApiMapboxController extends Controller
                     $paymentUrl = $tripayResponse['data']['checkout_url'];
                 }
             }
+
+            // ✅ TARUH KODENYA TEPAT DI SINI, SEBELUM DB::commit() ✅
+            DB::table('order_ojek_online')->where('order_id', $orderId)->update(['payment_url' => $paymentUrl]);
 
             DB::commit();
 
