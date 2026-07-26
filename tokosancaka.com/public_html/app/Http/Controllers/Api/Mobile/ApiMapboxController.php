@@ -520,7 +520,6 @@ class ApiMapboxController extends Controller
             $lat = (float) $request->query('lat');
             $lng = (float) $request->query('lng');
             $layanan = $request->query('layanan', 'ojek_online');
-            $radius = 5; // Radius driver biasa (5 KM)
 
             Log::info("LOG LOG: [Radar] Koordinat Penjemputan -> Lat: {$lat}, Lng: {$lng}");
 
@@ -531,25 +530,76 @@ class ApiMapboxController extends Controller
 
             $user = $request->user();
             $passengerGender = $user->jenis_kelamin;
-            Log::info("LOG LOG: [Radar] User ID Pemesan: {$user->id_pengguna}, Gender Penumpang: {$passengerGender}");
+            Log::info("LOG LOG: [Radar] User ID Pemesan: {$user->id_pengguna}, Gender Penumpang: {$passengerGender}, Layanan: {$layanan}");
 
             if (empty($passengerGender)) {
                 Log::warning("LOG LOG: [Radar] Gender penumpang kosong. Pencarian dihentikan.");
                 return response()->json(['success' => false, 'message' => 'Lengkapi Jenis Kelamin di profil Anda.'], 400);
             }
 
-           // ==========================================================
-            // 1. TARIK DARI REDIS GEOSPATIAL (DRIVER BIASA MAKSIMAL 5 KM)
-            // ==========================================================
-            $nearbyRaw = Redis::georadius('active_drivers', $lng, $lat, $radius, 'km', ['WITHDIST', 'ASC']);
-            Log::info("LOG LOG: [Radar] Hasil Tarik Redis (Radius {$radius} KM): ", $nearbyRaw ?: ['Kosong/Tidak Ada Driver']);
-
             $formattedDrivers = [];
+            $maxJemput = 25; // Sesuai aturan: Minimal jemput 1 meter sampai 25 KM
+
+            // ==========================================================
+            // 🔥 [LANGKAH 1] TARIK DATA ADMIN (ID 4) DARI MYSQL
+            // ==========================================================
+            $adminDataToPush = null;
+
+            $admin = DB::table('Pengguna')
+                ->selectRaw("id_pengguna, nama_lengkap, jenis_kelamin, latitude, longitude, last_seen,
+                    ( 6371 * acos( cos( radians(?) ) *
+                      cos( radians( latitude ) ) *
+                      cos( radians( longitude ) - radians(?) ) +
+                      sin( radians(?) ) *
+                      sin( radians( latitude ) ) )
+                    ) AS distance", [$lat, $lng, $lat])
+                ->where('id_pengguna', 4)
+                ->whereNotNull('latitude')
+                ->whereNotNull('longitude')
+                ->first();
+
+            if ($admin && $admin->distance <= $maxJemput) {
+                // Cek Status Online (Maks 3 Menit)
+                $isAdminOnline = false;
+                if (!empty($admin->last_seen)) {
+                    $diffMin = \Carbon\Carbon::parse($admin->last_seen)->diffInMinutes(now());
+                    if ($diffMin <= 3) $isAdminOnline = true;
+                }
+
+                // Cek Aturan Syariah (Hanya berlaku untuk Ojek Online)
+                $isAdminSyariahPass = true;
+                if ($layanan === 'ojek_online') {
+                    if ($admin->jenis_kelamin !== $passengerGender) {
+                        $isAdminSyariahPass = false;
+                        Log::warning("LOG LOG: [Radar Admin] ❌ Admin DITOLAK (Syariah Ojek Online / Beda Gender)");
+                    }
+                }
+
+                if ($isAdminOnline && $isAdminSyariahPass) {
+                    $adminDataToPush = [
+                        'id'           => 4,
+                        'id_pengguna'  => 4,
+                        'name'         => 'Pusat Radar Sancaka (Admin)',
+                        'vehicle'      => 'Sancaka Express',
+                        'distance'     => round($admin->distance, 1) . ' KM',
+                        'distance_raw' => (float) $admin->distance,
+                        'lat'          => (float) $admin->latitude,
+                        'lng'          => (float) $admin->longitude,
+                        'is_online'    => true
+                    ];
+                    Log::info("LOG LOG: [Radar] ✅ Admin ONLINE & Lolos Syarat (Jarak Jemput: {$admin->distance} KM).");
+                }
+            }
+
+            // ==========================================================
+            // 🔥 [LANGKAH 2] TARIK DRIVER BIASA DARI REDIS (ANTI N+1)
+            // ==========================================================
+            Log::info("LOG LOG: [Radar] Mencari driver biasa di Redis. Radius jemput: {$maxJemput} KM.");
+            $nearbyRaw = Redis::georadius('active_drivers', $lng, $lat, $maxJemput, 'km', ['WITHDIST', 'ASC']);
 
             if (!empty($nearbyRaw)) {
-                // 🛠️ PERBAIKAN N+1 REDIS: Gunakan Pipeline agar tarikan massal jadi 1 Query
                 $pipeline = Redis::pipeline();
-                $driverDistances = []; // Menyimpan jarak untuk dicocokkan nanti
+                $driverDistances = [];
 
                 foreach ($nearbyRaw as $item) {
                     $dId = null;
@@ -565,128 +615,62 @@ class ApiMapboxController extends Controller
                         $dId = $item;
                     }
 
-                    if ($dId) {
-                        // Daftarkan perintah ke Pipeline (belum dieksekusi)
+                    if ($dId && $dId != 4) { // Hindari dobel ID 4 jika nyangkut di Redis
                         $pipeline->hgetall("driver_meta:{$dId}");
-                        // Simpan jarak ke memori array PHP dengan ID sebagai Key
                         $driverDistances[$dId] = $dist;
                     }
                 }
 
-                // Eksekusi SEMUA perintah hgetall sekaligus (Tembak Redis HANYA 1 KALI)
                 $metaResults = $pipeline->execute();
-                Log::info("LOG LOG: [Radar] Hasil Pipeline HGETALL: ", $metaResults ?: ['Kosong']);
 
-                // Proses hasil dari Pipeline
                 foreach ($metaResults as $meta) {
                     if (!empty($meta) && isset($meta['id_pengguna'])) {
                         $dId = $meta['id_pengguna'];
                         $driverGender = $meta['gender'] ?? 'KOSONG';
                         $dist = $driverDistances[$dId] ?? 0;
 
-                        Log::info("LOG LOG: [Radar] Evaluasi Driver Reguler ID: {$dId} | Jarak: {$dist} KM | Gender Driver: {$driverGender}");
+                        // Cek Aturan Syariah (Hanya berlaku untuk Ojek Online)
+                        $isDriverSyariahPass = true;
+                        if ($layanan === 'ojek_online') {
+                            if ($driverGender !== $passengerGender) {
+                                $isDriverSyariahPass = false;
+                                Log::warning("LOG LOG: [Radar] ❌ Driver Biasa ID {$dId} DITOLAK (Syariah Ojek Online / Beda Gender)");
+                            }
+                        }
 
-                        // Filter Syariah (Bypass jika Sancaka Express)
-                        if ($layanan === 'sancaka_express' || $driverGender === $passengerGender) {
+                        if ($isDriverSyariahPass) {
                             $formattedDrivers[] = [
-                                'id' => (int) ($meta['id'] ?? $dId),
-                                'id_pengguna' => (int) $dId,
-                                'name' => $meta['name'] ?? 'Driver Sancaka',
-                                'vehicle' => $meta['vehicle'] ?? 'Ojek Sancaka',
-                                'distance' => round($dist, 1) . ' KM',
+                                'id'           => (int) ($meta['id'] ?? $dId),
+                                'id_pengguna'  => (int) $dId,
+                                'name'         => $meta['name'] ?? 'Driver Sancaka',
+                                'vehicle'      => $meta['vehicle'] ?? 'Ojek Sancaka',
+                                'distance'     => round($dist, 1) . ' KM',
                                 'distance_raw' => $dist,
-                                'lat' => (float) ($meta['lat'] ?? 0),
-                                'lng' => (float) ($meta['lng'] ?? 0),
-                                'is_online' => true
-                            ];
-                            Log::info("LOG LOG: [Radar] ✅ Driver ID: {$dId} LOLOS Filter!");
-                        } else {
-                            Log::warning("LOG LOG: [Radar] ❌ Driver ID: {$dId} DITOLAK (Filter Syariah / Beda Gender)");
-                        }
-                    }
-                }
-            }
-
-            // ==========================================================
-            // 2. RADAR SUPER ADMIN (BISA MENDETEKSI USER HINGGA 80 KM)
-            // ==========================================================
-            $adminRadarRadius = 80; // Admin punya radius 80 KM!
-
-            $admin = DB::table('Pengguna')
-                ->selectRaw("id_pengguna, nama_lengkap, jenis_kelamin, latitude, longitude, last_seen,
-                    ( 6371 * acos( cos( radians(?) ) *
-                      cos( radians( latitude ) ) *
-                      cos( radians( longitude ) - radians(?) ) +
-                      sin( radians(?) ) *
-                      sin( radians( latitude ) ) )
-                    ) AS distance", [$lat, $lng, $lat])
-                ->where('id_pengguna', 4)
-                ->whereNotNull('latitude')
-                ->whereNotNull('longitude')
-                ->first();
-
-            if ($admin) {
-                Log::info("LOG LOG: [Radar Admin] Data Admin 4 Ditemukan | Jarak: {$admin->distance} KM | Gender: {$admin->jenis_kelamin} | Last Seen: {$admin->last_seen}");
-
-                // Evaluasi Syariah Admin
-                $isAdminSyariahPass = true;
-                if ($layanan !== 'sancaka_express' && !empty($admin->jenis_kelamin)) { // <--- TAMBAHAN PENGECEKAN LAYANAN
-                    if ($admin->jenis_kelamin !== $passengerGender) {
-                        $isAdminSyariahPass = false;
-                        Log::warning("LOG LOG: [Radar Admin] ❌ Admin DITOLAK (Filter Syariah / Beda Gender)");
-                    }
-                }
-
-                // Masukkan admin jika masih dalam jangkauan dan Online
-                if ($admin->distance <= $adminRadarRadius && $isAdminSyariahPass) {
-                    $isAdminOnline = false;
-                    if (!empty($admin->last_seen)) {
-                        $lastSeenTime = \Carbon\Carbon::parse($admin->last_seen);
-                        $diffMin = $lastSeenTime->diffInMinutes(now());
-
-                        Log::info("LOG LOG: [Radar Admin] Selisih waktu Last Seen Admin: {$diffMin} menit");
-
-                        if ($diffMin <= 3) {
-                            $isAdminOnline = true;
-                            Log::info("LOG LOG: [Radar Admin] ✅ Admin Dinyatakan ONLINE (Aktivitas kurang dari 3 menit)");
-                        } else {
-                            Log::warning("LOG LOG: [Radar Admin] ❌ Admin Dinyatakan OFFLINE (Aktivitas lebih dari 3 menit)");
-                        }
-                    } else {
-                        Log::warning("LOG LOG: [Radar Admin] ❌ Admin Dinyatakan OFFLINE (Kolom last_seen KOSONG)");
-                    }
-
-                    if ($isAdminOnline) {
-                        $adminSudahAda = array_filter($formattedDrivers, function($d) {
-                            return $d['id_pengguna'] == 4;
-                        });
-
-                        if (empty($adminSudahAda)) {
-                            $formattedDrivers[] = [
-                                'id'           => 4,
-                                'id_pengguna'  => 4,
-                                'name'         => 'Pusat Radar Sancaka (Admin)',
-                                'vehicle'      => 'Sancaka Express',
-                                'distance'     => round($admin->distance, 1) . ' KM',
-                                'distance_raw' => (float) $admin->distance, // Ini bisa 30 KM!
-                                'lat'          => (float) $admin->latitude,
-                                'lng'          => (float) $admin->longitude,
+                                'lat'          => (float) ($meta['lat'] ?? 0),
+                                'lng'          => (float) ($meta['lng'] ?? 0),
                                 'is_online'    => true
                             ];
-                            Log::info("LOG LOG: [Radar Admin] ✅ Admin berhasil dimasukkan ke List Driver!");
+                            Log::info("LOG LOG: [Radar] ✅ Driver Biasa ID {$dId} Lolos Filter (Jarak Jemput: {$dist} KM).");
                         }
                     }
-                } elseif ($admin->distance > $adminRadarRadius) {
-                    Log::warning("LOG LOG: [Radar Admin] ❌ Admin DITOLAK (Jarak {$admin->distance} KM melebihi batas {$adminRadarRadius} KM)");
                 }
-            } else {
-                Log::warning("LOG LOG: [Radar Admin] Data Admin ID 4 Tidak Ditemukan atau Koordinat GPS Kosong di Database");
             }
 
             // ==========================================================
-            // 3. URUTKAN SEMUANYA DARI YANG PALING DEKAT
+            // 🔥 [LANGKAH 3] GABUNGKAN & PRIORITASKAN SORTING
             // ==========================================================
-            usort($formattedDrivers, function($a, $b) {
+            if ($adminDataToPush) {
+                $formattedDrivers[] = $adminDataToPush;
+            }
+
+            usort($formattedDrivers, function($a, $b) use ($layanan) {
+                // RULE: Sancaka Express WAJIB dahulukan Admin ID 4
+                if ($layanan === 'sancaka_express') {
+                    if ($a['id_pengguna'] == 4) return -1;
+                    if ($b['id_pengguna'] == 4) return 1;
+                }
+
+                // Kalau Ojek Online, murni saingan berdasar jarak terdekat
                 return $a['distance_raw'] <=> $b['distance_raw'];
             });
 
@@ -694,13 +678,13 @@ class ApiMapboxController extends Controller
 
             return response()->json(['success' => true, 'data' => $formattedDrivers]);
         } catch (\Exception $e) {
-            Log::error("LOG LOG: [Radar CRASH] Pesan Error: " . $e->getMessage() . " | Baris: " . $e->getLine());
+            Log::error("LOG LOG: [Radar CRASH] Pesan Error: " . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Gagal sistem: ' . $e->getMessage()], 500);
         }
     }
 
 
-    public function notify_driver(Request $request)
+   public function notify_driver(Request $request)
     {
         Log::info("=== [API MAPBOX] REQUEST NOTIFY DRIVER / ADMIN (ORDER BARU) MASUK ===");
         Log::info("LOG LOG: Payload dari HP Pelanggan: ", $request->all());
@@ -708,30 +692,45 @@ class ApiMapboxController extends Controller
         $customerLat = $request->input('origin_lat');
         $customerLng = $request->input('origin_lng');
         $layanan     = $request->input('layanan', 'ojek_online');
-        $driverId    = $request->input('driver_id'); // 🔥 TANGKAP ID DRIVER DARI HP
+        $driverId    = $request->input('driver_id');
 
         $customer = $request->user();
 
-        // Cek data apa yang sebenarnya dibaca oleh Laravel
-        $debugData = DB::table('order_ojek_online')->get();
-        Log::info("DEBUG ISI TABEL: ", $debugData->toArray());
-        Log::info("DEBUG ID USER: " . ($customer->id_pengguna ?? $customer->id));
-
         // ==========================================================
-        // 🛡️ [PERISAI 1]: ANTI SPAM ORDER FIKTIF BERUNTUN
+        // 🛡️ [PERISAI TAMBAHAN]: MENCEGAH BUG & LIMITASI ANTAR
         // ==========================================================
-        $cekOrderAktif = DB::table('order_ojek_online')
-            ->where('customer_id', $customer->id_pengguna ?? $customer->id)
-            ->whereIn('status', ['pending', 'accepted', 'otw_jemput', 'otw_antar'])
-            ->exists();
 
-        if ($cekOrderAktif) {
-            Log::warning("LOG LOG: ⛔ SPAM DETECTED! User ID {$customer->id_pengguna} mencoba membuat order fiktif berlapis.");
+        if (empty($driverId)) {
+            Log::warning("LOG LOG: ⛔ Order Ditolak! Aplikasi tidak mengirimkan ID Driver.");
             return response()->json([
                 'status' => false,
-                'message' => 'Anda masih memiliki pesanan yang sedang berlangsung. Selesaikan atau batalkan terlebih dahulu!'
-            ], 403);
+                'message' => 'Driver/Kurir belum tersedia di sekitar Anda. Silakan tunggu beberapa saat lagi.'
+            ], 400);
         }
+
+        $destAddress = strtolower($request->input('dest_address', ''));
+        if (str_contains($destAddress, 'pilih tujuan')) {
+            Log::warning("LOG LOG: ⛔ Order Ditolak! Tujuan belum dipilih oleh user.");
+            return response()->json([
+                'status' => false,
+                'message' => 'Silakan pilih lokasi tujuan dengan benar di peta.'
+            ], 400);
+        }
+
+        // LIMITASI MAKSIMAL ANTAR (DROP-OFF)
+        $jarakKm = (float) $request->input('jarak_km', 0);
+
+        if ($layanan === 'sancaka_express') {
+            // Sancaka Express: Admin max antar 60 KM. Driver biasa tak terhingga (tidak dicek).
+            if ($driverId == 4 && $jarakKm > 60) {
+                Log::warning("LOG LOG: ⛔ Order Sancaka Express Ditolak! Jarak antar Admin {$jarakKm} KM melebihi batas 60 KM.");
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Jarak antar khusus Sancaka Express (Pusat) maksimal 60 KM. Coba cari lokasi yang lebih dekat.'
+                ], 400);
+            }
+        }
+        // ==========================================================
 
         // ==========================================================
         // 🛡️ [PERISAI 2]: ANTI MANIPULASI TARIF (HACKER BYPASS)
