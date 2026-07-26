@@ -980,62 +980,72 @@ class ApiMapboxController extends Controller
             $accessToken = $this->getGoogleAccessToken();
             $projectId = 'sancaka-express';
 
-            $tokensToTry = [];
+            $targets = []; // Array menampung object user (punya fcm_token & fcm_token_debug)
 
-            // LOG LOG: BROADCAST KE SEMUA DRIVER ONLINE & ADMIN JIKA SANCAKA EXPRESS
             if ($layanan === 'sancaka_express') {
+                // BROADCAST: Ambil Admin & Driver yang Aktif + APPROVED
                 $broadcastTargets = DB::table('Pengguna')
                     ->leftJoin('registrasi_driver_sancaka', 'Pengguna.id_pengguna', '=', 'registrasi_driver_sancaka.id_pengguna')
                     ->where('Pengguna.id_pengguna', 4) // Admin
-                    ->orWhere('registrasi_driver_sancaka.is_active_map', 1) // Driver nyalakan radar
+                    ->orWhere(function($query) {
+                        $query->where('registrasi_driver_sancaka.is_active_map', 1)
+                              ->where('registrasi_driver_sancaka.status', 'approved'); // WAJIB APPROVED
+                    })
                     ->select('Pengguna.fcm_token', 'Pengguna.fcm_token_debug')
                     ->get();
 
                 foreach ($broadcastTargets as $tgt) {
-                    if (!empty($tgt->fcm_token)) $tokensToTry[] = ['mode' => 'PRODUCTION', 'token' => $tgt->fcm_token];
-                    if (!empty($tgt->fcm_token_debug)) $tokensToTry[] = ['mode' => 'DEBUG', 'token' => $tgt->fcm_token_debug];
+                    $targets[] = $tgt;
                 }
             } else {
-                // Untuk Ojek Online, kirim ke driver yang dituju saja
-                if (!empty($driver->fcm_token)) $tokensToTry[] = ['mode' => 'PRODUCTION', 'token' => $driver->fcm_token];
-                if (!empty($driver->fcm_token_debug)) $tokensToTry[] = ['mode' => 'DEBUG', 'token' => $driver->fcm_token_debug];
+                // OJEK ONLINE: Hanya 1 Driver Target
+                if ($driver) $targets[] = $driver;
             }
 
-            if ($accessToken && count($tokensToTry) > 0) {
-                foreach ($tokensToTry as $target) {
-                    $mode = $target['mode'];
-                    $tokenStr = $target['token'];
+            // EKSEKUSI PENGIRIMAN
+            if ($accessToken && count($targets) > 0) {
+                foreach ($targets as $userTarget) {
+                    // Ambil token untuk 1 user ini saja
+                    $userTokens = [];
+                    if (!empty($userTarget->fcm_token)) $userTokens[] = ['mode' => 'PRODUCTION', 'token' => $userTarget->fcm_token];
+                    if (!empty($userTarget->fcm_token_debug)) $userTokens[] = ['mode' => 'DEBUG', 'token' => $userTarget->fcm_token_debug];
 
-                    $response = Http::withHeaders([
-                        'Authorization' => 'Bearer ' . $accessToken,
-                        'Content-Type'  => 'application/json',
-                    ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
-                        'message' => [
-                            'token' => $tokenStr,
-                            'android' => ['priority' => 'HIGH'],
-                            'data' => [
-                                'action'           => 'new_order',
-                                'layanan'          => (string) $layanan,
-                                'order_id'         => (string) $orderId,
-                                'customer_id'      => (string) ($customer->id_pengguna ?? $customer->id),
-                                'tarif'            => (string) $tarif,
-                                'jarak_ke_pemesan' => (string) $jarakKePemesanMeter,
-                                'origin_address'   => (string) $request->input('origin_address', ''),
-                                'dest_address'     => (string) $request->input('dest_address', ''),
-                                'catatan'          => (string) $request->input('catatan', ''),
-                                'berat'            => (string) $request->input('weight', '0'),
-                                'nama_barang'      => (string) $request->input('nama_barang', '-'),
-                                'panjang'          => (string) $request->input('panjang', '0'),
-                                'lebar'            => (string) $request->input('lebar', '0'),
-                                'tinggi'           => (string) $request->input('tinggi', '0'),
-                                'asuransi'         => (string) $request->input('asuransi', 'tidak'),
+                    // Looping token (coba production, jika sukses STOP untuk user ini, lanjut user berikutnya)
+                    foreach ($userTokens as $tokenData) {
+                        $mode = $tokenData['mode'];
+                        $tokenStr = $tokenData['token'];
+
+                        $response = Http::withHeaders([
+                            'Authorization' => 'Bearer ' . $accessToken,
+                            'Content-Type'  => 'application/json',
+                        ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                            'message' => [
+                                'token' => $tokenStr,
+                                'android' => ['priority' => 'HIGH'],
+                                'data' => [
+                                    'action'           => 'new_order',
+                                    'layanan'          => (string) $layanan,
+                                    'order_id'         => (string) $orderId,
+                                    'customer_id'      => (string) ($customer->id_pengguna ?? $customer->id),
+                                    'tarif'            => (string) $tarif,
+                                    'jarak_ke_pemesan' => (string) $jarakKePemesanMeter,
+                                    'origin_address'   => (string) $request->input('origin_address', ''),
+                                    'dest_address'     => (string) $request->input('dest_address', ''),
+                                    'catatan'          => (string) $request->input('catatan', ''),
+                                    'berat'            => (string) $request->input('weight', '0'),
+                                    'nama_barang'      => (string) $request->input('nama_barang', '-'),
+                                    'panjang'          => (string) $request->input('panjang', '0'),
+                                    'lebar'            => (string) $request->input('lebar', '0'),
+                                    'tinggi'           => (string) $request->input('tinggi', '0'),
+                                    'asuransi'         => (string) $request->input('asuransi', 'tidak'),
+                                ]
                             ]
-                        ]
-                    ]);
+                        ]);
 
-                    if ($response->successful()) {
-                        Log::info("LOG LOG: SUKSES! Notif terkirim ke Target menggunakan Token {$mode}.");
-                        break;
+                        if ($response->successful()) {
+                            Log::info("LOG LOG: SUKSES! Notif terkirim ke 1 User via Token {$mode}.");
+                            break; // HANYA BREAK LOOP TOKEN INTERNAL, LOOP USER LUAR TETAP JALAN!
+                        }
                     }
                 }
             }
@@ -1929,48 +1939,30 @@ class ApiMapboxController extends Controller
     }
 
   public function saveFcmToken(Request $request)
-    {
-        try {
-            // LOG PERTAMA: Bukti bahwa endpoint berhasil tertembak
-            \Illuminate\Support\Facades\Log::info("LOG LOG: 🎯 [ENDPOINT TERTEMBAK] Request FCM masuk! Header Auth: " . $request->header('Authorization'));
-            \Illuminate\Support\Facades\Log::info("LOG LOG: Payload Body: ", $request->all());
+{
+    try {
+        $user = auth('sanctum')->user();
+        if (!$user) return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
 
-            // Pengecekan Autentikasi Manual (karena kita di luar middleware)
-            $user = auth('sanctum')->user();
+        $userId = $user->id_pengguna ?? $user->id;
+        $isDebug = filter_var($request->input('is_debug', false), FILTER_VALIDATE_BOOLEAN);
+        $kolomTarget = $isDebug ? 'fcm_token_debug' : 'fcm_token';
 
-            if (!$user) {
-                \Illuminate\Support\Facades\Log::warning("LOG LOG: ⛔ [FCM DITOLAK] Token Sanctum tidak valid atau kosong.");
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized / User tidak ditemukan.'
-                ], 401);
-            }
+        // 1. CLEAR: Hapus token ini dari user lain agar tidak bocor (Leak Prevention)
+        \Illuminate\Support\Facades\DB::table('Pengguna')
+            ->where($kolomTarget, $request->fcm_token)
+            ->update([$kolomTarget => null]);
 
-            $userId = $user->id_pengguna ?? $user->id;
-            $isDebug = filter_var($request->input('is_debug', false), FILTER_VALIDATE_BOOLEAN);
-            $kolomTarget = $isDebug ? 'fcm_token_debug' : 'fcm_token';
+        // 2. UPDATE: Simpan ke user yang sedang login
+        \Illuminate\Support\Facades\DB::table('Pengguna')
+            ->where('id_pengguna', $userId)
+            ->update([$kolomTarget => $request->fcm_token]);
 
-            \Illuminate\Support\Facades\Log::info("LOG LOG: 🔥 [FCM MASUK] User ID: {$userId} | Mode: " . ($isDebug ? 'DEBUG' : 'PRODUCTION') . " | Token: " . substr($request->fcm_token, 0, 15) . "...");
-
-            \Illuminate\Support\Facades\DB::table('Pengguna')
-                ->where('id_pengguna', $userId)
-                ->update([
-                    $kolomTarget => $request->fcm_token
-                ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => "FCM Token berhasil disimpan ke kolom {$kolomTarget}"
-            ]);
-
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("LOG LOG: 💥 [FCM CRASH] Error: " . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan sistem saat menyimpan FCM token.'
-            ], 500);
-        }
+        return response()->json(['success' => true, 'message' => "FCM tersimpan aman."]);
+    } catch (\Exception $e) {
+        return response()->json(['success' => false, 'message' => 'Error'], 500);
     }
+}
 
     public function getKomisiFee(Request $request)
     {
