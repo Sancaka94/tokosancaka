@@ -31,7 +31,7 @@ class ApiMapboxController extends Controller
         $lngAsal = $request->input('sender_lng');
         $latTujuan = $request->input('receiver_lat');
         $lngTujuan = $request->input('receiver_lng');
-        $layanan = $request->input('layanan');
+        $layanan = $request->input('layanan', $request->input('vendor'));
         $beratGram = (float) $request->input('weight', 1000);
 
         if (!$latAsal || !$lngAsal || !$latTujuan || !$lngTujuan) {
