@@ -62,6 +62,9 @@ class VerifyCsrfToken extends Middleware
 
             '/api/callback/autokirim',
 
+            '/facebook/webhook',
+            '/api/facebook/webhook',
+
             '/api/mobile/dana/notify',
             '/api/mobile/dana/callback',
             '/api/mobile/dana/*',

@@ -61,6 +61,15 @@ use App\Http\Controllers\Api\Mobile\AdminDriverController;
 use App\Http\Controllers\ApiDuitkuController;
 use App\Http\Controllers\Api\Mobile\ApiSettingMobileOjekController;
 use App\Http\Controllers\PesananAutokirimController;
+use App\Http\Controllers\Api\FacebookWebhookController;
+
+
+
+// Route untuk verifikasi awal (GET)
+Route::get('/facebook/webhook', [FacebookWebhookController::class, 'verify']);
+
+// Route untuk menerima data payload (POST)
+Route::post('/facebook/webhook', [FacebookWebhookController::class, 'handle']);
 
 // Webhook Autokirim
 Route::post('/callback/autokirim', [\App\Http\Controllers\PesananAutokirimController::class, 'handleWebhook']);

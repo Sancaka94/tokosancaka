@@ -455,4 +455,42 @@ class AuthenticatedSessionController extends Controller
                 ]);
             }
     }
+
+    // ====================================================================
+    // FUNGSI WEBHOOK FACEBOOK (VERIFIKASI & HANDLE PAYLOAD)
+    // ====================================================================
+
+    public function verifyFacebookWebhook(Request $request)
+    {
+        // Token dari .env yang sudah Anda atur
+        $verifyToken = env('FACEBOOK_WEBHOOK_VERIFY_TOKEN', '82a3e562f2169adb8160f77c400555da');
+
+        $mode = $request->query('hub_mode');
+        $token = $request->query('hub_verify_token');
+        $challenge = $request->query('hub_challenge');
+
+        // Proses Verifikasi Awal
+        if ($mode === 'subscribe' && $token === $verifyToken) {
+            Log::info('LOG LOG: Facebook Webhook Berhasil Diverifikasi!');
+            // Wajib response dengan plain text dari 'hub_challenge'
+            return response($challenge, 200);
+        }
+
+        Log::warning('LOG LOG: Verifikasi Facebook Webhook Gagal. Token tidak cocok.');
+        return response('Forbidden', 403);
+    }
+
+    public function handleFacebookWebhook(Request $request)
+    {
+        $payload = $request->all();
+
+        // Simpan Log untuk memudahkan monitoring
+        Log::info('LOG LOG: [Facebook Webhook Payload Masuk]', $payload);
+
+        // Jika ke depan butuh memproses data dari FB, tambahkan logikanya di sini.
+        // Contoh: Proses status langganan, hapus data user (GDPR), dll.
+
+        // Facebook mewajibkan kita membalas dengan status 200 OK dalam 20 detik
+        return response()->json(['status' => 'success'], 200);
+    }
 }

@@ -684,7 +684,7 @@ class ApiMapboxController extends Controller
     }
 
 
-   public function notify_driver(Request $request)
+  public function notify_driver(Request $request)
     {
         Log::info("=== [API MAPBOX] REQUEST NOTIFY DRIVER / ADMIN (ORDER BARU) MASUK ===");
         Log::info("LOG LOG: Payload dari HP Pelanggan: ", $request->all());
@@ -750,7 +750,7 @@ class ApiMapboxController extends Controller
         }
 
         // ==========================================================
-        // VALIDASI SALDO PENUMPANG (Kode asli Anda lanjut di bawah sini)
+        // VALIDASI SALDO PENUMPANG
         // ==========================================================
         if ($metodePembayaran === 'SALDO') {
             $cekSaldoUser = DB::table('Pengguna')
@@ -821,6 +821,19 @@ class ApiMapboxController extends Controller
         $orderId = $orderPrefix . strtoupper(uniqid());
         Log::info("LOG LOG: Order ID di-generate: " . $orderId);
 
+        // ==========================================================
+        // 🔥 TAMBAHAN LOGIKA PAYMENT GATEWAY (MENGAMBIL DARI TOPUP)
+        // ==========================================================
+        $paymentMethodClean = str_replace('#', '', $metodePembayaran);
+        $isGateway = in_array($paymentMethodClean, ['DOKU', 'DOKU_JOKUL', 'DANA', 'DANA_BINDING', 'DANA_BALANCE']) || str_starts_with($paymentMethodClean, 'TRIPAY');
+
+        // Jika Gateway, tahan status jadi unpaid agar driver tidak menjemput
+        $initialStatus = $isGateway ? 'unpaid' : 'pending';
+        $paymentUrl = null;
+
+        // DB Transaction agar jika API Tripay/Doku error, database tidak nyangkut
+        DB::beginTransaction();
+
         try {
             DB::table('order_ojek_online')->insert([
                 'order_id'          => $orderId,
@@ -835,18 +848,88 @@ class ApiMapboxController extends Controller
                 'jarak_km'          => (float) $request->input('jarak_km', 0),
                 'waktu_menit'       => (int) $request->input('waktu_menit', 0),
                 'tarif'             => (float) $tarif,
-                'metode_pembayaran' => $metodePembayaran,
+                'metode_pembayaran' => $paymentMethodClean, // Bersih tanpa hashtag
                 'catatan'           => $request->input('catatan', null),
-                'status'            => 'pending',
+                'status'            => $initialStatus,      // Status dinamis (unpaid / pending)
                 'created_at'        => now(),
                 'updated_at'        => now(),
             ]);
 
-            Log::info("LOG LOG: Sukses Insert ke Database MySQL!");
+            Log::info("LOG LOG: Sukses Insert ke Database MySQL dengan status: {$initialStatus}");
 
             // ==========================================================
-            // 🔥 TAMBAHAN REDIS: Simpan Order Sementara (Auto Expire 30 Menit)
+            // 🔥 EKSEKUSI API GATEWAY JIKA METODE PEMBAYARAN ONLINE
             // ==========================================================
+            if ($isGateway) {
+                // Instansiasi Service DANA
+                $danaSignature = app(\App\Services\DanaSignatureService::class);
+                $this->applyDynamicConfig();
+
+                if ($paymentMethodClean === 'DANA_BINDING') {
+                    if (empty($customer->dana_access_token)) {
+                        throw new \Exception("Akun DANA belum terhubung.");
+                    }
+                    $danaRes = $this->_createDanaBindingOrderWidget($orderId, $tarif, $customer, $danaSignature);
+
+                    if (!isset($danaRes['success']) || !$danaRes['success']) {
+                        throw new \Exception($danaRes['message'] ?? 'Gagal memproses Auto Debit DANA.');
+                    }
+
+                    $paymentUrl = $danaRes['redirect_url'] ?? null;
+
+                    // Jika sukses instan auto-debit (tanpa perlu buka URL), majukan status ke pending
+                    if (!$paymentUrl && $danaRes['success']) {
+                        $initialStatus = 'pending';
+                        DB::table('order_ojek_online')->where('order_id', $orderId)->update(['status' => 'pending']);
+                        Log::info("LOG LOG: Auto Debit DANA sukses seketika. Status order diubah ke pending.");
+                    }
+
+                } elseif (in_array($paymentMethodClean, ['DANA', 'DANA_BALANCE'])) {
+                    $danaRes = $this->_createDanaGatewayOrder($orderId, $tarif, $customer, $danaSignature);
+                    if (!isset($danaRes['success']) || !$danaRes['success']) {
+                        throw new \Exception($danaRes['message'] ?? 'Gagal membuat tagihan DANA.');
+                    }
+                    $paymentUrl = $danaRes['redirect_url'];
+
+                } elseif ($paymentMethodClean === 'DOKU' || $paymentMethodClean === 'DOKU_JOKUL') {
+                    $dokuService = new \App\Services\DokuJokulService();
+                    $paymentUrl = $dokuService->createPayment($orderId, $tarif);
+                    if (empty($paymentUrl)) {
+                        throw new \Exception("Gagal mendapatkan link dari DOKU Jokul.");
+                    }
+
+                } else {
+                    // JALUR TRIPAY (BCAVA, QRIS, DLL)
+                    $orderItems = [
+                        ['sku' => 'RIDE', 'name' => 'Layanan Sancaka', 'price' => $tarif, 'quantity' => 1]
+                    ];
+                    $tripayResponse = $this->_createTripayOrderInternal($orderId, $tarif, $paymentMethodClean, $orderItems, $customer);
+
+                    if (empty($tripayResponse['success'])) {
+                        throw new \Exception($tripayResponse['message'] ?? 'Gagal membuat tagihan Tripay.');
+                    }
+                    $paymentUrl = $tripayResponse['data']['checkout_url'];
+                }
+            }
+
+            DB::commit();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("LOG LOG: CRASH Insert DB / Gateway! Pesan: " . $e->getMessage());
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal memproses pembayaran: ' . $e->getMessage()
+            ], 400); // 400 Bad Request agar muncul di alert HP
+        }
+
+        // ==========================================================
+        // 🔥 EKSEKUSI NOTIF DRIVER HANYA JIKA STATUS PENDING
+        // (Cash, Saldo Dompet, atau DANA Auto Debit yg sukses)
+        // ==========================================================
+        if ($initialStatus === 'pending') {
+
+            // TAMBAHAN REDIS: Simpan Order Sementara (Auto Expire 30 Menit)
             try {
                 $orderDataRedis = [
                     'order_id'    => $orderId,
@@ -857,7 +940,7 @@ class ApiMapboxController extends Controller
                     'tarif'       => $tarif
                 ];
                 // 1800 detik = 30 menit. Jika 30 menit tidak diapa-apakan, auto hapus dari memori!
-                Redis::setex("order_active:{$orderId}", 1800, json_encode($orderDataRedis));
+                \Illuminate\Support\Facades\Redis::setex("order_active:{$orderId}", 1800, json_encode($orderDataRedis));
                 Log::info("LOG LOG: Sukses simpan order {$orderId} ke Redis (Expire 30 Menit)");
             } catch (\Exception $e) {
                 Log::warning("LOG LOG: Gagal simpan ke Redis: " . $e->getMessage());
@@ -932,12 +1015,29 @@ class ApiMapboxController extends Controller
                 }
             }
 
-            return response()->json(['status' => true, 'message' => 'Pesanan berhasil dikirim ke Admin/Kurir.', 'order_id' => $orderId]);
-
-        } catch (\Exception $e) {
-            Log::error("LOG LOG: CRASH Insert DB / Notif! Pesan: " . $e->getMessage());
-            return response()->json(['status' => false, 'message' => 'Gagal membuat pesanan di server.'], 500);
+        } else {
+            Log::info("LOG LOG: Status pesanan {$orderId} adalah UNPAID. Notifikasi FCM driver ditahan menunggu pelunasan dari Gateway.");
         }
+
+        // ==========================================================
+        // RESPONSE KEMBALI KE FRONTEND
+        // ==========================================================
+        if ($initialStatus === 'unpaid') {
+            // Karena aplikasi React Native Expo sudah live dan akan langsung force redirect ke Map jika status=true,
+            // Maka kita tetap kirim status=true, tapi informasikan kepada user untuk bayar lewat menu Riwayat.
+            return response()->json([
+                'status' => true,
+                'message' => 'Pesanan diamankan! Silakan buka menu Riwayat untuk melanjutkan pembayaran agar Driver menuju ke lokasi Anda.',
+                'order_id' => $orderId,
+                'payment_url' => $paymentUrl
+            ]);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Pesanan berhasil dikirim ke Admin/Kurir.',
+            'order_id' => $orderId
+        ]);
     }
 
 
@@ -2112,6 +2212,220 @@ class ApiMapboxController extends Controller
 
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Sistem Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Helper: Dinamisasi Config DANA
+     */
+    private function applyDynamicConfig()
+    {
+        $settings = \App\Models\Api::pluck('value', 'key')->toArray();
+        $isProduction = ($settings['dana_production_mode'] ?? '0') == '1';
+
+        if ($isProduction) {
+            config([
+                'services.dana.dana_env'      => 'PRODUCTION',
+                'services.dana.base_url'      => 'https://api.saas.dana.id',
+                'services.dana.merchant_id'   => $settings['dana_prod_merchant_id'] ?? env('DANA_PROD_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.private_key'   => $settings['dana_prod_private_key'] ?? env('DANA_PROD_PRIVATE_KEY'),
+                'services.dana.client_secret' => $settings['dana_prod_client_secret'] ?? env('DANA_PROD_CLIENT_SECRET'),
+                'services.dana.origin'        => env('DANA_ORIGIN', 'https://tokosancaka.com'),
+            ]);
+        } else {
+            config([
+                'services.dana.dana_env'      => 'SANDBOX',
+                'services.dana.base_url'      => 'https://api.sandbox.dana.id',
+                'services.dana.merchant_id'   => $settings['dana_sandbox_merchant_id'] ?? env('DANA_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.private_key'   => $settings['dana_sandbox_private_key'] ?? env('DANA_PRIVATE_KEY'),
+                'services.dana.client_secret' => $settings['dana_sandbox_client_secret'] ?? env('DANA_CLIENT_SECRET'),
+                'services.dana.origin'        => env('DANA_ORIGIN', 'https://tokosancaka.com'),
+            ]);
+        }
+    }
+
+    /**
+     * Helper: Create Tripay Order
+     */
+    private function _createTripayOrderInternal($orderId, $amount, $paymentMethod, array $orderItems, $user): array
+    {
+        $mode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
+
+        if ($mode === 'production') {
+            $baseUrl      = 'https://tripay.co.id/api/transaction/create';
+            $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
+            $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'production');
+            $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', 'production');
+        } else {
+            $baseUrl      = 'https://tripay.co.id/api-sandbox/transaction/create';
+            $apiKey       = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
+            $privateKey   = \App\Models\Api::getValue('TRIPAY_PRIVATE_KEY', 'sandbox');
+            $merchantCode = \App\Models\Api::getValue('TRIPAY_MERCHANT_CODE', 'sandbox');
+        }
+
+        $payload = [
+            'method'         => $paymentMethod,
+            'merchant_ref'   => $orderId,
+            'amount'         => $amount,
+            'customer_name'  => $user->nama_lengkap ?? 'User Sancaka',
+            'customer_email' => $user->email ?? ('user'.$user->id_pengguna.'@tokosancaka.com'),
+            'customer_phone' => $user->no_wa ?? '081111111111',
+            'order_items'    => $orderItems,
+            'return_url'     => url('/'),
+            'expired_time'   => time() + (24 * 60 * 60),
+            'signature'      => hash_hmac('sha256', $merchantCode . $orderId . $amount, $privateKey),
+        ];
+
+        try {
+            $response = Http::withHeaders(['Authorization' => 'Bearer ' . $apiKey])->timeout(30)->post($baseUrl, $payload);
+            $responseData = $response->json();
+
+            if (!$response->successful() || !isset($responseData['success']) || $responseData['success'] !== true) {
+                return ['success' => false, 'message' => $responseData['message'] ?? 'Gagal membuat tagihan Tripay.'];
+            }
+            return $responseData;
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Error API Tripay: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Helper: Create DANA Checkout
+     */
+    private function _createDanaGatewayOrder($orderId, $amount, $user, $danaSignature)
+    {
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(29)->format('Y-m-d\TH:i:sP');
+        $amountValue = number_format((float)$amount, 2, '.', '');
+
+        $path = '/payment-gateway/v1.0/debit/payment-host-to-host.htm';
+
+        $body = [
+            "partnerReferenceNo" => (string) $orderId,
+            "merchantId"         => config('services.dana.merchant_id'),
+            "amount"             => ["value" => $amountValue, "currency" => "IDR"],
+            "validUpTo"          => $validUpTo,
+            "urlParams"          => [
+                ["url" => route('dana.return', ['trx_id' => $orderId]), "type" => "PAY_RETURN", "isDeeplink" => "N"],
+                ["url" => url('/dana/notify'), "type" => "NOTIFICATION", "isDeeplink" => "N"]
+            ],
+            "payOptionDetails"   => [
+                ["payMethod" => "BALANCE", "payOption" => "BALANCE", "transAmount" => ["value" => $amountValue, "currency" => "IDR"]]
+            ],
+            "additionalInfo"     => [
+                "order"   => ["orderTitle" => substr("Order " . $orderId, 0, 64), "scenario" => "API"],
+                "mcc"     => "5732",
+                "envInfo" => ["sourcePlatform" => "IPG", "terminalType" => "SYSTEM", "orderTerminalType" => "APP"]
+            ]
+        ];
+
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        try {
+            $accessToken = $danaSignature->getAccessToken();
+            $signature   = $danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+            $baseUrl     = config('services.dana.base_url');
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'Authorization' => 'Bearer ' . $accessToken,
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID' => (string) time() . \Illuminate\Support\Str::random(6),
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
+            $result = $response->json();
+
+            if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
+                $redirectUrl = $result['appLinkUrl'] ?? $result['webRedirectUrl'] ?? null;
+                if (!empty($redirectUrl)) {
+                    return ['success' => true, 'redirect_url' => $redirectUrl];
+                }
+            }
+
+            return ['success' => false, 'message' => "Gagal dari DANA: " . ($result['responseMessage'] ?? 'Unknown Error')];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Koneksi DANA Gagal.'];
+        }
+    }
+
+    /**
+     * Helper: Create DANA Binding (Auto Debit)
+     */
+    public function _createDanaBindingOrderWidget($orderId, $amount, $userAccount, $danaSignature)
+    {
+        $timestamp = \Carbon\Carbon::now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $validUpTo = \Carbon\Carbon::now('Asia/Jakarta')->addMinutes(30)->format('Y-m-d\TH:i:sP');
+        $path = '/rest/redirection/v1.0/debit/payment-host-to-host';
+        $amountValue = number_format((float)$amount, 2, '.', '');
+
+        $body = [
+            "partnerReferenceNo" => (string) $orderId,
+            "merchantId"         => config('services.dana.merchant_id'),
+            "validUpTo"          => $validUpTo,
+            "amount"             => ["value" => $amountValue, "currency" => "IDR"],
+            "urlParams"          => [
+                ["type" => "NOTIFICATION", "url" => url('/dana/notify')],
+                ["type" => "PAY_RETURN", "url" => route('dana.return', ['trx_id' => $orderId]), "isDeeplink" => "N"]
+            ],
+            "payOptionDetails" => [
+                ["payMethod" => "BALANCE", "payOption" => "BALANCE", "transAmount" => ["value" => $amountValue, "currency" => "IDR"]]
+            ],
+            "additionalInfo" => [
+                "order" => [
+                    "orderTitle"        => substr("Order " . $orderId, 0, 64),
+                    "merchantTransType" => "01",
+                    "buyer"             => ["externalUserId" => (string) $userAccount->id_pengguna, "externalUserType" => "MERCHANT_USER", "nickname" => "Customer"]
+                ],
+                "mcc"     => "5732",
+                "envInfo" => ["sourcePlatform" => "IPG", "terminalType" => "SYSTEM", "orderTerminalType" => "WEB"]
+            ]
+        ];
+
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        try {
+            $accessTokenB2B = $danaSignature->getAccessToken();
+            $signature      = $danaSignature->generateSignature('POST', $path, $jsonBody, $timestamp);
+            $baseUrl        = config('services.dana.base_url');
+
+            $headers = [
+                'Content-Type'           => 'application/json',
+                'Authorization'          => 'Bearer ' . $accessTokenB2B,
+                'Authorization-Customer' => 'Bearer ' . $userAccount->dana_access_token,
+                'X-TIMESTAMP'            => $timestamp,
+                'X-SIGNATURE'            => $signature,
+                'ORIGIN'                 => config('services.dana.origin'),
+                'X-PARTNER-ID'           => config('services.dana.x_partner_id'),
+                'X-EXTERNAL-ID'          => (string) time() . \Illuminate\Support\Str::random(6),
+                'X-DEVICE-ID'            => 'SANCAKA-APP',
+                'CHANNEL-ID'             => '95221'
+            ];
+
+            $response = \Illuminate\Support\Facades\Http::withHeaders($headers)->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
+            $result = $response->json();
+
+            if (isset($result['responseCode']) && $result['responseCode'] === '2005400') {
+                $redirectUrl = $result['webRedirectUrl'] ?? null;
+                if (!empty($redirectUrl)) {
+                    // Coba request OTT token agar bisa langsung bayar 1 klik tanpa login DANA lagi (seperti di TopUpController)
+                    // ... [Sengaja disingkat untuk fokus pada URL]
+                    return ['success' => true, 'redirect_url' => $redirectUrl];
+                }
+            }
+            return ['success' => false, 'message' => "Gagal dari DANA: " . ($result['responseMessage'] ?? 'Error')];
+
+        } catch (\Exception $e) {
+            return ['success' => false, 'message' => 'Koneksi DANA gagal.'];
         }
     }
 

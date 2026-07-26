@@ -56,6 +56,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/webhook/ipaymu',  // Jika route ada di api.php
             'webhook/ipaymu',      // Jika route ada di web.php
             'api/callback/autokirim',
+            'facebook/webhook',
+            'api/facebook/webhook',
 
             ]);
 
