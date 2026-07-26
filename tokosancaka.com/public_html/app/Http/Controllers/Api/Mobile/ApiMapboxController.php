@@ -837,7 +837,7 @@ class ApiMapboxController extends Controller
                 'order_id'          => $orderId,
                 'customer_id'       => $customer->id_pengguna,
                 // LOG LOG: Jika Express biarkan NULL agar bisa diambil siapa saja
-                'driver_id'         => ($layanan === 'sancaka_express') ? null : $driver->driver_user_id,
+                'driver_id'         => ($layanan === 'sancaka_express') ? 0 : $driver->driver_user_id,
                 'origin_lat'        => $customerLat,
                 'origin_lng'        => $customerLng,
                 'origin_address'    => $request->input('origin_address', 'Lokasi Jemput'),
