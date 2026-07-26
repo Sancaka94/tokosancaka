@@ -691,7 +691,7 @@ class ApiMapboxController extends Controller
 
         $customerLat = $request->input('origin_lat');
         $customerLng = $request->input('origin_lng');
-        $layanan     = $request->input('layanan', 'ojek_online');
+        $layanan     = $request->input('layanan', $request->input('vendor', 'ojek_online'));
         $driverId    = $request->input('driver_id');
 
         $customer = $request->user();
@@ -700,7 +700,8 @@ class ApiMapboxController extends Controller
         // 🛡️ [PERISAI TAMBAHAN]: MENCEGAH BUG & LIMITASI ANTAR
         // ==========================================================
 
-        if (empty($driverId)) {
+        // LOG LOG: Jika layanan Ojek Online WAJIB ada Driver, jika Sancaka Express boleh kosong (masuk database antrean)
+        if (empty($driverId) && $layanan !== 'sancaka_express') {
             Log::warning("LOG LOG: ⛔ Order Ditolak! Aplikasi tidak mengirimkan ID Driver.");
             return response()->json([
                 'status' => false,
@@ -780,42 +781,39 @@ class ApiMapboxController extends Controller
         // ==========================================================
         // CARI TARGET FCM (APAKAH ITU ADMIN ATAU DRIVER BIASA?)
         // ==========================================================
-        if ($driverId == 4) {
-            $driver = DB::table('Pengguna')
-                ->where('id_pengguna', 4)
-                ->select('fcm_token', 'fcm_token_debug', 'nama_lengkap', 'latitude', 'longitude', 'id_pengguna as driver_user_id')
-                ->first();
+        $driver = null;
+        $jarakKePemesanMeter = 0;
 
-            // Set default koordinat admin (misal: pusat Ngawi) agar jarak tidak error
-            if ($driver && !$driver->latitude) {
-                $driver->latitude = -7.4025;
-                $driver->longitude = 111.4558;
+        // LOG LOG: Target spesifik hanya dicari jika layanannya BUKAN Sancaka Express
+        if ($layanan !== 'sancaka_express') {
+            if ($driverId == 4) {
+                $driver = DB::table('Pengguna')
+                    ->where('id_pengguna', 4)
+                    ->select('fcm_token', 'fcm_token_debug', 'nama_lengkap', 'latitude', 'longitude', 'id_pengguna as driver_user_id')
+                    ->first();
+
+                if ($driver && !$driver->latitude) {
+                    $driver->latitude = -7.4025;
+                    $driver->longitude = 111.4558;
+                }
+            } else {
+                $driver = DB::table('registrasi_driver_sancaka')
+                    ->join('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
+                    ->where('registrasi_driver_sancaka.id', $driverId)
+                    ->select('Pengguna.fcm_token', 'Pengguna.fcm_token_debug', 'registrasi_driver_sancaka.nama_lengkap', 'registrasi_driver_sancaka.latitude', 'registrasi_driver_sancaka.longitude', 'registrasi_driver_sancaka.id_pengguna as driver_user_id')
+                    ->first();
             }
-        } else {
-            $driver = DB::table('registrasi_driver_sancaka')
-                ->join('Pengguna', 'registrasi_driver_sancaka.id_pengguna', '=', 'Pengguna.id_pengguna')
-                ->where('registrasi_driver_sancaka.id', $driverId)
-                ->select(
-                    'Pengguna.fcm_token',
-                    'Pengguna.fcm_token_debug',
-                    'registrasi_driver_sancaka.nama_lengkap',
-                    'registrasi_driver_sancaka.latitude',
-                    'registrasi_driver_sancaka.longitude',
-                    'registrasi_driver_sancaka.id_pengguna as driver_user_id'
-                )
-                ->first();
-        }
 
-        // CEK TOKEN FCM
-        if (!$driver || (empty($driver->fcm_token) && empty($driver->fcm_token_debug))) {
-            Log::warning("LOG LOG: Target Offline atau FCM Kosong untuk Driver ID: {$driverId}.");
-            return response()->json(['status' => false, 'message' => 'Driver/Admin belum mengaktifkan notifikasi.'], 404);
-        }
+            if (!$driver || (empty($driver->fcm_token) && empty($driver->fcm_token_debug))) {
+                Log::warning("LOG LOG: Target Offline atau FCM Kosong untuk Driver ID: {$driverId}.");
+                return response()->json(['status' => false, 'message' => 'Driver/Admin belum mengaktifkan notifikasi.'], 404);
+            }
 
-        $jarakKePemesanMeter = $this->getDistanceMeter(
-            (float)$driver->latitude, (float)$driver->longitude,
-            (float)$customerLat, (float)$customerLng
-        );
+            $jarakKePemesanMeter = $this->getDistanceMeter(
+                (float)$driver->latitude, (float)$driver->longitude,
+                (float)$customerLat, (float)$customerLng
+            );
+        }
 
         // GENERATE ORDER ID
         $orderId = $orderPrefix . strtoupper(uniqid());
@@ -838,7 +836,8 @@ class ApiMapboxController extends Controller
             DB::table('order_ojek_online')->insert([
                 'order_id'          => $orderId,
                 'customer_id'       => $customer->id_pengguna,
-                'driver_id'         => $driver->driver_user_id, // Masuk sesuai ID target yang dilempar dari HP
+                // LOG LOG: Jika Express biarkan NULL agar bisa diambil siapa saja
+                'driver_id'         => ($layanan === 'sancaka_express') ? null : $driver->driver_user_id,
                 'origin_lat'        => $customerLat,
                 'origin_lng'        => $customerLng,
                 'origin_address'    => $request->input('origin_address', 'Lokasi Jemput'),
@@ -929,27 +928,33 @@ class ApiMapboxController extends Controller
         // ==========================================================
         if ($initialStatus === 'pending') {
 
-            // TAMBAHAN REDIS: Simpan Order Sementara (Auto Expire 30 Menit)
+           // TAMBAHAN REDIS: Simpan Order Sementara
             try {
                 $orderDataRedis = [
                     'order_id'    => $orderId,
                     'customer_id' => $customer->id_pengguna,
-                    'driver_id'   => $driver->driver_user_id,
+                    'driver_id'   => ($layanan === 'sancaka_express') ? null : $driver->driver_user_id,
                     'status'      => 'pending',
                     'layanan'     => $layanan,
                     'tarif'       => $tarif
                 ];
-                // 1800 detik = 30 menit. Jika 30 menit tidak diapa-apakan, auto hapus dari memori!
-                \Illuminate\Support\Facades\Redis::setex("order_active:{$orderId}", 1800, json_encode($orderDataRedis));
-                Log::info("LOG LOG: Sukses simpan order {$orderId} ke Redis (Expire 30 Menit)");
+
+                // LOG LOG: Jika Sancaka Express, biarkan di redis lama (12 Jam) karena user mau nunggu berjam-jam
+                $expireTime = ($layanan === 'sancaka_express') ? 43200 : 1800;
+                \Illuminate\Support\Facades\Redis::setex("order_active:{$orderId}", $expireTime, json_encode($orderDataRedis));
+                Log::info("LOG LOG: Sukses simpan order {$orderId} ke Redis");
             } catch (\Exception $e) {
                 Log::warning("LOG LOG: Gagal simpan ke Redis: " . $e->getMessage());
             }
 
             // FIREBASE RTDB PUSH
             try {
-                $firebaseDbUrl = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/incoming_orders/{$driver->driver_user_id}/{$orderId}.json";
-                $fbResponse = Http::put($firebaseDbUrl, [
+                // LOG LOG: Jika express, taruh di node "pool_express" agar semua driver bisa lihat
+                if ($layanan === 'sancaka_express') {
+                    $firebaseDbUrl = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/incoming_orders/pool_express/{$orderId}.json";
+                } else {
+                    $firebaseDbUrl = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/incoming_orders/{$driver->driver_user_id}/{$orderId}.json";
+                }$fbResponse = Http::put($firebaseDbUrl, [
                     'order_id'       => $orderId,
                     'origin_lat'     => $customerLat,
                     'origin_lng'     => $customerLng,
@@ -968,13 +973,30 @@ class ApiMapboxController extends Controller
                 Log::error("LOG LOG: 💥 CRASH JARINGAN SERVER KE FIREBASE: " . $e->getMessage());
             }
 
-            // FIREBASE FCM (PUSH NOTIFICATION)
+           // FIREBASE FCM (PUSH NOTIFICATION)
             $accessToken = $this->getGoogleAccessToken();
             $projectId = 'sancaka-express';
 
             $tokensToTry = [];
-            if (!empty($driver->fcm_token)) $tokensToTry[] = ['mode' => 'PRODUCTION', 'token' => $driver->fcm_token];
-            if (!empty($driver->fcm_token_debug)) $tokensToTry[] = ['mode' => 'DEBUG', 'token' => $driver->fcm_token_debug];
+
+            // LOG LOG: BROADCAST KE SEMUA DRIVER ONLINE & ADMIN JIKA SANCAKA EXPRESS
+            if ($layanan === 'sancaka_express') {
+                $broadcastTargets = DB::table('Pengguna')
+                    ->leftJoin('registrasi_driver_sancaka', 'Pengguna.id_pengguna', '=', 'registrasi_driver_sancaka.id_pengguna')
+                    ->where('Pengguna.id_pengguna', 4) // Admin
+                    ->orWhere('registrasi_driver_sancaka.is_active_map', 1) // Driver nyalakan radar
+                    ->select('Pengguna.fcm_token', 'Pengguna.fcm_token_debug')
+                    ->get();
+
+                foreach ($broadcastTargets as $tgt) {
+                    if (!empty($tgt->fcm_token)) $tokensToTry[] = ['mode' => 'PRODUCTION', 'token' => $tgt->fcm_token];
+                    if (!empty($tgt->fcm_token_debug)) $tokensToTry[] = ['mode' => 'DEBUG', 'token' => $tgt->fcm_token_debug];
+                }
+            } else {
+                // Untuk Ojek Online, kirim ke driver yang dituju saja
+                if (!empty($driver->fcm_token)) $tokensToTry[] = ['mode' => 'PRODUCTION', 'token' => $driver->fcm_token];
+                if (!empty($driver->fcm_token_debug)) $tokensToTry[] = ['mode' => 'DEBUG', 'token' => $driver->fcm_token_debug];
+            }
 
             if ($accessToken && count($tokensToTry) > 0) {
                 foreach ($tokensToTry as $target) {
@@ -1098,9 +1120,14 @@ class ApiMapboxController extends Controller
 
             Log::info("LOG LOG: Pesanan {$orderId} resmi diterima oleh Driver ID: {$driverUser->id_pengguna}");
 
-            // HAPUS DARI FIREBASE RTDB AGAR HILANG DARI DASHBOARD
+            // HAPUS DARI FIREBASE RTDB AGAR HILANG DARI DASHBOARD DRIVER LAIN
             try {
-                $firebaseDbUrl = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/incoming_orders/{$driverUser->id_pengguna}/{$orderId}.json";
+                // LOG LOG: Jika orderan adalah Sancaka Express, hapus dari folder "pool_express"
+                if (str_starts_with($orderId, 'S-EXP-')) {
+                    $firebaseDbUrl = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/incoming_orders/pool_express/{$orderId}.json";
+                } else {
+                    $firebaseDbUrl = "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app/incoming_orders/{$driverUser->id_pengguna}/{$orderId}.json";
+                }
                 $fbResponse = Http::delete($firebaseDbUrl);
 
                 if ($fbResponse->successful()) {
