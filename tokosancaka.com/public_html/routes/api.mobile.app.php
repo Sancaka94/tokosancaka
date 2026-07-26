@@ -53,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/driver/update-location', [ApiMapboxController::class, 'updateLocation']);
     Route::post('/order/notify-driver', [ApiMapboxController::class, 'notify_driver']);
     Route::post('/order/driver-accept', [ApiMapboxController::class, 'accept_order']);
+    Route::post('/driver/accept-order', [ApiMapboxController::class, 'accept_order']);
     Route::get('/order/track-driver/{driver_id}', [ApiMapboxController::class, 'track_driver']);
     // Rute untuk resi (Sancaka Express)
     Route::get('/order/resi/{order_id}', [ApiMapboxController::class, 'get_order_resi_detail']);
