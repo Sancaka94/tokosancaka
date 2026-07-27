@@ -282,6 +282,11 @@ class ScanSpxController extends Controller
         $this->_sendTelegramNotificationLengkap($suratJalan, $scans, $customerObj);
         $this->_sendEmailSuratJalanLengkap($suratJalan, $scans, $customerObj); // <-- Tambahkan baris ini
 
+        $this->_sendExpoPushNotification(
+            "Surat Jalan Berhasil 🚚",
+            "Surat jalan No. {$suratJalan->kode_surat_jalan} berisi {$suratJalan->jumlah_paket} paket telah siap didownload."
+        );
+
 
         return $pdf->download('surat-jalan-' . $kode_surat_jalan . '.pdf');
     }
@@ -527,13 +532,43 @@ class ScanSpxController extends Controller
             </div>
         ";
 
-        try {
+       try {
             Mail::html($htmlBody, function ($message) use ($suratJalan) {
-                $message->to('salafy1995@gmail.com') // Ganti jika email admin Sancaka berbeda
+                // Kirim ke Admin
+                $message->to('salafy1995@gmail.com')
                         ->subject("Surat Jalan (SPX Mobile) - {$suratJalan->kode_surat_jalan}");
+
+                // --- TAMBAHAN: Kirim juga ke Email User yang sedang Login ---
+                $userEmail = \Illuminate\Support\Facades\Auth::user()->email;
+                if (!empty($userEmail)) {
+                    $message->cc($userEmail); // Jadikan CC agar user juga menerima
+                }
             });
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Gagal mengirim Email Surat Jalan: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Mengirim Push Notification Pop-up ke HP User via Expo Token
+     */
+    private function _sendExpoPushNotification($title, $body)
+    {
+        // Ambil token user yang sedang login
+        $expoToken = \Illuminate\Support\Facades\Auth::user()->expo_token;
+
+        // Jika user tidak punya token (belum install app / izinkan notif), batalkan.
+        if (empty($expoToken)) return;
+
+        try {
+            \Illuminate\Support\Facades\Http::post('https://exp.host/--/api/v2/push/send', [
+                'to'    => $expoToken,
+                'title' => $title,
+                'body'  => $body,
+                'sound' => 'default',
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Expo Push Error: " . $e->getMessage());
         }
     }
 
