@@ -280,11 +280,33 @@ class ScanSpxController extends Controller
         // --- Notifikasi Email ke Anda & Customer ---
         $this->_sendEmailSuratJalanLengkap($suratJalan, $scans, $customerObj);
 
-        // --- Notifikasi Pop-up (Expo Push) ke HP Customer ---
+        // --- SUSUN TEKS LENGKAP UNTUK PUSH NOTIFICATION ---
+        $namaNotif = $customerObj->nama ?? 'Pengguna';
+
+        // Ambil maksimal 3 resi agar pop-up di HP tidak terlalu panjang/terpotong
+        $resiText = "";
+        $hitung = 0;
+        foreach ($scans as $pkg) {
+            if ($hitung < 100) {
+                $resiText .= "▪️ " . $pkg->resi_number . "\n";
+            }
+            $hitung++;
+        }
+        if (count($scans) > 100) {
+            $sisa = count($scans) - 100;
+            $resiText .= "(...dan {$sisa} paket lainnya)\n";
+        }
+
+        $bodyNotif = "Pengirim: {$namaNotif}\n";
+        $bodyNotif .= "No. SJ: {$suratJalan->kode_surat_jalan}\n";
+        $bodyNotif .= "Total: {$suratJalan->jumlah_paket} Paket\n";
+        $bodyNotif .= "Daftar Resi:\n" . rtrim($resiText);
+
+        // --- KIRIM PUSH NOTIFICATION ---
         $this->_sendExpoPushNotification(
-            "Surat Jalan Berhasil 🚚",
-            "Surat jalan No. {$suratJalan->kode_surat_jalan} berisi {$suratJalan->jumlah_paket} paket telah siap.",
-            $suratJalan // Jangan lupa sertakan variabel ini!
+            "Surat Jalan SPX Sancaka Express 🚚",
+            $bodyNotif,
+            $suratJalan
         );
 
         return $pdf->download('surat-jalan-' . $kode_surat_jalan . '.pdf');
