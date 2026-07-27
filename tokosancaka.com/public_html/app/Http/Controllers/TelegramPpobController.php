@@ -583,13 +583,17 @@ class TelegramPpobController extends Controller
                 DB::rollBack();
             }
 
-            // --- PENGIRIMAN ALERT KE TELEGRAM ADMIN ---
+           // --- PENGIRIMAN ALERT KE TELEGRAM ADMIN ---
             $adminChatId = '1885140247'; // ID Telegram Anda
 
-            $pesanAdmin = "🚨 <b>ALERT SYSTEM SANCAKA</b> 🚨\n\n";
-            $pesanAdmin .= "Terjadi Error di sistem:\n";
+            // Ambil waktu saat ini persis saat error terjadi
+            $waktuError = now()->format('Y-m-d H:i:s');
 
-            // Hapus pembatas substr agar pesan error tampil sepenuhnya (selama tidak lebih dari 4000 huruf)
+            $pesanAdmin = "🚨 <b>ALERT SYSTEM SANCAKA</b> 🚨\n\n";
+            $pesanAdmin .= "Waktu: <b>$waktuError</b>\n";
+            $pesanAdmin .= "Terjadi Error di sistem:\n\n";
+
+            // Teks error utuh
             $pesanAdmin .= $e->getMessage() . "\n\n";
 
             $pesanAdmin .= "Harap cek log server!";
