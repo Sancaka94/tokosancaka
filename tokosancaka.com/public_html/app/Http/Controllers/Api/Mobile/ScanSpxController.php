@@ -279,14 +279,17 @@ class ScanSpxController extends Controller
             'customer' => $customerObj // Jaga-jaga jika Blade murni memanggil $customer->nama
         ]);
 
+        // --- KODE SEBELUMNYA ---
         $this->_sendTelegramNotificationLengkap($suratJalan, $scans, $customerObj);
-        $this->_sendEmailSuratJalanLengkap($suratJalan, $scans, $customerObj); // <-- Tambahkan baris ini
+        $this->_sendEmailSuratJalanLengkap($suratJalan, $scans, $customerObj);
 
+        // --- PERBAIKAN: Tambahkan variabel $suratJalan di parameter ke-3 ---
         $this->_sendExpoPushNotification(
             "Surat Jalan Berhasil 🚚",
-            "Surat jalan No. {$suratJalan->kode_surat_jalan} berisi {$suratJalan->jumlah_paket} paket telah siap didownload."
+            "Surat jalan No. {$suratJalan->kode_surat_jalan} berisi {$suratJalan->jumlah_paket} paket telah siap didownload.",
+            $suratJalan
         );
-
+        // ------------------------------------------------------------------
 
         return $pdf->download('surat-jalan-' . $kode_surat_jalan . '.pdf');
     }
@@ -538,10 +541,12 @@ class ScanSpxController extends Controller
                 $message->to('salafy1995@gmail.com')
                         ->subject("Surat Jalan (SPX Mobile) - {$suratJalan->kode_surat_jalan}");
 
-                // --- TAMBAHAN: Kirim juga ke Email User yang sedang Login ---
-                $userEmail = \Illuminate\Support\Facades\Auth::user()->email;
-                if (!empty($userEmail)) {
-                    $message->cc($userEmail); // Jadikan CC agar user juga menerima
+                // --- PERBAIKAN: Ambil email dari database, bukan dari Auth ---
+                if ($suratJalan->user_id) {
+                    $userDB = \App\Models\User::where('id_pengguna', $suratJalan->user_id)->first();
+                    if ($userDB && !empty($userDB->email)) {
+                        $message->cc($userDB->email); // Kirim ke email user
+                    }
                 }
             });
         } catch (\Exception $e) {
@@ -549,16 +554,21 @@ class ScanSpxController extends Controller
         }
     }
 
-    /**
+   /**
      * Mengirim Push Notification Pop-up ke HP User via Expo Token
      */
-    private function _sendExpoPushNotification($title, $body)
+    private function _sendExpoPushNotification($title, $body, $suratJalan)
     {
-        // Ambil token user yang sedang login
-        $expoToken = \Illuminate\Support\Facades\Auth::user()->expo_token;
+        // 1. Jika surat jalan tidak memiliki user_id, batalkan
+        if (!$suratJalan->user_id) return;
 
-        // Jika user tidak punya token (belum install app / izinkan notif), batalkan.
-        if (empty($expoToken)) return;
+        // 2. Ambil data user dari database berdasarkan user_id di Surat Jalan
+        $userDB = \App\Models\User::where('id_pengguna', $suratJalan->user_id)->first();
+
+        // 3. Jika user tidak ditemukan atau belum punya expo_token, batalkan
+        if (!$userDB || empty($userDB->expo_token)) return;
+
+        $expoToken = $userDB->expo_token;
 
         try {
             \Illuminate\Support\Facades\Http::post('https://exp.host/--/api/v2/push/send', [
