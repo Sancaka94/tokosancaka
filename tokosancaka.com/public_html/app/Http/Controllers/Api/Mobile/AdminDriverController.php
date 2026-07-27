@@ -231,4 +231,52 @@ class AdminDriverController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Menghapus banyak data pendaftaran driver sekaligus (Bulk Destroy).
+     * POST /api/mobile/admin/drivers/bulk-destroy
+     */
+    public function bulkDestroy(Request $request)
+    {
+        Log::info("=== [ADMIN API] PROSES MASSAL BULK DESTROY DRIVER ===");
+
+        // Validasi input
+        $validator = Validator::make($request->all(), [
+            'ids' => 'required|array',
+            'ids.*' => 'required|integer'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal, parameter ID wajib berformat array angka.',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $user = $request->user();
+            // Pengaman akses Admin
+            if ($user->id != 4 && $user->id_pengguna != 4) {
+                return response()->json(['success' => false, 'message' => 'Akses ditolak!'], 403);
+            }
+
+            $ids = $request->input('ids');
+
+            // Hapus data di tabel registrasi_driver_sancaka
+            $count = DB::table('registrasi_driver_sancaka')->whereIn('id', $ids)->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Berhasil menghapus secara massal {$count} data pendaftaran driver."
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error("[ADMIN API] Gagal mengeksekusi bulk destroy driver: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memproses penghapusan massal di server.'
+            ], 500);
+        }
+    }
 }
