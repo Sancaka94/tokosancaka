@@ -134,6 +134,11 @@ class TelegramPpobController extends Controller
                     break;
                 // -------------------------
 
+                case '/downloadlog':
+                    $this->downloadLaravelLog($chatId);
+                    break;
+                // -------------------------
+
                 default:
                     // --- LOGIKA BARU DI SINI ---
 
@@ -578,16 +583,19 @@ class TelegramPpobController extends Controller
                 DB::rollBack();
             }
 
-            // --- TAMBAHKAN KODE INI UNTUK NOTIFIKASI KE ADMIN ---
-            $adminChatId = '1885140247'; // Chat ID TokoSancaka.Com
+            // --- PENGIRIMAN ALERT KE TELEGRAM ADMIN ---
+            $adminChatId = '1885140247'; // ID Telegram Anda
+
             $pesanAdmin = "🚨 <b>ALERT SYSTEM SANCAKA</b> 🚨\n\n";
             $pesanAdmin .= "Terjadi Error di sistem:\n";
-            $pesanAdmin .= substr($e->getMessage(), 0, 150) . "...\n\n";
+
+            // Hapus pembatas substr agar pesan error tampil sepenuhnya (selama tidak lebih dari 4000 huruf)
+            $pesanAdmin .= $e->getMessage() . "\n\n";
+
             $pesanAdmin .= "Harap cek log server!";
 
             $this->sendMessage($adminChatId, $pesanAdmin);
-            // -----------------------------------------------------
-
+            // ------------------------------------------
             // Kirim pesan error ke Telegram agar kita tahu
             $this->sendMessage($chatId, "⚠️ <b>SYSTEM ERROR:</b> " . substr($e->getMessage(), 0, 100));
         }
@@ -1516,4 +1524,44 @@ class TelegramPpobController extends Controller
         }
     }
 
+    /**
+     * FUNGSI BARU: Download laravel.log via Telegram utuh (tanpa potong teks)
+     */
+    private function downloadLaravelLog($chatId)
+    {
+        $adminChatId = '1885140247';
+
+        if ($chatId != $adminChatId) {
+            $this->sendMessage($chatId, "⛔ Anda tidak memiliki akses untuk mengunduh log.");
+            return;
+        }
+
+        $logPath = storage_path('logs/laravel.log');
+
+        if (!\Illuminate\Support\Facades\File::exists($logPath) || filesize($logPath) == 0) {
+            $this->sendMessage($chatId, "⚠️ File log saat ini kosong atau tidak ditemukan.");
+            return;
+        }
+
+        $this->sendMessage($chatId, "⏳ Sedang mengunggah file log, mohon tunggu...");
+
+        try {
+            $url = "https://api.telegram.org/bot{$this->telegramToken}/sendDocument";
+
+            // Mengirim file sebagai dokumen agar tidak terkena limit teks Telegram
+            $response = \Illuminate\Support\Facades\Http::timeout(60)
+                ->attach('document', file_get_contents($logPath), 'laravel.log')
+                ->post($url, [
+                    'chat_id' => $chatId,
+                    'caption' => "📄 Ini file laravel.log sistem Anda secara utuh (tidak terbatas)."
+                ]);
+
+            if ($response->failed()) {
+                $this->sendMessage($chatId, "❌ Gagal mengirim file ke Telegram: " . $response->body());
+            }
+
+        } catch (\Exception $e) {
+            $this->sendMessage($chatId, "❌ Error saat mengunggah file: " . $e->getMessage());
+        }
+    }
 }
