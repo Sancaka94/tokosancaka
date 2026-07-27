@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Cache; // Wajib import Cache
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;   // Wajib import Log
+use Illuminate\Support\Facades\Http;  // Wajib import Http
 use App\Http\View\Composers\HeaderComposer;
 use App\Models\Api;
 use App\Models\User;     // Model User
@@ -38,8 +40,61 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        // =========================================================
+        // FITUR BARU: LOG LISTENER (KIRIM LOG REAL-TIME KE TELEGRAM)
+        // =========================================================
+        Log::listen(function ($log) {
+            $pesanLog = $log->message;
+
+            // 1. FILTER SPAM: Abaikan log looping DANA agar bot tidak diblokir
+            if (str_contains($pesanLog, '[DANA BALANCE CHECK]') || str_contains($pesanLog, 'DANA Menggunakan Mode')) {
+                return;
+            }
+
+            // 2. CHAT ID TELEGRAM TOKOSANCAKA.COM
+            $adminChatId = '1885140247';
+
+            // Ambil token dari file .env (services.telegram.token)
+            $botToken = config('services.telegram.token');
+
+            if (empty($botToken)) {
+                return;
+            }
+
+            // 3. SUSUN PESAN TELEGRAM
+            $levelText = strtoupper($log->level); // INFO, ERROR, WARNING, dll
+
+            // Pilih emoji berdasarkan tingkat urgensi log
+            $emoji = '🔔';
+            if ($levelText === 'ERROR' || $levelText === 'CRITICAL') {
+                $emoji = '🚨';
+            } elseif ($levelText === 'WARNING') {
+                $emoji = '⚠️';
+            }
+
+            $pesan = "$emoji <b>LOG MASUK [$levelText]</b>\n";
+            $pesan .= "Waktu: <b>" . now()->format('Y-m-d H:i:s') . "</b>\n\n";
+
+            // Batasi 3000 karakter agar Telegram tidak menolak pesannya
+            $pesan .= substr($pesanLog, 0, 3000);
+
+            // 4. KIRIM KE TELEGRAM (Timeout 2 detik agar web tidak lemot)
+            try {
+                Http::timeout(2)->post("https://api.telegram.org/bot{$botToken}/sendMessage", [
+                    'chat_id' => $adminChatId,
+                    'text' => $pesan,
+                    'parse_mode' => 'HTML',
+                    'disable_web_page_preview' => true
+                ]);
+            } catch (\Exception $e) {
+                // Biarkan kosong jika gagal (misal tidak ada internet),
+                // agar tidak membuat fungsi utama aplikasi menjadi error.
+            }
+        });
+        // =========================================================
+
         View::composer('layouts.marketplace', function ($view) {
-        $view->with('weblogo', 'logo.png'); // Replace 'logo.png' with your logic
+            $view->with('weblogo', 'logo.png'); // Replace 'logo.png' with your logic
         });
         // ----------------------------------------
         // 1. VIEW COMPOSER
