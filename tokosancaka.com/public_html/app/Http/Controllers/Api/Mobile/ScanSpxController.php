@@ -564,25 +564,54 @@ class ScanSpxController extends Controller
     }
 
    /**
-     * Mengirim Push Notification Pop-up ke HP User via Expo Token
+     * Mengirim Push Notification Pop-up ke HP User via Expo Token + Ke Admin
      */
     private function _sendExpoPushNotification($title, $body, $suratJalan)
     {
-        // 1. Ambil data user dari database berdasarkan user_id di Surat Jalan
-        $userDB = \App\Models\User::where('id_pengguna', $suratJalan->user_id)->first();
+        $messages = [];
+        $tokens_terkirim = []; // Array untuk mencegah duplikasi (jika admin tes fitur sendiri)
 
-        // 2. Jika user tidak ditemukan atau token kosong, hentikan tanpa error
-        if (!$userDB || empty($userDB->expo_token)) {
-            return;
+        // 1. Ambil data Customer (yang melakukan scan)
+        if ($suratJalan->user_id) {
+            $userDB = \App\Models\User::where('id_pengguna', $suratJalan->user_id)->first();
+            if ($userDB && !empty($userDB->expo_token)) {
+                $messages[] = [
+                    'to'    => $userDB->expo_token,
+                    'title' => $title,
+                    'body'  => $body,
+                    'sound' => 'default',
+                ];
+                $tokens_terkirim[] = $userDB->expo_token;
+            }
         }
 
+        // 2. Ambil data ADMIN SANCAKA (ID Pengguna: 4)
+        $adminDB = \App\Models\User::where('id_pengguna', 4)->first();
+        if ($adminDB && !empty($adminDB->expo_token)) {
+            // Pastikan Admin belum dimasukkan ke array (agar notif tidak dobel di HP Admin)
+            if (!in_array($adminDB->expo_token, $tokens_terkirim)) {
+
+                // Tambahkan penanda "[INFO ADMIN]" agar Anda tahu ini dari pelanggan
+                $adminTitle = "Tembusan Admin: " . $title;
+
+                $messages[] = [
+                    'to'    => $adminDB->expo_token,
+                    'title' => $adminTitle,
+                    'body'  => $body,
+                    'sound' => 'default',
+                ];
+            }
+        }
+
+        // 3. Jika tidak ada token sama sekali yang valid, batalkan
+        if (empty($messages)) return;
+
+        // 4. Kirim Push Notification secara Massal (Bulk) ke Expo
         try {
-            \Illuminate\Support\Facades\Http::post('https://exp.host/--/api/v2/push/send', [
-                'to'    => $userDB->expo_token,
-                'title' => $title,
-                'body'  => $body,
-                'sound' => 'default',
-            ]);
+            \Illuminate\Support\Facades\Http::withHeaders([
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ])->post('https://exp.host/--/api/v2/push/send', $messages);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Expo Push Error: " . $e->getMessage());
         }
