@@ -183,6 +183,7 @@ class ScanSpxController extends Controller
         }
     }
 
+
     /**
      * 4. Membuat surat jalan.
      */
