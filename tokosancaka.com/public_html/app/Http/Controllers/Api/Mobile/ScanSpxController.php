@@ -279,17 +279,18 @@ class ScanSpxController extends Controller
             'customer' => $customerObj // Jaga-jaga jika Blade murni memanggil $customer->nama
         ]);
 
-        // --- KODE SEBELUMNYA ---
+        // --- Notifikasi Telegram ke Anda ---
         $this->_sendTelegramNotificationLengkap($suratJalan, $scans, $customerObj);
+
+        // --- Notifikasi Email ke Anda & Customer ---
         $this->_sendEmailSuratJalanLengkap($suratJalan, $scans, $customerObj);
 
-        // --- PERBAIKAN: Tambahkan variabel $suratJalan di parameter ke-3 ---
+        // --- Notifikasi Pop-up (Expo Push) ke HP Customer ---
         $this->_sendExpoPushNotification(
             "Surat Jalan Berhasil 🚚",
-            "Surat jalan No. {$suratJalan->kode_surat_jalan} berisi {$suratJalan->jumlah_paket} paket telah siap didownload.",
-            $suratJalan
+            "Surat jalan No. {$suratJalan->kode_surat_jalan} berisi {$suratJalan->jumlah_paket} paket telah siap.",
+            $suratJalan // Jangan lupa sertakan variabel ini!
         );
-        // ------------------------------------------------------------------
 
         return $pdf->download('surat-jalan-' . $kode_surat_jalan . '.pdf');
     }
@@ -488,7 +489,7 @@ class ScanSpxController extends Controller
         }
     }
 
-    /**
+   /**
      * Mengirim Notifikasi LENGKAP Surat Jalan ke Email (SPX Mobile)
      */
     private function _sendEmailSuratJalanLengkap($suratJalan, $scans, $customerObj)
@@ -496,7 +497,6 @@ class ScanSpxController extends Controller
         $namaPengirim = $customerObj->nama ?? '-';
         $noWa = $customerObj->no_wa ?? '-';
         $alamat = $customerObj->alamat ?? '-';
-
         $waktu = \Carbon\Carbon::parse($suratJalan->created_at)->timezone('Asia/Jakarta')->translatedFormat('l, d F Y - H:i');
 
         $googleMapsUrl = "-";
@@ -509,12 +509,10 @@ class ScanSpxController extends Controller
             $resiList .= "{$pkg->resi_number}<br>";
         }
 
-        // Format Body HTML Email
         $htmlBody = "
             <div style='font-family: Arial, sans-serif; color: #333;'>
                 <h2 style='color: #d9534f;'>⚠ Surat Jalan (SPX Mobile) Diunduh ⚠</h2>
                 <p>Telah diproses surat jalan oleh <strong>{$namaPengirim}</strong>.</p>
-
                 <table style='width: 100%; max-width: 500px; border-collapse: collapse; margin-bottom: 15px;'>
                     <tr><td style='padding: 5px 0;'><strong>Waktu Input:</strong></td><td>{$waktu}</td></tr>
                     <tr><td style='padding: 5px 0;'><strong>No. Surat Jalan:</strong></td><td>{$suratJalan->kode_surat_jalan}</td></tr>
@@ -522,30 +520,24 @@ class ScanSpxController extends Controller
                     <tr><td style='padding: 5px 0;'><strong>No. WA Pengirim:</strong></td><td>{$noWa}</td></tr>
                     <tr><td style='padding: 5px 0;'><strong>Alamat Pengirim:</strong></td><td>{$alamat}</td></tr>
                 </table>
-
                 <div style='background: #f9f9f9; padding: 10px; border-left: 4px solid #0275d8; margin-bottom: 15px;'>
-                    <strong>Daftar Resi:</strong><br>
-                    {$resiList}
+                    <strong>Daftar Resi:</strong><br>{$resiList}
                 </div>
-
-                <p>
-                    <strong>Lokasi Pickup:</strong><br>
-                    <a href='{$googleMapsUrl}' style='color: #0275d8; text-decoration: none;'>Buka di Google Maps &rarr;</a>
-                </p>
+                <p><strong>Lokasi Pickup:</strong><br><a href='{$googleMapsUrl}' style='color: #0275d8; text-decoration: none;'>Buka di Google Maps &rarr;</a></p>
             </div>
         ";
 
-       try {
+        try {
             Mail::html($htmlBody, function ($message) use ($suratJalan) {
                 // Kirim ke Admin
                 $message->to('salafy1995@gmail.com')
                         ->subject("Surat Jalan (SPX Mobile) - {$suratJalan->kode_surat_jalan}");
 
-                // --- PERBAIKAN: Ambil email dari database, bukan dari Auth ---
+                // PANCING EMAIL DARI DATABASE
                 if ($suratJalan->user_id) {
                     $userDB = \App\Models\User::where('id_pengguna', $suratJalan->user_id)->first();
                     if ($userDB && !empty($userDB->email)) {
-                        $message->cc($userDB->email); // Kirim ke email user
+                        $message->cc($userDB->email); // CC ke email Pelanggan/Agen
                     }
                 }
             });
@@ -559,20 +551,17 @@ class ScanSpxController extends Controller
      */
     private function _sendExpoPushNotification($title, $body, $suratJalan)
     {
-        // 1. Jika surat jalan tidak memiliki user_id, batalkan
-        if (!$suratJalan->user_id) return;
-
-        // 2. Ambil data user dari database berdasarkan user_id di Surat Jalan
+        // 1. Ambil data user dari database berdasarkan user_id di Surat Jalan
         $userDB = \App\Models\User::where('id_pengguna', $suratJalan->user_id)->first();
 
-        // 3. Jika user tidak ditemukan atau belum punya expo_token, batalkan
-        if (!$userDB || empty($userDB->expo_token)) return;
-
-        $expoToken = $userDB->expo_token;
+        // 2. Jika user tidak ditemukan atau token kosong, hentikan tanpa error
+        if (!$userDB || empty($userDB->expo_token)) {
+            return;
+        }
 
         try {
             \Illuminate\Support\Facades\Http::post('https://exp.host/--/api/v2/push/send', [
-                'to'    => $expoToken,
+                'to'    => $userDB->expo_token,
                 'title' => $title,
                 'body'  => $body,
                 'sound' => 'default',
