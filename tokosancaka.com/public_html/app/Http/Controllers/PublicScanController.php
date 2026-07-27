@@ -75,7 +75,7 @@ class PublicScanController extends Controller
     public function updateKontakProfil(Request $request, $id)
     {
         $kontak = Kontak::findOrFail($id);
-        
+
         $validated = $request->validate([
             'email' => 'required|email|unique:kontaks,email,' . $id,
             'jenis_kelamin' => 'required|in:Laki-laki,Perempuan,Pribadi,Perusahaan',
@@ -85,7 +85,7 @@ class PublicScanController extends Controller
         $kontak->update($validated);
 
         return response()->json([
-            'success' => true, 
+            'success' => true,
             'data' => $kontak,
             'message' => 'Data berhasil dilengkapi.'
         ]);
@@ -249,6 +249,8 @@ class PublicScanController extends Controller
             'locationQrCodeBase64' => $locationQrCodeBase64
         ]);
 
+        $this->_sendTelegramNotificationLengkap($suratJalan);
+
         return $pdf->stream('SuratJalan-' . $suratJalan->kode_surat_jalan . '.pdf');
     }
 
@@ -278,7 +280,7 @@ class PublicScanController extends Controller
             <div style='font-family: Arial, sans-serif; color: #333;'>
                 <h2 style='color: #d9534f;'>⚠ Surat Jalan Baru Dibuat ⚠</h2>
                 <p>Telah dibuat surat jalan baru oleh <strong>{$kontak->nama}</strong>.</p>
-                
+
                 <table style='width: 100%; max-width: 500px; border-collapse: collapse; margin-bottom: 15px;'>
                     <tr><td style='padding: 5px 0;'><strong>Waktu Input:</strong></td><td>{$timestamp}</td></tr>
                     <tr><td style='padding: 5px 0;'><strong>No. Surat Jalan:</strong></td><td>{$suratJalan->kode_surat_jalan}</td></tr>
@@ -306,7 +308,7 @@ class PublicScanController extends Controller
             Mail::html($htmlBody, function ($message) use ($suratJalan, $kontak) {
                 $message->to('salafy1995@gmail.com')
                         ->subject("Surat Jalan Baru Dibuat - {$suratJalan->kode_surat_jalan}");
-                
+
                 // Tambahkan CC ke email customer jika datanya ada
                 if (!empty($kontak->email)) {
                     $message->cc($kontak->email);
@@ -317,6 +319,64 @@ class PublicScanController extends Controller
 
         } catch (\Exception $e) {
             Log::error("Gagal mengirim notifikasi Email (Surat Jalan): " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Mengirim Notifikasi LENGKAP Surat Jalan ke Telegram (Seperti Email)
+     */
+    private function _sendTelegramNotificationLengkap(SuratJalan $suratJalan)
+    {
+        $botToken = config('services.telegram.token');
+        $chatId = '1885140247'; // ID Telegram Anda (TokoSancaka.Com)
+
+        if (empty($botToken)) return;
+
+        // Pastikan relasi kontak dimuat untuk mengambil WA dan Alamat
+        $suratJalan->load('kontak');
+        $kontak = $suratJalan->kontak;
+        $namaPengirim = $kontak ? $kontak->nama : '-';
+        $noWa = $kontak ? $kontak->no_hp : '-';
+        $alamat = $kontak ? $kontak->alamat : '-';
+
+        $waktu = \Carbon\Carbon::parse($suratJalan->created_at)->timezone('Asia/Jakarta')->format('d-m-Y H:i:s');
+        $googleMapsUrl = "https://www.google.com/maps?q={$suratJalan->latitude},{$suratJalan->longitude}";
+
+        // Ambil daftar resi
+        $packages = \App\Models\ScannedPackage::where('surat_jalan_id', $suratJalan->id)->get();
+        $resiList = "";
+        foreach ($packages as $pkg) {
+            $resiList .= "▪️ <code>{$pkg->resi_number}</code>\n";
+        }
+
+        // Format Pesan Teks Telegram (Mirip Email)
+        $pesan = "🚨 <b>SURAT JALAN BARU DIUNDUH</b> 🚨\n\n";
+        $pesan .= "Telah diproses surat jalan oleh <b>{$namaPengirim}</b>.\n\n";
+
+        $pesan .= "<b>DETAIL INFORMASI:</b>\n";
+        $pesan .= "⏱ Waktu: {$waktu}\n";
+        $pesan .= "🆔 No. SJ: <b>{$suratJalan->kode_surat_jalan}</b>\n";
+        $pesan .= "📦 Jumlah Paket: {$suratJalan->jumlah_paket}\n";
+        $pesan .= "📱 No. WA: {$noWa}\n";
+        $pesan .= "🏠 Alamat: {$alamat}\n\n";
+
+        $pesan .= "<b>DAFTAR RESI:</b>\n";
+        $pesan .= $resiList . "\n";
+
+        $pesan .= "📍 <b>Lokasi Pickup:</b>\n";
+        $pesan .= "<a href='{$googleMapsUrl}'>Buka di Google Maps 🌍</a>\n";
+
+        try {
+            $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
+
+            \Illuminate\Support\Facades\Http::timeout(5)->post($url, [
+                'chat_id' => $chatId,
+                'text' => $pesan,
+                'parse_mode' => 'HTML',
+                'disable_web_page_preview' => true
+            ]);
+        } catch (\Exception $e) {
+            // Sengaja dibiarkan kosong agar jika Telegram error, pelanggan tetap bisa download PDF dengan lancar
         }
     }
 }
