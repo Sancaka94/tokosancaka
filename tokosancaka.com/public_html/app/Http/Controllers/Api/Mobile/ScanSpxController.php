@@ -463,10 +463,14 @@ class ScanSpxController extends Controller
 
         $waktu = \Carbon\Carbon::parse($suratJalan->created_at)->timezone('Asia/Jakarta')->format('d-m-Y H:i:s');
 
-        // Link Google Maps (jika latitude & longitude tersedia di database)
+        // Link Google Maps (Ambil dari Surat Jalan, jika kosong ambil dari Profil Pengguna)
+        $userDB = \App\Models\User::where('id_pengguna', $suratJalan->user_id)->first();
+        $lat = $suratJalan->latitude ?? ($userDB->latitude ?? null);
+        $lng = $suratJalan->longitude ?? ($userDB->longitude ?? null);
+
         $googleMapsUrl = "-";
-        if (!empty($suratJalan->latitude) && !empty($suratJalan->longitude)) {
-            $googleMapsUrl = "<a href='https://www.google.com/maps?q={$suratJalan->latitude},{$suratJalan->longitude}'>Buka di Google Maps 🌍</a>";
+        if (!empty($lat) && !empty($lng)) {
+            $googleMapsUrl = "<a href='https://www.google.com/maps?q={$lat},{$lng}'>Buka di Google Maps 🌍</a>";
         }
 
         // Ambil daftar resi
@@ -516,9 +520,13 @@ class ScanSpxController extends Controller
         $alamat = $customerObj->alamat ?? '-';
         $waktu = \Carbon\Carbon::parse($suratJalan->created_at)->timezone('Asia/Jakarta')->translatedFormat('l, d F Y - H:i');
 
+        $userDB = \App\Models\User::where('id_pengguna', $suratJalan->user_id)->first();
+        $lat = $suratJalan->latitude ?? ($userDB->latitude ?? null);
+        $lng = $suratJalan->longitude ?? ($userDB->longitude ?? null);
+
         $googleMapsUrl = "-";
-        if (!empty($suratJalan->latitude) && !empty($suratJalan->longitude)) {
-            $googleMapsUrl = "https://www.google.com/maps?q={$suratJalan->latitude},{$suratJalan->longitude}";
+        if (!empty($lat) && !empty($lng)) {
+            $googleMapsUrl = "https://www.google.com/maps?q={$lat},{$lng}";
         }
 
         $resiList = "";
