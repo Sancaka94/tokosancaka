@@ -16,6 +16,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ScansExport;
+use Illuminate\Support\Facades\Mail;
 
 class ScanSpxController extends Controller
 {
@@ -278,6 +279,10 @@ class ScanSpxController extends Controller
             'customer' => $customerObj // Jaga-jaga jika Blade murni memanggil $customer->nama
         ]);
 
+        $this->_sendTelegramNotificationLengkap($suratJalan, $scans, $customerObj);
+        $this->_sendEmailSuratJalanLengkap($suratJalan, $scans, $customerObj); // <-- Tambahkan baris ini
+
+
         return $pdf->download('surat-jalan-' . $kode_surat_jalan . '.pdf');
     }
 
@@ -416,6 +421,120 @@ class ScanSpxController extends Controller
         ]);
     }
 
+    /**
+     * Mengirim Notifikasi LENGKAP Surat Jalan ke Telegram (SPX Mobile)
+     */
+    private function _sendTelegramNotificationLengkap($suratJalan, $scans, $customerObj)
+    {
+        $botToken = config('services.telegram.token');
+        $chatId = '1885140247'; // ID Telegram Anda (TokoSancaka.Com)
 
+        if (empty($botToken)) return;
+
+        $namaPengirim = $customerObj->nama ?? '-';
+        $noWa = $customerObj->no_wa ?? '-';
+        $alamat = $customerObj->alamat ?? '-';
+
+        $waktu = \Carbon\Carbon::parse($suratJalan->created_at)->timezone('Asia/Jakarta')->format('d-m-Y H:i:s');
+
+        // Link Google Maps (jika latitude & longitude tersedia di database)
+        $googleMapsUrl = "-";
+        if (!empty($suratJalan->latitude) && !empty($suratJalan->longitude)) {
+            $googleMapsUrl = "<a href='https://www.google.com/maps?q={$suratJalan->latitude},{$suratJalan->longitude}'>Buka di Google Maps 🌍</a>";
+        }
+
+        // Ambil daftar resi
+        $resiList = "";
+        foreach ($scans as $pkg) {
+            $resiList .= "▪️ <code>{$pkg->resi_number}</code>\n";
+        }
+
+        // Format Pesan Teks Telegram (Lengkap seperti Email)
+        $pesan = "🚨 <b>SURAT JALAN (SPX MOBILE) DIUNDUH</b> 🚨\n\n";
+        $pesan .= "Telah diproses surat jalan oleh <b>{$namaPengirim}</b>.\n\n";
+
+        $pesan .= "<b>DETAIL INFORMASI:</b>\n";
+        $pesan .= "⏱ Waktu Input: {$waktu}\n";
+        $pesan .= "🆔 No. SJ: <b>{$suratJalan->kode_surat_jalan}</b>\n";
+        $pesan .= "📦 Jumlah Paket: {$suratJalan->jumlah_paket}\n";
+        $pesan .= "📱 No. WA: {$noWa}\n";
+        $pesan .= "🏠 Alamat: {$alamat}\n\n";
+
+        $pesan .= "<b>DAFTAR RESI:</b>\n";
+        $pesan .= $resiList . "\n";
+
+        $pesan .= "📍 <b>Lokasi Pickup:</b>\n";
+        $pesan .= $googleMapsUrl . "\n";
+
+        try {
+            $url = "https://api.telegram.org/bot{$botToken}/sendMessage";
+
+            \Illuminate\Support\Facades\Http::timeout(5)->post($url, [
+                'chat_id' => $chatId,
+                'text' => $pesan,
+                'parse_mode' => 'HTML',
+                'disable_web_page_preview' => true
+            ]);
+        } catch (\Exception $e) {
+            // Sengaja dibiarkan kosong agar jika Telegram error, web/aplikasi tidak ikut error
+        }
+    }
+
+    /**
+     * Mengirim Notifikasi LENGKAP Surat Jalan ke Email (SPX Mobile)
+     */
+    private function _sendEmailSuratJalanLengkap($suratJalan, $scans, $customerObj)
+    {
+        $namaPengirim = $customerObj->nama ?? '-';
+        $noWa = $customerObj->no_wa ?? '-';
+        $alamat = $customerObj->alamat ?? '-';
+
+        $waktu = \Carbon\Carbon::parse($suratJalan->created_at)->timezone('Asia/Jakarta')->translatedFormat('l, d F Y - H:i');
+
+        $googleMapsUrl = "-";
+        if (!empty($suratJalan->latitude) && !empty($suratJalan->longitude)) {
+            $googleMapsUrl = "https://www.google.com/maps?q={$suratJalan->latitude},{$suratJalan->longitude}";
+        }
+
+        $resiList = "";
+        foreach ($scans as $pkg) {
+            $resiList .= "{$pkg->resi_number}<br>";
+        }
+
+        // Format Body HTML Email
+        $htmlBody = "
+            <div style='font-family: Arial, sans-serif; color: #333;'>
+                <h2 style='color: #d9534f;'>⚠ Surat Jalan (SPX Mobile) Diunduh ⚠</h2>
+                <p>Telah diproses surat jalan oleh <strong>{$namaPengirim}</strong>.</p>
+
+                <table style='width: 100%; max-width: 500px; border-collapse: collapse; margin-bottom: 15px;'>
+                    <tr><td style='padding: 5px 0;'><strong>Waktu Input:</strong></td><td>{$waktu}</td></tr>
+                    <tr><td style='padding: 5px 0;'><strong>No. Surat Jalan:</strong></td><td>{$suratJalan->kode_surat_jalan}</td></tr>
+                    <tr><td style='padding: 5px 0;'><strong>Jumlah Paket:</strong></td><td>{$suratJalan->jumlah_paket}</td></tr>
+                    <tr><td style='padding: 5px 0;'><strong>No. WA Pengirim:</strong></td><td>{$noWa}</td></tr>
+                    <tr><td style='padding: 5px 0;'><strong>Alamat Pengirim:</strong></td><td>{$alamat}</td></tr>
+                </table>
+
+                <div style='background: #f9f9f9; padding: 10px; border-left: 4px solid #0275d8; margin-bottom: 15px;'>
+                    <strong>Daftar Resi:</strong><br>
+                    {$resiList}
+                </div>
+
+                <p>
+                    <strong>Lokasi Pickup:</strong><br>
+                    <a href='{$googleMapsUrl}' style='color: #0275d8; text-decoration: none;'>Buka di Google Maps &rarr;</a>
+                </p>
+            </div>
+        ";
+
+        try {
+            Mail::html($htmlBody, function ($message) use ($suratJalan) {
+                $message->to('salafy1995@gmail.com') // Ganti jika email admin Sancaka berbeda
+                        ->subject("Surat Jalan (SPX Mobile) - {$suratJalan->kode_surat_jalan}");
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Gagal mengirim Email Surat Jalan: " . $e->getMessage());
+        }
+    }
 
 }
