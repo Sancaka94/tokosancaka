@@ -129,6 +129,11 @@ class TelegramPpobController extends Controller
                     $this->trackResi($chatId, $text);
                     break;
 
+                case '/hapuslog':
+                    $this->clearLaravelLog($chatId);
+                    break;
+                // -------------------------
+
                 default:
                     // --- LOGIKA BARU DI SINI ---
 
@@ -566,12 +571,23 @@ class TelegramPpobController extends Controller
                 Log::info("👉 [STEP 8] Gagal & Refund Selesai");
             }
 
-        } catch (\Exception $e) {
+       } catch (\Exception $e) {
             Log::error("🔥 [CRITICAL ERROR] di baris " . $e->getLine() . ": " . $e->getMessage());
 
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
+
+            // --- TAMBAHKAN KODE INI UNTUK NOTIFIKASI KE ADMIN ---
+            $adminChatId = '1885140247'; // Chat ID TokoSancaka.Com
+            $pesanAdmin = "🚨 <b>ALERT SYSTEM SANCAKA</b> 🚨\n\n";
+            $pesanAdmin .= "Terjadi Error di sistem:\n";
+            $pesanAdmin .= substr($e->getMessage(), 0, 150) . "...\n\n";
+            $pesanAdmin .= "Harap cek log server!";
+
+            $this->sendMessage($adminChatId, $pesanAdmin);
+            // -----------------------------------------------------
+
             // Kirim pesan error ke Telegram agar kita tahu
             $this->sendMessage($chatId, "⚠️ <b>SYSTEM ERROR:</b> " . substr($e->getMessage(), 0, 100));
         }
@@ -1468,6 +1484,35 @@ class TelegramPpobController extends Controller
                         <h1 style='color:red;'>❌ GAGAL KIRIM WA</h1>
                         <p>Cek koneksi Fonnte/Gateway.</p>
                     </div>";
+        }
+    }
+
+    /**
+     * FUNGSI BARU: Hapus laravel.log via Telegram
+     * Terkunci hanya untuk ID: 1885140247 (TokoSancaka.Com)
+     */
+    private function clearLaravelLog($chatId)
+    {
+        $adminChatId = '1885140247';
+
+        if ($chatId != $adminChatId) {
+            $this->sendMessage($chatId, "⛔ Anda tidak memiliki akses untuk perintah ini.");
+            return;
+        }
+
+        $logPath = storage_path('logs/laravel.log');
+
+        try {
+            if (\Illuminate\Support\Facades\File::exists($logPath)) {
+                // Menimpa isi file dengan string kosong.
+                // Sistem LOG LOG bawaan Anda tidak terhapus dan akan lanjut mencatat log baru secara normal.
+                \Illuminate\Support\Facades\File::put($logPath, '');
+                $this->sendMessage($chatId, "✅ <b>LOG BERHASIL DIHAPUS</b>\nSemua riwayat isi file laravel.log telah dibersihkan dari server.");
+            } else {
+                $this->sendMessage($chatId, "⚠️ File log tidak ditemukan di server.");
+            }
+        } catch (\Exception $e) {
+            $this->sendMessage($chatId, "❌ Gagal menghapus log: " . $e->getMessage());
         }
     }
 
