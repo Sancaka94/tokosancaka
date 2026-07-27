@@ -149,12 +149,9 @@ class ScanSpxController extends Controller
             DB::transaction(function () use ($customer, $resi, $biayaScan, &$package) {
                 $customer->decrement('saldo', $biayaScan);
 
-                // Cek apakah user punya kontak default, jika ada ambil ID-nya
-                $kontak = Kontak::where('user_id', $customer->id_pengguna)->first();
-
                 $package = ScannedPackage::create([
                     'user_id' => $customer->id_pengguna,
-                    'kontak_id' => $kontak ? $kontak->id : null, // Hubungkan juga ke kontak_id
+                    'kontak_id' => null, // HARUS NULL AGAR MENGGUNAKAN NAMA PROFIL USER
                     'resi_number' => $resi,
                     'status' => 'Proses Pickup',
                 ]);
@@ -186,7 +183,7 @@ class ScanSpxController extends Controller
         }
     }
 
-     /**
+    /**
      * 4. Membuat surat jalan.
      */
     public function createSuratJalan(Request $request)
@@ -197,12 +194,9 @@ class ScanSpxController extends Controller
         $resiList = $validated['resi_list'];
         $kodeUnik = 'SJ-' . strtoupper(Str::random(8));
 
-        // Cek apakah user punya kontak default
-        $kontak = Kontak::where('user_id', $customer->id_pengguna)->first();
-
         $suratJalan = SuratJalan::create([
             'user_id' => $customer->id_pengguna,
-            'kontak_id' => $kontak ? $kontak->id : null, // Hubungkan juga ke kontak_id
+            'kontak_id' => null, // HARUS NULL AGAR MENGGUNAKAN NAMA PROFIL USER
             'kode_surat_jalan' => $kodeUnik,
             'jumlah_paket' => count($resiList),
         ]);
