@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="p-6 max-w-5xl mx-auto w-full">
-    
+
     <div class="mb-6">
         <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Pengaturan API Pembayaran</h2>
         <p class="text-sm text-slate-500 mt-1">Kelola kredensial dan environment gateway untuk transaksi DANA.</p>
@@ -30,11 +30,11 @@
                     Pilih environment mana yang saat ini digunakan oleh sistem. Jika beralih ke <strong class="text-red-500">Production</strong>, pastikan kredensial di tab Production sudah diisi dengan benar.
                 </p>
             </div>
-            
+
             <div class="flex flex-col items-center gap-3 min-w-[120px] pt-2">
                 <label class="relative inline-flex items-center cursor-pointer group">
-                    <input type="checkbox" id="danaModeToggle" class="sr-only peer" 
-                           {{ $danaMode == '1' ? 'checked' : '' }} 
+                    <input type="checkbox" id="danaModeToggle" class="sr-only peer"
+                           {{ $danaMode == '1' ? 'checked' : '' }}
                            onchange="toggleDanaMode(this.checked)">
                     <div class="w-14 h-7 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-red-500 shadow-inner"></div>
                 </label>
@@ -47,40 +47,46 @@
 
     {{-- 2. BAGIAN FORM KREDENSIAL DENGAN ALPINE JS TABS --}}
     <div x-data="{ tab: 'sandbox' }" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        
+
         {{-- Header Tabs --}}
         <div class="flex border-b border-slate-200 bg-slate-50/50">
-            <button @click="tab = 'sandbox'" :class="tab === 'sandbox' ? 'border-b-2 border-blue-600 text-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'" class="flex-1 py-4 px-6 text-sm font-bold uppercase tracking-wider transition-colors focus:outline-none">
+            <button type="button" @click="tab = 'sandbox'" :class="tab === 'sandbox' ? 'border-b-2 border-blue-600 text-blue-600 bg-white' : 'text-slate-500 hover:text-slate-700'" class="flex-1 py-4 px-6 text-sm font-bold uppercase tracking-wider transition-colors focus:outline-none">
                 <i class="fas fa-flask mr-2"></i> Kredensial Sandbox
             </button>
-            <button @click="tab = 'production'" :class="tab === 'production' ? 'border-b-2 border-red-600 text-red-600 bg-white' : 'text-slate-500 hover:text-slate-700'" class="flex-1 py-4 px-6 text-sm font-bold uppercase tracking-wider transition-colors focus:outline-none">
+            <button type="button" @click="tab = 'production'" :class="tab === 'production' ? 'border-b-2 border-red-600 text-red-600 bg-white' : 'text-slate-500 hover:text-slate-700'" class="flex-1 py-4 px-6 text-sm font-bold uppercase tracking-wider transition-colors focus:outline-none">
                 <i class="fas fa-rocket mr-2"></i> Kredensial Production
             </button>
         </div>
 
         <form action="{{ route('admin.settingapi.save-credentials') }}" method="POST">
             @csrf
-            
+
             <div class="p-6 sm:p-8">
                 {{-- TAB SANDBOX CONTENT --}}
-                <div x-show="tab === 'sandbox'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-5">
+                <div x-show="tab === 'sandbox'" style="display: none;" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-5">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
                             <label class="block text-sm font-semibold text-slate-700 mb-1">Merchant ID (Sandbox)</label>
-                            <input type="text" name="dana_sandbox_merchant_id" value="{{ $settings['dana_sandbox_merchant_id'] ?? '' }}" class="w-full rounded-xl border-slate-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5 px-3">
+                            <input type="text" name="dana_sandbox_merchant_id" value="{{ $settings['dana_sandbox_merchant_id'] ?? '' }}" class="w-full rounded-xl border-slate-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5 px-3" placeholder="Contoh: 21662000000...">
                         </div>
                         <div>
                             <label class="block text-sm font-semibold text-slate-700 mb-1">Client ID / Partner ID</label>
-                            <input type="text" name="dana_sandbox_client_id" value="{{ $settings['dana_sandbox_client_id'] ?? '' }}" class="w-full rounded-xl border-slate-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5 px-3">
+                            <input type="text" name="dana_sandbox_client_id" value="{{ $settings['dana_sandbox_client_id'] ?? '' }}" class="w-full rounded-xl border-slate-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5 px-3" placeholder="Contoh: 20231010000...">
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 mb-1">Client Secret</label>
                         <input type="text" name="dana_sandbox_client_secret" value="{{ $settings['dana_sandbox_client_secret'] ?? '' }}" class="w-full rounded-xl border-slate-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5 px-3">
                     </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Private Key (RSA)</label>
-                        <textarea name="dana_sandbox_private_key" rows="6" class="w-full rounded-xl border-slate-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs font-mono py-2.5 px-3">{{ $settings['dana_sandbox_private_key'] ?? '' }}</textarea>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Private Key (RSA)</label>
+                            <textarea name="dana_sandbox_private_key" rows="6" class="w-full rounded-xl border-slate-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs font-mono py-2.5 px-3" placeholder="-----BEGIN PRIVATE KEY-----">{{ $settings['dana_sandbox_private_key'] ?? '' }}</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">DANA Public Key</label>
+                            <textarea name="dana_sandbox_public_key" rows="6" class="w-full rounded-xl border-slate-200 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-xs font-mono py-2.5 px-3" placeholder="-----BEGIN PUBLIC KEY-----">{{ $settings['dana_sandbox_public_key'] ?? '' }}</textarea>
+                        </div>
                     </div>
                 </div>
 
@@ -104,14 +110,20 @@
                         <label class="block text-sm font-semibold text-slate-700 mb-1">Client Secret</label>
                         <input type="text" name="dana_prod_client_secret" value="{{ $settings['dana_prod_client_secret'] ?? '' }}" class="w-full rounded-xl border-slate-200 shadow-sm focus:border-red-500 focus:ring-red-500 text-sm py-2.5 px-3">
                     </div>
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Private Key (RSA)</label>
-                        <textarea name="dana_prod_private_key" rows="6" class="w-full rounded-xl border-slate-200 shadow-sm focus:border-red-500 focus:ring-red-500 text-xs font-mono py-2.5 px-3">{{ $settings['dana_prod_private_key'] ?? '' }}</textarea>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">Private Key (RSA)</label>
+                            <textarea name="dana_prod_private_key" rows="6" class="w-full rounded-xl border-slate-200 shadow-sm focus:border-red-500 focus:ring-red-500 text-xs font-mono py-2.5 px-3" placeholder="-----BEGIN PRIVATE KEY-----">{{ $settings['dana_prod_private_key'] ?? '' }}</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-1">DANA Public Key</label>
+                            <textarea name="dana_prod_public_key" rows="6" class="w-full rounded-xl border-slate-200 shadow-sm focus:border-red-500 focus:ring-red-500 text-xs font-mono py-2.5 px-3" placeholder="-----BEGIN PUBLIC KEY-----">{{ $settings['dana_prod_public_key'] ?? '' }}</textarea>
+                        </div>
                     </div>
                 </div>
 
             </div>
-            
+
             {{-- Form Footer --}}
             <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end">
                 <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white font-bold text-sm rounded-xl hover:bg-blue-700 shadow-sm transition-colors flex items-center gap-2">
@@ -125,12 +137,16 @@
 @endsection
 
 @push('scripts')
+{{-- WAJIB ADA: Memanggil library Alpine.js agar sistem Tab-nya berfungsi --}}
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
 <script>
 function toggleDanaMode(isChecked) {
     let modeValue = isChecked ? '1' : '0';
     let labelSpan = document.getElementById('modeLabel');
 
+    // Update UI instan (optimistic update)
     if (isChecked) {
         labelSpan.innerText = 'PRODUCTION';
         labelSpan.className = 'px-3 py-1 text-[10px] font-bold rounded-lg tracking-wider uppercase transition-colors duration-300 shadow-sm border bg-red-50 text-red-600 border-red-200';
@@ -139,19 +155,23 @@ function toggleDanaMode(isChecked) {
         labelSpan.className = 'px-3 py-1 text-[10px] font-bold rounded-lg tracking-wider uppercase transition-colors duration-300 shadow-sm border bg-slate-50 text-slate-600 border-slate-200';
     }
 
+    // Eksekusi AJAX ke Backend
     axios.post('{{ route("admin.settingapi.update-dana-mode") }}', {
         _token: '{{ csrf_token() }}',
         mode: modeValue
     })
     .then(function (response) {
         if(response.data.success) {
-            // console.log(response.data.message); 
+            // Berhasil
+            console.log(response.data.message);
         }
     })
     .catch(function (error) {
-        alert('Gagal mengubah mode API!');
+        // Jika gagal, kembalikan posisi toggle ke awal
+        alert('Gagal mengubah mode API! Pastikan koneksi internet stabil.');
         let toggleElement = document.getElementById('danaModeToggle');
         toggleElement.checked = !isChecked;
+
         if (!isChecked) {
             labelSpan.innerText = 'PRODUCTION';
             labelSpan.className = 'px-3 py-1 text-[10px] font-bold rounded-lg tracking-wider uppercase transition-colors duration-300 shadow-sm border bg-red-50 text-red-600 border-red-200';
