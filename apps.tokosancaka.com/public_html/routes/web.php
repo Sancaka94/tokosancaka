@@ -74,6 +74,16 @@ use App\Services\DanaSignatureService;
 use App\Models\Category;
 use App\Models\Product;
 
+// ========================================================================
+// 1. ROUTE DOMAIN UTAMA (APPS) - WAJIB DI ATAS AGAR TIDAK KENA WILDCARD
+// ========================================================================
+Route::domain('apps.tokosancaka.com')->group(function () {
+    Route::middleware(['auth'])->group(function () {
+        Route::resource('outlets', OutletController::class)->except(['show']);
+        Route::resource('employees', EmployeeController::class)->except(['show']);
+    });
+});
+
 // -------------------------------------------------------------
 // RUTE KHUSUS LISENSI (Bisa diakses meski lisensi expired/limit device penuh)
 // -------------------------------------------------------------
@@ -779,10 +789,6 @@ Route::domain('admin.tokosancaka.com')->group(function () {
 // Pastikan blok ini ada di web.php
 Route::domain('apps.tokosancaka.com')->group(function () {
 
-Route::middleware(['auth'])->group(function () {
-        Route::resource('outlets', OutletController::class)->except(['show']);
-        Route::resource('employees', EmployeeController::class)->except(['show']);
-    });
 
     // Halaman Form
     Route::get('/redeem-lisensi', [\App\Http\Controllers\LicenseController::class, 'showRedeemForm'])
