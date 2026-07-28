@@ -100,7 +100,7 @@ class DanaGatewayController extends Controller
         return base64_encode($binarySignature);
     }
 
-    /**
+   /**
      * =========================================================================
      * 3. BINDING & OAUTH (SAMBUNG AKUN)
      * =========================================================================
@@ -111,18 +111,22 @@ class DanaGatewayController extends Controller
 
         $affiliateId = $request->affiliate_id ?? (Auth::check() ? Auth::id() : 1);
 
+        // --- PERBAIKAN BERDASARKAN REFERENSI (STRICT OAUTH 2.0 PARAMETERS) ---
+        // PENTING: DANA Portal akan CRASH jika dikirimi parameter API seperti timestamp, externalId, atau partnerId
         $queryParams = [
-            'clientId'    => config('services.dana.client_id'),
-            'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
-            'externalId'  => 'BIND-' . $affiliateId . '-' . time(),
+            'clientId'    => config('services.dana.client_id'), // WAJIB clientId
+            'redirectUrl' => config('services.dana.redirect_url'), // URL Callback
+            'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE', // AGREEMENT_PAY wajib ada
+            'state'       => 'MEMBER-' . $affiliateId . '-apps-1', // Dipertahankan format state Anda untuk di-explode di callback
+            'terminalType'=> 'WEB', // Penting agar UI DANA tahu dirender sebagai Web
             'merchantId'  => config('services.dana.merchant_id'),
-            'redirectUrl' => config('services.dana.redirect_url'),
-            'state'       => 'MEMBER-' . $affiliateId . '-apps-1', // Default State Format
-            'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
-            'terminalType'=> 'WEB',
         ];
 
-        return redirect(config('services.dana.portal_url') . "?" . http_build_query($queryParams));
+        $fullUrl = config('services.dana.portal_url') . "?" . http_build_query($queryParams);
+
+        Log::info('LOG LOG: [BINDING] Redirecting User to: ' . $fullUrl);
+
+        return redirect($fullUrl);
     }
 
     public function handleCallback(Request $request)
