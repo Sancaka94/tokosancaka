@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 use Illuminate\Support\Str; // [TAMBAHAN: Import Str untuk generate kode]
 use App\Services\DokuJokulService;
+use Illuminate\Support\Facades\Mail;
 
 class RegisterTenantController extends Controller
 {
@@ -71,7 +72,7 @@ class RegisterTenantController extends Controller
             $status = ($request->package == 'trial') ? 'active' : 'inactive';
             $days = ($request->package == 'yearly') ? 365 : ($request->package == 'monthly' ? 30 : 14);
             $expiredAt = $now->copy()->addDays($days);
-            
+
             // Beri masa tenggang 1 hari saja buat trial biar subdomain bisa dibuka dulu
             // Kalau bukan trial, tetap pakai jatah aslinya ($days)
             $tenantExpiredAt = ($request->package == 'trial') ? $now->copy()->addDay() : $now->copy()->addDays($days);
@@ -83,7 +84,7 @@ class RegisterTenantController extends Controller
                 'whatsapp'   => $request->whatsapp,
                 'package'    => $request->package,
                 'status'     => $status,
-                'expired_at' => $tenantExpiredAt, 
+                'expired_at' => $tenantExpiredAt,
                 'created_at' => $now,
             ]);
 
@@ -99,12 +100,12 @@ class RegisterTenantController extends Controller
             ]);
 
             // [TAMBAHAN: Buat Lisensi Pertama Jika Trial]
-            $licenseCode = 'TRIAL-' . strtoupper(Str::random(8)); 
+            $licenseCode = 'TRIAL-' . strtoupper(Str::random(8));
             if ($request->package == 'trial') {
-                
+
                 // KITA MATIKAN SEMENTARA MODEL-NYA
-                // License::create([ ... ]); 
-                
+                // License::create([ ... ]);
+
                 // KITA TEMBAK LANGSUNG KE DATABASE
                 \Illuminate\Support\Facades\DB::table('licenses')->insert([
                     'license_code'  => $licenseCode,
@@ -132,8 +133,8 @@ class RegisterTenantController extends Controller
             if ($request->package == 'trial') {
                 $msgAdmin .= "🔑 Kode Aktivasi: {$licenseCode}\n";
             }
-            
-            
+
+
             $this->_sendFonnte($adminPhone, $msgAdmin);
 
             // 7. PROSES PEMBAYARAN DOKU (Jika bukan trial)
@@ -170,8 +171,15 @@ class RegisterTenantController extends Controller
                 $msgTrial .= "🌐 *LINK LOGIN:* {$targetUrl}\n";
                 $msgTrial .= "----------------------------------\n\n";
                 $msgTrial .= "Gunakan kode di atas jika aplikasi meminta aktivasi saat pertama kali login.";
-                
+
                 $this->_sendFonnte($userWa, $msgTrial);
+
+                // Kirim Email Berisi Kode Aktivasi Trial
+                $emailTrialHtml = "<h3>Selamat Datang di POS Sancaka!</h3>
+                                   <p>Akun Trial 14 hari Anda telah aktif.</p>
+                                   <p><b>Kode Aktivasi:</b> <span style='color:red; font-size:18px;'>{$licenseCode}</span></p>
+                                   <p><b>Link Login:</b> <a href='{$targetUrl}'>{$targetUrl}</a></p>";
+                $this->_sendEmail($request->email, "Kode Aktivasi Akun POS Sancaka", $emailTrialHtml);
 
                 Log::info("LOG LOG: Trial sukses mengirim kode {$licenseCode} ke {$userWa}");
 
@@ -185,7 +193,7 @@ class RegisterTenantController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("LOG LOG: FAILED REGISTER: " . $e->getMessage());
-            
+
             if ($request->wantsJson() || $request->is('api/*')) {
                 return response()->json(['success' => false, 'message' => 'Gagal mendaftar: ' . $e->getMessage()], 500);
             }
@@ -214,23 +222,24 @@ class RegisterTenantController extends Controller
                 $tenant = Tenant::where('subdomain', $subdomain)->first();
 
                 if ($tenant && $tenant->status !== 'active') {
-                    
+
                     // [TAMBAHAN: Kalkulasi expired berdasarkan paket untuk Lisensi Baru]
                     $now = Carbon::now('Asia/Jakarta');
                     $days = ($tenant->package == 'yearly') ? 365 : 30;
                     $newExpiredAt = $now->copy()->addDays($days);
-                    
+
                     $tenant->update([
                         'status' => 'active',
                         'expired_at' => $newExpiredAt // [TAMBAHAN: Update masa aktif tenant]
                     ]);
 
-                    // [TAMBAHAN: Generate Lisensi Aktif setelah bayar lunas]
-                    // Anda bisa menyesuaikan jumlah device/ip sesuai produk DOKU nanti
+                   // Simpan kode lisensi ke variabel dulu agar bisa dikirim
+                    $proLicenseCode = 'PRO-' . strtoupper(Str::random(10));
+
                     License::create([
-                        'license_code'  => 'PRO-' . strtoupper(Str::random(10)),
+                        'license_code'  => $proLicenseCode,
                         'tenant_id'     => $tenant->id,
-                        'package_type'  => 'pro', // Default
+                        'package_type'  => 'pro',
                         'max_devices'   => 1,
                         'max_ips'       => 1,
                         'duration_days' => $days,
@@ -240,14 +249,26 @@ class RegisterTenantController extends Controller
                     ]);
 
                     $userPhone = $this->_normalizeWa($tenant->whatsapp);
+                    $targetUrl = "https://{$subdomain}.tokosancaka.com/login";
 
-                    // [PERBAIKAN] Pastikan Link Login di WA menggunakan HTTPS
+                    // Kirim WA Kode Aktivasi
                     $msgUser = "💰 *PEMBAYARAN BERHASIL*\n\n" .
                                "Status: *ACTIVE* ✅\n" .
-                               "Link Login: https://{$subdomain}.tokosancaka.com/login\n\n"; // WAJIB HTTPS
+                               "🔑 Kode Aktivasi: *{$proLicenseCode}*\n" .
+                               "Link Login: {$targetUrl}\n\n";
 
                     if (!empty($userPhone)) {
                         $this->_sendFonnte($userPhone, $msgUser);
+                    }
+
+                    // Kirim Email Kode Aktivasi
+                    $user = User::where('tenant_id', $tenant->id)->first();
+                    if ($user && $user->email) {
+                        $emailProHtml = "<h3>Pembayaran Berhasil!</h3>
+                                         <p>Terima kasih, akun Anda sudah <b>ACTIVE</b>.</p>
+                                         <p><b>Kode Aktivasi PRO:</b> <span style='font-size:18px;'>{$proLicenseCode}</span></p>
+                                         <p><b>Link Login:</b> <a href='{$targetUrl}'>{$targetUrl}</a></p>";
+                        $this->_sendEmail($user->email, "Pembayaran Berhasil - Kode Aktivasi POS", $emailProHtml);
                     }
                 }
             }
@@ -339,10 +360,10 @@ class RegisterTenantController extends Controller
     public function show($id)
     {
         $tenant = Tenant::findOrFail($id);
-        
+
         // Asumsi Anda juga ingin melihat daftar user dari tenant ini
         $users = User::where('tenant_id', $tenant->id)->get();
-        
+
         // Asumsi Anda ingin melihat riwayat lisensi tenant ini
         $licenses = License::where('tenant_id', $tenant->id)->get();
 
@@ -355,7 +376,7 @@ class RegisterTenantController extends Controller
     public function edit($id)
     {
         $tenant = Tenant::findOrFail($id);
-        
+
         return view('admin.tenant-edit', compact('tenant'));
     }
 
@@ -388,7 +409,7 @@ class RegisterTenantController extends Controller
             Log::info("LOG LOG: Tenant {$tenant->name} diupdate oleh Admin Pusat.");
 
             return redirect()->route('tenants.index')->with('success', 'Data tenant berhasil diperbarui!');
-            
+
         } catch (\Exception $e) {
             Log::error("LOG LOG: Gagal update tenant: " . $e->getMessage());
             return back()->with('error', 'Gagal memperbarui data: ' . $e->getMessage());
@@ -401,17 +422,17 @@ class RegisterTenantController extends Controller
     public function destroy($id)
     {
         DB::beginTransaction();
-        
+
         try {
             $tenant = Tenant::findOrFail($id);
             $tenantName = $tenant->name;
 
             // Hapus semua User yang terkait dengan tenant ini
             User::where('tenant_id', $tenant->id)->delete();
-            
+
             // Hapus semua Lisensi yang terkait
             License::where('tenant_id', $tenant->id)->delete();
-            
+
             // Hapus data tenant utama
             $tenant->delete();
 
@@ -425,6 +446,17 @@ class RegisterTenantController extends Controller
             DB::rollBack();
             Log::error("LOG LOG: Gagal menghapus tenant: " . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage());
+        }
+    }
+
+    private function _sendEmail($to, $subject, $htmlMessage)
+    {
+        try {
+            Mail::html($htmlMessage, function ($message) use ($to, $subject) {
+                $message->to($to)->subject($subject);
+            });
+        } catch (\Exception $e) {
+            Log::error("Email Error ke {$to}: " . $e->getMessage());
         }
     }
 

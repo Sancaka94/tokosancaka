@@ -32,6 +32,7 @@ class Kontak extends Model
         'lng',
         'district_id',
         'subdistrict_id',
+        'pickup_point_code',
     ];
 
     /**

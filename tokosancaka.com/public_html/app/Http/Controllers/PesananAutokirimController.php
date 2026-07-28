@@ -522,6 +522,13 @@ class PesananAutokirimController extends Controller
 
   public function store(Request $request)
     {
+        // 1. TAMBAHKAN LOG INI UNTUK PAYLOAD INPUT USER
+        \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE ORDER - USER INPUT PAYLOAD]", [
+            'user_id' => auth()->id() ?? 'guest',
+            'ip'      => $request->ip(),
+            'payload' => $request->all() // Menangkap semua data form dalam bentuk JSON
+        ]);
+
         $request->validate([
             'service_code_terpilih' => 'required',
             'pengirim_nama'         => 'required|string|max:50',
@@ -710,6 +717,28 @@ class PesananAutokirimController extends Controller
                         'status'            => 'booking_created'
                     ]);
 
+                    // ==========================================================
+                    // MENYIMPAN KODE PICKUP POINT KE DATABASE KONTAK & PENGGUNA
+                    // ==========================================================
+                    if (!empty($awbResult['pickup'])) {
+                        $kodePickup = $awbResult['pickup'];
+
+                        // 1. Update ke tabel kontaks (berdasarkan nomor HP pengirim)
+                        \App\Models\Kontak::where('user_id', auth()->id())
+                            ->where('no_hp', trim($request->pengirim_hp))
+                            ->update(['pickup_point_code' => $kodePickup]);
+
+                        // 2. Update ke tabel Pengguna JIKA nomor HP pengirim sama dengan nomor WA user yang login
+                        $userLogin = auth()->user();
+                        if ($userLogin && $userLogin->no_wa === trim($request->pengirim_hp)) {
+                            // Gunakan primary key tabel Anda (misal id_pengguna)
+                            $primaryKey = $userLogin->getKeyName();
+                            \App\Models\User::where($primaryKey, $userLogin->$primaryKey)
+                                ->update(['pickup_point_code' => $kodePickup]);
+                        }
+                    }
+                    // ==========================================================
+
                     Log::info("LOG LOG: [DATABASE UPDATED] Pesanan {$localOrderId} sukses diupdate. REFF_1: " . ($awbResult['reff_1'] ?? 'KOSONG'));
 
                     // ==========================================================
@@ -754,6 +783,15 @@ class PesananAutokirimController extends Controller
                     DB::commit();
 
                     $metodeTampil = str_replace('_', ' ', strtoupper($paymentMethod));
+
+                    // 2. TAMBAHKAN LOG INI UNTUK RESPONSE SUKSES
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE ORDER - SUCCESS RESPONSE]", [
+                        'order_id'       => $localOrderId,
+                        'awb'            => $awbResult['awb'] ?? null,
+                        'payment_method' => $metodeTampil,
+                        'status'         => 'success_redirect'
+                    ]);
+
                     return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbResult['awb']} (Metode: {$metodeTampil})");
 
                 } else {
@@ -786,7 +824,14 @@ class PesananAutokirimController extends Controller
 
                     DB::commit();
 
-                    if ($paymentUrl) {
+                   if ($paymentUrl) {
+                        // 3. TAMBAHKAN LOG INI UNTUK RESPONSE REDIRECT PG
+                        \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE ORDER - PG REDIRECT RESPONSE]", [
+                            'order_id'    => $localOrderId,
+                            'payment_url' => $paymentUrl,
+                            'status'      => 'redirect_to_payment_gateway'
+                        ]);
+
                         return redirect()->away($paymentUrl);
                     }
 
@@ -804,78 +849,71 @@ class PesananAutokirimController extends Controller
         }
     }
 
-public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
+    public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
     {
-        // 1. Ambil status Drop-off (1) atau Pickup (0) dari request
-        $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : (int) ($pesanan->is_sender_pp ?? 1);
+        $userId = auth()->id() ?? 'guest_' . time();
+        $pickupCacheKey = 'pickup_code_user_' . $userId;
 
-        Log::info("LOG LOG: [PICKUP POINT] Memulai proses insert pickup point BARU untuk Order ID: {$pesanan->order_id}");
+        // 1. CEK REDIS DULU
+        $pickupPointCode = Redis::get($pickupCacheKey);
 
-        // 2. SELALU BUAT PICKUP POINT BARU (Sesuai arahan CS: "ulang dari awal, insert pickup point lagi")
-        // Trik: Gunakan email unik (berbasis timestamp) agar API pusat tidak mencocokkan dengan data lama
-        // dan dipaksa membuat ID Pickup Point yang 100% baru di environment yang aktif (Dev/Prod).
-        $uniqueEmail = 'pengirim_' . time() . '_' . mt_rand(100,999) . '@tokosancaka.com';
+        // 2. JIKA TIDAK ADA DI REDIS, TEMBAK API
+        if (!$pickupPointCode) {
+            $pickupPayload = [
+                'name'              => (string) trim($pesanan->pengirim_nama),
+                'phone'             => (string) trim($pesanan->pengirim_hp),
+                'address'           => (string) trim($pesanan->pengirim_alamat),
+                'email'             => auth()->user()->email ?? 'customer@tokosancaka.com',
+                'longitude'         => "",
+                'latitude'          => "",
+                'district_id'       => (int) $origin->district_id,
+                'is_member_deposit' => false
+            ];
 
-        $pickupPayload = [
-            'name'              => (string) trim($pesanan->pengirim_nama),
-            'phone'             => (string) trim($pesanan->pengirim_hp),
-            'address'           => (string) trim($pesanan->pengirim_alamat),
-            'email'             => $uniqueEmail, // Kunci utama untuk bypass cache/data lama di server mereka
-            'longitude'         => "",
-            'latitude'          => "",
-            'district_id'       => (int) $origin->district_id,
-            'is_member_deposit' => false
-        ];
+            $pickupResponse = Http::timeout(15)
+                ->withToken($this->token)
+                ->post("{$this->baseUrl}/api/pickup-point/insert", $pickupPayload);
 
-        // Tembak API Insert Pickup Point
-        $pickupResponse = Http::timeout(15)
-            ->withToken($this->token)
-            ->post("{$this->baseUrl}/api/pickup-point/insert", $pickupPayload);
+            $pickupResult = $pickupResponse->json();
 
-        $pickupResult = $pickupResponse->json();
-
-        if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
-            throw new Exception('Gagal mendaftarkan identitas pengirim (Pickup Point) ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
-        }
-
-        $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
-        Log::info("LOG LOG: [PICKUP POINT] Berhasil generate kode dinamis BARU: {$pickupPointCode}");
-
-        // Polling sinkronisasi wajib (Menunggu data tersimpan sempurna di server mereka)
-        $isSynced = false;
-        for ($i = 1; $i <= 4; $i++) {
-            sleep(2); // Beri jeda 2 detik agar database mereka sinkron
-            if ($this->findPickupPoint($pickupPointCode)) {
-                $isSynced = true;
-                Log::info("LOG LOG: Sinkronisasi Pickup Point dinamis berhasil pada percobaan ke-{$i}");
-                break;
+            if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
+                throw new Exception('Gagal mendaftarkan alamat jemput ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
             }
-            Log::warning("LOG LOG: Menunggu sinkronisasi DB Autokirim untuk kode baru {$pickupPointCode} (Percobaan {$i}/4)...");
+
+            $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
+
+            // Simpan ke Redis selama 30 Hari (2.592.000 detik)
+            Redis::setex($pickupCacheKey, 2592000, $pickupPointCode);
+
+            Log::info("LOG LOG: [PICKUP POINT] Dibuat baru dari API: {$pickupPointCode}");
+
+            // Jeda 2 detik HANYA saat kode baru dibuat agar sinkronisasi di server Autokirim selesai
+            sleep(2);
+        } else {
+            Log::info("LOG LOG: [PICKUP POINT] Mengambil dari Redis: {$pickupPointCode}");
         }
 
-        if (!$isSynced) {
-            throw new Exception("Sistem pusat logistik mengalami keterlambatan sinkronisasi data (timeout). Silakan ulangi submit pesanan Anda.");
-        }
-
-        // 3. MULAI PROSES CREATE ORDER
-        $qtyInput    = $requestData ? (string) $requestData->input('qty', 1) : "1";
+        $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
+        $qtyInput = $requestData ? (string) $requestData->input('qty', 1) : "1";
         $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
-        $isCod       = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
-        $codValue    = $isCod ? ($requestData ? (int) $requestData->grand_total : 0) : 0;
 
-        $beratGram   = (int) $pesanan->berat_gram;
-        $weightApi   = $beratGram > 0 ? $beratGram : 1000;
+        $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
 
-        Log::info("LOG: [WEIGHT CALC] Aktual: {$beratGram}gr => Ditagihkan: {$weightApi}gr");
+        $codValue = 0;
+        if ($isCod) {
+            // LANGSUNG TEMBAK PAKAI GRAND TOTAL DARI FRONTEND
+            $codValue = $requestData ? (int) $requestData->grand_total : 0;
+        }
 
-        // Format Alamat (Maksimal 100 karakter)
-        $cleanSenderAddress   = substr(trim(preg_replace('/\s+/', ' ', $pesanan->pengirim_alamat)), 0, 100);
-        $cleanReceiverAddress = substr(trim(preg_replace('/\s+/', ' ', $pesanan->penerima_alamat)), 0, 100);
+        $beratGram = (int) $pesanan->berat_gram;
+        $weightApi = $beratGram > 0 ? $beratGram : 1000;
+
+        Log::info("LOG: [WEIGHT CALC] Aktual: {$beratGram}gr => Ditagihkan (Payload): {$weightApi}gr (Volume PxLxT dikirim terpisah tanpa pembagi manual)");
 
         $orderPayload = [
             'service_code'      => $serviceCode,
             'reff_client_id'    => $pesanan->order_id,
-            'pickup_point_code' => $pickupPointCode, // WAJIB DIKIRIM & SEKARANG PASTI FRESH
+            'pickup_point_code' => $pickupPointCode,
             'origin_id'         => (int) $origin->district_id,
             'destination_id'    => (int) $destination->district_id,
             'weight'            => (string) $weightApi,
@@ -886,24 +924,24 @@ public function _executeAutokirimApi($pesanan, $origin, $destination, $requestDa
             'description'       => (string) $pesanan->deskripsi_barang,
             'remarks'           => (string) $pesanan->kategori_barang,
             'price'             => (int) ($pesanan->nilai_barang > 0 ? $pesanan->nilai_barang : 1000),
-            'is_cod'            => (bool) $isCod,
-            'cod_value'         => (int) $codValue,
+            'is_cod'            => $isCod,
+            'cod_value'         => $codValue,
             'is_sender_pp'      => (int) $isSenderPp,
             'is_insurance'      => (bool) $pesanan->asuransi,
             'from' => [
                 'name'    => (string) trim($pesanan->pengirim_nama),
                 'phone'   => (string) trim($pesanan->pengirim_hp),
-                'address' => $cleanSenderAddress,
+                'address' => (string) trim($pesanan->pengirim_alamat),
             ],
             'to' => [
                 'name'    => (string) trim($pesanan->penerima_nama),
                 'phone'   => (string) trim($pesanan->penerima_hp),
-                'address' => $cleanReceiverAddress,
+                'address' => (string) trim($pesanan->penerima_alamat),
             ],
             'commodity' => (string) $pesanan->kategori_barang,
         ];
 
-        Log::info("LOG: [API AUTOKIRIM - CREATE ORDER DINAMIS] REQUEST:", $orderPayload);
+        Log::info("LOG: [API AUTOKIRIM - CREATE ORDER] REQUEST:", $orderPayload);
 
         $orderResponse = Http::timeout(15)
             ->withToken($this->token)
@@ -911,14 +949,17 @@ public function _executeAutokirimApi($pesanan, $origin, $destination, $requestDa
 
         $orderResult = $orderResponse->json();
 
-        // 4. EVALUASI HASIL ORDER
         if ($orderResponse->successful() && isset($orderResult['rc']) && $orderResult['rc'] === '00') {
+
+            // Tangkap nilai dari API dengan aman
             $awb    = $orderResult['data']['awb'] ?? 'AWB-PENDING';
             $reff_1 = $orderResult['data']['reff_1'] ?? null;
             $reff_2 = $orderResult['data']['reff_2'] ?? null;
 
+            // Log Sukses
             Log::info("LOG LOG: [API AUTOKIRIM - SUCCESS] API mengembalikan -> AWB: {$awb} | REFF_1: {$reff_1} | REFF_2: {$reff_2}");
 
+            // KUNCI ARRAY INI YANG HARUS COCOK DENGAN FUNGSI STORE
             return [
                 'success' => true,
                 'awb'     => $awb,
@@ -1532,7 +1573,7 @@ public function _executeAutokirimApi($pesanan, $origin, $destination, $requestDa
         }
     }
 
-  /**
+    /**
      * =========================================================
      * FITUR MANAJEMEN PICKUP POINT AUTOKIRIM
      * =========================================================
