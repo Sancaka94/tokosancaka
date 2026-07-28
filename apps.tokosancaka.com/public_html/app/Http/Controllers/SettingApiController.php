@@ -31,15 +31,18 @@ class SettingApiController extends Controller
 
     public function index()
     {
-        // 1. Ambil Mode Global yang sedang aktif
+        // 1. WAJIB ADA: Ambil semua data setting jadikan array associative
+        $settings = SettingApi::pluck('value', 'key')->toArray();
+        $danaMode = $settings['dana_production_mode'] ?? '0';
+
+        // 2. Ambil Mode Global yang sedang aktif
         $appDebug           = config('app.debug');
         $kaMode             = $this->getApiValue('KIRIMINAJA_MODE', 'staging');
         $tripayMode         = $this->getApiValue('TRIPAY_MODE', 'sandbox');
         $dokuEnv            = $this->getApiValue('DOKU_ENV', 'sandbox');
         $iakMode            = $this->getApiValue('IAK_MODE', 'development');
         $dharmawisataMode   = $this->getApiValue('DHARMAWISATA_MODE', 'development');
-        $danaProductionMode = $this->getApiValue('dana_production_mode', '0');
-        $danaMode           = $danaProductionMode == '1' ? 'production' : 'sandbox';
+        $danaEnv            = $danaMode == '1' ? 'production' : 'sandbox'; // Pakai $danaEnv untuk array
         $midtransMode       = $this->getApiValue('MIDTRANS_MODE', 'sandbox');
         $lalamoveMode       = $this->getApiValue('LALAMOVE_MODE', 'sandbox');
         $paypalMode         = $this->getApiValue('PAYPAL_MODE', 'sandbox');
@@ -134,7 +137,6 @@ class SettingApiController extends Controller
             'api_key' => $this->getApiValue('FONNTE_API_KEY'),
         ];
 
-       // --- MAPBOX, SANCAKA EXPRESS & ZONASI OJOL ---
         $zonasi = [
             'zona_1' => [
                 'wilayah' => $this->getApiValue('ZONA_1_WILAYAH', 'Sumatera, Bali, Jawa Timur, Jawa Tengah, Jawa Barat, Yogyakarta, Banten'),
@@ -176,7 +178,7 @@ class SettingApiController extends Controller
         ];
 
         $dana = [
-            'mode' => $danaMode,
+            'mode' => $danaEnv, // <-- PERUBAHAN DI SINI
             'sandbox' => [
                 'merchant_id'   => $this->getApiValue('dana_sandbox_merchant_id'),
                 'client_id'     => $this->getApiValue('dana_sandbox_client_id'),
@@ -295,7 +297,6 @@ class SettingApiController extends Controller
             ]
         ];
 
-        // VIEW SESUAI PUNYA USER:
         return view('admin.settingapi.index', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu', 'mandiri', 'mapbox', 'autokirim', 'danaMode', 'settings'));
     }
 
