@@ -22,26 +22,26 @@
         </div>
     @endif
 
-    {{-- 1. BAGIAN TOGGLE MODE DANA --}}
+    {{-- 1. BAGIAN TOGGLE MODE GLOBAL --}}
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
         <div class="p-6 sm:p-8 flex flex-col sm:flex-row items-start justify-between gap-6">
             <div class="flex-1">
                 <div class="flex items-center gap-3 mb-2">
                     <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
-                        <i class="fas fa-toggle-on text-lg"></i>
+                        <i class="fas fa-globe text-lg"></i>
                     </div>
-                    <h3 class="text-lg font-bold text-slate-800">Mode Sistem DANA Aktif</h3>
+                    <h3 class="text-lg font-bold text-slate-800">Mode Sistem Global Aktif</h3>
                 </div>
                 <p class="text-sm text-slate-500 ml-13 sm:ml-0">
-                    Pilih environment mana yang saat ini digunakan oleh sistem. Jika beralih ke <strong class="text-red-500">Production</strong>, pastikan kredensial di tab Production sudah diisi dengan benar.
+                    Pilih environment utama yang digunakan oleh seluruh sistem API. Jika beralih ke <strong class="text-red-500">Production</strong>, pastikan seluruh kredensial di setiap tab Production sudah diisi dengan benar.
                 </p>
             </div>
 
             <div class="flex flex-col items-center gap-3 min-w-[120px] pt-2">
                 <label class="relative inline-flex items-center cursor-pointer group">
-                    <input type="checkbox" id="danaModeToggle" class="sr-only peer"
+                    <input type="checkbox" id="globalModeToggle" class="sr-only peer"
                            {{ $danaMode == '1' ? 'checked' : '' }}
-                           onchange="toggleDanaMode(this.checked)">
+                           onchange="toggleGlobalMode(this.checked)">
                     <div class="w-14 h-7 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-red-500 shadow-inner"></div>
                 </label>
                 <span id="modeLabel" class="px-3 py-1 text-[10px] font-bold rounded-lg tracking-wider uppercase transition-colors duration-300 shadow-sm border {{ $danaMode == '1' ? 'bg-red-50 text-red-600 border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200' }}">
@@ -611,10 +611,10 @@
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
 <script>
-function toggleDanaMode(isChecked) {
-    let modeValue = isChecked ? '1' : '0';
+function toggleGlobalMode(isChecked) {
     let labelSpan = document.getElementById('modeLabel');
 
+    // Update UI instan agar terlihat responsif
     if (isChecked) {
         labelSpan.innerText = 'PRODUCTION';
         labelSpan.className = 'px-3 py-1 text-[10px] font-bold rounded-lg tracking-wider uppercase transition-colors duration-300 shadow-sm border bg-red-50 text-red-600 border-red-200';
@@ -623,11 +623,32 @@ function toggleDanaMode(isChecked) {
         labelSpan.className = 'px-3 py-1 text-[10px] font-bold rounded-lg tracking-wider uppercase transition-colors duration-300 shadow-sm border bg-slate-50 text-slate-600 border-slate-200';
     }
 
-    axios.post('{{ route("admin.settings.api.toggleDebug") }}', {
-        // Menggunakan endpoint global toggle agar rapi
+    // Panggil Endpoint API Global Toggle di Controller
+    axios.post('{{ route("admin.settings.api.toggleApi") }}', {
         _token: '{{ csrf_token() }}',
-        mode: modeValue
-        // Abaikan parameter payload ini, pastikan route "update-dana-mode" masih ada jika dipakai
+        is_production: isChecked
+    })
+    .then(function (response) {
+        if(response.data.success) {
+            // Jika sukses update di database, reload halaman!
+            // Ini akan membuat SEMUA Tab otomatis berpindah ke Sandbox/Production
+            window.location.reload();
+        }
+    })
+    .catch(function (error) {
+        alert('Gagal mengubah mode sistem global! Pastikan koneksi internet stabil.');
+
+        // Kembalikan posisi toggle jika gagal
+        let toggleElement = document.getElementById('globalModeToggle');
+        toggleElement.checked = !isChecked;
+
+        if (!isChecked) {
+            labelSpan.innerText = 'PRODUCTION';
+            labelSpan.className = 'px-3 py-1 text-[10px] font-bold rounded-lg tracking-wider uppercase transition-colors duration-300 shadow-sm border bg-red-50 text-red-600 border-red-200';
+        } else {
+            labelSpan.innerText = 'SANDBOX';
+            labelSpan.className = 'px-3 py-1 text-[10px] font-bold rounded-lg tracking-wider uppercase transition-colors duration-300 shadow-sm border bg-slate-50 text-slate-600 border-slate-200';
+        }
     });
 }
 </script>
