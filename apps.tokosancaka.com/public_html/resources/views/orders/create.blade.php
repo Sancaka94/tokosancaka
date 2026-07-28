@@ -77,53 +77,44 @@
    @php
         $user = Auth::user();
 
-        // 1. Cek apakah user login? Jika tidak, lempar ke halaman login
+        // 1. Cek apakah user login
         if (!$user) {
             echo '<script>window.location.href = "/login";</script>';
             exit;
         }
 
-        // 2. Tentukan ID Toko (Tenant)
         $isSuperAdmin = ($user->role === 'super_admin');
         $targetTenantId = $user->tenant_id;
-        $allTenants = [];
+
+        // ID TOKO PUSAT (Berdasarkan database Anda, Sancaka Pusat = 1)
+        $idSancakaPusat = 1;
 
         if ($isSuperAdmin) {
-            // Ambil semua toko untuk isi dropdown Super Admin
-            $allTenants = \App\Models\Tenant::orderBy('name', 'asc')->get();
-
-            // Jika Super Admin memilih toko dari dropdown
             if (request()->has('view_tenant')) {
                 $targetTenantId = request('view_tenant');
             }
         }
 
-        $tenant = \App\Models\Tenant::find($targetTenantId);
-
-        // Fallback jika tenant tidak ditemukan
-        if (!$tenant && $isSuperAdmin) {
-            $tenant = \App\Models\Tenant::first();
-            $targetTenantId = $tenant->id;
-        }
+        $tenant = \App\Models\Tenant::find($targetTenantId) ?? \App\Models\Tenant::first();
 
         // =========================================================================
-        // 3. PERBAIKAN UTAMA: TARIK DATA PRODUK SECARA PAKSA & ANTI BLOKIR
-        // Kita gunakan withoutGlobalScopes() agar produk tetap muncul meskipun URL
-        // yang diakses adalah apps.tokosancaka.com (bukan subdomain aslinya).
+        // PERBAIKAN: GABUNGKAN KATALOG (PRODUK TOKO INI + PRODUK SANCAKA PUSAT)
+        // Menggunakan whereIn agar kasir cabang selalu bisa jual barang Pusat
         // =========================================================================
         $products = \App\Models\Product::withoutGlobalScopes()
-                        ->where('tenant_id', $targetTenantId)
+                        ->whereIn('tenant_id', [$targetTenantId, $idSancakaPusat])
                         ->where('stock_status', 'available')
                         ->where('stock', '>', 0)
                         ->with('category')
                         ->get();
 
         $categories = \App\Models\Category::withoutGlobalScopes()
-                        ->where('tenant_id', $targetTenantId)
-                        ->get();
+                        ->whereIn('tenant_id', [$targetTenantId, $idSancakaPusat])
+                        ->get()
+                        ->unique('name'); // Mencegah nama kategori muncul double
         // =========================================================================
 
-        // 4. Cek validasi masa aktif aplikasi
+        // Cek validasi masa aktif aplikasi
         $isExpired = ($tenant->expired_at && now()->gt($tenant->expired_at));
         $isActive = ($tenant->status === 'active' || !$isExpired);
         $onSuspendedPage = request()->is('*account-suspended*');
