@@ -111,14 +111,19 @@ class DanaGatewayController extends Controller
 
         $affiliateId = $request->affiliate_id ?? (Auth::check() ? Auth::id() : 1);
 
-        // --- PERBAIKAN BERDASARKAN REFERENSI (STRICT OAUTH 2.0 PARAMETERS) ---
-        // PENTING: DANA Portal akan CRASH jika dikirimi parameter API seperti timestamp, externalId, atau partnerId
+        // --- PERBAIKAN FINAL BINDING ---
         $queryParams = [
-            'clientId'    => config('services.dana.client_id'), // WAJIB clientId
-            'redirectUrl' => config('services.dana.redirect_url'), // URL Callback
-            'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE', // AGREEMENT_PAY wajib ada
-            'state'       => 'MEMBER-' . $affiliateId . '-apps-1', // Dipertahankan format state Anda untuk di-explode di callback
-            'terminalType'=> 'WEB', // Penting agar UI DANA tahu dirender sebagai Web
+            'clientId'    => config('services.dana.client_id'),
+
+            // 1. URL INI HARUS SAMA PERSIS DENGAN DI DANA DEVELOPER CONSOLE (Termasuk http/https)
+            'redirectUrl' => config('services.dana.redirect_url'),
+
+            // 2. HAPUS SCOPE 'MINI_DANA'. Kita gunakan scope paling standar dan aman sesuai referensi.
+            // AGREEMENT_PAY wajib agar fitur potong saldo (Direct Debit) bisa berjalan.
+            'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE',
+
+            'state'       => 'MEMBER-' . $affiliateId . '-apps-1',
+            'terminalType'=> 'WEB',
             'merchantId'  => config('services.dana.merchant_id'),
         ];
 
