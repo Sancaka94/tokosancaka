@@ -174,11 +174,49 @@ class RegisterTenantController extends Controller
 
                 $this->_sendFonnte($userWa, $msgTrial);
 
-                // Kirim Email Berisi Kode Aktivasi Trial
-                $emailTrialHtml = "<h3>Selamat Datang di POS Sancaka!</h3>
-                                   <p>Akun Trial 14 hari Anda telah aktif.</p>
-                                   <p><b>Kode Aktivasi:</b> <span style='color:red; font-size:18px;'>{$licenseCode}</span></p>
-                                   <p><b>Link Login:</b> <a href='{$targetUrl}'>{$targetUrl}</a></p>";
+               // Kirim Email Berisi Kode Aktivasi Trial (Desain Modern)
+                $emailTrialHtml = '
+                <div style="font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; padding: 40px 20px; margin: 0;">
+                    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+
+                        <!-- Header -->
+                        <div style="background-color: #dc2626; padding: 25px; text-align: center;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 1px;">Sancaka<span style="font-weight: 300;">POS</span></h1>
+                        </div>
+
+                        <!-- Body -->
+                        <div style="padding: 40px 30px;">
+                            <h2 style="margin-top: 0; color: #1e293b; font-size: 22px;">Halo, '.$request->owner_name.'! 🎉</h2>
+                            <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                                Selamat! Akun <b>Trial 14 Hari</b> Anda telah berhasil diaktifkan. Silakan gunakan kode aktivasi di bawah ini saat pertama kali masuk ke aplikasi kasir Anda.
+                            </p>
+
+                            <!-- Kode Aktivasi Box -->
+                            <div style="background-color: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 35px;">
+                                <p style="margin: 0 0 10px 0; color: #64748b; font-size: 13px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">KODE AKTIVASI ANDA</p>
+                                <p style="margin: 0; color: #dc2626; font-size: 32px; font-weight: 900; letter-spacing: 4px;">'.$licenseCode.'</p>
+                            </div>
+
+                            <!-- Link Login -->
+                            <div style="text-align: center;">
+                                <a href="'.$targetUrl.'" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold; padding: 16px 35px; border-radius: 8px;">
+                                    Masuk ke Dashboard
+                                </a>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+                            <p style="color: #94a3b8; font-size: 13px; margin: 0;">
+                                Butuh bantuan? Silakan hubungi tim support kami melalui WhatsApp.
+                                <br><br>
+                                &copy; '.date('Y').' Sancaka POS. All rights reserved.
+                            </p>
+                        </div>
+
+                    </div>
+                </div>';
+
                 $this->_sendEmail($request->email, "Kode Aktivasi Akun POS Sancaka", $emailTrialHtml);
 
                 Log::info("LOG LOG: Trial sukses mengirim kode {$licenseCode} ke {$userWa}");
@@ -264,10 +302,41 @@ class RegisterTenantController extends Controller
                     // Kirim Email Kode Aktivasi
                     $user = User::where('tenant_id', $tenant->id)->first();
                     if ($user && $user->email) {
-                        $emailProHtml = "<h3>Pembayaran Berhasil!</h3>
-                                         <p>Terima kasih, akun Anda sudah <b>ACTIVE</b>.</p>
-                                         <p><b>Kode Aktivasi PRO:</b> <span style='font-size:18px;'>{$proLicenseCode}</span></p>
-                                         <p><b>Link Login:</b> <a href='{$targetUrl}'>{$targetUrl}</a></p>";
+                        $emailProHtml = '
+                        <div style="font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; padding: 40px 20px; margin: 0;">
+                            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+
+                                <div style="background-color: #16a34a; padding: 25px; text-align: center;">
+                                    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold;">Pembayaran Berhasil! ✅</h1>
+                                </div>
+
+                                <div style="padding: 40px 30px;">
+                                    <h2 style="margin-top: 0; color: #1e293b; font-size: 22px;">Halo, '.$user->name.'!</h2>
+                                    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-bottom: 30px;">
+                                        Terima kasih! Pembayaran Anda telah kami terima dan akun POS Anda kini sudah berstatus <b>ACTIVE</b>.
+                                    </p>
+
+                                    <div style="background-color: #f0fdf4; border: 2px dashed #86efac; border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 35px;">
+                                        <p style="margin: 0 0 10px 0; color: #166534; font-size: 13px; text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">KODE AKTIVASI PRO ANDA</p>
+                                        <p style="margin: 0; color: #15803d; font-size: 32px; font-weight: 900; letter-spacing: 4px;">'.$proLicenseCode.'</p>
+                                    </div>
+
+                                    <div style="text-align: center;">
+                                        <a href="'.$targetUrl.'" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold; padding: 16px 35px; border-radius: 8px;">
+                                            Masuk ke Dashboard
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+                                    <p style="color: #94a3b8; font-size: 13px; margin: 0;">
+                                        &copy; '.date('Y').' Sancaka POS. All rights reserved.
+                                    </p>
+                                </div>
+
+                            </div>
+                        </div>';
+
                         $this->_sendEmail($user->email, "Pembayaran Berhasil - Kode Aktivasi POS", $emailProHtml);
                     }
                 }
