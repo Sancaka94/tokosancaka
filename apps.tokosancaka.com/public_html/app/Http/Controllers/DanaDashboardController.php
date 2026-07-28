@@ -188,8 +188,8 @@ public function danaCallback(Request $request, \App\Services\DanaSignatureServic
 
             // TODO: Simpan $accessToken dan $publicUserId ke database Affiliate/User kamu di sini
             // Contoh:
-            // $userId = session('dana_user_id');
-            // Affiliate::where('id', $userId)->update(['dana_access_token' => $accessToken]);
+            $userId = session('dana_user_id');
+            Affiliate::where('id', $userId)->update(['dana_access_token' => $accessToken]);
 
             return redirect('/')->with('success', 'Akun DANA berhasil ditautkan secara permanen!');
         }
