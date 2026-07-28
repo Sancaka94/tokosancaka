@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use App\Models\PesananAutokirim;
 use App\Models\AutoKirim;
@@ -69,9 +70,11 @@ class PesananAutokirimController extends Controller
         $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
         $cacheKey = 'tripay_channels_list_' . $currentMode;
 
-        \Illuminate\Support\Facades\Cache::forget($cacheKey);
+        // \Illuminate\Support\Facades\Cache::forget($cacheKey);
 
-        $tripayChannels = \Illuminate\Support\Facades\Cache::remember($cacheKey, 60 * 24, function () use ($currentMode) {
+        $tripayChannels = json_decode(Redis::get($cacheKey), true);
+
+        if (!$tripayChannels) {
             if ($currentMode === 'production') {
                 $baseUrl = 'https://tripay.co.id/api';
                 $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'production');
@@ -87,15 +90,19 @@ class PesananAutokirimController extends Controller
 
                 if ($response->successful()) {
                     \Illuminate\Support\Facades\Log::info("LOG LOG: [TRIPAY CHANNELS] Sukses mendapatkan data metode pembayaran.");
-                    return $response->json()['data'] ?? [];
+                    $tripayChannels = $response->json()['data'] ?? [];
+                    // Simpan ke Redis selama 24 jam (86400 detik)
+                    Redis::setex($cacheKey, 86400, json_encode($tripayChannels));
                 } else {
                     \Illuminate\Support\Facades\Log::error("LOG LOG: [TRIPAY CHANNELS] Gagal mendapatkan data dari Tripay. Status: " . $response->status(), $response->json() ?? []);
+                    $tripayChannels = [];
                 }
             } catch (\Exception $e) {
                 \Illuminate\Support\Facades\Log::error("LOG LOG: [TRIPAY CHANNELS] Exception Error: " . $e->getMessage());
+                $tripayChannels = [];
             }
-            return [];
-        });
+
+        }
 
         // 3. Gabungkan Data Tripay ke List Metode Pembayaran
         foreach ($tripayChannels as $channel) {
@@ -535,11 +542,17 @@ class PesananAutokirimController extends Controller
             'penerima_alamat.min' => 'Alamat Penerima terlalu pendek! Wajib menuliskan nama jalan, nomor rumah/gedung, atau RT/RW (Min. 15 karakter).',
         ]);
 
-        // [FITUR IDEMPOTENCY]: Kunci request user ini selama 10 detik untuk mencegah double submit
-        $lock = Cache::lock('create_order_user_' . auth()->id(), 10);
-        if (!$lock->get()) {
+        // [FITUR IDEMPOTENCY BERBASIS REDIS]: Kunci request selama 10 detik
+        // Gunakan IP Address jika user belum login (Guest)
+        $lockKey = 'create_order_user_' . (auth()->id() ?? md5(request()->ip()));
+
+        // Redis SETNX: Set key hanya jika belum ada
+        if (!Redis::setnx($lockKey, 'locked')) {
             return redirect()->back()->with('error', 'Pesanan Anda sedang diproses. Mohon jangan klik tombol submit berkali-kali.');
         }
+
+        // Pasang timer kedaluwarsa 10 detik
+        Redis::expire($lockKey, 10);
 
         try {
             $origin = AutoKirim::where('district_id', $request->pengirim_district_id)->first();
@@ -786,35 +799,55 @@ class PesananAutokirimController extends Controller
                 return redirect()->back()->withInput()->with('error', $e->getMessage());
             }
         } finally {
-            // [FITUR IDEMPOTENCY]: Melepas lock agar user bisa request (buat pesanan baru) di masa depan
-            $lock->release();
+            // [FITUR IDEMPOTENCY REDIS]: Hapus kunci agar bisa transaksi lagi
+            Redis::del($lockKey);
         }
     }
 
     public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
     {
-        $pickupPayload = [
-            'name'              => (string) trim($pesanan->pengirim_nama),
-            'phone'             => (string) trim($pesanan->pengirim_hp),
-            'address'           => (string) trim($pesanan->pengirim_alamat),
-            'email'             => auth()->user()->email ?? 'customer@tokosancaka.com',
-            'longitude'         => "",
-            'latitude'          => "",
-            'district_id'       => (int) $origin->district_id,
-            'is_member_deposit' => false
-        ];
+       // Gunakan IP Address user agar ID-nya tetap sama meskipun mereka belum login
+        $userId = auth()->id() ?? 'guest_' . md5(request()->ip());
+        $pickupCacheKey = 'pickup_code_user_' . $userId;
 
-        $pickupResponse = Http::timeout(15)
-            ->withToken($this->token)
-            ->post("{$this->baseUrl}/api/pickup-point/insert", $pickupPayload);
+        // 1. CEK REDIS DULU
+        $pickupPointCode = Redis::get($pickupCacheKey);
 
-        $pickupResult = $pickupResponse->json();
+        // 2. JIKA TIDAK ADA DI REDIS, TEMBAK API
+        if (!$pickupPointCode) {
+            $pickupPayload = [
+                'name'              => (string) trim($pesanan->pengirim_nama),
+                'phone'             => (string) trim($pesanan->pengirim_hp),
+                'address'           => (string) trim($pesanan->pengirim_alamat),
+                'email'             => auth()->user()->email ?? 'customer@tokosancaka.com',
+                'longitude'         => "",
+                'latitude'          => "",
+                'district_id'       => (int) $origin->district_id,
+                'is_member_deposit' => false
+            ];
 
-        if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
-            throw new Exception('Gagal mendaftarkan alamat jemput ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
+            $pickupResponse = Http::timeout(15)
+                ->withToken($this->token)
+                ->post("{$this->baseUrl}/api/pickup-point/insert", $pickupPayload);
+
+            $pickupResult = $pickupResponse->json();
+
+            if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
+                throw new Exception('Gagal mendaftarkan alamat jemput ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
+            }
+
+            $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
+
+            // Simpan ke Redis selama 30 Hari (2.592.000 detik)
+            Redis::setex($pickupCacheKey, 2592000, $pickupPointCode);
+
+            Log::info("LOG LOG: [PICKUP POINT] Dibuat baru dari API: {$pickupPointCode}");
+
+            // Jeda 2 detik HANYA saat kode baru dibuat agar sinkronisasi di server Autokirim selesai
+            sleep(2);
+        } else {
+            Log::info("LOG LOG: [PICKUP POINT] Mengambil dari Redis: {$pickupPointCode}");
         }
-
-        $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
 
         $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
         $qtyInput = $requestData ? (string) $requestData->input('qty', 1) : "1";
