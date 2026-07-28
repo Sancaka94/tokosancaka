@@ -101,7 +101,7 @@ class EmployeeController extends Controller
         return redirect()->route('employees.index')->with('success', 'Pegawai berhasil ditambahkan!');
     }
 
-   public function edit($id)
+   public function edit($subdomain, $id)
 {
     dd('HALO, CONTROLLER TEREKSEKUSI. ID: ', $id);
 
