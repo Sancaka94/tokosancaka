@@ -296,7 +296,7 @@ class SettingApiController extends Controller
         ];
 
         // VIEW SESUAI PUNYA USER:
-        return view('admin.settingapi.index', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu', 'mandiri', 'mapbox', 'autokirim'));
+        return view('admin.settingapi.index', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu', 'mandiri', 'mapbox', 'autokirim', 'danaMode', 'settings'));
     }
 
     public function update(Request $request)
