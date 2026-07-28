@@ -62,6 +62,7 @@ use App\Http\Controllers\LicenseController;
 use App\Http\Controllers\SettingApiController;
 use App\Http\Middleware\EnforceLicenseLimits;
 use App\Http\Controllers\SuspendController;
+use App\Http\Controllers\Admin\EmailController;
 
 
 use Illuminate\Support\Facades\Http;
@@ -187,7 +188,7 @@ Route::domain('{subdomain}.tokosancaka.com')
     ->group(function () {
 
         Route::get('/', function (Request $request, $subdomain) {
-            
+
             // 1. Ambil data Tenant (Toko) yang sedang diakses
             $tenant = $request->get('tenant') ?? \App\Models\Tenant::where('subdomain', $subdomain)->first();
 
@@ -197,14 +198,14 @@ Route::domain('{subdomain}.tokosancaka.com')
             }
 
             // 2. Ambil Kategori KHUSUS untuk tenant ini saja
-            $categories = Category::where('tenant_id', $tenant->id)->get(); 
+            $categories = Category::where('tenant_id', $tenant->id)->get();
 
             // 3. Ambil Produk KHUSUS untuk tenant ini saja (dan yang stoknya aman)
             $products = Product::where('tenant_id', $tenant->id)
                                ->where('stock_status', 'available')
                                ->where('stock', '>', 0)
                                ->latest()
-                               ->paginate(12); 
+                               ->paginate(12);
 
             // 4. Kirim SEMUA variabel mutlak yang dibutuhkan oleh file Blade
             return view('storefront.index', [
@@ -742,12 +743,12 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
     // Rute untuk menampilkan halaman setting
     Route::get('/setting-api', [SettingApiController::class, 'index'])->name('admin.settingapi.index');
-    
+
     // Rute untuk memproses klik toggle (AJAX)
     Route::post('/setting-api/update-dana-mode', [SettingApiController::class, 'updateDanaMode'])->name('admin.settingapi.update-dana-mode');
 
     Route::post('/setting-api/save-credentials', [SettingApiController::class, 'saveCredentials'])->name('admin.settingapi.save-credentials');
-    
+
     // ==========================================
     // 2. ROUTE KONTAK & HUTANG PIUTANG
     // ==========================================
@@ -843,3 +844,33 @@ Route::domain('{subdomain}.tokosancaka.com')->middleware(['tenant'])->group(func
 Route::post('/tenant/generate-payment', [TenantPaymentController::class, 'generateUrl']);
 Route::get('/tenant/check-status', [TenantPaymentController::class, 'checkStatus']);
 
+
+/*
+|--------------------------------------------------------------------------
+| EMAIL KOTAK MASUK (IMAP & LOKAL)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth'])->prefix('admin/email')->name('admin.email.')->group(function () {
+
+    // 1. Menampilkan halaman Kotak Masuk
+    Route::get('/', [EmailController::class, 'index'])->name('index');
+
+    // 2. Mengambil data list email (Inbox / Sent / Trash / dll)
+    Route::get('/fetch', [EmailController::class, 'fetch'])->name('fetch');
+
+    // 3. Mengirim email baru (menggunakan POST karena ada lampiran file)
+    Route::post('/send', [EmailController::class, 'send'])->name('send');
+
+    // 4. Autocomplete pencarian user (PENTING: Taruh ini di atas route show {id})
+    Route::get('/search-users', [EmailController::class, 'searchUsers'])->name('searchUsers');
+
+    // 5. Menghapus email secara massal (menggunakan POST/DELETE untuk menerima array IDs)
+    Route::post('/destroy', [EmailController::class, 'destroy'])->name('destroy');
+
+    // 6. Melihat detail isi email berdasarkan ID
+    Route::get('/{id}', [EmailController::class, 'show'])->name('show');
+
+    // 7. Update email (Bintang / Pindah Folder)
+    Route::put('/{id}', [EmailController::class, 'update'])->name('update');
+
+});
