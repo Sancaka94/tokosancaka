@@ -109,6 +109,8 @@ class DanaGatewayController extends Controller
      */
     public function startBinding(Request $request)
     {
+        dd('HALO BOS! KODE BARU BERHASIL TERPANGGIL. Client ID:', config('services.dana.client_id'));
+
         Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA Portal...');
 
         // Ambil ID User/Affiliate, support baik dikirim lewat form maupun Auth
