@@ -618,27 +618,35 @@ Route::middleware(['web', 'auth', EnforceLicenseLimits::class])->group(function 
 |--------------------------------------------------------------------------
 */
 
+/*
+|--------------------------------------------------------------------------
+| DANA DASHBOARD INTEGRATION (FLAT ROUTES - SENTRALISASI GATEWAY)
+|--------------------------------------------------------------------------
+*/
+
 Route::post('/member/deposit-dana', [App\Http\Controllers\MemberAuthController::class, 'depositViaDana'])
     ->name('deposit.dana')
     ->middleware('auth:member');
 
 Route::post('/member/deposit', [MemberAuthController::class, 'storeDeposit'])->name('deposit.store');
 
-// 1. Dashboard & Utama
+// 1. Dashboard (Hanya UI Dashboard yang tetap pakai DanaDashboardController)
 Route::get('/dana-dashboard', [DanaDashboardController::class, 'index'])->name('dana.dashboard');
-Route::post('/dana-topup', [MemberAuthController::class, 'topupSaldo'])->name('dana.topup');
 
-// 2. Binding & Callback
-Route::post('/dana-do-bind', [DanaDashboardController::class, 'startBinding'])->name('dana.do_bind');
-Route::get('/dana-callback', [DanaDashboardController::class, 'handleCallback'])->name('dana.callback');
+// 2. Aksi Top Up
+Route::post('/dana-topup', [DanaGatewayController::class, 'topupSaldo'])->name('dana.topup');
 
-// 3. Monitoring Saldo
-Route::post('/dana-check-balance', [DanaDashboardController::class, 'checkBalance'])->name('dana.check_balance');
-Route::post('/dana-check-merchant-balance', [DanaDashboardController::class, 'checkMerchantBalance'])->name('dana.check_merchant_balance');
+// 3. Binding & Callback
+Route::post('/dana-do-bind', [DanaGatewayController::class, 'startBinding'])->name('dana.do_bind');
+Route::get('/dana-callback', [DanaGatewayController::class, 'handleCallback'])->name('dana.callback');
 
-// 4. Disbursement / Inquiry
-Route::post('/dana-execute-disbursement', [MemberAuthController::class, 'customerTopup'])->name('dana.execute_disbursement');
-Route::post('/dana-account-inquiry', [DanaDashboardController::class, 'accountInquiry'])->name('dana.account_inquiry');
+// 4. Monitoring Saldo
+Route::post('/dana-check-balance', [DanaGatewayController::class, 'checkBalance'])->name('dana.check_balance');
+Route::post('/dana-check-merchant-balance', [DanaGatewayController::class, 'checkMerchantBalance'])->name('dana.check_merchant_balance');
+
+// 5. Disbursement / Inquiry
+Route::post('/dana-execute-disbursement', [DanaGatewayController::class, 'customerTopup'])->name('dana.execute_disbursement');
+Route::post('/dana-account-inquiry', [DanaGatewayController::class, 'bankAccountInquiry'])->name('dana.account_inquiry');
 
 
 Route::get('/orders/{id}/print-struk', [App\Http\Controllers\OrderController::class, 'printStruk'])
