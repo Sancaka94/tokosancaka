@@ -103,6 +103,8 @@ class EmployeeController extends Controller
 
    public function edit($id)
 {
+    dd('HALO, CONTROLLER TEREKSEKUSI. ID: ', $id);
+
     $currentUser = Auth::user();
     $tenants = [];
     $outlets = [];
