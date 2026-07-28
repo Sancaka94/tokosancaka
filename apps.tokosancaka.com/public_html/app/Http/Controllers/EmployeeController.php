@@ -101,26 +101,39 @@ class EmployeeController extends Controller
         return redirect()->route('employees.index')->with('success', 'Pegawai berhasil ditambahkan!');
     }
 
-    // 4. FORM EDIT (EDIT)
-    public function edit($id)
-    {
-        $currentUser = Auth::user();
-        $tenants = [];
-        $outlets = [];
+   public function edit($id)
+{
+    $currentUser = Auth::user();
+    $tenants = [];
+    $outlets = [];
 
-        if ($currentUser->role === 'super_admin') {
-            $employee = User::findOrFail($id);
-            $tenants = Tenant::orderBy('name', 'asc')->get();
-            $outlets = Outlet::orderBy('name', 'asc')->get(); // Tarik semua untuk Super Admin
-        } else {
-            $employee = User::where('id', $id)
-                            ->where('tenant_id', $currentUser->tenant_id)
-                            ->firstOrFail();
-            $outlets = Outlet::where('tenant_id', $currentUser->tenant_id)->orderBy('name', 'asc')->get();
+    // Cek murni apakah ID 41 ada di database, terlepas dari dia tenant mana
+    $cekUserMurni = User::find($id);
+    if (!$cekUserMurni) {
+        // Jika masuk ke sini, artinya ID 41 benar-benar tidak ada di database
+        abort(404, 'Data pegawai dengan ID ini sudah tidak ada di database.');
+    }
+
+    if ($currentUser->role === 'super_admin') {
+        $employee = $cekUserMurni;
+        $tenants = Tenant::orderBy('name', 'asc')->get();
+        $outlets = Outlet::orderBy('name', 'asc')->get();
+    } else {
+        // Cek apakah pegawai ini benar-benar milik toko (tenant) yang login
+        $employee = User::where('id', $id)
+                        ->where('tenant_id', $currentUser->tenant_id)
+                        ->first();
+
+        if (!$employee) {
+            // Jika masuk ke sini, ID 41 ada, TAPI dia bukan milik toko ini
+            dd('Akses Ditolak: Pegawai ID ' . $id . ' ini terdaftar di tenant_id: ' . $cekUserMurni->tenant_id . ', sedangkan tenant_id kamu adalah: ' . $currentUser->tenant_id);
         }
 
-        return view('employees.edit', compact('employee', 'tenants', 'outlets'));
+        $outlets = Outlet::where('tenant_id', $currentUser->tenant_id)->orderBy('name', 'asc')->get();
     }
+
+    return view('employees.edit', compact('employee', 'tenants', 'outlets'));
+}
 
     // 5. UPDATE DATA (UPDATE)
     public function update(Request $request, $id)
