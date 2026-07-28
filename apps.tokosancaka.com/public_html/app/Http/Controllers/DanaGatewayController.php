@@ -8,528 +8,308 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log; // Logging aktif
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
-use Carbon\Carbon; // <--- Pastikan baris ini ada di paling atas file
-
-// Models
-use App\Models\Order;
-use App\Models\Product;
-use App\Models\OrderDetail;
-use App\Models\OrderAttachment;
-use App\Models\Coupon;
-use App\Models\Affiliate;
-use App\Models\Store;
-use App\Models\TopUp;
-use App\Models\User;
-use App\Models\SettingApi; // <--- TAMBAHKAN INI UNTUK AMBIL DARI DATABASE
-
-// Services
-use App\Services\DokuJokulService;
-use App\Services\KiriminAjaService;
-use App\Services\DanaSignatureService; // <--- TAMBAHKAN INI
-
-// SDK Models
-use Dana\Widget\v1\Model\WidgetPaymentRequest;
-use Dana\Widget\v1\Model\Money;
-use Dana\Widget\v1\Model\UrlParam;
-use Dana\Widget\v1\Model\WidgetPaymentRequestAdditionalInfo;
-use Dana\Widget\v1\Model\EnvInfo;
-use Dana\Widget\v1\Model\Order as DanaOrder; // Alias biar ga bentrok
-
-// SDK Enums (DATA DARI ANDA)
-use Dana\Widget\v1\Enum\PayMethod;
-use Dana\Widget\v1\Enum\SourcePlatform;
-use Dana\Widget\v1\Enum\TerminalType;
-use Dana\Widget\v1\Enum\OrderTerminalType;
-use Dana\Widget\v1\Enum\Type; // Untuk UrlParam type (PAY_RETURN)
-
-// Config
-use Dana\Configuration;
-use Dana\Env;
-use Dana\Widget\v1\Api\WidgetApi;
+use Carbon\Carbon;
+use App\Models\SettingApi;
 
 class DanaGatewayController extends Controller
 {
     /**
-     * KONFIGURASI URL CALLBACK
-     * URL ini harus SAMA PERSIS dengan yang didaftarkan di Dashboard DANA Developer.
-     * Tidak boleh beda satu karakter pun (termasuk http/https).
+     * =========================================================================
+     * 1. CONSTRUCTOR & DYNAMIC CONFIGURATION
+     * =========================================================================
      */
-    private const FIXED_CALLBACK_URL = 'https://tokosancaka.com/dana/callback';
-
-    // Property untuk menampung config agar tidak query ke database berulang kali
-    private $danaConfig = null;
-
-    /**
-     * HELPER BARU: MENGAMBIL KONFIGURASI CERDAS DARI DATABASE
-     * Mendeteksi otomatis mode Production atau Sandbox.
-     */
-    private function getDanaConfig()
+    public function __construct()
     {
-        if ($this->danaConfig !== null) {
-            return $this->danaConfig; // Return cache memory jika sudah pernah di-load
-        }
+        $this->applyDynamicConfig();
+    }
 
-        // Ambil semua data sekaligus (Efisiensi Database)
+    private function applyDynamicConfig()
+    {
         $settings = SettingApi::pluck('value', 'key')->toArray();
         $isProduction = ($settings['dana_production_mode'] ?? '0') === '1';
-        $prefix = $isProduction ? 'dana_prod_' : 'dana_sandbox_';
 
-        $this->danaConfig = [
-            'is_production' => $isProduction,
-            'base_url'      => $isProduction ? 'https://api.dana.id' : 'https://api.sandbox.dana.id',
-            'merchant_id'   => $settings[$prefix . 'merchant_id'] ?? '',
-            'client_id'     => $settings[$prefix . 'client_id'] ?? '', // Bertindak sebagai X-PARTNER-ID
-            'client_secret' => $settings[$prefix . 'client_secret'] ?? '',
-            'private_key'   => $settings[$prefix . 'private_key'] ?? '',
-            'public_key'    => $settings[$prefix . 'public_key'] ?? '',
-            'origin'        => env('APP_URL', 'https://m.dana.id'),
-        ];
-
-        return $this->danaConfig;
-    }
-
-    /**
-     * MAIN HANDLER: MENERIMA SEMUA TAMU DARI DANA
-     */
-    public function handleCallback(Request $request)
-    {
-        // 1. Ambil Parameter dari DANA
-        $authCode = $request->input('auth_code'); // Untuk Binding
-        $status   = $request->input('resultStatus'); // Untuk Payment Redirect
-        $state    = $request->input('state'); // <--- KTP/IDENTITAS USER
-
-        Log::info("[DANA GATEWAY] Hit Masuk.", [
-            'ip' => $request->ip(),
-            'state' => $state,
-            'code' => $authCode ? 'YES' : 'NO'
-        ]);
-
-        // 2. Validasi State
-        if (empty($state)) {
-            return redirect('/')->with('error', 'Invalid Request: No State Identifier');
-        }
-
-        // 3. Bedah State (Parsing)
-        // Format yang kita sepakati: ACTION-USERID-SUBDOMAIN-TENANTID
-        // Contoh: BIND_TENANT-5-bakso-2
-        $parts = explode('-', $state);
-
-        if (count($parts) < 4) {
-            Log::error("[DANA GATEWAY] Format State Salah: $state");
-            return redirect('/')->with('error', 'Sesi Kadaluarsa atau Format Salah');
-        }
-
-        $action    = $parts[0]; // BIND_TENANT, BIND_MEMBER, PAY
-        $userId    = $parts[1]; // User ID atau Affiliate ID
-        $subdomain = $parts[2]; // Subdomain asal (misal: 'bakso')
-        $tenantId  = $parts[3]; // ID Tenant
-
-        // 4. Bangun URL Pulang (Smart Redirect Base)
-        $scheme = $request->secure() ? 'https://' : 'http://';
-        $appDomain = env('APP_URL_DOMAIN', 'tokosancaka.com');
-
-        // Base URL: https://bakso.tokosancaka.com
-        $tenantBaseUrl = $scheme . $subdomain . '.' . $appDomain;
-
-        // 5. Switch Logic Berdasarkan ACTION
-        switch ($action) {
-            case 'BIND_TENANT':
-                return $this->handleBinding($authCode, $userId, 'TENANT', $tenantBaseUrl);
-
-            case 'BIND_MEMBER':
-                return $this->handleBinding($authCode, $userId, 'MEMBER', $tenantBaseUrl);
-
-            case 'PAY':
-                // Logic jika DANA me-redirect setelah bayar (Acquiring)
-                return $this->handlePaymentRedirect($status, $tenantBaseUrl);
-
-            default:
-                Log::warning("[DANA GATEWAY] Unknown Action: $action");
-                return redirect($tenantBaseUrl)->with('error', 'Aksi tidak dikenali.');
-        }
-    }
-
-    /**
-     * LOGIC: HANDLE BINDING (SAMBUNG AKUN)
-     * Tukar Auth Code -> Access Token -> Simpan ke DB -> Redirect
-     */
-    private function handleBinding($authCode, $userId, $userType, $baseUrl)
-    {
-        if (!$authCode) {
-            // User menolak binding / klik cancel
-            return redirect($baseUrl . '/dashboard?dana_status=cancelled')->with('error', 'Koneksi DANA dibatalkan.');
-        }
-
-        // A. Tukar Token ke API DANA
-        $tokenResult = $this->exchangeDanaToken($authCode);
-
-        if (!$tokenResult['success']) {
-            Log::error("[DANA GATEWAY] Gagal Tukar Token User $userId: " . $tokenResult['message']);
-            return redirect($baseUrl . '/dashboard?dana_status=failed')->with('error', 'Gagal menghubungkan DANA: ' . $tokenResult['message']);
-        }
-
-        $accessToken = $tokenResult['data']['accessToken'];
-        $expiry      = $tokenResult['data']['expiresIn'] ?? null; // Detik
-
-        // B. Simpan ke Database yang Sesuai
-        try {
-            if ($userType === 'TENANT') {
-                // Update tabel USERS (Admin Toko)
-                DB::table('users')->where('id', $userId)->update([
-                    'dana_access_token' => $accessToken,
-                    'dana_token_expiry' => $expiry, // Opsional simpan expiry
-                    'updated_at'        => now()
-                ]);
-                Log::info("[DANA GATEWAY] ✅ Token Saved for TENANT User $userId");
-                $redirectPath = '/dashboard';
-
-            } else {
-                // Update tabel AFFILIATES (Member)
-                DB::table('affiliates')->where('id', $userId)->update([
-                    'dana_access_token' => $accessToken,
-                    // 'dana_token_expiry' => $expiry, // Jika ada kolomnya
-                    'updated_at'        => now()
-                ]);
-                Log::info("[DANA GATEWAY] ✅ Token Saved for MEMBER User $userId");
-                $redirectPath = '/member/dashboard';
-            }
-
-            // C. Redirect Sukses
-            // Kita kirim parameter query string agar frontend di subdomain bisa menangkap notifikasi
-            return redirect($baseUrl . $redirectPath . '?dana_status=success&msg=' . urlencode('Akun DANA Berhasil Terhubung!'));
-
-        } catch (\Exception $e) {
-            Log::error("[DANA GATEWAY] DB Error: " . $e->getMessage());
-            return redirect($baseUrl . '/dashboard?dana_status=error')->with('error', 'Database Error.');
-        }
-    }
-
-    /**
-     * LOGIC: HANDLE REDIRECT SETELAH BAYAR
-     */
-    private function handlePaymentRedirect($status, $baseUrl)
-    {
-        // Status dari DANA biasanya: SUCCESS, PENDING, FAILED
-        // Kita kembalikan user ke dashboard/history
-        if ($status == 'SUCCESS') {
-            return redirect($baseUrl . '/dashboard?payment_status=success')->with('success', 'Pembayaran Berhasil!');
-        } elseif ($status == 'PENDING') {
-            return redirect($baseUrl . '/dashboard?payment_status=pending')->with('warning', 'Pembayaran sedang diproses.');
+        if ($isProduction) {
+            config([
+                'services.dana.dana_env'      => 'PRODUCTION',
+                'services.dana.base_url'      => 'https://api.dana.id',
+                'services.dana.portal_url'    => 'https://m.dana.id/d/portal/oauth',
+                'services.dana.redirect_url'  => 'https://apps.tokosancaka.com/dana/callback',
+                'services.dana.merchant_id'   => $settings['dana_prod_merchant_id'] ?? env('DANA_PROD_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_prod_client_id'] ?? env('DANA_PROD_CLIENT_ID'),
+                'services.dana.private_key'   => $settings['dana_prod_private_key'] ?? env('DANA_PROD_PRIVATE_KEY'),
+                'services.dana.public_key'    => $settings['dana_prod_public_key'] ?? env('DANA_PROD_PUBLIC_KEY'),
+                'services.dana.client_secret' => $settings['dana_prod_client_secret'] ?? env('DANA_PROD_CLIENT_SECRET'),
+                'services.dana.origin'        => env('DANA_ORIGIN', 'https://tokosancaka.com'),
+            ]);
         } else {
-            return redirect($baseUrl . '/dashboard?payment_status=failed')->with('error', 'Pembayaran Gagal.');
+            config([
+                'services.dana.dana_env'      => 'SANDBOX',
+                'services.dana.base_url'      => 'https://api.sandbox.dana.id',
+                'services.dana.portal_url'    => 'https://m.sandbox.dana.id/d/portal/oauth',
+                'services.dana.redirect_url'  => 'https://apps.tokosancaka.com/dana/callback',
+                'services.dana.merchant_id'   => $settings['dana_sandbox_merchant_id'] ?? env('DANA_MERCHANT_ID'),
+                'services.dana.client_id'     => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.x_partner_id'  => $settings['dana_sandbox_client_id'] ?? env('DANA_X_PARTNER_ID'),
+                'services.dana.private_key'   => $settings['dana_sandbox_private_key'] ?? env('DANA_PRIVATE_KEY'),
+                'services.dana.public_key'    => $settings['dana_sandbox_public_key'] ?? env('DANA_PUBLIC_KEY'),
+                'services.dana.client_secret' => $settings['dana_sandbox_client_secret'] ?? env('DANA_CLIENT_SECRET'),
+                'services.dana.origin'        => env('DANA_ORIGIN', 'https://tokosancaka.com'),
+            ]);
         }
     }
 
     /**
-     * HELPER: TUKAR AUTH CODE JADI ACCESS TOKEN
-     * API: /v1.0/access-token/b2b2c.htm
-     */
-    private function exchangeDanaToken($authCode)
-    {
-        try {
-            $danaConfig = $this->getDanaConfig();
-
-            $timestamp  = now('Asia/Jakarta')->toIso8601String();
-            $clientId   = $danaConfig['client_id'];
-            $externalId = (string) time(); // Unique Request ID
-
-            // Signature String: clientId + "|" + timestamp (Sesuai Dokumen B2B2C)
-            $stringToSign = $clientId . "|" . $timestamp;
-            $signature    = $this->generateSignature($stringToSign);
-
-            $body = [
-                'grantType' => 'authorization_code',
-                'authCode'  => $authCode,
-            ];
-
-            // Request ke DANA Sandbox / Production berdasarkan Config
-            $apiUrl = $danaConfig['base_url'] . '/v1.0/access-token/b2b2c.htm';
-
-            $response = Http::withHeaders([
-                'X-TIMESTAMP'   => $timestamp,
-                'X-SIGNATURE'   => $signature,
-                'X-PARTNER-ID'  => $clientId,
-                'X-CLIENT-KEY'  => $clientId, // Kadang butuh ini
-                'X-EXTERNAL-ID' => $externalId,
-                'Content-Type'  => 'application/json'
-            ])->post($apiUrl, $body);
-
-            $result = $response->json();
-
-            // Kode Sukses DANA
-            $successCodes = ['2001100', '2007400', '2000000'];
-
-            if (isset($result['responseCode']) && in_array($result['responseCode'], $successCodes)) {
-                return ['success' => true, 'data' => $result];
-            }
-
-            Log::error("[DANA API] Token Exchange Failed: " . json_encode($result));
-            return [
-                'success' => false,
-                'message' => $result['responseMessage'] ?? 'Unknown API Error'
-            ];
-
-        } catch (\Exception $e) {
-            Log::error("[DANA API] Exception: " . $e->getMessage());
-            return ['success' => false, 'message' => $e->getMessage()];
-        }
-    }
-
-    /**
-     * HELPER: GENERATE RSA-SHA256 SIGNATURE
+     * =========================================================================
+     * 2. ANTI-CRASH SECURITY SIGNATURE
+     * =========================================================================
      */
     private function generateSignature($stringToSign)
     {
-        $danaConfig = $this->getDanaConfig();
-        $privateKeyContent = $danaConfig['private_key'];
+        $privateKeyContent = config('services.dana.private_key');
 
-        // 1. CEK KEY KOSONG: Cegah error param cannot be coerced
         if (empty($privateKeyContent)) {
-            Log::error("[DANA SIG] DANA Error: Private Key kosong! Cek konfigurasi Setting API Anda di database.");
+            Log::error("LOG LOG: [DANA SIG] Private Key kosong! Cek konfigurasi Setting API Anda di database.");
             return null;
         }
 
-        // 2. BUANG HEADER/FOOTER BAWAAN
         $cleanKey = str_replace(
             ['-----BEGIN PRIVATE KEY-----', '-----END PRIVATE KEY-----', '-----BEGIN RSA PRIVATE KEY-----', '-----END RSA PRIVATE KEY-----'],
             '',
             $privateKeyContent
         );
 
-        // 3. SAPU BERSIH: Sisakan hanya format Base64 murni (huruf, angka, +, /, =)
-        // Ini akan otomatis membersihkan spasi, enter (\n, \r), dan karakter aneh yang merusak key.
         $cleanKey = preg_replace('/[^a-zA-Z0-9\/\+=]/', '', $cleanKey);
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . wordwrap($cleanKey, 64, "\n", true) . "\n-----END PRIVATE KEY-----";
 
-        // 4. SUSUN ULANG KE FORMAT PEM MUTLAK
-        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" .
-                        wordwrap($cleanKey, 64, "\n", true) .
-                        "\n-----END PRIVATE KEY-----";
-
-        // 5. VALIDASI KEY KE OPENSSL (Cek apakah key bisa dibaca sebelum proses sign)
         $privateKeyResource = openssl_pkey_get_private($formattedKey);
 
         if (!$privateKeyResource) {
-            Log::error("[DANA SIG] DANA Error: Private Key tetap tidak valid setelah di-format. Pastikan key dari dashboard DANA utuh (tidak terpotong).");
+            Log::error("LOG LOG: [DANA SIG] Private Key tetap tidak valid setelah di-format.");
             return null;
         }
 
         $binarySignature = "";
-
-        // 6. PROSES SIGNING
         if (!openssl_sign($stringToSign, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256)) {
-            Log::error("[DANA SIG] OpenSSL Error saat proses signing: " . openssl_error_string());
+            Log::error("LOG LOG: [DANA SIG] OpenSSL Error saat proses signing: " . openssl_error_string());
             return null;
         }
 
         return base64_encode($binarySignature);
     }
 
-   /**
-     * [UPDATE] LOGIC: SINKRONISASI SALDO (SNAP API STYLE)
-     * Endpoint: /v1.0/balance-inquiry.htm
+    /**
+     * =========================================================================
+     * 3. BINDING & OAUTH (SAMBUNG AKUN)
+     * =========================================================================
+     */
+    public function startBinding(Request $request)
+    {
+        Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA Portal...');
+
+        $affiliateId = $request->affiliate_id ?? (Auth::check() ? Auth::id() : 1);
+
+        $queryParams = [
+            'clientId'    => config('services.dana.client_id'),
+            'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
+            'externalId'  => 'BIND-' . $affiliateId . '-' . time(),
+            'merchantId'  => config('services.dana.merchant_id'),
+            'redirectUrl' => config('services.dana.redirect_url'),
+            'state'       => 'MEMBER-' . $affiliateId . '-apps-1', // Default State Format
+            'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
+            'terminalType'=> 'WEB',
+        ];
+
+        return redirect(config('services.dana.portal_url') . "?" . http_build_query($queryParams));
+    }
+
+    public function handleCallback(Request $request)
+    {
+        Log::info('LOG LOG: [DANA CALLBACK] Masuk...', $request->all());
+
+        $authCode = $request->input('auth_code') ?? $request->input('authCode');
+        $stateRaw = $request->input('state');
+
+        if (!$authCode || !$stateRaw) {
+            Log::error('LOG LOG: [DANA CALLBACK] Gagal: AuthCode atau State kosong.');
+            return redirect('/')->with('error', 'Callback DANA Invalid.');
+        }
+
+        // --- IDEMPOTENCY CHECK ---
+        $cacheKey = 'dana_auth_process_' . $authCode;
+        $isUsed = DB::table('affiliates')->where('dana_auth_code', $authCode)->exists();
+
+        if ($isUsed || Cache::has($cacheKey)) {
+            Log::warning("LOG LOG: [DANA CALLBACK] IDEMPOTENCY TRIGGERED: AuthCode $authCode sudah diproses.");
+            return redirect('/member/dashboard')->with('success', 'Akun sudah terhubung.');
+        }
+        Cache::put($cacheKey, true, 60);
+
+        $parts = explode('-', $stateRaw);
+        $userType  = $parts[0] ?? 'UNKNOWN';
+        $userId    = $parts[1] ?? 0;
+        $subdomain = $parts[2] ?? 'apps';
+        $tenantId  = $parts[3] ?? 1;
+
+        $tableName = ($userType === 'ADMIN' || $userType === 'TENANT') ? 'users' : 'affiliates';
+
+        try {
+            $timestamp  = now('Asia/Jakarta')->toIso8601String();
+            $clientId   = config('services.dana.client_id');
+            $externalId = (string) time();
+
+            $stringToSign = $clientId . "|" . $timestamp;
+            $signature    = $this->generateSignature($stringToSign);
+
+            $path = '/v1.0/access-token/b2b2c.htm';
+            $body = [
+                'grantType' => 'authorization_code',
+                'authCode'  => $authCode,
+                'additionalInfo' => (object)[]
+            ];
+
+            $response = Http::withHeaders([
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => $clientId,
+                'X-CLIENT-KEY'  => $clientId,
+                'X-EXTERNAL-ID' => $externalId,
+                'Content-Type'  => 'application/json'
+            ])->post(config('services.dana.base_url') . $path, $body);
+
+            $result = $response->json();
+            $successCodes = ['2001100', '2007400', '2000000'];
+
+            if (isset($result['responseCode']) && in_array($result['responseCode'], $successCodes)) {
+
+                DB::table($tableName)->where('id', $userId)->update([
+                    'dana_access_token' => $result['accessToken'] ?? $result['access_token'],
+                    'dana_auth_code'    => $authCode,
+                    'dana_connected_at' => now(),
+                    'updated_at'        => now()
+                ]);
+
+                Log::info("LOG LOG: [DANA CALLBACK] UPDATE DATABASE BERHASIL untuk User ID: $userId");
+                return redirect('/member/dashboard')->with('success', '✅ Akun DANA Berhasil Terhubung!');
+            }
+
+            Log::error('LOG LOG: [DANA SNAP ERROR] Token Exchange Failed: ', $result);
+            return redirect('/member/dashboard')->with('error', 'Gagal menghubungkan DANA: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [DANA CALLBACK] System Error:', ['msg' => $e->getMessage()]);
+            return redirect('/member/dashboard')->with('error', 'Terjadi Kesalahan Sistem saat verifikasi.');
+        }
+    }
+
+    /**
+     * =========================================================================
+     * 4. SALDO & INQUIRY
+     * =========================================================================
      */
     public function syncBalance(Request $request)
     {
-        // 1. Ambil User Login
         $user = Auth::user();
-        $accessToken = $user->dana_access_token;
+        $accessToken = $user->dana_access_token ?? $request->access_token;
 
-        // 2. Cek Token
-        if (!$accessToken) {
-            return back()->with('error', 'Token DANA tidak ditemukan. Silakan hubungkan akun kembali.');
-        }
+        if (!$accessToken) return back()->with('error', 'Token DANA tidak ditemukan.');
 
         try {
-            $danaConfig = $this->getDanaConfig();
-
-            // 3. Persiapan Parameter
             $timestamp = now('Asia/Jakarta')->toIso8601String();
-            $path      = '/v1.0/balance-inquiry.htm'; // Path relatif (Penting untuk signature)
+            $path      = '/v1.0/balance-inquiry.htm';
 
-            // 4. Body Request
             $body = [
                 'partnerReferenceNo' => 'BAL-' . time() . '-' . $user->id,
                 'balanceTypes'       => ['BALANCE'],
-                'additionalInfo'     => [
-                    'accessToken'    => $accessToken
-                ]
+                'additionalInfo'     => ['accessToken' => $accessToken]
             ];
 
-            // 5. Generate Signature (Logika SNAP)
-            // JSON Encode dengan flags spesifik agar hash match
             $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-            // Hash body menjadi lowercase SHA256
             $hashedBody   = strtolower(hash('sha256', $jsonBody));
-
-            // String to Sign: METHOD:PATH:HASH_BODY:TIMESTAMP
             $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-
             $signature    = $this->generateSignature($stringToSign);
 
-            // 6. URL Lengkap Dinamis (Production / Sandbox)
-            $fullUrl = $danaConfig['base_url'] . $path;
-
-            // 7. Kirim Request
             $response = Http::withHeaders([
                 'X-TIMESTAMP'            => $timestamp,
                 'X-SIGNATURE'            => $signature,
-                'X-PARTNER-ID'           => $danaConfig['client_id'],
+                'X-PARTNER-ID'           => config('services.dana.client_id'),
                 'X-EXTERNAL-ID'          => (string) time(),
-                'X-DEVICE-ID'            => 'DANA-DASHBOARD-STATION', // Sesuai kode Anda
-                'CHANNEL-ID'             => '95221',                  // Sesuai kode Anda
-                'ORIGIN'                 => $danaConfig['origin'],
+                'X-DEVICE-ID'            => 'DANA-DASHBOARD-STATION',
+                'CHANNEL-ID'             => '95221',
+                'ORIGIN'                 => config('services.dana.origin'),
                 'Authorization-Customer' => 'Bearer ' . $accessToken,
                 'Content-Type'           => 'application/json'
-            ])
-            ->withBody($jsonBody, 'application/json') // Kirim raw json body agar tidak berubah formatnya
-            ->post($fullUrl);
+            ])->withBody($jsonBody, 'application/json')->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
+            Log::info("LOG LOG: [DANA SYNC SNAP] User: {$user->id}", $result);
 
-            Log::info("[DANA SYNC SNAP] User: {$user->id}", $result);
-
-            // 8. Cek Response Code 2001100 (Sukses SNAP)
             if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
-
-                // Ambil value saldo
-                // Struktur biasanya: accountInfos[0]['availableBalance']['value']
                 $amountString = $result['accountInfos'][0]['availableBalance']['value'];
-
-                // Konversi ke float/double untuk DB
                 $cleanAmount  = floatval($amountString);
 
-                // Update Database User
-                $user->update([
-                    'dana_balance' => $cleanAmount,
-                    'updated_at'   => now()
-                ]);
+                // Asumsi field database adalah dana_user_balance / dana_balance
+                DB::table('affiliates')->where('id', $user->id)->update(['dana_balance' => $cleanAmount, 'updated_at' => now()]);
 
                 return back()->with('success', 'Saldo Real DANA Terupdate: Rp ' . number_format($cleanAmount, 0, ',', '.'));
             }
 
-            // Error Handling
-            $msg = $result['responseMessage'] ?? 'Unknown Error';
-            return back()->with('error', 'Gagal Sinkronisasi: ' . $msg);
+            return back()->with('error', 'Gagal Sinkronisasi: ' . ($result['responseMessage'] ?? 'Unknown Error'));
 
         } catch (\Exception $e) {
-            Log::error("[DANA SYNC ERROR] " . $e->getMessage());
+            Log::error("LOG LOG: [DANA SYNC ERROR] " . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan sistem saat menghubungi DANA.');
         }
     }
 
-
-    public function checkTopupStatus(Request $request)
+    public function checkMerchantBalance(Request $request)
     {
-        // --- [VALIDASI DATA] ---
-        $trx = DB::table('dana_transactions')->where('reference_no', $request->reference_no)->first();
-        $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
-
-        if (!$trx || !$aff) return back()->with('error', 'Data transaksi valid tidak ditemukan.');
-
-        $danaConfig = $this->getDanaConfig();
-
-        // --- [SETUP REQUEST] ---
         $timestamp = now('Asia/Jakarta')->toIso8601String();
-        $path = '/rest/v1.0/emoney/topup-status'; // Endpoint Status
-
-        $body = [
-            "originalPartnerReferenceNo" => $trx->reference_no,
-            "originalReferenceNo"        => "",
-            "originalExternalId"         => "",
-            "serviceCode"                => "38",
-            "additionalInfo"             => (object)[]
+        $payload = [
+            "request" => [
+                "head" => [
+                    "version" => "2.0", "function" => "dana.merchant.queryMerchantResource",
+                    "clientId" => config('services.dana.client_id'),
+                    "clientSecret" => config('services.dana.client_secret'),
+                    "reqTime" => $timestamp, "reqMsgId" => (string) Str::uuid(), "reserve" => "{}"
+                ],
+                "body" => [
+                    "requestMerchantId" => config('services.dana.merchant_id'),
+                    "merchantResourceInfoList" => ["MERCHANT_DEPOSIT_BALANCE"]
+                ]
+            ]
         ];
 
-        // --- [SIGNATURE & HEADERS] ---
-        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
-        $hashedBody = strtolower(hash('sha256', $jsonBody));
-        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-        $signature = $this->generateSignature($stringToSign);
+        $jsonToSign = json_encode($payload['request'], JSON_UNESCAPED_SLASHES);
+        $signature = $this->generateSignature($jsonToSign);
 
-        $headers = [
-            'Content-Type' => 'application/json',
-            'X-TIMESTAMP'  => $timestamp,
-            'X-SIGNATURE'  => $signature,
-            'X-PARTNER-ID' => $danaConfig['client_id'],
-            'X-EXTERNAL-ID'=> (string) time() . \Illuminate\Support\Str::random(6),
-            'CHANNEL-ID'   => '95221',
-            'ORIGIN'       => $danaConfig['origin'],
-        ];
+        $response = Http::post(config('services.dana.base_url') . '/dana/merchant/queryMerchantResource.htm', [
+            "request" => $payload['request'],
+            "signature" => $signature
+        ]);
 
-        try {
-            // Hit API DANA Secara Dinamis
-            $response = Http::timeout(40)
-                ->withHeaders($headers)
-                ->withBody($jsonBody, 'application/json')
-                ->post($danaConfig['base_url'] . $path);
+        $res = $response->json();
 
-            $result = $response->json();
-            $resCode = $result['responseCode'] ?? '500';
-
-            // --- [LOGIC UTAMA PERBAIKAN] ---
-            if ($resCode === '2003900') {
-
-                // Ambil status terbaru
-                $danaStatus = $result['latestTransactionStatus'] ?? 'Unknown';
-                $msgDesc    = $result['transactionStatusDesc'] ?? 'No Description';
-
-                // 1. SUKSES (00)
-                if ($danaStatus === '00') {
-                    DB::table('dana_transactions')->where('id', $trx->id)->update([
-                        'status' => 'SUCCESS',
-                        'updated_at' => now(),
-                        'response_payload' => json_encode($result)
-                    ]);
-                    return back()->with('success', '✅ Transaksi SUKSES (Confirmed).');
-                }
-
-                // 2. PENDING / IN PROCESS (06, 10, 01, 02, 03)
-                elseif (in_array($danaStatus, ['06', '10', '01', '02', '03'])) {
-                    DB::table('dana_transactions')->where('id', $trx->id)->update([
-                        'status' => 'PENDING',
-                        'updated_at' => now(),
-                        'response_payload' => json_encode($result)
-                    ]);
-                    return back()->with('warning', "⏳ Transaksi Sedang Diproses (Status: $danaStatus). Harap tunggu.");
-                }
-
-                // 3. GAGAL (Selain kode di atas)
-                else {
-                    DB::transaction(function() use ($trx, $aff, $result) {
-                        // Jika status sebelumnya bukan FAILED, kita refund
-                        if ($trx->status !== 'FAILED' && $trx->status !== 'SUCCESS') {
-                            DB::table('affiliates')->where('id', $aff->id)->increment('balance', $trx->amount);
-                        }
-
-                        DB::table('dana_transactions')->where('id', $trx->id)->update([
-                            'status' => 'FAILED',
-                            'updated_at' => now(),
-                            'response_payload' => json_encode($result)
-                        ]);
-                    });
-
-                    return back()->with('error', "❌ Transaksi GAGAL ($danaStatus): $msgDesc");
-                }
-
-            } else {
-                // Error dari API (Bukan 2003900)
-                $errMsg = $result['responseMessage'] ?? 'Unknown Error';
-                return back()->with('error', "Gagal Cek Status ($resCode): $errMsg");
-            }
-
-        } catch (\Exception $e) {
-            Log::error('[DANA STATUS] Error', ['msg' => $e->getMessage()]);
-            return back()->with('error', 'Sistem Error: ' . $e->getMessage());
+        if (isset($res['response']['body']['resultInfo']['resultStatus']) && $res['response']['body']['resultInfo']['resultStatus'] === 'S') {
+            $val = json_decode($res['response']['body']['merchantResourceInformations'][0]['value'], true);
+            // Anda bisa menyimpan ini ke log atau DB config
+            Log::info("LOG LOG: Merchant Balance = " . $val['amount']);
+            return back()->with('success', 'Saldo Merchant DANA Terupdate: Rp ' . number_format($val['amount'], 0, ',', '.'));
         }
+        return back()->with('error', 'Gagal Cek Saldo Merchant');
     }
 
+    /**
+     * =========================================================================
+     * 5. TOP UP CORPORATE (B2B MERCHANT TO CUSTOMER) & CHECK STATUS
+     * =========================================================================
+     */
     public function customerTopup(Request $request)
     {
-        // 1. Validasi Input (Standar)
+        Log::info('LOG LOG: [DANA TOPUP] --- MEMULAI PROSES TOPUP ---', $request->all());
+
         $request->validate([
             'affiliate_id' => 'required|exists:affiliates,id',
             'phone'        => 'required|numeric',
@@ -537,81 +317,62 @@ class DanaGatewayController extends Controller
         ]);
 
         $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
-        if (!$aff) return back()->with('error', 'Affiliate tidak ditemukan.');
-
         if ($aff->balance < $request->amount) {
             return back()->with('error', 'Saldo tidak mencukupi.');
         }
 
-        // 2. Sanitasi Nomor HP
         $cleanPhone = preg_replace('/[^0-9]/', '', $request->phone);
-        if (substr($cleanPhone, 0, 2) !== '62') {
-            $cleanPhone = (substr($cleanPhone, 0, 1) === '0') ? '62' . substr($cleanPhone, 1) : '62' . $cleanPhone;
-        }
+        if (substr($cleanPhone, 0, 1) === '0') { $cleanPhone = '62' . substr($cleanPhone, 1); }
 
-        $danaConfig = $this->getDanaConfig();
-
-        // 3. Persiapan Request
-        $timestamp  = now('Asia/Jakarta')->toIso8601String();
-        $partnerRef = date('YmdHis') . mt_rand(1000, 9999);
-        $amountStr  = number_format((float)$request->amount, 2, '.', '');
-        $path       = '/rest/v1.0/emoney/topup';
-
-        $body = [
-            "partnerReferenceNo" => $partnerRef,
-            "customerNumber"     => $cleanPhone,
-            "amount" => ["value" => $amountStr, "currency" => "IDR"],
-            "feeAmount" => ["value" => "0.00", "currency" => "IDR"],
-            "transactionDate" => $timestamp,
-            "categoryId"      => "6",
-            "additionalInfo"  => ["fundType" => "AGENT_TOPUP_FOR_USER_SETTLE"]
-        ];
-
-        $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
-        $hashedBody   = strtolower(hash('sha256', $jsonBody));
-        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-        $signature    = $this->generateSignature($stringToSign);
-
-        $headers = [
-            'Content-Type'  => 'application/json',
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'X-PARTNER-ID'  => $danaConfig['client_id'],
-            'X-EXTERNAL-ID' => (string) time() . Str::random(4),
-            'CHANNEL-ID'    => '95221',
-            'ORIGIN'        => $danaConfig['origin'],
-        ];
-
-        // --- [LOG 1: REQUEST DATA] ---
-        Log::info('========== [DANA TOPUP START] ==========');
-        Log::info('[DANA REQUEST] URL: ' . $danaConfig['base_url'] . $path);
-        Log::info('[DANA REQUEST] Headers:', $headers);
-        Log::info('[DANA REQUEST] Payload:', $body);
-        Log::info('[DANA REQUEST] StringToSign: ' . $stringToSign);
-
+        DB::beginTransaction();
         try {
+            DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
+
+            $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+            $partnerRef = 'TUP' . time() . mt_rand(1000, 9999);
+            $amountStr  = number_format((float)$request->amount, 2, '.', '');
+            $path       = '/rest/v1.0/emoney/topup';
+
+            $body = [
+                "partnerReferenceNo" => $partnerRef,
+                "customerNumber"     => $cleanPhone,
+                "amount" => ["value" => $amountStr, "currency" => "IDR"],
+                "feeAmount" => ["value" => "0.00", "currency" => "IDR"],
+                "transactionDate" => $timestamp,
+                "categoryId"      => "6",
+                "additionalInfo"  => [
+                    "fundType"     => "AGENT_TOPUP_FOR_USER_SETTLE",
+                    "chargeTarget" => "MERCHANT",
+                    "merchantId"   => config('services.dana.merchant_id')
+                ]
+            ];
+
+            $jsonBody     = json_encode($body, JSON_UNESCAPED_SLASHES);
+            $hashedBody   = strtolower(hash('sha256', $jsonBody));
+            $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+            $signature    = $this->generateSignature($stringToSign);
+
+            $headers = [
+                'Content-Type'  => 'application/json',
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'X-PARTNER-ID'  => config('services.dana.client_id'),
+                'X-EXTERNAL-ID' => (string) time() . Str::random(4),
+                'CHANNEL-ID'    => '95221',
+                'ORIGIN'        => config('services.dana.origin'),
+            ];
+
             $response = Http::withHeaders($headers)
-                ->timeout(60) // Tambahkan timeout agar tidak gantung
+                ->timeout(60)
                 ->withBody($jsonBody, 'application/json')
-                ->post($danaConfig['base_url'] . $path);
+                ->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
+            $resCode = trim((string)($result['responseCode'] ?? ($response->status() == 504 ? '504' : '500')));
 
-            // --- [LOG 2: RESPONSE DATA] ---
-            Log::info('[DANA RESPONSE] Status Code: ' . $response->status());
-            Log::info('[DANA RESPONSE] Raw Body: ' . $response->body());
+            Log::info('LOG LOG: [DANA TOPUP] Response:', $result);
 
-            if ($response->failed()) {
-                Log::error('[DANA TOPUP] HTTP Request Failed (Status ' . $response->status() . ')');
-            }
-
-            // --- [LOGIKA PENANGANAN RESPONSE] ---
-            $resCode   = $result['responseCode'] ?? ($response->status() == 504 ? '504' : '500');
-            $resMsg    = $result['responseMessage'] ?? 'Internal Server Error / Gateway Timeout';
-            $codeCheck = trim((string)$resCode);
-
-            if ($codeCheck === '2003800') {
-                DB::table('affiliates')->where('id', $aff->id)->decrement('balance', $request->amount);
+            if ($resCode === '2003800') {
                 DB::table('dana_transactions')->insert([
                     'tenant_id'    => $aff->tenant_id ?? 1,
                     'affiliate_id' => $aff->id,
@@ -623,10 +384,11 @@ class DanaGatewayController extends Controller
                     'response_payload' => json_encode($result),
                     'created_at' => now()
                 ]);
-                Log::info('[DANA TOPUP] Result: ✅ SUCCESS');
+                DB::commit();
                 return back()->with('success', '✅ Pencairan Profit Berhasil Diproses!');
-            } else {
-                // Catat Gagal di DB
+            }
+
+            if (in_array($resCode, ['504', '4293800', '5003801', '2023800'])) {
                 DB::table('dana_transactions')->insert([
                     'tenant_id'    => $aff->tenant_id ?? 1,
                     'affiliate_id' => $aff->id,
@@ -634,180 +396,191 @@ class DanaGatewayController extends Controller
                     'reference_no' => $partnerRef,
                     'phone' => $cleanPhone,
                     'amount' => $request->amount,
-                    'status' => 'FAILED',
-                    'response_payload' => json_encode($result ?: ['raw_html' => $response->body()]),
+                    'status' => 'PENDING',
+                    'response_payload' => json_encode($result),
                     'created_at' => now()
                 ]);
-
-                Log::warning('[DANA TOPUP] Result: ❌ FAILED (Code: '.$codeCheck.')');
-
-                // Pesan error ramah user
-                $userMsg = match($codeCheck) {
-                    '504'       => 'Server DANA sedang sibuk (Gateway Timeout), silakan coba 1 menit lagi.',
-                    '5003800'   => 'Gangguan sistem DANA, coba lagi nanti.',
-                    '4033814'   => 'Saldo merchant tidak mencukupi, hubungi admin.',
-                    '4033805'   => 'Nomor DANA tujuan tidak valid atau dibekukan.',
-                    default     => "Gagal: $resMsg ($codeCheck)"
-                };
-
-                return back()
-                    ->with('error', $userMsg)
-                    ->with('debug_error', $response->body());
+                DB::commit();
+                return back()->with('warning', '⏳ Transaksi Sedang Diproses (Pending).');
             }
 
+            // Gagal -> Rollback saldo
+            DB::rollBack();
+            DB::table('dana_transactions')->insert([
+                'tenant_id'    => $aff->tenant_id ?? 1,
+                'affiliate_id' => $aff->id,
+                'type' => 'TOPUP',
+                'reference_no' => $partnerRef,
+                'phone' => $cleanPhone,
+                'amount' => $request->amount,
+                'status' => 'FAILED',
+                'response_payload' => json_encode($result),
+                'created_at' => now()
+            ]);
+
+            return back()->with('error', "Gagal: " . ($result['responseMessage'] ?? "Code $resCode"));
+
         } catch (\Exception $e) {
-            Log::error('[DANA TOPUP] Exception Error: ' . $e->getMessage());
-            Log::error('[DANA TOPUP] Trace: ' . $e->getTraceAsString());
+            DB::rollBack();
+            Log::error('LOG LOG: [DANA TOPUP] Exception: ' . $e->getMessage());
             return back()->with('error', 'Sistem Error: ' . $e->getMessage());
-        } finally {
-            Log::info('========== [DANA TOPUP END] ==========');
         }
     }
 
-    // 3. CEK SALDO USER (LOGIKA SNAP 2001100 - TIDAK DIRUBAH)
-    public function checkBalance(Request $request)
+    /**
+     * =========================================================================
+     * 6. DISBURSEMENT B2B (TRANSFER BANK & INQUIRY)
+     * =========================================================================
+     */
+    public function bankAccountInquiry(Request $request)
     {
+        Log::info('LOG LOG: [BANK INQUIRY B2B] Start', $request->all());
+
         $aff = DB::table('affiliates')->where('id', $request->affiliate_id)->first();
-        $accessToken = $request->access_token ?? $aff->dana_access_token;
+        if (!$aff) return back()->with('error', 'Affiliate tidak ditemukan.');
 
-        if (!$accessToken) return back()->with('error', 'Token Kosong.');
+        $timestamp = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $path = '/v1.0/emoney/bank-account-inquiry.htm';
+        $refNo = "BNK" . time() . Str::random(4);
 
-        $danaConfig = $this->getDanaConfig();
-
-        $timestamp = now('Asia/Jakarta')->toIso8601String();
-        $path = '/v1.0/balance-inquiry.htm';
         $body = [
-            'partnerReferenceNo' => 'BAL' . time(),
-            'balanceTypes' => ['BALANCE'],
-            'additionalInfo' => ['accessToken' => $accessToken]
+            "partnerReferenceNo" => $refNo,
+            "customerNumber"     => config('services.dana.merchant_id'),
+            "beneficiaryAccountNumber" => $request->account_no,
+            "amount" => [
+                "value"    => number_format((float)$request->amount, 2, '.', ''),
+                "currency" => "IDR"
+            ],
+            "additionalInfo" => [
+                "fundType"               => "MERCHANT_WITHDRAW_FOR_CORPORATE",
+                "beneficiaryBankCode"    => (string) $request->bank_code,
+                "merchantId"             => config('services.dana.merchant_id')
+            ]
         ];
 
-        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
         $hashedBody = strtolower(hash('sha256', $jsonBody));
         $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
         $signature = $this->generateSignature($stringToSign);
 
-        $response = Http::withHeaders([
-            'X-TIMESTAMP'   => $timestamp,
-            'X-SIGNATURE'   => $signature,
-            'X-PARTNER-ID'  => $danaConfig['client_id'],
-            'X-EXTERNAL-ID' => (string) time(),
-            'X-DEVICE-ID'   => 'DANA-DASHBOARD-STATION',
-            'CHANNEL-ID'    => '95221',
-            'ORIGIN'        => $danaConfig['origin'],
-            'Authorization-Customer' => 'Bearer ' . $accessToken,
-            'Content-Type'  => 'application/json'
-        ])->withBody($jsonBody, 'application/json')->post($danaConfig['base_url'] . $path);
-
-        $result = $response->json();
-
-        if (isset($result['responseCode']) && $result['responseCode'] == '2001100') {
-            $amount = $result['accountInfos'][0]['availableBalance']['value'];
-            // Simpan ke dana_user_balance (Pemisah Profit)
-            DB::table('affiliates')->where('id', $request->affiliate_id)->update(['dana_user_balance' => $amount, 'updated_at' => now()]);
-            return back()->with('success', 'Saldo Real DANA Terupdate!');
-        }
-        return back()->with('error', 'Gagal: ' . ($result['responseMessage'] ?? 'Error'));
-    }
-
-    // =========================================================================
-    // FITUR BARU: CONSULT PAY (Mengambil Daftar Metode Pembayaran & Promo)
-    // =========================================================================
-    public function consultPay(Request $request)
-    {
-        // 1. Validasi Input (opsional, sesuaikan kebutuhan SancakaPOS)
-        $amount = $request->input('amount', '150000.00'); // Contoh nominal
-
-        Log::info("[DANA CONSULT PAY] Meminta daftar metode pembayaran untuk nominal: Rp " . $amount);
-
         try {
-            $danaConfig = $this->getDanaConfig();
-
-            // 2. Persiapan Parameter SNAP API
-            $timestamp = now('Asia/Jakarta')->toIso8601String();
-            $path = '/v1.0/payment-gateway/consult-pay.htm';
-
-            // DANA biasanya menggunakan domain saas.dana.id khusus untuk API tertentu di production
-            $baseUrl = $danaConfig['is_production'] ? 'https://api.saas.dana.id' : 'https://api.sandbox.dana.id';
-
-            // 3. Siapkan Payload Sesuai Dokumentasi
-            $body = [
-                "merchantId" => $danaConfig['merchant_id'],
-                "amount" => [
-                    "value" => number_format((float)$amount, 2, '.', ''),
-                    "currency" => "IDR"
-                ],
-                "externalStoreId" => "toko-pelanggan",
-                "additionalInfo" => [
-                    "buyer" => [
-                        "externalUserType" => "",
-                        "nickname" => "",
-                        "externalUserId" => "USR-" . time(), // Sesuaikan dengan ID User kamu
-                        "userId" => ""
-                    ],
-                    "envInfo" => [
-                        "sessionId" => Str::random(32),
-                        "tokenId" => (string) Str::uuid(),
-                        "websiteLanguage" => "id_ID",
-                        "clientIp" => $request->ip() ?? "127.0.0.1",
-                        "osType" => "Windows.PC",
-                        "appVersion" => "1.0",
-                        "sdkVersion" => "1.0",
-                        "sourcePlatform" => "IPG",
-                        "orderOsType" => "WEB",
-                        "merchantAppVersion" => "1.0",
-                        "terminalType" => "SYSTEM",
-                        "orderTerminalType" => "WEB",
-                        "extendInfo" => json_encode(["deviceId" => Str::random(16)])
-                    ],
-                    "merchantTransType" => "DEFAULT"
-                ]
-            ];
-
-            // 4. Generate Signature dengan Format SNAP API (METHOD:PATH:HASH_BODY:TIMESTAMP)
-            $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            $hashedBody = strtolower(hash('sha256', $jsonBody));
-            $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
-
-            $signature = $this->generateSignature($stringToSign);
-
-            // 5. Kirim Request ke DANA
-            $response = Http::withHeaders([
+            $headers = [
+                'Content-Type'  => 'application/json',
                 'X-TIMESTAMP'   => $timestamp,
                 'X-SIGNATURE'   => $signature,
-                'X-PARTNER-ID'  => $danaConfig['client_id'],
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.client_id'),
                 'X-EXTERNAL-ID' => (string) time() . Str::random(6),
-                'Content-Type'  => 'application/json',
-                'CHANNEL-ID'    => '95221',
-                'ORIGIN'        => $danaConfig['origin'],
-            ])->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
+                'CHANNEL-ID'    => '95221'
+            ];
+
+            $response = Http::withHeaders($headers)
+                ->withBody($jsonBody, 'application/json')
+                ->post(config('services.dana.base_url') . $path);
 
             $result = $response->json();
+            $resCode = $result['responseCode'] ?? '500';
 
-            // 6. Evaluasi Hasil (Kode Sukses: 2000000)
-            if (isset($result['responseCode']) && $result['responseCode'] === '2000000') {
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Berhasil mengambil daftar metode pembayaran.',
-                    'payment_methods' => $result['paymentInfos'] ?? [],
-                    'raw_data' => $result
-                ]);
-            } else {
-                Log::warning("[DANA CONSULT PAY] Gagal mengambil data.", ['result' => $result]);
-                return response()->json([
-                    'status' => 'failed',
-                    'message' => "Consult Pay Error: " . ($result['responseMessage'] ?? 'Unknown Error'),
-                    'error_code' => $result['responseCode'] ?? null
-                ], 400);
+            if ($resCode == '2004200') {
+                $accName = $result['beneficiaryAccountName'];
+                return back()->with('success', "Rekening Valid: $accName")->with('valid_account_name', $accName);
             }
 
+            return back()->with('error', "Gagal Cek Rekening ($resCode): " . ($result['responseMessage'] ?? ''));
+
         } catch (\Exception $e) {
-            Log::error("[DANA CONSULT PAY ERROR] " . $e->getMessage());
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
-            ], 500);
+            Log::error('LOG LOG: [BANK INQUIRY ERROR] ' . $e->getMessage());
+            return back()->with('error', 'Sistem Error saat cek rekening.');
         }
     }
 
+    /**
+     * =========================================================================
+     * 7. WEBHOOK HANDLER (NOTIFIKASI DANA)
+     * =========================================================================
+     */
+    public function handleWebhook(Request $request)
+    {
+        Log::info('LOG LOG: ========== DANA WEBHOOK INCOMING ==========', $request->all());
+
+        $head = $request->input('request.head');
+        $body = $request->input('request.body');
+
+        if (($head['function'] ?? '') === 'dana.acquiring.order.finishNotify') {
+            $merchantTransId = $body['merchantTransId'];
+            $status = $body['acquirementStatus']; // SUCCESS, CLOSED, FAILED
+
+            $trx = DB::table('dana_transactions')->where('reference_no', $merchantTransId)->first();
+
+            if ($trx) {
+                // Cegah Idempotency jika sudah final
+                if (in_array($trx->status, ['SUCCESS', 'REFUNDED'])) {
+                    return response()->json(['response' => ['head' => ['resultCode' => 'SUCCESS']]]);
+                }
+
+                DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => $status]);
+
+                if (in_array($status, ['CLOSED', 'FAILED']) && $trx->status === 'PENDING') {
+                    // Logic Refund Otomatis jika sebelumnya status PENDING dan terpotong
+                    Log::info('LOG LOG: [WEBHOOK] Status Gagal. Refund opsional disiapkan.', ['ref' => $merchantTransId]);
+                } elseif ($status === 'SUCCESS') {
+                    // Tambah saldo ke user/affiliate jika topup in
+                    Log::info('LOG LOG: [WEBHOOK] Topup Masuk Sukses.', ['ref' => $merchantTransId]);
+                }
+            }
+        }
+
+        return response()->json(['response' => ['head' => ['resultCode' => 'SUCCESS']]]);
+    }
+
+    /**
+     * =========================================================================
+     * 8. CANCEL & REFUND ORDER
+     * =========================================================================
+     */
+    public function cancelDanaPayment($orderId)
+    {
+        Log::info('LOG LOG: [DANA CANCEL] Membatalkan Order ID: ' . $orderId);
+
+        $timestamp  = now('Asia/Jakarta')->format('Y-m-d\TH:i:sP');
+        $path       = '/payment-gateway/v1.0/debit/cancel.htm';
+
+        $body = [
+            "originalPartnerReferenceNo" => (string) $orderId,
+            "merchantId"                 => config('services.dana.merchant_id')
+        ];
+
+        $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES);
+        $hashedBody = strtolower(hash('sha256', $jsonBody));
+        $stringToSign = "POST:" . $path . ":" . $hashedBody . ":" . $timestamp;
+
+        $signature = $this->generateSignature($stringToSign);
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type'  => 'application/json',
+                'X-TIMESTAMP'   => $timestamp,
+                'X-SIGNATURE'   => $signature,
+                'ORIGIN'        => config('services.dana.origin'),
+                'X-PARTNER-ID'  => config('services.dana.client_id'),
+                'X-EXTERNAL-ID' => (string) time(),
+                'CHANNEL-ID'    => '95221'
+            ])->withBody($jsonBody, 'application/json')->post(config('services.dana.base_url') . $path);
+
+            $result = $response->json();
+            Log::info('LOG LOG: [DANA CANCEL] Result: ', $result);
+
+            if (($result['responseCode'] ?? '') === '2005700') {
+                DB::table('dana_transactions')->where('reference_no', $orderId)->update(['status' => 'FAILED']);
+                return back()->with('success', 'Pesanan berhasil dibatalkan di DANA.');
+            }
+
+            return back()->with('error', 'Gagal membatalkan pesanan: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+
+        } catch (\Exception $e) {
+            Log::error('LOG LOG: [DANA CANCEL] Exception: ' . $e->getMessage());
+            return back()->with('error', 'Sistem Error saat membatalkan pesanan.');
+        }
+    }
 }
