@@ -249,18 +249,18 @@ function posSystem() {
         // LOGIKA PENCARIAN & AUTOFILL PELANGGAN (FITUR BARU)
         // ------------------------------------------------------------------
 
+        // 1. FUNGSI HELPER: MEMUTAR SUARA
         playBeep(type) {
-            const audioId = type === 'success' ? 'beep-success' : 'beep-fail';
+            const audioId = type === 'success' ? 'audio-success' : 'audio-error';
             const audio = document.getElementById(audioId);
 
             if (audio) {
                 audio.currentTime = 0;
-                // Tambahkan catch error agar console tidak merah penuh error
                 audio.play().catch(e => {
-                    console.warn("🔊 Audio di-blokir browser (Belum ada interaksi user).");
                 });
             }
         },
+
 
         // FUNGSI 1: MULAI SCANNER (BUKA MODAL)
         startScanner() {
@@ -439,17 +439,7 @@ function posSystem() {
             }
         },
 
-        // 1. FUNGSI HELPER: MEMUTAR SUARA
-        playBeep(type) {
-            // Tentukan ID audio berdasarkan tipe
-            const audioId = type === 'success' ? 'audio-success' : 'audio-error';
-            const audio = document.getElementById(audioId);
 
-            if (audio) {
-                audio.currentTime = 0; // Reset durasi agar bisa diputar berulang cepat
-                audio.play().catch(e => // console.log('Browser memblokir autoplay audio', e));
-            }
-        },
 
 
 
@@ -898,11 +888,11 @@ function posSystem() {
                 if (result.status === 'success') {
                     this.courierList = result.data;
 
-                     // Tambahkan baris ini (Reset status biar list muncul lagi):
                      this.isCourierListOpen = true;
-                     this.selectedCourier = null; // Reset pilihan lama
-                    // Log kecil untuk memastikan instruksi simpan terkirim
-                    if(this.saveCustomer) // console.log("✅ Perintah simpan data pelanggan dikirim ke server.");
+                    this.selectedCourier = null;
+                    if(this.saveCustomer) {
+                        console.log("✅ Perintah simpan data pelanggan dikirim ke server.");
+                    }
                 } else {
                     alert('Gagal cek ongkir: ' + result.message);
                 }
