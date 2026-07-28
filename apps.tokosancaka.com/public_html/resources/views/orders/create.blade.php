@@ -16,7 +16,7 @@
     {{-- ========================================================= --}}
 
    {{-- LIBRARY JS (Tetap pakai file lokal yang sudah Anda download, aman) --}}
-    <script src="{{ asset('libs/pusher.min.js') }}"></script>
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
     <script src="{{ asset('libs/echo.js') }}"></script>
 
     <script>
