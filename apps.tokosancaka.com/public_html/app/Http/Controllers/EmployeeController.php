@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Tenant; // Pastikan Model Tenant di-import
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -15,19 +16,15 @@ class EmployeeController extends Controller
     {
         $user = Auth::user();
 
-        // LOGIKA PINTAR:
         if ($user->role === 'super_admin') {
-            // A. JIKA SUPER ADMIN:
-            // Ambil SEMUA user dari seluruh dunia, urutkan berdasarkan Toko (Tenant)
-            // Kita load relasi 'tenant' agar nama toko muncul tanpa berat di query
+            // A. SUPER ADMIN: Lihat semua pegawai, urutkan per toko
             $employees = User::with('tenant')
-                             ->where('id', '!=', $user->id) // Sembunyikan akun sendiri
-                             ->orderBy('tenant_id', 'asc')  // Kelompokkan per toko
-                             ->orderBy('role', 'asc')       // Urutkan role (Admin dulu, baru staff)
+                             ->where('id', '!=', $user->id)
+                             ->orderBy('tenant_id', 'asc')
+                             ->orderBy('role', 'asc')
                              ->get();
         } else {
-            // B. JIKA ADMIN BIASA:
-            // KUNCI HANYA user milik tenant ini (Anti-Ketuker)
+            // B. ADMIN TOKO: HANYA lihat pegawai tokonya sendiri
             $employees = User::where('tenant_id', $user->tenant_id)
                              ->where('id', '!=', $user->id)
                              ->latest()
@@ -40,25 +37,41 @@ class EmployeeController extends Controller
     // 2. FORM TAMBAH (CREATE)
     public function create()
     {
-        return view('employees.create');
+        $tenants = [];
+        // Jika Super Admin, kirim daftar toko agar dia bisa mendaftarkan pegawai untuk klien
+        if (Auth::user()->role === 'super_admin') {
+            $tenants = Tenant::orderBy('name', 'asc')->get();
+        }
+
+        return view('employees.create', compact('tenants'));
     }
 
     // 3. SIMPAN DATA (STORE)
     public function store(Request $request)
     {
+        $user = Auth::user();
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => ['required', 'in:admin,staff,finance,operator'],
+            'role' => ['required', 'in:admin,staff,finance,operator,kasir'], // Tambahkan kasir jika ada
             'permissions' => ['array'],
         ]);
+
+        // LOGIKA PINTAR PENENTUAN TENANT:
+        $tenantId = $user->tenant_id; // Default: Kunci pakai ID yang login
+
+        // Jika Super Admin dan dia memilih toko di form (dropdown), gunakan ID toko klien tersebut
+        if ($user->role === 'super_admin' && $request->filled('tenant_id')) {
+            $tenantId = $request->tenant_id;
+        }
 
         User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'tenant_id' => Auth::user()->tenant_id, // KUNCI KEAMANAN
+            'tenant_id' => $tenantId, // KUNCI KEAMANAN (Dinamis untuk Super Admin, Statis untuk Admin)
             'role' => $request->role,
             'permissions' => $request->permissions ?? [],
             'email_verified_at' => now(),
@@ -71,18 +84,18 @@ class EmployeeController extends Controller
     public function edit($id)
     {
         $currentUser = Auth::user();
+        $tenants = [];
 
         if ($currentUser->role === 'super_admin') {
-            // Super Admin: Cari user berdasarkan ID saja (Bebas Edit Siapa Saja)
             $employee = User::findOrFail($id);
+            $tenants = Tenant::orderBy('name', 'asc')->get(); // Kirim data toko untuk form edit
         } else {
-            // Admin Toko: Hanya boleh edit pegawai tokonya sendiri
             $employee = User::where('id', $id)
                             ->where('tenant_id', $currentUser->tenant_id)
                             ->firstOrFail();
         }
 
-        return view('employees.edit', compact('employee'));
+        return view('employees.edit', compact('employee', 'tenants'));
     }
 
     // 5. UPDATE DATA (UPDATE)
@@ -90,7 +103,6 @@ class EmployeeController extends Controller
     {
         $currentUser = Auth::user();
 
-        // Logika pencarian user yang sama dengan Edit
         if ($currentUser->role === 'super_admin') {
             $employee = User::findOrFail($id);
         } else {
@@ -101,11 +113,10 @@ class EmployeeController extends Controller
 
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            // Validasi email unique kecuali punya diri sendiri
             'email' => ['required', 'email', 'max:255', 'unique:users,email,'.$employee->id],
-            'role' => ['required'], // Validation rules disesuaikan
+            'role' => ['required'],
             'permissions' => ['array'],
-            'password' => ['nullable', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
+            'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $data = [
@@ -115,8 +126,13 @@ class EmployeeController extends Controller
             'permissions' => $request->permissions ?? [],
         ];
 
+        // Super admin bisa memindahkan pegawai ke toko lain jika salah input
+        if ($currentUser->role === 'super_admin' && $request->filled('tenant_id')) {
+            $data['tenant_id'] = $request->tenant_id;
+        }
+
         if ($request->filled('password')) {
-            $data['password'] = \Illuminate\Support\Facades\Hash::make($request->password);
+            $data['password'] = Hash::make($request->password);
         }
 
         $employee->update($data);
@@ -137,7 +153,6 @@ class EmployeeController extends Controller
                             ->firstOrFail();
         }
 
-        // Cegah menghapus diri sendiri
         if ($employee->id === $currentUser->id) {
             return back()->with('error', 'Tidak bisa menghapus akun sendiri!');
         }
@@ -146,5 +161,4 @@ class EmployeeController extends Controller
 
         return redirect()->route('employees.index')->with('success', 'Pegawai telah dihapus.');
     }
-
 }

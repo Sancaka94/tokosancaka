@@ -10,10 +10,14 @@
                 <div>
                     <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">Tambah Pegawai Baru</h2>
                     <p class="text-slate-500 text-sm mt-1">
-                        Akan ditambahkan ke toko:
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-md font-bold bg-blue-50 text-blue-700 border border-blue-100 text-xs">
-                            ID: {{ Auth::user()->tenant_id }}
-                        </span>
+                        @if(Auth::user()->role === 'super_admin')
+                            Tambahkan akun pegawai untuk toko klien.
+                        @else
+                            Akan ditambahkan ke toko:
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-md font-bold bg-blue-50 text-blue-700 border border-blue-100 text-xs">
+                                ID: {{ Auth::user()->tenant_id }}
+                            </span>
+                        @endif
                     </p>
                 </div>
             </div>
@@ -36,6 +40,26 @@
                       x-init="updatePermissions()"
                 >
                     @csrf
+
+                    {{-- [TAMBAHAN BARU]: Dropdown Toko Khusus Super Admin --}}
+                    @if(Auth::user()->role === 'super_admin')
+                    <div class="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+                        <label class="block font-bold text-blue-800 mb-2" for="tenant_id">
+                            <i class="fas fa-store mr-1"></i> Pilih Toko / Klien
+                        </label>
+                        <select name="tenant_id" id="tenant_id" required
+                                class="w-full px-4 py-3 rounded-xl border border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-200 transition duration-200 font-medium text-slate-700 shadow-sm bg-white cursor-pointer">
+                            <option value="">-- Pilih Toko Tempat Pegawai Ini Bekerja --</option>
+                            @foreach($tenants as $t)
+                                <option value="{{ $t->id }}" {{ old('tenant_id') == $t->id ? 'selected' : '' }}>
+                                    {{ $t->name }} (ID: {{ $t->id }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-blue-600 mt-2 font-medium">*Fitur ini hanya terlihat oleh Super Admin.</p>
+                    </div>
+                    @endif
+                    {{-- ================================================= --}}
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div>
