@@ -86,30 +86,33 @@ public function index(Request $request)
     return view('dana_dashboard', compact('transactions', 'affiliates'));
 }
 
-  public function startBinding(Request $request)
+ public function startBinding(Request $request)
     {
         Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA (Debug)...');
 
         // 1. Logika pengenal user dari kode PERTAMA (Database)
         $affiliateId = $request->affiliate_id ?? 11;
 
-        // Simpan affiliate_id ke session sebagai cadangan pengenal
+        // Simpan affiliate_id ke session sebagai cadangan pengenal saat callback
         session(['dana_user_id' => $affiliateId]);
 
-        // 2. DANA OAuth 2.0 Web Authorize Parameters (Standar Resmi & Sesuai Config)
+        // 2. DANA Deeplink Binding Parameters (Sesuai Dokumentasi Resmi)
         $queryParams = [
-            'clientId'     => config('services.dana.client_id'),
-            'redirectUrl'  => config('services.dana.redirect_url_oauth'), // <-- Disamakan dengan nama di config Anda
-            'scopes'       => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE',
-            'state'        => \Illuminate\Support\Str::random(16) . '-' . $affiliateId,
-            'terminalType' => 'WEB',
-            'merchantId'   => config('services.dana.merchant_id'),
+            'partnerId'   => config('services.dana.client_id'), // Sesuai dokumentasi, partnerId wajib diisi
+            'timestamp'   => now('Asia/Jakarta')->toIso8601String(), // Wajib dalam format YYYY-MM-DDTHH:mm:ss+07:00
+            'externalId'  => 'BIND-' . $affiliateId . '-' . time(), // Wajib: identifier unik per request
+            'channelId'   => 'DANAID', // Wajib: Sesuai sampel dokumentasi
+            'merchantId'  => config('services.dana.merchant_id'),
+            'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE',
+            'redirectUrl' => config('services.dana.redirect_url_oauth'),
+            'state'       => \Illuminate\Support\Str::random(16) . '-' . $affiliateId, // Wajib: Untuk proteksi CSRF
         ];
 
-        // 3. Pengecekan Environment (Sesuai Config dana_env)
+        // 3. Pengecekan Environment (URL Deeplink Binding)
+        // Menggunakan /n/link/binding sesuai URL Schema dari dokumentasi
         $baseUrl = config('services.dana.dana_env') === 'PRODUCTION'
-            ? 'https://m.dana.id/d/portal/oauth'
-            : 'https://m.sandbox.dana.id/d/portal/oauth';
+            ? 'https://m.dana.id/n/link/binding'
+            : 'https://m.sandbox.dana.id/n/link/binding';
 
         $fullUrl = $baseUrl . "?" . http_build_query($queryParams);
 
