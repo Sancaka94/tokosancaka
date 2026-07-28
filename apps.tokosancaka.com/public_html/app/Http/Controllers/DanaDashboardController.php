@@ -86,51 +86,34 @@ public function index(Request $request)
     return view('dana_dashboard', compact('transactions', 'affiliates'));
 }
 
- public function startBinding(Request $request)
-{
-    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA (Dynamic DB via /d/portal/oauth)...');
+public function startBinding(Request $request)
+    {
+        Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA (Debug)...');
+        $user = \Illuminate\Support\Facades\Auth::user();
 
-    // 1. Logika pengenal user
-    $affiliateId = $request->affiliate_id ?? 11;
-    session(['dana_user_id' => $affiliateId]);
+        // Simpan id_pengguna ke session sebagai cadangan pengenal user
+        session(['dana_user_id' => $user->id_pengguna]);
 
-    // 2. Cek Mode DANA dari Database (0 = Sandbox, 1 = Production)
-    $danaMode = \App\Models\SettingApi::where('key', 'dana_production_mode')->value('value') ?? '0';
-    $isProduction = ($danaMode == '1');
-    $prefix = $isProduction ? 'dana_prod_' : 'dana_sandbox_';
+        // DANA OAuth 2.0 Web Authorize Parameters (Standar Resmi)
+        $queryParams = [
+            'clientId'     => config('services.dana.client_id'), // PENTING: Harus clientId, bukan partnerId
+            'redirectUrl'  => url('/dana/callback'), // Pastikan route ini sesuai dengan setting di Dashboard DANA Anda
+            'scopes'       => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE', // AGREEMENT_PAY wajib untuk Direct Debit!
+            'state'        => \Illuminate\Support\Str::random(16),
+            'terminalType' => 'WEB', // Penting agar UI DANA tahu dirender sebagai Web
+            'merchantId'   => config('services.dana.merchant_id'),
+        ];
 
-    // Ambil kredensial dari database
-    $keysToFetch = [$prefix . 'client_id', $prefix . 'merchant_id'];
-    $danaSettings = \App\Models\SettingApi::whereIn('key', $keysToFetch)->pluck('value', 'key')->toArray();
+        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION'
+            ? 'https://m.dana.id/d/portal/oauth'
+            : 'https://m.sandbox.dana.id/d/portal/oauth';
 
-    $clientId = $danaSettings[$prefix . 'client_id'] ?? null;
-    $merchantId = $danaSettings[$prefix . 'merchant_id'] ?? null;
+        $fullUrl = $baseUrl . "?" . http_build_query($queryParams);
 
-    if (!$clientId || !$merchantId) {
-        return back()->with('error', 'Kredensial DANA belum dikonfigurasi.');
+        Log::info('LOG LOG: [BINDING] Redirecting User to: ' . $fullUrl);
+
+        return redirect($fullUrl);
     }
-
-    // 3. PARAMETER BERDASARKAN LOGIKA YANG BERHASIL (CamelCase)
-    $queryParams = [
-        'clientId'     => $clientId, // PENTING: Harus clientId
-        'redirectUrl'  => config('services.dana.redirect_url_oauth'), // Sesuai config atau URL Anda
-        'scopes'       => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE',
-        'state'        => \Illuminate\Support\Str::random(16) . '-' . $affiliateId,
-        'terminalType' => 'WEB',
-        'merchantId'   => $merchantId,
-    ];
-
-    // 4. ENDPOINT WEB AUTHORIZE DANA (/d/portal/oauth)
-    $baseUrl = $isProduction
-        ? 'https://m.dana.id/d/portal/oauth'
-        : 'https://m.sandbox.dana.id/d/portal/oauth';
-
-    $fullUrl = $baseUrl . "?" . http_build_query($queryParams);
-
-    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Redirecting User to: ' . $fullUrl);
-
-    return redirect($fullUrl);
-}
 
 public function danaCallback(Request $request, \App\Services\DanaSignatureService $danaService)
 {
