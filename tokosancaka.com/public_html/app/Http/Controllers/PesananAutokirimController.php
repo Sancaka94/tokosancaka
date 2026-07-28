@@ -804,58 +804,27 @@ class PesananAutokirimController extends Controller
         }
     }
 
-   public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
+  public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
     {
-        // ========================================================
-        // 1. DINAMIS: SELALU BUAT PICKUP POINT BARU PER TRANSAKSI
-        // ========================================================
-        Log::info("LOG LOG: [PICKUP POINT] Memulai proses generate Pickup Point dinamis untuk Order ID: {$pesanan->order_id}");
-
-        $pickupPayload = [
-            'name'              => (string) trim($pesanan->pengirim_nama),
-            'phone'             => (string) trim($pesanan->pengirim_hp),
-            'address'           => (string) trim($pesanan->pengirim_alamat),
-            'email'             => auth()->user()->email ?? 'customer@tokosancaka.com',
-            'longitude'         => "",
-            'latitude'          => "",
-            'district_id'       => (int) $origin->district_id,
-            'is_member_deposit' => false
-        ];
-
-        // Tembak API Insert
-        $pickupResponse = Http::timeout(15)
-            ->withToken($this->token)
-            ->post("{$this->baseUrl}/api/pickup-point/insert", $pickupPayload);
-
-        $pickupResult = $pickupResponse->json();
-
-        if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
-            throw new Exception('Gagal mendaftarkan alamat jemput dinamis ke logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
-        }
-
-        $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
-        Log::info("LOG LOG: [PICKUP POINT] Berhasil generate kode dinamis: {$pickupPointCode}");
-
-        // Polling wajib agar server pusat siap menerima kode baru ini
-        $isSynced = false;
-        for ($i = 1; $i <= 4; $i++) {
-            sleep(2);
-            if ($this->findPickupPoint($pickupPointCode)) {
-                $isSynced = true;
-                Log::info("LOG LOG: Sinkronisasi Pickup Point dinamis berhasil pada percobaan ke-{$i}");
-                break;
-            }
-            Log::warning("LOG LOG: Menunggu sinkronisasi DB Autokirim untuk kode baru {$pickupPointCode} (Percobaan {$i}/4)...");
-        }
-
-        if (!$isSynced) {
-            throw new Exception("Sistem pusat logistik (Autokirim) mengalami keterlambatan sinkronisasi data (timeout). Silakan ulangi submit pesanan Anda.");
-        }
-
-        // ========================================================
-        // 2. MULAI PROSES CREATE ORDER DENGAN KODE DINAMIS
-        // ========================================================
         $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
+        $pickupPointCode = ""; // Default kosongkan
+
+        // ========================================================
+        // 1. CEK ATURAN PICKUP POINT
+        // ========================================================
+        if ($isSenderPp === 1) {
+            // Jika is_sender_pp = 1, Autokirim menggunakan data 'from' sebagai lokasi jemput.
+            // Kita TIDAK PERLU hit API insert pickup point.
+            Log::info("LOG LOG: [API AUTOKIRIM] is_sender_pp = 1. Bypass pembuatan Pickup Point karena sistem akan menggunakan alamat pengirim (from).");
+        } else {
+            // Jika suatu saat butuh is_sender_pp = 0 (Drop off di counter / titik statis tertentu)
+            // Di sini letak logika API /api/pickup-point/insert jika diperlukan di masa depan.
+            // Untuk saat ini, kita ikuti alur utama aplikasi Anda.
+        }
+
+        // ========================================================
+        // 2. MULAI PROSES CREATE ORDER
+        // ========================================================
         $qtyInput = $requestData ? (string) $requestData->input('qty', 1) : "1";
         $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
 
@@ -871,14 +840,14 @@ class PesananAutokirimController extends Controller
 
         Log::info("LOG: [WEIGHT CALC] Aktual: {$beratGram}gr => Ditagihkan: {$weightApi}gr");
 
-        // Format Alamat (Maksimal 100 karakter)
+        // Format Alamat (Maksimal 100 karakter tanpa kelurahan/kecamatan tambahan di string)
         $cleanSenderAddress = substr(trim(preg_replace('/\s+/', ' ', $pesanan->pengirim_alamat)), 0, 100);
         $cleanReceiverAddress = substr(trim(preg_replace('/\s+/', ' ', $pesanan->penerima_alamat)), 0, 100);
 
         $orderPayload = [
             'service_code'      => $serviceCode,
             'reff_client_id'    => $pesanan->order_id,
-            'pickup_point_code' => $pickupPointCode, // Menggunakan kode dinamis yang baru saja dibuat
+            'pickup_point_code' => $pickupPointCode, // KOSONG KARENA is_sender_pp = 1
             'origin_id'         => (int) $origin->district_id,
             'destination_id'    => (int) $destination->district_id,
             'weight'            => (string) $weightApi,
@@ -906,7 +875,7 @@ class PesananAutokirimController extends Controller
             'commodity' => (string) $pesanan->kategori_barang,
         ];
 
-        Log::info("LOG: [API AUTOKIRIM - CREATE ORDER DINAMIS] REQUEST:", $orderPayload);
+        Log::info("LOG: [API AUTOKIRIM - CREATE ORDER] REQUEST:", $orderPayload);
 
         $orderResponse = Http::timeout(15)
             ->withToken($this->token)
@@ -914,15 +883,6 @@ class PesananAutokirimController extends Controller
 
         $orderResult = $orderResponse->json();
 
-        // ========================================================
-        // 3. PEMBERSIHAN (CLEANUP) SETELAH ORDER
-        // ========================================================
-        // Karena kodenya dinamis, kita langsung hapus pickup point tersebut
-        // dari server Autokirim agar tidak memenuhi database mereka
-        Log::info("LOG LOG: Menghapus Pickup Point dinamis {$pickupPointCode} dari server Autokirim...");
-        $this->deletePickupPoint($pickupPointCode);
-
-        // Evaluasi Hasil Order
         if ($orderResponse->successful() && isset($orderResult['rc']) && $orderResult['rc'] === '00') {
             $awb    = $orderResult['data']['awb'] ?? 'AWB-PENDING';
             $reff_1 = $orderResult['data']['reff_1'] ?? null;
@@ -939,7 +899,6 @@ class PesananAutokirimController extends Controller
             ];
         }
 
-        // Tampilkan alasan logis jika gagal
         throw new Exception('Gagal membuat pesanan di server logistik: ' . ($orderResult['rd'] ?? 'Unknown Error'));
     }
 
