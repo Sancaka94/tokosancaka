@@ -753,13 +753,26 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::get('/cashflow/export/excel', [CashflowController::class, 'exportExcel'])->name('cashflow.export.excel');
 
 
-    // Rute untuk menampilkan halaman setting
+    //Rute untuk menampilkan halaman setting
+    //Route::get('/setting-api', [SettingApiController::class, 'index'])->name('admin.settingapi.index');
+    //Rute untuk memproses klik toggle (AJAX)
+    //Route::post('/setting-api/update-dana-mode', [SettingApiController::class, 'updateDanaMode'])->name('admin.settingapi.update-dana-mode');
+    //Route::post('/setting-api/save-credentials', [SettingApiController::class, 'saveCredentials'])->name('admin.settingapi.save-credentials');
+
+    // ==========================================
+    // RUTE PENGATURAN API (14 GATEWAY & MAPBOX)
+    // ==========================================
+    // 1. Halaman Index (Nama route dipertahankan agar menu sidebar panel admin-mu tidak error 404)
     Route::get('/setting-api', [SettingApiController::class, 'index'])->name('admin.settingapi.index');
 
-    // Rute untuk memproses klik toggle (AJAX)
-    Route::post('/setting-api/update-dana-mode', [SettingApiController::class, 'updateDanaMode'])->name('admin.settingapi.update-dana-mode');
+    // 2. Memproses Simpan Form (Semua Tab Gateway)
+    Route::put('/setting-api/update', [SettingApiController::class, 'update'])->name('admin.settings.api.update');
 
-    Route::post('/setting-api/save-credentials', [SettingApiController::class, 'saveCredentials'])->name('admin.settingapi.save-credentials');
+    // 3. Memproses AJAX Toggle Debug / Mode
+    Route::post('/setting-api/toggle-debug', [SettingApiController::class, 'toggleAppDebug'])->name('admin.settings.api.toggleDebug');
+
+    // 4. (Opsional) Tetap pertahankan route DANA lama jika masih ada JS yang mengarah ke sini
+    Route::post('/setting-api/update-dana-mode', [SettingApiController::class, 'updateDanaMode'])->name('admin.settingapi.update-dana-mode');
 
     // ==========================================
     // 2. ROUTE KONTAK & HUTANG PIUTANG
