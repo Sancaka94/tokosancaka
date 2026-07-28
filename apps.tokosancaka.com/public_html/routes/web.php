@@ -63,6 +63,8 @@ use App\Http\Controllers\SettingApiController;
 use App\Http\Middleware\EnforceLicenseLimits;
 use App\Http\Controllers\SuspendController;
 use App\Http\Controllers\Admin\EmailController;
+use App\Http\Controllers\OutletController;
+use App\Http\Controllers\EmployeeController;
 
 
 use Illuminate\Support\Facades\Http;
@@ -78,6 +80,11 @@ use App\Models\Product;
 Route::middleware(['auth'])->group(function () {
     Route::get('/lisensi/redeem', [LicenseController::class, 'showRedeemForm'])->name('license.redeem.form');
     Route::post('/lisensi/redeem', [LicenseController::class, 'redeem'])->name('license.redeem');
+
+    // Logika Route Outlet
+
+    Route::resource('outlets', OutletController::class)->except(['show']);
+    Route::resource('employees', EmployeeController::class)->except(['show']);
 });
 
     // Route Invoice (Publik)
