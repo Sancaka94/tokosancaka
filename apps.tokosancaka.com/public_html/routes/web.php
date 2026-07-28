@@ -74,15 +74,6 @@ use App\Services\DanaSignatureService;
 use App\Models\Category;
 use App\Models\Product;
 
-// ========================================================================
-// 1. ROUTE DOMAIN UTAMA (APPS) - WAJIB DI ATAS AGAR TIDAK KENA WILDCARD
-// ========================================================================
-Route::domain('apps.tokosancaka.com')->group(function () {
-    Route::middleware(['auth'])->group(function () {
-        Route::resource('outlets', OutletController::class)->except(['show']);
-        Route::resource('employees', EmployeeController::class)->except(['show']);
-    });
-});
 
 // -------------------------------------------------------------
 // RUTE KHUSUS LISENSI (Bisa diakses meski lisensi expired/limit device penuh)
@@ -117,6 +108,14 @@ Route::post('/log-client-error', function (Request $request) {
 
     return response()->json(['status' => 'logged']);
 })->name('log.client.error');
+
+// === TAMBAHKAN BLOK INI ===
+    // Pastikan route manajemen pegawai dan cabang bisa diakses lewat apps.tokosancaka.com
+    Route::middleware(['auth'])->group(function () {
+        Route::resource('outlets', App\Http\Controllers\OutletController::class)->except(['show']);
+        Route::resource('employees', App\Http\Controllers\EmployeeController::class);
+    });
+    // ==========================
 
 // Sesuaikan middleware dengan kebutuhan admin panel Anda (misal: 'auth', 'admin')
 Route::middleware(['auth'])->prefix('admin/logs')->name('admin.logs.')->group(function () {
