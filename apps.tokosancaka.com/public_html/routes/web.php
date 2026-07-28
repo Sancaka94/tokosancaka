@@ -81,10 +81,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/lisensi/redeem', [LicenseController::class, 'showRedeemForm'])->name('license.redeem.form');
     Route::post('/lisensi/redeem', [LicenseController::class, 'redeem'])->name('license.redeem');
 
-    // Logika Route Outlet
-
-    Route::resource('outlets', OutletController::class)->except(['show']);
-    Route::resource('employees', EmployeeController::class)->except(['show']);
 });
 
     // Route Invoice (Publik)
@@ -782,6 +778,11 @@ Route::domain('admin.tokosancaka.com')->group(function () {
 
 // Pastikan blok ini ada di web.php
 Route::domain('apps.tokosancaka.com')->group(function () {
+
+Route::middleware(['auth'])->group(function () {
+        Route::resource('outlets', OutletController::class)->except(['show']);
+        Route::resource('employees', EmployeeController::class)->except(['show']);
+    });
 
     // Halaman Form
     Route::get('/redeem-lisensi', [\App\Http\Controllers\LicenseController::class, 'showRedeemForm'])
