@@ -804,16 +804,27 @@ class PesananAutokirimController extends Controller
         }
     }
 
-    public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
+   public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
     {
-       // Gunakan IP Address user agar ID-nya tetap sama meskipun mereka belum login
         $userId = auth()->id() ?? 'guest_' . md5(request()->ip());
         $pickupCacheKey = 'pickup_code_user_' . $userId;
 
         // 1. CEK REDIS DULU
         $pickupPointCode = Redis::get($pickupCacheKey);
 
-        // 2. JIKA TIDAK ADA DI REDIS, TEMBAK API
+        // [FITUR BARU]: Validasi Cerdas
+        // Pastikan kode di memori Redis lokal kita benar-benar MASIH ADA di server Autokirim
+        if ($pickupPointCode) {
+            if (!$this->findPickupPoint($pickupPointCode)) {
+                Log::warning("LOG LOG: Pickup Code {$pickupPointCode} di Redis kedaluwarsa/tidak ditemukan di server Autokirim. Menghapus cache...");
+                Redis::del($pickupCacheKey);
+                $pickupPointCode = null; // Paksa sistem membuat baru
+            } else {
+                Log::info("LOG LOG: [PICKUP POINT] Mengambil & Tervalidasi dari Redis: {$pickupPointCode}");
+            }
+        }
+
+        // 2. JIKA TIDAK ADA DI REDIS / SUDAH KEDALUWARSA DI PUSAT, BUAT BARU
         if (!$pickupPointCode) {
             $pickupPayload = [
                 'name'              => (string) trim($pesanan->pengirim_nama),
@@ -837,18 +848,32 @@ class PesananAutokirimController extends Controller
             }
 
             $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
-
-            // Simpan ke Redis selama 30 Hari (2.592.000 detik)
-            Redis::setex($pickupCacheKey, 2592000, $pickupPointCode);
-
             Log::info("LOG LOG: [PICKUP POINT] Dibuat baru dari API: {$pickupPointCode}");
 
-            // Jeda 2 detik HANYA saat kode baru dibuat agar sinkronisasi di server Autokirim selesai
-            sleep(2);
-        } else {
-            Log::info("LOG LOG: [PICKUP POINT] Mengambil dari Redis: {$pickupPointCode}");
+            // [FITUR BARU]: Polling Sinkronisasi Server Autokirim
+            // Cek terus menerus max 4 kali (jeda 2 detik) sampai API Find mengenali code ini
+            $isSynced = false;
+            for ($i = 1; $i <= 4; $i++) {
+                sleep(2);
+                if ($this->findPickupPoint($pickupPointCode)) {
+                    $isSynced = true;
+                    Log::info("LOG LOG: Sinkronisasi Pickup Point berhasil pada percobaan ke-{$i}");
+                    break;
+                }
+                Log::warning("LOG LOG: Menunggu sinkronisasi DB Autokirim untuk Pickup Code {$pickupPointCode} (Percobaan {$i}/4)...");
+            }
+
+            if (!$isSynced) {
+                throw new Exception("Sistem pusat logistik (Autokirim) sedang mengalami keterlambatan sinkronisasi data. Silakan coba submit pesanan kembali dalam 10 detik.");
+            }
+
+            // Simpan ke Redis selama 30 Hari (2.592.000 detik) hanya jika sudah tervalidasi
+            Redis::setex($pickupCacheKey, 2592000, $pickupPointCode);
         }
 
+        // ========================================================
+        // MULAI PROSES CREATE ORDER
+        // ========================================================
         $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
         $qtyInput = $requestData ? (string) $requestData->input('qty', 1) : "1";
         $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
@@ -857,7 +882,7 @@ class PesananAutokirimController extends Controller
 
         $codValue = 0;
         if ($isCod) {
-            // LANGSUNG TEMBAK PAKAI GRAND TOTAL DARI FRONTEND
+            // Sesuai dokumentasi: cod_value = harga barang + ongkir + asuransi
             $codValue = $requestData ? (int) $requestData->grand_total : 0;
         }
 
@@ -865,6 +890,11 @@ class PesananAutokirimController extends Controller
         $weightApi = $beratGram > 0 ? $beratGram : 1000;
 
         Log::info("LOG: [WEIGHT CALC] Aktual: {$beratGram}gr => Ditagihkan (Payload): {$weightApi}gr (Volume PxLxT dikirim terpisah tanpa pembagi manual)");
+
+        // [FITUR BARU]: Format Alamat agar tidak terlalu panjang (Tanpa Kecamatan/Kab) sesuai dokumentasi
+        // Membatasi alamat maksimal 100 karakter agar API logistik tidak menolak request
+        $cleanSenderAddress = substr(trim(preg_replace('/\s+/', ' ', $pesanan->pengirim_alamat)), 0, 100);
+        $cleanReceiverAddress = substr(trim(preg_replace('/\s+/', ' ', $pesanan->penerima_alamat)), 0, 100);
 
         $orderPayload = [
             'service_code'      => $serviceCode,
@@ -879,7 +909,7 @@ class PesananAutokirimController extends Controller
             'height'            => (int) ($pesanan->tinggi_cm > 0 ? $pesanan->tinggi_cm : 10),
             'description'       => (string) $pesanan->deskripsi_barang,
             'remarks'           => (string) $pesanan->kategori_barang,
-            'price'             => (int) ($pesanan->nilai_barang > 0 ? $pesanan->nilai_barang : 1000),
+            'price'             => (int) ($pesanan->nilai_barang > 0 ? $pesanan->nilai_barang : 1000), // Mandatory jika asuransi
             'is_cod'            => $isCod,
             'cod_value'         => $codValue,
             'is_sender_pp'      => (int) $isSenderPp,
@@ -887,14 +917,14 @@ class PesananAutokirimController extends Controller
             'from' => [
                 'name'    => (string) trim($pesanan->pengirim_nama),
                 'phone'   => (string) trim($pesanan->pengirim_hp),
-                'address' => (string) trim($pesanan->pengirim_alamat),
+                'address' => $cleanSenderAddress,
             ],
             'to' => [
                 'name'    => (string) trim($pesanan->penerima_nama),
                 'phone'   => (string) trim($pesanan->penerima_hp),
-                'address' => (string) trim($pesanan->penerima_alamat),
+                'address' => $cleanReceiverAddress,
             ],
-            'commodity' => (string) $pesanan->kategori_barang,
+            'commodity' => (string) $pesanan->kategori_barang, // Mandatory untuk Lion Parcel
         ];
 
         Log::info("LOG: [API AUTOKIRIM - CREATE ORDER] REQUEST:", $orderPayload);
@@ -906,16 +936,12 @@ class PesananAutokirimController extends Controller
         $orderResult = $orderResponse->json();
 
         if ($orderResponse->successful() && isset($orderResult['rc']) && $orderResult['rc'] === '00') {
-
-            // Tangkap nilai dari API dengan aman
             $awb    = $orderResult['data']['awb'] ?? 'AWB-PENDING';
             $reff_1 = $orderResult['data']['reff_1'] ?? null;
             $reff_2 = $orderResult['data']['reff_2'] ?? null;
 
-            // Log Sukses
             Log::info("LOG LOG: [API AUTOKIRIM - SUCCESS] API mengembalikan -> AWB: {$awb} | REFF_1: {$reff_1} | REFF_2: {$reff_2}");
 
-            // KUNCI ARRAY INI YANG HARUS COCOK DENGAN FUNGSI STORE
             return [
                 'success' => true,
                 'awb'     => $awb,
@@ -1526,6 +1552,70 @@ class PesananAutokirimController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("LOG LOG: [WEBHOOK AUTOKIRIM] Fatal Error: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * =========================================================
+     * FITUR MANAJEMEN PICKUP POINT AUTOKIRIM
+     * =========================================================
+     */
+
+    /**
+     * Update Data Pickup Point
+     */
+    private function updatePickupPoint($pickupCode, $data)
+    {
+        try {
+            $payload = array_merge($data, ['pickup_point_code' => $pickupCode]);
+
+            $response = Http::timeout(15)
+                ->withToken($this->token)
+                ->post("{$this->baseUrl}/api/pickup-point/update", $payload);
+
+            return ($response->successful() && $response->json('rc') === '00');
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: [API AUTOKIRIM - UPDATE PICKUP] Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Hapus Pickup Point
+     */
+    private function deletePickupPoint($pickupCode)
+    {
+        try {
+            $response = Http::timeout(15)
+                ->withToken($this->token)
+                ->post("{$this->baseUrl}/api/pickup-point/delete", [
+                    'pickup_point_code' => $pickupCode
+                ]);
+
+            return ($response->successful() && $response->json('rc') === '00');
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: [API AUTOKIRIM - DELETE PICKUP] Error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Helper: Cari / Verifikasi Pickup Point di server Autokirim
+     */
+    private function findPickupPoint($pickupCode)
+    {
+        try {
+            $response = Http::timeout(10)
+                ->withToken($this->token)
+                ->post("{$this->baseUrl}/api/pickup-point/find", [
+                    'pickup_point_code' => $pickupCode
+                ]);
+
+            $result = $response->json();
+            return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: [API AUTOKIRIM - FIND PICKUP] Error Jaringan: " . $e->getMessage());
+            return false;
         }
     }
 
