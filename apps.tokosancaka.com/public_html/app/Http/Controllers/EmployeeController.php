@@ -197,7 +197,7 @@ class EmployeeController extends Controller
     }
 
     // 6. HAPUS DATA (DESTROY)
-    public function destroy($id)
+    public function destroy($subdomain, $id)
     {
         $currentUser = Auth::user();
 
