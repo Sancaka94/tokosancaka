@@ -98,14 +98,14 @@ class DanaDashboardController extends Controller
 
         $affiliateId = $request->affiliate_id ?? 11;
 
+        // --- [PERBAIKAN DANA OAUTH: Hapus timestamp, externalId & MINI_DANA. Ganti partnerId jadi clientId] ---
         $queryParams = [
-            'partnerId'   => config('services.dana.x_partner_id'),
-            'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
-            'externalId'  => 'BIND-' . $affiliateId . '-' . time(),
-            'merchantId'  => config('services.dana.merchant_id'),
+            'clientId'    => config('services.dana.client_id'), // Wajib menggunakan clientId
             'redirectUrl' => config('services.dana.redirect_url_oauth'),
-            'state'       => 'ID-' . $affiliateId,
-            'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
+            'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE', // Ganti MINI_DANA menjadi AGREEMENT_PAY
+            'state'       => 'MEMBER-' . $affiliateId . '-apps-1', // Disesuaikan agar lolos pengecekan count($parts) < 4 di callback
+            'terminalType'=> 'WEB',
+            'merchantId'  => config('services.dana.merchant_id'),
         ];
 
         // --- MENGGUNAKAN PORTAL URL DINAMIS ---
@@ -265,6 +265,8 @@ class DanaDashboardController extends Controller
     }
 
     // --- FUNGSI TAMBAHAN (Helper untuk Process Recovery) ---
+    // Tambahkan function ini di dalam Class Controller yang sama
+
     protected function processPendingTransactions($affiliateId, $accessToken)
     {
         // Ambil transaksi PENDING milik user ini
@@ -276,6 +278,10 @@ class DanaDashboardController extends Controller
         foreach ($pendingTrx as $trx) {
             // [LOGIKA DEPOSIT / INCOMING]
             if ($trx->type == 'DEPOSIT') {
+                // Cek status ke DANA (Logic Check Status Simplified)
+                // Jika sukses di DANA tapi PENDING di kita -> Update & Tambah Saldo
+                // (Disini Anda bisa panggil API queryTransactionStatus DANA)
+
                 // Simulasi: Jika DANA bilang sukses
                 DB::table('affiliates')->where('id', $affiliateId)->increment('balance', $trx->amount);
                 DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'SUCCESS']);
@@ -284,7 +290,10 @@ class DanaDashboardController extends Controller
             }
 
             // [LOGIKA REFUND / FAILED OUTGOING]
+            // Jika sebelumnya user mencoba transfer bank/tarik tunai tapi PENDING
             if ($trx->type == 'TRANSFER_BANK' || $trx->type == 'DISBURSEMENT') {
+                // Cek status ke DANA. Jika FAILED/REFUNDED di DANA -> Kembalikan Saldo User
+
                 // Simulasi: Jika status DANA 'FAILED'
                 DB::table('affiliates')->where('id', $affiliateId)->increment('balance', $trx->amount);
                 DB::table('dana_transactions')->where('id', $trx->id)->update(['status' => 'REFUNDED']);
