@@ -77,17 +77,15 @@
    @php
         $user = Auth::user();
 
-        // 1. Cek apakah user login
         if (!$user) {
             echo '<script>window.location.href = "/login";</script>';
             exit;
         }
 
         $isSuperAdmin = ($user->role === 'super_admin');
-        $targetTenantId = $user->tenant_id;
 
-        // ID TOKO PUSAT (Berdasarkan database Anda, Sancaka Pusat = 1)
-        $idSancakaPusat = 1;
+        // 1. Ambil ID Toko tempat user ini bekerja
+        $targetTenantId = $user->tenant_id;
 
         if ($isSuperAdmin) {
             if (request()->has('view_tenant')) {
@@ -98,23 +96,22 @@
         $tenant = \App\Models\Tenant::find($targetTenantId) ?? \App\Models\Tenant::first();
 
         // =========================================================================
-        // PERBAIKAN: GABUNGKAN KATALOG (PRODUK TOKO INI + PRODUK SANCAKA PUSAT)
-        // Menggunakan whereIn agar kasir cabang selalu bisa jual barang Pusat
+        // LOGIKA DINAMIS (TANPA HARDCODE)
+        // Kasir secara otomatis HANYA akan menarik data barang dari tokonya sendiri.
         // =========================================================================
         $products = \App\Models\Product::withoutGlobalScopes()
-                        ->whereIn('tenant_id', [$targetTenantId, $idSancakaPusat])
+                        ->where('tenant_id', $targetTenantId)
                         ->where('stock_status', 'available')
                         ->where('stock', '>', 0)
                         ->with('category')
                         ->get();
 
         $categories = \App\Models\Category::withoutGlobalScopes()
-                        ->whereIn('tenant_id', [$targetTenantId, $idSancakaPusat])
+                        ->where('tenant_id', $targetTenantId)
                         ->get()
-                        ->unique('name'); // Mencegah nama kategori muncul double
+                        ->unique('name');
         // =========================================================================
 
-        // Cek validasi masa aktif aplikasi
         $isExpired = ($tenant->expired_at && now()->gt($tenant->expired_at));
         $isActive = ($tenant->status === 'active' || !$isExpired);
         $onSuspendedPage = request()->is('*account-suspended*');
