@@ -39,7 +39,7 @@ return [
         'key' => env('FONNTE_API_KEY'),
     ],
 
- 'dana' => [
+  'dana' => [
         // Default menggunakan data Sandbox (Akan ditimpa otomatis oleh controller jika mode Production aktif)
         'merchant_id'         => env('DANA_MERCHANT_ID'),
         'client_id'           => env('DANA_X_PARTNER_ID'), // Di SNAP BI, Client ID nilainya sama dengan Partner ID
@@ -52,9 +52,16 @@ return [
         'client_secret'       => env('DANA_CLIENT_SECRET'),
         'redirect_url_oauth'  => env('DANA_REDIRECT_URL_OAUTH'),
         'external_shop_id'    => env('DANA_EXTERNAL_SHOP_ID'),
-        
+        'origin'              => env('ORIGIN', 'https://tokosancaka.com'),
+
+        # DANA CORPORATE / B2B CONFIG
+        'merchant_deposit_account' => env('DANA_MERCHANT_DEPOSIT_ACCOUNT'),
+        'id_toko'                  => env('DANA_ID_TOKO'),
+        'valid_id'                 => env('DANA_VALID_ID'),
+        'partner_id_conf'          => env('DANA_PARTNER_ID_CONF'),
+
         'dana_env'            => env('DANA_ENV', 'SANDBOX'),
-        
+
         'base_url'            => env('DANA_ENV', 'SANDBOX') === 'PRODUCTION'
                                     ? 'https://api.saas.dana.id' // <--- Ganti di sini juga
                                     : 'https://api.sandbox.dana.id',

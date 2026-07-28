@@ -86,28 +86,27 @@ public function index(Request $request)
     return view('dana_dashboard', compact('transactions', 'affiliates'));
 }
 
-   public function startBinding(Request $request)
+  public function startBinding(Request $request)
     {
         Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA (Debug)...');
 
-        // 1. Logika pengenal user dari kode PERTAMA
+        // 1. Logika pengenal user dari kode PERTAMA (Database)
         $affiliateId = $request->affiliate_id ?? 11;
 
-        // Simpan affiliate_id ke session sebagai cadangan pengenal (mengadopsi cara kode KEDUA)
+        // Simpan affiliate_id ke session sebagai cadangan pengenal
         session(['dana_user_id' => $affiliateId]);
 
-        // 2. DANA OAuth 2.0 Web Authorize Parameters (Logika dari kode KEDUA)
+        // 2. DANA OAuth 2.0 Web Authorize Parameters (Standar Resmi & Sesuai Config)
         $queryParams = [
-            'clientId'     => config('services.dana.client_id'), // Standar resmi menggunakan clientId
-            'redirectUrl'  => url('/dana/callback'), // Pastikan route ini sesuai dashboard DANA
+            'clientId'     => config('services.dana.client_id'),
+            'redirectUrl'  => config('services.dana.redirect_url_oauth'), // <-- Disamakan dengan nama di config Anda
             'scopes'       => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE',
-            // Kita gabungkan Str::random() untuk keamanan anti-CSRF, dan kita selipkan affiliateId jika Anda membutuhkannya di Callback
             'state'        => \Illuminate\Support\Str::random(16) . '-' . $affiliateId,
             'terminalType' => 'WEB',
             'merchantId'   => config('services.dana.merchant_id'),
         ];
 
-        // 3. Pengecekan Environment dari kode KEDUA
+        // 3. Pengecekan Environment (Sesuai Config dana_env)
         $baseUrl = config('services.dana.dana_env') === 'PRODUCTION'
             ? 'https://m.dana.id/d/portal/oauth'
             : 'https://m.sandbox.dana.id/d/portal/oauth';
