@@ -103,7 +103,7 @@ class EmployeeController extends Controller
 
    public function edit($subdomain, $id)
 {
-    dd('HALO, CONTROLLER TEREKSEKUSI. ID: ', $id);
+    // dd('HALO, CONTROLLER TEREKSEKUSI. ID: ', $id);
 
     $currentUser = Auth::user();
     $tenants = [];
@@ -138,7 +138,7 @@ class EmployeeController extends Controller
 }
 
     // 5. UPDATE DATA (UPDATE)
-    public function update(Request $request, $id)
+    public function update(Request $request, $subdomain, $id)
     {
         $currentUser = Auth::user();
 
