@@ -86,24 +86,37 @@ public function index(Request $request)
     return view('dana_dashboard', compact('transactions', 'affiliates'));
 }
 
-    // 1. START BINDING (LOGIKA AWAL BOS)
-    public function startBinding(Request $request)
+   public function startBinding(Request $request)
     {
-        Log::info('[BINDING] Memulai proses redirect ke DANA Portal...');
+        Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA (Debug)...');
 
+        // 1. Logika pengenal user dari kode PERTAMA
         $affiliateId = $request->affiliate_id ?? 11;
 
+        // Simpan affiliate_id ke session sebagai cadangan pengenal (mengadopsi cara kode KEDUA)
+        session(['dana_user_id' => $affiliateId]);
+
+        // 2. DANA OAuth 2.0 Web Authorize Parameters (Logika dari kode KEDUA)
         $queryParams = [
-            'partnerId'   => config('services.dana.x_partner_id'),
-            'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
-            'externalId'  => 'BIND-' . $affiliateId . '-' . time(),
-            'merchantId'  => config('services.dana.merchant_id'),
-            'redirectUrl' => config('services.dana.redirect_url_oauth'),
-            'state'       => 'ID-' . $affiliateId,
-            'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
+            'clientId'     => config('services.dana.client_id'), // Standar resmi menggunakan clientId
+            'redirectUrl'  => url('/dana/callback'), // Pastikan route ini sesuai dashboard DANA
+            'scopes'       => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE',
+            // Kita gabungkan Str::random() untuk keamanan anti-CSRF, dan kita selipkan affiliateId jika Anda membutuhkannya di Callback
+            'state'        => \Illuminate\Support\Str::random(16) . '-' . $affiliateId,
+            'terminalType' => 'WEB',
+            'merchantId'   => config('services.dana.merchant_id'),
         ];
 
-        return redirect("https://m.sandbox.dana.id/d/portal/oauth?" . http_build_query($queryParams));
+        // 3. Pengecekan Environment dari kode KEDUA
+        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION'
+            ? 'https://m.dana.id/d/portal/oauth'
+            : 'https://m.sandbox.dana.id/d/portal/oauth';
+
+        $fullUrl = $baseUrl . "?" . http_build_query($queryParams);
+
+        Log::info('LOG LOG: [BINDING] Redirecting User to: ' . $fullUrl);
+
+        return redirect($fullUrl);
     }
 
     public function handleCallback(Request $request)
