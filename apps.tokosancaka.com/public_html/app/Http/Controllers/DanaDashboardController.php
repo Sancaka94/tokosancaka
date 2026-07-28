@@ -88,7 +88,7 @@ public function index(Request $request)
 
  public function startBinding(Request $request)
 {
-    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Memulai proses Web OAuth Binding DANA...');
+    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Memulai proses Deeplink Binding DANA...');
 
     $affiliateId = $request->affiliate_id ?? 11;
     session(['dana_user_id' => $affiliateId]);
@@ -108,26 +108,26 @@ public function index(Request $request)
         return back()->with('error', 'Kredensial DANA belum dikonfigurasi.');
     }
 
-    // (Baris $clientId yang berulang di sini sudah dihapus)
-
-    // 2. GANTI NAMA PARAMETER MENJADI STANDAR OAUTH DANA
+    // 2. KEMBALIKAN KE FORMAT DEEPLINK (MANDATORY SESUAI DOKUMENTASI DANA)
     $queryParams = [
-        'client_id'     => $clientId, // Pakai client_id
-        'response_type' => 'code',    // Wajib untuk Web OAuth
-        'scope'         => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE', // Pakai scope (tanpa 's')
-        'redirect_uri'  => config('services.dana.redirect_url_oauth'), // Pakai redirect_uri
-        'state'         => \Illuminate\Support\Str::random(16) . '-' . $affiliateId,
-        'terminal_type' => 'WEB'
+        'partnerId'   => $clientId, // Menggunakan partnerId
+        'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
+        'externalId'  => 'BIND-' . $affiliateId . '-' . time(),
+        'channelId'   => 'DANAID',
+        'merchantId'  => $merchantId, // Wajib ada untuk UI DANA
+        'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE', // Menggunakan scopes
+        'redirectUrl' => config('services.dana.redirect_url_oauth'), // Url kembalian
+        'state'       => \Illuminate\Support\Str::random(16) . '-' . $affiliateId,
     ];
 
-    // 3. GANTI ENDPOINT MENJADI PORTAL OAUTH
+    // 3. GUNAKAN ENDPOINT DEEPLINK LINK BINDING
     $baseUrl = $isProduction
-        ? 'https://m.dana.id/m/portal/oauth'
-        : 'https://m.sandbox.dana.id/m/portal/oauth';
+        ? 'https://m.dana.id/n/link/binding'
+        : 'https://m.sandbox.dana.id/n/link/binding';
 
     $fullUrl = $baseUrl . "?" . http_build_query($queryParams);
 
-    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Redirect URL: ' . $fullUrl);
+    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Redirecting User to: ' . $fullUrl);
 
     return redirect($fullUrl);
 }
