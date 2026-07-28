@@ -74,45 +74,56 @@
       x-data="posSystem()">
 
 
-    @php
-        // --- PERBAIKAN DI SINI ---
+   @php
         $user = Auth::user();
 
         // 1. Cek apakah user login? Jika tidak, lempar ke halaman login
         if (!$user) {
             echo '<script>window.location.href = "/login";</script>';
-            exit; // Stop loading halaman biar tidak error
+            exit;
         }
 
-        // --- [MULAI KODE BARU: LOGIKA SUPER ADMIN] ---
-            $isSuperAdmin = ($user->role === 'super_admin');
-            $targetTenantId = $user->tenant_id;
-            $allTenants = [];
+        // 2. Tentukan ID Toko (Tenant)
+        $isSuperAdmin = ($user->role === 'super_admin');
+        $targetTenantId = $user->tenant_id;
+        $allTenants = [];
 
-            if ($isSuperAdmin) {
-                // Ambil semua toko untuk isi dropdown
-                $allTenants = \App\Models\Tenant::orderBy('name', 'asc')->get();
+        if ($isSuperAdmin) {
+            // Ambil semua toko untuk isi dropdown Super Admin
+            $allTenants = \App\Models\Tenant::orderBy('name', 'asc')->get();
 
-                // Jika Super Admin memilih toko lewat dropdown
-                if (request()->has('view_tenant')) {
-                    $targetTenantId = request('view_tenant');
-
-                    // TIMPA DATA PRODUK & KATEGORI SESUAI TOKO YG DIPILIH
-                    $products = \App\Models\Product::where('tenant_id', $targetTenantId)->with('category')->get();
-                    $categories = \App\Models\Category::where('tenant_id', $targetTenantId)->get();
-                }
+            // Jika Super Admin memilih toko dari dropdown
+            if (request()->has('view_tenant')) {
+                $targetTenantId = request('view_tenant');
             }
+        }
 
-            // Ambil Data Tenant (Milik sendiri atau Pilihan Super Admin)
-            $tenant = \App\Models\Tenant::find($targetTenantId);
+        $tenant = \App\Models\Tenant::find($targetTenantId);
 
-            // Fallback jika null
-            if (!$tenant && $isSuperAdmin) {
-                $tenant = \App\Models\Tenant::first();
-            }
-            // --- [SELESAI KODE BARU] ---
+        // Fallback jika tenant tidak ditemukan
+        if (!$tenant && $isSuperAdmin) {
+            $tenant = \App\Models\Tenant::first();
+            $targetTenantId = $tenant->id;
+        }
 
-        // 3. Cek validasi tenant (kode asli Anda)
+        // =========================================================================
+        // 3. PERBAIKAN UTAMA: TARIK DATA PRODUK SECARA PAKSA & ANTI BLOKIR
+        // Kita gunakan withoutGlobalScopes() agar produk tetap muncul meskipun URL
+        // yang diakses adalah apps.tokosancaka.com (bukan subdomain aslinya).
+        // =========================================================================
+        $products = \App\Models\Product::withoutGlobalScopes()
+                        ->where('tenant_id', $targetTenantId)
+                        ->where('stock_status', 'available')
+                        ->where('stock', '>', 0)
+                        ->with('category')
+                        ->get();
+
+        $categories = \App\Models\Category::withoutGlobalScopes()
+                        ->where('tenant_id', $targetTenantId)
+                        ->get();
+        // =========================================================================
+
+        // 4. Cek validasi masa aktif aplikasi
         $isExpired = ($tenant->expired_at && now()->gt($tenant->expired_at));
         $isActive = ($tenant->status === 'active' || !$isExpired);
         $onSuspendedPage = request()->is('*account-suspended*');
