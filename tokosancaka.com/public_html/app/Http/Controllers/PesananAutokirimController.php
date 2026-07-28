@@ -804,80 +804,81 @@ class PesananAutokirimController extends Controller
         }
     }
 
- public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
+public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
     {
-        // ========================================================
-        // 1. DINAMIS: SELALU BUAT PICKUP POINT BARU PER TRANSAKSI
-        // ========================================================
-        Log::info("LOG LOG: [PICKUP POINT] Memulai proses generate Pickup Point dinamis untuk Order ID: {$pesanan->order_id}");
+        // 1. Ambil is_sender_pp dari request, default ke 1
+        $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
+        $pickupPointCode = null;
 
-        $pickupPayload = [
-            'name'              => (string) trim($pesanan->pengirim_nama),
-            'phone'             => (string) trim($pesanan->pengirim_hp),
-            'address'           => (string) trim($pesanan->pengirim_alamat),
-            'email'             => auth()->user()->email ?? 'customer@tokosancaka.com',
-            'longitude'         => "",
-            'latitude'          => "",
-            'district_id'       => (int) $origin->district_id,
-            'is_member_deposit' => false
-        ];
+        // 2. HANYA BUAT PICKUP POINT JIKA is_sender_pp == 0
+        if ($isSenderPp === 0) {
+            Log::info("LOG LOG: [PICKUP POINT] Memulai proses generate Pickup Point dinamis untuk Order ID: {$pesanan->order_id}");
 
-        // Tembak API Insert
-        $pickupResponse = Http::timeout(15)
-            ->withToken($this->token)
-            ->post("{$this->baseUrl}/api/pickup-point/insert", $pickupPayload);
+            // Trik: Tambahkan random angka pada nama agar API pusat tidak mengembalikan ID lama yang terhapus
+            $uniqueName = substr(trim($pesanan->pengirim_nama) . ' ' . mt_rand(100, 999), 0, 50);
 
-        $pickupResult = $pickupResponse->json();
+            $pickupPayload = [
+                'name'              => $uniqueName,
+                'phone'             => (string) trim($pesanan->pengirim_hp),
+                'address'           => (string) trim($pesanan->pengirim_alamat),
+                'email'             => auth()->user()->email ?? 'customer@tokosancaka.com',
+                'longitude'         => "",
+                'latitude'          => "",
+                'district_id'       => (int) $origin->district_id,
+                'is_member_deposit' => false
+            ];
 
-        if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
-            throw new Exception('Gagal mendaftarkan alamat jemput dinamis ke logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
-        }
+            // Tembak API Insert
+            $pickupResponse = Http::timeout(15)
+                ->withToken($this->token)
+                ->post("{$this->baseUrl}/api/pickup-point/insert", $pickupPayload);
 
-        $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
-        Log::info("LOG LOG: [PICKUP POINT] Berhasil generate kode dinamis: {$pickupPointCode}");
+            $pickupResult = $pickupResponse->json();
 
-        // Polling wajib agar server pusat siap menerima kode baru ini
-        $isSynced = false;
-        for ($i = 1; $i <= 4; $i++) {
-            sleep(2);
-            if ($this->findPickupPoint($pickupPointCode)) {
-                $isSynced = true;
-                Log::info("LOG LOG: Sinkronisasi Pickup Point dinamis berhasil pada percobaan ke-{$i}");
-                break;
+            if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
+                throw new Exception('Gagal mendaftarkan alamat jemput dinamis ke logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
             }
-            Log::warning("LOG LOG: Menunggu sinkronisasi DB Autokirim untuk kode baru {$pickupPointCode} (Percobaan {$i}/4)...");
+
+            $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
+            Log::info("LOG LOG: [PICKUP POINT] Berhasil generate kode dinamis: {$pickupPointCode}");
+
+            // Polling sinkronisasi
+            $isSynced = false;
+            for ($i = 1; $i <= 4; $i++) {
+                sleep(2);
+                if ($this->findPickupPoint($pickupPointCode)) {
+                    $isSynced = true;
+                    Log::info("LOG LOG: Sinkronisasi Pickup Point dinamis berhasil pada percobaan ke-{$i}");
+                    break;
+                }
+                Log::warning("LOG LOG: Menunggu sinkronisasi DB Autokirim untuk kode baru {$pickupPointCode} (Percobaan {$i}/4)...");
+            }
+
+            if (!$isSynced) {
+                throw new Exception("Sistem pusat logistik (Autokirim) mengalami keterlambatan sinkronisasi data (timeout). Silakan ulangi submit pesanan Anda.");
+            }
+        } else {
+            Log::info("LOG LOG: [API AUTOKIRIM] is_sender_pp = 1. Bypass pembuatan Pickup Point.");
         }
 
-        if (!$isSynced) {
-            throw new Exception("Sistem pusat logistik (Autokirim) mengalami keterlambatan sinkronisasi data (timeout). Silakan ulangi submit pesanan Anda.");
-        }
-
-        // ========================================================
-        // 2. MULAI PROSES CREATE ORDER DENGAN KODE DINAMIS
-        // ========================================================
-        $qtyInput = $requestData ? (string) $requestData->input('qty', 1) : "1";
+        // 3. MULAI PROSES CREATE ORDER
+        $qtyInput    = $requestData ? (string) $requestData->input('qty', 1) : "1";
         $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
+        $isCod       = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
+        $codValue    = $isCod ? ($requestData ? (int) $requestData->grand_total : 0) : 0;
 
-        $isCod = in_array(strtolower($pesanan->metode_pembayaran), ['cod', 'codbarang', 'cod_barang', 'cod_ongkir']);
-
-        $codValue = 0;
-        if ($isCod) {
-            $codValue = $requestData ? (int) $requestData->grand_total : 0;
-        }
-
-        $beratGram = (int) $pesanan->berat_gram;
-        $weightApi = $beratGram > 0 ? $beratGram : 1000;
+        $beratGram   = (int) $pesanan->berat_gram;
+        $weightApi   = $beratGram > 0 ? $beratGram : 1000;
 
         Log::info("LOG: [WEIGHT CALC] Aktual: {$beratGram}gr => Ditagihkan: {$weightApi}gr");
 
         // Format Alamat (Maksimal 100 karakter)
-        $cleanSenderAddress = substr(trim(preg_replace('/\s+/', ' ', $pesanan->pengirim_alamat)), 0, 100);
+        $cleanSenderAddress   = substr(trim(preg_replace('/\s+/', ' ', $pesanan->pengirim_alamat)), 0, 100);
         $cleanReceiverAddress = substr(trim(preg_replace('/\s+/', ' ', $pesanan->penerima_alamat)), 0, 100);
 
         $orderPayload = [
             'service_code'      => $serviceCode,
             'reff_client_id'    => $pesanan->order_id,
-            'pickup_point_code' => $pickupPointCode, // Valid 100% dari proses Polling
             'origin_id'         => (int) $origin->district_id,
             'destination_id'    => (int) $destination->district_id,
             'weight'            => (string) $weightApi,
@@ -888,10 +889,9 @@ class PesananAutokirimController extends Controller
             'description'       => (string) $pesanan->deskripsi_barang,
             'remarks'           => (string) $pesanan->kategori_barang,
             'price'             => (int) ($pesanan->nilai_barang > 0 ? $pesanan->nilai_barang : 1000),
-            'is_cod'            => $isCod,
-            'cod_value'         => $codValue,
-            // 🔥 PERBAIKAN KRUSIAL: Jika menggunakan pickup_point_code, is_sender_pp WAJIB 0
-            'is_sender_pp'      => 0,
+            'is_cod'            => (bool) $isCod,
+            'cod_value'         => (int) $codValue,
+            'is_sender_pp'      => (int) $isSenderPp,
             'is_insurance'      => (bool) $pesanan->asuransi,
             'from' => [
                 'name'    => (string) trim($pesanan->pengirim_nama),
@@ -906,6 +906,11 @@ class PesananAutokirimController extends Controller
             'commodity' => (string) $pesanan->kategori_barang,
         ];
 
+        // 4. CEGAH "GENERAL ERROR": Hanya kirim pickup_point_code jika is_sender_pp adalah 0
+        if ($isSenderPp === 0 && !empty($pickupPointCode)) {
+            $orderPayload['pickup_point_code'] = $pickupPointCode;
+        }
+
         Log::info("LOG: [API AUTOKIRIM - CREATE ORDER DINAMIS] REQUEST:", $orderPayload);
 
         $orderResponse = Http::timeout(15)
@@ -914,10 +919,6 @@ class PesananAutokirimController extends Controller
 
         $orderResult = $orderResponse->json();
 
-        // 🔥 PERBAIKAN KRUSIAL 2: PEMBERSIHAN (CLEANUP) DIHAPUS
-        // Kita tidak boleh menghapus pickup point, karena ID ini dibutuhkan kurir untuk menjemput barang.
-
-        // Evaluasi Hasil Order
         if ($orderResponse->successful() && isset($orderResult['rc']) && $orderResult['rc'] === '00') {
             $awb    = $orderResult['data']['awb'] ?? 'AWB-PENDING';
             $reff_1 = $orderResult['data']['reff_1'] ?? null;
@@ -934,7 +935,6 @@ class PesananAutokirimController extends Controller
             ];
         }
 
-        // Tampilkan alasan logis jika gagal
         throw new Exception('Gagal membuat pesanan di server logistik: ' . ($orderResult['rd'] ?? 'Unknown Error'));
     }
 
