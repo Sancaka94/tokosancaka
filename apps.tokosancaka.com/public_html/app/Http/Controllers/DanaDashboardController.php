@@ -88,16 +88,18 @@ public function index(Request $request)
 
  public function startBinding(Request $request)
 {
-    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Memulai proses Deeplink Binding DANA...');
+    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA (Dynamic DB via /d/portal/oauth)...');
 
+    // 1. Logika pengenal user
     $affiliateId = $request->affiliate_id ?? 11;
     session(['dana_user_id' => $affiliateId]);
 
-    // 1. Ambil Mode & Kredensial dari DB
+    // 2. Cek Mode DANA dari Database (0 = Sandbox, 1 = Production)
     $danaMode = \App\Models\SettingApi::where('key', 'dana_production_mode')->value('value') ?? '0';
     $isProduction = ($danaMode == '1');
     $prefix = $isProduction ? 'dana_prod_' : 'dana_sandbox_';
 
+    // Ambil kredensial dari database
     $keysToFetch = [$prefix . 'client_id', $prefix . 'merchant_id'];
     $danaSettings = \App\Models\SettingApi::whereIn('key', $keysToFetch)->pluck('value', 'key')->toArray();
 
@@ -108,22 +110,20 @@ public function index(Request $request)
         return back()->with('error', 'Kredensial DANA belum dikonfigurasi.');
     }
 
-    // 2. KEMBALIKAN KE FORMAT DEEPLINK (MANDATORY SESUAI DOKUMENTASI DANA)
+    // 3. PARAMETER BERDASARKAN LOGIKA YANG BERHASIL (CamelCase)
     $queryParams = [
-        'partnerId'   => $clientId, // Menggunakan partnerId
-        'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
-        'externalId'  => 'BIND-' . $affiliateId . '-' . time(),
-        'channelId'   => 'DANAID',
-        'merchantId'  => $merchantId, // Wajib ada untuk UI DANA
-        'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE', // Menggunakan scopes
-        'redirectUrl' => config('services.dana.redirect_url_oauth'), // Url kembalian
-        'state'       => \Illuminate\Support\Str::random(16) . '-' . $affiliateId,
+        'clientId'     => $clientId, // PENTING: Harus clientId
+        'redirectUrl'  => config('services.dana.redirect_url_oauth'), // Sesuai config atau URL Anda
+        'scopes'       => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE',
+        'state'        => \Illuminate\Support\Str::random(16) . '-' . $affiliateId,
+        'terminalType' => 'WEB',
+        'merchantId'   => $merchantId,
     ];
 
-    // 3. GUNAKAN ENDPOINT DEEPLINK LINK BINDING
+    // 4. ENDPOINT WEB AUTHORIZE DANA (/d/portal/oauth)
     $baseUrl = $isProduction
-        ? 'https://m.dana.id/n/link/binding'
-        : 'https://m.sandbox.dana.id/n/link/binding';
+        ? 'https://m.dana.id/d/portal/oauth'
+        : 'https://m.sandbox.dana.id/d/portal/oauth';
 
     $fullUrl = $baseUrl . "?" . http_build_query($queryParams);
 
