@@ -667,4 +667,39 @@ class DanaGatewayController extends Controller
             ], 500);
         }
     }
+
+    public function startDanaBinding(Request $request)
+{
+    // 1. Ambil Client ID dari Setting API yang sudah kita buat
+    $clientId = config('services.dana.client_id');
+
+    // 2. URL Callback WAJIB presisi dengan yang ada di Dashboard DANA Developer
+    $redirectUrl = 'https://apps.tokosancaka.com/dana/callback';
+
+    // 3. State dinamis untuk keamanan dan identifikasi balik
+    // (Bisa disesuaikan dengan kebutuhan Anda, contoh: BIND_TENANT-1-apps-1)
+    $state = 'BIND_TENANT-' . auth()->id() . '-apps-1';
+
+    // 4. Susun Parameter sesuai standar DANA OpenAPI / BI-SNAP
+    $queryParams = [
+        'clientId'     => $clientId, // WAJIB clientId, BUKAN partnerId
+        'redirectUrl'  => $redirectUrl,
+        'scopes'       => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE', // Ganti MINI_DANA menjadi AGREEMENT_PAY
+        'state'        => $state,
+        'terminalType' => 'WEB'
+    ];
+
+    // 5. Tentukan Base URL berdasarkan Environment
+    $isProduction = config('services.dana.dana_env') === 'PRODUCTION';
+    $baseUrl = $isProduction
+        ? 'https://m.dana.id/d/portal/oauth'
+        : 'https://m.sandbox.dana.id/d/portal/oauth';
+
+    // 6. Rangkai URL dan Redirect User
+    $fullUrl = $baseUrl . '?' . http_build_query($queryParams);
+
+    \Illuminate\Support\Facades\Log::info('[DANA BINDING] Redirecting to: ' . $fullUrl);
+
+    return redirect($fullUrl);
+}
 }
