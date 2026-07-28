@@ -1555,7 +1555,7 @@ class PesananAutokirimController extends Controller
         }
     }
 
-    /**
+  /**
      * =========================================================
      * FITUR MANAJEMEN PICKUP POINT AUTOKIRIM
      * =========================================================
@@ -1569,11 +1569,19 @@ class PesananAutokirimController extends Controller
         try {
             $payload = array_merge($data, ['pickup_point_code' => $pickupCode]);
 
+            // Catat Request
+            Log::info("LOG LOG: [API AUTOKIRIM - UPDATE PICKUP] REQUEST UNTUK {$pickupCode}:", $payload);
+
             $response = Http::timeout(15)
                 ->withToken($this->token)
                 ->post("{$this->baseUrl}/api/pickup-point/update", $payload);
 
-            return ($response->successful() && $response->json('rc') === '00');
+            $result = $response->json();
+
+            // Catat Response
+            Log::info("LOG LOG: [API AUTOKIRIM - UPDATE PICKUP] RESPONSE UNTUK {$pickupCode}:", $result ?? []);
+
+            return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
         } catch (\Exception $e) {
             Log::error("LOG LOG: [API AUTOKIRIM - UPDATE PICKUP] Error: " . $e->getMessage());
             return false;
@@ -1586,13 +1594,21 @@ class PesananAutokirimController extends Controller
     private function deletePickupPoint($pickupCode)
     {
         try {
+            $payload = ['pickup_point_code' => $pickupCode];
+
+            // Catat Request
+            Log::info("LOG LOG: [API AUTOKIRIM - DELETE PICKUP] REQUEST UNTUK {$pickupCode}:", $payload);
+
             $response = Http::timeout(15)
                 ->withToken($this->token)
-                ->post("{$this->baseUrl}/api/pickup-point/delete", [
-                    'pickup_point_code' => $pickupCode
-                ]);
+                ->post("{$this->baseUrl}/api/pickup-point/delete", $payload);
 
-            return ($response->successful() && $response->json('rc') === '00');
+            $result = $response->json();
+
+            // Catat Response
+            Log::info("LOG LOG: [API AUTOKIRIM - DELETE PICKUP] RESPONSE UNTUK {$pickupCode}:", $result ?? []);
+
+            return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
         } catch (\Exception $e) {
             Log::error("LOG LOG: [API AUTOKIRIM - DELETE PICKUP] Error: " . $e->getMessage());
             return false;
@@ -1605,13 +1621,20 @@ class PesananAutokirimController extends Controller
     private function findPickupPoint($pickupCode)
     {
         try {
+            $payload = ['pickup_point_code' => $pickupCode];
+
+            // Catat Request
+            Log::info("LOG LOG: [API AUTOKIRIM - FIND PICKUP] REQUEST UNTUK {$pickupCode}:", $payload);
+
             $response = Http::timeout(10)
                 ->withToken($this->token)
-                ->post("{$this->baseUrl}/api/pickup-point/find", [
-                    'pickup_point_code' => $pickupCode
-                ]);
+                ->post("{$this->baseUrl}/api/pickup-point/find", $payload);
 
             $result = $response->json();
+
+            // Catat Response
+            Log::info("LOG LOG: [API AUTOKIRIM - FIND PICKUP] RESPONSE UNTUK {$pickupCode}:", $result ?? []);
+
             return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
         } catch (\Exception $e) {
             Log::error("LOG LOG: [API AUTOKIRIM - FIND PICKUP] Error Jaringan: " . $e->getMessage());
