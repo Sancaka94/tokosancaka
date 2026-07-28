@@ -3,7 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\Tenant; // Pastikan Model Tenant di-import
+use App\Models\Tenant;
+use App\Models\Outlet; // Tambahkan import Model Outlet
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -18,14 +19,16 @@ class EmployeeController extends Controller
 
         if ($user->role === 'super_admin') {
             // A. SUPER ADMIN: Lihat semua pegawai, urutkan per toko
-            $employees = User::with('tenant')
+            // Load relasi 'tenant' dan 'outlet' agar query lebih ringan (Eager Loading)
+            $employees = User::with(['tenant', 'outlet'])
                              ->where('id', '!=', $user->id)
                              ->orderBy('tenant_id', 'asc')
                              ->orderBy('role', 'asc')
                              ->get();
         } else {
             // B. ADMIN TOKO: HANYA lihat pegawai tokonya sendiri
-            $employees = User::where('tenant_id', $user->tenant_id)
+            $employees = User::with('outlet')
+                             ->where('tenant_id', $user->tenant_id)
                              ->where('id', '!=', $user->id)
                              ->latest()
                              ->get();
@@ -37,13 +40,20 @@ class EmployeeController extends Controller
     // 2. FORM TAMBAH (CREATE)
     public function create()
     {
+        $user = Auth::user();
         $tenants = [];
-        // Jika Super Admin, kirim daftar toko agar dia bisa mendaftarkan pegawai untuk klien
-        if (Auth::user()->role === 'super_admin') {
+        $outlets = [];
+
+        if ($user->role === 'super_admin') {
             $tenants = Tenant::orderBy('name', 'asc')->get();
+            // Super admin melihat semua outlet (nanti di Blade di-filter via JavaScript berdasarkan Tenant yg dipilih)
+            $outlets = Outlet::orderBy('name', 'asc')->get();
+        } else {
+            // Admin Toko hanya mengambil outlet miliknya sendiri
+            $outlets = Outlet::where('tenant_id', $user->tenant_id)->orderBy('name', 'asc')->get();
         }
 
-        return view('employees.create', compact('tenants'));
+        return view('employees.create', compact('tenants', 'outlets'));
     }
 
     // 3. SIMPAN DATA (STORE)
@@ -55,23 +65,34 @@ class EmployeeController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => ['required', 'in:admin,staff,finance,operator,kasir'], // Tambahkan kasir jika ada
+            'role' => ['required', 'in:admin,staff,finance,operator,kasir'],
             'permissions' => ['array'],
+            'outlet_id' => ['nullable', 'exists:outlets,id'], // Validasi ID Outlet
         ]);
 
-        // LOGIKA PINTAR PENENTUAN TENANT:
-        $tenantId = $user->tenant_id; // Default: Kunci pakai ID yang login
+        // Tentukan ID Tenant
+        $tenantId = $user->tenant_id;
 
-        // Jika Super Admin dan dia memilih toko di form (dropdown), gunakan ID toko klien tersebut
+        // Jika Super Admin memilih toko di form, gunakan ID toko klien tersebut
         if ($user->role === 'super_admin' && $request->filled('tenant_id')) {
             $tenantId = $request->tenant_id;
+        }
+
+        // --- SECURITY CHECK (PENTING) ---
+        // Pastikan Outlet yang dipilih BENAR-BENAR milik Tenant tersebut
+        if ($request->filled('outlet_id')) {
+            $outlet = Outlet::find($request->outlet_id);
+            if ($outlet && $outlet->tenant_id != $tenantId) {
+                return back()->withErrors(['outlet_id' => 'Cabang/Outlet ini tidak valid atau bukan milik toko yang bersangkutan.'])->withInput();
+            }
         }
 
         User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'tenant_id' => $tenantId, // KUNCI KEAMANAN (Dinamis untuk Super Admin, Statis untuk Admin)
+            'tenant_id' => $tenantId,
+            'outlet_id' => $request->outlet_id, // Simpan ID Cabang
             'role' => $request->role,
             'permissions' => $request->permissions ?? [],
             'email_verified_at' => now(),
@@ -85,17 +106,20 @@ class EmployeeController extends Controller
     {
         $currentUser = Auth::user();
         $tenants = [];
+        $outlets = [];
 
         if ($currentUser->role === 'super_admin') {
             $employee = User::findOrFail($id);
-            $tenants = Tenant::orderBy('name', 'asc')->get(); // Kirim data toko untuk form edit
+            $tenants = Tenant::orderBy('name', 'asc')->get();
+            $outlets = Outlet::orderBy('name', 'asc')->get(); // Tarik semua untuk Super Admin
         } else {
             $employee = User::where('id', $id)
                             ->where('tenant_id', $currentUser->tenant_id)
                             ->firstOrFail();
+            $outlets = Outlet::where('tenant_id', $currentUser->tenant_id)->orderBy('name', 'asc')->get();
         }
 
-        return view('employees.edit', compact('employee', 'tenants'));
+        return view('employees.edit', compact('employee', 'tenants', 'outlets'));
     }
 
     // 5. UPDATE DATA (UPDATE)
@@ -117,18 +141,35 @@ class EmployeeController extends Controller
             'role' => ['required'],
             'permissions' => ['array'],
             'password' => ['nullable', 'confirmed', Rules\Password::defaults()],
+            'outlet_id' => ['nullable', 'exists:outlets,id'], // Validasi ID Outlet
         ]);
 
         $data = [
             'name' => $request->name,
             'email' => $request->email,
             'role' => $request->role,
+            'outlet_id' => $request->outlet_id, // Update Cabang
             'permissions' => $request->permissions ?? [],
         ];
 
-        // Super admin bisa memindahkan pegawai ke toko lain jika salah input
+        $tenantId = $employee->tenant_id;
+
+        // Super admin memindahkan pegawai ke toko lain
         if ($currentUser->role === 'super_admin' && $request->filled('tenant_id')) {
-            $data['tenant_id'] = $request->tenant_id;
+            $tenantId = $request->tenant_id;
+            $data['tenant_id'] = $tenantId;
+        }
+
+        // --- SECURITY CHECK ---
+        // Pastikan Outlet baru yang dipilih valid untuk toko/tenant tersebut
+        if ($request->filled('outlet_id')) {
+            $outlet = Outlet::find($request->outlet_id);
+            if ($outlet && $outlet->tenant_id != $tenantId) {
+                return back()->withErrors(['outlet_id' => 'Cabang/Outlet ini bukan milik toko tersebut.'])->withInput();
+            }
+        } else {
+            // Jika dikosongkan, berarti dia ditarik ke Pusat (null)
+            $data['outlet_id'] = null;
         }
 
         if ($request->filled('password')) {

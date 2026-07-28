@@ -109,4 +109,9 @@ class User extends Authenticatable
         // Operator '?? []' mencegah error jika permissions null
         return in_array($feature, $this->permissions ?? []);
     }
+
+    public function outlet()
+    {
+        return $this->belongsTo(Outlet::class, 'outlet_id');
+    }
 }

@@ -20,6 +20,9 @@
                         @endif
                     </p>
                 </div>
+                <a href="{{ route('employees.index') }}" class="text-sm font-semibold text-slate-500 hover:text-blue-600 transition flex items-center gap-2">
+                    <i class="fas fa-arrow-left"></i> Kembali
+                </a>
             </div>
 
             <div class="p-8">
@@ -27,39 +30,76 @@
                       x-data="{
                           role: 'staff',
                           permissions: [],
+                          selectedTenant: '{{ old('tenant_id', '') }}',
+                          selectedOutlet: '{{ old('outlet_id', '') }}',
+                          outlets: {{ Js::from($outlets ?? []) }},
                           rolesConfig: {
                               'admin': ['dashboard', 'pos', 'products', 'reports', 'settings', 'finance'],
                               'staff': ['dashboard', 'pos', 'products'],
                               'finance': ['dashboard', 'reports', 'finance'],
-                              'operator': ['pos']
+                              'operator': ['pos'],
+                              'kasir': ['pos']
                           },
                           updatePermissions() {
                               this.permissions = this.rolesConfig[this.role] || [];
+                          },
+                          filteredOutlets() {
+                              return this.outlets.filter(o => o.tenant_id == this.selectedTenant);
                           }
                       }"
                       x-init="updatePermissions()"
                 >
                     @csrf
 
-                    {{-- [TAMBAHAN BARU]: Dropdown Toko Khusus Super Admin --}}
+                    {{-- [DROPDOWN SUPER ADMIN] --}}
                     @if(Auth::user()->role === 'super_admin')
                     <div class="bg-blue-50 p-6 rounded-2xl border border-blue-100">
                         <label class="block font-bold text-blue-800 mb-2" for="tenant_id">
                             <i class="fas fa-store mr-1"></i> Pilih Toko / Klien
                         </label>
-                        <select name="tenant_id" id="tenant_id" required
+                        <select name="tenant_id" id="tenant_id" required x-model="selectedTenant" @change="selectedOutlet = ''"
                                 class="w-full px-4 py-3 rounded-xl border border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-200 transition duration-200 font-medium text-slate-700 shadow-sm bg-white cursor-pointer">
                             <option value="">-- Pilih Toko Tempat Pegawai Ini Bekerja --</option>
                             @foreach($tenants as $t)
-                                <option value="{{ $t->id }}" {{ old('tenant_id') == $t->id ? 'selected' : '' }}>
-                                    {{ $t->name }} (ID: {{ $t->id }})
-                                </option>
+                                <option value="{{ $t->id }}">{{ $t->name }} (ID: {{ $t->id }})</option>
                             @endforeach
                         </select>
                         <p class="text-xs text-blue-600 mt-2 font-medium">*Fitur ini hanya terlihat oleh Super Admin.</p>
+
+                        {{-- Dropdown Outlet Super Admin (Otomatis Filter) --}}
+                        <div class="mt-4 pt-4 border-t border-blue-200" x-show="selectedTenant && filteredOutlets().length > 0" x-cloak>
+                            <label class="block font-bold text-emerald-800 mb-2" for="outlet_id_sa">
+                                <i class="fas fa-store-alt mr-1"></i> Penempatan Cabang / Outlet
+                            </label>
+                            <select name="outlet_id" id="outlet_id_sa" x-model="selectedOutlet"
+                                    class="w-full px-4 py-3 rounded-xl border border-emerald-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200 transition duration-200 font-medium text-slate-700 shadow-sm bg-white cursor-pointer">
+                                <option value="">-- Pusat (Bisa akses semua cabang) --</option>
+                                <template x-for="o in filteredOutlets()" :key="o.id">
+                                    <option :value="o.id" x-text="o.name"></option>
+                                </template>
+                            </select>
+                        </div>
                     </div>
+                    @else
+                        {{-- [DROPDOWN OUTLET UNTUK ADMIN TOKO] --}}
+                        @if(count($outlets) > 0)
+                        <div class="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
+                            <label class="block font-bold text-emerald-800 mb-2" for="outlet_id">
+                                <i class="fas fa-store-alt mr-1"></i> Penempatan Cabang / Outlet
+                            </label>
+                            <select name="outlet_id" id="outlet_id"
+                                    class="w-full px-4 py-3 rounded-xl border border-emerald-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-200 transition duration-200 font-medium text-slate-700 shadow-sm bg-white cursor-pointer">
+                                <option value="">-- Pusat (Bisa akses semua cabang) --</option>
+                                @foreach($outlets as $o)
+                                    <option value="{{ $o->id }}" {{ old('outlet_id') == $o->id ? 'selected' : '' }}>
+                                        {{ $o->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="text-xs text-emerald-600 mt-2 font-medium">Kosongkan (Pusat) jika pegawai ini adalah Admin Pusat.</p>
+                        </div>
+                        @endif
                     @endif
-                    {{-- ================================================= --}}
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div>
@@ -125,9 +165,6 @@
                     </div>
 
                     <div class="flex items-center justify-end gap-4 pt-4">
-                        <a href="{{ route('employees.index') }}" class="px-6 py-3.5 rounded-xl font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition">
-                            Batal
-                        </a>
                         <button type="submit" class="px-8 py-3.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
                             Simpan Pegawai
                         </button>
