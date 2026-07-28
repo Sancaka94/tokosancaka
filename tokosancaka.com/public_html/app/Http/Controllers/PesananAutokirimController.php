@@ -855,7 +855,6 @@ class PesananAutokirimController extends Controller
         // ========================================================
         // 2. MULAI PROSES CREATE ORDER DENGAN KODE DINAMIS
         // ========================================================
-        $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
         $qtyInput = $requestData ? (string) $requestData->input('qty', 1) : "1";
         $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
 
@@ -878,7 +877,7 @@ class PesananAutokirimController extends Controller
         $orderPayload = [
             'service_code'      => $serviceCode,
             'reff_client_id'    => $pesanan->order_id,
-            'pickup_point_code' => $pickupPointCode, // Wajib diisi dengan kode dinamis
+            'pickup_point_code' => $pickupPointCode, // Valid 100% dari proses Polling
             'origin_id'         => (int) $origin->district_id,
             'destination_id'    => (int) $destination->district_id,
             'weight'            => (string) $weightApi,
@@ -891,7 +890,8 @@ class PesananAutokirimController extends Controller
             'price'             => (int) ($pesanan->nilai_barang > 0 ? $pesanan->nilai_barang : 1000),
             'is_cod'            => $isCod,
             'cod_value'         => $codValue,
-            'is_sender_pp'      => (int) $isSenderPp,
+            // 🔥 PERBAIKAN KRUSIAL: Jika menggunakan pickup_point_code, is_sender_pp WAJIB 0
+            'is_sender_pp'      => 0,
             'is_insurance'      => (bool) $pesanan->asuransi,
             'from' => [
                 'name'    => (string) trim($pesanan->pengirim_nama),
@@ -914,12 +914,8 @@ class PesananAutokirimController extends Controller
 
         $orderResult = $orderResponse->json();
 
-        // ========================================================
-        // 3. PEMBERSIHAN (CLEANUP) SETELAH ORDER
-        // ========================================================
-        // Penting: Hapus pickup point dinamis agar tidak menumpuk di server Autokirim
-        Log::info("LOG LOG: Menghapus Pickup Point dinamis {$pickupPointCode} dari server Autokirim...");
-        $this->deletePickupPoint($pickupPointCode);
+        // 🔥 PERBAIKAN KRUSIAL 2: PEMBERSIHAN (CLEANUP) DIHAPUS
+        // Kita tidak boleh menghapus pickup point, karena ID ini dibutuhkan kurir untuk menjemput barang.
 
         // Evaluasi Hasil Order
         if ($orderResponse->successful() && isset($orderResult['rc']) && $orderResult['rc'] === '00') {
