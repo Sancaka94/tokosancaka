@@ -74,7 +74,7 @@
       x-data="posSystem()">
 
 
-   @php
+  @php
         $user = Auth::user();
 
         if (!$user) {
@@ -96,6 +96,15 @@
         $tenant = \App\Models\Tenant::find($targetTenantId) ?? \App\Models\Tenant::first();
 
         // =========================================================================
+        // [FIX ERROR 500] DEKLARASI VARIABEL $allTenants UNTUK DROPDOWN
+        // =========================================================================
+        $allTenants = [];
+        if ($isSuperAdmin) {
+            $allTenants = \App\Models\Tenant::orderBy('name', 'ASC')->get();
+        }
+        // =========================================================================
+
+        // =========================================================================
         // LOGIKA DINAMIS (TANPA HARDCODE)
         // Kasir secara otomatis HANYA akan menarik data barang dari tokonya sendiri.
         // =========================================================================
@@ -112,8 +121,14 @@
                         ->unique('name');
         // =========================================================================
 
-        $isExpired = ($tenant->expired_at && now()->gt($tenant->expired_at));
-        $isActive = ($tenant->status === 'active' || !$isExpired);
+        // Mencegah error jika database Tenant benar-benar kosong
+        $isExpired = false;
+        $isActive = false;
+        if ($tenant) {
+            $isExpired = ($tenant->expired_at && now()->gt($tenant->expired_at));
+            $isActive = ($tenant->status === 'active' || !$isExpired);
+        }
+
         $onSuspendedPage = request()->is('*account-suspended*');
     @endphp
 
