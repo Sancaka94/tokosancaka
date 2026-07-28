@@ -676,7 +676,7 @@ Route::group(['middleware' => ['web', 'auth']], function () {
     ->name('tenant.payment.url');
 
         // Route untuk Memulai Binding DANA (Khusus Tenant)
-    Route::get('/tenant/dana/connect', [TenantPaymentController::class, 'startBinding'])
+    Route::get('/tenant/dana/connect', [DanaGatewayController::class, 'startBinding'])
         ->name('tenant.dana.start');
 
 
