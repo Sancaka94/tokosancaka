@@ -74,7 +74,7 @@ class TenantPaymentController extends Controller
     ]);
 }
 
-    /* public function startBinding(Request $request)
+    public function startBinding(Request $request)
     {
         $user = Auth::user();
         $subdomain = explode('.', $request->getHost())[0];
@@ -87,43 +87,6 @@ class TenantPaymentController extends Controller
         $requestId = Str::uuid();
 
         $danaUrl = "https://m.sandbox.dana.id/d/portal/oauth?partnerId={$clientId}&scopes=QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE&requestId={$requestId}&redirectUrl={$encodedCallback}&state={$state}&terminalType=WEB";
-
-        return redirect()->away($danaUrl);
-    } */
-
-     /**
-     * =========================================================================
-     * AWAL BINDING DANA (OAUTH2 BI-SNAP)
-     * =========================================================================
-     */
-    public function startBinding(Request $request)
-    {
-        $user = Auth::user();
-        if (!$user) {
-            return redirect()->back()->with('error', 'Silakan login terlebih dahulu untuk menghubungkan DANA.');
-        }
-
-        $subdomain = explode('.', $request->getHost())[0];
-        $tenantId  = $user->tenant_id ?? 1;
-
-        $state = "BIND_TENANT-{$user->id}-{$subdomain}-{$tenantId}";
-        $redirectUrl = self::CENTRAL_CALLBACK_URL;
-
-        $queryParams = [
-            'clientId'    => config('services.dana.client_id'), // Standar baru: clientId
-            'redirectUrl' => $redirectUrl,
-            'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE', // Wajib AGREEMENT_PAY
-            'state'       => $state,
-            'terminalType'=> 'WEB'
-        ];
-
-        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION'
-            ? 'https://m.dana.id/d/portal/oauth'
-            : 'https://m.sandbox.dana.id/d/portal/oauth';
-
-        $danaUrl = $baseUrl . '?' . http_build_query($queryParams);
-
-        Log::info('[DANA BINDING START] Mengarahkan user ke: ' . $danaUrl);
 
         return redirect()->away($danaUrl);
     }

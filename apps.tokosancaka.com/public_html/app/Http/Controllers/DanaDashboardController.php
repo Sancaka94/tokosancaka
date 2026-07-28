@@ -86,105 +86,25 @@ public function index(Request $request)
     return view('dana_dashboard', compact('transactions', 'affiliates'));
 }
 
-public function startBinding(Request $request)
+    // 1. START BINDING (LOGIKA AWAL BOS)
+    public function startBinding(Request $request)
     {
-        Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA (Debug)...');
-        $user = \Illuminate\Support\Facades\Auth::user();
+        Log::info('[BINDING] Memulai proses redirect ke DANA Portal...');
 
-        // Simpan id_pengguna ke session sebagai cadangan pengenal user
-        session(['dana_user_id' => $user->id_pengguna]);
+        $affiliateId = $request->affiliate_id ?? 11;
 
-        // DANA OAuth 2.0 Web Authorize Parameters (Standar Resmi)
         $queryParams = [
-            'clientId'     => config('services.dana.client_id'), // PENTING: Harus clientId, bukan partnerId
-            'redirectUrl'  => url('/dana/callback'), // Pastikan route ini sesuai dengan setting di Dashboard DANA Anda
-            'scopes'       => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE', // AGREEMENT_PAY wajib untuk Direct Debit!
-            'state'        => \Illuminate\Support\Str::random(16),
-            'terminalType' => 'WEB', // Penting agar UI DANA tahu dirender sebagai Web
-            'merchantId'   => config('services.dana.merchant_id'),
+            'partnerId'   => config('services.dana.x_partner_id'),
+            'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
+            'externalId'  => 'BIND-' . $affiliateId . '-' . time(),
+            'merchantId'  => config('services.dana.merchant_id'),
+            'redirectUrl' => config('services.dana.redirect_url_oauth'),
+            'state'       => 'ID-' . $affiliateId,
+            'scopes'      => 'QUERY_BALANCE,MINI_DANA,DEFAULT_BASIC_PROFILE',
         ];
 
-        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION'
-            ? 'https://m.dana.id/d/portal/oauth'
-            : 'https://m.sandbox.dana.id/d/portal/oauth';
-
-        $fullUrl = $baseUrl . "?" . http_build_query($queryParams);
-
-        Log::info('LOG LOG: [BINDING] Redirecting User to: ' . $fullUrl);
-
-        return redirect($fullUrl);
+        return redirect("https://m.sandbox.dana.id/d/portal/oauth?" . http_build_query($queryParams));
     }
-
-public function danaCallback(Request $request, \App\Services\DanaSignatureService $danaService)
-{
-    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Menerima Callback dari DANA', $request->all());
-
-    $authCode = $request->query('auth_code');
-    $state    = $request->query('state');
-
-    if (!$authCode) {
-        \Illuminate\Support\Facades\Log::error('LOG LOG: [BINDING] auth_code tidak ditemukan di callback.');
-        return redirect('/')->with('error', 'Otorisasi DANA gagal atau dibatalkan pengguna.');
-    }
-
-    // 1. Ambil Mode & Kredensial dari DB
-    $danaMode = \App\Models\SettingApi::where('key', 'dana_production_mode')->value('value') ?? '0';
-    $isProduction = ($danaMode == '1');
-    $prefix = $isProduction ? 'dana_prod_' : 'dana_sandbox_';
-
-    $clientId = \App\Models\SettingApi::where('key', $prefix . 'client_id')->value('value');
-
-    // 2. Siapkan Request Apply Token
-    $baseUrl = $isProduction ? 'https://api.saas.dana.id' : 'https://api.sandbox.dana.id';
-    $path = '/v1.0/access-token/b2b2c.htm';
-    $timestamp = now('Asia/Jakarta')->toIso8601String();
-
-    $body = [
-        "grantType" => "AUTHORIZATION_CODE",
-        "authCode"  => $authCode,
-        "refreshToken" => "",
-        "additionalInfo" => (object)[] // Kirim object kosong {}
-    ];
-
-    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-    // 3. Generate Signature via Service
-    try {
-        $signature = $danaService->generateSignature('POST', $path, $jsonBody, $timestamp);
-
-        // 4. Hit API Apply Token
-        $response = \Illuminate\Support\Facades\Http::withHeaders([
-            'Content-Type' => 'application/json',
-            'X-TIMESTAMP'  => $timestamp,
-            'X-CLIENT-KEY' => $clientId,
-            'X-SIGNATURE'  => $signature,
-            'X-PARTNER-ID' => $clientId,
-        ])->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
-
-        $result = $response->json();
-        \Illuminate\Support\Facades\Log::info('LOG LOG: [APPLY TOKEN] Response DANA: ', $result);
-
-        // 5. Validasi Hasil
-        if (isset($result['responseCode']) && $result['responseCode'] === '2007400') {
-
-            $accessToken = $result['accessToken'];
-            $publicUserId = $result['additionalInfo']['userInfo']['publicUserId'] ?? null;
-
-            // TODO: Simpan $accessToken dan $publicUserId ke database Affiliate/User kamu di sini
-            // Contoh:
-            $userId = session('dana_user_id');
-            Affiliate::where('id', $userId)->update(['dana_access_token' => $accessToken]);
-
-            return redirect('/')->with('success', 'Akun DANA berhasil ditautkan secara permanen!');
-        }
-
-        return redirect('/')->with('error', 'Gagal menautkan akun DANA: ' . ($result['responseMessage'] ?? 'Unknown Error'));
-
-    } catch (\Exception $e) {
-        \Illuminate\Support\Facades\Log::error('LOG LOG: [APPLY TOKEN] Exception: ' . $e->getMessage());
-        return redirect('/')->with('error', 'Terjadi kesalahan sistem saat menghubungi DANA.');
-    }
-}
 
     public function handleCallback(Request $request)
 {
