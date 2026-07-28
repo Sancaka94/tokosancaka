@@ -164,7 +164,7 @@
                             @if($user->dana_access_token)
                             <div class="flex items-center justify-between text-blue-600 bg-blue-50 px-3 py-2 rounded-xl">
                                 <div class="flex items-center gap-2">
-                                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png" class="h-3 w-auto">
+                                    <img src="https://tokosancaka.com/public/assets/dana.png" class="h-3 w-auto">
                                     <span class="text-xs font-bold">Rp {{ number_format($user->dana_balance ?? 0, 0, ',', '.') }}</span>
                                 </div>
                             </div>
@@ -294,7 +294,7 @@
 
                                     <div class="h-8 flex items-center">
                                         {{-- Ganti src dengan logo DANA Anda --}}
-                                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png" class="h-6 object-contain" alt="DANA">
+                                        <img src="https://tokosancaka.com/public/assets/dana.png" class="h-6 object-contain" alt="DANA">
                                     </div>
                                     <span class="text-xs font-bold text-slate-700">DANA (Auto)</span>
 

@@ -466,7 +466,7 @@
                         {{-- Tombol DANA --}}
                         <div id="btn_method_dana" onclick="selectPaymentMethod('DANA')"
                              class="cursor-pointer border-2 border-slate-100 rounded-xl p-3 flex flex-col items-center justify-center gap-1 transition hover:border-blue-300">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Logo_dana_blue.svg/1200px-Logo_dana_blue.svg.png" class="h-4 object-contain" alt="DANA">
+                            <img src="https://tokosancaka.com/public/assets/dana.png" class="h-4 object-contain" alt="DANA">
                             <span class="text-[9px] font-bold mt-1 text-slate-600">Otomatis (Instant)</span>
                         </div>
 
