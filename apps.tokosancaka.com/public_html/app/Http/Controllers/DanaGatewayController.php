@@ -286,17 +286,41 @@ class DanaGatewayController extends Controller
         $danaConfig = $this->getDanaConfig();
         $privateKeyContent = $danaConfig['private_key'];
 
-        // Bersihkan Key dari spasi/enter yang mungkin berantakan
-        $cleanKey = preg_replace('/-{5}(BEGIN|END) PRIVATE KEY-{5}|\r|\n|\s/', '', $privateKeyContent);
+        // 1. CEK KEY KOSONG: Cegah error param cannot be coerced
+        if (empty($privateKeyContent)) {
+            Log::error("[DANA SIG] DANA Error: Private Key kosong! Cek konfigurasi Setting API Anda di database.");
+            return null;
+        }
 
-        // Format ulang ke PEM standard
-        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" . chunk_split($cleanKey, 64, "\n") . "-----END PRIVATE KEY-----";
+        // 2. BUANG HEADER/FOOTER BAWAAN
+        $cleanKey = str_replace(
+            ['-----BEGIN PRIVATE KEY-----', '-----END PRIVATE KEY-----', '-----BEGIN RSA PRIVATE KEY-----', '-----END RSA PRIVATE KEY-----'],
+            '',
+            $privateKeyContent
+        );
+
+        // 3. SAPU BERSIH: Sisakan hanya format Base64 murni (huruf, angka, +, /, =)
+        // Ini akan otomatis membersihkan spasi, enter (\n, \r), dan karakter aneh yang merusak key.
+        $cleanKey = preg_replace('/[^a-zA-Z0-9\/\+=]/', '', $cleanKey);
+
+        // 4. SUSUN ULANG KE FORMAT PEM MUTLAK
+        $formattedKey = "-----BEGIN PRIVATE KEY-----\n" .
+                        wordwrap($cleanKey, 64, "\n", true) .
+                        "\n-----END PRIVATE KEY-----";
+
+        // 5. VALIDASI KEY KE OPENSSL (Cek apakah key bisa dibaca sebelum proses sign)
+        $privateKeyResource = openssl_pkey_get_private($formattedKey);
+
+        if (!$privateKeyResource) {
+            Log::error("[DANA SIG] DANA Error: Private Key tetap tidak valid setelah di-format. Pastikan key dari dashboard DANA utuh (tidak terpotong).");
+            return null;
+        }
 
         $binarySignature = "";
 
-        // Sign menggunakan OpenSSL SHA256
-        if (!openssl_sign($stringToSign, $binarySignature, $formattedKey, OPENSSL_ALGO_SHA256)) {
-            Log::error("[DANA SIG] OpenSSL Error: " . openssl_error_string());
+        // 6. PROSES SIGNING
+        if (!openssl_sign($stringToSign, $binarySignature, $privateKeyResource, OPENSSL_ALGO_SHA256)) {
+            Log::error("[DANA SIG] OpenSSL Error saat proses signing: " . openssl_error_string());
             return null;
         }
 
