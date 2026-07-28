@@ -87,39 +87,61 @@ public function index(Request $request)
 }
 
  public function startBinding(Request $request)
-    {
-        Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA (Debug)...');
+{
+    Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA (Dinamic DB)...');
 
-        // 1. Logika pengenal user dari kode PERTAMA (Database)
-        $affiliateId = $request->affiliate_id ?? 11;
+    // 1. Logika pengenal user
+    $affiliateId = $request->affiliate_id ?? 11;
+    session(['dana_user_id' => $affiliateId]);
 
-        // Simpan affiliate_id ke session sebagai cadangan pengenal saat callback
-        session(['dana_user_id' => $affiliateId]);
+    // 2. CEK MODE DANA DARI DATABASE (0 = Sandbox, 1 = Production)
+    $danaMode = SettingApi::where('key', 'dana_production_mode')->value('value') ?? '0';
+    $isProduction = ($danaMode == '1');
 
-        // 2. DANA Deeplink Binding Parameters (Sesuai Dokumentasi Resmi)
-        $queryParams = [
-            'partnerId'   => config('services.dana.client_id'), // Sesuai dokumentasi, partnerId wajib diisi
-            'timestamp'   => now('Asia/Jakarta')->toIso8601String(), // Wajib dalam format YYYY-MM-DDTHH:mm:ss+07:00
-            'externalId'  => 'BIND-' . $affiliateId . '-' . time(), // Wajib: identifier unik per request
-            'channelId'   => 'DANAID', // Wajib: Sesuai sampel dokumentasi
-            'merchantId'  => config('services.dana.merchant_id'),
-            'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE',
-            'redirectUrl' => config('services.dana.redirect_url_oauth'),
-            'state'       => \Illuminate\Support\Str::random(16) . '-' . $affiliateId, // Wajib: Untuk proteksi CSRF
-        ];
+    // 3. TENTUKAN PREFIX BERDASARKAN MODE
+    // Jika prod, cari key 'dana_prod_...', jika dev cari 'dana_sandbox_...'
+    $prefix = $isProduction ? 'dana_prod_' : 'dana_sandbox_';
 
-        // 3. Pengecekan Environment (URL Deeplink Binding)
-        // Menggunakan /n/link/binding sesuai URL Schema dari dokumentasi
-        $baseUrl = config('services.dana.dana_env') === 'PRODUCTION'
-            ? 'https://m.dana.id/n/link/binding'
-            : 'https://m.sandbox.dana.id/n/link/binding';
+    // Ambil kredensial dari database berdasarkan prefix
+    // Gunakan pluck array agar lebih efisien dibanding query satu per satu
+    $keysToFetch = [
+        $prefix . 'client_id',
+        $prefix . 'merchant_id'
+    ];
+    $danaSettings = SettingApi::whereIn('key', $keysToFetch)->pluck('value', 'key')->toArray();
 
-        $fullUrl = $baseUrl . "?" . http_build_query($queryParams);
+    $clientId = $danaSettings[$prefix . 'client_id'] ?? null;
+    $merchantId = $danaSettings[$prefix . 'merchant_id'] ?? null;
 
-        Log::info('LOG LOG: [BINDING] Redirecting User to: ' . $fullUrl);
-
-        return redirect($fullUrl);
+    // Validasi jika kredensial kosong di database
+    if (!$clientId || !$merchantId) {
+        Log::error("LOG LOG: [BINDING] Kredensial DANA untuk mode " . ($isProduction ? "PRODUCTION" : "SANDBOX") . " belum diatur di database!");
+        return back()->with('error', 'Kredensial payment gateway belum dikonfigurasi.');
     }
+
+    // 4. DANA Deeplink Binding Parameters
+    $queryParams = [
+        'partnerId'   => $clientId,
+        'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
+        'externalId'  => 'BIND-' . $affiliateId . '-' . time(),
+        'channelId'   => 'DANAID',
+        'merchantId'  => $merchantId,
+        'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE',
+        'redirectUrl' => config('services.dana.redirect_url_oauth'), // Url callback biasanya tetap statis di config/route
+        'state'       => Str::random(16) . '-' . $affiliateId,
+    ];
+
+    // 5. PENENTUAN BASE URL BERDASARKAN MODE
+    $baseUrl = $isProduction
+        ? 'https://m.dana.id/n/link/binding'
+        : 'https://m.sandbox.dana.id/n/link/binding';
+
+    $fullUrl = $baseUrl . "?" . http_build_query($queryParams);
+
+    Log::info('LOG LOG: [BINDING] Redirecting User to: ' . $fullUrl);
+
+    return redirect($fullUrl);
+}
 
     public function handleCallback(Request $request)
 {
