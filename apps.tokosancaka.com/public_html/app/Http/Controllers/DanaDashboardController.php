@@ -88,38 +88,27 @@ public function index(Request $request)
 
  public function startBinding(Request $request)
 {
-    Log::info('LOG LOG: [BINDING] Memulai proses redirect ke DANA (Dinamic DB)...');
+    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Memulai proses Deeplink Binding DANA...');
 
-    // 1. Logika pengenal user
     $affiliateId = $request->affiliate_id ?? 11;
     session(['dana_user_id' => $affiliateId]);
 
-    // 2. CEK MODE DANA DARI DATABASE (0 = Sandbox, 1 = Production)
-    $danaMode = SettingApi::where('key', 'dana_production_mode')->value('value') ?? '0';
+    // 1. Ambil Mode & Kredensial dari DB
+    $danaMode = \App\Models\SettingApi::where('key', 'dana_production_mode')->value('value') ?? '0';
     $isProduction = ($danaMode == '1');
-
-    // 3. TENTUKAN PREFIX BERDASARKAN MODE
-    // Jika prod, cari key 'dana_prod_...', jika dev cari 'dana_sandbox_...'
     $prefix = $isProduction ? 'dana_prod_' : 'dana_sandbox_';
 
-    // Ambil kredensial dari database berdasarkan prefix
-    // Gunakan pluck array agar lebih efisien dibanding query satu per satu
-    $keysToFetch = [
-        $prefix . 'client_id',
-        $prefix . 'merchant_id'
-    ];
-    $danaSettings = SettingApi::whereIn('key', $keysToFetch)->pluck('value', 'key')->toArray();
+    $keysToFetch = [$prefix . 'client_id', $prefix . 'merchant_id'];
+    $danaSettings = \App\Models\SettingApi::whereIn('key', $keysToFetch)->pluck('value', 'key')->toArray();
 
     $clientId = $danaSettings[$prefix . 'client_id'] ?? null;
     $merchantId = $danaSettings[$prefix . 'merchant_id'] ?? null;
 
-    // Validasi jika kredensial kosong di database
     if (!$clientId || !$merchantId) {
-        Log::error("LOG LOG: [BINDING] Kredensial DANA untuk mode " . ($isProduction ? "PRODUCTION" : "SANDBOX") . " belum diatur di database!");
-        return back()->with('error', 'Kredensial payment gateway belum dikonfigurasi.');
+        return back()->with('error', 'Kredensial DANA belum dikonfigurasi.');
     }
 
-    // 4. DANA Deeplink Binding Parameters
+    // 2. Susun Parameter sesuai Dokumentasi Deeplink Binding
     $queryParams = [
         'partnerId'   => $clientId,
         'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
@@ -127,20 +116,90 @@ public function index(Request $request)
         'channelId'   => 'DANAID',
         'merchantId'  => $merchantId,
         'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE',
-        'redirectUrl' => config('services.dana.redirect_url_oauth'), // Url callback biasanya tetap statis di config/route
-        'state'       => Str::random(16) . '-' . $affiliateId,
+        'redirectUrl' => config('services.dana.redirect_url_oauth'), // Pastikan ini mengarah ke fungsi callback di bawah
+        'state'       => \Illuminate\Support\Str::random(16) . '-' . $affiliateId,
     ];
 
-    // 5. PENENTUAN BASE URL BERDASARKAN MODE
     $baseUrl = $isProduction
         ? 'https://m.dana.id/n/link/binding'
         : 'https://m.sandbox.dana.id/n/link/binding';
 
     $fullUrl = $baseUrl . "?" . http_build_query($queryParams);
 
-    Log::info('LOG LOG: [BINDING] Redirecting User to: ' . $fullUrl);
+    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Redirecting User to: ' . $fullUrl);
 
     return redirect($fullUrl);
+}
+
+public function danaCallback(Request $request, \App\Services\DanaSignatureService $danaService)
+{
+    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Menerima Callback dari DANA', $request->all());
+
+    $authCode = $request->query('auth_code');
+    $state    = $request->query('state');
+
+    if (!$authCode) {
+        \Illuminate\Support\Facades\Log::error('LOG LOG: [BINDING] auth_code tidak ditemukan di callback.');
+        return redirect('/')->with('error', 'Otorisasi DANA gagal atau dibatalkan pengguna.');
+    }
+
+    // 1. Ambil Mode & Kredensial dari DB
+    $danaMode = \App\Models\SettingApi::where('key', 'dana_production_mode')->value('value') ?? '0';
+    $isProduction = ($danaMode == '1');
+    $prefix = $isProduction ? 'dana_prod_' : 'dana_sandbox_';
+
+    $clientId = \App\Models\SettingApi::where('key', $prefix . 'client_id')->value('value');
+
+    // 2. Siapkan Request Apply Token
+    $baseUrl = $isProduction ? 'https://api.saas.dana.id' : 'https://api.sandbox.dana.id';
+    $path = '/v1.0/access-token/b2b2c.htm';
+    $timestamp = now('Asia/Jakarta')->toIso8601String();
+
+    $body = [
+        "grantType" => "AUTHORIZATION_CODE",
+        "authCode"  => $authCode,
+        "refreshToken" => "",
+        "additionalInfo" => (object)[] // Kirim object kosong {}
+    ];
+
+    $jsonBody = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    // 3. Generate Signature via Service
+    try {
+        $signature = $danaService->generateSignature('POST', $path, $jsonBody, $timestamp);
+
+        // 4. Hit API Apply Token
+        $response = \Illuminate\Support\Facades\Http::withHeaders([
+            'Content-Type' => 'application/json',
+            'X-TIMESTAMP'  => $timestamp,
+            'X-CLIENT-KEY' => $clientId,
+            'X-SIGNATURE'  => $signature,
+            'X-PARTNER-ID' => $clientId,
+        ])->withBody($jsonBody, 'application/json')->post($baseUrl . $path);
+
+        $result = $response->json();
+        \Illuminate\Support\Facades\Log::info('LOG LOG: [APPLY TOKEN] Response DANA: ', $result);
+
+        // 5. Validasi Hasil
+        if (isset($result['responseCode']) && $result['responseCode'] === '2007400') {
+
+            $accessToken = $result['accessToken'];
+            $publicUserId = $result['additionalInfo']['userInfo']['publicUserId'] ?? null;
+
+            // TODO: Simpan $accessToken dan $publicUserId ke database Affiliate/User kamu di sini
+            // Contoh:
+            // $userId = session('dana_user_id');
+            // Affiliate::where('id', $userId)->update(['dana_access_token' => $accessToken]);
+
+            return redirect('/')->with('success', 'Akun DANA berhasil ditautkan secara permanen!');
+        }
+
+        return redirect('/')->with('error', 'Gagal menautkan akun DANA: ' . ($result['responseMessage'] ?? 'Unknown Error'));
+
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('LOG LOG: [APPLY TOKEN] Exception: ' . $e->getMessage());
+        return redirect('/')->with('error', 'Terjadi kesalahan sistem saat menghubungi DANA.');
+    }
 }
 
     public function handleCallback(Request $request)
