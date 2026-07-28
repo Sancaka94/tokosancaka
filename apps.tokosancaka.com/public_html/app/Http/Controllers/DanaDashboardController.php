@@ -88,7 +88,7 @@ public function index(Request $request)
 
  public function startBinding(Request $request)
 {
-    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Memulai proses Deeplink Binding DANA...');
+    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Memulai proses Web OAuth Binding DANA...');
 
     $affiliateId = $request->affiliate_id ?? 11;
     session(['dana_user_id' => $affiliateId]);
@@ -108,25 +108,26 @@ public function index(Request $request)
         return back()->with('error', 'Kredensial DANA belum dikonfigurasi.');
     }
 
-    // 2. Susun Parameter sesuai Dokumentasi Deeplink Binding
+    // (Baris $clientId yang berulang di sini sudah dihapus)
+
+    // 2. GANTI NAMA PARAMETER MENJADI STANDAR OAUTH DANA
     $queryParams = [
-        'partnerId'   => $clientId,
-        'timestamp'   => now('Asia/Jakarta')->toIso8601String(),
-        'externalId'  => 'BIND-' . $affiliateId . '-' . time(),
-        'channelId'   => 'DANAID',
-        'merchantId'  => $merchantId,
-        'scopes'      => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE',
-        'redirectUrl' => config('services.dana.redirect_url_oauth'), // Pastikan ini mengarah ke fungsi callback di bawah
-        'state'       => \Illuminate\Support\Str::random(16) . '-' . $affiliateId,
+        'client_id'     => $clientId, // Pakai client_id
+        'response_type' => 'code',    // Wajib untuk Web OAuth
+        'scope'         => 'AGREEMENT_PAY,QUERY_BALANCE,DEFAULT_BASIC_PROFILE', // Pakai scope (tanpa 's')
+        'redirect_uri'  => config('services.dana.redirect_url_oauth'), // Pakai redirect_uri
+        'state'         => \Illuminate\Support\Str::random(16) . '-' . $affiliateId,
+        'terminal_type' => 'WEB'
     ];
 
+    // 3. GANTI ENDPOINT MENJADI PORTAL OAUTH
     $baseUrl = $isProduction
-        ? 'https://m.dana.id/n/link/binding'
-        : 'https://m.sandbox.dana.id/n/link/binding';
+        ? 'https://m.dana.id/m/portal/oauth'
+        : 'https://m.sandbox.dana.id/m/portal/oauth';
 
     $fullUrl = $baseUrl . "?" . http_build_query($queryParams);
 
-    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Redirecting User to: ' . $fullUrl);
+    \Illuminate\Support\Facades\Log::info('LOG LOG: [BINDING] Redirect URL: ' . $fullUrl);
 
     return redirect($fullUrl);
 }
