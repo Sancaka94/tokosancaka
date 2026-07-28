@@ -809,26 +809,25 @@ public function _executeAutokirimApi($pesanan, $origin, $destination, $requestDa
         // 1. Ambil status Drop-off (1) atau Pickup (0) dari request
         $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : (int) ($pesanan->is_sender_pp ?? 1);
 
-        // 2. SELALU BUAT PICKUP POINT
-        // API Autokirim mewajibkan ID ini sebagai identitas pengirim di sistem mereka, meskipun statusnya Drop-off (is_sender_pp = 1).
-        Log::info("LOG LOG: [PICKUP POINT] Memulai proses generate Pickup Point dinamis untuk Order ID: {$pesanan->order_id}");
+        Log::info("LOG LOG: [PICKUP POINT] Memulai proses insert pickup point BARU untuk Order ID: {$pesanan->order_id}");
 
-        // Trik: Tambahkan random angka pada nama agar API pusat menganggapnya sebagai data baru
-        // dan menghindari error ID nyangkut (timeout).
-        $uniqueName = substr(trim($pesanan->pengirim_nama) . ' ' . mt_rand(1000, 9999), 0, 50);
+        // 2. SELALU BUAT PICKUP POINT BARU (Sesuai arahan CS: "ulang dari awal, insert pickup point lagi")
+        // Trik: Gunakan email unik (berbasis timestamp) agar API pusat tidak mencocokkan dengan data lama
+        // dan dipaksa membuat ID Pickup Point yang 100% baru di environment yang aktif (Dev/Prod).
+        $uniqueEmail = 'pengirim_' . time() . '_' . mt_rand(100,999) . '@tokosancaka.com';
 
         $pickupPayload = [
-            'name'              => $uniqueName,
+            'name'              => (string) trim($pesanan->pengirim_nama),
             'phone'             => (string) trim($pesanan->pengirim_hp),
             'address'           => (string) trim($pesanan->pengirim_alamat),
-            'email'             => auth()->user()->email ?? 'customer@tokosancaka.com',
+            'email'             => $uniqueEmail, // Kunci utama untuk bypass cache/data lama di server mereka
             'longitude'         => "",
             'latitude'          => "",
             'district_id'       => (int) $origin->district_id,
             'is_member_deposit' => false
         ];
 
-        // Tembak API Insert
+        // Tembak API Insert Pickup Point
         $pickupResponse = Http::timeout(15)
             ->withToken($this->token)
             ->post("{$this->baseUrl}/api/pickup-point/insert", $pickupPayload);
@@ -836,16 +835,16 @@ public function _executeAutokirimApi($pesanan, $origin, $destination, $requestDa
         $pickupResult = $pickupResponse->json();
 
         if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
-            throw new Exception('Gagal mendaftarkan identitas pengirim ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
+            throw new Exception('Gagal mendaftarkan identitas pengirim (Pickup Point) ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
         }
 
         $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
-        Log::info("LOG LOG: [PICKUP POINT] Berhasil generate kode dinamis: {$pickupPointCode}");
+        Log::info("LOG LOG: [PICKUP POINT] Berhasil generate kode dinamis BARU: {$pickupPointCode}");
 
-        // Polling sinkronisasi wajib
+        // Polling sinkronisasi wajib (Menunggu data tersimpan sempurna di server mereka)
         $isSynced = false;
         for ($i = 1; $i <= 4; $i++) {
-            sleep(2);
+            sleep(2); // Beri jeda 2 detik agar database mereka sinkron
             if ($this->findPickupPoint($pickupPointCode)) {
                 $isSynced = true;
                 Log::info("LOG LOG: Sinkronisasi Pickup Point dinamis berhasil pada percobaan ke-{$i}");
@@ -855,7 +854,7 @@ public function _executeAutokirimApi($pesanan, $origin, $destination, $requestDa
         }
 
         if (!$isSynced) {
-            throw new Exception("Sistem pusat logistik (Autokirim) mengalami keterlambatan sinkronisasi data (timeout). Silakan ulangi submit pesanan Anda.");
+            throw new Exception("Sistem pusat logistik mengalami keterlambatan sinkronisasi data (timeout). Silakan ulangi submit pesanan Anda.");
         }
 
         // 3. MULAI PROSES CREATE ORDER
@@ -876,7 +875,7 @@ public function _executeAutokirimApi($pesanan, $origin, $destination, $requestDa
         $orderPayload = [
             'service_code'      => $serviceCode,
             'reff_client_id'    => $pesanan->order_id,
-            'pickup_point_code' => $pickupPointCode, // WAJIB DIKIRIM (Sudah disinkronisasi)
+            'pickup_point_code' => $pickupPointCode, // WAJIB DIKIRIM & SEKARANG PASTI FRESH
             'origin_id'         => (int) $origin->district_id,
             'destination_id'    => (int) $destination->district_id,
             'weight'            => (string) $weightApi,
@@ -889,7 +888,7 @@ public function _executeAutokirimApi($pesanan, $origin, $destination, $requestDa
             'price'             => (int) ($pesanan->nilai_barang > 0 ? $pesanan->nilai_barang : 1000),
             'is_cod'            => (bool) $isCod,
             'cod_value'         => (int) $codValue,
-            'is_sender_pp'      => (int) $isSenderPp, // Dikirim secara dinamis sesuai user input
+            'is_sender_pp'      => (int) $isSenderPp,
             'is_insurance'      => (bool) $pesanan->asuransi,
             'from' => [
                 'name'    => (string) trim($pesanan->pengirim_nama),
