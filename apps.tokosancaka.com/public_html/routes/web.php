@@ -762,18 +762,20 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     // ==========================================
     // RUTE PENGATURAN API (14 GATEWAY & MAPBOX)
     // ==========================================
-    // 1. Halaman Index (Nama route dipertahankan agar menu sidebar panel admin-mu tidak error 404)
+    // 1. Halaman Index
     Route::get('/setting-api', [SettingApiController::class, 'index'])->name('admin.settingapi.index');
 
-    // 2. Memproses Simpan Form (Semua Tab Gateway)
+    // 2. Memproses Simpan Form (Semua Tab)
     Route::put('/setting-api/update', [SettingApiController::class, 'update'])->name('admin.settings.api.update');
 
-    // 3. Memproses AJAX Toggle Debug / Mode
+    // 3. Memproses AJAX Toggle Debug
     Route::post('/setting-api/toggle-debug', [SettingApiController::class, 'toggleAppDebug'])->name('admin.settings.api.toggleDebug');
 
-    // 4. (Opsional) Tetap pertahankan route DANA lama jika masih ada JS yang mengarah ke sini
-    Route::post('/setting-api/update-dana-mode', [SettingApiController::class, 'updateDanaMode'])->name('admin.settingapi.update-dana-mode');
+    // 4. Memproses AJAX Toggle Mode GLOBAL (INI YANG BIKIN ERROR 500 TADI!)
+    Route::post('/setting-api/toggle-api', [SettingApiController::class, 'toggleApi'])->name('admin.settings.api.toggleApi');
 
+    // 5. Memproses AJAX Toggle khusus DANA (Cadangan)
+    Route::post('/setting-api/update-dana-mode', [SettingApiController::class, 'updateDanaMode'])->name('admin.settingapi.update-dana-mode');
     // ==========================================
     // 2. ROUTE KONTAK & HUTANG PIUTANG
     // ==========================================
