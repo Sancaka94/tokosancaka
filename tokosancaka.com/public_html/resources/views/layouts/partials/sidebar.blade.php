@@ -910,7 +910,8 @@
             {{-- ================= PENGATURAN ================= --}}
 
             {{-- Pengaturan (Utilitas) --}}
-            <div x-data="{ open: {{ request()->routeIs('admin.logs.show') || request()->routeIs('admin.activity-log.index') || request()->routeIs('admin.settings.*') || request()->routeIs('admin.category-attributes.*') || request()->routeIs('admin.sliders.*') || request()->routeIs('info.edit') ? 'true' : 'false' }} }"
+            {{-- Tambahkan request()->routeIs('admin.blocked-ips.*') di dalam x-data --}}
+            <div x-data="{ open: {{ request()->routeIs('admin.logs.show') || request()->routeIs('admin.activity-log.index') || request()->routeIs('admin.settings.*') || request()->routeIs('admin.category-attributes.*') || request()->routeIs('admin.sliders.*') || request()->routeIs('info.edit') || request()->routeIs('admin.blocked-ips.*') ? 'true' : 'false' }} }"
                  x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
                  x-effect="if(searchQuery && $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())) open = true">
 
@@ -919,7 +920,6 @@
                     <span class="flex items-center">
                             <i class="fa-solid fa-gears fa-fw w-5 h-5 mr-2 flex-shrink-0 text-gray-400 group-hover:text-white"></i>
                             <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Pengaturan</span>
-
                     </span>
                         <div :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'">
                             <i class="fa-solid fa-chevron-down w-3 h-3 transform transition-transform duration-200 text-gray-400 group-hover:text-white"
@@ -936,6 +936,17 @@
                                 Sancaka Express & Mapbox
                             </a>
                         </li>
+
+                        {{-- MENU BARU: BLOKIR IP DITARUH DI SINI --}}
+                        <li>
+                            <a href="{{ route('admin.blocked-ips.index') }}" wire:navigate
+                               x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                               class="flex items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.blocked-ips.*') ? 'text-red-600 font-bold bg-red-50' : 'text-gray-500 hover:text-red-600 hover:bg-gray-50' }}">
+                                <i class="fa-solid fa-ban w-4 text-center mr-2 {{ request()->routeIs('admin.blocked-ips.*') ? 'text-red-500' : 'text-gray-400 group-hover:text-red-500' }}"></i>
+                                <span>Blokir IP (Anti Spam)</span>
+                            </a>
+                        </li>
+                        {{-- AKHIR MENU BARU --}}
 
                         <li><a href="{{ route('admin.logs.show') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.logs.show') ? 'text-red-500 font-bold bg-red-50' : 'text-red-500 hover:text-red-700 hover:bg-gray-50' }}">Log Error</a></li>
                         <li><a href="{{ route('admin.activity-log.index') }}" wire:navigate x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())" class="block px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.activity-log.index') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">Log Aktivitas</a></li>
