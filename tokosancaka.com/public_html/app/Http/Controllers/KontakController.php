@@ -64,7 +64,7 @@ class KontakController extends Controller
     }
 
    /**
-     * MURNI OPERASI DATABASE LOKAL & INTEGRASI API AUTOKIRIM (STORE)
+     * TAMBAH KONTAK (STORE)
      */
     public function store(Request $request)
     {
@@ -75,141 +75,107 @@ class KontakController extends Controller
             'tipe'        => 'required|string|in:Pengirim,Penerima,Keduanya',
             'district_id' => 'required|integer',
             'email'       => 'nullable|email'
-        ], [
-            // Tambahkan pesan custom di sini:
-            'no_hp.unique'         => 'Nomor HP ini sudah digunakan oleh pelanggan lain.',
-            'district_id.required' => 'Kecamatan wajib dipilih dari daftar dropdown (klik hasil pencariannya).',
         ]);
 
+        // WAJIB: Tambahkan user_id agar database tidak menolak
+        $validatedData['user_id'] = auth()->id();
         $validatedData['no_hp'] = $this->_sanitizePhoneNumber($validatedData['no_hp']);
         $validatedData['nama'] = trim(preg_replace('/[^a-zA-Z0-9\s]/', '', $validatedData['nama']));
 
         try {
-            // 1. Simpan ke Database LOKAL terlebih dahulu
+            // 1. Simpan ke LOKAL
             $kontak = Kontak::create($validatedData);
-            Log::info("LOG LOG: [KONTAK - STORE] Data lokal berhasil disimpan. ID: {$kontak->id}");
 
-            // 2. Cek mode sinkronisasi dari tombol submit modal
+            // 2. Jika tombol "Simpan & API" yang diklik
             if ($request->input('sync_mode') === 'api') {
-                Log::info("LOG LOG: [KONTAK - STORE] Memulai sinkronisasi API INSERT untuk ID: {$kontak->id}");
-
                 $apiData = [
-                    'nama' => $kontak->nama,
-                    'no_hp' => $kontak->no_hp,
-                    'alamat' => $kontak->alamat,
-                    'email' => $kontak->email,
+                    'nama' => $kontak->nama, 'no_hp' => $kontak->no_hp,
+                    'alamat' => $kontak->alamat, 'email' => $kontak->email,
                     'district_id' => $kontak->district_id
                 ];
 
-                // Tembak API Autokirim
                 $apiResult = $this->insertPickupPointApi($apiData);
 
-                // Jika Berhasil (RC 00)
                 if (isset($apiResult['rc']) && $apiResult['rc'] === '00') {
-                    // Simpan pickup_point_code ke tabel kontaks
                     $kontak->update(['pickup_point_code' => $apiResult['data']['pickup_point_code']]);
-                    Log::info("LOG LOG: [KONTAK - STORE] API Sukses. Pickup Code tersimpan: " . $apiResult['data']['pickup_point_code']);
-
-                    return redirect()->route('admin.kontak.index')
-                        ->with('success', 'Kontak LOKAL berhasil disimpan & disinkronkan ke API Autokirim.');
-                }
-                // Jika Gagal karena nomor HP sudah ada di sistem mereka (Bypass)
-                elseif (isset($apiResult['rc']) && $apiResult['rc'] === '01' && !empty($apiResult['data']['pickup_point_code'])) {
-                    $apiData['no_hp'] = $apiData['no_hp'] . rand(100, 999);
-                    Log::info("LOG LOG: [KONTAK - STORE] Mencoba Bypass nomor HP untuk ID: {$kontak->id}");
-
-                    $retryResult = $this->insertPickupPointApi($apiData);
-
-                    if (isset($retryResult['rc']) && $retryResult['rc'] === '00') {
-                        $kontak->update(['pickup_point_code' => $retryResult['data']['pickup_point_code']]);
-                        return redirect()->route('admin.kontak.index')
-                            ->with('success', 'Kontak LOKAL disimpan & disinkronkan ke API (Bypass Nomor HP Berhasil).');
-                    }
+                    return redirect()->route('admin.kontak.index')->with('success', 'Kontak LOKAL disimpan & disinkronkan ke API Autokirim.');
                 }
 
-                // Jika API Gagal Total, tapi data lokal sudah masuk
-                Log::error("LOG LOG: [KONTAK - STORE] API Gagal. Response: " . json_encode($apiResult));
-                return redirect()->route('admin.kontak.index')
-                    ->with('error', 'Data LOKAL berhasil disimpan, TAPI GAGAL sinkron ke API: ' . ($apiResult['rd'] ?? 'Unknown Error'));
+                return redirect()->route('admin.kontak.index')->with('error', 'LOKAL berhasil, TAPI GAGAL API: ' . ($apiResult['rd'] ?? 'Error API'));
             }
 
-            // Jika user hanya menekan "Simpan Lokal"
-            return redirect()->route('admin.kontak.index')->with('success', 'Kontak LOKAL berhasil disimpan (Tanpa API).');
+            // Jika tombol "Simpan Lokal"
+            return redirect()->route('admin.kontak.index')->with('success', 'Kontak berhasil disimpan LOKAL (Tanpa API).');
 
         } catch (\Exception $e) {
-            Log::error("LOG LOG: [KONTAK - STORE] Error fatal: " . $e->getMessage());
-            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("Error Store Kontak: " . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Gagal sistem: ' . $e->getMessage());
         }
     }
 
     /**
-     * MURNI OPERASI DATABASE LOKAL & INTEGRASI API AUTOKIRIM (UPDATE)
+     * UPDATE KONTAK (EDIT)
      */
     public function update(Request $request, Kontak $kontak)
     {
         $validatedData = $request->validate([
             'nama'        => 'required|string|max:255',
-            'no_hp'       => 'required|string|max:20|unique:kontaks,no_hp',
+            'no_hp'       => 'required|string|max:20|unique:kontaks,no_hp,' . $kontak->id,
             'alamat'      => 'required|string',
-            'tipe'        => 'required|string|in:Pengirim,Penerima,Keduanya',
+            'tipe'        => 'required|string',
             'district_id' => 'required|integer',
             'email'       => 'nullable|email'
-        ], [
-            // Tambahkan pesan custom di sini:
-            'no_hp.unique'         => 'Nomor HP ini sudah digunakan oleh pelanggan lain.',
-            'district_id.required' => 'Kecamatan wajib dipilih dari daftar dropdown (klik hasil pencariannya).',
         ]);
 
         $validatedData['no_hp'] = $this->_sanitizePhoneNumber($validatedData['no_hp']);
 
         try {
-            // 1. Update data LOKAL
+            // 1. Update LOKAL
             $kontak->update($validatedData);
-            Log::info("LOG LOG: [KONTAK - UPDATE] Data lokal diperbarui. ID: {$kontak->id}");
 
-            // 2. Cek mode sinkronisasi
+            // 2. Jika tombol "Simpan & API"
             if ($request->input('sync_mode') === 'api') {
                 $apiData = [
-                    'nama' => $kontak->nama,
-                    'no_hp' => $kontak->no_hp,
-                    'alamat' => $kontak->alamat,
-                    'email' => $kontak->email,
+                    'nama' => $kontak->nama, 'no_hp' => $kontak->no_hp,
+                    'alamat' => $kontak->alamat, 'email' => $kontak->email,
                     'district_id' => $kontak->district_id
                 ];
 
-                // Cek apakah data ini sebelumnya SUDAH punya pickup code
                 if (!empty($kontak->pickup_point_code)) {
-                    Log::info("LOG LOG: [KONTAK - UPDATE] Memulai API UPDATE untuk Pickup Code: {$kontak->pickup_point_code}");
                     $apiSuccess = $this->updatePickupPointApi($kontak->pickup_point_code, $apiData);
-
-                    if ($apiSuccess) {
-                        return redirect()->route('admin.kontak.index')->with('success', 'Data LOKAL diperbarui & berhasil UPDATE ke API Autokirim.');
-                    } else {
-                        return redirect()->route('admin.kontak.index')->with('error', 'Data LOKAL diperbarui, TAPI GAGAL sinkron UPDATE ke API.');
-                    }
+                    if ($apiSuccess) return redirect()->route('admin.kontak.index')->with('success', 'LOKAL diperbarui & UPDATE API berhasil.');
                 } else {
-                    // Jika data ini murni LOKAL sebelumnya, lakukan INSERT ke API
-                    Log::info("LOG LOG: [KONTAK - UPDATE] Kontak belum punya Pickup Code, melakukan API INSERT...");
                     $apiResult = $this->insertPickupPointApi($apiData);
-
                     if (isset($apiResult['rc']) && $apiResult['rc'] === '00') {
                         $kontak->update(['pickup_point_code' => $apiResult['data']['pickup_point_code']]);
-                        Log::info("LOG LOG: [KONTAK - UPDATE] API Sukses. Pickup Code baru tersimpan: " . $apiResult['data']['pickup_point_code']);
-                        return redirect()->route('admin.kontak.index')->with('success', 'Data LOKAL diperbarui & berhasil INSERT ke API Autokirim.');
+                        return redirect()->route('admin.kontak.index')->with('success', 'LOKAL diperbarui & INSERT API berhasil.');
                     }
-
-                    Log::error("LOG LOG: [KONTAK - UPDATE] Gagal Insert API. Response: " . json_encode($apiResult));
-                    return redirect()->route('admin.kontak.index')->with('error', 'Data LOKAL diperbarui, TAPI GAGAL insert ke API Autokirim.');
                 }
+                return redirect()->route('admin.kontak.index')->with('error', 'LOKAL diperbarui, tapi GAGAL sinkron API.');
             }
 
-            // Jika user hanya menekan "Simpan Lokal"
-            return redirect()->route('admin.kontak.index')->with('success', 'Data LOKAL kontak berhasil diperbarui (Tanpa API).');
+            return redirect()->route('admin.kontak.index')->with('success', 'Kontak diperbarui LOKAL (Tanpa API).');
 
         } catch (\Exception $e) {
-            Log::error("LOG LOG: [KONTAK - UPDATE] Error fatal: " . $e->getMessage());
-            return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan saat update: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Gagal update: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * CEK API AJAX DARI MODAL
+     */
+    public function checkPickupApi($id)
+    {
+        $kontak = Kontak::findOrFail($id);
+        if (empty($kontak->pickup_point_code)) {
+            return response()->json(['success' => false, 'message' => 'Kontak belum memiliki Kode Pickup.']);
+        }
+
+        $isFound = $this->findPickupPointApi($kontak->pickup_point_code);
+        if ($isFound) {
+            return response()->json(['success' => true, 'message' => "Valid! Kode ({$kontak->pickup_point_code}) aktif di Autokirim."]);
+        }
+        return response()->json(['success' => false, 'message' => "Tidak valid! Kode ({$kontak->pickup_point_code}) tidak ada di server pusat."]);
     }
 
     public function show(Kontak $kontak)
@@ -529,34 +495,6 @@ class KontakController extends Controller
         return redirect()->back()->with('error', "Gagal: Kode Pickup ({$kontak->pickup_point_code}) TIDAK DITEMUKAN di server Autokirim. Mungkin sudah terhapus di server pusat.");
     }
 
-    /**
-     * Pengecekan API Autokirim via AJAX (Untuk Modal)
-     */
-    public function checkPickupApi($id)
-    {
-        $kontak = Kontak::findOrFail($id);
 
-        if (empty($kontak->pickup_point_code)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Kontak ini belum memiliki Kode Pickup.'
-            ]);
-        }
-
-        // Panggil fungsi pencarian API yang sudah Anda buat
-        $isFound = $this->findPickupPointApi($kontak->pickup_point_code);
-
-        if ($isFound) {
-            return response()->json([
-                'success' => true,
-                'message' => "Valid! Kode ({$kontak->pickup_point_code}) aktif di server Autokirim."
-            ]);
-        }
-
-        return response()->json([
-            'success' => false,
-            'message' => "Tidak ditemukan! Kode ({$kontak->pickup_point_code}) tidak valid / terhapus di server pusat."
-        ]);
-    }
 
 }
