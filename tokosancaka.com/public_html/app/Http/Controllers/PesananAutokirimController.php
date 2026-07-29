@@ -1456,32 +1456,47 @@ class PesananAutokirimController extends Controller
     }
 
   /**
-     * Helper: Cari / Verifikasi Pickup Point di server Autokirim
+     * =========================================================================
+     * 1. API: INSERT PICKUP POINT
+     * =========================================================================
      */
-    private function findPickupPoint($pickupCode)
+    private function insertPickupPointApi($data)
     {
         $config = $this->getAutokirimConfig();
         $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
 
         try {
-            $payload = ['pickup_point_code' => $pickupCode];
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [FIND PICKUP] (API: {$config->mode} | APP: {$appMode}) REQUEST Cari Kode: {$pickupCode}", $payload);
+            // Mapping Payload Sesuai Dokumentasi
+            $payload = [
+                "name"              => (string) $data['name'],
+                "phone"             => (string) $data['phone'],
+                "address"           => (string) $data['address'],
+                "email"             => (string) ($data['email'] ?? ''),
+                "longitude"         => (string) ($data['longitude'] ?? ''),
+                "latitude"          => (string) ($data['latitude'] ?? ''),
+                "district_id"       => (int) $data['district_id'], // Wajib Integer
+                "is_member_deposit" => isset($data['is_member_deposit']) ? (bool) $data['is_member_deposit'] : false // Wajib Boolean
+            ];
 
-            $response = \Illuminate\Support\Facades\Http::timeout(10)->withToken($config->token)
-                ->post("{$config->base_url}/api/pickup-point/find", $payload);
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT PICKUP] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $payload);
+
+            $response = \Illuminate\Support\Facades\Http::timeout(15)->withToken($config->token)
+                ->post("{$config->base_url}/api/pickup-point/insert", $payload);
 
             $result = $response->json();
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [FIND PICKUP] (API: {$config->mode} | APP: {$appMode}) RESPONSE untuk {$pickupCode}:", $result ?? []);
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT PICKUP] (API: {$config->mode} | APP: {$appMode}) RESPONSE:", $result ?? []);
 
-            return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
+            return $result; // Mengembalikan full array response
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("LOG LOG: [FIND PICKUP] (APP: {$appMode}) Error Jaringan: " . $e->getMessage());
-            return false;
+            \Illuminate\Support\Facades\Log::error("LOG LOG: [API INSERT PICKUP] (APP: {$appMode}) ERROR: " . $e->getMessage());
+            return ['rc' => '500', 'rd' => 'Network/System Error: ' . $e->getMessage()];
         }
     }
 
     /**
-     * Helper: Update Data Pickup Point (Sesuai Dokumentasi Resmi)
+     * =========================================================================
+     * 2. API: UPDATE PICKUP POINT
+     * =========================================================================
      */
     private function updatePickupPoint($pickupCode, $data)
     {
@@ -1489,27 +1504,90 @@ class PesananAutokirimController extends Controller
         $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
 
         try {
+            // Mapping Payload Sesuai Dokumentasi
             $payload = [
-                "name"              => $data['name'],
-                "phone"             => $data['phone'],
-                "district_id"       => $data['district_id'],
-                "address"           => $data['address'],
-                "longitude"         => "",
-                "latitude"          => "",
-                "pickup_point_code" => $pickupCode
+                "name"              => (string) $data['name'],
+                "phone"             => (string) $data['phone'],
+                "district_id"       => (int) $data['district_id'], // Wajib Integer
+                "address"           => (string) $data['address'],
+                "longitude"         => (string) ($data['longitude'] ?? ''),
+                "latitude"          => (string) ($data['latitude'] ?? ''),
+                "pickup_point_code" => (string) $pickupCode
             ];
 
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [UPDATE PICKUP] (API: {$config->mode} | APP: {$appMode}) REQUEST Update Kode: {$pickupCode}", $payload);
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [API UPDATE PICKUP] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $payload);
 
             $response = \Illuminate\Support\Facades\Http::timeout(15)->withToken($config->token)
                 ->post("{$config->base_url}/api/pickup-point/update", $payload);
 
             $result = $response->json();
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [UPDATE PICKUP] (API: {$config->mode} | APP: {$appMode}) RESPONSE Update {$pickupCode}:", $result ?? []);
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [API UPDATE PICKUP] (API: {$config->mode} | APP: {$appMode}) RESPONSE:", $result ?? []);
 
             return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("LOG LOG: [UPDATE PICKUP] (APP: {$appMode}) Error: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("LOG LOG: [API UPDATE PICKUP] (APP: {$appMode}) ERROR: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * =========================================================================
+     * 3. API: FIND PICKUP POINT
+     * =========================================================================
+     */
+    private function findPickupPoint($pickupCode)
+    {
+        $config = $this->getAutokirimConfig();
+        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
+
+        try {
+            // Mapping Payload Sesuai Dokumentasi
+            $payload = [
+                'pickup_point_code' => (string) $pickupCode
+            ];
+
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [API FIND PICKUP] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $payload);
+
+            $response = \Illuminate\Support\Facades\Http::timeout(10)->withToken($config->token)
+                ->post("{$config->base_url}/api/pickup-point/find", $payload);
+
+            $result = $response->json();
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [API FIND PICKUP] (API: {$config->mode} | APP: {$appMode}) RESPONSE:", $result ?? []);
+
+            return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG LOG: [API FIND PICKUP] (APP: {$appMode}) ERROR: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * =========================================================================
+     * 4. API: DELETE PICKUP POINT
+     * =========================================================================
+     */
+    public function deletePickupPointApi($pickupCode)
+    {
+        $config = $this->getAutokirimConfig();
+        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
+
+        try {
+            // Mapping Payload Sesuai Dokumentasi
+            $payload = [
+                'pickup_point_code' => (string) $pickupCode
+            ];
+
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [API DELETE PICKUP] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $payload);
+
+            $response = \Illuminate\Support\Facades\Http::timeout(10)->withToken($config->token)
+                ->post("{$config->base_url}/api/pickup-point/delete", $payload);
+
+            $result = $response->json();
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [API DELETE PICKUP] (API: {$config->mode} | APP: {$appMode}) RESPONSE:", $result ?? []);
+
+            return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG LOG: [API DELETE PICKUP] (APP: {$appMode}) ERROR: " . $e->getMessage());
             return false;
         }
     }

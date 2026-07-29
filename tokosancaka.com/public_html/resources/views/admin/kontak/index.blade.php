@@ -1,6 +1,4 @@
 {{-- resources/views/admin/kontak/index.blade.php --}}
-{{-- LOG LOG: File integrity maintained --}}
-
 @extends('layouts.admin')
 
 @section('title', 'Data Pelanggan')
@@ -114,7 +112,7 @@
                 <thead class="bg-[rgb(255,160,160)]">
                     <tr>
                         <th scope="col" class="px-5 py-4 text-left text-[11px] font-bold text-gray-700 uppercase tracking-wider">NO</th>
-                        <th scope="col" class="px-5 py-4 text-left text-[11px] font-bold text-gray-700 uppercase tracking-wider">PELANGGAN</th>
+                        <th scope="col" class="px-5 py-4 text-left text-[11px] font-bold text-gray-700 uppercase tracking-wider">PELANGGAN & API</th>
                         <th scope="col" class="px-5 py-4 text-left text-[11px] font-bold text-gray-700 uppercase tracking-wider">ALAMAT</th>
                         <th scope="col" class="px-5 py-4 text-left text-[11px] font-bold text-gray-700 uppercase tracking-wider">TERAKHIR KIRIM</th>
                         <th scope="col" class="px-5 py-4 text-center text-[11px] font-bold text-gray-700 uppercase tracking-wider">TOTAL PENGIRIMAN</th>
@@ -129,6 +127,21 @@
                         <td class="px-5 py-5 whitespace-nowrap">
                             <div class="text-sm font-semibold text-gray-800 uppercase tracking-wide">{{ $kontak->nama }}</div>
                             <div class="text-sm text-red-700 font-semibold mt-0.5">{{ $kontak->no_hp }}</div>
+
+                            {{-- TAMPILAN BADGE KODE PICKUP API AUTOKIRIM --}}
+                            @if(!empty($kontak->pickup_point_code))
+                                <div class="mt-2">
+                                    <span class="px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded border border-green-200 uppercase tracking-wide">
+                                        <i class="fa-solid fa-cloud-arrow-up mr-1"></i> API: {{ $kontak->pickup_point_code }}
+                                    </span>
+                                </div>
+                            @else
+                                <div class="mt-2">
+                                    <span class="px-2 py-1 bg-gray-100 text-gray-500 text-[10px] font-bold rounded border border-gray-200 uppercase tracking-wide">
+                                        <i class="fa-solid fa-cloud-arrow-down mr-1"></i> Belum Sinkron API
+                                    </span>
+                                </div>
+                            @endif
 
                             {{-- Logika Badge Monitoring --}}
                             @php
@@ -188,9 +201,18 @@
                                 <button onclick="openHistoryModal({{ $kontak->id }})" class="p-1.5 bg-red-700 text-white rounded-lg hover:bg-red-800 shadow-sm transition-colors" title="Lihat Riwayat">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
                                 </button>
-                                <button onclick="openEditModal({{ $kontak->id }})" class="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 shadow-sm transition-colors" title="Edit Data">
+                                <button onclick="openEditModal({{ $kontak->id }})" class="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 shadow-sm transition-colors" title="Edit Data & API">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                                 </button>
+
+                                {{-- TOMBOL HAPUS (DELETE DB & API) --}}
+                                <form action="{{ route('admin.kontak.destroy', $kontak->id) }}" method="POST" class="inline-block" onsubmit="return confirm('PERINGATAN!\nMenghapus kontak ini juga akan menghapus data Kode Pickup di server logistik pusat. Yakin ingin melanjutkan?');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 shadow-sm transition-colors" title="Hapus Data & API">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    </button>
+                                </form>
                             </div>
                         </td>
                     </tr>
@@ -213,6 +235,7 @@
     </div>
 </div>
 
+{{-- MODAL TAMBAH/EDIT KONTAK --}}
 <div id="kontakModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-[60] hidden flex items-center justify-center backdrop-blur-sm transition-opacity">
     <div class="relative p-6 border w-full max-w-lg shadow-2xl rounded-2xl bg-white m-4">
         <form id="kontakForm" action="" method="POST">
@@ -226,32 +249,48 @@
                 </button>
             </div>
 
-            <div class="space-y-4">
+            <div class="space-y-4 max-h-[60vh] overflow-y-auto px-1 custom-scrollbar">
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Nama Pelanggan</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Nama Pelanggan <span class="text-red-500">*</span></label>
                     <input type="text" id="nama" name="nama" class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-red-500 focus:border-red-500" required placeholder="Masukkan nama lengkap">
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">No. HP / WhatsApp</label>
-                    <input type="text" id="no_hp" name="no_hp" class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-red-500 focus:border-red-500" required placeholder="08xxxxxxxxxx">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">No. HP / WA <span class="text-red-500">*</span></label>
+                        <input type="text" id="no_hp" name="no_hp" class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-red-500 focus:border-red-500" required placeholder="08xxxxxxxxxx">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Tipe Kontak <span class="text-red-500">*</span></label>
+                        <select id="tipe" name="tipe" class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-red-500 focus:border-red-500">
+                            <option value="Pengirim">Pengirim</option>
+                            <option value="Penerima">Penerima</option>
+                            <option value="Keduanya">Keduanya</option>
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Tipe Kontak</label>
-                    <select id="tipe" name="tipe" class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-red-500 focus:border-red-500">
-                        <option value="Pengirim">Pengirim</option>
-                        <option value="Penerima">Penerima</option>
-                        <option value="Keduanya">Keduanya</option>
-                    </select>
+
+                {{-- INPUT TAMBAHAN UNTUK API --}}
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">ID Kecamatan (API) <span class="text-red-500">*</span></label>
+                        <input type="number" id="district_id" name="district_id" class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-red-500 focus:border-red-500" required placeholder="Cth: 3521110">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-1">Email (Opsional)</label>
+                        <input type="email" id="email" name="email" class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-red-500 focus:border-red-500" placeholder="contoh@email.com">
+                    </div>
                 </div>
+                <p class="text-[10px] text-gray-500 italic mt-0 leading-tight">ID Kecamatan (District ID) diwajibkan untuk mendaftarkan alamat Pickup ke sistem logistik Autokirim.</p>
+
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Alamat Lengkap</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Alamat Lengkap <span class="text-red-500">*</span></label>
                     <textarea id="alamat" name="alamat" rows="3" class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-red-500 focus:border-red-500" required placeholder="Nama Jalan, RT/RW, Desa/Kelurahan..."></textarea>
                 </div>
             </div>
 
             <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
                 <button type="button" onclick="closeModal('kontakModal')" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">Batal</button>
-                <button type="submit" class="bg-red-700 hover:bg-red-800 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors shadow-md">Simpan Data</button>
+                <button type="submit" class="bg-red-700 hover:bg-red-800 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors shadow-md">Simpan & Sinkron API</button>
             </div>
         </form>
     </div>
@@ -381,7 +420,7 @@ function openAddModal() {
     form.reset();
     form.action = "{{ route('admin.kontak.store') }}";
     document.getElementById('formMethod').value = 'POST';
-    document.getElementById('modalTitle').innerText = 'Tambah Kontak Baru';
+    document.getElementById('modalTitle').innerText = 'Tambah Kontak & Sinkron API';
     openModal('kontakModal');
 }
 
@@ -398,9 +437,13 @@ async function openEditModal(id) {
         document.getElementById('alamat').value = kontak.alamat;
         document.getElementById('tipe').value = kontak.tipe;
 
+        // Load data tambahan API
+        document.getElementById('email').value = kontak.email || '';
+        document.getElementById('district_id').value = kontak.district_id || '';
+
         form.action = `/admin/kontak/${id}`;
         document.getElementById('formMethod').value = 'PUT';
-        document.getElementById('modalTitle').innerText = 'Edit Data Pelanggan';
+        document.getElementById('modalTitle').innerText = 'Edit Data & Sinkron API';
         openModal('kontakModal');
     } catch (error) {
         console.error(error);
