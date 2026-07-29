@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\Log;
 use App\Models\PpobProduct;
 use App\Models\PpobTransaction;
 use App\Models\User;
-use App\Services\DigiflazzService; 
+use App\Models\Api;
+use App\Services\DigiflazzService;
 use Exception;
 
 class AgentRegistrationController extends Controller
@@ -51,8 +52,8 @@ class AgentRegistrationController extends Controller
                 'ppob_products.buyer_sku_code',
                 'ppob_products.brand',
                 'ppob_products.category',
-                'ppob_products.sell_price as modal_agen', 
-                'agent_product_prices.selling_price as harga_jual_agen' 
+                'ppob_products.sell_price as modal_agen',
+                'agent_product_prices.selling_price as harga_jual_agen'
             )
             ->orderBy('ppob_products.sell_price', 'asc')
             ->get();
@@ -60,20 +61,18 @@ class AgentRegistrationController extends Controller
         return view('customer.agent_transaction.create', compact('products'));
     }
 
-    /**
-     * AJAX: Cek Tagihan Pascabayar (PLN, BPJS, PDAM, dll)
-     */
     public function checkBill(Request $request)
     {
         $request->validate([
             'customer_no' => 'required',
-            'sku' => 'required', 
+            'sku' => 'required',
             'ref_id' => 'required'
         ]);
 
-        $digiflazz = new DigiflazzService();
+        // 👇 GANTI INI
+        $digiflazz = $this->getDigiflazzService();
         $response = $digiflazz->inquiryPasca($request->sku, $request->customer_no, $request->ref_id);
-        
+
         return response()->json($response);
     }
 
@@ -100,7 +99,7 @@ class AgentRegistrationController extends Controller
         ]);
 
         $user = Auth::user();
-        
+
         // Ambil Data Produk
         $productData = PpobProduct::leftJoin('agent_product_prices', function($join) use ($user) {
             $join->on('ppob_products.id', '=', 'agent_product_prices.product_id')
@@ -128,7 +127,7 @@ class AgentRegistrationController extends Controller
             $user->decrement('saldo', $modalAgen);
 
             $trx = new PpobTransaction();
-            $trx->user_id        = $user->id_pengguna; 
+            $trx->user_id        = $user->id_pengguna;
             $trx->order_id       = $orderId;
             $trx->buyer_sku_code = $request->sku;
             $trx->customer_no    = $request->customer_no;
@@ -142,7 +141,7 @@ class AgentRegistrationController extends Controller
             $trx->save();
 
             // KIRIM KE DIGIFLAZZ
-            $digiflazz = new DigiflazzService();
+            $digiflazz = $this->getDigiflazzService();
             $resp = $digiflazz->transaction($request->sku, $request->customer_no, $orderId);
             $d = $resp['data'] ?? [];
 
@@ -151,13 +150,13 @@ class AgentRegistrationController extends Controller
             if(isset($d['sn'])) $trx->sn = $d['sn'];
             if(isset($d['message'])) $trx->message = $d['message'];
             // Simpan deskripsi lengkap (untuk struk)
-            if(isset($d['desc'])) $trx->desc = json_encode($d['desc']); 
+            if(isset($d['desc'])) $trx->desc = json_encode($d['desc']);
 
             // Handle Error Instan
             if (isset($d['status']) && in_array($d['status'], ['Gagal', 'Failed'])) {
                  $trx->status = 'Failed';
                  $trx->save();
-                 
+
                  $user->increment('saldo', $modalAgen); // Refund Otomatis
                  DB::commit();
                  return back()->with('error', 'Transaksi Gagal: ' . $trx->message . ' (RC: ' . ($trx->rc ?? '-') . ')');
@@ -184,11 +183,11 @@ class AgentRegistrationController extends Controller
             'sku' => 'required',
             'customer_no' => 'required',
             'ref_id' => 'required', // Ref ID Inquiry
-            'selling_price' => 'required|numeric' 
+            'selling_price' => 'required|numeric'
         ]);
 
         $user = Auth::user();
-        
+
         // Cek Saldo Awal (Estimasi dari selling_price yang dikirim frontend)
         if ($user->saldo < $request->selling_price) {
             return back()->with('error', 'Saldo tidak mencukupi.');
@@ -212,29 +211,29 @@ class AgentRegistrationController extends Controller
             $trx->save();
 
             // 2. Eksekusi Pembayaran ke Digiflazz
-            $digiflazz = new DigiflazzService();
+            $digiflazz = $this->getDigiflazzService();
             $apiResponse = $digiflazz->payPasca($request->sku, $request->customer_no, $request->ref_id);
             $d = $apiResponse['data'] ?? [];
 
             // 3. Cek Status Pembayaran
             if (isset($d['status']) && ($d['status'] == 'Sukses' || $d['status'] == 'Pending' || $d['rc'] == '00')) {
-                
+
                 // Update Data Real dari API
                 $modalReal = $d['price'] ?? 0;
                 $trx->price = $modalReal;
                 $trx->profit = $trx->selling_price - $modalReal;
-                
+
                 // Status & Detail
                 $trx->status = ($d['status'] == 'Sukses' || $d['rc'] == '00') ? 'Success' : 'Pending';
                 $trx->message = $d['message'] ?? 'Pembayaran Berhasil';
                 $trx->sn = $d['sn'] ?? '';
                 $trx->rc = $d['rc'] ?? null; // Simpan RC (00 = Sukses)
-                
+
                 // PENTING: Simpan Deskripsi Lengkap (Nama, Lembar, Detail Item)
                 if(isset($d['desc'])) {
                     $trx->desc = json_encode($d['desc']);
                 }
-                
+
                 $trx->save();
 
                 // Potong Saldo sesuai Modal Real
@@ -244,14 +243,14 @@ class AgentRegistrationController extends Controller
 
                 DB::commit();
                 return redirect()->route('agent.transaction.create')->with('success', 'Pembayaran Tagihan Berhasil!');
-            
+
             } else {
                 // Gagal Bayar
                 $trx->status = 'Failed';
                 $trx->message = $d['message'] ?? 'Pembayaran Gagal';
                 $trx->rc = $d['rc'] ?? null; // Simpan RC Error
                 $trx->save();
-                
+
                 DB::commit(); // Commit status Failed, Saldo tidak terpotong
                 return back()->with('error', 'Pembayaran Gagal: ' . $trx->message);
             }
@@ -261,4 +260,21 @@ class AgentRegistrationController extends Controller
             return back()->with('error', 'Error System: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Helper untuk mendapatkan instance Digiflazz dengan Kredensial Dinamis
+     */
+    private function getDigiflazzService()
+    {
+        $mode = Api::getValue('DIGIFLAZZ_MODE', 'global', 'development');
+        $username = Api::getValue('DIGIFLAZZ_USERNAME', $mode);
+        $apiKey   = Api::getValue('DIGIFLAZZ_API_KEY', $mode);
+        $isProduction = ($mode === 'production');
+
+        $digiflazz = new DigiflazzService();
+        $digiflazz->setCredentials($username, $apiKey, $isProduction);
+
+        return $digiflazz;
+    }
+
 }
