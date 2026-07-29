@@ -663,7 +663,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             timeoutId = setTimeout(() => {
                 fetch(`/admin/kontak/search-district?q=${encodeURIComponent(query)}`)
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Server error: Route tidak ditemukan (404)');
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         dropdown.innerHTML = '';
                         if (data.length > 0) {
@@ -689,7 +694,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             dropdown.classList.remove('hidden');
                         }
                     })
-                    .catch(error => console.error('Error fetching districts:', error))
+                    .catch(error => {
+                        console.error('Fetch error:', error);
+                        dropdown.innerHTML = '<div class="px-4 py-3 text-sm text-red-500 italic text-center">Error: Cek route di server!</div>';
+                        dropdown.classList.remove('hidden');
+                    })
                     .finally(() => {
                         loading.classList.add('hidden');
                     });
