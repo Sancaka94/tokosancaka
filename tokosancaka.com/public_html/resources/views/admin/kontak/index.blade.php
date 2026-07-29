@@ -293,6 +293,19 @@
             </div>
 
             <div class="space-y-4 max-h-[60vh] overflow-y-auto px-1 custom-scrollbar">
+                {{-- KOLOM PENCARIAN HIT API MANUAL --}}
+                <div class="mb-2 p-3 bg-purple-50 border border-purple-200 rounded-xl">
+                    <label class="block text-sm font-bold text-purple-800 mb-1">Cari & Tarik Data dari Autokirim API</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="pickup_point_code_input" name="pickup_point_code" class="w-full border border-purple-300 rounded-lg p-2 text-sm uppercase focus:ring-purple-500 focus:border-purple-500" placeholder="Ketik Kode (Cth: KM00000012)">
+
+                        <button type="button" onclick="hitApiPencarian()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition-colors flex items-center gap-2 whitespace-nowrap" id="btnHitApi">
+                            <i class="fa-solid fa-magnifying-glass"></i> Cari API
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-purple-600 mt-1">*Jika kode valid, data akan ditarik & otomatis mengisi form di bawah.</p>
+                </div>
+
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Nama Pelanggan <span class="text-red-500">*</span></label>
                     <input type="text" id="nama" name="nama" class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-red-500 focus:border-red-500" required placeholder="Masukkan nama lengkap">

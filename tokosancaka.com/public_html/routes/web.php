@@ -825,14 +825,15 @@ Route::prefix('admin/akuntansi')->name('admin.akuntansi.')->group(function () {
 
 Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->name('admin.')->group(function () {
 
-    // === TARUH ROUTE STATIC KONTAK DI SINI, SEBELUM FILE ADMIN.PHP DI-LOAD ===
+    // === 1. TARUH SEMUA ROUTE STATIC DI PALING ATAS ===
     Route::get('kontak/search-district', [\App\Http\Controllers\KontakController::class, 'searchDistrict'])->name('kontak.search-district');
-    Route::get('kontak/{id}/check-pickup-api', [\App\Http\Controllers\KontakController::class, 'checkPickupApi'])->name('kontak.check_pickup_api');
+    Route::get('kontak/api-search-pickup', [\App\Http\Controllers\KontakController::class, 'searchPickupApi'])->name('kontak.api.search_pickup');
 
+    // === 2. TARUH SEMUA ROUTE DINAMIS ({id} / {kontak}) DI BAWAHNYA ===
+    Route::get('kontak/{id}/check-pickup-api', [\App\Http\Controllers\KontakController::class, 'checkPickupApi'])->name('kontak.check_pickup_api');
     Route::post('kontak/{kontak}/api-insert', [\App\Http\Controllers\KontakController::class, 'syncApiInsert'])->name('kontak.api.insert');
     Route::post('kontak/{kontak}/api-update', [\App\Http\Controllers\KontakController::class, 'syncApiUpdate'])->name('kontak.api.update');
     Route::post('kontak/{kontak}/api-delete', [\App\Http\Controllers\KontakController::class, 'syncApiDelete'])->name('kontak.api.delete');
-    // =========================================================================
 
     if(file_exists(__DIR__.'/web/admin.php')) require __DIR__.'/web/admin.php';
     if(file_exists(__DIR__.'/admin/orders.php')) require __DIR__.'/admin/orders.php';

@@ -332,6 +332,7 @@ class KontakController extends Controller
 
     // =======================================================
     // HELPER API AUTOKIRIM (CONFIG, INSERT, UPDATE, FIND, DELETE)
+    // Sesuai Dokumentasi CURL
     // =======================================================
     private function getAutokirimConfig()
     {
@@ -346,12 +347,15 @@ class KontakController extends Controller
         ];
     }
 
+    /**
+     * API INSERT PICKUP POINT
+     */
     private function insertPickupPointApi($data)
     {
         $config = $this->getAutokirimConfig();
-        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
 
         try {
+            // Mapping payload sesuai dengan CURL Insert
             $payload = [
                 "name"              => (string) $data['nama'],
                 "phone"             => (string) $data['no_hp'],
@@ -363,12 +367,15 @@ class KontakController extends Controller
                 "is_member_deposit" => false
             ];
 
-            Log::info("LOG LOG: [KONTAK - API INSERT] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $payload);
+            Log::info("LOG LOG: [KONTAK - API INSERT] REQUEST:", $payload);
 
-            $response = Http::timeout(15)->withToken($config->token)->post("{$config->base_url}/api/pickup-point/insert", $payload);
+            $response = Http::timeout(15)
+                ->withToken($config->token) // Otomatis nambah header 'Authorization: Bearer {token}'
+                ->post("{$config->base_url}/api/pickup-point/insert", $payload);
+
             $result = $response->json();
-
             Log::info("LOG LOG: [KONTAK - API INSERT] RESPONSE:", $result ?? []);
+
             return $result;
         } catch (\Exception $e) {
             Log::error("LOG LOG: [KONTAK - API INSERT] ERROR: " . $e->getMessage());
@@ -376,12 +383,15 @@ class KontakController extends Controller
         }
     }
 
+    /**
+     * API UPDATE PICKUP POINT
+     */
     private function updatePickupPointApi($pickupCode, $data)
     {
         $config = $this->getAutokirimConfig();
-        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
 
         try {
+            // Mapping payload sesuai dengan CURL Update
             $payload = [
                 "name"              => (string) $data['nama'],
                 "phone"             => (string) $data['no_hp'],
@@ -392,12 +402,16 @@ class KontakController extends Controller
                 "pickup_point_code" => (string) $pickupCode
             ];
 
-            Log::info("LOG LOG: [KONTAK - API UPDATE] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $payload);
+            Log::info("LOG LOG: [KONTAK - API UPDATE] REQUEST:", $payload);
 
-            $response = Http::timeout(15)->withToken($config->token)->post("{$config->base_url}/api/pickup-point/update", $payload);
+            $response = Http::timeout(15)
+                ->withToken($config->token)
+                ->post("{$config->base_url}/api/pickup-point/update", $payload);
+
             $result = $response->json();
-
             Log::info("LOG LOG: [KONTAK - API UPDATE] RESPONSE:", $result ?? []);
+
+            // Mengembalikan TRUE jika rc == "00" (Success)
             return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
         } catch (\Exception $e) {
             Log::error("LOG LOG: [KONTAK - API UPDATE] ERROR: " . $e->getMessage());
@@ -405,19 +419,29 @@ class KontakController extends Controller
         }
     }
 
+    /**
+     * API FIND / CEK PICKUP POINT
+     */
     private function findPickupPointApi($pickupCode)
     {
         $config = $this->getAutokirimConfig();
-        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
 
         try {
-            $payload = ['pickup_point_code' => (string) $pickupCode];
-            Log::info("LOG LOG: [KONTAK - API FIND] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $payload);
+            // Mapping payload sesuai dengan CURL Find
+            $payload = [
+                "pickup_point_code" => (string) $pickupCode
+            ];
 
-            $response = Http::timeout(10)->withToken($config->token)->post("{$config->base_url}/api/pickup-point/find", $payload);
+            Log::info("LOG LOG: [KONTAK - API FIND] REQUEST:", $payload);
+
+            $response = Http::timeout(10)
+                ->withToken($config->token)
+                ->post("{$config->base_url}/api/pickup-point/find", $payload);
+
             $result = $response->json();
-
             Log::info("LOG LOG: [KONTAK - API FIND] RESPONSE:", $result ?? []);
+
+            // Mengembalikan TRUE jika rc == "00" (Success)
             return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
         } catch (\Exception $e) {
             Log::error("LOG LOG: [KONTAK - API FIND] ERROR: " . $e->getMessage());
@@ -425,19 +449,29 @@ class KontakController extends Controller
         }
     }
 
+    /**
+     * API DELETE PICKUP POINT
+     */
     private function deletePickupPointApi($pickupCode)
     {
         $config = $this->getAutokirimConfig();
-        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
 
         try {
-            $payload = ['pickup_point_code' => (string) $pickupCode];
-            Log::info("LOG LOG: [KONTAK - API DELETE] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $payload);
+            // Mapping payload sesuai dengan CURL Delete
+            $payload = [
+                "pickup_point_code" => (string) $pickupCode
+            ];
 
-            $response = Http::timeout(10)->withToken($config->token)->post("{$config->base_url}/api/pickup-point/delete", $payload);
+            Log::info("LOG LOG: [KONTAK - API DELETE] REQUEST:", $payload);
+
+            $response = Http::timeout(10)
+                ->withToken($config->token)
+                ->post("{$config->base_url}/api/pickup-point/delete", $payload);
+
             $result = $response->json();
-
             Log::info("LOG LOG: [KONTAK - API DELETE] RESPONSE:", $result ?? []);
+
+            // Mengembalikan TRUE jika rc == "00" (Success)
             return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
         } catch (\Exception $e) {
             Log::error("LOG LOG: [KONTAK - API DELETE] ERROR: " . $e->getMessage());
