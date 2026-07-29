@@ -889,7 +889,6 @@ document.addEventListener('alpine:init', () => {
         // Tambahkan variabel ini di deklarasi awal
         isGeneratingPickup: false,
 
-        // Tambahkan fungsi baru ini di dalam Alpine.js
         async autoGeneratePickup() {
             let nama = document.getElementById('pengirim_nama') ? document.getElementById('pengirim_nama').value : this.pengirimNama;
             let hp = document.getElementById('pengirim_hp') ? document.getElementById('pengirim_hp').value : '';
@@ -897,8 +896,22 @@ document.addEventListener('alpine:init', () => {
             let districtId = this.senderDistrictId;
             let email = document.getElementById('pengirim_email') ? document.getElementById('pengirim_email').value : '';
 
-            // CEK SYARAT: Form Pengirim harus diisi valid sebelum Hit API (Alamat minimal 15 karakter)
+            // CEK SYARAT: Form Pengirim harus diisi valid
             if (nama.length >= 2 && hp.length >= 9 && districtId && alamat.length >= 15) {
+
+                // =========================================================
+                // LAPIS 1: BROWSER CACHE (SUPER INSTAN, 0 HIT SERVER)
+                // =========================================================
+                let rawString = (nama + hp + districtId + alamat).toLowerCase().replace(/\s+/g, '');
+                let browserCacheKey = "pickup_cache_" + rawString;
+                let cachedCode = sessionStorage.getItem(browserCacheKey);
+
+                if (cachedCode) {
+                    this.pickupPointCode = cachedCode;
+                    console.log("LOG: Mengambil Pickup Code dari Browser Cache:", cachedCode);
+                    return; // Hentikan eksekusi, jangan hit server!
+                }
+
                 this.isGeneratingPickup = true;
 
                 try {
@@ -910,15 +923,27 @@ document.addEventListener('alpine:init', () => {
                     formData.append('pengirim_email', email);
                     formData.append('_token', document.querySelector('input[name="_token"]').value);
 
-                    // Sesuaikan URL ini dengan nama Route yang Anda buat di Langkah 2
                     let response = await fetch("{{ route('customer.pesanan-autokirim.ajax-pickup') }}", {
                         method: 'POST',
                         body: formData
                     });
 
-                    let result = await response.json();
+                   let result = await response.json();
                     if(result.success) {
                         this.pickupPointCode = result.pickup_point_code;
+
+                        // =========================================================
+                        // [FITUR BARU]: HAPUS SEMUA CACHE LAMA SEBELUM SIMPAN BARU
+                        // Mencegah user menggunakan cache kode yang sudah mati di server
+                        // =========================================================
+                        Object.keys(sessionStorage).forEach(function(key) {
+                            if (/^pickup_cache_/.test(key)) {
+                                sessionStorage.removeItem(key);
+                            }
+                        });
+
+                        // Simpan ke Browser Cache murni yang paling baru
+                        sessionStorage.setItem(browserCacheKey, result.pickup_point_code);
                     } else {
                         console.error(result.message);
                     }
