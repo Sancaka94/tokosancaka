@@ -98,8 +98,10 @@
                     </div>
                     <div class="col-span-2 sm:col-span-1">
                         <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
-                        <input type="text" id="pengirim_hp" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required @input.debounce.1000ms="autoGeneratePickup()" class="...">
-                        <!-- (Gunakan sisa class bawaan Anda) -->
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
+                            <input type="text" id="pengirim_hp" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required @input.debounce.1000ms="autoGeneratePickup()" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
+                        </div>
                     </div>
 
                     <div class="col-span-2">
@@ -143,7 +145,7 @@
                             ALAMAT JALAN PENGIRIM <span class="text-red-500">*</span>
                         </label>
 
-                        <textarea id="pengirim_alamat" name="pengirim_alamat" rows="2" required minlength="15" @input.debounce.1000ms="autoGeneratePickup()" placeholder="..." class="...">{{ old('pengirim_alamat') }}</textarea>
+                        <textarea id="pengirim_alamat" name="pengirim_alamat" rows="2" required minlength="15" @input.debounce.1000ms="autoGeneratePickup()" placeholder="Contoh: JL RONGGOWARSITO NO 15 RT 01 RW 02" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">{{ old('pengirim_alamat') }}</textarea>
 
                         <div class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700">
                             <p class="text-[11px] font-bold flex items-start gap-1.5 leading-tight">
