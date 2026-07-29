@@ -39,9 +39,9 @@
                     <!-- Wrapper Tombol & Badge -->
                     <div class="flex items-center gap-3">
                         <!-- Badge Kode Pickup Point -->
-                        <div x-show="pickupPointCode" x-transition x-cloak class="bg-gray-100 border border-gray-200 text-gray-800 text-[10px] font-bold px-2 py-1.5 rounded flex items-center gap-1.5 uppercase tracking-wider">
-                            <i class="fa-solid fa-store text-gray-500"></i>
-                            <span x-text="'PICKUP: ' + pickupPointCode"></span>
+                        <div class="bg-gray-100 border border-gray-200 text-gray-800 text-[10px] font-bold px-2 py-1.5 rounded flex items-center gap-1.5 uppercase tracking-wider">
+                            <i class="fa-solid fa-store text-gray-500" :class="pickupPointCode ? 'text-green-600' : 'text-red-500'"></i>
+                            <span x-text="pickupPointCode ? 'PICKUP: ' + pickupPointCode : 'BELUM ADA PICKUP POINT'" :class="pickupPointCode ? 'text-gray-800' : 'text-red-500'"></span>
                         </div>
 
                         <!-- Tombol Centang Simpan Pengirim -->
