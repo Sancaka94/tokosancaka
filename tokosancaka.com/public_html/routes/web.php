@@ -43,6 +43,9 @@ use App\Http\Controllers\DanaPpobDigitalGoodsController; // <-- TAMBAHKAN INI DI
 
 use App\Http\Controllers\Admin\AutoKirimController;
 
+// blok IP BOT
+use App\Http\Controllers\Admin\BlockedIpController;
+
 
 // Telegram Group
 use App\Http\Controllers\TelegramGroupController;
@@ -2013,3 +2016,13 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
 
     // Jika diletakkan di group route ber-auth (web)
 Route::post('/customer/pesanan-autokirim/ajax-pickup', [PesananAutokirimController::class, 'generatePickupPointAjax'])->name('customer.pesanan-autokirim.ajax-pickup');
+
+
+Route::prefix('admin')->middleware(['auth'])->group(function () {
+
+    // Taruh route untuk blokir IP di sini
+    Route::get('/blocked-ips', [BlockedIpController::class, 'index'])->name('admin.blocked-ips.index');
+    Route::post('/blocked-ips', [BlockedIpController::class, 'store'])->name('admin.blocked-ips.store');
+    Route::delete('/blocked-ips/{id}', [BlockedIpController::class, 'destroy'])->name('admin.blocked-ips.destroy');
+
+});
