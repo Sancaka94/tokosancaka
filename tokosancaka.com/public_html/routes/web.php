@@ -827,6 +827,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
     // === TARUH ROUTE STATIC KONTAK DI SINI, SEBELUM FILE ADMIN.PHP DI-LOAD ===
     Route::get('kontak/search-district', [\App\Http\Controllers\KontakController::class, 'searchDistrict'])->name('kontak.search-district');
+    Route::get('kontak/{id}/check-pickup-api', [\App\Http\Controllers\KontakController::class, 'checkPickupApi'])->name('kontak.check_pickup_api');
 
     Route::post('kontak/{kontak}/api-insert', [\App\Http\Controllers\KontakController::class, 'syncApiInsert'])->name('kontak.api.insert');
     Route::post('kontak/{kontak}/api-update', [\App\Http\Controllers\KontakController::class, 'syncApiUpdate'])->name('kontak.api.update');
@@ -2032,8 +2033,5 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::get('/blocked-ips', [BlockedIpController::class, 'index'])->name('admin.blocked-ips.index');
     Route::post('/blocked-ips', [BlockedIpController::class, 'store'])->name('admin.blocked-ips.store');
     Route::delete('/blocked-ips/{id}', [BlockedIpController::class, 'destroy'])->name('admin.blocked-ips.destroy');
-
-    Route::get('kontak/{id}/check-pickup-api', [\App\Http\Controllers\KontakController::class, 'checkPickupApi'])->name('admin.kontak.check_pickup_api');
-
 
 });
