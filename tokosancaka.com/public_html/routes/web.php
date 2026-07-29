@@ -2025,4 +2025,8 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::post('/blocked-ips', [BlockedIpController::class, 'store'])->name('admin.blocked-ips.store');
     Route::delete('/blocked-ips/{id}', [BlockedIpController::class, 'destroy'])->name('admin.blocked-ips.destroy');
 
+    Route::post('kontak/{kontak}/api-insert', [\App\Http\Controllers\KontakController::class, 'syncApiInsert'])->name('admin.kontak.api.insert');
+    Route::post('kontak/{kontak}/api-update', [\App\Http\Controllers\KontakController::class, 'syncApiUpdate'])->name('admin.kontak.api.update');
+    Route::post('kontak/{kontak}/api-delete', [\App\Http\Controllers\KontakController::class, 'syncApiDelete'])->name('admin.kontak.api.delete');
+
 });

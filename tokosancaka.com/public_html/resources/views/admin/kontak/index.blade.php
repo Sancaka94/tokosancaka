@@ -193,26 +193,61 @@
                             </button>
                         </td>
                         <td class="px-5 py-5 whitespace-nowrap text-right text-sm font-medium">
-                            <div class="flex items-center justify-center gap-2">
-                                <a href="https://wa.me/{{ $kontak->no_hp }}" target="_blank" class="flex items-center gap-1.5 border border-red-600 text-red-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-red-50 transition-colors bg-white">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                                    Hubungi
-                                </a>
-                                <button onclick="openHistoryModal({{ $kontak->id }})" class="p-1.5 bg-red-700 text-white rounded-lg hover:bg-red-800 shadow-sm transition-colors" title="Lihat Riwayat">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                </button>
-                                <button onclick="openEditModal({{ $kontak->id }})" class="p-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 shadow-sm transition-colors" title="Edit Data & API">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                                </button>
+                            <div class="flex flex-col gap-2 items-end">
 
-                                {{-- TOMBOL HAPUS (DELETE DB & API) --}}
-                                <form action="{{ route('admin.kontak.destroy', $kontak->id) }}" method="POST" class="inline-block" onsubmit="return confirm('PERINGATAN!\nMenghapus kontak ini juga akan menghapus data Kode Pickup di server logistik pusat. Yakin ingin melanjutkan?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 shadow-sm transition-colors" title="Hapus Data & API">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                {{-- BARIS 1: AKSI LOKAL DATABASE (Hanya mengelola database Sancaka) --}}
+                                <div class="flex items-center justify-end gap-2">
+                                    <a href="https://wa.me/{{ $kontak->no_hp }}" target="_blank" class="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 shadow-sm" title="WhatsApp">
+                                        <i class="fa-brands fa-whatsapp"></i>
+                                    </a>
+                                    <button onclick="openHistoryModal({{ $kontak->id }})" class="p-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 shadow-sm" title="Riwayat Order">
+                                        <i class="fa-solid fa-clock-rotate-left"></i>
                                     </button>
-                                </form>
+                                    <button onclick="openEditModal({{ $kontak->id }})" class="p-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 shadow-sm" title="Edit Data Lokal">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+
+                                    {{-- Tombol Hapus Murni Lokal --}}
+                                    <form action="{{ route('admin.kontak.destroy', $kontak->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Yakin ingin menghapus kontak ini dari database LOKAL?\n(Ini tidak akan menghapus data di server Autokirim)');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 shadow-sm" title="Hapus Data Lokal">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {{-- BARIS 2: AKSI KHUSUS API AUTOKIRIM (Terpisah Total) --}}
+                                <div class="flex items-center justify-end gap-2 mt-1 border-t border-gray-100 pt-2 w-full">
+                                    <span class="text-[10px] font-bold text-gray-400 mr-auto uppercase tracking-wider">API:</span>
+
+                                    @if(empty($kontak->pickup_point_code))
+                                        {{-- Tombol Insert API --}}
+                                        <form action="{{ route('admin.kontak.api.insert', $kontak->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Tembak API INSERT untuk mendaftarkan kontak ini ke server Autokirim?');">
+                                            @csrf
+                                            <button type="submit" class="px-2 py-1 bg-emerald-500 text-white rounded text-[10px] font-bold hover:bg-emerald-600 shadow-sm transition flex items-center">
+                                                <i class="fa-solid fa-cloud-arrow-up mr-1"></i> INSERT
+                                            </button>
+                                        </form>
+                                    @else
+                                        {{-- Tombol Update API --}}
+                                        <form action="{{ route('admin.kontak.api.update', $kontak->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Tembak API UPDATE untuk mensinkronkan alamat baru ke server Autokirim?');">
+                                            @csrf
+                                            <button type="submit" class="px-2 py-1 bg-blue-500 text-white rounded text-[10px] font-bold hover:bg-blue-600 shadow-sm transition flex items-center">
+                                                <i class="fa-solid fa-arrows-rotate mr-1"></i> UPDATE
+                                            </button>
+                                        </form>
+
+                                        {{-- Tombol Delete API --}}
+                                        <form action="{{ route('admin.kontak.api.delete', $kontak->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Tembak API DELETE untuk menghapus data pickup dari server Autokirim?\n(Data kontak di database Sancaka akan tetap ada)');">
+                                            @csrf
+                                            <button type="submit" class="px-2 py-1 bg-orange-500 text-white rounded text-[10px] font-bold hover:bg-orange-600 shadow-sm transition flex items-center">
+                                                <i class="fa-solid fa-link-slash mr-1"></i> DELETE
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
+
                             </div>
                         </td>
                     </tr>

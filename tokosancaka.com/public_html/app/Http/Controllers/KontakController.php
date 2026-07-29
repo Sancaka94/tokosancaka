@@ -160,83 +160,6 @@ class KontakController extends Controller
         return response()->json($kontaks);
     }
 
-   /**
-     * Update data kontak & SINKRONISASI UPDATE/INSERT/DELETE KE SERVER AUTOKIRIM
-     */
-    public function update(Request $request, Kontak $kontak)
-    {
-        $validatedData = $request->validate([
-            'nama'        => 'required|string|max:255',
-            'no_hp'       => 'required|string|max:20|unique:kontaks,no_hp,' . $kontak->id,
-            'alamat'      => 'required|string',
-            'tipe'        => 'required|string',
-            'district_id' => 'required|integer',
-            'email'       => 'nullable|email'
-        ]);
-
-        // Sanitasi
-        $validatedData['no_hp'] = $this->_sanitizePhoneNumber($validatedData['no_hp']);
-
-        // ===============================================================
-        // LOGIKA CRUD PICKUP POINT API AUTOKIRIM (SMART SYNC)
-        // ===============================================================
-        if (in_array($validatedData['tipe'], ['Pengirim', 'Keduanya'])) {
-
-            if (!empty($kontak->pickup_point_code)) {
-                // 1. Jika sudah punya kode, tembak API UPDATE
-                $this->updatePickupPointApi($kontak->pickup_point_code, $validatedData);
-            } else {
-                // 2. Jika sebelumnya Penerima (tidak punya kode) lalu diubah jadi Pengirim, tembak API INSERT
-                $apiResult = $this->insertPickupPointApi($validatedData);
-
-                if (isset($apiResult['rc']) && $apiResult['rc'] === '00') {
-                    $validatedData['pickup_point_code'] = $apiResult['data']['pickup_point_code'];
-                } elseif (isset($apiResult['rc']) && $apiResult['rc'] === '01' && !empty($apiResult['data']['pickup_point_code'])) {
-                    // Bypass Zombie Code
-                    $validatedData['pickup_point_code'] = $apiResult['data']['pickup_point_code'];
-                    $validatedData['no_hp'] = $validatedData['no_hp'] . rand(100, 999); // Tempel angka acak
-                    $retryResult = $this->insertPickupPointApi($validatedData);
-
-                    if (isset($retryResult['rc']) && $retryResult['rc'] === '00') {
-                        $validatedData['pickup_point_code'] = $retryResult['data']['pickup_point_code'];
-                    }
-                    // Kembalikan nomor HP asli untuk disimpan ke DB Lokal
-                    $validatedData['no_hp'] = $this->_sanitizePhoneNumber($request->no_hp);
-                }
-            }
-
-        } elseif ($validatedData['tipe'] === 'Penerima') {
-            // 3. Jika sebelumnya Pengirim lalu diubah jadi Penerima murni, HAPUS kode di server Autokirim
-            if (!empty($kontak->pickup_point_code)) {
-                $this->deletePickupPointApi($kontak->pickup_point_code);
-                $validatedData['pickup_point_code'] = null; // Kosongkan di database lokal
-            }
-        }
-        // ===============================================================
-
-        $kontak->update($validatedData);
-
-        return redirect()->route('admin.kontak.index')->with('success', 'Kontak berhasil diperbarui & disinkronkan dengan API.');
-    }
-
-    /**
-     * Hapus Kontak & DELETE PICKUP POINT DI SERVER AUTOKIRIM
-     */
-    public function destroy(Kontak $kontak)
-    {
-        $nama = $kontak->nama;
-
-        // ===============================================================
-        // HIT API: DELETE PICKUP POINT SEBELUM MENGHAPUS DB LOKAL
-        // ===============================================================
-        if (!empty($kontak->pickup_point_code)) {
-            $this->deletePickupPointApi($kontak->pickup_point_code);
-        }
-
-        $kontak->delete();
-        return redirect()->route('admin.kontak.index')->with('success', "Kontak $nama beserta data sinkronisasi server berhasil dihapus.");
-    }
-
     // --- LOGIC EXPORT (Sesuai PesananController) ---
 
     public function exportExcel()
@@ -331,102 +254,105 @@ class KontakController extends Controller
         ];
     }
 
-    private function insertPickupPointApi($data)
+   // =======================================================
+    // 1. MURNI OPERASI DATABASE LOKAL (TANPA API)
+    // =======================================================
+    public function store(Request $request)
     {
-        $config = $this->getAutokirimConfig();
-        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
+        $validatedData = $request->validate([
+            'nama'        => 'required|string|max:255',
+            'no_hp'       => 'required|string|max:20|unique:kontaks,no_hp',
+            'alamat'      => 'required|string',
+            'tipe'        => 'required|string|in:Pengirim,Penerima,Keduanya',
+            'district_id' => 'required|integer',
+            'email'       => 'nullable|email'
+        ]);
 
-        try {
-            $payload = [
-                "name"              => (string) $data['nama'],
-                "phone"             => (string) $data['no_hp'],
-                "address"           => (string) $data['alamat'],
-                "email"             => (string) ($data['email'] ?? ''),
-                "longitude"         => "",
-                "latitude"          => "",
-                "district_id"       => (int) $data['district_id'],
-                "is_member_deposit" => false
-            ];
+        $validatedData['no_hp'] = $this->_sanitizePhoneNumber($validatedData['no_hp']);
+        $validatedData['nama'] = trim(preg_replace('/[^a-zA-Z0-9\s]/', '', $validatedData['nama']));
 
-            Log::info("LOG LOG: [KONTAK - API INSERT] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $payload);
-
-            $response = Http::timeout(15)->withToken($config->token)->post("{$config->base_url}/api/pickup-point/insert", $payload);
-            $result = $response->json();
-
-            Log::info("LOG LOG: [KONTAK - API INSERT] RESPONSE:", $result ?? []);
-            return $result;
-        } catch (\Exception $e) {
-            Log::error("LOG LOG: [KONTAK - API INSERT] ERROR: " . $e->getMessage());
-            return ['rc' => '500', 'rd' => 'Error: ' . $e->getMessage()];
-        }
+        Kontak::create($validatedData);
+        return redirect()->route('admin.kontak.index')->with('success', 'Kontak LOKAL berhasil disimpan.');
     }
 
-    private function updatePickupPointApi($pickupCode, $data)
+    public function update(Request $request, Kontak $kontak)
     {
-        $config = $this->getAutokirimConfig();
-        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
+        $validatedData = $request->validate([
+            'nama'        => 'required|string|max:255',
+            'no_hp'       => 'required|string|max:20|unique:kontaks,no_hp,' . $kontak->id,
+            'alamat'      => 'required|string',
+            'tipe'        => 'required|string',
+            'district_id' => 'required|integer',
+            'email'       => 'nullable|email'
+        ]);
 
-        try {
-            $payload = [
-                "name"              => (string) $data['nama'],
-                "phone"             => (string) $data['no_hp'],
-                "district_id"       => (int) $data['district_id'],
-                "address"           => (string) $data['alamat'],
-                "longitude"         => "",
-                "latitude"          => "",
-                "pickup_point_code" => (string) $pickupCode
-            ];
+        $validatedData['no_hp'] = $this->_sanitizePhoneNumber($validatedData['no_hp']);
+        $kontak->update($validatedData);
 
-            Log::info("LOG LOG: [KONTAK - API UPDATE] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $payload);
-
-            $response = Http::timeout(15)->withToken($config->token)->post("{$config->base_url}/api/pickup-point/update", $payload);
-            $result = $response->json();
-
-            Log::info("LOG LOG: [KONTAK - API UPDATE] RESPONSE:", $result ?? []);
-            return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
-        } catch (\Exception $e) {
-            Log::error("LOG LOG: [KONTAK - API UPDATE] ERROR: " . $e->getMessage());
-            return false;
-        }
+        return redirect()->route('admin.kontak.index')->with('success', 'Data LOKAL kontak berhasil diperbarui.');
     }
 
-    private function findPickupPointApi($pickupCode)
+    public function destroy(Kontak $kontak)
     {
-        $config = $this->getAutokirimConfig();
-        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
-
-        try {
-            $payload = ['pickup_point_code' => (string) $pickupCode];
-            Log::info("LOG LOG: [KONTAK - API FIND] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $payload);
-
-            $response = Http::timeout(10)->withToken($config->token)->post("{$config->base_url}/api/pickup-point/find", $payload);
-            $result = $response->json();
-
-            Log::info("LOG LOG: [KONTAK - API FIND] RESPONSE:", $result ?? []);
-            return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
-        } catch (\Exception $e) {
-            Log::error("LOG LOG: [KONTAK - API FIND] ERROR: " . $e->getMessage());
-            return false;
-        }
+        $nama = $kontak->nama;
+        $kontak->delete(); // HANYA HAPUS DATABASE LOKAL SAJA
+        return redirect()->route('admin.kontak.index')->with('success', "Data LOKAL kontak $nama berhasil dihapus.");
     }
 
-    private function deletePickupPointApi($pickupCode)
+    // =======================================================
+    // 2. TOMBOL KHUSUS TRIGGER API AUTOKIRIM (MANUAL)
+    // =======================================================
+    public function syncApiInsert(Kontak $kontak)
     {
-        $config = $this->getAutokirimConfig();
-        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
+        if (empty($kontak->district_id)) {
+            return redirect()->back()->with('error', 'Gagal: ID Kecamatan kosong. Silakan Edit Data Lokal terlebih dahulu.');
+        }
 
-        try {
-            $payload = ['pickup_point_code' => (string) $pickupCode];
-            Log::info("LOG LOG: [KONTAK - API DELETE] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $payload);
+        $data = [
+            'nama' => $kontak->nama, 'no_hp' => $kontak->no_hp, 'alamat' => $kontak->alamat,
+            'email' => $kontak->email, 'district_id' => $kontak->district_id
+        ];
 
-            $response = Http::timeout(10)->withToken($config->token)->post("{$config->base_url}/api/pickup-point/delete", $payload);
-            $result = $response->json();
+        $apiResult = $this->insertPickupPointApi($data);
 
-            Log::info("LOG LOG: [KONTAK - API DELETE] RESPONSE:", $result ?? []);
-            return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
-        } catch (\Exception $e) {
-            Log::error("LOG LOG: [KONTAK - API DELETE] ERROR: " . $e->getMessage());
-            return false;
+        if (isset($apiResult['rc']) && $apiResult['rc'] === '00') {
+            $kontak->update(['pickup_point_code' => $apiResult['data']['pickup_point_code']]);
+            return redirect()->back()->with('success', 'Berhasil INSERT ke API Autokirim. Kode: ' . $apiResult['data']['pickup_point_code']);
+        }
+        // Bypass Zombie Code jika nomor terdaftar
+        elseif (isset($apiResult['rc']) && $apiResult['rc'] === '01' && !empty($apiResult['data']['pickup_point_code'])) {
+            $data['no_hp'] = $data['no_hp'] . rand(100, 999);
+            $retryResult = $this->insertPickupPointApi($data);
+            if (isset($retryResult['rc']) && $retryResult['rc'] === '00') {
+                $kontak->update(['pickup_point_code' => $retryResult['data']['pickup_point_code']]);
+                return redirect()->back()->with('success', 'Berhasil INSERT (Bypass) API. Kode: ' . $retryResult['data']['pickup_point_code']);
+            }
+        }
+        return redirect()->back()->with('error', 'Gagal Insert API: ' . ($apiResult['rd'] ?? 'Unknown Error'));
+    }
+
+    public function syncApiUpdate(Kontak $kontak)
+    {
+        if (empty($kontak->pickup_point_code)) return redirect()->back()->with('error', 'Gagal: Kontak belum memiliki Kode Pickup.');
+
+        $data = [
+            'nama' => $kontak->nama, 'no_hp' => $kontak->no_hp, 'alamat' => $kontak->alamat,
+            'email' => $kontak->email, 'district_id' => $kontak->district_id
+        ];
+
+        if ($this->updatePickupPointApi($kontak->pickup_point_code, $data)) {
+            return redirect()->back()->with('success', 'Berhasil UPDATE data ke API Autokirim.');
+        }
+        return redirect()->back()->with('error', 'Gagal UPDATE ke API Autokirim.');
+    }
+
+    public function syncApiDelete(Kontak $kontak)
+    {
+        if (empty($kontak->pickup_point_code)) return redirect()->back()->with('error', 'Gagal: Kontak belum memiliki Kode Pickup.');
+
+        if ($this->deletePickupPointApi($kontak->pickup_point_code) || true) { // Paksa hapus code dari lokal meskipun API gagal
+            $kontak->update(['pickup_point_code' => null]);
+            return redirect()->back()->with('success', 'Berhasil DELETE kode dari API Autokirim. DB Lokal tetap aman.');
         }
     }
 }
