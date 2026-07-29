@@ -75,6 +75,10 @@ class KontakController extends Controller
             'tipe'        => 'required|string|in:Pengirim,Penerima,Keduanya',
             'district_id' => 'required|integer',
             'email'       => 'nullable|email'
+        ], [
+            // Tambahkan pesan custom di sini:
+            'no_hp.unique'         => 'Nomor HP ini sudah digunakan oleh pelanggan lain.',
+            'district_id.required' => 'Kecamatan wajib dipilih dari daftar dropdown (klik hasil pencariannya).',
         ]);
 
         $validatedData['no_hp'] = $this->_sanitizePhoneNumber($validatedData['no_hp']);
@@ -145,11 +149,15 @@ class KontakController extends Controller
     {
         $validatedData = $request->validate([
             'nama'        => 'required|string|max:255',
-            'no_hp'       => 'required|string|max:20|unique:kontaks,no_hp,' . $kontak->id,
+            'no_hp'       => 'required|string|max:20|unique:kontaks,no_hp',
             'alamat'      => 'required|string',
-            'tipe'        => 'required|string',
+            'tipe'        => 'required|string|in:Pengirim,Penerima,Keduanya',
             'district_id' => 'required|integer',
             'email'       => 'nullable|email'
+        ], [
+            // Tambahkan pesan custom di sini:
+            'no_hp.unique'         => 'Nomor HP ini sudah digunakan oleh pelanggan lain.',
+            'district_id.required' => 'Kecamatan wajib dipilih dari daftar dropdown (klik hasil pencariannya).',
         ]);
 
         $validatedData['no_hp'] = $this->_sanitizePhoneNumber($validatedData['no_hp']);
@@ -500,6 +508,25 @@ class KontakController extends Controller
         });
 
         return response()->json($districts);
+    }
+
+    /**
+     * MURNI OPERASI CEK DATA KE API AUTOKIRIM
+     */
+    public function syncApiCheck(Kontak $kontak)
+    {
+        if (empty($kontak->pickup_point_code)) {
+            return redirect()->back()->with('error', 'Gagal: Kontak ini belum memiliki Kode Pickup.');
+        }
+
+        // Memanggil fungsi private findPickupPointApi yang sudah Anda buat
+        $isFound = $this->findPickupPointApi($kontak->pickup_point_code);
+
+        if ($isFound) {
+            return redirect()->back()->with('success', "Berhasil: Kode Pickup ({$kontak->pickup_point_code}) VALID dan ditemukan di server Autokirim.");
+        }
+
+        return redirect()->back()->with('error', "Gagal: Kode Pickup ({$kontak->pickup_point_code}) TIDAK DITEMUKAN di server Autokirim. Mungkin sudah terhapus di server pusat.");
     }
 
 }

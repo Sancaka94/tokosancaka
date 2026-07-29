@@ -230,6 +230,14 @@
                                             </button>
                                         </form>
                                     @else
+                                        {{-- Tombol Cek / Find API --}}
+                                        <form action="{{ route('admin.kontak.api.check', $kontak->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Tembak API FIND untuk mengecek apakah kode ini masih valid di server Autokirim?');">
+                                            @csrf
+                                            <button type="submit" class="px-2 py-1 bg-purple-500 text-white rounded text-[10px] font-bold hover:bg-purple-600 shadow-sm transition flex items-center" title="Cek Status API">
+                                                <i class="fa-solid fa-magnifying-glass mr-1"></i> CEK
+                                            </button>
+                                        </form>
+
                                         {{-- Tombol Update API --}}
                                         <form action="{{ route('admin.kontak.api.update', $kontak->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Tembak API UPDATE untuk mensinkronkan alamat baru ke server Autokirim?');">
                                             @csrf
