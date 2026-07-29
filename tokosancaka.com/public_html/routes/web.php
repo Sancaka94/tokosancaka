@@ -2033,4 +2033,7 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::post('/blocked-ips', [BlockedIpController::class, 'store'])->name('admin.blocked-ips.store');
     Route::delete('/blocked-ips/{id}', [BlockedIpController::class, 'destroy'])->name('admin.blocked-ips.destroy');
 
+    Route::get('kontak/{id}/check-pickup-api', [\App\Http\Controllers\KontakController::class, 'checkPickupApi'])->name('admin.kontak.check_pickup_api');
+
+
 });

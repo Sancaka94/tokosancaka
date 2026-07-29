@@ -529,4 +529,34 @@ class KontakController extends Controller
         return redirect()->back()->with('error', "Gagal: Kode Pickup ({$kontak->pickup_point_code}) TIDAK DITEMUKAN di server Autokirim. Mungkin sudah terhapus di server pusat.");
     }
 
+    /**
+     * Pengecekan API Autokirim via AJAX (Untuk Modal)
+     */
+    public function checkPickupApi($id)
+    {
+        $kontak = Kontak::findOrFail($id);
+
+        if (empty($kontak->pickup_point_code)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kontak ini belum memiliki Kode Pickup.'
+            ]);
+        }
+
+        // Panggil fungsi pencarian API yang sudah Anda buat
+        $isFound = $this->findPickupPointApi($kontak->pickup_point_code);
+
+        if ($isFound) {
+            return response()->json([
+                'success' => true,
+                'message' => "Valid! Kode ({$kontak->pickup_point_code}) aktif di server Autokirim."
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => "Tidak ditemukan! Kode ({$kontak->pickup_point_code}) tidak valid / terhapus di server pusat."
+        ]);
+    }
+
 }

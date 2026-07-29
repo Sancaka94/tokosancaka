@@ -351,29 +351,28 @@
             </div>
 
             <div class="flex justify-between items-center mt-6 pt-4 border-t w-full">
-                <!-- Tombol Hapus: Hanya Muncul Saat Mode Edit -->
-                <div id="deleteBtnContainer" class="hidden mr-auto">
-                    <button type="button" onclick="deleteFromModal()" class="text-red-600 hover:bg-red-50 font-bold text-sm px-4 py-2 rounded-xl transition-colors flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        Hapus
+                <!-- Area Tombol Kiri (Hapus & Cek API) -->
+                <div class="flex items-center gap-2 mr-auto">
+                    <div id="deleteBtnContainer" class="hidden">
+                        <button type="button" onclick="deleteFromModal()" class="text-red-600 hover:bg-red-50 font-bold text-sm px-4 py-2 rounded-xl transition-colors flex items-center gap-2 border border-transparent">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            Hapus
+                        </button>
+                    </div>
+
+                    <!-- Tombol Cek API (Hanya Muncul Saat Edit & Punya Kode) -->
+                    <button type="button" id="btnCekApi" onclick="cekPickupApi()" class="hidden text-purple-600 hover:bg-purple-50 font-bold text-sm px-4 py-2 rounded-xl transition-colors flex items-center gap-2 border border-purple-200 shadow-sm">
+                        <i class="fa-solid fa-magnifying-glass"></i> Cek API
                     </button>
                 </div>
 
-                <!-- Group Tombol Aksi -->
+                <!-- Area Tombol Kanan (Simpan) -->
                 <div class="flex justify-end gap-2 w-full">
-                    <button type="button" onclick="closeModal('kontakModal')" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold text-sm px-4 py-2 rounded-xl transition-colors">
-                        Batal
-                    </button>
+                    <button type="button" onclick="closeModal('kontakModal')" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold text-sm px-4 py-2 rounded-xl transition-colors">Batal</button>
 
-                    {{-- Tombol 1: Simpan ke DB Lokal Saja --}}
-                    <button type="submit" name="sync_mode" value="local" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors shadow-md">
-                        Simpan Lokal
-                    </button>
+                    <button type="submit" name="sync_mode" value="local" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors shadow-md">Simpan Lokal</button>
 
-                    {{-- Tombol 2: Simpan Lokal & Sinkron API --}}
-                    <button type="submit" name="sync_mode" value="api" class="bg-red-700 hover:bg-red-800 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors shadow-md">
-                        Simpan & API
-                    </button>
+                    <button type="submit" name="sync_mode" value="api" class="bg-red-700 hover:bg-red-800 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors shadow-md">Simpan & API</button>
                 </div>
             </div>
         </form>
@@ -523,6 +522,8 @@ function openAddModal() {
     openModal('kontakModal');
 }
 
+// ... (script sebelumnya) ...
+
 async function openEditModal(id) {
     const form = document.getElementById('kontakForm');
     form.reset();
@@ -538,7 +539,6 @@ async function openEditModal(id) {
         document.getElementById('email').value = kontak.email || '';
         document.getElementById('district_id').value = kontak.district_id || '';
 
-        // Tampilkan ID agar user tahu form ini sudah berisi ID
         if(kontak.district_id) {
             document.getElementById('search_district').value = `(ID: ${kontak.district_id}) Ketik ulang untuk ganti...`;
         } else {
@@ -549,13 +549,52 @@ async function openEditModal(id) {
         document.getElementById('formMethod').value = 'PUT';
         document.getElementById('modalTitle').innerText = 'Edit Kontak Lokal';
 
+        // Tampilkan tombol Hapus
         document.getElementById('deleteBtnContainer').classList.remove('hidden');
-        currentEditId = id;
 
+        // Logika memunculkan tombol "Cek API" jika kode pickup ada
+        const btnCekApi = document.getElementById('btnCekApi');
+        if(kontak.pickup_point_code) {
+            btnCekApi.classList.remove('hidden');
+        } else {
+            btnCekApi.classList.add('hidden');
+        }
+
+        currentEditId = id;
         openModal('kontakModal');
     } catch (error) {
         console.error(error);
         alert('Gagal memuat data kontak.');
+    }
+}
+
+// FUNGSI BARU UNTUK CEK API LANGSUNG DARI MODAL
+async function cekPickupApi() {
+    if (!currentEditId) return;
+
+    const btn = document.getElementById('btnCekApi');
+    const originalHtml = btn.innerHTML;
+
+    // Animasi Loading
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Mengecek...`;
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(`/admin/kontak/${currentEditId}/check-pickup-api`);
+        const data = await response.json();
+
+        if (data.success) {
+            alert("✅ " + data.message);
+        } else {
+            alert("❌ " + data.message);
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Terjadi kesalahan jaringan saat mengecek API.");
+    } finally {
+        // Kembalikan tombol seperti semula
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
     }
 }
 
