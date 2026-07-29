@@ -130,6 +130,23 @@
                         </div>
                     </div>
 
+                    {{-- Menu Digiflazz --}}
+                    <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
+                         :class="activeTab === 'digiflazz' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
+                         @click="activeTab = 'digiflazz'">
+                        <span class="text-sm font-semibold" :class="activeTab === 'digiflazz' ? 'text-zinc-900' : 'text-zinc-600'">Digiflazz</span>
+                        <div class="flex items-center space-x-1.5" @click.stop>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="digiflazzData.mode === 'production' ? 'text-zinc-400' : 'text-zinc-600'">DEV</span>
+                            <button type="button" class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                    :class="digiflazzData.mode === 'production' ? 'bg-zinc-900' : 'bg-zinc-300'"
+                                    @click="digiflazzData.mode = (digiflazzData.mode === 'production' ? 'development' : 'production')">
+                                <span class="inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ease-in-out"
+                                      :class="digiflazzData.mode === 'production' ? 'translate-x-4' : 'translate-x-0'"></span>
+                            </button>
+                            <span class="text-[9px] font-bold uppercase tracking-wider" :class="digiflazzData.mode === 'production' ? 'text-zinc-900' : 'text-zinc-400'">PROD</span>
+                        </div>
+                    </div>
+
                     {{-- Menu Darmawisata --}}
                     <div class="flex items-center justify-between w-full px-3 py-2.5 rounded-md cursor-pointer transition-colors"
                          :class="activeTab === 'dharmawisata' ? 'bg-zinc-100/80 border border-zinc-200/50 shadow-sm' : 'hover:bg-zinc-50 border border-transparent'"
@@ -436,6 +453,44 @@
                                 <input type="url" name="iak_postpaid_base_url" x-model="iakData[iakData.mode].postpaid_base_url" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border">
                             </div>
                         </div>
+                        <div class="flex justify-end pt-4">
+                            <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded hover:bg-black text-sm font-medium transition-colors">Simpan Pengaturan</button>
+                        </div>
+                    </form>
+                </div>
+
+                {{-- TAB DIGIFLAZZ --}}
+                <div x-show="activeTab === 'digiflazz'" style="display:none;" x-transition.opacity>
+                    <div class="p-6 border-b border-zinc-200">
+                        <div class="flex items-center gap-4 mb-1">
+                            <h3 class="text-lg font-bold text-zinc-900">Digiflazz</h3>
+                            <div class="flex items-center space-x-2 bg-zinc-100 px-2.5 py-1 rounded-full border border-zinc-200">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Development</span>
+                                <div class="relative inline-block w-8 align-middle select-none transition duration-200">
+                                    <input type="checkbox" class="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-2 appearance-none cursor-pointer transition-all transform translate-x-0" :class="{'translate-x-full border-zinc-900': digiflazzData.mode === 'production', 'border-zinc-300': digiflazzData.mode === 'development'}" @click="digiflazzData.mode = (digiflazzData.mode === 'production' ? 'development' : 'production')" :checked="digiflazzData.mode === 'production'"/>
+                                    <label class="toggle-label block overflow-hidden h-4 rounded-full bg-zinc-200 cursor-pointer transition-colors duration-300"></label>
+                                </div>
+                                <span class="text-[10px] font-bold text-zinc-900 uppercase tracking-wider">Production</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-zinc-500">Konfigurasi API Digiflazz (Username & API Key).</p>
+                    </div>
+                    <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
+                        @csrf @method('PUT')
+                        <input type="hidden" name="type" value="digiflazz">
+                        <input type="hidden" name="digiflazz_mode" x-model="digiflazzData.mode">
+
+                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">Username</label>
+                                <input type="text" name="digiflazz_username" x-model="digiflazzData[digiflazzData.mode].username" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">API Key / Secret</label>
+                                <input type="text" name="digiflazz_api_key" x-model="digiflazzData[digiflazzData.mode].api_key" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono">
+                            </div>
+                        </div>
+
                         <div class="flex justify-end pt-4">
                             <button type="submit" class="bg-zinc-900 text-white px-4 py-2 rounded hover:bg-black text-sm font-medium transition-colors">Simpan Pengaturan</button>
                         </div>
@@ -1125,7 +1180,7 @@
             ipaymuData: @json($ipaymu),
             mandiriData: @json($mandiri),
             mapboxData: @json($mapbox),
-            autokirimData: @json($autokirim),
+            digiflazzData: @json($digiflazz),
 
             // --- FUNGSI AJAX TOGGLE APP DEBUG (BARU) ---
             async toggleDebug() {

@@ -31,6 +31,7 @@ class ApiSettingsController extends Controller
         $ipaymuMode         = Api::getValue('IPAYMU_MODE', 'global', 'sandbox');
         $mandiriMode        = Api::getValue('MANDIRI_MODE', 'global', 'sandbox');
         $autokirimMode      = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
+        $digiflazzMode      = Api::getValue('DIGIFLAZZ_MODE', 'global', 'development');
 
         // KUNCI ANTI CRASH: Paksa ke sandbox kalau databasenya nyangkut di nilai lain
         if (!in_array($mandiriMode, ['sandbox', 'production'])) {
@@ -46,6 +47,18 @@ class ApiSettingsController extends Controller
             'production' => [
                 'token'    => Api::getValue('KIRIMINAJA_TOKEN', 'production'),
                 'base_url' => Api::getValue('KIRIMINAJA_BASE_URL', 'production'),
+            ]
+        ];
+
+        $digiflazz = [
+            'mode' => $digiflazzMode,
+            'development' => [
+                'username' => Api::getValue('DIGIFLAZZ_USERNAME', 'development'),
+                'api_key'  => Api::getValue('DIGIFLAZZ_API_KEY', 'development'),
+            ],
+            'production' => [
+                'username' => Api::getValue('DIGIFLAZZ_USERNAME', 'production'),
+                'api_key'  => Api::getValue('DIGIFLAZZ_API_KEY', 'production'),
             ]
         ];
 
@@ -282,7 +295,8 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        return view('admin.settings.api_settings', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu', 'mandiri', 'mapbox', 'autokirim'));
+        return view('admin.settings.api_settings', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu', 'mandiri', 'mapbox', 'autokirim', 'digiflazz'));
+
 
     }
 
@@ -497,6 +511,14 @@ class ApiSettingsController extends Controller
 
                 Api::setValue('AUTOKIRIM_TOKEN', $request->autokirim_token, 'autokirim', $env);
                 Api::setValue('AUTOKIRIM_BASE_URL', $baseUrl, 'autokirim', $env);
+
+
+            } elseif ($type === 'digiflazz') {
+                $env = $request->digiflazz_mode; // 'development' atau 'production'
+                Api::setValue('DIGIFLAZZ_MODE', $env, 'digiflazz', 'global');
+
+                Api::setValue('DIGIFLAZZ_USERNAME', $request->digiflazz_username, 'digiflazz', $env);
+                Api::setValue('DIGIFLAZZ_API_KEY', $request->digiflazz_api_key, 'digiflazz', $env);
             }
 
             Log::info("Konfigurasi API {$type} berhasil disimpan.");
@@ -528,6 +550,7 @@ class ApiSettingsController extends Controller
                 $targetIpaymu       = 'sandbox';
                 $targetMandiri      = 'sandbox';
                 $targetAutokirim    = 'sandbox';
+                $targetDigiflazz    = 'development';
                 $label              = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
                 $targetKA           = 'production';
@@ -543,6 +566,7 @@ class ApiSettingsController extends Controller
                 $targetIpaymu       = 'production';
                 $targetMandiri      = 'production';
                 $targetAutokirim    = 'production';
+                $targetDigiflazz    = 'production';
                 $label              = 'PRODUCTION (LIVE)';
             }
 
@@ -559,6 +583,7 @@ class ApiSettingsController extends Controller
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
             Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
             Api::setValue('AUTOKIRIM_MODE', $targetAutokirim, 'autokirim', 'global');
+            Api::setValue('DIGIFLAZZ_MODE', $targetDigiflazz, 'digiflazz', 'global');
 
             // Log proses toggle
             Log::info("Sistem API Global Mode diubah secara manual ke: {$label}");
@@ -592,6 +617,7 @@ class ApiSettingsController extends Controller
                 $targetIpaymu       = 'production';
                 $targetMandiri      = 'production';
                 $targetAutokirim    = 'production';
+                $targetDigiflazz    = 'production';
                 $label              = 'PRODUCTION (LIVE)';
             } else {
                 $targetKA           = 'staging';
@@ -607,6 +633,7 @@ class ApiSettingsController extends Controller
                 $targetIpaymu       = 'sandbox';
                 $targetMandiri      = 'sandbox';
                 $targetAutokirim    = 'sandbox';
+                $targetDigiflazz    = 'development';
                 $label              = 'SANDBOX / MAINTENANCE';
             }
 
@@ -623,6 +650,7 @@ class ApiSettingsController extends Controller
             Api::setValue('LALAMOVE_MODE', $targetLalamove, 'lalamove', 'global');
             Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
             Api::setValue('AUTOKIRIM_MODE', $targetAutokirim, 'autokirim', 'global');
+            Api::setValue('DIGIFLAZZ_MODE', $targetDigiflazz, 'digiflazz', 'global');
 
             // Log proses toggle via AJAX
             Log::info("Sistem API Mode di-toggle via API ke: {$label}");
