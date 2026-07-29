@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str; // 🔥 Pastikan Str di-import
+use App\Models\Api;
 use Exception;
 
 // --- MODEL ---
@@ -247,7 +248,8 @@ class PpobCheckoutController extends Controller
             // 1. SALDO
             if ($paymentMethodRaw === 'SALDO') {
                 $user->decrement('saldo', $totalPrice);
-                $digiflazz = new DigiflazzService();
+                // $digiflazz = new DigiflazzService();
+                $digiflazz = $this->getDigiflazzService();
 
                 foreach ($createdTransactions as $trxItem) {
                     $response = $trxItem['is_pasca']
@@ -562,5 +564,23 @@ class PpobCheckoutController extends Controller
             \Illuminate\Support\Facades\Log::error("Tripay Connection Exception: " . $e->getMessage());
             return ['success' => false, 'message' => 'Koneksi ke server Tripay bermasalah.'];
         }
+    }
+
+    /**
+     * Helper untuk mendapatkan instance Digiflazz dengan Kredensial Dinamis
+     */
+    private function getDigiflazzService()
+    {
+        $mode = Api::getValue('DIGIFLAZZ_MODE', 'global', 'development');
+        $username = Api::getValue('DIGIFLAZZ_USERNAME', $mode);
+        $apiKey   = Api::getValue('DIGIFLAZZ_API_KEY', $mode);
+        $isProduction = ($mode === 'production');
+
+        // $digiflazz = new DigiflazzService();
+
+        $digiflazz = $this->getDigiflazzService();
+        $digiflazz->setCredentials($username, $apiKey, $isProduction);
+
+        return $digiflazz;
     }
 }
