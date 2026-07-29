@@ -370,22 +370,35 @@ class KontakController extends Controller
         }
     }
 
+    /**
+     * Cari data kecamatan untuk auto-complete (AJAX)
+     */
     public function searchDistrict(Request $request)
     {
-        $keyword = $request->query('q');
-        if (!$keyword || strlen($keyword) < 3) {
+        $q = $request->query('q');
+
+        // Jika input kosong, kembalikan array kosong
+        if (empty($q)) {
             return response()->json([]);
         }
 
-        // Asumsi tabel Autokirim Anda bernama data_auto_kirims
-        $data = DB::table('data_auto_kirims')
-            ->where('district_name', 'like', "%{$keyword}%")
-            ->orWhere('regency_name', 'like', "%{$keyword}%")
+        // Cari berdasarkan nama kecamatan atau nama kabupaten/kota
+        $districts = DB::table('auto_kirims')
             ->select('district_id', 'district_name', 'regency_name', 'province_name', 'zip')
-            ->limit(50)
+            ->where('district_name', 'LIKE', '%' . $q . '%')
+            ->orWhere('regency_name', 'LIKE', '%' . $q . '%')
+            ->limit(20) // Batasi hasil pencarian agar tidak membebani server
             ->get();
 
-        return response()->json($data);
+        // (Opsional) Format zip code yang NULL agar tidak tampil tulisan "null" di frontend
+        $districts->transform(function ($item) {
+            if (empty($item->zip)) {
+                $item->zip = '-';
+            }
+            return $item;
+        });
+
+        return response()->json($districts);
     }
 
 }
