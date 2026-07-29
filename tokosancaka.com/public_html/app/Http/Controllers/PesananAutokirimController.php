@@ -1514,7 +1514,7 @@ class PesananAutokirimController extends Controller
         }
     }
 
-    public function generatePickupPointAjax(Request $request)
+   public function generatePickupPointAjax(Request $request)
     {
         $request->validate([
             'pengirim_nama' => 'required|string',
@@ -1593,16 +1593,21 @@ class PesananAutokirimController extends Controller
         if (!$pickupPointCode) {
             try {
                 \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] (API: {$config->mode} | APP: {$appMode}) REQUEST Insert Baru:", $payloadData);
+
                 $pickupResponse = \Illuminate\Support\Facades\Http::timeout(15)->withToken($config->token)
                     ->post("{$config->base_url}/api/pickup-point/insert", $payloadData);
 
                 $pickupResult = $pickupResponse->json();
+
+                // [TAMBAHAN] FULL JSON RESPONSE UNTUK CS AUTOKIRIM
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] (API: {$config->mode} | APP: {$appMode}) FULL RESPONSE:", $pickupResult ?? []);
+
                 if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
                     throw new \Exception($pickupResult['rd'] ?? 'Unknown Error API');
                 }
 
                 $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
-                \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] (API: {$config->mode} | APP: {$appMode}) SUKSES Dibuat: {$pickupPointCode}");
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] (API: {$config->mode} | APP: {$appMode}) SUKSES Diekstrak Kode: {$pickupPointCode}");
 
                 if ($userSama) {
                     \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update([
@@ -1706,16 +1711,21 @@ class PesananAutokirimController extends Controller
 
             if (!$pickupPointCode) {
                 \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] (API: {$config->mode} | APP: {$appMode}) REQUEST Insert Baru:", $payloadData);
+
                 $pickupResponse = \Illuminate\Support\Facades\Http::timeout(15)->withToken($config->token)
                     ->post("{$config->base_url}/api/pickup-point/insert", $payloadData);
 
                 $pickupResult = $pickupResponse->json();
+
+                // [TAMBAHAN] FULL JSON RESPONSE UNTUK CS AUTOKIRIM (Saat Execute)
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] (API: {$config->mode} | APP: {$appMode}) FULL RESPONSE:", $pickupResult ?? []);
+
                 if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
                     throw new \Exception('Gagal mendaftarkan alamat jemput ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
                 }
 
                 $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
-                \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] (API: {$config->mode} | APP: {$appMode}) SUKSES Dibuat: {$pickupPointCode}");
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] (API: {$config->mode} | APP: {$appMode}) SUKSES Diekstrak Kode: {$pickupPointCode}");
 
                 if ($userSama) {
                     \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update([
@@ -1784,6 +1794,9 @@ class PesananAutokirimController extends Controller
             ->post("{$config->base_url}/api/order", $orderPayload);
 
         $orderResult = $orderResponse->json();
+
+        // [TAMBAHAN] FULL JSON RESPONSE UNTUK CS AUTOKIRIM (Saat Order)
+        \Illuminate\Support\Facades\Log::info("LOG LOG: [API CREATE ORDER] (API: {$config->mode} | APP: {$appMode}) FULL RESPONSE:", $orderResult ?? []);
 
         if (!$orderResponse->successful() || !isset($orderResult['rc']) || $orderResult['rc'] !== '00') {
             $errorMsg = $orderResult['rd'] ?? 'Unknown Error';
