@@ -463,11 +463,12 @@
 </style>
 
 <script>
-// Fungsi Basic
+// ==========================================
+// 1. FUNGSI BASIC & URL
+// ==========================================
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-// Fungsi Update URL Filter Dropdown
 function updateUrlParameter(key, value) {
     let url = new URL(window.location.href);
     if (value) {
@@ -479,148 +480,26 @@ function updateUrlParameter(key, value) {
     window.location.href = url.toString();
 }
 
-function openAddModal() {
-    const form = document.getElementById('kontakForm');
-    form.reset();
-    form.action = "{{ route('admin.kontak.store') }}";
-    document.getElementById('formMethod').value = 'POST';
-    document.getElementById('modalTitle').innerText = 'Tambah Kontak & Sinkron API';
-    openModal('kontakModal');
-}
-
-async function openEditModal(id) {
-    const form = document.getElementById('kontakForm');
-    form.reset();
-    try {
-        const response = await fetch(`/admin/kontak/${id}`);
-        if (!response.ok) throw new Error('Gagal ambil data server');
-        const kontak = await response.json();
-
-        document.getElementById('nama').value = kontak.nama;
-        document.getElementById('no_hp').value = kontak.no_hp;
-        document.getElementById('alamat').value = kontak.alamat;
-        document.getElementById('tipe').value = kontak.tipe;
-
-        // Load data tambahan API
-        document.getElementById('email').value = kontak.email || '';
-        document.getElementById('district_id').value = kontak.district_id || '';
-
-        form.action = `/admin/kontak/${id}`;
-        document.getElementById('formMethod').value = 'PUT';
-        document.getElementById('modalTitle').innerText = 'Edit Data & Sinkron API';
-        openModal('kontakModal');
-    } catch (error) {
-        console.error(error);
-        alert('Gagal memuat data kontak.');
-    }
-}
-
 // ==========================================
-// SCRIPT RENDER MODAL HISTORY (AJAX)
+// 2. MANAJEMEN MODAL TAMBAH & EDIT (LOKAL)
 // ==========================================
-async function openHistoryModal(id, page = 1) {
-    try {
-        openModal('historyModal');
-        const tbody = document.getElementById('historyTbody');
-        const pagination = document.getElementById('historyPagination');
-
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10"><div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-700"></div><p class="mt-2 text-gray-500 text-sm font-medium">Memuat riwayat...</p></td></tr>';
-        pagination.innerHTML = '';
-
-        // Panggil endpoint history
-        const baseUrl = "{{ url('admin/kontak') }}";
-        const response = await fetch(`${baseUrl}/${id}/history?page=${page}`);
-
-        if (!response.ok) throw new Error('Error network response');
-        const data = await response.json();
-
-        const formatRupiah = (number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0}).format(number);
-
-        // Render Header Bar Modal
-        document.getElementById('h_nama').innerText = data.kontak.nama || '-';
-        document.getElementById('h_nohp').innerText = data.kontak.no_hp || '-';
-        document.getElementById('h_paket').innerText = data.total_paket || '0';
-        document.getElementById('h_omzet').innerText = formatRupiah(data.total_omzet || 0);
-
-        // Render Tabel Detail
-        let htmlBody = '';
-        if(data.history.data.length === 0) {
-            htmlBody = '<tr><td colspan="6" class="text-center py-12 text-gray-400 font-medium italic">Pelanggan ini belum memiliki riwayat pengiriman.</td></tr>';
-        } else {
-            data.history.data.forEach((item, index) => {
-                let no = data.history.from + index;
-                let resiAktual = item.resi || item.nomor_invoice;
-
-                let tglBuat = new Date(item.created_at).toLocaleString('id-ID', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
-                let tglKirim = item.tanggal_pesanan ? new Date(item.tanggal_pesanan).toLocaleString('id-ID', {day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
-
-                let statusRaw = item.status_pesanan || 'Baru';
-                let statusBadge = 'bg-blue-100 text-blue-700';
-                if(['Batal', 'Kadaluarsa', 'Gagal Bayar', 'Dibatalkan'].includes(statusRaw)) statusBadge = 'bg-red-100 text-red-700';
-                else if(['Selesai', 'Terkirim', 'paid'].includes(statusRaw)) statusBadge = 'bg-green-100 text-green-700';
-                else if(['Sedang Dikirim', 'Diproses'].includes(statusRaw)) statusBadge = 'bg-red-100 text-red-700';
-
-                let iconEkspedisi = `<span class="inline-flex items-center justify-center p-1 bg-red-50 text-red-600 rounded border border-red-100 text-[10px] font-bold mr-1">EX</span>`;
-
-                htmlBody += `
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-5 py-4 text-sm font-bold text-gray-700">${no}</td>
-                        <td class="px-5 py-4">
-                            <div class="font-extrabold text-gray-900 text-sm tracking-wide">${resiAktual}</div>
-                            <div class="text-[11px] text-gray-500 mt-0.5">Dibuat: ${tglBuat}</div>
-                            <span class="inline-block mt-2 px-2 py-0.5 text-[10px] font-extrabold rounded bg-red-100 text-red-700 shadow-sm">${statusRaw}</span>
-                        </td>
-                        <td class="px-5 py-4 text-sm text-gray-700 font-medium">${tglKirim}</td>
-                        <td class="px-5 py-4">
-                            <div class="flex items-center text-xs font-extrabold text-gray-800 uppercase tracking-wide">
-                                ${iconEkspedisi} ${item.expedition || '-'}
-                            </div>
-                            <div class="text-sm font-extrabold text-green-600 mt-1">${formatRupiah(item.shipping_cost || 0)}</div>
-                        </td>
-                        <td class="px-5 py-4 text-sm text-gray-700 font-medium capitalize">${item.item_description || 'Barang Umum'}</td>
-                        <td class="px-5 py-4 text-sm text-gray-800 font-bold">${formatRupiah(item.total_harga_barang || item.item_price || 0)}</td>
-                    </tr>
-                `;
-            });
-        }
-        tbody.innerHTML = htmlBody;
-
-        // Render Paginasi
-        if(data.history.total > 0) {
-            let pageHtml = `<div class="text-xs font-semibold text-gray-500">Tampil ${data.history.from} - ${data.history.to} dari ${data.history.total} data</div>`;
-            pageHtml += `<div class="flex gap-1.5">`;
-
-            if(data.history.prev_page_url) {
-                pageHtml += `<button onclick="openHistoryModal(${id}, ${data.history.current_page - 1})" class="p-1.5 px-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 font-bold text-sm transition-colors">&lt;</button>`;
-            }
-
-            pageHtml += `<span class="p-1.5 px-3.5 bg-red-700 text-white rounded-lg font-bold text-sm shadow-sm">${data.history.current_page}</span>`;
-
-            if(data.history.next_page_url) {
-                pageHtml += `<button onclick="openHistoryModal(${id}, ${data.history.current_page + 1})" class="p-1.5 px-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 font-bold text-sm transition-colors">&gt;</button>`;
-            }
-            pageHtml += `</div>`;
-            pagination.innerHTML = pageHtml;
-        }
-
-    } catch (error) {
-        console.error('Gagal meload history:', error);
-        document.getElementById('historyTbody').innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-500 font-bold text-sm"><svg class="w-8 h-8 mx-auto mb-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Gagal memuat data. Periksa kembali route dan controller Anda.</td></tr>`;
-    }
-
-    let currentEditId = null; // Variabel penyimpan ID untuk dihapus
+let currentEditId = null;
 
 function openAddModal() {
     const form = document.getElementById('kontakForm');
     form.reset();
     form.action = "{{ route('admin.kontak.store') }}";
     document.getElementById('formMethod').value = 'POST';
-    document.getElementById('modalTitle').innerText = 'Tambah Kontak & Sinkron API';
 
-    // Sembunyikan tombol hapus karena ini mode Tambah Baru
+    // Teks diubah sesuai permintaan Anda (Lokal Saja)
+    document.getElementById('modalTitle').innerText = 'Tambah Kontak Lokal';
     document.getElementById('deleteBtnContainer').classList.add('hidden');
     currentEditId = null;
 
+    // Reset Form AJAX Pencarian
+    document.getElementById('search_district').value = '';
+    document.getElementById('district_id').value = '';
+
     openModal('kontakModal');
 }
 
@@ -639,13 +518,19 @@ async function openEditModal(id) {
         document.getElementById('email').value = kontak.email || '';
         document.getElementById('district_id').value = kontak.district_id || '';
 
+        // Tampilkan ID agar user tahu form ini sudah berisi ID
+        if(kontak.district_id) {
+            document.getElementById('search_district').value = `(ID: ${kontak.district_id}) Ketik ulang untuk ganti...`;
+        } else {
+            document.getElementById('search_district').value = '';
+        }
+
         form.action = `/admin/kontak/${id}`;
         document.getElementById('formMethod').value = 'PUT';
-        document.getElementById('modalTitle').innerText = 'Edit Data & Sinkron API';
+        document.getElementById('modalTitle').innerText = 'Edit Kontak Lokal';
 
-        // Tampilkan tombol hapus karena ini mode Edit
         document.getElementById('deleteBtnContainer').classList.remove('hidden');
-        currentEditId = id; // Simpan ID untuk fungsi hapus
+        currentEditId = id;
 
         openModal('kontakModal');
     } catch (error) {
@@ -654,12 +539,10 @@ async function openEditModal(id) {
     }
 }
 
-// Fungsi eksekusi hapus langsung dari dalam Modal
 function deleteFromModal() {
     if(!currentEditId) return;
 
-    if(confirm('PERINGATAN!\nMenghapus kontak ini juga akan menghapus data Kode Pickup di server logistik pusat. Yakin ingin melanjutkan?')) {
-        // Buat form bayangan (virtual) untuk menembak DELETE request ke Laravel
+    if(confirm('Yakin ingin menghapus kontak ini dari database lokal?')) {
         let form = document.createElement('form');
         form.method = 'POST';
         form.action = `/admin/kontak/${currentEditId}`;
@@ -677,10 +560,87 @@ function deleteFromModal() {
         form.appendChild(method);
 
         document.body.appendChild(form);
-        form.submit(); // Kirim permintaan hapus
+        form.submit();
     }
 }
 
+// ==========================================
+// 3. SCRIPT RENDER MODAL HISTORY (AJAX)
+// ==========================================
+async function openHistoryModal(id, page = 1) {
+    try {
+        openModal('historyModal');
+        const tbody = document.getElementById('historyTbody');
+        const pagination = document.getElementById('historyPagination');
+
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-10"><div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-red-700"></div><p class="mt-2 text-gray-500 text-sm font-medium">Memuat riwayat...</p></td></tr>';
+        pagination.innerHTML = '';
+
+        const baseUrl = "{{ url('admin/kontak') }}";
+        const response = await fetch(`${baseUrl}/${id}/history?page=${page}`);
+
+        if (!response.ok) throw new Error('Error network response');
+        const data = await response.json();
+
+        const formatRupiah = (number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0}).format(number);
+
+        document.getElementById('h_nama').innerText = data.kontak.nama || '-';
+        document.getElementById('h_nohp').innerText = data.kontak.no_hp || '-';
+        document.getElementById('h_paket').innerText = data.total_paket || '0';
+        document.getElementById('h_omzet').innerText = formatRupiah(data.total_omzet || 0);
+
+        let htmlBody = '';
+        if(data.history.data.length === 0) {
+            htmlBody = '<tr><td colspan="6" class="text-center py-12 text-gray-400 font-medium italic">Pelanggan ini belum memiliki riwayat pengiriman.</td></tr>';
+        } else {
+            data.history.data.forEach((item, index) => {
+                let no = data.history.from + index;
+                let resiAktual = item.resi || item.nomor_invoice;
+                let tglBuat = new Date(item.created_at).toLocaleString('id-ID', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+                let tglKirim = item.tanggal_pesanan ? new Date(item.tanggal_pesanan).toLocaleString('id-ID', {day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
+
+                let statusRaw = item.status_pesanan || 'Baru';
+                htmlBody += `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-5 py-4 text-sm font-bold text-gray-700">${no}</td>
+                        <td class="px-5 py-4">
+                            <div class="font-extrabold text-gray-900 text-sm tracking-wide">${resiAktual}</div>
+                            <div class="text-[11px] text-gray-500 mt-0.5">Dibuat: ${tglBuat}</div>
+                            <span class="inline-block mt-2 px-2 py-0.5 text-[10px] font-extrabold rounded bg-red-100 text-red-700">${statusRaw}</span>
+                        </td>
+                        <td class="px-5 py-4 text-sm text-gray-700 font-medium">${tglKirim}</td>
+                        <td class="px-5 py-4">
+                            <div class="flex items-center text-xs font-extrabold text-gray-800 uppercase tracking-wide">
+                                EX ${item.expedition || '-'}
+                            </div>
+                            <div class="text-sm font-extrabold text-green-600 mt-1">${formatRupiah(item.shipping_cost || 0)}</div>
+                        </td>
+                        <td class="px-5 py-4 text-sm text-gray-700 font-medium capitalize">${item.item_description || 'Barang Umum'}</td>
+                        <td class="px-5 py-4 text-sm text-gray-800 font-bold">${formatRupiah(item.total_harga_barang || item.item_price || 0)}</td>
+                    </tr>
+                `;
+            });
+        }
+        tbody.innerHTML = htmlBody;
+
+        if(data.history.total > 0) {
+            let pageHtml = `<div class="text-xs font-semibold text-gray-500">Tampil ${data.history.from} - ${data.history.to} dari ${data.history.total} data</div><div class="flex gap-1.5">`;
+            if(data.history.prev_page_url) pageHtml += `<button onclick="openHistoryModal(${id}, ${data.history.current_page - 1})" class="p-1.5 px-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 font-bold text-sm transition-colors">&lt;</button>`;
+            pageHtml += `<span class="p-1.5 px-3.5 bg-red-700 text-white rounded-lg font-bold text-sm shadow-sm">${data.history.current_page}</span>`;
+            if(data.history.next_page_url) pageHtml += `<button onclick="openHistoryModal(${id}, ${data.history.current_page + 1})" class="p-1.5 px-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 font-bold text-sm transition-colors">&gt;</button>`;
+            pageHtml += `</div>`;
+            pagination.innerHTML = pageHtml;
+        }
+
+    } catch (error) {
+        console.error('Gagal meload history:', error);
+        document.getElementById('historyTbody').innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-500 font-bold text-sm">Gagal memuat data.</td></tr>`;
+    }
+}
+
+// ==========================================
+// 4. SCRIPT AJAX PENCARIAN KECAMATAN
+// ==========================================
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('search_district');
     const hiddenInput = document.getElementById('district_id');
@@ -688,88 +648,62 @@ document.addEventListener('DOMContentLoaded', function() {
     const loading = document.getElementById('district_loading');
     let timeoutId;
 
-    searchInput.addEventListener('input', function() {
-        clearTimeout(timeoutId);
-        const query = this.value;
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(timeoutId);
+            const query = this.value;
 
-        if (query.length < 3) {
-            dropdown.classList.add('hidden');
-            dropdown.innerHTML = '';
-            return;
-        }
+            if (query.length < 3) {
+                dropdown.classList.add('hidden');
+                dropdown.innerHTML = '';
+                return;
+            }
 
-        loading.classList.remove('hidden');
+            loading.classList.remove('hidden');
 
-        // Delay 500ms agar tidak membebani server saat mengetik cepat
-        timeoutId = setTimeout(() => {
-            fetch(`/admin/kontak/search-district?q=${encodeURIComponent(query)}`)
-                .then(response => response.json())
-                .then(data => {
-                    dropdown.innerHTML = '';
-                    if (data.length > 0) {
-                        data.forEach(item => {
-                            const div = document.createElement('div');
-                            div.className = 'px-4 py-2 hover:bg-red-50 cursor-pointer border-b border-gray-100 text-sm transition-colors';
-                            div.innerHTML = `
-                                <div class="font-bold text-gray-800 uppercase">${item.district_name}, ${item.regency_name}</div>
-                                <div class="text-[11px] text-gray-500">${item.province_name} - Kodepos: ${item.zip}</div>
-                            `;
+            timeoutId = setTimeout(() => {
+                fetch(`/admin/kontak/search-district?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        dropdown.innerHTML = '';
+                        if (data.length > 0) {
+                            data.forEach(item => {
+                                const div = document.createElement('div');
+                                div.className = 'px-4 py-2 hover:bg-red-50 cursor-pointer border-b border-gray-100 text-sm transition-colors';
+                                div.innerHTML = `
+                                    <div class="font-bold text-gray-800 uppercase">${item.district_name}, ${item.regency_name}</div>
+                                    <div class="text-[11px] text-gray-500">${item.province_name} - Kodepos: ${item.zip}</div>
+                                `;
 
-                            // Aksi saat wilayah dipilih
-                            div.addEventListener('click', function() {
-                                searchInput.value = `${item.district_name}, ${item.regency_name}`;
-                                hiddenInput.value = item.district_id; // Set value untuk database lokal
-                                dropdown.classList.add('hidden');
+                                div.addEventListener('click', function() {
+                                    searchInput.value = `${item.district_name}, ${item.regency_name}`;
+                                    hiddenInput.value = item.district_id;
+                                    dropdown.classList.add('hidden');
+                                });
+
+                                dropdown.appendChild(div);
                             });
-
-                            dropdown.appendChild(div);
-                        });
-                        dropdown.classList.remove('hidden');
-                    } else {
-                        dropdown.innerHTML = '<div class="px-4 py-3 text-sm text-red-500 italic text-center">Wilayah tidak ditemukan.</div>';
-                        dropdown.classList.remove('hidden');
-                    }
-                })
-                .catch(error => console.error('Error fetching districts:', error))
-                .finally(() => {
-                    loading.classList.add('hidden');
-                });
-        }, 500);
-    });
+                            dropdown.classList.remove('hidden');
+                        } else {
+                            dropdown.innerHTML = '<div class="px-4 py-3 text-sm text-red-500 italic text-center">Wilayah tidak ditemukan.</div>';
+                            dropdown.classList.remove('hidden');
+                        }
+                    })
+                    .catch(error => console.error('Error fetching districts:', error))
+                    .finally(() => {
+                        loading.classList.add('hidden');
+                    });
+            }, 500);
+        });
+    }
 
     // Sembunyikan dropdown kalau user klik di luar area
     document.addEventListener('click', function(e) {
-        if (!document.getElementById('districtContainer').contains(e.target)) {
+        let container = document.getElementById('districtContainer');
+        if (container && !container.contains(e.target) && dropdown) {
             dropdown.classList.add('hidden');
         }
     });
 });
-
-// --- UPDATE FUNGSI MODAL ANDA ---
-
-// 1. Modifikasi sedikit openAddModal Anda agar mereset form AJAX
-const oldOpenAddModal = openAddModal;
-openAddModal = function() {
-    oldOpenAddModal();
-    document.getElementById('search_district').value = '';
-    document.getElementById('district_id').value = '';
-}
-
-// 2. Modifikasi openEditModal Anda agar memunculkan info ID saat edit
-const oldOpenEditModal = openEditModal;
-openEditModal = async function(id) {
-    await oldOpenEditModal(id);
-
-    // Set field pencarian dengan ID saat ini agar user tahu
-    let currentId = document.getElementById('district_id').value;
-    if(currentId) {
-        document.getElementById('search_district').value = `(ID: ${currentId}) Ketik untuk ganti...`;
-    } else {
-        document.getElementById('search_district').value = '';
-    }
-}
-
-
-}
 </script>
 @endsection
