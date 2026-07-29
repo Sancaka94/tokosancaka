@@ -316,7 +316,8 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">ID Kecamatan (API) <span class="text-red-500">*</span></label>
-                        <input type="number" id="district_id" name="district_id" class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-red-500 focus:border-red-500" required placeholder="Cth: 3521110">
+                        {{-- FIX: Hapus name="district_id" di sini dan ubah ID-nya agar tidak bentrok --}}
+                        <input type="number" id="district_id_display" class="w-full border border-gray-300 bg-gray-100 text-gray-500 rounded-xl p-2.5 text-sm font-bold" readonly placeholder="Terisi Otomatis">
                     </div>
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-1">Email (Opsional)</label>
@@ -325,12 +326,12 @@
                 </div>
 
                 <div class="relative" id="districtContainer">
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Kecamatan / Kabupaten (API) <span class="text-red-500">*</span></label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Cari Kecamatan / Kabupaten (API) <span class="text-red-500">*</span></label>
 
                     <!-- Input Teks untuk Pencarian -->
                     <input type="text" id="search_district" class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-red-500 focus:border-red-500 uppercase" placeholder="Ketik minimal 3 huruf..." autocomplete="off">
 
-                    <!-- Input Hidden yang akan dikirim ke fungsi store/update lokal -->
+                    <!-- FIX: Ini adalah input HIDDEN yang BENAR yang dikirim ke controller -->
                     <input type="hidden" id="district_id" name="district_id" required>
 
                     <!-- Icon Loading -->
@@ -510,19 +511,18 @@ function openAddModal() {
     form.action = "{{ route('admin.kontak.store') }}";
     document.getElementById('formMethod').value = 'POST';
 
-    // Teks diubah sesuai permintaan Anda (Lokal Saja)
     document.getElementById('modalTitle').innerText = 'Tambah Kontak Lokal';
     document.getElementById('deleteBtnContainer').classList.add('hidden');
+    document.getElementById('btnCekApi').classList.add('hidden');
     currentEditId = null;
 
     // Reset Form AJAX Pencarian
     document.getElementById('search_district').value = '';
     document.getElementById('district_id').value = '';
+    document.getElementById('district_id_display').value = '';
 
     openModal('kontakModal');
 }
-
-// ... (script sebelumnya) ...
 
 async function openEditModal(id) {
     const form = document.getElementById('kontakForm');
@@ -537,7 +537,10 @@ async function openEditModal(id) {
         document.getElementById('alamat').value = kontak.alamat;
         document.getElementById('tipe').value = kontak.tipe;
         document.getElementById('email').value = kontak.email || '';
+
+        // FIX: Isi kedua input district_id
         document.getElementById('district_id').value = kontak.district_id || '';
+        document.getElementById('district_id_display').value = kontak.district_id || '';
 
         if(kontak.district_id) {
             document.getElementById('search_district').value = `(ID: ${kontak.district_id}) Ketik ulang untuk ganti...`;
@@ -568,7 +571,7 @@ async function openEditModal(id) {
     }
 }
 
-// FUNGSI BARU UNTUK CEK API LANGSUNG DARI MODAL
+// FUNGSI UNTUK CEK API LANGSUNG DARI MODAL
 async function cekPickupApi() {
     if (!currentEditId) return;
 
@@ -703,6 +706,7 @@ async function openHistoryModal(id, page = 1) {
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('search_district');
     const hiddenInput = document.getElementById('district_id');
+    const displayInput = document.getElementById('district_id_display');
     const dropdown = document.getElementById('district_dropdown');
     const loading = document.getElementById('district_loading');
     let timeoutId;
@@ -741,7 +745,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
                                 div.addEventListener('click', function() {
                                     searchInput.value = `${item.district_name}, ${item.regency_name}`;
+
+                                    // FIX: Pastikan KEDUA input terisi nilai saat item diklik
                                     hiddenInput.value = item.district_id;
+                                    displayInput.value = item.district_id;
+
                                     dropdown.classList.add('hidden');
                                 });
 
@@ -774,4 +782,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+{{-- FIX: BUKA MODAL KEMBALI JIKA ADA ERROR VALIDASI --}}
+@if($errors->any() || session('error'))
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        openModal('kontakModal');
+    });
+</script>
+@endif
 @endsection
