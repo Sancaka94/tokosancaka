@@ -288,9 +288,19 @@
                 </div>
             </div>
 
-            <div class="flex justify-end gap-3 mt-6 pt-4 border-t">
-                <button type="button" onclick="closeModal('kontakModal')" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">Batal</button>
-                <button type="submit" class="bg-red-700 hover:bg-red-800 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors shadow-md">Simpan & Sinkron API</button>
+            <div class="flex justify-between items-center mt-6 pt-4 border-t w-full">
+                <!-- Tombol Hapus: Hanya Muncul Saat Mode Edit -->
+                <div id="deleteBtnContainer" class="hidden">
+                    <button type="button" onclick="deleteFromModal()" class="text-red-600 hover:bg-red-50 font-bold text-sm px-4 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        Hapus Kontak
+                    </button>
+                </div>
+
+                <div class="flex justify-end gap-3 w-full">
+                    <button type="button" onclick="closeModal('kontakModal')" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">Batal</button>
+                    <button type="submit" class="bg-red-700 hover:bg-red-800 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors shadow-md">Simpan & Sinkron API</button>
+                </div>
             </div>
         </form>
     </div>
@@ -543,6 +553,80 @@ async function openHistoryModal(id, page = 1) {
         console.error('Gagal meload history:', error);
         document.getElementById('historyTbody').innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-500 font-bold text-sm"><svg class="w-8 h-8 mx-auto mb-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Gagal memuat data. Periksa kembali route dan controller Anda.</td></tr>`;
     }
+
+    let currentEditId = null; // Variabel penyimpan ID untuk dihapus
+
+function openAddModal() {
+    const form = document.getElementById('kontakForm');
+    form.reset();
+    form.action = "{{ route('admin.kontak.store') }}";
+    document.getElementById('formMethod').value = 'POST';
+    document.getElementById('modalTitle').innerText = 'Tambah Kontak & Sinkron API';
+
+    // Sembunyikan tombol hapus karena ini mode Tambah Baru
+    document.getElementById('deleteBtnContainer').classList.add('hidden');
+    currentEditId = null;
+
+    openModal('kontakModal');
+}
+
+async function openEditModal(id) {
+    const form = document.getElementById('kontakForm');
+    form.reset();
+    try {
+        const response = await fetch(`/admin/kontak/${id}`);
+        if (!response.ok) throw new Error('Gagal ambil data server');
+        const kontak = await response.json();
+
+        document.getElementById('nama').value = kontak.nama;
+        document.getElementById('no_hp').value = kontak.no_hp;
+        document.getElementById('alamat').value = kontak.alamat;
+        document.getElementById('tipe').value = kontak.tipe;
+        document.getElementById('email').value = kontak.email || '';
+        document.getElementById('district_id').value = kontak.district_id || '';
+
+        form.action = `/admin/kontak/${id}`;
+        document.getElementById('formMethod').value = 'PUT';
+        document.getElementById('modalTitle').innerText = 'Edit Data & Sinkron API';
+
+        // Tampilkan tombol hapus karena ini mode Edit
+        document.getElementById('deleteBtnContainer').classList.remove('hidden');
+        currentEditId = id; // Simpan ID untuk fungsi hapus
+
+        openModal('kontakModal');
+    } catch (error) {
+        console.error(error);
+        alert('Gagal memuat data kontak.');
+    }
+}
+
+// Fungsi eksekusi hapus langsung dari dalam Modal
+function deleteFromModal() {
+    if(!currentEditId) return;
+
+    if(confirm('PERINGATAN!\nMenghapus kontak ini juga akan menghapus data Kode Pickup di server logistik pusat. Yakin ingin melanjutkan?')) {
+        // Buat form bayangan (virtual) untuk menembak DELETE request ke Laravel
+        let form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/kontak/${currentEditId}`;
+
+        let csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = '_token';
+        csrf.value = '{{ csrf_token() }}';
+        form.appendChild(csrf);
+
+        let method = document.createElement('input');
+        method.type = 'hidden';
+        method.name = '_method';
+        method.value = 'DELETE';
+        form.appendChild(method);
+
+        document.body.appendChild(form);
+        form.submit(); // Kirim permintaan hapus
+    }
+}
+
 }
 </script>
 @endsection
