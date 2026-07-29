@@ -359,9 +359,7 @@ public function checkBill(Request $request)
         // 4. PROSES KE API DIGIFLAZZ (Tetap Sama)
         // =======================================================================
 
-        //$username = 'mihetiDVGdeW';
-        //$apiKeyProd = '1f48c69f-8676-5d56-a868-10a46a69f9b7';
-        //$this->digiflazz->setCredentials($username, $apiKeyProd, false);
+
 
         try {
             $response = $this->digiflazz->inquiryPasca($finalSku, $customerNo, $refId);
