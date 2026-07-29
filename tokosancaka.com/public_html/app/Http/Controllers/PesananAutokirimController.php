@@ -462,7 +462,9 @@ class PesananAutokirimController extends Controller
                 ]
             ];
 
-            Log::info("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] REQUEST:", $payload);
+            $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
+
+            Log::info("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] ($appMode) REQUEST:", $payload);
 
             $response = Http::timeout(15)
                 ->withToken($token)
@@ -470,7 +472,7 @@ class PesananAutokirimController extends Controller
 
             $result = $response->json();
 
-            Log::info("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] RESPONSE:", $result ?? []);
+            Log::info("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] ($appMode) RESPONSE:", $result ?? []);
 
             if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
                 $flatOngkir = [];
@@ -522,8 +524,10 @@ class PesananAutokirimController extends Controller
 
   public function store(Request $request)
     {
+        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
+
         // 1. TAMBAHKAN LOG INI UNTUK PAYLOAD INPUT USER
-        \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE ORDER - USER INPUT PAYLOAD]", [
+        \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE ORDER - USER INPUT PAYLOAD] ($appMode)", [
             'user_id' => auth()->id() ?? 'guest',
             'ip'      => $request->ip(),
             'payload' => $request->all() // Menangkap semua data form dalam bentuk JSON
@@ -702,7 +706,7 @@ class PesananAutokirimController extends Controller
                             throw new Exception('Saldo akun Anda tidak mencukupi. Silahkan isi ulang atau pilih metode pembayaran lainnya.');
                         }
                         $user->decrement('saldo', $totalTagihan);
-                        Log::info("LOG: [POTONG SALDO SUKSES] User ID {$user->id} dipotong Rp {$totalTagihan} untuk Order ID {$localOrderId}");
+                        Log::info("LOG: [POTONG SALDO SUKSES] ($appMode) User ID {$user->id} dipotong Rp {$totalTagihan} untuk Order ID {$localOrderId}");
                     } elseif ($paymentMethod === 'dana_binding') {
                         $this->_processDanaBindingCharge($pesanan, $totalTagihan);
                     }
@@ -840,7 +844,7 @@ class PesananAutokirimController extends Controller
 
             } catch (\Exception $e) {
                 DB::rollBack();
-                Log::error("LOG: [PESANAN AUTOKIRIM - STORE ERROR] " . $e->getMessage());
+                Log::error("LOG: [PESANAN AUTOKIRIM - STORE ERROR] ($appMode) " . $e->getMessage());
                 return redirect()->back()->withInput()->with('error', $e->getMessage());
             }
         } finally {
@@ -1457,19 +1461,21 @@ class PesananAutokirimController extends Controller
     private function findPickupPoint($pickupCode)
     {
         $config = $this->getAutokirimConfig();
+        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
+
         try {
             $payload = ['pickup_point_code' => $pickupCode];
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [FIND PICKUP] ({$config->mode}) REQUEST Cari Kode: {$pickupCode}", $payload);
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [FIND PICKUP] (API: {$config->mode} | APP: {$appMode}) REQUEST Cari Kode: {$pickupCode}", $payload);
 
             $response = \Illuminate\Support\Facades\Http::timeout(10)->withToken($config->token)
                 ->post("{$config->base_url}/api/pickup-point/find", $payload);
 
             $result = $response->json();
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [FIND PICKUP] ({$config->mode}) RESPONSE untuk {$pickupCode}:", $result ?? []);
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [FIND PICKUP] (API: {$config->mode} | APP: {$appMode}) RESPONSE untuk {$pickupCode}:", $result ?? []);
 
             return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("LOG LOG: [FIND PICKUP] Error Jaringan: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("LOG LOG: [FIND PICKUP] (APP: {$appMode}) Error Jaringan: " . $e->getMessage());
             return false;
         }
     }
@@ -1480,8 +1486,9 @@ class PesananAutokirimController extends Controller
     private function updatePickupPoint($pickupCode, $data)
     {
         $config = $this->getAutokirimConfig();
+        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
+
         try {
-            // Susunan payload harus persis seperti di dokumentasi API Update
             $payload = [
                 "name"              => $data['name'],
                 "phone"             => $data['phone'],
@@ -1492,17 +1499,17 @@ class PesananAutokirimController extends Controller
                 "pickup_point_code" => $pickupCode
             ];
 
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [UPDATE PICKUP] ({$config->mode}) REQUEST Update Kode: {$pickupCode}", $payload);
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [UPDATE PICKUP] (API: {$config->mode} | APP: {$appMode}) REQUEST Update Kode: {$pickupCode}", $payload);
 
             $response = \Illuminate\Support\Facades\Http::timeout(15)->withToken($config->token)
                 ->post("{$config->base_url}/api/pickup-point/update", $payload);
 
             $result = $response->json();
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [UPDATE PICKUP] ({$config->mode}) RESPONSE Update {$pickupCode}:", $result ?? []);
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [UPDATE PICKUP] (API: {$config->mode} | APP: {$appMode}) RESPONSE Update {$pickupCode}:", $result ?? []);
 
             return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("LOG LOG: [UPDATE PICKUP] Error: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("LOG LOG: [UPDATE PICKUP] (APP: {$appMode}) Error: " . $e->getMessage());
             return false;
         }
     }
@@ -1517,6 +1524,7 @@ class PesananAutokirimController extends Controller
         ]);
 
         $config = $this->getAutokirimConfig();
+        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
         $user = auth()->user();
 
         $noHpPengirim = trim($request->pengirim_hp);
@@ -1525,7 +1533,6 @@ class PesananAutokirimController extends Controller
         $districtId = (int) $request->pengirim_district_id;
         $emailPengirim = trim($request->pengirim_email) ?: ($user->email ?? 'customer@tokosancaka.com');
 
-        // Payload dasar untuk patokan Insert / Update
         $payloadData = [
             'name'              => (string) $namaPengirim,
             'phone'             => (string) $noHpPengirim,
@@ -1537,7 +1544,6 @@ class PesananAutokirimController extends Controller
             'is_member_deposit' => false
         ];
 
-        // 1. CEK CACHE REDIS UTAMA (ANTI JEBOL)
         $dataStr = strtolower($noHpPengirim . $districtId . $alamatPengirim . $namaPengirim);
         $dataHash = md5($dataStr);
         $redisPickupKey = "pickup_point_hash_" . $dataHash;
@@ -1545,55 +1551,48 @@ class PesananAutokirimController extends Controller
         $pickupPointCode = \Illuminate\Support\Facades\Redis::get($redisPickupKey);
 
         if ($pickupPointCode) {
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [AJAX PICKUP] ({$config->mode}) SUPER CEPAT! Redis Cache: {$pickupPointCode}");
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [AJAX PICKUP] (API: {$config->mode} | APP: {$appMode}) SUPER CEPAT! Redis Cache: {$pickupPointCode}");
             return response()->json(['success' => true, 'pickup_point_code' => $pickupPointCode]);
         }
 
-        // 2. CEK DATABASE LOKAL JIKA REDIS KOSONG
         $isDataIdentikDenganUserAuth = ($user && trim($user->no_wa) === $noHpPengirim);
         $userSama = $isDataIdentikDenganUserAuth ? $user : null;
 
         $kontak = \App\Models\Kontak::where('no_hp', $noHpPengirim)->where('district_id', $districtId)->first();
         $existingPickupCode = $kontak->pickup_point_code ?? ($userSama->pickup_point_code ?? null);
 
-        // LOGIKA BARU SESUAI DOKUMENTASI (FIND & UPDATE)
         if ($existingPickupCode) {
-            // Cek dulu ke server apakah kode masih hidup
             if ($this->findPickupPoint($existingPickupCode)) {
                 $needsUpdate = false;
                 if ($kontak && (trim($kontak->alamat) !== $alamatPengirim || trim($kontak->nama) !== $namaPengirim)) $needsUpdate = true;
                 elseif ($userSama && (trim($userSama->address_detail) !== $alamatPengirim || trim($userSama->nama_lengkap) !== $namaPengirim)) $needsUpdate = true;
 
                 if ($needsUpdate) {
-                    \Illuminate\Support\Facades\Log::info("LOG LOG: [AJAX PICKUP] ({$config->mode}) Data berubah. Hit API UPDATE...");
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: [AJAX PICKUP] (API: {$config->mode} | APP: {$appMode}) Data berubah. Hit API UPDATE...");
                     $isUpdated = $this->updatePickupPoint($existingPickupCode, $payloadData);
 
                     if ($isUpdated) {
-                        $pickupPointCode = $existingPickupCode; // Gunakan kode yang sama, karena sudah di-update di server
-
-                        // Bersihkan Redis Lama
+                        $pickupPointCode = $existingPickupCode;
                         $oldDataStr = strtolower($noHpPengirim . $districtId . trim($kontak->alamat ?? '') . trim($kontak->nama ?? ''));
                         \Illuminate\Support\Facades\Redis::del("pickup_point_hash_" . md5($oldDataStr));
 
-                        // Sinkronkan Data DB Lokal
                         if ($kontak) $kontak->update(['alamat' => $alamatPengirim, 'nama' => $namaPengirim, 'email' => $emailPengirim]);
                         if ($userSama) \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update(['address_detail' => $alamatPengirim, 'nama_lengkap' => $namaPengirim]);
                     }
                 } else {
-                    $pickupPointCode = $existingPickupCode; // Data Sama persis
+                    $pickupPointCode = $existingPickupCode;
                 }
             } else {
-                \Illuminate\Support\Facades\Log::warning("LOG LOG: [AJAX PICKUP] ({$config->mode}) Kode DB {$existingPickupCode} sudah mati di server. Mereset DB...");
+                \Illuminate\Support\Facades\Log::warning("LOG LOG: [AJAX PICKUP] (API: {$config->mode} | APP: {$appMode}) Kode DB {$existingPickupCode} sudah mati di server. Mereset DB...");
                 if ($kontak) $kontak->update(['pickup_point_code' => null]);
                 if ($userSama) \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update(['pickup_point_code' => null]);
-                $pickupPointCode = null; // Terpaksa buat baru
+                $pickupPointCode = null;
             }
         }
 
-        // 3. CREATE / INSERT JIKA BELUM ADA SAMA SEKALI
         if (!$pickupPointCode) {
             try {
-                \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] ({$config->mode}) REQUEST Insert Baru:", $payloadData);
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] (API: {$config->mode} | APP: {$appMode}) REQUEST Insert Baru:", $payloadData);
                 $pickupResponse = \Illuminate\Support\Facades\Http::timeout(15)->withToken($config->token)
                     ->post("{$config->base_url}/api/pickup-point/insert", $payloadData);
 
@@ -1603,9 +1602,8 @@ class PesananAutokirimController extends Controller
                 }
 
                 $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
-                \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] ({$config->mode}) SUKSES Dibuat: {$pickupPointCode}");
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] (API: {$config->mode} | APP: {$appMode}) SUKSES Dibuat: {$pickupPointCode}");
 
-                // SIMPAN KE DATABASE LOKAL
                 if ($userSama) {
                     \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update([
                         'pickup_point_code' => $pickupPointCode, 'address_detail' => $alamatPengirim, 'nama_lengkap' => $namaPengirim
@@ -1618,12 +1616,11 @@ class PesananAutokirimController extends Controller
                     );
                 }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("LOG LOG: [CREATE PICKUP] ({$config->mode}) ERROR AJAX: " . $e->getMessage());
+                \Illuminate\Support\Facades\Log::error("LOG LOG: [CREATE PICKUP] (API: {$config->mode} | APP: {$appMode}) ERROR AJAX: " . $e->getMessage());
                 return response()->json(['success' => false, 'message' => $e->getMessage()]);
             }
         }
 
-        // 4. SIMPAN REDIS HASIL AKHIR
         \Illuminate\Support\Facades\Redis::setex($redisPickupKey, 2592000, $pickupPointCode);
         return response()->json(['success' => true, 'pickup_point_code' => $pickupPointCode]);
     }
@@ -1631,6 +1628,7 @@ class PesananAutokirimController extends Controller
     public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
     {
         $config = $this->getAutokirimConfig();
+        $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
         $user = auth()->user();
 
         $noHpPengirim = trim($pesanan->pengirim_hp);
@@ -1650,7 +1648,6 @@ class PesananAutokirimController extends Controller
             'is_member_deposit' => false
         ];
 
-        // 1. CEK CACHE REDIS UTAMA
         $dataStr = strtolower($noHpPengirim . $districtId . $alamatPengirim . $namaPengirim);
         $dataHash = md5($dataStr);
         $redisPickupKey = "pickup_point_hash_" . $dataHash;
@@ -1658,18 +1655,16 @@ class PesananAutokirimController extends Controller
         $pickupPointCode = \Illuminate\Support\Facades\Redis::get($redisPickupKey);
 
         if ($pickupPointCode) {
-            // VERIFIKASI FIND
             if ($this->findPickupPoint($pickupPointCode)) {
-                \Illuminate\Support\Facades\Log::info("LOG LOG: [EXECUTE PICKUP] ({$config->mode}) SUPER CEPAT! Redis Valid: {$pickupPointCode}");
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [EXECUTE PICKUP] (API: {$config->mode} | APP: {$appMode}) SUPER CEPAT! Redis Valid: {$pickupPointCode}");
             } else {
-                \Illuminate\Support\Facades\Log::warning("LOG LOG: [EXECUTE PICKUP] ({$config->mode}) Kode Redis {$pickupPointCode} MATI. Menghapus Cache...");
+                \Illuminate\Support\Facades\Log::warning("LOG LOG: [EXECUTE PICKUP] (API: {$config->mode} | APP: {$appMode}) Kode Redis {$pickupPointCode} MATI. Menghapus Cache...");
                 \Illuminate\Support\Facades\Redis::del($redisPickupKey);
                 $pickupPointCode = null;
             }
         }
 
         if (!$pickupPointCode) {
-            // 2. CEK DB LOKAL
             $isDataIdentikDenganUserAuth = ($user && trim($user->no_wa) === $noHpPengirim);
             $userSama = $isDataIdentikDenganUserAuth ? $user : null;
 
@@ -1677,18 +1672,16 @@ class PesananAutokirimController extends Controller
             $existingPickupCode = $kontak->pickup_point_code ?? ($userSama->pickup_point_code ?? null);
 
             if ($existingPickupCode) {
-                // VERIFIKASI & UPDATE (TANPA DELETE)
                 if ($this->findPickupPoint($existingPickupCode)) {
                     $needsUpdate = false;
                     if ($kontak && (trim($kontak->alamat) !== $alamatPengirim || trim($kontak->nama) !== $namaPengirim)) $needsUpdate = true;
                     elseif ($userSama && (trim($userSama->address_detail) !== $alamatPengirim || trim($userSama->nama_lengkap) !== $namaPengirim)) $needsUpdate = true;
 
                     if ($needsUpdate) {
-                        \Illuminate\Support\Facades\Log::info("LOG LOG: [EXECUTE PICKUP] ({$config->mode}) Data berubah. Hit API UPDATE...");
+                        \Illuminate\Support\Facades\Log::info("LOG LOG: [EXECUTE PICKUP] (API: {$config->mode} | APP: {$appMode}) Data berubah. Hit API UPDATE...");
                         if ($this->updatePickupPoint($existingPickupCode, $payloadData)) {
                             $pickupPointCode = $existingPickupCode;
 
-                            // Update DB Lokal & Hapus Cache Lama
                             if ($kontak) {
                                 $oldDataStr = strtolower($noHpPengirim . $districtId . trim($kontak->alamat) . trim($kontak->nama));
                                 \Illuminate\Support\Facades\Redis::del("pickup_point_hash_" . md5($oldDataStr));
@@ -1698,22 +1691,21 @@ class PesananAutokirimController extends Controller
                                 \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update(['address_detail' => $alamatPengirim, 'nama_lengkap' => $namaPengirim]);
                             }
                         } else {
-                            $pickupPointCode = null; // Gagal update, paksa buat baru
+                            $pickupPointCode = null;
                         }
                     } else {
                         $pickupPointCode = $existingPickupCode;
                     }
                 } else {
-                    \Illuminate\Support\Facades\Log::warning("LOG LOG: [EXECUTE PICKUP] ({$config->mode}) Kode DB {$existingPickupCode} hilang di server. Resetting...");
+                    \Illuminate\Support\Facades\Log::warning("LOG LOG: [EXECUTE PICKUP] (API: {$config->mode} | APP: {$appMode}) Kode DB {$existingPickupCode} hilang di server. Resetting...");
                     if ($kontak) $kontak->update(['pickup_point_code' => null]);
                     if ($userSama) \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update(['pickup_point_code' => null]);
                     $pickupPointCode = null;
                 }
             }
 
-            // 3. CREATE JIKA MEMANG TIDAK ADA
             if (!$pickupPointCode) {
-                \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] ({$config->mode}) REQUEST Insert Baru:", $payloadData);
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] (API: {$config->mode} | APP: {$appMode}) REQUEST Insert Baru:", $payloadData);
                 $pickupResponse = \Illuminate\Support\Facades\Http::timeout(15)->withToken($config->token)
                     ->post("{$config->base_url}/api/pickup-point/insert", $payloadData);
 
@@ -1723,7 +1715,7 @@ class PesananAutokirimController extends Controller
                 }
 
                 $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
-                \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] ({$config->mode}) SUKSES Dibuat: {$pickupPointCode}");
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] (API: {$config->mode} | APP: {$appMode}) SUKSES Dibuat: {$pickupPointCode}");
 
                 if ($userSama) {
                     \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update([
@@ -1738,13 +1730,10 @@ class PesananAutokirimController extends Controller
                 }
             }
 
-            sleep(2); // Jeda sinkronisasi server Autokirim
+            sleep(2);
             \Illuminate\Support\Facades\Redis::setex($redisPickupKey, 2592000, $pickupPointCode);
         }
 
-        // =========================================================================
-        // 4. LANJUTAN CREATE ORDER AWB
-        // =========================================================================
         $isSenderPp = $requestData ? (int) $requestData->input('is_sender_pp', 1) : 1;
         $qtyInput = $requestData ? (string) $requestData->input('qty', 1) : "1";
         $serviceCode = $requestData ? (string) $requestData->service_code_terpilih : (string) $pesanan->layanan;
@@ -1755,7 +1744,7 @@ class PesananAutokirimController extends Controller
         $beratGram = (int) $pesanan->berat_gram;
         $weightApi = $beratGram > 0 ? $beratGram : 1000;
 
-        \Illuminate\Support\Facades\Log::info("LOG LOG: [WEIGHT CALC] Aktual: {$beratGram}gr => Ditagihkan (Payload): {$weightApi}gr");
+        \Illuminate\Support\Facades\Log::info("LOG LOG: [WEIGHT CALC] (APP: {$appMode}) Aktual: {$beratGram}gr => Ditagihkan (Payload): {$weightApi}gr");
 
         $orderPayload = [
             'service_code'      => $serviceCode,
@@ -1788,7 +1777,7 @@ class PesananAutokirimController extends Controller
             'commodity' => (string) $pesanan->kategori_barang,
         ];
 
-        \Illuminate\Support\Facades\Log::info("LOG LOG: [API CREATE ORDER] ({$config->mode}) REQUEST:", $orderPayload);
+        \Illuminate\Support\Facades\Log::info("LOG LOG: [API CREATE ORDER] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $orderPayload);
 
         $orderResponse = \Illuminate\Support\Facades\Http::timeout(15)
             ->withToken($config->token)
@@ -1811,7 +1800,7 @@ class PesananAutokirimController extends Controller
         $reff_1 = $orderResult['data']['reff_1'] ?? null;
         $reff_2 = $orderResult['data']['reff_2'] ?? null;
 
-        \Illuminate\Support\Facades\Log::info("LOG LOG: [API CREATE ORDER] ({$config->mode}) SUCCESS - AWB: {$awb}");
+        \Illuminate\Support\Facades\Log::info("LOG LOG: [API CREATE ORDER] (API: {$config->mode} | APP: {$appMode}) SUCCESS - AWB: {$awb}");
 
         return [
             'success' => true,
