@@ -1475,37 +1475,24 @@ class PesananAutokirimController extends Controller
     }
 
     /**
-     * Helper: Hapus Pickup Point
-     */
-    private function deletePickupPoint($pickupCode)
-    {
-        $config = $this->getAutokirimConfig();
-        try {
-            $payload = ['pickup_point_code' => $pickupCode];
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [DELETE PICKUP] ({$config->mode}) REQUEST Eksekusi Hapus: {$pickupCode}", $payload);
-
-            $response = \Illuminate\Support\Facades\Http::timeout(15)->withToken($config->token)
-                ->post("{$config->base_url}/api/pickup-point/delete", $payload);
-
-            $result = $response->json();
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [DELETE PICKUP] ({$config->mode}) RESPONSE Hapus {$pickupCode}:", $result ?? []);
-
-            return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("LOG LOG: [DELETE PICKUP] Error: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Helper: Update Data Pickup Point
+     * Helper: Update Data Pickup Point (Sesuai Dokumentasi Resmi)
      */
     private function updatePickupPoint($pickupCode, $data)
     {
         $config = $this->getAutokirimConfig();
         try {
-            $payload = array_merge($data, ['pickup_point_code' => $pickupCode]);
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [UPDATE PICKUP] ({$config->mode}) REQUEST Eksekusi Update: {$pickupCode}", $payload);
+            // Susunan payload harus persis seperti di dokumentasi API Update
+            $payload = [
+                "name"              => $data['name'],
+                "phone"             => $data['phone'],
+                "district_id"       => $data['district_id'],
+                "address"           => $data['address'],
+                "longitude"         => "",
+                "latitude"          => "",
+                "pickup_point_code" => $pickupCode
+            ];
+
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [UPDATE PICKUP] ({$config->mode}) REQUEST Update Kode: {$pickupCode}", $payload);
 
             $response = \Illuminate\Support\Facades\Http::timeout(15)->withToken($config->token)
                 ->post("{$config->base_url}/api/pickup-point/update", $payload);
@@ -1520,7 +1507,7 @@ class PesananAutokirimController extends Controller
         }
     }
 
-public function generatePickupPointAjax(Request $request)
+    public function generatePickupPointAjax(Request $request)
     {
         $request->validate([
             'pengirim_nama' => 'required|string',
@@ -1529,7 +1516,7 @@ public function generatePickupPointAjax(Request $request)
             'pengirim_district_id' => 'required'
         ]);
 
-        $config = $this->getAutokirimConfig(); // Panggil konfigurasi cerdas
+        $config = $this->getAutokirimConfig();
         $user = auth()->user();
 
         $noHpPengirim = trim($request->pengirim_hp);
@@ -1538,7 +1525,8 @@ public function generatePickupPointAjax(Request $request)
         $districtId = (int) $request->pengirim_district_id;
         $emailPengirim = trim($request->pengirim_email) ?: ($user->email ?? 'customer@tokosancaka.com');
 
-        $payloadToInsert = [
+        // Payload dasar untuk patokan Insert / Update
+        $payloadData = [
             'name'              => (string) $namaPengirim,
             'phone'             => (string) $noHpPengirim,
             'address'           => (string) $alamatPengirim,
@@ -1549,7 +1537,7 @@ public function generatePickupPointAjax(Request $request)
             'is_member_deposit' => false
         ];
 
-        // 1. CEK CACHE REDIS UTAMA
+        // 1. CEK CACHE REDIS UTAMA (ANTI JEBOL)
         $dataStr = strtolower($noHpPengirim . $districtId . $alamatPengirim . $namaPengirim);
         $dataHash = md5($dataStr);
         $redisPickupKey = "pickup_point_hash_" . $dataHash;
@@ -1561,65 +1549,88 @@ public function generatePickupPointAjax(Request $request)
             return response()->json(['success' => true, 'pickup_point_code' => $pickupPointCode]);
         }
 
-        // 2. CARI KODE LAMA DI DATABASE (JIKA REDIS KOSONG)
+        // 2. CEK DATABASE LOKAL JIKA REDIS KOSONG
         $isDataIdentikDenganUserAuth = ($user && trim($user->no_wa) === $noHpPengirim);
         $userSama = $isDataIdentikDenganUserAuth ? $user : null;
 
         $kontak = \App\Models\Kontak::where('no_hp', $noHpPengirim)->where('district_id', $districtId)->first();
         $existingPickupCode = $kontak->pickup_point_code ?? ($userSama->pickup_point_code ?? null);
 
+        // LOGIKA BARU SESUAI DOKUMENTASI (FIND & UPDATE)
         if ($existingPickupCode) {
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [AJAX PICKUP] ({$config->mode}) Membunuh kode lama: {$existingPickupCode}");
-            $this->deletePickupPoint($existingPickupCode);
+            // Cek dulu ke server apakah kode masih hidup
+            if ($this->findPickupPoint($existingPickupCode)) {
+                $needsUpdate = false;
+                if ($kontak && (trim($kontak->alamat) !== $alamatPengirim || trim($kontak->nama) !== $namaPengirim)) $needsUpdate = true;
+                elseif ($userSama && (trim($userSama->address_detail) !== $alamatPengirim || trim($userSama->nama_lengkap) !== $namaPengirim)) $needsUpdate = true;
 
-            // Bersihkan Lokal
-            if ($kontak) $kontak->update(['pickup_point_code' => null]);
-            if ($userSama) \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update(['pickup_point_code' => null]);
+                if ($needsUpdate) {
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: [AJAX PICKUP] ({$config->mode}) Data berubah. Hit API UPDATE...");
+                    $isUpdated = $this->updatePickupPoint($existingPickupCode, $payloadData);
 
-            $oldDataStr = strtolower($noHpPengirim . $districtId . trim($kontak->alamat ?? '') . trim($kontak->nama ?? ''));
-            \Illuminate\Support\Facades\Redis::del("pickup_point_hash_" . md5($oldDataStr));
+                    if ($isUpdated) {
+                        $pickupPointCode = $existingPickupCode; // Gunakan kode yang sama, karena sudah di-update di server
+
+                        // Bersihkan Redis Lama
+                        $oldDataStr = strtolower($noHpPengirim . $districtId . trim($kontak->alamat ?? '') . trim($kontak->nama ?? ''));
+                        \Illuminate\Support\Facades\Redis::del("pickup_point_hash_" . md5($oldDataStr));
+
+                        // Sinkronkan Data DB Lokal
+                        if ($kontak) $kontak->update(['alamat' => $alamatPengirim, 'nama' => $namaPengirim, 'email' => $emailPengirim]);
+                        if ($userSama) \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update(['address_detail' => $alamatPengirim, 'nama_lengkap' => $namaPengirim]);
+                    }
+                } else {
+                    $pickupPointCode = $existingPickupCode; // Data Sama persis
+                }
+            } else {
+                \Illuminate\Support\Facades\Log::warning("LOG LOG: [AJAX PICKUP] ({$config->mode}) Kode DB {$existingPickupCode} sudah mati di server. Mereset DB...");
+                if ($kontak) $kontak->update(['pickup_point_code' => null]);
+                if ($userSama) \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update(['pickup_point_code' => null]);
+                $pickupPointCode = null; // Terpaksa buat baru
+            }
         }
 
-        // 3. CREATE / INSERT BARU AGAR FRESH
-        try {
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] ({$config->mode}) REQUEST Buat Kode Fresh (AJAX):", $payloadToInsert);
-            $pickupResponse = \Illuminate\Support\Facades\Http::timeout(15)->withToken($config->token)
-                ->post("{$config->base_url}/api/pickup-point/insert", $payloadToInsert);
+        // 3. CREATE / INSERT JIKA BELUM ADA SAMA SEKALI
+        if (!$pickupPointCode) {
+            try {
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] ({$config->mode}) REQUEST Insert Baru:", $payloadData);
+                $pickupResponse = \Illuminate\Support\Facades\Http::timeout(15)->withToken($config->token)
+                    ->post("{$config->base_url}/api/pickup-point/insert", $payloadData);
 
-            $pickupResult = $pickupResponse->json();
-            if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
-                throw new \Exception($pickupResult['rd'] ?? 'Unknown Error API');
+                $pickupResult = $pickupResponse->json();
+                if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
+                    throw new \Exception($pickupResult['rd'] ?? 'Unknown Error API');
+                }
+
+                $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] ({$config->mode}) SUKSES Dibuat: {$pickupPointCode}");
+
+                // SIMPAN KE DATABASE LOKAL
+                if ($userSama) {
+                    \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update([
+                        'pickup_point_code' => $pickupPointCode, 'address_detail' => $alamatPengirim, 'nama_lengkap' => $namaPengirim
+                    ]);
+                }
+                if ($user) {
+                    \App\Models\Kontak::updateOrCreate(
+                        ['no_hp' => $noHpPengirim, 'user_id' => auth()->id(), 'district_id' => $districtId],
+                        ['nama' => $namaPengirim, 'alamat' => $alamatPengirim, 'tipe' => 'Pengirim', 'pickup_point_code' => $pickupPointCode, 'email' => $emailPengirim]
+                    );
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("LOG LOG: [CREATE PICKUP] ({$config->mode}) ERROR AJAX: " . $e->getMessage());
+                return response()->json(['success' => false, 'message' => $e->getMessage()]);
             }
-
-            $freshPickupCode = (string) $pickupResult['data']['pickup_point_code'];
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] ({$config->mode}) SUKSES Dibuat Fresh: {$freshPickupCode}");
-
-            // UPDATE DB LOKAL
-            if ($userSama) {
-                \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update([
-                    'pickup_point_code' => $freshPickupCode, 'address_detail' => $alamatPengirim, 'nama_lengkap' => $namaPengirim
-                ]);
-            }
-            if ($user) {
-                \App\Models\Kontak::updateOrCreate(
-                    ['no_hp' => $noHpPengirim, 'user_id' => auth()->id(), 'district_id' => $districtId],
-                    ['nama' => $namaPengirim, 'alamat' => $alamatPengirim, 'tipe' => 'Pengirim', 'pickup_point_code' => $freshPickupCode, 'email' => $emailPengirim]
-                );
-            }
-
-            \Illuminate\Support\Facades\Redis::setex($redisPickupKey, 2592000, $freshPickupCode);
-            return response()->json(['success' => true, 'pickup_point_code' => $freshPickupCode]);
-
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("LOG LOG: [CREATE PICKUP] ({$config->mode}) ERROR AJAX: " . $e->getMessage());
-            return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
+
+        // 4. SIMPAN REDIS HASIL AKHIR
+        \Illuminate\Support\Facades\Redis::setex($redisPickupKey, 2592000, $pickupPointCode);
+        return response()->json(['success' => true, 'pickup_point_code' => $pickupPointCode]);
     }
-
 
     public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
     {
-        $config = $this->getAutokirimConfig(); // Panggil konfigurasi cerdas
+        $config = $this->getAutokirimConfig();
         $user = auth()->user();
 
         $noHpPengirim = trim($pesanan->pengirim_hp);
@@ -1628,7 +1639,7 @@ public function generatePickupPointAjax(Request $request)
         $districtId = (int) $origin->district_id;
         $emailPengirim = $user->email ?? 'customer@tokosancaka.com';
 
-        $payloadToInsert = [
+        $payloadData = [
             'name'              => (string) $namaPengirim,
             'phone'             => (string) $noHpPengirim,
             'address'           => (string) $alamatPengirim,
@@ -1647,6 +1658,7 @@ public function generatePickupPointAjax(Request $request)
         $pickupPointCode = \Illuminate\Support\Facades\Redis::get($redisPickupKey);
 
         if ($pickupPointCode) {
+            // VERIFIKASI FIND
             if ($this->findPickupPoint($pickupPointCode)) {
                 \Illuminate\Support\Facades\Log::info("LOG LOG: [EXECUTE PICKUP] ({$config->mode}) SUPER CEPAT! Redis Valid: {$pickupPointCode}");
             } else {
@@ -1657,7 +1669,7 @@ public function generatePickupPointAjax(Request $request)
         }
 
         if (!$pickupPointCode) {
-            // 2. CEK DB LOKAL: KALO ADA -> DELETE AGAR CREATE BARU
+            // 2. CEK DB LOKAL
             $isDataIdentikDenganUserAuth = ($user && trim($user->no_wa) === $noHpPengirim);
             $userSama = $isDataIdentikDenganUserAuth ? $user : null;
 
@@ -1665,43 +1677,68 @@ public function generatePickupPointAjax(Request $request)
             $existingPickupCode = $kontak->pickup_point_code ?? ($userSama->pickup_point_code ?? null);
 
             if ($existingPickupCode) {
-                \Illuminate\Support\Facades\Log::info("LOG LOG: [API DELETE] ({$config->mode}) Membunuh kode lama: {$existingPickupCode}");
-                $this->deletePickupPoint($existingPickupCode);
+                // VERIFIKASI & UPDATE (TANPA DELETE)
+                if ($this->findPickupPoint($existingPickupCode)) {
+                    $needsUpdate = false;
+                    if ($kontak && (trim($kontak->alamat) !== $alamatPengirim || trim($kontak->nama) !== $namaPengirim)) $needsUpdate = true;
+                    elseif ($userSama && (trim($userSama->address_detail) !== $alamatPengirim || trim($userSama->nama_lengkap) !== $namaPengirim)) $needsUpdate = true;
 
-                if ($kontak) {
-                    $oldDataStr = strtolower($noHpPengirim . $districtId . trim($kontak->alamat) . trim($kontak->nama));
-                    \Illuminate\Support\Facades\Redis::del("pickup_point_hash_" . md5($oldDataStr));
-                    $kontak->update(['pickup_point_code' => null]);
+                    if ($needsUpdate) {
+                        \Illuminate\Support\Facades\Log::info("LOG LOG: [EXECUTE PICKUP] ({$config->mode}) Data berubah. Hit API UPDATE...");
+                        if ($this->updatePickupPoint($existingPickupCode, $payloadData)) {
+                            $pickupPointCode = $existingPickupCode;
+
+                            // Update DB Lokal & Hapus Cache Lama
+                            if ($kontak) {
+                                $oldDataStr = strtolower($noHpPengirim . $districtId . trim($kontak->alamat) . trim($kontak->nama));
+                                \Illuminate\Support\Facades\Redis::del("pickup_point_hash_" . md5($oldDataStr));
+                                $kontak->update(['alamat' => $alamatPengirim, 'nama' => $namaPengirim, 'email' => $emailPengirim]);
+                            }
+                            if ($userSama) {
+                                \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update(['address_detail' => $alamatPengirim, 'nama_lengkap' => $namaPengirim]);
+                            }
+                        } else {
+                            $pickupPointCode = null; // Gagal update, paksa buat baru
+                        }
+                    } else {
+                        $pickupPointCode = $existingPickupCode;
+                    }
+                } else {
+                    \Illuminate\Support\Facades\Log::warning("LOG LOG: [EXECUTE PICKUP] ({$config->mode}) Kode DB {$existingPickupCode} hilang di server. Resetting...");
+                    if ($kontak) $kontak->update(['pickup_point_code' => null]);
+                    if ($userSama) \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update(['pickup_point_code' => null]);
+                    $pickupPointCode = null;
                 }
-                if ($userSama) \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update(['pickup_point_code' => null]);
             }
 
-            // 3. CREATE (INSERT BARU)
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] ({$config->mode}) REQUEST Buat Kode Fresh:", $payloadToInsert);
-            $pickupResponse = \Illuminate\Support\Facades\Http::timeout(15)->withToken($config->token)
-                ->post("{$config->base_url}/api/pickup-point/insert", $payloadToInsert);
+            // 3. CREATE JIKA MEMANG TIDAK ADA
+            if (!$pickupPointCode) {
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] ({$config->mode}) REQUEST Insert Baru:", $payloadData);
+                $pickupResponse = \Illuminate\Support\Facades\Http::timeout(15)->withToken($config->token)
+                    ->post("{$config->base_url}/api/pickup-point/insert", $payloadData);
 
-            $pickupResult = $pickupResponse->json();
-            if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
-                throw new \Exception('Gagal mendaftarkan alamat jemput ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
+                $pickupResult = $pickupResponse->json();
+                if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
+                    throw new \Exception('Gagal mendaftarkan alamat jemput ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
+                }
+
+                $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] ({$config->mode}) SUKSES Dibuat: {$pickupPointCode}");
+
+                if ($userSama) {
+                    \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update([
+                        'pickup_point_code' => $pickupPointCode, 'address_detail' => $alamatPengirim, 'nama_lengkap' => $namaPengirim
+                    ]);
+                }
+                if ($user) {
+                    \App\Models\Kontak::updateOrCreate(
+                        ['no_hp' => $noHpPengirim, 'user_id' => auth()->id(), 'district_id' => $districtId],
+                        ['nama' => $namaPengirim, 'alamat' => $alamatPengirim, 'tipe' => 'Pengirim', 'pickup_point_code' => $pickupPointCode, 'email' => $emailPengirim]
+                    );
+                }
             }
 
-            $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] ({$config->mode}) SUKSES Kode Fresh: {$pickupPointCode}");
-
-            if ($userSama) {
-                \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update([
-                    'pickup_point_code' => $pickupPointCode, 'address_detail' => $alamatPengirim, 'nama_lengkap' => $namaPengirim
-                ]);
-            }
-            if ($user) {
-                \App\Models\Kontak::updateOrCreate(
-                    ['no_hp' => $noHpPengirim, 'user_id' => auth()->id(), 'district_id' => $districtId],
-                    ['nama' => $namaPengirim, 'alamat' => $alamatPengirim, 'tipe' => 'Pengirim', 'pickup_point_code' => $pickupPointCode, 'email' => $emailPengirim]
-                );
-            }
-
-            sleep(2);
+            sleep(2); // Jeda sinkronisasi server Autokirim
             \Illuminate\Support\Facades\Redis::setex($redisPickupKey, 2592000, $pickupPointCode);
         }
 
@@ -1717,6 +1754,8 @@ public function generatePickupPointAjax(Request $request)
 
         $beratGram = (int) $pesanan->berat_gram;
         $weightApi = $beratGram > 0 ? $beratGram : 1000;
+
+        \Illuminate\Support\Facades\Log::info("LOG LOG: [WEIGHT CALC] Aktual: {$beratGram}gr => Ditagihkan (Payload): {$weightApi}gr");
 
         $orderPayload = [
             'service_code'      => $serviceCode,
@@ -1782,6 +1821,8 @@ public function generatePickupPointAjax(Request $request)
             'pickup'  => $pickupPointCode
         ];
     }
+
+
 
     /**
      * DYNAMIC CONFIG GETTER: Selalu ambil kredensial terbaru dari DB
