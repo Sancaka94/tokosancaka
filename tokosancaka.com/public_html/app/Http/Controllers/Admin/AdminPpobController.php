@@ -8,6 +8,7 @@ use App\Models\PpobTransaction;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf; // Pastikan package dompdf sudah diinstall
 use Illuminate\Support\Facades\Http; // WAJIB: Tambahkan ini untuk akses API
+use App\Models\Api; // 👈 TAMBAHKAN BARIS INI
 
 class AdminPpobController extends Controller
 {
@@ -32,7 +33,7 @@ class AdminPpobController extends Controller
     public function exportExcel(Request $request)
     {
         $fileName = 'transaksi_ppob_' . date('Y-m-d_H-i') . '.csv';
-        
+
         // Ambil semua data (bukan paginate)
         $transactions = $this->getFilteredQuery($request)->get();
 
@@ -92,7 +93,7 @@ class AdminPpobController extends Controller
 
         // Load View PDF (Kita akan buat view ini di langkah ke-2)
         $pdf = Pdf::loadView('admin.ppob.data.pdf', compact('transactions', 'totalOmset', 'totalProfit'));
-        
+
         // Setup Kertas Landscape agar muat banyak kolom
         $pdf->setPaper('a4', 'landscape');
 
@@ -105,7 +106,7 @@ class AdminPpobController extends Controller
      */
     private function getFilteredQuery(Request $request)
     {
-        $query = PpobTransaction::with('user')->latest(); 
+        $query = PpobTransaction::with('user')->latest();
 
         // 1. SEARCH
         if ($request->has('search') && $request->filled('search')) {
@@ -144,11 +145,11 @@ public function show($id)
     // 2. TANGKAP JSON SEBAGAI ARRAY
     // Ambil data mentah
     $rawDesc = $transaction->desc;
-    
-    // Default array kosong jika null
-    $responseData = []; 
 
-    // Cek: Jika tipe datanya string, kita decode. 
+    // Default array kosong jika null
+    $responseData = [];
+
+    // Cek: Jika tipe datanya string, kita decode.
     // Jika sudah array (karena $casts di model), biarkan saja.
     if (is_string($rawDesc)) {
         // Parameter 'true' membuat hasil menjadi ARRAY, bukan Object.
@@ -176,10 +177,10 @@ public function show($id)
         ]);
 
         $transaction = PpobTransaction::findOrFail($id);
-        
+
         $oldStatus = $transaction->status;
         $transaction->status = $request->status;
-        
+
         // Update SN jika diisi admin
         if ($request->filled('sn')) {
             $transaction->sn = $request->sn;
@@ -207,7 +208,7 @@ public function show($id)
 public function destroy($id)
 {
     // Ini menghapus data dari tabel 'ppob_transactions'
-    $transaction = PpobTransaction::findOrFail($id); 
+    $transaction = PpobTransaction::findOrFail($id);
     $transaction->delete();
 
     // Pastikan 'admin.ppob.data.index' adalah route untuk daftar transaksi PPOB
@@ -222,13 +223,21 @@ public function destroy($id)
     public function cekSaldo()
 {
     // Pastikan Anda sudah mengimpor Facade Http di bagian atas file Controller:
-    // use Illuminate\Support\Facades\Http; 
-    
+    // use Illuminate\Support\Facades\Http;
+
     // =================================================================
     // 1. KREDENSIAL LANGSUNG (HARDCODE)
     // =================================================================
-    $username = 'mihetiDVGdeW'; 
-    $apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; 
+    //$username = 'mihetiDVGdeW';
+    //$apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7';
+
+    // =================================================================
+        // 1. KREDENSIAL DINAMIS (DARI DATABASE / PENGATURAN)
+        // =================================================================
+        $mode = Api::getValue('DIGIFLAZZ_MODE', 'global', 'development');
+        $username = Api::getValue('DIGIFLAZZ_USERNAME', $mode);
+        $apiKey   = Api::getValue('DIGIFLAZZ_API_KEY', $mode);
+
     $endpoint = 'https://api.digiflazz.com/v1/cek-saldo';
 
     // 2. Generate Signature
@@ -251,13 +260,13 @@ public function destroy($id)
                          ->timeout(30) // ✅ TAMBAH TIMEOUT 20 DETIK
                          ->retry(2, 500) // ✅ COBA ULANG 2 KALI JIKA GAGAL/TIMEOUT (dengan delay 500ms)
                          ->post($endpoint, $payload);
-        
+
         // 5. Cek apakah request gagal pada level HTTP (timeout, koneksi)
         if ($response->failed()) {
             // Ini akan menangkap kegagalan yang tidak memicu Exception (seperti HTTP error codes 4xx/5xx dari Digiflazz)
             // Namun, karena log Anda menunjukkan cURL error 28, Exception block di bawah lebih sering bekerja.
             \Illuminate\Support\Facades\Log::error('❌ Cek Saldo HTTP Failure (Status: ' . $response->status() . '): ' . $response->body());
-            
+
             // Jika status 400/500, kita kembalikan error.
              return response()->json(['status' => 'error', 'message' => 'Gagal koneksi ke API (Status: ' . $response->status() . ')'], $response->status());
         }
@@ -279,7 +288,7 @@ public function destroy($id)
             // Ambil pesan error dari Digiflazz jika ada (misal: signature salah)
             $msg = $result['data']['message'] ?? 'Gagal mengambil data (Response tidak valid atau Deposit tidak ditemukan).';
             \Illuminate\Support\Facades\Log::error('❌ Cek Saldo API Error: ' . $msg);
-            
+
             return response()->json(['status' => 'error', 'message' => $msg], 400);
         }
 
@@ -308,8 +317,14 @@ public function destroy($id)
         ]);
 
         // 2. Kredensial Langsung (HARDCODE)
-        $username = 'mihetiDVGdeW'; 
-        $apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7'; 
+        //$username = 'mihetiDVGdeW';
+        //$apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7';
+
+        // 2. KREDENSIAL DINAMIS
+        $mode = Api::getValue('DIGIFLAZZ_MODE', 'global', 'development');
+        $username = Api::getValue('DIGIFLAZZ_USERNAME', $mode);
+        $apiKey   = Api::getValue('DIGIFLAZZ_API_KEY', $mode);
+
         $endpoint = 'https://api.digiflazz.com/v1/deposit';
 
         // 3. Generate Signature
@@ -319,7 +334,7 @@ public function destroy($id)
         $payload = [
             'username'   => $username,
             'amount'     => (int) $request->amount,
-            'Bank'       => $request->bank, 
+            'Bank'       => $request->bank,
             'owner_name' => $request->owner_name,
             'sign'       => $sign
         ];
@@ -331,7 +346,7 @@ public function destroy($id)
             // 5. Kirim Request
             $response = Http::withHeaders(['Content-Type' => 'application/json'])
                             ->post($endpoint, $payload);
-            
+
             $result = $response->json();
 
             // [LOG 2] Mencatat balasan mentah dari Digiflazz
@@ -339,7 +354,7 @@ public function destroy($id)
 
             // 6. Cek Response RC "00" (Sukses)
             if (isset($result['data']['rc']) && $result['data']['rc'] === '00') {
-                
+
                 // [LOG 3] Sukses
                 \Illuminate\Support\Facades\Log::info('✅ [DEPOSIT SUKSES] Tiket berhasil dibuat. Nominal: ' . ($result['data']['amount'] ?? 0));
 
@@ -360,7 +375,7 @@ public function destroy($id)
             \Illuminate\Support\Facades\Log::error('❌ [DEPOSIT ERROR] Exception: ' . $e->getMessage());
 
             return response()->json([
-                'status' => 'error', 
+                'status' => 'error',
                 'message' => 'Koneksi Error: ' . $e->getMessage()
             ], 500);
         }
@@ -379,8 +394,15 @@ public function destroy($id)
         ]);
 
         // 2. Kredensial Langsung (HARDCODE)
-        $username = 'mihetiDVGdeW';
-        $apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7';
+        //$username = 'mihetiDVGdeW';
+        //$apiKey   = '1f48c69f-8676-5d56-a868-10a46a69f9b7';
+
+        // 2. KREDENSIAL DINAMIS
+        $mode = Api::getValue('DIGIFLAZZ_MODE', 'global', 'development');
+        $username = Api::getValue('DIGIFLAZZ_USERNAME', $mode);
+        $apiKey   = Api::getValue('DIGIFLAZZ_API_KEY', $mode);
+
+
         $endpoint = 'https://api.digiflazz.com/v1/transaction';
 
         // 3. Generate Ref ID Unik
@@ -408,7 +430,7 @@ public function destroy($id)
             // 6. Kirim Request
             $response = Http::withHeaders(['Content-Type' => 'application/json'])
                             ->post($endpoint, $payload);
-            
+
             $result = $response->json();
 
             // [LOG RESPONSE]
@@ -417,7 +439,7 @@ public function destroy($id)
             // 7. Cek Hasil
             if (isset($result['data'])) {
                 $data = $result['data'];
-                
+
                 // Disini Anda bisa menambahkan logic simpan ke database (PpobTransaction)
                 // PpobTransaction::create([...]);
 
@@ -428,7 +450,7 @@ public function destroy($id)
                 ]);
             } else {
                 return response()->json([
-                    'status'  => 'error', 
+                    'status'  => 'error',
                     'message' => 'Respon tidak valid dari provider'
                 ], 400);
             }
@@ -436,7 +458,7 @@ public function destroy($id)
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('❌ [TOPUP ERROR] ' . $e->getMessage());
             return response()->json([
-                'status'  => 'error', 
+                'status'  => 'error',
                 'message' => 'Koneksi Error: ' . $e->getMessage()
             ], 500);
         }
