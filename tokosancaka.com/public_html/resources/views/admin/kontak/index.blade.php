@@ -315,7 +315,26 @@
                         <input type="email" id="email" name="email" class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-red-500 focus:border-red-500" placeholder="contoh@email.com">
                     </div>
                 </div>
-                <p class="text-[10px] text-gray-500 italic mt-0 leading-tight">ID Kecamatan (District ID) diwajibkan untuk mendaftarkan alamat Pickup ke sistem logistik Autokirim.</p>
+
+                <div class="relative" id="districtContainer">
+                    <label class="block text-sm font-bold text-gray-700 mb-1">Kecamatan / Kabupaten (API) <span class="text-red-500">*</span></label>
+
+                    <!-- Input Teks untuk Pencarian -->
+                    <input type="text" id="search_district" class="w-full border border-gray-300 rounded-xl p-2.5 text-sm focus:ring-red-500 focus:border-red-500 uppercase" placeholder="Ketik minimal 3 huruf..." autocomplete="off">
+
+                    <!-- Input Hidden yang akan dikirim ke fungsi store/update lokal -->
+                    <input type="hidden" id="district_id" name="district_id" required>
+
+                    <!-- Icon Loading -->
+                    <div id="district_loading" class="absolute right-3 top-[34px] hidden">
+                        <i class="fa-solid fa-spinner fa-spin text-red-600"></i>
+                    </div>
+
+                    <!-- Dropdown Hasil Pencarian -->
+                    <div id="district_dropdown" class="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-48 overflow-y-auto hidden custom-scrollbar">
+                        <!-- List AJAX masuk sini -->
+                    </div>
+                </div>
 
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-1">Alamat Lengkap <span class="text-red-500">*</span></label>
@@ -661,6 +680,95 @@ function deleteFromModal() {
         form.submit(); // Kirim permintaan hapus
     }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('search_district');
+    const hiddenInput = document.getElementById('district_id');
+    const dropdown = document.getElementById('district_dropdown');
+    const loading = document.getElementById('district_loading');
+    let timeoutId;
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(timeoutId);
+        const query = this.value;
+
+        if (query.length < 3) {
+            dropdown.classList.add('hidden');
+            dropdown.innerHTML = '';
+            return;
+        }
+
+        loading.classList.remove('hidden');
+
+        // Delay 500ms agar tidak membebani server saat mengetik cepat
+        timeoutId = setTimeout(() => {
+            fetch(`/admin/kontak/search-district?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    dropdown.innerHTML = '';
+                    if (data.length > 0) {
+                        data.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'px-4 py-2 hover:bg-red-50 cursor-pointer border-b border-gray-100 text-sm transition-colors';
+                            div.innerHTML = `
+                                <div class="font-bold text-gray-800 uppercase">${item.district_name}, ${item.regency_name}</div>
+                                <div class="text-[11px] text-gray-500">${item.province_name} - Kodepos: ${item.zip}</div>
+                            `;
+
+                            // Aksi saat wilayah dipilih
+                            div.addEventListener('click', function() {
+                                searchInput.value = `${item.district_name}, ${item.regency_name}`;
+                                hiddenInput.value = item.district_id; // Set value untuk database lokal
+                                dropdown.classList.add('hidden');
+                            });
+
+                            dropdown.appendChild(div);
+                        });
+                        dropdown.classList.remove('hidden');
+                    } else {
+                        dropdown.innerHTML = '<div class="px-4 py-3 text-sm text-red-500 italic text-center">Wilayah tidak ditemukan.</div>';
+                        dropdown.classList.remove('hidden');
+                    }
+                })
+                .catch(error => console.error('Error fetching districts:', error))
+                .finally(() => {
+                    loading.classList.add('hidden');
+                });
+        }, 500);
+    });
+
+    // Sembunyikan dropdown kalau user klik di luar area
+    document.addEventListener('click', function(e) {
+        if (!document.getElementById('districtContainer').contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+});
+
+// --- UPDATE FUNGSI MODAL ANDA ---
+
+// 1. Modifikasi sedikit openAddModal Anda agar mereset form AJAX
+const oldOpenAddModal = openAddModal;
+openAddModal = function() {
+    oldOpenAddModal();
+    document.getElementById('search_district').value = '';
+    document.getElementById('district_id').value = '';
+}
+
+// 2. Modifikasi openEditModal Anda agar memunculkan info ID saat edit
+const oldOpenEditModal = openEditModal;
+openEditModal = async function(id) {
+    await oldOpenEditModal(id);
+
+    // Set field pencarian dengan ID saat ini agar user tahu
+    let currentId = document.getElementById('district_id').value;
+    if(currentId) {
+        document.getElementById('search_district').value = `(ID: ${currentId}) Ketik untuk ganti...`;
+    } else {
+        document.getElementById('search_district').value = '';
+    }
+}
+
 
 }
 </script>

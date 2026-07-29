@@ -369,4 +369,23 @@ class KontakController extends Controller
             return false;
         }
     }
+
+    public function searchDistrict(Request $request)
+    {
+        $keyword = $request->query('q');
+        if (!$keyword || strlen($keyword) < 3) {
+            return response()->json([]);
+        }
+
+        // Asumsi tabel Autokirim Anda bernama data_auto_kirims
+        $data = DB::table('data_auto_kirims')
+            ->where('district_name', 'like', "%{$keyword}%")
+            ->orWhere('regency_name', 'like', "%{$keyword}%")
+            ->select('district_id', 'district_name', 'regency_name', 'province_name', 'zip')
+            ->limit(50)
+            ->get();
+
+        return response()->json($data);
+    }
+
 }

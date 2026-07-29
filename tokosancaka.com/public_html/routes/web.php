@@ -2028,5 +2028,5 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::post('kontak/{kontak}/api-insert', [\App\Http\Controllers\KontakController::class, 'syncApiInsert'])->name('admin.kontak.api.insert');
     Route::post('kontak/{kontak}/api-update', [\App\Http\Controllers\KontakController::class, 'syncApiUpdate'])->name('admin.kontak.api.update');
     Route::post('kontak/{kontak}/api-delete', [\App\Http\Controllers\KontakController::class, 'syncApiDelete'])->name('admin.kontak.api.delete');
-
+    Route::get('kontak/search-district', [KontakController::class, 'searchDistrict'])->name('admin.kontak.search-district');
 });
