@@ -344,16 +344,28 @@
 
             <div class="flex justify-between items-center mt-6 pt-4 border-t w-full">
                 <!-- Tombol Hapus: Hanya Muncul Saat Mode Edit -->
-                <div id="deleteBtnContainer" class="hidden">
-                    <button type="button" onclick="deleteFromModal()" class="text-red-600 hover:bg-red-50 font-bold text-sm px-4 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+                <div id="deleteBtnContainer" class="hidden mr-auto">
+                    <button type="button" onclick="deleteFromModal()" class="text-red-600 hover:bg-red-50 font-bold text-sm px-4 py-2 rounded-xl transition-colors flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        Hapus Kontak
+                        Hapus
                     </button>
                 </div>
 
-                <div class="flex justify-end gap-3 w-full">
-                    <button type="button" onclick="closeModal('kontakModal')" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold text-sm px-5 py-2.5 rounded-xl transition-colors">Batal</button>
-                    <button type="submit" class="bg-red-700 hover:bg-red-800 text-white font-bold text-sm px-5 py-2.5 rounded-xl transition-colors shadow-md">Simpan & Sinkron API</button>
+                <!-- Group Tombol Aksi -->
+                <div class="flex justify-end gap-2 w-full">
+                    <button type="button" onclick="closeModal('kontakModal')" class="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold text-sm px-4 py-2 rounded-xl transition-colors">
+                        Batal
+                    </button>
+
+                    {{-- Tombol 1: Simpan ke DB Lokal Saja --}}
+                    <button type="submit" name="sync_mode" value="local" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors shadow-md">
+                        Simpan Lokal
+                    </button>
+
+                    {{-- Tombol 2: Simpan Lokal & Sinkron API --}}
+                    <button type="submit" name="sync_mode" value="api" class="bg-red-700 hover:bg-red-800 text-white font-bold text-sm px-4 py-2 rounded-xl transition-colors shadow-md">
+                        Simpan & API
+                    </button>
                 </div>
             </div>
         </form>
