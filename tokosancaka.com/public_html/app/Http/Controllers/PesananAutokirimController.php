@@ -1590,7 +1590,7 @@ class PesananAutokirimController extends Controller
             }
         }
 
-        if (!$pickupPointCode) {
+       if (!$pickupPointCode) {
             try {
                 \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] (API: {$config->mode} | APP: {$appMode}) REQUEST Insert Baru:", $payloadData);
 
@@ -1602,12 +1602,23 @@ class PesananAutokirimController extends Controller
                 // [TAMBAHAN] FULL JSON RESPONSE UNTUK CS AUTOKIRIM
                 \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] (API: {$config->mode} | APP: {$appMode}) FULL RESPONSE:", $pickupResult ?? []);
 
-                if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
-                    throw new \Exception($pickupResult['rd'] ?? 'Unknown Error API');
-                }
+                // ==============================================================================
+                // [PERBAIKAN LOGIKA] Cegat Error 01 (Nomor HP Terdaftar) dari API Autokirim
+                // ==============================================================================
+                if (isset($pickupResult['rc']) && $pickupResult['rc'] === '01' && !empty($pickupResult['data']['pickup_point_code'])) {
+                    $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
+                    \Illuminate\Support\Facades\Log::warning("LOG LOG: [CREATE PICKUP] (APP: {$appMode}) API menolak insert (HP terdaftar). Memaksa UPDATE sinkronisasi alamat untuk kode: {$pickupPointCode}");
 
-                $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
-                \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] (API: {$config->mode} | APP: {$appMode}) SUKSES Diekstrak Kode: {$pickupPointCode}");
+                    // PAKSA TEMBAK API UPDATE AGAR ALAMAT BARU TERSIMPAN DI SERVER MEREKA
+                    $this->updatePickupPoint($pickupPointCode, $payloadData);
+
+                } elseif (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
+                    throw new \Exception($pickupResult['rd'] ?? 'Unknown Error API');
+                } else {
+                    $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] (API: {$config->mode} | APP: {$appMode}) SUKSES Diekstrak Kode: {$pickupPointCode}");
+                }
+                // ==============================================================================
 
                 if ($userSama) {
                     \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update([
@@ -1720,12 +1731,23 @@ class PesananAutokirimController extends Controller
                 // [TAMBAHAN] FULL JSON RESPONSE UNTUK CS AUTOKIRIM (Saat Execute)
                 \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] (API: {$config->mode} | APP: {$appMode}) FULL RESPONSE:", $pickupResult ?? []);
 
-                if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
-                    throw new \Exception('Gagal mendaftarkan alamat jemput ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
-                }
+                // ==============================================================================
+                // [PERBAIKAN LOGIKA] Cegat Error 01 (Nomor HP Terdaftar) dari API Autokirim
+                // ==============================================================================
+                if (isset($pickupResult['rc']) && $pickupResult['rc'] === '01' && !empty($pickupResult['data']['pickup_point_code'])) {
+                    $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
+                    \Illuminate\Support\Facades\Log::warning("LOG LOG: [API INSERT] (APP: {$appMode}) API menolak insert (HP terdaftar). Memaksa UPDATE sinkronisasi alamat untuk kode: {$pickupPointCode}");
 
-                $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
-                \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] (API: {$config->mode} | APP: {$appMode}) SUKSES Diekstrak Kode: {$pickupPointCode}");
+                    // PAKSA TEMBAK API UPDATE AGAR ALAMAT BARU TERSIMPAN DI SERVER MEREKA
+                    $this->updatePickupPoint($pickupPointCode, $payloadData);
+
+                } elseif (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
+                    throw new \Exception('Gagal mendaftarkan alamat jemput ke server logistik: ' . ($pickupResult['rd'] ?? 'Unknown Error'));
+                } else {
+                    $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: [API INSERT] (API: {$config->mode} | APP: {$appMode}) SUKSES Diekstrak Kode: {$pickupPointCode}");
+                }
+                // ==============================================================================
 
                 if ($userSama) {
                     \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update([
