@@ -97,7 +97,6 @@
                         </div>
                     </div>
                     <div class="col-span-2 sm:col-span-1">
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
                         <div class="col-span-2 sm:col-span-1">
                             <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
                             <input type="text" id="pengirim_hp" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required @input.debounce.1000ms="autoGeneratePickup()" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
