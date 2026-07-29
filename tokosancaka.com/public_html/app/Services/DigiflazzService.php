@@ -22,18 +22,18 @@ class DigiflazzService
 
    public function __construct()
     {
-        // 1. Cek Mode Global (Dari Toggle Pusat Database)
-        $mode = Api::getValue('DIGIFLAZZ_MODE', 'global', 'development');
+        // 1. Cek Mode Global
+        $mode = \App\Models\Api::getValue('DIGIFLAZZ_MODE', 'global', 'development');
 
-        // 2. Ambil Kredensial sesuai Mode yang aktif
-        $this->username = trim(Api::getValue('DIGIFLAZZ_USERNAME', $mode));
-        $this->apiKey   = trim(Api::getValue('DIGIFLAZZ_API_KEY', $mode));
+        // 2. Ambil Kredensial sesuai Mode
+        $this->username = trim(\App\Models\Api::getValue('DIGIFLAZZ_USERNAME', $mode));
+        $this->apiKey   = trim(\App\Models\Api::getValue('DIGIFLAZZ_API_KEY', $mode));
 
         // 3. Atur Mode Testing
-        // Digiflazz menggunakan endpoint URL yang sama, tapi parameternya yang membedakan ('testing' => true/false)
+        // Jika mode bukan production, maka testingMode = true
         $this->testingMode = ($mode !== 'production');
 
-        // 4. Base URL Digiflazz (Tetap sama untuk Prod maupun Dev)
+        // 4. Base URL
         $this->baseUrl  = self::URL_PROD;
     }
 
