@@ -39,9 +39,16 @@
                     <!-- Wrapper Tombol & Badge -->
                     <div class="flex items-center gap-3">
                         <!-- Badge Kode Pickup Point -->
-                        <div class="bg-gray-100 border border-gray-200 text-gray-800 text-[10px] font-bold px-2 py-1.5 rounded flex items-center gap-1.5 uppercase tracking-wider">
-                            <i class="fa-solid fa-store text-gray-500" :class="pickupPointCode ? 'text-green-600' : 'text-red-500'"></i>
-                            <span x-text="pickupPointCode ? 'PICKUP: ' + pickupPointCode : 'BELUM ADA PICKUP POINT'" :class="pickupPointCode ? 'text-gray-800' : 'text-red-500'"></span>
+                        <div class="bg-gray-100 border border-gray-200 text-[10px] font-bold px-2 py-1.5 rounded flex items-center gap-1.5 uppercase tracking-wider">
+                            <template x-if="isGeneratingPickup">
+                                <i class="fa-solid fa-spinner fa-spin text-blue-600"></i>
+                            </template>
+                            <template x-if="!isGeneratingPickup">
+                                <i class="fa-solid fa-store" :class="pickupPointCode ? 'text-green-600' : 'text-red-500'"></i>
+                            </template>
+
+                            <span x-show="isGeneratingPickup" class="text-blue-600">MEMPROSES KODE...</span>
+                            <span x-show="!isGeneratingPickup" x-text="pickupPointCode ? 'PICKUP: ' + pickupPointCode : 'BELUM ADA PICKUP POINT'" :class="pickupPointCode ? 'text-gray-800' : 'text-red-500'"></span>
                         </div>
 
                         <!-- Tombol Centang Simpan Pengirim -->
@@ -91,7 +98,8 @@
                     </div>
                     <div class="col-span-2 sm:col-span-1">
                         <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
-                        <input type="text" id="pengirim_hp" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
+                        <input type="text" id="pengirim_hp" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required @input.debounce.1000ms="autoGeneratePickup()" class="...">
+                        <!-- (Gunakan sisa class bawaan Anda) -->
                     </div>
 
                     <div class="col-span-2">
@@ -134,7 +142,8 @@
                         <label class="block text-xs font-medium text-gray-700 mb-1.5">
                             ALAMAT JALAN PENGIRIM <span class="text-red-500">*</span>
                         </label>
-                        <textarea id="pengirim_alamat" name="pengirim_alamat" rows="2" required minlength="15" placeholder="Contoh: JL RONGGOWARSITO NO 15 RT 01 RW 02" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">{{ old('pengirim_alamat') }}</textarea>
+
+                        <textarea id="pengirim_alamat" name="pengirim_alamat" rows="2" required minlength="15" @input.debounce.1000ms="autoGeneratePickup()" placeholder="..." class="...">{{ old('pengirim_alamat') }}</textarea>
 
                         <div class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700">
                             <p class="text-[11px] font-bold flex items-start gap-1.5 leading-tight">
@@ -876,6 +885,98 @@ document.addEventListener('alpine:init', () => {
         showContactReceiver: false,
         isSearchingContactReceiver: false,
 
+        // Tambahkan variabel ini di deklarasi awal
+        isGeneratingPickup: false,
+
+        // Tambahkan fungsi baru ini di dalam Alpine.js
+        async autoGeneratePickup() {
+            let nama = document.getElementById('pengirim_nama') ? document.getElementById('pengirim_nama').value : this.pengirimNama;
+            let hp = document.getElementById('pengirim_hp') ? document.getElementById('pengirim_hp').value : '';
+            let alamat = document.getElementById('pengirim_alamat') ? document.getElementById('pengirim_alamat').value : '';
+            let districtId = this.senderDistrictId;
+            let email = document.getElementById('pengirim_email') ? document.getElementById('pengirim_email').value : '';
+
+            // CEK SYARAT: Form Pengirim harus diisi valid sebelum Hit API (Alamat minimal 15 karakter)
+            if (nama.length >= 2 && hp.length >= 9 && districtId && alamat.length >= 15) {
+                this.isGeneratingPickup = true;
+
+                try {
+                    let formData = new FormData();
+                    formData.append('pengirim_nama', nama);
+                    formData.append('pengirim_hp', hp);
+                    formData.append('pengirim_alamat', alamat);
+                    formData.append('pengirim_district_id', districtId);
+                    formData.append('pengirim_email', email);
+                    formData.append('_token', document.querySelector('input[name="_token"]').value);
+
+                    // Sesuaikan URL ini dengan nama Route yang Anda buat di Langkah 2
+                    let response = await fetch("{{ route('customer.pesanan-autokirim.ajax-pickup') }}", {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    let result = await response.json();
+                    if(result.success) {
+                        this.pickupPointCode = result.pickup_point_code;
+                    } else {
+                        console.error(result.message);
+                    }
+                } catch(error) {
+                    console.error("Auto Pickup Error:", error);
+                } finally {
+                    this.isGeneratingPickup = false;
+                }
+            }
+        },
+
+        // Update fungsi selectContact (ketika user memilih dropdown)
+        selectContact(type, kontak) {
+            if (type === 'sender') {
+                this.pengirimNama = kontak.nama;
+                document.getElementById('pengirim_hp').value = kontak.no_hp;
+                if(kontak.alamat) document.getElementById('pengirim_alamat').value = kontak.alamat;
+                if(document.getElementById('pengirim_email')) document.getElementById('pengirim_email').value = kontak.email || '';
+
+                this.pickupPointCode = kontak.pickup_point_code || '';
+                this.showContactSender = false;
+
+                // Hitung/Generate ulang jika kontak diubah
+                setTimeout(() => this.autoGeneratePickup(), 200);
+
+            } else {
+                // Logika receiver bawaan
+                this.penerimaNama = kontak.nama;
+                document.getElementById('penerima_hp').value = kontak.no_hp;
+                if(kontak.alamat) document.getElementById('penerima_alamat').value = kontak.alamat;
+
+                // Autofill Email jika ada
+                if(document.getElementById('penerima_email')) {
+                    document.getElementById('penerima_email').value = kontak.email || '';
+                }
+
+                this.showContactReceiver = false;
+            }
+        },
+
+        // Update fungsi selectAddress (ketika user klik dropdown kecamatan)
+        selectAddress(type, res) {
+            let formatText = `${res.district_name}, ${res.regency_name}`;
+            if(type === 'sender') {
+                this.senderQuery = formatText;
+                this.senderDistrictId = res.district_id;
+                this.showSenderDropdown = false;
+
+                // Hitung/Generate ulang jika kecamatan diubah
+                setTimeout(() => this.autoGeneratePickup(), 200);
+
+            } else {
+                // Logika receiver bawaan
+                this.receiverQuery = formatText;
+                this.receiverDistrictId = res.district_id;
+                this.showReceiverDropdown = false;
+            }
+        },
+
         // --- FUNGSI MENCARI KONTAK KE SERVER ---
         async searchContact(type) {
             let query = type === 'sender' ? this.pengirimNama : this.penerimaNama;
@@ -901,37 +1002,6 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 if (type === 'sender') this.isSearchingContactSender = false;
                 else this.isSearchingContactReceiver = false;
-            }
-        },
-
-        // --- FUNGSI KETIKA KONTAK DIKLIK DARI DROPDOWN ---
-        // --- FUNGSI KETIKA KONTAK DIKLIK DARI DROPDOWN ---
-        selectContact(type, kontak) {
-            if (type === 'sender') {
-                this.pengirimNama = kontak.nama;
-                document.getElementById('pengirim_hp').value = kontak.no_hp;
-                if(kontak.alamat) document.getElementById('pengirim_alamat').value = kontak.alamat;
-
-                // Autofill Email jika ada
-                if(document.getElementById('pengirim_email')) {
-                    document.getElementById('pengirim_email').value = kontak.email || '';
-                }
-
-                // Update Pickup Point Code di Layar
-                this.pickupPointCode = kontak.pickup_point_code || ''; // <--- TAMBAHKAN BARIS INI
-
-                this.showContactSender = false;
-            } else {
-                this.penerimaNama = kontak.nama;
-                document.getElementById('penerima_hp').value = kontak.no_hp;
-                if(kontak.alamat) document.getElementById('penerima_alamat').value = kontak.alamat;
-
-                // Autofill Email jika ada
-                if(document.getElementById('penerima_email')) {
-                    document.getElementById('penerima_email').value = kontak.email || '';
-                }
-
-                this.showContactReceiver = false;
             }
         },
 
@@ -971,18 +1041,6 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        selectAddress(type, res) {
-            let formatText = `${res.district_name}, ${res.regency_name}`;
-            if(type === 'sender') {
-                this.senderQuery = formatText;
-                this.senderDistrictId = res.district_id;
-                this.showSenderDropdown = false;
-            } else {
-                this.receiverQuery = formatText;
-                this.receiverDistrictId = res.district_id;
-                this.showReceiverDropdown = false;
-            }
-        },
 
         async cekOngkir() {
             if(!this.senderDistrictId || !this.receiverDistrictId || !this.berat) {

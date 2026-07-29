@@ -2009,3 +2009,7 @@ Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () 
     Route::get('/riwayat-pencairan', [\App\Http\Controllers\KomisiAgentController::class, 'riwayatPencairan'])->name('riwayat-pencairan.index');
 
     });
+
+
+    // Jika diletakkan di group route ber-auth (web)
+Route::post('/customer/pesanan-autokirim/ajax-pickup', [PesananAutokirimController::class, 'generatePickupPointAjax'])->name('customer.pesanan-autokirim.ajax-pickup');

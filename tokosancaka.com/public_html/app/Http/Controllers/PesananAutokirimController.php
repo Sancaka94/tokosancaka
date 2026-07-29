@@ -1744,4 +1744,137 @@ class PesananAutokirimController extends Controller
         }
     }
 
+    // Tambahkan di dalam class PesananAutokirimController
+
+    public function generatePickupPointAjax(Request $request)
+    {
+        $request->validate([
+            'pengirim_nama' => 'required|string',
+            'pengirim_hp' => 'required|string',
+            'pengirim_alamat' => 'required|string',
+            'pengirim_district_id' => 'required'
+        ]);
+
+        $user = auth()->user();
+        $noHpPengirim = trim($request->pengirim_hp);
+        $alamatPengirim = trim($request->pengirim_alamat);
+        $namaPengirim = trim($request->pengirim_nama);
+        $districtId = (int) $request->pengirim_district_id;
+        $emailPengirim = trim($request->pengirim_email) ?: ($user->email ?? 'customer@tokosancaka.com');
+
+        $payloadToUpdate = [
+            'name'              => (string) $namaPengirim,
+            'phone'             => (string) $noHpPengirim,
+            'address'           => (string) $alamatPengirim,
+            'email'             => (string) $emailPengirim,
+            'longitude'         => "",
+            'latitude'          => "",
+            'district_id'       => $districtId,
+            'is_member_deposit' => false
+        ];
+
+        // =========================================================================
+        // 1. PRIORITAS 1: HASH & REDIS CHECK (NO QUERY, INSTAN!)
+        // =========================================================================
+        $dataStr = strtolower($noHpPengirim . $districtId . $alamatPengirim . $namaPengirim);
+        $dataHash = md5($dataStr);
+        $redisPickupKey = "pickup_point_hash_" . $dataHash;
+
+        $pickupPointCode = \Illuminate\Support\Facades\Redis::get($redisPickupKey);
+
+        if ($pickupPointCode) {
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [AJAX PICKUP] Mengambil dari REDIS (Super Cepat): {$pickupPointCode}");
+            return response()->json(['success' => true, 'pickup_point_code' => $pickupPointCode]);
+        }
+
+        // =========================================================================
+        // 2. PRIORITAS 2: CHECK DB LOKAL & CEK PERUBAHAN DATA
+        // =========================================================================
+        $isDataIdentikDenganUserAuth = ($user && trim($user->no_wa) === $noHpPengirim);
+        $userSama = $isDataIdentikDenganUserAuth ? $user : null;
+
+        $kontak = \App\Models\Kontak::where('no_hp', $noHpPengirim)
+            ->where('district_id', $districtId)
+            ->whereNotNull('pickup_point_code')
+            ->first();
+
+        $existingPickupCode = null;
+        $needsApiUpdate = false;
+
+        if ($kontak) {
+            $existingPickupCode = $kontak->pickup_point_code;
+            if (trim($kontak->alamat) !== $alamatPengirim || trim($kontak->nama) !== $namaPengirim) {
+                $needsApiUpdate = true;
+            }
+        } elseif ($userSama && !empty($userSama->pickup_point_code)) {
+            $existingPickupCode = $userSama->pickup_point_code;
+            if (trim($userSama->address_detail) !== $alamatPengirim || trim($userSama->nama_lengkap) !== $namaPengirim) {
+                $needsApiUpdate = true;
+            }
+        }
+
+        try {
+            if ($existingPickupCode) {
+                $pickupPointCode = $existingPickupCode;
+                if ($needsApiUpdate) {
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: [AJAX PICKUP] Data Berubah. HIT API UPDATE untuk {$pickupPointCode}");
+                    $this->updatePickupPoint($pickupPointCode, $payloadToUpdate); // Panggil Helper Bawaan Anda
+
+                    // Update sinkronisasi DB Lokal
+                    if ($kontak) {
+                        $kontak->update(['alamat' => $alamatPengirim, 'nama' => $namaPengirim, 'email' => $emailPengirim]);
+                    }
+                    if ($userSama) {
+                        $primaryKey = $userSama->getKeyName();
+                        \App\Models\User::where($primaryKey, $userSama->$primaryKey)->update([
+                            'address_detail' => $alamatPengirim,
+                            'nama_lengkap'   => $namaPengirim
+                        ]);
+                    }
+                } else {
+                    \Illuminate\Support\Facades\Log::info("LOG LOG: [AJAX PICKUP] Menggunakan Data DB lokal: {$pickupPointCode}");
+                }
+            }
+            // =========================================================================
+            // 3. PRIORITAS 3: INSERT BARU KE API
+            // =========================================================================
+            else {
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [AJAX PICKUP] REQUEST INSERT BARU:", $payloadToUpdate);
+                $pickupResponse = \Illuminate\Support\Facades\Http::timeout(15)
+                    ->withToken($this->token)
+                    ->post("{$this->baseUrl}/api/pickup-point/insert", $payloadToUpdate);
+
+                $pickupResult = $pickupResponse->json();
+
+                if (!$pickupResponse->successful() || empty($pickupResult['data']['pickup_point_code'])) {
+                    throw new \Exception($pickupResult['rd'] ?? 'Unknown Error API');
+                }
+
+                $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [AJAX PICKUP] Dibuat baru dari API: {$pickupPointCode}");
+
+                // Simpan ke DB Lokal
+                if ($userSama) {
+                    $primaryKey = $userSama->getKeyName();
+                    \App\Models\User::where($primaryKey, $userSama->$primaryKey)->update(['pickup_point_code' => $pickupPointCode]);
+                }
+                if ($user) {
+                    \App\Models\Kontak::updateOrCreate(
+                        ['no_hp' => $noHpPengirim, 'user_id' => auth()->id(), 'district_id' => $districtId],
+                        ['nama' => $namaPengirim, 'alamat' => $alamatPengirim, 'tipe' => 'Pengirim', 'pickup_point_code' => $pickupPointCode, 'email' => $emailPengirim]
+                    );
+                }
+            }
+
+            // SIMPAN KE REDIS UNTUK MEM-BYPASS PENCARIAN BERIKUTNYA (Berlaku 30 Hari)
+            \Illuminate\Support\Facades\Redis::setex($redisPickupKey, 2592000, $pickupPointCode);
+
+            return response()->json(['success' => true, 'pickup_point_code' => $pickupPointCode]);
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG LOG: [AJAX PICKUP] ERROR: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
 }
