@@ -825,6 +825,14 @@ Route::prefix('admin/akuntansi')->name('admin.akuntansi.')->group(function () {
 
 Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->name('admin.')->group(function () {
 
+    // === TARUH ROUTE STATIC KONTAK DI SINI, SEBELUM FILE ADMIN.PHP DI-LOAD ===
+    Route::get('kontak/search-district', [\App\Http\Controllers\KontakController::class, 'searchDistrict'])->name('kontak.search-district');
+
+    Route::post('kontak/{kontak}/api-insert', [\App\Http\Controllers\KontakController::class, 'syncApiInsert'])->name('kontak.api.insert');
+    Route::post('kontak/{kontak}/api-update', [\App\Http\Controllers\KontakController::class, 'syncApiUpdate'])->name('kontak.api.update');
+    Route::post('kontak/{kontak}/api-delete', [\App\Http\Controllers\KontakController::class, 'syncApiDelete'])->name('kontak.api.delete');
+    // =========================================================================
+
     if(file_exists(__DIR__.'/web/admin.php')) require __DIR__.'/web/admin.php';
     if(file_exists(__DIR__.'/admin/orders.php')) require __DIR__.'/admin/orders.php';
 
@@ -2025,14 +2033,4 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::post('/blocked-ips', [BlockedIpController::class, 'store'])->name('admin.blocked-ips.store');
     Route::delete('/blocked-ips/{id}', [BlockedIpController::class, 'destroy'])->name('admin.blocked-ips.destroy');
 
-    // 1. ROUTE STATIC HARUS DI ATAS (Agar tidak tertimpa parameter dinamis)
-    Route::get('kontak/search-district', [\App\Http\Controllers\KontakController::class, 'searchDistrict'])->name('admin.kontak.search-district');
-
-    // 2. ROUTE DENGAN PARAMETER ({kontak}) DI BAWAHNYA
-    Route::post('kontak/{kontak}/api-insert', [\App\Http\Controllers\KontakController::class, 'syncApiInsert'])->name('admin.kontak.api.insert');
-    Route::post('kontak/{kontak}/api-update', [\App\Http\Controllers\KontakController::class, 'syncApiUpdate'])->name('admin.kontak.api.update');
-    Route::post('kontak/{kontak}/api-delete', [\App\Http\Controllers\KontakController::class, 'syncApiDelete'])->name('admin.kontak.api.delete');
-
-    // Pastikan resource route (jika ada) selalu berada di paling bawah untuk modul ini
-    // Route::resource('kontak', \App\Http\Controllers\KontakController::class);
 });
