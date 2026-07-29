@@ -1533,17 +1533,6 @@ public function generatePickupPointAjax(Request $request)
         $districtId = (int) $request->pengirim_district_id;
         $emailPengirim = trim($request->pengirim_email) ?: ($user->email ?? 'customer@tokosancaka.com');
 
-        $payloadToInsert = [
-            'name'              => (string) $namaPengirim,
-            'phone'             => (string) $noHpPengirim,
-            'address'           => (string) $alamatPengirim,
-            'email'             => (string) $emailPengirim,
-            'longitude'         => "",
-            'latitude'          => "",
-            'district_id'       => $districtId,
-            'is_member_deposit' => false
-        ];
-
         // =========================================================================
         // 1. CEK CACHE REDIS UTAMA
         // =========================================================================
@@ -1570,7 +1559,7 @@ public function generatePickupPointAjax(Request $request)
         if ($existingPickupCode) {
             // PROSES DELETE: Tidak Pandang Bulu, Hapus Kode Lama!
             \Illuminate\Support\Facades\Log::info("LOG LOG: [AJAX PICKUP] Ditemukan kode lama {$existingPickupCode} di DB. Memulai proses DELETE...");
-            $this->deletePickupPoint($existingPickupCode); // Memanggil Helper Delete
+            $this->deletePickupPoint($existingPickupCode);
 
             // Bersihkan Lokal
             if ($kontak) $kontak->update(['pickup_point_code' => null]);
@@ -1582,9 +1571,23 @@ public function generatePickupPointAjax(Request $request)
         }
 
         // =========================================================================
-        // 3. CREATE / INSERT BARU AGAR FRESH
+        // 3. CREATE / INSERT BARU (DENGAN TRIK BYPASS BUG AUTOKIRIM)
         // =========================================================================
         try {
+            // TRIK BYPASS: Tambahkan titik dan angka acak agar Autokirim tidak me-recycle ID Hantu
+            $bypassAddress = $alamatPengirim . ' .' . rand(10, 99);
+
+            $payloadToInsert = [
+                'name'              => (string) $namaPengirim,
+                'phone'             => (string) $noHpPengirim,
+                'address'           => (string) $bypassAddress, // Gunakan alamat bypass
+                'email'             => (string) $emailPengirim,
+                'longitude'         => "",
+                'latitude'          => "",
+                'district_id'       => $districtId,
+                'is_member_deposit' => false
+            ];
+
             \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] REQUEST Buat Kode Fresh (AJAX):", $payloadToInsert);
             $pickupResponse = \Illuminate\Support\Facades\Http::timeout(15)->withToken($this->token)
                 ->post("{$this->baseUrl}/api/pickup-point/insert", $payloadToInsert);
@@ -1597,7 +1600,7 @@ public function generatePickupPointAjax(Request $request)
             $freshPickupCode = (string) $pickupResult['data']['pickup_point_code'];
             \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] RESPONSE SUKSES Dibuat Fresh: {$freshPickupCode}");
 
-            // UPDATE DB LOKAL
+            // UPDATE DB LOKAL (Tetap gunakan alamat asli agar rapi di database Anda)
             if ($userSama) {
                 \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update([
                     'pickup_point_code' => $freshPickupCode, 'address_detail' => $alamatPengirim, 'nama_lengkap' => $namaPengirim
@@ -1622,7 +1625,7 @@ public function generatePickupPointAjax(Request $request)
     }
 
 
-  public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
+    public function _executeAutokirimApi($pesanan, $origin, $destination, $requestData = null)
     {
         $user = auth()->user();
 
@@ -1631,17 +1634,6 @@ public function generatePickupPointAjax(Request $request)
         $namaPengirim = trim($pesanan->pengirim_nama);
         $districtId = (int) $origin->district_id;
         $emailPengirim = $user->email ?? 'customer@tokosancaka.com';
-
-        $payloadToInsert = [
-            'name'              => (string) $namaPengirim,
-            'phone'             => (string) $noHpPengirim,
-            'address'           => (string) $alamatPengirim,
-            'email'             => (string) $emailPengirim,
-            'longitude'         => "",
-            'latitude'          => "",
-            'district_id'       => $districtId,
-            'is_member_deposit' => false
-        ];
 
         // =========================================================================
         // 1. CEK CACHE REDIS UTAMA
@@ -1690,8 +1682,21 @@ public function generatePickupPointAjax(Request $request)
             }
 
             // =========================================================================
-            // 3. CREATE (INSERT BARU) AGAR KODE FRESH
+            // 3. CREATE (INSERT BARU) DENGAN TRIK BYPASS BUG AUTOKIRIM
             // =========================================================================
+            $bypassAddress = $alamatPengirim . ' .' . rand(10, 99);
+
+            $payloadToInsert = [
+                'name'              => (string) $namaPengirim,
+                'phone'             => (string) $noHpPengirim,
+                'address'           => (string) $bypassAddress, // Gunakan alamat bypass
+                'email'             => (string) $emailPengirim,
+                'longitude'         => "",
+                'latitude'          => "",
+                'district_id'       => $districtId,
+                'is_member_deposit' => false
+            ];
+
             \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] REQUEST Buat Kode Fresh (Execute):", $payloadToInsert);
             $pickupResponse = \Illuminate\Support\Facades\Http::timeout(15)->withToken($this->token)
                 ->post("{$this->baseUrl}/api/pickup-point/insert", $payloadToInsert);
@@ -1704,7 +1709,7 @@ public function generatePickupPointAjax(Request $request)
             $pickupPointCode = (string) $pickupResult['data']['pickup_point_code'];
             \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE PICKUP] RESPONSE SUKSES Dibuat Fresh: {$pickupPointCode}");
 
-            // SIMPAN KE DATABASE LOKAL
+            // SIMPAN KE DATABASE LOKAL (Tetap pakai alamat asli)
             if ($userSama) {
                 \App\Models\User::where($userSama->getKeyName(), $userSama->id)->update([
                     'pickup_point_code' => $pickupPointCode, 'address_detail' => $alamatPengirim, 'nama_lengkap' => $namaPengirim
@@ -1717,9 +1722,7 @@ public function generatePickupPointAjax(Request $request)
                 );
             }
 
-            sleep(2); // Jeda sinkronisasi server Autokirim
-
-            // SIMPAN KE REDIS
+            sleep(2); // Jeda sinkronisasi server Autokirim khusus untuk Create baru
             \Illuminate\Support\Facades\Redis::setex($redisPickupKey, 2592000, $pickupPointCode);
         }
 
@@ -1783,7 +1786,7 @@ public function generatePickupPointAjax(Request $request)
             // SELF-HEALING KETIKA SUBMIT ORDER
             if (stripos($errorMsg, 'Pickup Point Code tidak ditemukan') !== false) {
                  \Illuminate\Support\Facades\Redis::del($redisPickupKey); // Hapus cache rusak
-                 throw new \Exception("Sistem logistik pusat mereset data. Silakan klik 'SUBMIT KIRIM SEKARANG' satu kali lagi untuk generate ulang.");
+                 throw new \Exception("Sistem logistik pusat sedang memulihkan data wilayah Anda. Silakan klik 'SUBMIT KIRIM SEKARANG' satu kali lagi.");
             }
 
             throw new \Exception('Gagal membuat pesanan di server logistik: ' . $errorMsg);
