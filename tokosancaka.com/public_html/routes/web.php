@@ -835,6 +835,8 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::post('kontak/{kontak}/api-update', [\App\Http\Controllers\KontakController::class, 'syncApiUpdate'])->name('kontak.api.update');
     Route::post('kontak/{kontak}/api-delete', [\App\Http\Controllers\KontakController::class, 'syncApiDelete'])->name('kontak.api.delete');
 
+    Route::get('kontak/{kontak}/api-check', [\App\Http\Controllers\KontakController::class, 'syncApiCheck'])->name('kontak.api.check');
+
     if(file_exists(__DIR__.'/web/admin.php')) require __DIR__.'/web/admin.php';
     if(file_exists(__DIR__.'/admin/orders.php')) require __DIR__.'/admin/orders.php';
 
