@@ -70,7 +70,7 @@ class KontakController extends Controller
     {
         $validatedData = $request->validate([
             'nama'        => 'required|string|max:255',
-            'no_hp'       => 'required|string|max:20|unique:kontaks,no_hp',
+            'no_hp'       => 'required|string|max:20',
             'alamat'      => 'required|string',
             'tipe'        => 'required|string|in:Pengirim,Penerima,Keduanya',
             'district_id' => 'required|integer',
@@ -120,7 +120,7 @@ class KontakController extends Controller
     {
         $validatedData = $request->validate([
             'nama'        => 'required|string|max:255',
-            'no_hp'       => 'required|string|max:20|unique:kontaks,no_hp,' . $kontak->id,
+            'no_hp'       => 'required|string|max:20',
             'alamat'      => 'required|string',
             'tipe'        => 'required|string',
             'district_id' => 'required|integer',
