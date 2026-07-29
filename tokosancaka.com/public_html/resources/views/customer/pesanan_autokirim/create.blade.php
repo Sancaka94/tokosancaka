@@ -36,15 +36,24 @@
                <div class="flex items-center justify-between mb-5">
                     <h2 class="text-base font-bold text-black flex items-center"><i class="fa-solid fa-user-check text-gray-800 mr-2.5"></i> Data Pengirim</h2>
 
-                    <!-- Tombol Centang Simpan Pengirim -->
-                    <button type="button" @click="simpanPengirim = !simpanPengirim"
-                            class="text-xs font-medium border px-3 py-1.5 rounded transition duration-200 flex items-center gap-1.5"
-                            :class="simpanPengirim ? 'bg-black text-white border-black shadow-inner' : 'bg-white text-black border-gray-300 hover:bg-gray-50'">
-                        <i class="fa-solid" :class="simpanPengirim ? 'fa-circle-check' : 'fa-bookmark'"></i>
-                        <span x-text="simpanPengirim ? 'Akan Disimpan' : 'Simpan Kontak'"></span>
-                    </button>
-                    <!-- Hidden Input untuk Backend -->
-                    <input type="hidden" name="simpan_pengirim" :value="simpanPengirim ? 1 : 0">
+                    <!-- Wrapper Tombol & Badge -->
+                    <div class="flex items-center gap-3">
+                        <!-- Badge Kode Pickup Point -->
+                        <div x-show="pickupPointCode" x-transition x-cloak class="bg-gray-100 border border-gray-200 text-gray-800 text-[10px] font-bold px-2 py-1.5 rounded flex items-center gap-1.5 uppercase tracking-wider">
+                            <i class="fa-solid fa-store text-gray-500"></i>
+                            <span x-text="'PICKUP: ' + pickupPointCode"></span>
+                        </div>
+
+                        <!-- Tombol Centang Simpan Pengirim -->
+                        <button type="button" @click="simpanPengirim = !simpanPengirim"
+                                class="text-xs font-medium border px-3 py-1.5 rounded transition duration-200 flex items-center gap-1.5"
+                                :class="simpanPengirim ? 'bg-black text-white border-black shadow-inner' : 'bg-white text-black border-gray-300 hover:bg-gray-50'">
+                            <i class="fa-solid" :class="simpanPengirim ? 'fa-circle-check' : 'fa-bookmark'"></i>
+                            <span x-text="simpanPengirim ? 'Akan Disimpan' : 'Simpan Kontak'"></span>
+                        </button>
+                        <!-- Hidden Input untuk Backend -->
+                        <input type="hidden" name="simpan_pengirim" :value="simpanPengirim ? 1 : 0">
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div class="col-span-2 sm:col-span-1 relative" @click.away="showContactSender = false">
@@ -856,6 +865,7 @@ document.addEventListener('alpine:init', () => {
         contactResultsSender: [],
         showContactSender: false,
         isSearchingContactSender: false,
+        pickupPointCode: '{{ auth()->user()->pickup_point_code ?? '' }}',
 
         displayBerat: '',
         displayNilaiBarang: '',
@@ -895,6 +905,7 @@ document.addEventListener('alpine:init', () => {
         },
 
         // --- FUNGSI KETIKA KONTAK DIKLIK DARI DROPDOWN ---
+        // --- FUNGSI KETIKA KONTAK DIKLIK DARI DROPDOWN ---
         selectContact(type, kontak) {
             if (type === 'sender') {
                 this.pengirimNama = kontak.nama;
@@ -905,6 +916,9 @@ document.addEventListener('alpine:init', () => {
                 if(document.getElementById('pengirim_email')) {
                     document.getElementById('pengirim_email').value = kontak.email || '';
                 }
+
+                // Update Pickup Point Code di Layar
+                this.pickupPointCode = kontak.pickup_point_code || ''; // <--- TAMBAHKAN BARIS INI
 
                 this.showContactSender = false;
             } else {
