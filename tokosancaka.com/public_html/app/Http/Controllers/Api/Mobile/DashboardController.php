@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
-use Carbon\Carbon; // <--- WAJIB ADA
+use Illuminate\Support\Facades\Http; // <--- WAJIB UNTUK HIT API
+use App\Models\Api; // <--- WAJIB UNTUK KREDENSIAL DINAMIS
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
@@ -16,11 +18,11 @@ class DashboardController extends Controller
         $user = $request->user();
         $customerId = $user->id_pengguna ?? $user->id;
         $saldo = $user->saldo ?? 0;
-        $saldoIak = \Illuminate\Support\Facades\DB::table('Pengguna')
+        $saldoIak = DB::table('Pengguna')
                         ->where('id_pengguna', $customerId)
                         ->value('balance_iak') ?? 0;
 
-        $storeData = \Illuminate\Support\Facades\DB::table('stores')
+        $storeData = DB::table('stores')
                         ->where('user_id', $customerId)
                         ->select('doku_sac_id', 'doku_balance_available')
                         ->first();
@@ -71,9 +73,6 @@ class DashboardController extends Controller
             $querySelesai->whereYear('tanggal_pesanan', $now->year);
             $queryPending->whereYear('tanggal_pesanan', $now->year);
             $queryBatal->whereYear('tanggal_pesanan', $now->year);
-        } elseif ($filterWaktu === 'Semua') {
-            // JIKA SEMUA: Jangan tambahkan filter tanggal apapun ke query
-            // Biarkan query mengambil seluruh data yang ada di database
         }
 
         $totalPesanan = $queryTotal->count();
@@ -81,18 +80,13 @@ class DashboardController extends Controller
         $pesananPending = $queryPending->count();
         $pesananBatal = $queryBatal->count();
 
-        // ==========================================
-        // MENGHITUNG JUMLAH UANG (SUM)
-        // Catatan: Saya pakai kolom 'shipping_cost' (Ongkir).
-        // Kalau di databasemu ada kolom total lain (misal 'total_pembayaran'), tinggal ganti kata 'shipping_cost' di bawah ini ya!
-        // ==========================================
+        // MENGHITUNG JUMLAH UANG
         $uangTotal = $queryTotal->sum('shipping_cost');
         $uangSelesai = $querySelesai->sum('shipping_cost');
         $uangPending = $queryPending->sum('shipping_cost');
         $uangBatal = $queryBatal->sum('shipping_cost');
 
         // 3. REKAPITULASI PENGELUARAN EKSPEDISI
-        // Bikin nama cache unik berdasarkan filter biar datanya nggak nyangkut
         $namaFilterCache = str_replace(' ', '_', strtolower($filterWaktu));
         $cacheKey = $isAdmin ? 'api_mobile_rekap_exp_admin_all_' . $namaFilterCache : 'api_mobile_rekap_exp_' . $customerId . '_' . $namaFilterCache;
 
@@ -118,7 +112,6 @@ class DashboardController extends Controller
                 'borzo' => ['name' => 'Borzo', 'logo_url' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/borzo.png'],
             ];
 
-
             $stats = [];
             foreach ($courierMap as $code => $info) {
                 $stats[$info['name']] = [
@@ -137,7 +130,6 @@ class DashboardController extends Controller
                 $ordersQuery->where('id_pengguna_pembeli', $customerId);
             }
 
-            // FILTER WAKTU UNTUK EKSPEDISI
             if ($filterWaktu === 'Hari Ini') {
                 $ordersQuery->whereDate('tanggal_pesanan', $now->toDateString());
             } elseif ($filterWaktu === 'Bulan Ini') {
@@ -174,39 +166,53 @@ class DashboardController extends Controller
         });
 
         // ==========================================
-        // 🔥 TAMBAHAN KHUSUS BADGE ADMIN (HARI INI) 🔥
+        // 🔥 TAMBAHAN KHUSUS BADGE ADMIN & SALDO DIGIFLAZZ 🔥
         // ==========================================
         $pesananHariIni = 0;
         $scanHariIni = 0;
         $topupHariIni = 0;
         $ppobHariIni = 0;
         $belanjaHariIni = 0;
+        $saldoDigiflazz = 0; // Default 0
 
-        // Hanya hitung jika user adalah Admin (Meringankan beban server untuk user biasa)
         if ($isAdmin) {
             $today = Carbon::today()->toDateString();
 
-            // 1. Data Paket (Pesanan Baru)
             $pesananHariIni = DB::table('Pesanan')->whereDate('tanggal_pesanan', $today)->count();
-
-            // 2. Riwayat Scan SPX (Terkonfirmasi dari ScanSpxController)
             $scanHariIni = \App\Models\ScannedPackage::whereDate('created_at', $today)->count();
-
-            // 3. Riwayat Topup (Terkonfirmasi dari TopUpController)
             $topupHariIni = \App\Models\Transaction::where('type', 'topup')->whereDate('created_at', $today)->count();
 
-            // 4. Riwayat PPOB (Terkonfirmasi dari PpobMobileController & PpobDigiflazController)
-            // Gabungkan jumlah transaksi PPOB dari IAK dan Digiflazz hari ini
             $ppobIak = \App\Models\TransactionPpobIak::whereDate('created_at', $today)->count();
             $ppobDigi = \App\Models\PpobTransaction::whereDate('created_at', $today)->count();
             $ppobHariIni = $ppobIak + $ppobDigi;
 
-            // 5. Riwayat Belanja (Karena tabel marketplace belum ada di file yang kamu kirim, diset 0 dulu agar aman dan tidak Error 500)
             $belanjaHariIni = 0;
+
+            // ✅ AMBIL SALDO DIGIFLAZZ MENGGUNAKAN KREDENSIAL DINAMIS + CACHE (Agar HP tidak lemot)
+            $saldoDigiflazz = Cache::remember('api_mobile_digiflazz_balance', 300, function () {
+                try {
+                    $mode = Api::getValue('DIGIFLAZZ_MODE', 'global', 'development');
+                    $username = Api::getValue('DIGIFLAZZ_USERNAME', $mode);
+                    $apiKey   = Api::getValue('DIGIFLAZZ_API_KEY', $mode);
+                    $sign = md5($username . $apiKey . "depo");
+
+                    $response = Http::timeout(10)->post('https://api.digiflazz.com/v1/cek-saldo', [
+                        'cmd' => 'deposit',
+                        'username' => $username,
+                        'sign' => $sign
+                    ]);
+
+                    if ($response->successful()) {
+                        return $response->json()['data']['deposit'] ?? 0;
+                    }
+                } catch (\Exception $e) {}
+
+                return 0; // Jika gagal, kembalikan 0 agar aplikasi tidak crash
+            });
         }
 
         // ==========================================
-        // UPDATE RESPONSE JSON-NYA (Paket Komplit)
+        // UPDATE RESPONSE JSON-NYA
         // ==========================================
         return response()->json([
             'success' => true,
@@ -215,17 +221,19 @@ class DashboardController extends Controller
                 'role'                => $user->role,
                 'saldo_format'        => number_format($saldo, 0, ',', '.'),
 
-                // Masukkan semua count ke dalam JSON
                 'pesananHariIni'      => $pesananHariIni,
                 'scanHariIni'         => $scanHariIni,
                 'topupHariIni'        => $topupHariIni,
                 'ppobHariIni'         => $ppobHariIni,
                 'belanjaHariIni'      => $belanjaHariIni,
 
-                // 🚨 INI BARANG BAWAAN YANG KETINGGALAN DI STASIUN COK!
+                // Saldo Lainnya
                 'saldo_iak_format'    => number_format($saldoIak ?? 0, 0, ',', '.'),
                 'doku_sac_id'         => $dokuSacId ?? null,
                 'doku_balance_format' => number_format($dokuBalance ?? 0, 0, ',', '.'),
+
+                // 🆕 Saldo Digiflazz untuk Dashboard Mobile Admin
+                'saldo_digiflazz_format' => number_format($saldoDigiflazz, 0, ',', '.'),
 
                 'statistik' => [
                     'totalPesanan'   => $totalPesanan,

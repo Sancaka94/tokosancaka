@@ -12,6 +12,8 @@ use App\Services\FonnteService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http; // Pastikan ini ada jika belum
+use App\Models\Api; // 👈 TAMBAHKAN INI
 use Illuminate\Support\Str;
 use App\Services\DokuJokulService;
 
@@ -22,6 +24,16 @@ class PpobDigiflazController extends Controller
     public function __construct(DigiflazzService $digiflazz)
     {
         $this->digiflazz = $digiflazz;
+
+        // 👇 KREDENSIAL DINAMIS DARI DATABASE
+        $mode = Api::getValue('DIGIFLAZZ_MODE', 'global', 'development');
+        $username = Api::getValue('DIGIFLAZZ_USERNAME', $mode);
+        $apiKey   = Api::getValue('DIGIFLAZZ_API_KEY', $mode);
+
+        $isProduction = ($mode === 'production');
+
+        // 👇 Teruskan kredensial ke service Digiflazz
+        $this->digiflazz->setCredentials($username, $apiKey, $isProduction);
     }
 
     // =================================================================
@@ -489,8 +501,12 @@ class PpobDigiflazController extends Controller
 
         try {
             // Ambil Kredensial (Gunakan Env jika ada, jika tidak gunakan fallback hardcode)
-            $username = trim(env('DIGIFLAZZ_USERNAME', 'mihetiDVGdeW'));
-            $apiKey   = trim(env('DIGIFLAZZ_API_KEY', '1f48c69f-8676-5d56-a868-10a46a69f9b7'));
+            // $username = trim(env('DIGIFLAZZ_USERNAME', 'mihetiDVGdeW'));
+            // $apiKey   = trim(env('DIGIFLAZZ_API_KEY', '1f48c69f-8676-5d56-a868-10a46a69f9b7'));
+
+            $mode = Api::getValue('DIGIFLAZZ_MODE', 'global', 'development');
+            $username = Api::getValue('DIGIFLAZZ_USERNAME', $mode);
+            $apiKey   = Api::getValue('DIGIFLAZZ_API_KEY', $mode);
 
             // Formula cek saldo Digiflazz: md5(username + apikey + "depo")
             $sign = md5($username . $apiKey . "depo");
