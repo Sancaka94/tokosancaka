@@ -404,6 +404,7 @@ public function checkBill(Request $request)
         $request->validate(['customer_no' => 'required']);
         try {
             $response = $this->digiflazz->inquiryPln($request->customer_no);
+
             if (isset($response['data']) && ($response['data']['rc'] === '00' || $response['data']['status'] === 'Sukses')) {
                 return response()->json([
                     'status' => 'success',
@@ -411,7 +412,15 @@ public function checkBill(Request $request)
                     'segment_power' => $response['data']['segment_power']
                 ]);
             }
-            return response()->json(['status' => 'error', 'message' => 'ID Pelanggan tidak ditemukan.']);
+
+            // 👇 PERBAIKAN: Ambil pesan error langsung dari Digiflazz
+            $msg = $response['data']['message'] ?? 'ID Pelanggan tidak ditemukan.';
+
+            // Catat di log agar admin bisa melihat kode errornya (misal rc: 103)
+            \Illuminate\Support\Facades\Log::warning("Cek PLN Gagal untuk nomor {$request->customer_no}: {$msg}", $response);
+
+            return response()->json(['status' => 'error', 'message' => $msg]);
+
         } catch (\Exception $e) {
             return response()->json(['status' => 'error', 'message' => 'Error: ' . $e->getMessage()]);
         }
