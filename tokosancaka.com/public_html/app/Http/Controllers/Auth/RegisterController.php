@@ -34,7 +34,7 @@ class RegisterController extends Controller
             // ✅ PERBAIKAN: Aturan validasi 'unique' diubah untuk menunjuk ke tabel 'Pengguna'
             // karena tabel 'users' tidak ditemukan di database Anda.
             'email' => 'required|string|email|max:255|unique:Pengguna,email|unique:registration_requests,email',
-            'no_wa' => 'required|string|min:10',
+            'no_wa' => ['required', 'string', 'min:10', 'regex:/^(08|62|\+62)[0-9]{7,13}$/'],
             'store_nama' => 'required|string|max:255',
         ]);
 

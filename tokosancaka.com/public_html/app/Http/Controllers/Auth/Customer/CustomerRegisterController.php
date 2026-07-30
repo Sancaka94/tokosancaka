@@ -48,7 +48,16 @@ class CustomerRegisterController extends Controller
             'nama_lengkap' => ['required', 'string', 'max:255'],
             'email'        => ['required', 'string', 'email', 'max:255', 'unique:Pengguna,email'],
             'password'     => ['required', 'string', 'min:8', 'confirmed'],
-            'no_wa'        => ['required', 'string', 'max:15', 'unique:Pengguna,no_wa'],
+
+            // Kode validasi regex nomor WA ditambahkan di sini
+            'no_wa'        => [
+                'required',
+                'string',
+                'max:15',
+                'unique:Pengguna,no_wa',
+                'regex:/^(08|62|\+62)[0-9]{7,13}$/'
+            ],
+
             'store_name'   => ['required', 'string'],
         ]);
     }

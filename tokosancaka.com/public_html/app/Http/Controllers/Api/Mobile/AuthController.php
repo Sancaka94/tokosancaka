@@ -152,7 +152,13 @@ class AuthController extends Controller
             'nama_lengkap'  => ['required', 'string', 'max:255'],
             'email'         => ['required', 'string', 'email', 'max:255', 'unique:Pengguna,email'],
             'password'      => ['required', 'string', 'min:8', 'confirmed'],
-            'no_wa'         => ['required', 'string', 'max:15', 'unique:Pengguna,no_wa'],
+            'no_wa'         => [
+                'required',
+                'string',
+                'max:15',
+                'unique:Pengguna,no_wa',
+                'regex:/^(08|62|\+62)[0-9]{7,13}$/'
+            ],
             'store_name'    => ['required', 'string'],
             // PERBAIKAN: Tambahkan validasi jenis kelamin
             'jenis_kelamin' => ['required', 'string', 'in:Laki-laki,Perempuan'],
