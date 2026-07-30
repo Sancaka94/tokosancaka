@@ -211,7 +211,7 @@ class PublicScanController extends Controller
         ]);
     }
 
-   public function generateSuratJalan(Request $request)
+  public function generateSuratJalan(Request $request)
     {
         $kodeSuratJalan = $request->query('kode');
 
@@ -224,8 +224,8 @@ class PublicScanController extends Controller
         // Tetap jalankan notifikasi Telegram Anda
         $this->_sendTelegramNotificationLengkap($suratJalan);
 
-        // KEMBALIKAN SEBAGAI VIEW HTML BIASA (Bukan DomPDF)
-        // Agar JavaScript (JsBarcode) dan API QR Code bisa berjalan di sisi browser
+        // HAPUS BAGIAN DOMPDF ($pdf = Pdf::loadView...)
+        // DAN GANTI MENJADI return view() BIASA SEPERTI DI BAWAH INI:
         return view('public.scan.pdf.surat-jalan-spx', [
             'suratJalan' => $suratJalan,
             'packages' => $packages
