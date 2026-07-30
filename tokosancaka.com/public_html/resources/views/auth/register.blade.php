@@ -1,6 +1,6 @@
 {{--
     File: resources/views/auth/register.blade.php
-    Desain Split Layout (Kiri Branding, Kanan Form Grid)
+    Desain Split Layout (Kiri Branding, Kanan Form Grid) - Full Responsive
 --}}
 
 @extends('layouts.app')
@@ -22,12 +22,12 @@
         justify-content: center;
         align-items: center;
         min-height: 100vh;
-        padding: 2rem 1rem;
+        padding: 1.5rem 1rem; /* Sedikit dikecilkan untuk mobile */
         position: relative;
     }
 
     .auth-card {
-        max-width: 1050px; /* Sedikit lebih lebar untuk form grid */
+        max-width: 1050px;
         width: 100%;
         border: none;
         border-radius: 1rem;
@@ -44,7 +44,8 @@
         content: '';
         position: absolute;
         top: -50%; left: -50%; width: 200%; height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 10%, transparent 10%), radial-gradient(circle, rgba(255,255,255,0.1) 10%, transparent 10%);
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 10%, transparent 10%),
+                    radial-gradient(circle, rgba(255,255,255,0.1) 10%, transparent 10%);
         background-size: 50px 50px;
         background-position: 0 0, 25px 25px;
         opacity: 0.5;
@@ -68,7 +69,6 @@
         box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.15);
     }
 
-    /* MODIFIKASI: Style tombol aktif dan tidak aktif */
     .btn-danger {
         background-color: #dc3545;
         border: none;
@@ -84,8 +84,7 @@
         box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
     }
 
-    /* Tombol saat disabled (Abu-abu) */
-    .btn:disabled, .btn[disabled] {
+    .btn:disabled, .btn[disabled], .btn.disabled {
         background-color: #6c757d !important;
         border-color: #6c757d !important;
         color: #ffffff !important;
@@ -95,7 +94,6 @@
         box-shadow: none !important;
     }
 
-    /* Wrapper untuk menangkap klik saat tombol disabled */
     .disabled-btn-wrapper {
         cursor: not-allowed;
     }
@@ -109,11 +107,38 @@
         color: #adb5bd;
         z-index: 5;
     }
-    .copyright-text {
-        position: absolute;
-        bottom: 1.5rem;
+
+    /* FIX: Responsivitas Gambar Captcha */
+    .captcha-wrapper img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    /* FIX: Responsivitas Cloudflare Turnstile di HP Kecil */
+    .turnstile-container {
+        display: flex;
+        justify-content: center;
         width: 100%;
-        text-align: center;
+        overflow: hidden;
+    }
+
+    @media (max-width: 360px) {
+        .cf-turnstile {
+            transform: scale(0.85); /* Mengecilkan widget agar muat di layar sempit */
+            transform-origin: center;
+        }
+        .auth-wrapper {
+            padding: 1rem 0.5rem; /* Mengurangi padding di layar super kecil */
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .brand-logo-mobile {
+            max-height: 40px;
+            width: auto;
+        }
     }
 </style>
 @endpush
@@ -124,33 +149,34 @@
     <div class="card auth-card bg-white">
         <div class="row g-0 h-100">
 
-            {{-- 1. SISI KIRI (Branding) --}}
+            {{-- 1. SISI KIRI (Branding - Hanya tampil di Tablet & PC) --}}
             <div class="col-md-5 d-none d-md-flex auth-brand-side flex-column">
                 <div class="brand-logo-container">
-                    <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Sancaka Express" style="max-height: 40px; filter: brightness(0) invert(1);" onerror="this.src='https://placehold.co/150x40?text=Sancaka'">
+                    <img src="{{ asset('storage/uploads/sancaka.png') }}" class="img-fluid" alt="Sancaka Express" style="max-height: 40px; filter: brightness(0) invert(1);" onerror="this.src='https://placehold.co/150x40?text=Sancaka'">
                 </div>
 
                 <div class="my-auto px-4 px-lg-5 text-center text-white position-relative z-2">
                     <p class="mb-2 fw-medium text-uppercase tracking-wider" style="letter-spacing: 1px; font-size: 0.9rem;">Bergabung Bersama Kami</p>
-                    <h2 class="fw-bold mb-4" style="font-size: 2.5rem;">BUAT AKUN</h2>
+                    <h2 class="fw-bold mb-4" style="font-size: clamp(1.8rem, 2.5vw, 2.5rem);">BUAT AKUN</h2>
                     <hr class="w-25 mx-auto opacity-100 border-2 rounded">
                     <p class="mt-4 small text-white-50">Lengkapi data Anda dan mulai nikmati layanan pengiriman paket tercepat.</p>
                 </div>
             </div>
 
             {{-- 2. SISI KANAN (Form Grid) --}}
-            <div class="col-12 col-md-7 p-4 p-md-5 d-flex flex-column justify-content-center">
+            <div class="col-12 col-md-7 p-3 p-sm-4 p-md-5 d-flex flex-column justify-content-center">
 
-                <div class="text-center d-md-none mb-4">
-                    <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Sancaka Express" style="max-height: 45px;">
+                {{-- Logo untuk Mobile --}}
+                <div class="text-center d-md-none mb-3 mt-2">
+                    <img src="{{ asset('storage/uploads/sancaka.png') }}" class="img-fluid brand-logo-mobile" alt="Sancaka Express" onerror="this.src='https://placehold.co/150x40?text=Sancaka'">
                 </div>
 
                 <div class="text-center mb-4">
-                    <h3 class="fw-bold text-danger">Register Account</h3>
+                    <h3 class="fw-bold text-danger fs-4 fs-md-3">Register Account</h3>
                     <p class="text-muted small">Isi formulir di bawah ini dengan lengkap.</p>
                 </div>
 
-                {{-- Alert Info GPS untuk Pengguna --}}
+                {{-- Alert Info GPS --}}
                 <div id="gps-status-alert" class="alert alert-warning py-2 small mb-3 text-center">
                     <i class="fas fa-map-marker-alt me-1"></i> Sistem mendeteksi keamanan. Mohon aktifkan/izinkan GPS perangkat Anda untuk mendaftar.
                 </div>
@@ -165,27 +191,26 @@
 
                 <form action="{{ route('register') }}" method="POST" class="px-xl-2">
                     @csrf
-
-                    {{-- TAMBAHKAN JEBAKAN BOT (HONEYPOT) DI SINI --}}
                     <x-honeypot />
 
-                    {{-- Form Koordinat GPS (Terisi Otomatis) --}}
-                    <div class="row g-3 mb-3">
-                        <div class="col-12 col-sm-6">
+                    {{-- Form Koordinat GPS --}}
+                    <div class="row g-2 g-sm-3 mb-3">
+                        <div class="col-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="latitude" name="latitude" placeholder="Latitude" readonly>
-                                <label for="latitude" class="text-muted">Latitude (Otomatis)</label>
+                                <label for="latitude" class="text-muted" style="font-size: 0.85rem;">Latitude (Otomatis)</label>
                             </div>
                         </div>
-                        <div class="col-12 col-sm-6">
+                        <div class="col-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="longitude" name="longitude" placeholder="Longitude" readonly>
-                                <label for="longitude" class="text-muted">Longitude (Otomatis)</label>
+                                <label for="longitude" class="text-muted" style="font-size: 0.85rem;">Longitude (Otomatis)</label>
                             </div>
                         </div>
                     </div>
 
-                    <div class="row g-3 mb-4">
+                    {{-- Data Diri --}}
+                    <div class="row g-2 g-sm-3 mb-4">
                         <div class="col-12 col-sm-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="nama_lengkap" name="nama_lengkap" placeholder="Nama Lengkap" value="{{ old('nama_lengkap') }}" required>
@@ -232,7 +257,7 @@
                     </div>
 
                     {{-- Keamanan Captcha --}}
-                    <div class="mb-3 p-3 bg-light rounded-3 border">
+                    <div class="mb-3 p-2 p-sm-3 bg-light rounded-3 border">
                         <label class="form-label text-muted small mb-2 d-block text-center">Keamanan: Ketik karakter pada gambar</label>
                         <div class="text-center mb-2 captcha-wrapper">
                             {!! captcha_img('flat') !!}
@@ -241,7 +266,7 @@
                     </div>
 
                     {{-- WIDGET CLOUDFLARE TURNSTILE --}}
-                    <div class="mb-4 d-flex justify-content-center">
+                    <div class="mb-4 turnstile-container">
                         <div class="cf-turnstile" data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}" data-callback="onTurnstileSuccess"></div>
                     </div>
 
@@ -249,35 +274,31 @@
                         <a href="{{ route('login') }}" class="small text-danger text-decoration-none fw-medium">Already have an account? Login</a>
                     </div>
 
-                    {{-- MODIFIKASI: Tombol Submit di-disabled secara default --}}
+                    {{-- Tombol Submit --}}
                     <div class="d-grid mb-3 disabled-btn-wrapper" onclick="checkGpsClick()">
                         <button type="submit" id="btn-submit-manual" class="btn btn-danger btn-lg text-uppercase" disabled>Register</button>
                     </div>
 
-                    {{-- ========================================== --}}
-                    {{-- TAMBAHAN: TOMBOL DAFTAR GOOGLE --}}
-                    {{-- ========================================== --}}
+                    {{-- Tombol Google --}}
                     <div class="d-flex align-items-center mb-3">
                         <hr class="flex-grow-1 text-muted opacity-25">
                         <span class="mx-2 text-muted small">ATAU</span>
                         <hr class="flex-grow-1 text-muted opacity-25">
                     </div>
-                    {{-- MODIFIKASI: Tombol Google di-disabled secara default --}}
-                    <div class="d-grid mb-4 disabled-btn-wrapper" onclick="checkGpsClick()">
+
+                    <div class="d-grid mb-2 disabled-btn-wrapper" onclick="checkGpsClick()">
                         <a href="{{ route('register.google') }}" id="btn-submit-google" class="btn btn-outline-dark btn-lg d-flex justify-content-center align-items-center disabled" role="button" aria-disabled="true">
-                            <img src="https://tokosancaka.com/public/assets/google.png" alt="Google Logo" style="width: 24px; height: 24px; object-fit: contain;" class="me-2">
-                            Daftar dengan Google
+                            <img src="https://tokosancaka.com/public/assets/google.png" class="img-fluid me-2" alt="Google Logo" style="width: 24px; height: 24px; object-fit: contain;">
+                            <span style="font-size: 0.95rem;">Daftar dengan Google</span>
                         </a>
                     </div>
-                    {{-- ========================================== --}}
-
                 </form>
 
-                  <div class="text-center mt-3">
+                <div class="text-center mt-4">
                     <p class="text-muted small mb-0">
                         &copy; {{ date('Y') }} Sancaka Express. All Rights Reserved.
                     </p>
-                  </div>
+                </div>
 
             </div>
 
@@ -288,7 +309,6 @@
 @endsection
 
 @push('scripts')
-{{-- Script Cloudflare API --}}
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 
 <script>
@@ -304,40 +324,33 @@
         }
     }
 
-    // Melacak status aktivasi GPS dan Cloudflare
     let isGpsActive = false;
     let isTurnstileSuccess = false;
 
-    // Cek apakah kedua syarat keamanan terpenuhi
     function checkAllValidations() {
         if (isGpsActive && isTurnstileSuccess) {
-            // Aktifkan tombol manual register
             const btnManual = document.getElementById('btn-submit-manual');
             if(btnManual) btnManual.removeAttribute('disabled');
 
-            // Aktifkan tombol Google register
             const btnGoogle = document.getElementById('btn-submit-google');
             if(btnGoogle) {
                 btnGoogle.classList.remove('disabled');
                 btnGoogle.removeAttribute('aria-disabled');
             }
 
-            // Ubah box status alert menjadi sukses hijau
             const statusAlert = document.getElementById('gps-status-alert');
             if(statusAlert) {
                 statusAlert.classList.replace('alert-warning', 'alert-success');
-                statusAlert.innerHTML = '<i class="fas fa-check-circle me-1"></i> Keamanan tervalidasi: GPS & Cloudflare Berhasil. Silakan melanjutkan pendaftaran.';
+                statusAlert.innerHTML = '<i class="fas fa-check-circle me-1"></i> Keamanan tervalidasi: GPS & Cloudflare Berhasil.';
             }
         }
     }
 
-    // Fungsi dipanggil otomatis oleh Cloudflare saat berhasil
     function onTurnstileSuccess(token) {
         isTurnstileSuccess = true;
         checkAllValidations();
     }
 
-    // Fungsi memunculkan alert jika tombol abu-abu diklik sebelum syarat terpenuhi
     function checkGpsClick() {
         if (!isGpsActive || !isTurnstileSuccess) {
             let alertMsg = "Akses Ditolak!\n";
@@ -350,25 +363,21 @@
         }
     }
 
-    // Fungsi utama meminta izin lokasi/GPS
     function requestLocation() {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 function(position) {
                     isGpsActive = true;
 
-                    // Masukkan koordinat ke form yang terlihat oleh pengguna
                     document.getElementById('latitude').value = position.coords.latitude;
                     document.getElementById('longitude').value = position.coords.longitude;
 
-                    // Sisipkan koordinat ke URL redirect Google agar terbaca di Controller
                     const btnGoogle = document.getElementById('btn-submit-google');
                     if(btnGoogle) {
                         let baseUrl = "{{ route('register.google') }}";
                         btnGoogle.href = baseUrl + "?latitude=" + position.coords.latitude + "&longitude=" + position.coords.longitude;
                     }
 
-                    // Cek apakah Turnstile juga sudah sukses
                     checkAllValidations();
                 },
                 function(error) {
@@ -386,7 +395,6 @@
         }
     }
 
-    // Trigger izin GPS sesaat setelah dokumen selesai diload
     document.addEventListener("DOMContentLoaded", function() {
         requestLocation();
     });
