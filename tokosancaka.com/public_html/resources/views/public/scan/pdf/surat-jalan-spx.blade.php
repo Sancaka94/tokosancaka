@@ -181,15 +181,16 @@
                         @endif
                     </td>
 
-                    {{-- Kolom Kanan: QR Tanda Tangan --}}
                     <td class="signature">
                         <div style="display: inline-block; text-align: center;">
                             <strong>Hormat Kami,</strong><br><br>
 
-                            {{-- Generate QR Code Tanda Tangan Langsung dari View --}}
-                            @if ($qrCodeBase64)
-                                <img class="qr-code" src="data:image/svg+xml;base64,{{ $qrCodeBase64 }}" alt="QR Surat Jalan">
-                            @endif
+                            {{-- Pastikan blok @php ini ada agar QR ter-generate --}}
+                            @php
+                                $qrCodeBase64 = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(80)->margin(0)->generate($suratJalan->kode_surat_jalan));
+                            @endphp
+                            <img class="qr-code" src="data:image/svg+xml;base64,{{ $qrCodeBase64 }}" alt="QR Surat Jalan">
+
                             <br>
                             ( {{ $suratJalan->kontak->nama ?? 'Pengirim' }} )
                         </div>
