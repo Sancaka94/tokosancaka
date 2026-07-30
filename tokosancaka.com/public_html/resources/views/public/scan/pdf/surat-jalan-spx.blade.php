@@ -86,7 +86,7 @@
             vertical-align: top;
         }
         .footer .signature {
-            text-align: center;
+            text-align: right;
         }
         .qr-code {
             width: 80px;
@@ -183,15 +183,16 @@
 
                     {{-- Kolom Kanan: QR Tanda Tangan --}}
                     <td class="signature">
-                        <strong>Hormat Kami,</strong><br><br>
+                        <div style="display: inline-block; text-align: center;">
+                            <strong>Hormat Kami,</strong><br><br>
 
-                        {{-- Generate QR Code Tanda Tangan Langsung dari View --}}
-                        @php
-                            $qrCodeBase64 = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(80)->margin(0)->generate($suratJalan->kode_surat_jalan));
-                        @endphp
-                        <img class="qr-code" src="data:image/svg+xml;base64,{{ $qrCodeBase64 }}" alt="QR Surat Jalan">
-                        <br>
-                        ( {{ $suratJalan->kontak->nama ?? 'Pengirim' }} )
+                            {{-- Generate QR Code Tanda Tangan Langsung dari View --}}
+                            @if ($qrCodeBase64)
+                                <img class="qr-code" src="data:image/svg+xml;base64,{{ $qrCodeBase64 }}" alt="QR Surat Jalan">
+                            @endif
+                            <br>
+                            ( {{ $suratJalan->kontak->nama ?? 'Pengirim' }} )
+                        </div>
                     </td>
                 </tr>
             </table>
