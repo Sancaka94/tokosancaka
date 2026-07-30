@@ -211,7 +211,7 @@ class PublicScanController extends Controller
         ]);
     }
 
-    public function generateSuratJalan(Request $request)
+   public function generateSuratJalan(Request $request)
     {
         $kodeSuratJalan = $request->query('kode');
 
@@ -221,37 +221,15 @@ class PublicScanController extends Controller
 
         $packages = ScannedPackage::where('surat_jalan_id', $suratJalan->id)->get();
 
-        // Barcode 1D
-        $generator = new \Milon\Barcode\DNS1D();
-        $barcodeRectBase64 = base64_encode(
-            $generator->getBarcodePNG($suratJalan->kode_surat_jalan, 'C128', 2, 60, [1, 1, 1], true)
-        );
-
-       // QR Identitas
-        $qrCodeBase64 = base64_encode(
-            QrCode::format('png')->driver('gd')->size(80)->generate($suratJalan->kode_surat_jalan)
-        );
-
-        // QR Lokasi
-        $locationQrCodeBase64 = null;
-        if ($suratJalan->latitude && $suratJalan->longitude) {
-            $googleMapsUrl = "https://www.google.com/maps?q={$suratJalan->latitude},{$suratJalan->longitude}";
-            $locationQrCodeBase64 = base64_encode(
-                QrCode::format('png')->driver('gd')->size(80)->generate($googleMapsUrl)
-            );
-        }
-
-        $pdf = Pdf::loadView('public.scan.pdf.surat-jalan-spx', [
-            'suratJalan' => $suratJalan,
-            'packages' => $packages,
-            'barcodeRectBase64' => $barcodeRectBase64,
-            'qrCodeBase64' => $qrCodeBase64,
-            'locationQrCodeBase64' => $locationQrCodeBase64
-        ]);
-
+        // Tetap jalankan notifikasi Telegram Anda
         $this->_sendTelegramNotificationLengkap($suratJalan);
 
-        return $pdf->stream('SuratJalan-' . $suratJalan->kode_surat_jalan . '.pdf');
+        // KEMBALIKAN SEBAGAI VIEW HTML BIASA (Bukan DomPDF)
+        // Agar JavaScript (JsBarcode) dan API QR Code bisa berjalan di sisi browser
+        return view('public.scan.pdf.surat-jalan-spx', [
+            'suratJalan' => $suratJalan,
+            'packages' => $packages
+        ]);
     }
 
     /**
