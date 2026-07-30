@@ -25,7 +25,7 @@
         padding: 2rem 1rem;
         position: relative;
     }
-    
+
     .auth-card {
         max-width: 1050px; /* Sedikit lebih lebar untuk form grid */
         width: 100%;
@@ -49,7 +49,7 @@
         background-position: 0 0, 25px 25px;
         opacity: 0.5;
     }
-    
+
     .brand-logo-container {
         position: absolute;
         top: 2rem;
@@ -67,7 +67,7 @@
         border-color: #dc3545;
         box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.15);
     }
-    
+
     /* MODIFIKASI: Style tombol aktif dan tidak aktif */
     .btn-danger {
         background-color: #dc3545;
@@ -94,7 +94,7 @@
         transform: none !important;
         box-shadow: none !important;
     }
-    
+
     /* Wrapper untuk menangkap klik saat tombol disabled */
     .disabled-btn-wrapper {
         cursor: not-allowed;
@@ -120,16 +120,16 @@
 
 @section('content')
 <div class="auth-wrapper">
-    
+
     <div class="card auth-card bg-white">
         <div class="row g-0 h-100">
-            
+
             {{-- 1. SISI KIRI (Branding) --}}
             <div class="col-md-5 d-none d-md-flex auth-brand-side flex-column">
                 <div class="brand-logo-container">
                     <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Sancaka Express" style="max-height: 40px; filter: brightness(0) invert(1);" onerror="this.src='https://placehold.co/150x40?text=Sancaka'">
                 </div>
-                
+
                 <div class="my-auto px-4 px-lg-5 text-center text-white position-relative z-2">
                     <p class="mb-2 fw-medium text-uppercase tracking-wider" style="letter-spacing: 1px; font-size: 0.9rem;">Bergabung Bersama Kami</p>
                     <h2 class="fw-bold mb-4" style="font-size: 2.5rem;">BUAT AKUN</h2>
@@ -140,7 +140,7 @@
 
             {{-- 2. SISI KANAN (Form Grid) --}}
             <div class="col-12 col-md-7 p-4 p-md-5 d-flex flex-column justify-content-center">
-                
+
                 <div class="text-center d-md-none mb-4">
                     <img src="{{ asset('storage/uploads/sancaka.png') }}" alt="Sancaka Express" style="max-height: 45px;">
                 </div>
@@ -165,8 +165,11 @@
 
                 <form action="{{ route('register') }}" method="POST" class="px-xl-2">
                     @csrf
-                    
-                   {{-- Form Koordinat GPS (Terisi Otomatis) --}}
+
+                    {{-- TAMBAHKAN JEBAKAN BOT (HONEYPOT) DI SINI --}}
+                    <x-honeypot />
+
+                    {{-- Form Koordinat GPS (Terisi Otomatis) --}}
                     <div class="row g-3 mb-3">
                         <div class="col-12 col-sm-6">
                             <div class="form-floating">
@@ -189,7 +192,7 @@
                                 <label for="nama_lengkap" class="text-muted">Nama Lengkap</label>
                             </div>
                         </div>
-                        
+
                         <div class="col-12 col-sm-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="store_name" name="store_name" placeholder="Nama Toko" value="{{ old('store_name') }}" required>
@@ -262,7 +265,7 @@
                     {{-- MODIFIKASI: Tombol Google di-disabled secara default --}}
                     <div class="d-grid mb-4 disabled-btn-wrapper" onclick="checkGpsClick()">
                         <a href="{{ route('register.google') }}" id="btn-submit-google" class="btn btn-outline-dark btn-lg d-flex justify-content-center align-items-center disabled" role="button" aria-disabled="true">
-                            <img src="https://tokosancaka.com/public/assets/google.png" alt="Google Logo" style="width: 24px; height: 24px; object-fit: contain;" class="me-2"> 
+                            <img src="https://tokosancaka.com/public/assets/google.png" alt="Google Logo" style="width: 24px; height: 24px; object-fit: contain;" class="me-2">
                             Daftar dengan Google
                         </a>
                     </div>
@@ -311,14 +314,14 @@
             // Aktifkan tombol manual register
             const btnManual = document.getElementById('btn-submit-manual');
             if(btnManual) btnManual.removeAttribute('disabled');
-            
+
             // Aktifkan tombol Google register
             const btnGoogle = document.getElementById('btn-submit-google');
             if(btnGoogle) {
                 btnGoogle.classList.remove('disabled');
                 btnGoogle.removeAttribute('aria-disabled');
             }
-            
+
             // Ubah box status alert menjadi sukses hijau
             const statusAlert = document.getElementById('gps-status-alert');
             if(statusAlert) {
@@ -340,9 +343,9 @@
             let alertMsg = "Akses Ditolak!\n";
             if (!isGpsActive) alertMsg += "- Anda wajib mengaktifkan dan mengizinkan GPS lokasi.\n";
             if (!isTurnstileSuccess) alertMsg += "- Anda wajib menyelesaikan verifikasi keamanan (Cloudflare).\n";
-            
+
             alert(alertMsg);
-            
+
             if (!isGpsActive) requestLocation();
         }
     }
@@ -353,11 +356,11 @@
             navigator.geolocation.getCurrentPosition(
                 function(position) {
                     isGpsActive = true;
-                    
+
                     // Masukkan koordinat ke form yang terlihat oleh pengguna
                     document.getElementById('latitude').value = position.coords.latitude;
                     document.getElementById('longitude').value = position.coords.longitude;
-                    
+
                     // Sisipkan koordinat ke URL redirect Google agar terbaca di Controller
                     const btnGoogle = document.getElementById('btn-submit-google');
                     if(btnGoogle) {

@@ -145,6 +145,8 @@
                     <form action="{{ route('driver.register.store') }}" method="POST" enctype="multipart/form-data" id="formPendaftaran">
                         @csrf
 
+                        <x-honeypot />
+
 
                         <div class="row g-5">
                             {{-- ================= KOLOM KIRI (Informasi Pribadi & Kendaraan) ================= --}}
