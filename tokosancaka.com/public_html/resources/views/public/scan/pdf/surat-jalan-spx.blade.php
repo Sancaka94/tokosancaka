@@ -103,18 +103,16 @@
     <div class="container">
 
         <div class="header">
-            <h2>SURAT JALAN DROP PAKET SPX</h2>
+            <h2>SURAT JALAN PICKUP</h2>
             <p>Nomor: <strong>{{ $suratJalan->kode_surat_jalan }}</strong></p>
-            <p><strong>{{ $suratJalan->kontak->nama ?? 'N/A' }}</strong></p>
         </div>
 
         <div class="barcode-rect">
-            {{-- Generate Barcode 1D Langsung dari View --}}
             @php
-                $generator = new \Picqer\Barcode\BarcodeGeneratorPNG();
-                $barcodeRectBase64 = base64_encode($generator->getBarcode($suratJalan->kode_surat_jalan, $generator::TYPE_CODE_128));
+                $generator = new \Picqer\Barcode\BarcodeGeneratorSVG();
+                $barcodeSvg = $generator->getBarcode($suratJalan->kode_surat_jalan, $generator::TYPE_CODE_128);
             @endphp
-            <img src="data:image/png;base64,{{ $barcodeRectBase64 }}" alt="Barcode">
+            <img src="data:image/svg+xml;base64,{{ base64_encode($barcodeSvg) }}" alt="Barcode">
         </div>
 
         <div class="details">
@@ -164,18 +162,15 @@
         <div class="footer">
             <table>
                 <tr>
-                    {{-- Kolom Kiri: QR Lokasi --}}
                     <td>
                         <strong>Lokasi Pickup Kurir:</strong><br><br>
 
-                        {{-- Generate QR Code Maps Langsung dari View --}}
                         @if ($suratJalan->latitude && $suratJalan->longitude)
                             @php
                                 $mapsUrl = "https://www.google.com/maps?q={$suratJalan->latitude},{$suratJalan->longitude}";
-                                // Format SVG lebih aman dari error ekstensi PHP dibanding PNG
-                                $locationQrCodeBase64 = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(80)->margin(0)->generate($mapsUrl));
+                                $locQrSvg = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(80)->margin(0)->generate($mapsUrl);
                             @endphp
-                            <img class="qr-code" src="data:image/svg+xml;base64,{{ $locationQrCodeBase64 }}" alt="QR Lokasi">
+                            <img class="qr-code" src="data:image/svg+xml;base64,{{ base64_encode((string) $locQrSvg) }}" alt="QR Lokasi">
                         @else
                             <p class="location-text">Lokasi tidak tersedia</p>
                         @endif
@@ -185,12 +180,10 @@
                         <div style="display: inline-block; text-align: center;">
                             <strong>Hormat Kami,</strong><br><br>
 
-                            {{-- Pastikan blok @php ini ada agar QR ter-generate --}}
                             @php
-                                $qrCodeBase64 = base64_encode(\SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(80)->margin(0)->generate($suratJalan->kode_surat_jalan));
+                                $ttdQrSvg = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(80)->margin(0)->generate($suratJalan->kode_surat_jalan);
                             @endphp
-                            <img class="qr-code" src="data:image/svg+xml;base64,{{ $qrCodeBase64 }}" alt="QR Surat Jalan">
-
+                            <img class="qr-code" src="data:image/svg+xml;base64,{{ base64_encode((string) $ttdQrSvg) }}" alt="QR Surat Jalan">
                             <br>
                             ( {{ $suratJalan->kontak->nama ?? 'Pengirim' }} )
                         </div>
