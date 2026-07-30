@@ -70,7 +70,7 @@
             <div class="space-y-3 mb-8 border-t border-b border-gray-100 py-4">
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Syarat Minimal Saldo</span>
-                    <span class="font-bold text-gray-800">Rp 2.000.000</span>
+                    <span class="font-bold text-gray-800">Rp 500.000</span>
                 </div>
                 <div class="flex justify-between text-sm">
                     <span class="text-gray-600">Biaya Server (Sekali Bayar)</span>
@@ -78,7 +78,7 @@
                 </div>
                 <div class="flex justify-between text-sm bg-blue-50 p-2 rounded">
                     <span class="text-blue-800 font-bold">Sisa Saldo Aktif</span>
-                    <span class="font-bold text-blue-800">Rp 1.900.000</span>
+                    <span class="font-bold text-blue-800">Rp 400.000</span>
                 </div>
             </div>
 
