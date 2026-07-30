@@ -86,6 +86,11 @@ use App\Http\Controllers\Admin\AdminPpobController;
 use App\Http\Controllers\Admin\AdminLogController; // <<< TAMBAHKAN BARIS INI
 use App\Http\Controllers\WhatsappController;
 use App\Http\Controllers\Auth\Admin\AdminLoginController;
+use Spatie\Honeypot\ProtectAgainstSpam;
+
+
+Route::post('/register', [CustomerRegisterController::class, 'register'])
+    ->middleware(ProtectAgainstSpam::class);
 
 
 

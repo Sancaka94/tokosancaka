@@ -13,17 +13,10 @@ use App\Services\KiriminAjaService;
 use App\Models\Post;
 use App\Http\Controllers\Api\Mobile\AuthController;
 use App\Http\Controllers\Rsud\AdminOrderObatController;
-// Tambahkan di bawah // Pembayaran
 use App\Http\Controllers\PayPalController;
-
 use App\Http\Controllers\AdminOrderOjekController;
-
 use App\Http\Controllers\PesananAutokirimController;
-
-
 use App\Http\Controllers\RegisterDriverOnlineController;
-
-
 use App\Http\Controllers\Customer\TopupDanaController;
 
 // =========================================================================
@@ -40,24 +33,16 @@ use App\Http\Controllers\PelangganController;
 use App\Http\Controllers\PublicPelangganController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\DanaPpobDigitalGoodsController; // <-- TAMBAHKAN INI DI ATAS
-
 use App\Http\Controllers\Admin\AutoKirimController;
-
 // blok IP BOT
 use App\Http\Controllers\Admin\BlockedIpController;
-
-
 // Telegram Group
 use App\Http\Controllers\TelegramGroupController;
-
 // Kontak & Chat
 use App\Http\Controllers\Customer\ProfileController;
-
 use App\Http\Controllers\MarketplacePpobController;
-
 // Pembayaran
 use App\Http\Controllers\PembayaranController;
-
 use App\Http\Controllers\GeneretBarcodeController;
 
 // Core Logic
@@ -148,21 +133,19 @@ use App\Http\Controllers\SellerRegisterController;
 use App\Http\Controllers\SellerReviewController;
 use App\Http\Controllers\Admin\PerizinanController;
 use App\Http\Controllers\Admin\SancakaExpressController;
-
 use App\Http\Controllers\Admin\WhitelistController;
-
-
 use App\Http\Controllers\InvoiceController;
-
 use App\Http\Controllers\CashflowController;
-
 use App\Http\Controllers\AdminPricelistController;
-
 use App\Http\Controllers\Admin\ProdukController; // Pastikan namespace controller sesuai
-
 use App\Http\Controllers\Auth\Customer\CustomerLoginController;
-
 use App\Http\Controllers\ShortUrlController;
+
+use Spatie\Honeypot\ProtectAgainstSpam;
+
+
+Route::post('/register', [CustomerRegisterController::class, 'register'])
+    ->middleware(ProtectAgainstSpam::class);
 
 
 
@@ -757,7 +740,11 @@ Route::middleware('auth')->group(function() {
 // Agent Routes
 Route::middleware(['auth'])->group(function () {
     Route::get('/agent/register', [AgentRegistrationController::class, 'index'])->name('agent.register.index');
-    Route::post('/agent/register/process', [AgentRegistrationController::class, 'register'])->name('agent.register.process');
+    //Route::post('/agent/register/process', [AgentRegistrationController::class, 'register'])->name('agent.register.process');
+
+    Route::post('/agent/register/process', [AgentRegistrationController::class, 'register'])
+    ->name('agent.register.process')
+    ->middleware(\Spatie\Honeypot\ProtectAgainstSpam::class);
 
     Route::get('/topup', [TopUpController::class, 'index'])->name('topup.index');
     Route::post('/topup', [TopUpController::class, 'store'])->name('topup.store');
@@ -1857,7 +1844,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 // ==========================================
 // Rute ini bisa diakses oleh siapa saja tanpa perlu login
 Route::get('/driver/register', [RegisterDriverOnlineController::class, 'create'])->name('driver.register.create');
-Route::post('/driver/register', [RegisterDriverOnlineController::class, 'store'])->name('driver.register.store');
+// Route::post('/driver/register', [RegisterDriverOnlineController::class, 'store'])->name('driver.register.store');
+
+Route::post('/driver/register', [RegisterDriverOnlineController::class, 'store'])
+    ->name('driver.register.store')
+    ->middleware(\Spatie\Honeypot\ProtectAgainstSpam::class);
 
 // =========================================================================
 // RUTE RIWAYAT PESANAN OJEK & EXPRESS (ADMIN)
