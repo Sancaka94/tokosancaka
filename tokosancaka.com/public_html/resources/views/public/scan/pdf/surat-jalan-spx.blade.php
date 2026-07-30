@@ -103,8 +103,9 @@
     <div class="container">
 
         <div class="header">
-            <h2>SURAT JALAN PICKUP</h2>
+            <h2>SURAT JALAN DROP PAKET SPX</h2>
             <p>Nomor: <strong>{{ $suratJalan->kode_surat_jalan }}</strong></p>
+            <p><strong>{{ $suratJalan->kontak->nama ?? 'N/A' }}</strong></p>
         </div>
 
         <div class="barcode-rect">
