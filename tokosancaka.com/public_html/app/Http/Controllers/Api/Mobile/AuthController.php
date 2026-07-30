@@ -145,6 +145,7 @@ class AuthController extends Controller
         ]);
     }
 
+
     public function register(Request $request)
     {
         // 1. Validasi Input
