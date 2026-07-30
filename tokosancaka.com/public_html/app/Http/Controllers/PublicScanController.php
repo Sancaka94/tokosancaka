@@ -227,9 +227,9 @@ class PublicScanController extends Controller
             $generator->getBarcodePNG($suratJalan->kode_surat_jalan, 'C128', 2, 60, [1, 1, 1], true)
         );
 
-        // QR Identitas
+       // QR Identitas
         $qrCodeBase64 = base64_encode(
-            QrCode::format('png')->size(80)->generate($suratJalan->kode_surat_jalan)
+            QrCode::format('png')->driver('gd')->size(80)->generate($suratJalan->kode_surat_jalan)
         );
 
         // QR Lokasi
@@ -237,7 +237,7 @@ class PublicScanController extends Controller
         if ($suratJalan->latitude && $suratJalan->longitude) {
             $googleMapsUrl = "https://www.google.com/maps?q={$suratJalan->latitude},{$suratJalan->longitude}";
             $locationQrCodeBase64 = base64_encode(
-                QrCode::format('png')->size(80)->generate($googleMapsUrl)
+                QrCode::format('png')->driver('gd')->size(80)->generate($googleMapsUrl)
             );
         }
 
