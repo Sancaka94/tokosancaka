@@ -294,4 +294,21 @@ class ProfileController extends Controller
             return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan pada sistem. Silakan coba beberapa saat lagi.');
         }
     }
+
+    /**
+     * Mengambil data saldo terbaru untuk auto-refresh via AJAX
+     */
+    public function cekSaldoAjax()
+    {
+        $user = auth()->user();
+
+        if($user) {
+            return response()->json([
+                'success' => true,
+                'saldo_format' => 'Rp ' . number_format($user->saldo ?? 0, 0, ',', '.')
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+    }
 }
