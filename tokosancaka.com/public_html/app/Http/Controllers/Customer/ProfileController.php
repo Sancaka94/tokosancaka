@@ -95,19 +95,19 @@ class ProfileController extends Controller
                 }
             }
 
-            if (empty($pickupCode)) {
-                // Lakukan Insert jika belum punya atau update sebelumnya gagal
+           if (empty($pickupCode)) {
                 $apiResult = $this->insertPickupPointApi($apiData);
 
-                if (isset($apiResult['rc']) && $apiResult['rc'] === '00') {
+                // Tangkap jika 'rc' bernilai '00' ATAU '02' (selama pickup_point_code-nya ada)
+                if (isset($apiResult['data']['pickup_point_code'])) {
                     $pickupCode = $apiResult['data']['pickup_point_code'];
                 }
-                elseif (isset($apiResult['rc']) && $apiResult['rc'] === '01') {
-                    // Bypass nomor HP duplikat
+                elseif (isset($apiResult['rc']) && ($apiResult['rc'] === '01' || $apiResult['rc'] === '02')) {
+                    // Jika ditolak karena HP/Email terdaftar, coba bypass nomor HP dengan angka acak
                     $apiData['no_hp'] = $apiData['no_hp'] . rand(100, 999);
                     $retryResult = $this->insertPickupPointApi($apiData);
 
-                    if (isset($retryResult['rc']) && $retryResult['rc'] === '00') {
+                    if (isset($retryResult['data']['pickup_point_code'])) {
                         $pickupCode = $retryResult['data']['pickup_point_code'];
                     }
                 }
@@ -265,19 +265,19 @@ class ProfileController extends Controller
                 }
             }
 
-            if (empty($pickupCode)) {
-                // Lakukan Insert jika belum punya atau update sebelumnya gagal
+          if (empty($pickupCode)) {
                 $apiResult = $this->insertPickupPointApi($apiData);
 
-                if (isset($apiResult['rc']) && $apiResult['rc'] === '00') {
+                // Tangkap jika 'rc' bernilai '00' ATAU '02' (selama pickup_point_code-nya ada)
+                if (isset($apiResult['data']['pickup_point_code'])) {
                     $pickupCode = $apiResult['data']['pickup_point_code'];
                 }
-                elseif (isset($apiResult['rc']) && $apiResult['rc'] === '01') {
-                    // Bypass nomor HP duplikat
+                elseif (isset($apiResult['rc']) && ($apiResult['rc'] === '01' || $apiResult['rc'] === '02')) {
+                    // Jika ditolak karena HP/Email terdaftar, coba bypass nomor HP dengan angka acak
                     $apiData['no_hp'] = $apiData['no_hp'] . rand(100, 999);
                     $retryResult = $this->insertPickupPointApi($apiData);
 
-                    if (isset($retryResult['rc']) && $retryResult['rc'] === '00') {
+                    if (isset($retryResult['data']['pickup_point_code'])) {
                         $pickupCode = $retryResult['data']['pickup_point_code'];
                     }
                 }
