@@ -309,6 +309,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const data = await response.json();
+            console.log("LOG LOG API RESPONSE:", data);
             displayResults(data);
 
         } catch (error) {
