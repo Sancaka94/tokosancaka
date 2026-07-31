@@ -13,7 +13,7 @@
 
 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4 no-print">
     <h1 class="text-2xl font-bold text-gray-800">Laporan Keuangan Bulanan</h1>
-    
+
     <!-- Wrapper untuk grup tombol agar rapi di mobile & desktop -->
     <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
         <!-- Tombol Export PDF -->
@@ -28,7 +28,7 @@
                 <i class="fas fa-file-pdf"></i> Cetak PDF Rincian
             </a>
         </div>
-        
+
         <!-- Tombol Cetak Asli -->
         <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg font-bold flex items-center gap-2 shadow-md transition-colors w-full sm:w-auto justify-center">
             🖨️ Cetak Laporan
@@ -157,9 +157,21 @@
                     <td colspan="3" class="px-4 py-3 text-right font-bold text-gray-700 uppercase">Total Pengeluaran Manual :</td>
                     <td class="px-4 py-3 text-right font-black text-lg text-red-600 whitespace-nowrap">- Rp {{ number_format($totalPengeluaranManual, 0, ',', '.') }}</td>
                 </tr>
-                <tr class="bg-blue-100 border-t border-blue-200">
+               <tr class="bg-blue-100 border-t border-blue-200">
                     <td colspan="3" class="px-4 py-4 text-right font-black text-blue-900 uppercase tracking-wider text-lg">TOTAL PENDAPATAN BERSIH BULAN INI :<br><span class="text-xs font-normal tracking-normal text-blue-700">(Parkir Otomatis + Pemasukan Manual - Pengeluaran)</span></td>
-                    <td class="px-4 py-4 text-right font-black text-2xl text-blue-700 whitespace-nowrap">Rp {{ number_format($total + $totalPemasukanManual - $totalPengeluaranManual, 0, ',', '.') }}</td>
+                    <!-- Kita bisa langsung pakai variabel $pendapatanBersihBulanIni dari controller -->
+                    <td class="px-4 py-4 text-right font-black text-2xl text-blue-700 whitespace-nowrap">Rp {{ number_format($pendapatanBersihBulanIni, 0, ',', '.') }}</td>
+                </tr>
+
+                <!-- TAMBAHAN BARIS RATA-RATA PER HARI DI SINI -->
+                <tr class="bg-indigo-50 border-t border-indigo-200">
+                    <td colspan="3" class="px-4 py-3 text-right font-bold text-indigo-900 uppercase tracking-wider">
+                        Rata-rata Pendapatan per Hari :<br>
+                        <span class="text-xs font-normal tracking-normal text-indigo-700">(Total Bersih dibagi jumlah hari bulan ini)</span>
+                    </td>
+                    <td class="px-4 py-3 text-right font-black text-xl text-indigo-700 whitespace-nowrap">
+                        Rp {{ number_format($rataRataPerHari, 0, ',', '.') }}
+                    </td>
                 </tr>
             </tfoot>
         </table>

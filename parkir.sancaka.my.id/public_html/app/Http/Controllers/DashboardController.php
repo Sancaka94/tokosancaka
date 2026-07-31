@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Transaction;
 use App\Models\User;
-use App\Models\FinancialReport; 
+use App\Models\FinancialReport;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon; 
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
@@ -76,6 +76,14 @@ class DashboardController extends Controller
         $kasKeluarBulanIni = FinancialReport::whereMonth('tanggal', $now->month)
                                 ->whereYear('tanggal', $now->year)->where('jenis', 'pengeluaran')->sum('nominal');
         $pendapatanBulanIni = $parkirBulanIni + $kasMasukBulanIni - $kasKeluarBulanIni;
+
+        // =========================================================
+        // RATA-RATA PENDAPATAN PER HARI (BULAN INI)
+        // =========================================================
+        $hariBerjalan = $now->day; // Mendapatkan tanggal hari ini (contoh: tgl 15 berarti 15 hari)
+        $rataRataPerHari = $hariBerjalan > 0 ? $pendapatanBulanIni / $hariBerjalan : 0;
+
+        $data['rata_rata_per_hari'] = $rataRataPerHari;
 
         $bulanLalu = $now->copy()->subMonth();
         $parkirBulanLalu = Transaction::whereMonth('exit_time', $bulanLalu->month)
@@ -223,6 +231,8 @@ class DashboardController extends Controller
         $totalPemasukanManual = $kasManual->where('jenis', 'pemasukan')->sum('nominal');
         $totalPengeluaranManual = $kasManual->where('jenis', 'pengeluaran')->sum('nominal');
 
+
+
         return view('laporan.harian', compact(
             'transactions', 'tanggal', 'total',
             'kasManual', 'totalPemasukanManual', 'totalPengeluaranManual'
@@ -256,9 +266,19 @@ class DashboardController extends Controller
         $totalPemasukanManual = $kasManual->where('jenis', 'pemasukan')->sum('nominal');
         $totalPengeluaranManual = $kasManual->where('jenis', 'pengeluaran')->sum('nominal');
 
+        // =========================================================
+        // HITUNG PENDAPATAN BERSIH & RATA-RATA PER HARI
+        // =========================================================
+        $pendapatanBersihBulanIni = $total + $totalPemasukanManual - $totalPengeluaranManual;
+
+        // Dapatkan total hari dalam bulan dan tahun yang dipilih
+        $jumlahHariDalamBulan = \Carbon\Carbon::createFromDate($tahun, $bulan, 1)->daysInMonth;
+
+        $rataRataPerHari = $jumlahHariDalamBulan > 0 ? $pendapatanBersihBulanIni / $jumlahHariDalamBulan : 0;
+
         return view('laporan.bulanan', compact(
             'transactions', 'bulan', 'tahun', 'total',
-            'kasManual', 'totalPemasukanManual', 'totalPengeluaranManual'
+            'kasManual', 'totalPemasukanManual', 'totalPengeluaranManual', 'rataRataPerHari', 'pendapatanBersihBulanIni'
         ));
     }
 
@@ -323,7 +343,7 @@ class DashboardController extends Controller
                                             ->whereYear('tanggal', $tahun)
                                             ->orderBy('tanggal', 'desc')
                                             ->get();
-                                            
+
     $totalPemasukanManual = $kasManual->where('jenis', 'pemasukan')->sum('nominal');
     $totalPengeluaranManual = $kasManual->where('jenis', 'pengeluaran')->sum('nominal');
 
