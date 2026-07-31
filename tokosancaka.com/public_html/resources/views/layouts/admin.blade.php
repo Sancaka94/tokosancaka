@@ -468,12 +468,10 @@
     <!-- Elemen Audio (Disembunyikan) -->
     <audio id="adminNotifAudio" src="https://tokosancaka.com/public/assets/ojek.wav" preload="auto"></audio>
 
-    <script type="module">
-        // Import fungsi spesifik dari SDK v12 Modular
+   <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-messaging.js";
 
-        // Konfigurasi dari Firebase Console Anda
         const firebaseConfig = {
             apiKey: "AIzaSyBd4Rl2pnQlr-mYQSVZamWnCkvpi5anU8w",
             authDomain: "sancaka-express.firebaseapp.com",
@@ -485,57 +483,68 @@
             measurementId: "G-Z1V0BHLZ6P"
         };
 
-        // Inisialisasi Firebase & Messaging
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
 
-        // Minta Izin & Generate Token
-        // PENTING: Ganti "MASUKKAN_VAPID_KEY_ANDA_DI_SINI" dengan VAPID KEY dari Firebase Console!
-        getToken(messaging, { vapidKey: "BGF6BWiam42tA9GQB4mdp3C01ZJ8vk9_vQ9RzkHQUG2l7P1L3niAmiFhcp3gZHYXrtXT76qGuUIZ5QkAaDqiki8" })
-        .then((currentToken) => {
-            if (currentToken) {
-                console.log("Admin FCM Web Token (v12): ", currentToken);
+        // 🔥 PERBAIKAN: Registrasi Service Worker secara eksplisit
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/firebase-messaging-sw.js')
+            .then(function(registration) {
+                console.log('Service Worker Berhasil Diregistrasi!', registration);
 
-                // Kirim Token ke Backend Laravel (Tabel Pengguna)
-                fetch("{{ url('/api/mobile/save-fcm-token') }}", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({ fcm_token: currentToken, is_debug: false })
+                // Minta Izin & Generate Token dengan menggunakan Service Worker yang aktif
+                // PENTING: Ganti dengan VAPID KEY ASLI Anda!
+                getToken(messaging, {
+                    vapidKey: "BGF6BWiam42tA9GQB4mdp3C01ZJ8vk9_vQ9RzkHQUG2l7P1L3niAmiFhcp3gZHYXrtXT76qGuUIZ5QkAaDqiki8",
+                    serviceWorkerRegistration: registration
+                })
+                .then((currentToken) => {
+                    if (currentToken) {
+                        console.log("Admin FCM Web Token: ", currentToken);
+                        // Kirim Token ke Backend
+                        fetch("{{ url('/api/mobile/save-fcm-token') }}", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                            },
+                            body: JSON.stringify({ fcm_token: currentToken, is_debug: false })
+                        });
+                    }
+                }).catch((err) => {
+                    console.log("Izin Notifikasi Ditolak / Error: ", err);
                 });
-            } else {
-                console.log("Gagal mendapatkan token pendaftaran. Pastikan izin notifikasi diberikan.");
-            }
-        }).catch((err) => {
-            console.log("Izin Notifikasi Ditolak / Error: ", err);
-        });
 
-        // Tangkap Notifikasi secara Realtime saat Tab Admin Terbuka
+            }).catch(function(err) {
+                console.log('Service Worker Gagal Diregistrasi: ', err);
+            });
+        }
+
+        // Tangkap Notifikasi saat Tab Admin Terbuka (Foreground)
         onMessage(messaging, (payload) => {
-            console.log("Menerima Notif FCM (Foreground): ", payload);
+            console.log("🔥 Menerima Notif FCM (Foreground): ", payload);
 
             let data = payload.data || {};
             let notifId = data.notif_id || 'RAND-' + Math.random();
 
-            // Cache Browser: Mencegah bunyi dobel jika Admin buka banyak tab
             let lastNotif = localStorage.getItem('last_admin_notif_id');
             if (lastNotif === notifId) return;
             localStorage.setItem('last_admin_notif_id', notifId);
 
-            // Bunyikan Nada (Ojek.wav)
+            // Bunyikan Nada
             let audio = document.getElementById('adminNotifAudio');
-            audio.currentTime = 0;
-            audio.play().catch(e => console.log("Audio diblokir browser: " + e));
+            if(audio) {
+                audio.currentTime = 0;
+                audio.play().catch(e => console.log("Browser memblokir audio, klik layar 1x: " + e));
+            }
 
             // Tampilkan SweetAlert
             Swal.fire({
                 toast: true,
                 position: 'top-end',
                 icon: 'info',
-                title: payload.notification?.title || 'Pesanan Baru',
-                text: payload.notification?.body || 'Pesanan baru masuk!',
+                title: payload.notification?.title || 'Pesanan Baru Masuk',
+                text: payload.notification?.body || 'Silakan cek menu riwayat.',
                 showConfirmButton: true,
                 confirmButtonText: 'Lihat',
                 confirmButtonColor: '#000000',
@@ -543,12 +552,11 @@
                 timerProgressBar: true
             }).then((result) => {
                 if (result.isConfirmed) {
-                    // Refresh halaman ke menu riwayat
                     window.location.href = "{{ route('admin.pesanan-autokirim.index') }}";
                 }
             });
 
-            // Update badge notifikasi header (jika fungsi ini ada di sistem Anda)
+            // Update badge notifikasi header
             if (typeof window.fetchNotificationCount === "function") {
                 window.fetchNotificationCount();
             }
