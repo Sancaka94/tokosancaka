@@ -1309,17 +1309,19 @@ class PesananAutokirimController extends Controller
                         }
                     }*/
 
-
-
-                    // 3. Kembalikan modal/ongkir UTUH 100% (Pokok + Asuransi/Biaya)
+                    // =======================================================
+                // 1. [SKENARIO GAGAL/BATAL] KEMBALIKAN MODAL + KOMISI
+                // =======================================================
+                if (in_array($statusBaru, $kumpulanStatusGagal) && !in_array($statusLama, $kumpulanStatusGagal)) {
                     if ($pesanan->metode_pembayaran === 'potong_saldo') {
-                        $userToRefund = User::find($pesanan->user_id);
+                        $userToRefund = User::lockForUpdate()->find($pesanan->user_id);
                         if ($userToRefund) {
-                            // Menggunakan grand_total, bukan sekadar ongkir
-                            $userToRefund->increment('saldo', $pesanan->grand_total);
-                            Log::info("LOG: [REFUND SALDO] Berhasil mengembalikan UTUH Rp {$pesanan->grand_total} ke User ID {$pesanan->user_id}");
+                            $totalRefund = $pesanan->grand_total + $pesanan->komisi_agen;
+                            $userToRefund->increment('saldo', $totalRefund);
+                            Log::info("LOG: [WEBHOOK REFUND] Saldo dikembalikan sebesar Rp {$totalRefund} (Modal + Komisi) via Webhook untuk Order ID {$pesanan->order_id}");
                         }
                     }
+                }
 
                     Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] BERHASIL membatalkan Order ID: {$pesanan->order_id}");
                     return redirect()->back()->with('success', 'Pesanan berhasil dibatalkan di sistem logistik.');
