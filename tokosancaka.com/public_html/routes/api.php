@@ -270,7 +270,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Profil Pengguna
     Route::get('/profile', [ProfileController::class, 'show']);
-    Route::post('/profile', [ProfileController::class, 'update']);
+
+    Route::get('/cek-saldo-ajax', [ProfileController::class, 'cekSaldoAjax'])->name('api.cek.saldo');
 
     Route::post('/checkout', [CheckoutController::class, 'process']);
 
