@@ -171,7 +171,7 @@
                         <div class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700">
                             <p class="text-[11px] font-bold flex items-start gap-1.5 leading-tight">
                                 <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-                                <span>PENTING: from.address hanya diisi alamat jalan saja tanpa kecamatan, kabupaten, provinsi dan kode pos.</span>
+                                <span>PENTING: Tulis alamat lengkap tanpa (kelurahan/desa, kecamatan, kota/kabupaten, provinsi dan kodepos)</span>
                             </p>
                         </div>
                     </div>
@@ -300,7 +300,7 @@
                         <div class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700">
                             <p class="text-[11px] font-bold flex items-start gap-1.5 leading-tight">
                                 <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-                                <span>PENTING: to.address hanya diisi alamat jalan saja tanpa kecamatan, kabupaten, provinsi dan kode pos.</span>
+                                <span>PENTING: Tulis alamat lengkap tanpa (kelurahan/desa, kecamatan, kota/kabupaten, provinsi dan kodepos)</span>
                             </p>
                         </div>
                     </div>
