@@ -66,16 +66,7 @@
                             @endif
                             {{-- 👆 -------------------------------------- 👆 --}}
 
-                            {{-- TAMBAHKAN BADGE PICKUP POINT DI SINI --}}
-                                @if(!empty($user->pickup_point_code))
-                                <div class="mt-4 inline-flex items-center px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg shadow-sm">
-                                    <svg class="w-4 h-4 text-emerald-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                    <div class="text-left">
-                                        <span class="block text-[9px] text-emerald-600 uppercase font-bold tracking-wider">Pickup Code</span>
-                                        <span class="text-xs font-bold text-emerald-800 font-mono">{{ $user->pickup_point_code }}</span>
-                                    </div>
-                                </div>
-                                @endif
+
                         </div>
                         <div class="mt-8 border-t border-slate-200 pt-6 space-y-4 text-sm">
                             <div>
