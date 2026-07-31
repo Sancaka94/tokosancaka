@@ -175,21 +175,30 @@
                 }
             }
 
-            function showBrowserNotification(title, message, url) {
+          function showBrowserNotification(title, message, url) {
                 if (!('Notification' in window) || Notification.permission !== 'granted') {
                     return;
                 }
 
                 const notification = new Notification(title, {
                     body: message,
-                    icon: 'https://tokosancaka.com/storage/uploads/sancaka.png'
+                    icon: 'https://tokosancaka.com/storage/uploads/sancaka.png',
+                    requireInteraction: true // ✅ Notifikasi tidak akan hilang sampai diklik
                 });
 
-                if (url) {
-                    notification.onclick = function() {
+                notification.onclick = function() {
+                    // ✅ Matikan suara jika notifikasi OS diklik
+                    const audio = document.getElementById('adminNotifAudio');
+                    if (audio) {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    }
+
+                    if (url) {
                         window.open(url, '_blank');
-                    };
-                }
+                    }
+                    notification.close();
+                };
             }
 
             requestNotificationPermission();
@@ -364,24 +373,26 @@
 
                     window.EchoInitialized = true;
 
-                   const userId = {{ auth()->id() }};
-                    window.Echo.private(`App.Models.User.${userId}`)
-                        .on('pusher:subscription_succeeded', () => console.log('Subscribed to User Channel!'))
-                        .on('pusher:subscription_error', (status) => console.error(`Subscription failed. Status:`, status))
-                        .notification((notification) => {
-                            const data = notification.data ? notification.data : notification;
-                            showBrowserNotification(data.judul, data.pesan_utama, data.url);
-                            fetchNotificationCount();
+                  // Listener untuk Notifikasi Umum (Database)
+            const userId = {{ auth()->id() }};
+            window.Echo.private(`App.Models.User.${userId}`)
+                .on('pusher:subscription_succeeded', () => console.log('Subscribed to User Channel!'))
+                .on('pusher:subscription_error', (status) => console.error(`Subscription failed. Status:`, status))
+                .notification((notification) => {
+                    const data = notification.data ? notification.data : notification;
+                    showBrowserNotification(data.judul, data.pesan_utama, data.url);
+                    fetchNotificationCount();
 
-                            // ✅ TAMBAHKAN LOGIKA AUDIO DISINI
-                            if (sessionStorage.getItem('audio_allowed') === 'true') {
-                                const audio = document.getElementById('adminNotifAudio');
-                                if (audio) {
-                                    audio.currentTime = 0;
-                                    audio.play().catch(err => console.log("Gagal play audio via Echo:", err));
-                                }
-                            }
-                        });
+                    // ✅ Audio muter terus untuk Echo
+                    if (sessionStorage.getItem('audio_allowed') === 'true') {
+                        const audio = document.getElementById('adminNotifAudio');
+                        if (audio) {
+                            audio.currentTime = 0;
+                            audio.loop = true; // ✅ Bikin suara memutar terus
+                            audio.play().catch(err => console.log("Gagal play audio via Echo:", err));
+                        }
+                    }
+                });
 
                 } catch (error) { console.error("Failed to initialize Echo:", error); }
             } else { console.error("Echo or Pusher.js not found."); }
@@ -552,17 +563,20 @@
             });
         }
 
-        // Tangkap Notifikasi saat Tab Terbuka (Foreground)
+       // Tangkap Notifikasi saat Tab Terbuka (Foreground)
         onMessage(messaging, (payload) => {
             console.log("Foreground Payload: ", payload);
 
-            // Bunyikan Audio (Jika sudah diaktifkan tombol)
-            if (sessionStorage.getItem('audio_allowed') === 'true') {
+            const audio = document.getElementById('adminNotifAudio');
+
+            // Bunyikan Audio TERUS-MENERUS
+            if (sessionStorage.getItem('audio_allowed') === 'true' && audio) {
                 audio.currentTime = 0;
+                audio.loop = true; // ✅ Bikin suara memutar terus
                 audio.play().catch(err => console.log("Gagal play audio:", err));
             }
 
-            // Tampilkan SweetAlert Toast di Pojok Kanan Atas
+            // Tampilkan SweetAlert Toast yang TIDAK HILANG sebelum diklik
             Swal.fire({
                 toast: true,
                 position: 'bottom-end',
@@ -572,20 +586,38 @@
                 showConfirmButton: true,
                 confirmButtonText: 'Lihat',
                 confirmButtonColor: '#000000',
-                timer: 15000,
-                timerProgressBar: true
+                showCloseButton: true, // ✅ Tambah tombol silang
+                allowOutsideClick: false, // ✅ Jangan hilang kalau diklik di luar kotak
+                // ❌ Timer dihapus agar tidak tertutup otomatis
             }).then((result) => {
+                // ✅ Matikan suara ketika admin merespon (klik Lihat atau Close)
+                if (sessionStorage.getItem('audio_allowed') === 'true' && audio) {
+                    audio.pause();
+                    audio.currentTime = 0;
+                }
+
                 if (result.isConfirmed) {
                     window.location.href = "{{ route('admin.pesanan-autokirim.index') }}";
                 }
             });
 
-            // Munculkan juga Banner Bawaan Windows/Mac (Notification API)
+            // Munculkan juga Banner Bawaan Windows/Mac
             if (Notification.permission === 'granted') {
-                new Notification(payload.notification?.title || 'Pesanan Baru', {
+                const browserNotif = new Notification(payload.notification?.title || 'Pesanan Baru', {
                     body: payload.notification?.body || 'Ada pesanan masuk.',
-                    icon: 'https://tokosancaka.com/storage/uploads/sancaka.png'
+                    icon: 'https://tokosancaka.com/storage/uploads/sancaka.png',
+                    requireInteraction: true // ✅ Bikin notifikasi OS tidak hilang sendiri
                 });
+
+                // ✅ Matikan suara kalau banner OS diklik
+                browserNotif.onclick = function() {
+                    if (sessionStorage.getItem('audio_allowed') === 'true' && audio) {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    }
+                    window.focus();
+                    browserNotif.close();
+                };
             }
 
             if (typeof window.fetchNotificationCount === "function") {
