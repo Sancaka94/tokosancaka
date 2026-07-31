@@ -119,6 +119,7 @@
                             </div>
                         </div>
                         <input type="hidden" name="pengirim_district_id" x-model="senderDistrictId">
+                        <input type="hidden" name="pengirim_kodepos" x-model="senderPostalCode">
 
                         <div x-show="showSenderDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
                             <template x-if="senderResults.length > 0">
@@ -227,6 +228,7 @@
                             </div>
                         </div>
                         <input type="hidden" name="penerima_district_id" x-model="receiverDistrictId">
+                        <input type="hidden" name="penerima_kodepos" x-model="receiverPostalCode">
 
                         <div x-show="showReceiverDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
                             <template x-if="receiverResults.length > 0">
@@ -839,6 +841,8 @@ document.addEventListener('alpine:init', () => {
         tinggi: '',
         senderQuery: '',
         senderDistrictId: '',
+        senderPostalCode: '',
+
         senderResults: [],
         showSenderDropdown: false,
         isSearchingSender: false,
@@ -849,6 +853,7 @@ document.addEventListener('alpine:init', () => {
         // Autocomplete Penerima
         receiverQuery: '',
         receiverDistrictId: '',
+        receiverPostalCode: '',
         receiverResults: [],
         showReceiverDropdown: false,
         isSearchingReceiver: false,
@@ -960,14 +965,13 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        // Update fungsi selectAddress (ketika user klik dropdown kecamatan)
-        selectAddress(type, res) {
-            // Gunakan format kelurahan, kecamatan, kota agar rapi di dalam input text
+      selectAddress(type, res) {
             let formatText = `${res.village}, ${res.district}, ${res.regency}`;
 
             if(type === 'sender') {
                 this.senderQuery = formatText;
                 this.senderDistrictId = res.district_id;
+                this.senderPostalCode = res.postal_code; // <-- MENGAMBIL DARI KIRIMINAJA
                 this.showSenderDropdown = false;
 
                 // Hitung/Generate ulang jika kecamatan diubah
@@ -977,6 +981,7 @@ document.addEventListener('alpine:init', () => {
                 // Logika receiver
                 this.receiverQuery = formatText;
                 this.receiverDistrictId = res.district_id;
+                this.receiverPostalCode = res.postal_code; // <-- MENGAMBIL DARI KIRIMINAJA
                 this.showReceiverDropdown = false;
             }
         },
