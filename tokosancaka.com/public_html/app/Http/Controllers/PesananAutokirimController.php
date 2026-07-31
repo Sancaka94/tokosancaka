@@ -2138,4 +2138,55 @@ class PesananAutokirimController extends Controller
         }
     }
 
+    /**
+     * =========================================================================
+     * PUSH NOTIFICATION KE APLIKASI MOBILE (EXPO REACT NATIVE)
+     * =========================================================================
+     */
+    private function notifyExpoOrderBaru($orderId, $customerId)
+    {
+        try {
+            $pushMessages = [];
+
+            // 1. Notif ke HP Pelanggan (Jika pelanggan punya aplikasi Sancaka)
+            if ($customerId) {
+                $customer = \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', $customerId)->first();
+                if ($customer && !empty($customer->expo_token)) {
+                    $pushMessages[] = [
+                        'to'    => $customer->expo_token,
+                        'title' => '📦 Pesanan Berhasil!',
+                        'body'  => "Hore! Pesanan $orderId Anda berhasil dibuat & sedang diproses sistem.",
+                        'sound' => 'default',
+                        'data'  => ['order_id' => $orderId, 'action' => 'new_order_created']
+                    ];
+                }
+            }
+
+            // 2. Notif ke HP Admin Sancaka (ID 4)
+            $admin = \Illuminate\Support\Facades\DB::table('Pengguna')->where('id_pengguna', 4)->first();
+            if ($admin && !empty($admin->expo_token)) {
+                $pushMessages[] = [
+                    'to'    => $admin->expo_token,
+                    'title' => '🔔 Pesanan Autokirim Masuk!',
+                    'body'  => "Ada pesanan baru $orderId masuk dari Website.",
+                    'sound' => 'default',
+                    'data'  => ['order_id' => $orderId, 'action' => 'admin_new_order']
+                ];
+            }
+
+            // 3. Eksekusi tembak API Expo
+            if (!empty($pushMessages)) {
+                \Illuminate\Support\Facades\Http::withHeaders([
+                    'Accept'       => 'application/json',
+                    'Content-Type' => 'application/json',
+                ])->post('https://exp.host/--/api/v2/push/send', $pushMessages);
+
+                \Illuminate\Support\Facades\Log::info("LOG LOG: [EXPO PUSH] Notifikasi sukses dikirim ke App Mobile untuk Order $orderId");
+            }
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG LOG: [EXPO PUSH ERROR] " . $e->getMessage());
+        }
+    }
+
 }
