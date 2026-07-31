@@ -28,12 +28,12 @@
         <div class="bg-white shadow-lg rounded-xl overflow-hidden border border-slate-200">
             <div class="p-6 md:p-8">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    
+
                     {{-- KOLOM KIRI: INFORMASI UTAMA PENGGUNA --}}
                     <div class="lg:col-span-1">
                         <div class="flex flex-col items-center text-center">
-                            <img src="{{ $user->store_logo_path ? asset('public/storage/' . $user->store_logo_path) : 'https://placehold.co/128x128/e2e8f0/64748b?text=Logo' }}" 
-                                 alt="Logo Toko" 
+                            <img src="{{ $user->store_logo_path ? asset('public/storage/' . $user->store_logo_path) : 'https://placehold.co/128x128/e2e8f0/64748b?text=Logo' }}"
+                                 alt="Logo Toko"
                                  class="h-28 w-28 rounded-full object-cover bg-slate-200 border-4 border-white shadow-md">
                             <h2 class="mt-4 text-2xl font-bold text-slate-800">{{ $user->nama_lengkap ?? '-' }}</h2>
                             <p class="text-sm text-slate-500">{{ $user->store_name ?? 'Toko Belum Diatur' }}</p>
@@ -51,6 +51,17 @@
                                     </span>
                                 @endif
                             </div>
+
+                            {{-- TAMBAHKAN BADGE PICKUP POINT DI SINI --}}
+                                @if(!empty($user->pickup_point_code))
+                                <div class="mt-4 inline-flex items-center px-3 py-1.5 bg-emerald-50 border border-emerald-200 rounded-lg shadow-sm">
+                                    <svg class="w-4 h-4 text-emerald-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <div class="text-left">
+                                        <span class="block text-[9px] text-emerald-600 uppercase font-bold tracking-wider">Pickup Code</span>
+                                        <span class="text-xs font-bold text-emerald-800 font-mono">{{ $user->pickup_point_code }}</span>
+                                    </div>
+                                </div>
+                                @endif
                         </div>
                         <div class="mt-8 border-t border-slate-200 pt-6 space-y-4 text-sm">
                             <div>
@@ -98,7 +109,7 @@
                                     <label class="block font-medium text-slate-500">Kode Pos</label>
                                     <p class="mt-1 text-slate-900">{{ $user->postal_code ?? '-' }}</p>
                                 </div>
-                                
+
                                 {{-- START: Penambahan Lat/Long --}}
                                 <div>
                                     <label class="block font-medium text-slate-500">Latitude</label>
@@ -109,7 +120,7 @@
                                     <p class="mt-1 text-slate-900">{{ $user->longitude ?? '-' }}</p>
                                 </div>
                                 {{-- END: Penambahan Lat/Long --}}
-                                
+
                                 <div class="sm:col-span-2">
                                     <label class="block font-medium text-slate-500">Alamat Detail</label>
                                     <p class="mt-1 text-slate-900 whitespace-pre-wrap">{{ $user->address_detail ?? '-' }}</p>
@@ -140,7 +151,7 @@
 
                 {{-- Tombol Aksi --}}
                 <div class="mt-8 pt-6 border-t border-slate-200 text-right">
-                    <a href="{{ route('customer.profile.edit') }}" 
+                    <a href="{{ route('customer.profile.edit') }}"
                        class="inline-flex items-center px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-sm rounded-lg shadow-md transition duration-150 ease-in-out">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                         Edit Profil

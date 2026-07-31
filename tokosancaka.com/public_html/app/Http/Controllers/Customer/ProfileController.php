@@ -90,11 +90,25 @@ class ProfileController extends Controller
             if (!empty($user->pickup_point_code)) {
                 $this->updatePickupPointApi($user->pickup_point_code, $apiData);
             } else {
-                // Jika belum punya, lakukan INSERT dan simpan kodenya
-                $apiResult = $this->insertPickupPointApi($apiData);
-                if (isset($apiResult['rc']) && $apiResult['rc'] === '00') {
-                    $user->pickup_point_code = $apiResult['data']['pickup_point_code'];
-                }
+                // Jika belum punya, lakukan INSERT API
+                    $apiResult = $this->insertPickupPointApi($apiData);
+                    if (isset($apiResult['rc']) && $apiResult['rc'] === '00') {
+                        $user->pickup_point_code = $apiResult['data']['pickup_point_code'];
+                        $msgSuffix = " Pickup Point berhasil dibuat: " . $apiResult['data']['pickup_point_code'];
+                    }
+                    elseif (isset($apiResult['rc']) && $apiResult['rc'] === '01') {
+                        $apiData['no_hp'] = $apiData['no_hp'] . rand(100, 999);
+                        $retryResult = $this->insertPickupPointApi($apiData);
+
+                        if (isset($retryResult['rc']) && $retryResult['rc'] === '00') {
+                            $user->pickup_point_code = $retryResult['data']['pickup_point_code'];
+                            $msgSuffix = " Pickup Point berhasil dibuat (Bypass): " . $retryResult['data']['pickup_point_code'];
+                        } else {
+                            $msgSuffix = " (Gagal sinkron Autokirim)";
+                        }
+                    } else {
+                        $msgSuffix = " (Gagal sinkron Autokirim)";
+                    }
             }
             // =======================================================
 
