@@ -580,11 +580,11 @@
             // Bunyikan Audio TERUS-MENERUS
             if (sessionStorage.getItem('audio_allowed') === 'true' && audio) {
                 audio.currentTime = 0;
-                audio.loop = true; // ✅ Bikin suara memutar terus
+                audio.loop = true;
                 audio.play().catch(err => console.log("Gagal play audio:", err));
             }
 
-            // Tampilkan SweetAlert Toast yang TIDAK HILANG sebelum diklik
+            // Tampilkan SweetAlert Toast
             Swal.fire({
                 toast: true,
                 position: 'bottom-end',
@@ -594,18 +594,11 @@
                 showConfirmButton: true,
                 confirmButtonText: 'Lihat',
                 confirmButtonColor: '#000000',
-                showCloseButton: true, // ✅ Tambah tombol silang
-                allowOutsideClick: false, // ✅ Jangan hilang kalau diklik di luar kotak
-                // ❌ Timer dihapus agar tidak tertutup otomatis
+                showCloseButton: true
+                // HAPUS allowOutsideClick karena dilarang oleh mode toast
             }).then((result) => {
-                // ✅ Matikan suara ketika admin merespon (klik Lihat atau Close)
-                if (sessionStorage.getItem('audio_allowed') === 'true' && audio) {
-                    audio.pause();
-                    audio.currentTime = 0;
-                }
-
                 if (result.isConfirmed) {
-                    window.location.href = "{{ route('admin.pesanan-autokirim.index') }}";
+                    window.location.href = "/admin/pesanan-autokirim";
                 }
             });
 
@@ -614,15 +607,10 @@
                 const browserNotif = new Notification(payload.notification?.title || 'Pesanan Baru', {
                     body: payload.notification?.body || 'Ada pesanan masuk.',
                     icon: 'https://tokosancaka.com/storage/uploads/sancaka.png',
-                    requireInteraction: true // ✅ Bikin notifikasi OS tidak hilang sendiri
+                    requireInteraction: true
                 });
 
-                // ✅ Matikan suara kalau banner OS diklik
                 browserNotif.onclick = function() {
-                    if (sessionStorage.getItem('audio_allowed') === 'true' && audio) {
-                        audio.pause();
-                        audio.currentTime = 0;
-                    }
                     window.focus();
                     browserNotif.close();
                 };
