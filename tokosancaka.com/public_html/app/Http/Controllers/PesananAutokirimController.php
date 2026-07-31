@@ -2191,4 +2191,60 @@ class PesananAutokirimController extends Controller
         }
     }
 
+    /**
+     * Helper: Generate Access Token FCM V1 (Google Auth)
+     */
+    private function getGoogleAccessToken()
+    {
+        return \Illuminate\Support\Facades\Cache::remember('fcm_access_token_web', 3000, function () {
+            $jsonKeyPath = storage_path('app/firebase-auth.json');
+
+            if (!file_exists($jsonKeyPath)) {
+                \Illuminate\Support\Facades\Log::error("FCM Token: File firebase-auth.json tidak ditemukan di storage/app/");
+                return null;
+            }
+
+            $keyData = json_decode(file_get_contents($jsonKeyPath), true);
+            if (!$keyData || !isset($keyData['private_key'])) {
+                \Illuminate\Support\Facades\Log::error("FCM Token: Format JSON firebase-auth.json tidak valid.");
+                return null;
+            }
+
+            try {
+                // JALUR NINJA (Raw JWT - Cepat tanpa perlu install library tambahan)
+                $header = json_encode(['alg' => 'RS256', 'typ' => 'JWT']);
+                $now = time();
+                $claim = json_encode([
+                    'iss' => $keyData['client_email'],
+                    'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+                    'aud' => 'https://oauth2.googleapis.com/token',
+                    'exp' => $now + 3600,
+                    'iat' => $now
+                ]);
+
+                $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
+                $base64UrlClaim = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($claim));
+
+                $signature = '';
+                openssl_sign($base64UrlHeader . '.' . $base64UrlClaim, $signature, $keyData['private_key'], 'SHA256');
+                $base64UrlSignature = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($signature));
+
+                $jwt = $base64UrlHeader . '.' . $base64UrlClaim . '.' . $base64UrlSignature;
+
+                $response = \Illuminate\Support\Facades\Http::timeout(5)->asForm()->post('https://oauth2.googleapis.com/token', [
+                    'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                    'assertion' => $jwt
+                ]);
+
+                if ($response->successful() && $response->json('access_token')) {
+                    return $response->json('access_token');
+                }
+            } catch (\Throwable $th) {
+                \Illuminate\Support\Facades\Log::warning("FCM Token: Generate token gagal - " . $th->getMessage());
+            }
+
+            return null;
+        });
+    }
+
 }
