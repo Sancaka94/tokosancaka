@@ -408,9 +408,9 @@ class PesananAutokirimController extends Controller
     }
 
     /**
-     * Mengganti pencarian DB bawaan dengan KiriminAja x Autokirim
+     * API KiriminAja Address Search + JOIN dengan DB Autokirim
      */
-    public function searchAddressAjax(Request $request, KiriminAjaService $kiriminAja)
+    public function searchAddressAjax(Request $request, \App\Services\KiriminAjaService $kiriminAja)
     {
         $query = $request->get('q');
 
@@ -421,47 +421,92 @@ class PesananAutokirimController extends Controller
         try {
             // 1. Tembak API KiriminAja
             $apiResponse = $kiriminAja->searchAddress($query);
+            $mappedData = [];
 
-            if (!isset($apiResponse['data']) || empty($apiResponse['data'])) {
+            $searchDistricts = [];
+            $searchZips = [];
+
+            // 2A. Jika API KiriminAja MENGEMBALIKAN DATA
+            if (isset($apiResponse['data']) && !empty($apiResponse['data'])) {
+                foreach ($apiResponse['data'] as $item) {
+                    $addressParts = array_map('trim', explode(',', $item['full_address'] ?? ''));
+
+                    $village  = $addressParts[0] ?? 'N/A';
+                    $district = $addressParts[1] ?? 'N/A';
+                    $regency  = $addressParts[2] ?? 'N/A';
+                    $province = $addressParts[3] ?? 'N/A';
+                    $zip      = $addressParts[4] ?? 'N/A';
+
+                    $cleanRegency = str_replace(['KABUPATEN ', 'KOTA '], '', strtoupper($regency));
+
+                    $mappedData[] = [
+                        'province'             => $province,
+                        'regency'              => $regency,
+                        'clean_regency'        => $cleanRegency,
+                        'district'             => $district,
+                        'village'              => $village,
+                        'postal_code'          => $zip,
+                        'full_address_display' => $item['full_address'] ?? 'Alamat Tidak Terstruktur',
+                    ];
+
+                    $searchDistricts[] = $district;
+                    // Kumpulkan kodepos untuk pencocokan yang lebih akurat
+                    if ($zip !== 'N/A' && is_numeric($zip)) {
+                        $searchZips[] = $zip;
+                    }
+                }
+            }
+            // 2B. SMART FALLBACK: Jika API KiriminAja KOSONG & User mengetik Kodepos (Angka)
+            else {
+                if (is_numeric($query) && strlen($query) == 5) {
+                    $localSearch = \Illuminate\Support\Facades\DB::table('auto_kirims')
+                        ->where('zip', $query)
+                        ->limit(10)
+                        ->get();
+
+                    foreach($localSearch as $loc) {
+                         $mappedData[] = [
+                            'province'             => $loc->province_name,
+                            'regency'              => $loc->regency_name,
+                            'clean_regency'        => strtoupper($loc->regency_name),
+                            'district'             => $loc->district_name,
+                            'village'              => '', // Dari DB lokal biasanya tidak sedetail kelurahan
+                            'postal_code'          => $loc->zip,
+                            'district_id'          => $loc->district_id, // Langsung dapat ID
+                            'full_address_display' => "{$loc->district_name}, {$loc->regency_name}, {$loc->province_name}, {$loc->zip}",
+                        ];
+                    }
+                    return response()->json($mappedData);
+                }
+
+                // Jika bukan angka dan KiriminAja kosong
                 return response()->json([]);
             }
 
-            // 2. Kumpulkan data untuk optimasi query (Mencegah N+1)
-            $searchCriteria = [];
-            $mappedData = [];
-
-            foreach ($apiResponse['data'] as $item) {
-                $addressParts = array_map('trim', explode(',', $item['full_address'] ?? ''));
-
-                $village  = $addressParts[0] ?? 'N/A';
-                $district = $addressParts[1] ?? 'N/A';
-                $regency  = $addressParts[2] ?? 'N/A';
-                $province = $addressParts[3] ?? 'N/A';
-                $zip      = $addressParts[4] ?? 'N/A';
-
-                $cleanRegency = str_replace(['KABUPATEN ', 'KOTA '], '', strtoupper($regency));
-
-                $mappedData[] = [
-                    'province'             => $province,
-                    'regency'              => $regency,
-                    'clean_regency'        => $cleanRegency,
-                    'district'             => $district,
-                    'village'              => $village,
-                    'postal_code'          => $zip,
-                    'full_address_display' => $item['full_address'] ?? 'Alamat Tidak Terstruktur',
-                ];
-
-                $searchCriteria[] = $district;
-            }
-
-            // 3. Query ke DB Lokal 1 kali tarikan
+            // 3. Query ke DB Lokal (Mencari berdasarkan Nama Kecamatan ATAU Kodepos)
             $autoKirimDbs = \Illuminate\Support\Facades\DB::table('auto_kirims')
-                ->whereIn('district_name', array_unique($searchCriteria))
+                ->where(function($q) use ($searchDistricts, $searchZips) {
+                    if (!empty($searchDistricts)) {
+                        $q->whereIn('district_name', array_unique($searchDistricts));
+                    }
+                    if (!empty($searchZips)) {
+                        $q->orWhereIn('zip', array_unique($searchZips));
+                    }
+                })
                 ->get();
 
             // 4. Join Data & Filter
             $processedData = collect($mappedData)->map(function ($item) use ($autoKirimDbs) {
                 $match = $autoKirimDbs->first(function ($dbItem) use ($item) {
+
+                    // PRIORITAS 1: Pencocokan Berdasarkan Kodepos (Paling Akurat)
+                    if (!empty($item['postal_code']) && $item['postal_code'] !== 'N/A') {
+                        if ($dbItem->zip == $item['postal_code']) {
+                            return true;
+                        }
+                    }
+
+                    // PRIORITAS 2: Pencocokan Berdasarkan String Teks
                     $dbDistrict = strtoupper($dbItem->district_name);
                     $dbRegency = strtoupper($dbItem->regency_name);
                     $reqDistrict = strtoupper($item['district']);
@@ -475,15 +520,14 @@ class PesananAutokirimController extends Controller
 
                 return $item;
             })->filter(function($item) {
-                // PENTING: Sembunyikan alamat dari KiriminAja yang tidak didukung oleh Autokirim (district_id = null)
-                // Ini mencegah user memilih alamat yang nantinya akan gagal saat submit order
+                // Sembunyikan alamat yang distric_id-nya tidak ditemukan agar tidak error saat submit
                 return !is_null($item['district_id']);
             })->values();
 
             return response()->json($processedData);
 
         } catch (\Exception $e) {
-            Log::error("LOG KiriminAja x Autokirim API Error: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("LOG KiriminAja x Autokirim API Error: " . $e->getMessage());
             return response()->json([], 500);
         }
     }
