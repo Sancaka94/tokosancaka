@@ -1181,6 +1181,7 @@
             mandiriData: @json($mandiri),
             mapboxData: @json($mapbox),
             digiflazzData: @json($digiflazz),
+            autokirimData: @json($autokirim),
 
             // --- FUNGSI AJAX TOGGLE APP DEBUG (BARU) ---
             async toggleDebug() {
