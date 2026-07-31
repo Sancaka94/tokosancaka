@@ -1787,18 +1787,26 @@ class PesananAutokirimController extends Controller
                     ->post("{$config->base_url}/api/pickup-point/insert", $payloadData);
 
                 $pickupResult = $pickupResponse->json();
-                $codeFromApi = $pickupResult['data']['pickup_point_code'] ?? null;
+                \Illuminate\Support\Facades\Log::info("LOG: [AJAX PICKUP] FULL RESPONSE API:", $pickupResult ?? []);
+
+                // Ekstraksi kode secara agresif
+                $codeFromApi = $pickupResult['data']['pickup_point_code'] ?? $pickupResult['pickup_point_code'] ?? null;
 
                 // SELAMATKAN KODE: Berhasil Insert (00) ATAUPUN Terdaftar (01/02)
-                if (!empty($codeFromApi)) {
-                    $pickupPointCode = (string) $codeFromApi;
+                if (isset($pickupResult['rc']) && in_array($pickupResult['rc'], ['00', '01', '02'])) {
+                    if (!empty($codeFromApi)) {
+                        $pickupPointCode = (string) $codeFromApi;
 
-                    // Jika API membalas 01 atau 02, paksa Update agar alamat server sinkron dengan form
-                    if (isset($pickupResult['rc']) && in_array($pickupResult['rc'], ['01', '02'])) {
-                        \Illuminate\Support\Facades\Log::warning("LOG: [AJAX PICKUP] Menerima RC {$pickupResult['rc']}. Menyelamatkan kode {$pickupPointCode} dan sinkronisasi Update...");
-                        $this->updatePickupPoint($pickupPointCode, $payloadData);
+                        // Jika 01/02, paksa Update agar alamat server sinkron dengan form
+                        if (in_array($pickupResult['rc'], ['01', '02'])) {
+                            \Illuminate\Support\Facades\Log::warning("LOG: [AJAX PICKUP] Menerima RC {$pickupResult['rc']}. Menyelamatkan kode {$pickupPointCode} dan sinkronisasi Update...");
+                            $this->updatePickupPoint($pickupPointCode, $payloadData);
+                        } else {
+                            \Illuminate\Support\Facades\Log::info("LOG: [AJAX PICKUP] Sukses Insert Baru. Kode: {$pickupPointCode}");
+                        }
                     } else {
-                        \Illuminate\Support\Facades\Log::info("LOG: [AJAX PICKUP] Sukses Insert Baru. Kode: {$pickupPointCode}");
+                        // Kondisi jika API merespons 01/02 tapi TIDAK memberikan kode akses
+                        throw new \Exception(($pickupResult['rd'] ?? 'Terdaftar') . ' (Server pusat menahan kode akses. Solusi: Gunakan nomor HP lain)');
                     }
                 } else {
                     throw new \Exception($pickupResult['rd'] ?? 'Gagal mendaftarkan alamat jemput ke server logistik.');
@@ -1904,15 +1912,21 @@ class PesananAutokirimController extends Controller
                     ->post("{$config->base_url}/api/pickup-point/insert", $payloadData);
 
                 $pickupResult = $pickupResponse->json();
-                $codeFromApi = $pickupResult['data']['pickup_point_code'] ?? null;
+                \Illuminate\Support\Facades\Log::info("LOG: [API INSERT] FULL RESPONSE API:", $pickupResult ?? []);
+
+                $codeFromApi = $pickupResult['data']['pickup_point_code'] ?? $pickupResult['pickup_point_code'] ?? null;
 
                 // SELAMATKAN KODE: Berhasil Insert (00) ATAUPUN Terdaftar (01/02)
-                if (!empty($codeFromApi)) {
-                    $pickupPointCode = (string) $codeFromApi;
+                if (isset($pickupResult['rc']) && in_array($pickupResult['rc'], ['00', '01', '02'])) {
+                    if (!empty($codeFromApi)) {
+                        $pickupPointCode = (string) $codeFromApi;
 
-                    if (isset($pickupResult['rc']) && in_array($pickupResult['rc'], ['01', '02'])) {
-                        \Illuminate\Support\Facades\Log::warning("LOG: [API INSERT] Menerima RC {$pickupResult['rc']}. Menyelamatkan kode {$pickupPointCode} dan sinkronisasi Update...");
-                        $this->updatePickupPoint($pickupPointCode, $payloadData);
+                        if (in_array($pickupResult['rc'], ['01', '02'])) {
+                            \Illuminate\Support\Facades\Log::warning("LOG: [API INSERT] Menyelamatkan kode {$pickupPointCode} dari respon error {$pickupResult['rc']}. Memaksa Update...");
+                            $this->updatePickupPoint($pickupPointCode, $payloadData);
+                        }
+                    } else {
+                        throw new \Exception(($pickupResult['rd'] ?? 'Terdaftar') . ' (Server pusat menahan kode akses. Solusi: Gunakan nomor HP lain)');
                     }
                 } else {
                     throw new \Exception('Gagal mendaftarkan alamat jemput: ' . ($pickupResult['rd'] ?? 'Unknown Error API'));
