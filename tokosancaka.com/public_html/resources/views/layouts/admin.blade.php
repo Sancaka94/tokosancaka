@@ -520,7 +520,7 @@
                 Notification.requestPermission().then((permission) => {
                     if (permission === 'granted') {
                         getToken(messaging, {
-                            vapidKey: "MASUKKAN_VAPID_KEY_ANDA_DI_SINI",
+                            vapidKey: "BGF6BWiam42tA9GQB4mdp3C01ZJ8vk9_vQ9RzkHQUG2l7P1L3niAmiFhcp3gZHYXrtXT76qGuUIZ5QkAaDqiki8",
                             serviceWorkerRegistration: registration
                         })
                         .then((currentToken) => {
