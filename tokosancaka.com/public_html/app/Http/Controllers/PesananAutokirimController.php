@@ -903,6 +903,8 @@ class PesananAutokirimController extends Controller
                         'status'         => 'success_redirect'
                     ]);
 
+                    $this->notifyExpoOrderBaru($localOrderId, auth()->id());
+
                     $this->notifyAdminOrderBaru($localOrderId, $request->pengirim_nama, $request->kurir_terpilih, $request->layanan_terpilih);
 
                     return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbResult['awb']} (Metode: {$metodeTampil})");
