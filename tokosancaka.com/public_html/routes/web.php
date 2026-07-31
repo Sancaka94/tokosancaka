@@ -1836,7 +1836,6 @@ Route::prefix('customer')->name('customer.')->group(function () {
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
     Route::get('/sancaka-express/setting', [\App\Http\Controllers\Admin\SancakaExpressController::class, 'index'])->name('sancaka_express.index');
-    Route::post('/save-fcm-token', [\App\Http\Controllers\PesananAutokirimController::class, 'saveFcmTokenWeb'])->name('admin.save-fcm-token');
     Route::put('/sancaka-express/setting', [\App\Http\Controllers\Admin\SancakaExpressController::class, 'update'])->name('sancaka_express.update');
 });
 
@@ -2032,3 +2031,5 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
     Route::delete('/blocked-ips/{id}', [BlockedIpController::class, 'destroy'])->name('admin.blocked-ips.destroy');
 
 });
+
+Route::post('/admin/save-fcm-token', [\App\Http\Controllers\PesananAutokirimController::class, 'saveFcmTokenWeb']);

@@ -501,7 +501,8 @@
                         console.log("Admin FCM Web Token (v12): ", currentToken);
 
                         // Kirim Token ke Backend Laravel MENGGUNAKAN ROUTE WEB (Bukan API)
-                        fetch("{{ route('admin.save-fcm-token') }}", {
+                        // GANTI MENJADI INI:
+                        fetch("{{ url('/admin/save-fcm-token') }}", {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
