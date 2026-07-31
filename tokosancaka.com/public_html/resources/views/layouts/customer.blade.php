@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    
+
     <title>Dashboard Pelanggan - {{ config('app.name', 'Sancaka Express') }}</title>
 
     <!-- TailwindCSS CDN -->
@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <link rel="icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
     <link rel="shortcut icon" href="https://tokosancaka.com/storage/uploads/sancaka.png" type="image/png">
     <link rel="apple-touch-icon" href="https://tokosancaka.com/storage/uploads/sancaka.png">
@@ -34,7 +34,7 @@
         .modal-hidden { opacity: 0; transform: scale(0.95); pointer-events: none; }
         .modal-visible { opacity: 1; transform: scale(1); pointer-events: auto; }
     </style>
-    
+
     @stack('styles')
 </head>
 {{-- ✅ DIUBAH: Menghapus flex-col dan min-h-screen dari body --}}
@@ -46,7 +46,7 @@
 
     {{-- ✅ DIUBAH: Tambahkan h-screen dan overflow-hidden di wrapper utama agar body tidak scroll --}}
         <div x-data="{ sidebarOpen: false, isNotificationsMenuOpen: false, isProfileMenuOpen: false }" class="flex h-screen overflow-hidden">
-            
+
             @include('layouts.partials.customer.sidebar')
 
             <div class="flex-1 flex flex-col overflow-hidden">
@@ -54,13 +54,13 @@
 
                 {{-- ✅ DIUBAH: Pindahkan overflow-y-auto ke sini agar scrollbar ada di area utama saja --}}
                 <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
-                    
+
                     {{-- ✅ DIUBAH: Hapus 'h-screen' dan 'overflow-y-auto' dari sini --}}
                     <div class="container mx-auto px-6 py-8">
                         @yield('content')
                     </div>
-                    
-                  
+
+
                 </main>
 
                 {{-- ✅ DIUBAH: Pindahkan footer ke dalam kolom konten utama --}}
@@ -72,8 +72,8 @@
 
             </div>
         </div>
-    
-    
+
+
    {{-- ================================================================= --}}
     {{-- KODE JAVASCRIPT UTAMA (INI YANG KITA PERBARUI) --}}
     {{-- ================================================================= --}}
@@ -111,10 +111,10 @@
             const url = data.url || '#';
             const title = data.judul || 'Notifikasi';
             const message = data.pesan_utama || 'Anda memiliki notifikasi baru.';
-            
+
             // TODO: Ganti 'data.id' dengan ID notifikasi yang benar (mungkin 'notification.id')
             // Ini untuk fitur "mark as read" nanti
-            // const notificationId = notification.id; 
+            // const notificationId = notification.id;
 
             return `
                 <a href="${url}" class="flex items-start p-3 hover:bg-gray-100 transition-colors">
@@ -148,10 +148,10 @@
             currentNotificationCount = count;
             if (count > 0) {
                 notificationBadge.innerText = count;
-                notificationBadge.style.display = 'flex'; 
+                notificationBadge.style.display = 'flex';
                 notificationEmpty.style.display = 'none';
             } else {
-                notificationBadge.style.display = 'none'; 
+                notificationBadge.style.display = 'none';
                 notificationEmpty.style.display = 'block';
             }
         }
@@ -159,13 +159,13 @@
         // 4. Fungsi untuk menambahkan notifikasi BARU ke ATAS daftar
         function addNewNotification(notification) {
             const html = formatNotificationHTML(notification);
-            notificationList.insertAdjacentHTML('afterbegin', html); 
-            updateCount(currentNotificationCount + 1); 
+            notificationList.insertAdjacentHTML('afterbegin', html);
+            updateCount(currentNotificationCount + 1);
         }
 
         // 5. [SAAT HALAMAN DIMUAT] Ambil notifikasi awal
         function loadInitialNotifications() {
-            fetch("{{ route('customer.notifications.unread') }}") 
+            fetch("{{ route('customer.notifications.unread') }}")
                 .then(response => response.json())
                 .then(data => {
                     if (data.notifications && data.notifications.length > 0) {
@@ -174,9 +174,9 @@
                             html += formatNotificationHTML(notif);
                         });
                         notificationList.innerHTML = html;
-                        updateCount(data.unread_count); 
+                        updateCount(data.unread_count);
                     } else {
-                        updateCount(0); 
+                        updateCount(0);
                     }
                 })
                 .catch(error => console.error('Gagal memuat notifikasi:', error));
@@ -189,16 +189,16 @@
         window.Echo.private(`App.Models.User.${userId}`)
             .notification((notification) => {
                 // console.log('NOTIFIKASI BARU DITERIMA:', notification);
-                
+
                 const data = notification.data ? notification.data : notification;
 
                 if (Notification.permission === "granted") {
                     new Notification(data.judul, { // <-- Sudah diperbaiki
                         body: data.pesan_utama, // <-- Sudah diperbaiki
-                        icon: 'https://tokosancaka.com/storage/uploads/sancaka.png' 
+                        icon: 'https://tokosancaka.com/storage/uploads/sancaka.png'
                     });
                 }
-                
+
                 addNewNotification(notification);
             });
 
@@ -207,7 +207,7 @@
         // ==========================================================
         window.Echo.private(`customer-saldo.${userId}`)
             .listen('.SaldoUpdated', (data) => {
-                
+
                 // console.log('EVENT SALDO DITERIMA:', data);
 
                 // Periksa apakah data 'new_saldo' ada di dalam event
@@ -218,7 +218,7 @@
                     if (saldoDesktop) {
                         saldoDesktop.innerHTML = formattedSaldo;
                     }
-                    
+
                     // Update Saldo di Mobile
                     if (saldoMobile) {
                         saldoMobile.innerHTML = formattedSaldo;
@@ -249,8 +249,8 @@
         }
     });
     </script>
-    
-    
+
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     @if(session('success'))
     <script>
@@ -274,9 +274,55 @@
 
     @endif
 
-      <!-- sebelum </body> -->
+     <!-- sebelum </body> -->
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-    
+
+    {{-- 👇 TAMBAHKAN SCRIPT REFRESH SALDO DI SINI 👇 --}}
+    <script>
+        function refreshSaldo(buttonElement) {
+            const icon = buttonElement.querySelector('i');
+
+            // Tambahkan animasi berputar
+            icon.classList.add('fa-spin');
+            buttonElement.disabled = true;
+
+            // Panggil endpoint API untuk mengambil saldo terbaru
+            fetch("{{ route('api.cek.saldo') }}", {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    // Update teks di desktop & mobile
+                    if (document.getElementById('saldo-mobile')) {
+                        document.getElementById('saldo-mobile').innerText = data.saldo_format;
+                    }
+                    if (document.getElementById('saldo-desktop')) {
+                        document.getElementById('saldo-desktop').innerText = data.saldo_format;
+                    }
+                } else {
+                    console.error("Gagal mengambil data saldo");
+                }
+            })
+            .catch(error => {
+                console.error('Error saat refresh saldo:', error);
+            })
+            .finally(() => {
+                // Hapus animasi dan aktifkan tombol kembali
+                setTimeout(() => {
+                    icon.classList.remove('fa-spin');
+                    buttonElement.disabled = false;
+                }, 600);
+            });
+        }
+    </script>
+    {{-- 👆 AKHIR SCRIPT REFRESH SALDO 👆 --}}
+
     @stack('scripts')
 </body>
 </html>

@@ -35,6 +35,11 @@
                     <a class="text-green-600">Saldo Anda: </a>
                     {{-- GANTI $saldo JADI Auth::user()->saldo --}}
                     <strong id="saldo-desktop">Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</strong>
+
+                    <button type="button" class="ml-2 text-gray-400 hover:text-green-600 focus:outline-none transition-colors" onclick="refreshSaldo(this)" title="Perbarui Saldo">
+                        <i class="fas fa-sync-alt text-xs"></i>
+                    </button>
+
                 </span>
                 <a href="{{ route('customer.topup.create') }}" class="inline-flex items-center px-3 py-1 text-xs font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 transition-colors duration-150">
                     <i class="fas fa-plus mr-1"></i>
