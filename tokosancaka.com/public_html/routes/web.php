@@ -1836,6 +1836,7 @@ Route::prefix('customer')->name('customer.')->group(function () {
 
 Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
     Route::get('/sancaka-express/setting', [\App\Http\Controllers\Admin\SancakaExpressController::class, 'index'])->name('sancaka_express.index');
+    Route::post('/save-fcm-token', [\App\Http\Controllers\PesananAutokirimController::class, 'saveFcmTokenWeb'])->name('admin.save-fcm-token');
     Route::put('/sancaka-express/setting', [\App\Http\Controllers\Admin\SancakaExpressController::class, 'update'])->name('sancaka_express.update');
 });
 
@@ -1876,6 +1877,8 @@ Route::middleware(['auth'])->group(function () {
 // Sangat disarankan rute ini dibungkus dengan middleware 'auth' (atau middleware khusus admin Anda)
 // agar tidak sembarang orang bisa mengaksesnya.
 Route::prefix('admin')->middleware(['auth'])->group(function () {
+
+
 
 
     // Menampilkan halaman tabel manajemen driver

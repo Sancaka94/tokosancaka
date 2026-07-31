@@ -2247,4 +2247,41 @@ class PesananAutokirimController extends Controller
         });
     }
 
+    /**
+     * Menyimpan Token FCM dari Browser Web Admin (Berbasis Session Auth)
+     */
+    public function saveFcmTokenWeb(Request $request)
+    {
+        try {
+            $user = auth()->user();
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+            }
+
+            // Pastikan hanya Admin / User ID 4 yang boleh menyimpan token via Web
+            if ($user->id_pengguna != 4 && $user->role !== 'Admin') {
+                return response()->json(['success' => false, 'message' => 'Forbidden'], 403);
+            }
+
+            $request->validate([
+                'fcm_token' => 'required|string'
+            ]);
+
+            // Bersihkan token dari akun lain agar tidak terduplikasi (Leak Prevention)
+            \Illuminate\Support\Facades\DB::table('Pengguna')
+                ->where('fcm_token', $request->fcm_token)
+                ->update(['fcm_token' => null]);
+
+            // Simpan ke akun Admin yang sedang login
+            \Illuminate\Support\Facades\DB::table('Pengguna')
+                ->where('id_pengguna', $user->id_pengguna)
+                ->update(['fcm_token' => $request->fcm_token]);
+
+            return response()->json(['success' => true, 'message' => 'FCM Token (Web) berhasil disimpan.']);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Gagal simpan FCM Token Web: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Server Error'], 500);
+        }
+    }
+
 }

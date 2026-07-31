@@ -486,30 +486,32 @@
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
 
-        // 🔥 PERBAIKAN: Registrasi Service Worker secara eksplisit
+        // Registrasi Service Worker secara Eksplisit
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/firebase-messaging-sw.js')
             .then(function(registration) {
-                console.log('Service Worker Berhasil Diregistrasi!', registration);
 
-                // Minta Izin & Generate Token dengan menggunakan Service Worker yang aktif
-                // PENTING: Ganti dengan VAPID KEY ASLI Anda!
+                // Minta Izin & Generate Token
                 getToken(messaging, {
-                    vapidKey: "BGF6BWiam42tA9GQB4mdp3C01ZJ8vk9_vQ9RzkHQUG2l7P1L3niAmiFhcp3gZHYXrtXT76qGuUIZ5QkAaDqiki8",
+                    vapidKey: "BGF6BWiam42tA9GQB4mdp3C01ZJ8vk9_vQ9RzkHQUG2l7P1L3niAmiFhcp3gZHYXrtXT76qGuUIZ5QkAaDqiki8", // <-- JANGAN LUPA GANTI INI
                     serviceWorkerRegistration: registration
                 })
                 .then((currentToken) => {
                     if (currentToken) {
-                        console.log("Admin FCM Web Token: ", currentToken);
-                        // Kirim Token ke Backend
-                        fetch("{{ url('/api/mobile/save-fcm-token') }}", {
+                        console.log("Admin FCM Web Token (v12): ", currentToken);
+
+                        // Kirim Token ke Backend Laravel MENGGUNAKAN ROUTE WEB (Bukan API)
+                        fetch("{{ route('admin.save-fcm-token') }}", {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
+                                "Accept": "application/json",
                                 "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                             },
-                            body: JSON.stringify({ fcm_token: currentToken, is_debug: false })
-                        });
+                            body: JSON.stringify({ fcm_token: currentToken })
+                        })
+                        .then(response => response.json())
+                        .then(data => console.log("Status Simpan Token: ", data));
                     }
                 }).catch((err) => {
                     console.log("Izin Notifikasi Ditolak / Error: ", err);
@@ -520,10 +522,8 @@
             });
         }
 
-        // Tangkap Notifikasi saat Tab Admin Terbuka (Foreground)
+        // Tangkap Notifikasi secara Realtime saat Tab Admin Terbuka
         onMessage(messaging, (payload) => {
-            console.log("🔥 Menerima Notif FCM (Foreground): ", payload);
-
             let data = payload.data || {};
             let notifId = data.notif_id || 'RAND-' + Math.random();
 
@@ -531,20 +531,18 @@
             if (lastNotif === notifId) return;
             localStorage.setItem('last_admin_notif_id', notifId);
 
-            // Bunyikan Nada
             let audio = document.getElementById('adminNotifAudio');
             if(audio) {
                 audio.currentTime = 0;
-                audio.play().catch(e => console.log("Browser memblokir audio, klik layar 1x: " + e));
+                audio.play().catch(e => console.log("Audio diblokir browser: " + e));
             }
 
-            // Tampilkan SweetAlert
             Swal.fire({
                 toast: true,
                 position: 'top-end',
                 icon: 'info',
-                title: payload.notification?.title || 'Pesanan Baru Masuk',
-                text: payload.notification?.body || 'Silakan cek menu riwayat.',
+                title: payload.notification?.title || 'Pesanan Baru',
+                text: payload.notification?.body || 'Pesanan baru masuk!',
                 showConfirmButton: true,
                 confirmButtonText: 'Lihat',
                 confirmButtonColor: '#000000',
@@ -556,7 +554,6 @@
                 }
             });
 
-            // Update badge notifikasi header
             if (typeof window.fetchNotificationCount === "function") {
                 window.fetchNotificationCount();
             }
