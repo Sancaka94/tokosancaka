@@ -20,9 +20,6 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 
-    {{-- 1. HAPUS SCRIPT ALPINE CDN INI (Livewire sudah bawa Alpine sendiri) --}}
-    {{-- <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script> --}}
-
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     @livewireStyles
@@ -44,58 +41,55 @@
         /* Teks Vertikal untuk tombol Monitor */
         .writing-vertical { writing-mode: vertical-rl; text-orientation: mixed; }
 
-
-
         /* Preloader Styles */
-#preloader {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: #ffffff; /* Latar belakang putih bersih */
-    z-index: 9999;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    transition: opacity 0.5s ease; /* Mencegah tampilan konten 'melompat' saat preloader aktif */
-}
+        #preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #ffffff;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+        }
 
-.loader-logo {
-    width: 120px; /* Ukuran logo Sancaka */
-    margin-bottom: 20px;
-    animation: pulse 2s infinite ease-in-out;
-}
+        .loader-logo {
+            width: 120px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite ease-in-out;
+        }
 
-/* Animasi Loading Titik-Titik ala Shopee */
-.shopee-loader {
-    display: flex;
-    gap: 8px;
-}
+        /* Animasi Loading Titik-Titik ala Shopee */
+        .shopee-loader {
+            display: flex;
+            gap: 8px;
+        }
 
-.shopee-loader div {
-    width: 12px;
-    height: 12px;
-    background-color: #ee4d2d; /* Warna orange kemerahan */
-    border-radius: 50%;
-    animation: shopee-bounce 1.4s infinite ease-in-out both;
-}
+        .shopee-loader div {
+            width: 12px;
+            height: 12px;
+            background-color: #ee4d2d;
+            border-radius: 50%;
+            animation: shopee-bounce 1.4s infinite ease-in-out both;
+        }
 
-.shopee-loader div:nth-child(1) { animation-delay: -0.32s; }
-.shopee-loader div:nth-child(2) { animation-delay: -0.16s; }
+        .shopee-loader div:nth-child(1) { animation-delay: -0.32s; }
+        .shopee-loader div:nth-child(2) { animation-delay: -0.16s; }
 
-@keyframes shopee-bounce {
-    0%, 80%, 100% { transform: scale(0); }
-    40% { transform: scale(1.0); }
-}
+        @keyframes shopee-bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
 
-@keyframes pulse {
-    0% { transform: scale(0.95); opacity: 0.8; }
-    50% { transform: scale(1); opacity: 1; }
-    100% { transform: scale(0.95); opacity: 0.8; }
-}
-
+        @keyframes pulse {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
     </style>
 
     @stack('styles')
@@ -143,9 +137,6 @@
         </div>
     </div>
 
-    <!-- Tombol & Modal Chat (Global) -->
-    {{-- ... (Modal Chat Anda, biarkan saja) ... --}}
-
     {{-- SweetAlert Scripts --}}
     @if(session('success'))
     <script>
@@ -163,19 +154,17 @@
     <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.3/dist/echo.iife.js"></script>
 
-    @if(strtolower(Auth::user()->role) === 'admin')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
 
             // ======================================================================
-            // == FUNGSI NOTIFIKASI BROWSER (Ini sudah benar, biarkan)
+            // == FUNGSI NOTIFIKASI BROWSER
             // ======================================================================
             function requestNotificationPermission() {
                 if ('Notification' in window) {
                     if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
                         Notification.requestPermission().then(permission => {
                             if (permission === 'granted') {
-                                // console.log('Izin notifikasi browser diberikan.');
                                 new Notification('Terima Kasih!', {
                                     body: 'Anda akan menerima notifikasi di sini.',
                                     icon: 'https://tokosancaka.com/storage/uploads/sancaka.png'
@@ -188,12 +177,12 @@
 
             function showBrowserNotification(title, message, url) {
                 if (!('Notification' in window) || Notification.permission !== 'granted') {
-                    return; // Jangan lakukan apa-apa jika tidak diizinkan
+                    return;
                 }
 
                 const notification = new Notification(title, {
                     body: message,
-                    icon: 'https://tokosancaka.com/storage/uploads/sancaka.png' // Icon notifikasi
+                    icon: 'https://tokosancaka.com/storage/uploads/sancaka.png'
                 });
 
                 if (url) {
@@ -203,21 +192,16 @@
                 }
             }
 
-            // Meminta izin saat halaman pertama kali dimuat
             requestNotificationPermission();
 
             // ======================================================================
-            // == [MULAI] LOGIKA BARU NOTIFIKASI DROPDOWN (MENGGANTIKAN KODE LAMA)
+            // == LOGIKA BARU NOTIFIKASI DROPDOWN
             // ======================================================================
 
-            /**
-             * [BARU] Fungsi untuk menandai notifikasi sebagai dibaca, lalu mengarahkan.
-             */
             async function markAndRedirect(notificationId, targetUrl) {
                 try {
-                    // 1. Tandai sebagai dibaca di server
                     const response = await fetch(`/admin/notifications/mark-as-read/${notificationId}`, {
-                        method: 'POST', // Pastikan rute Anda menerima POST
+                        method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
                             'Content-Type': 'application/json',
@@ -228,7 +212,6 @@
                     const result = await response.json();
 
                     if (result.status === 'success') {
-                        // 2. Perbarui badge hitungan secara manual
                         const badge = document.getElementById('notification-count-badge');
                         if (badge && result.unread_count > 0) {
                             badge.textContent = result.unread_count;
@@ -241,14 +224,10 @@
                 } catch (error) {
                     console.error('Gagal menandai notifikasi:', error);
                 } finally {
-                    // 3. Arahkan pengguna ke URL tujuan, tidak peduli sukses atau gagal
                     window.location.href = targetUrl;
                 }
             }
 
-            /**
-             * Helper untuk format 'time ago' (disederhanakan)
-             */
             function timeAgo(dateString) {
                 const date = new Date(dateString);
                 const seconds = Math.floor((new Date() - date) / 1000);
@@ -265,32 +244,21 @@
                 return Math.floor(seconds) + " detik lalu";
             }
 
-            /**
-             * Memuat notifikasi (5 terakhir) dan mengisinya ke dalam TABEL dropdown.
-             * (Ini akan dipanggil oleh Alpine.js @click di header)
-             */
             async function loadInitialNotifications() {
                 try {
-                    // Pastikan rute ini benar
                     const response = await fetch('{{ route('admin.notifications.getUnread') }}');
                     if (!response.ok) throw new Error('Network response was not ok');
 
                     const data = await response.json();
 
-                    // [PENTING] Ini adalah ID baru dari HTML Anda
                     const listBody = document.getElementById('notification-list-body');
                     const emptyState = document.getElementById('notification-empty-state');
                     const badge = document.getElementById('notification-count-badge');
 
-                    // Pengaman jika elemen tidak ditemukan
-                    if (!listBody || !emptyState || !badge) {
-                        console.error('Elemen notifikasi (list-body/empty/badge) tidak ditemukan di DOM.');
-                        return;
-                    }
+                    if (!listBody || !emptyState || !badge) return;
 
-                    listBody.innerHTML = ''; // Selalu kosongkan list
+                    listBody.innerHTML = '';
 
-                    // Update badge
                     if (data.unread_count > 0) {
                         badge.textContent = data.unread_count > 9 ? '9+' : data.unread_count;
                         badge.style.display = 'flex';
@@ -298,13 +266,11 @@
                         badge.style.display = 'none';
                     }
 
-                    // Tampilkan status kosong jika tidak ada notifikasi
                     if (data.notifications.length === 0) {
-                        emptyState.style.display = 'table-row-group'; // Tipe display untuk tbody
+                        emptyState.style.display = 'table-row-group';
                     } else {
                         emptyState.style.display = 'none';
 
-                        // Isi tabel dengan data notifikasi
                         data.notifications.forEach(notification => {
                             const notifData = notification.data;
                             const title = notifData.judul || 'Notifikasi';
@@ -318,24 +284,19 @@
                                 lacakButtonHtml = `
                                     <a href="${locationUrl}" target="_blank" onclick="event.stopPropagation()"
                                        class="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 transition-colors font-medium">
-                                        <i class="fas fa-map-marker-alt w-3 h-3"></i>
-                                        Lacak
+                                        <i class="fas fa-map-marker-alt w-3 h-3"></i> Lacak
                                     </a>`;
                             }
 
-                             // Tombol "Lihat"
                             const lihatButtonHtml = `
                                 <button onclick="event.preventDefault(); markAndRedirect('${notification.id}', '${url}')"
                                    class="inline-flex items-center gap-1.5 text-xs px-2 py-1 bg-green border border-gray-300 text-gray-700 rounded-md hover:bg-green-50 transition-colors font-medium">
-                                    <i class="fas fa-eye w-3 h-3"></i>
-                                    Lihat
+                                    <i class="fas fa-eye w-3 h-3"></i> Lihat
                                 </button>`;
 
-                            // Buat baris tabel (tr)
                             const row = document.createElement('tr');
                             row.className = 'hover:bg-gray-50';
 
-                            // [PERBAIKAN DARI ANDA] Menggunakan break-words alih-alih truncate
                             row.innerHTML = `
                                 <td class="px-4 py-3 align-top w-2/3 overflow-hidden break-words">
                                     <p class="text-sm font-semibold text-gray-900">${title}</p>
@@ -361,9 +322,6 @@
                 }
             }
 
-            /**
-             * Fungsi terpisah HANYA untuk mengambil jumlah (untuk badge)
-             */
             async function fetchNotificationCount() {
                 try {
                     const response = await fetch('{{ route('admin.notifications.count') }}');
@@ -383,21 +341,11 @@
                 }
             }
 
-            // Panggil hitungan saat halaman dimuat
             fetchNotificationCount();
-
-            // [PENTING] Buat fungsi loadInitialNotifications TERSEDIA SECARA GLOBAL
-            // agar Alpine.js di header.blade.php bisa memanggilnya
-            // (Tombol @click di header ada di file lain, jadi fungsi ini harus global)
             window.loadInitialNotifications = loadInitialNotifications;
 
             // ======================================================================
-            // == [AKHIR] LOGIKA BARU NOTIFIKASI
-            // ======================================================================
-
-
-            // ======================================================================
-            // == INISIALISASI LARAVEL ECHO (Ini sudah benar, biarkan)
+            // == INISIALISASI LARAVEL ECHO
             // ======================================================================
 
             if (window.EchoInitialized) return;
@@ -415,53 +363,15 @@
                     });
 
                     window.EchoInitialized = true;
-                    // console.log("Laravel Echo initialized for admin.");
-
-                    // Listener untuk 'AdminNotificationEvent' (Sudah ada)
-                    window.Echo.private('admin-notifications')
-                        .on('pusher:subscription_succeeded', () => // console.log("Subscribed to 'admin-notifications' channel!"))
-                        .on('pusher:subscription_error', (status) => console.error("Subscription to 'admin-notifications' failed. Status:", status))
-                        .listen('AdminNotificationEvent', (e) => {
-                            // console.log('Notifikasi (AdminEvent) diterima:', e);
-                            showBrowserNotification(e.title, e.message, e.url);
-                            Swal.fire({
-                                title: e.title || 'Notifikasi Baru',
-                                text: e.message,
-                                icon: 'info',
-                                showCancelButton: true,
-                                confirmButtonText: 'Lihat Detail',
-                                cancelButtonText: 'Tutup',
-                                confirmButtonColor: '#4f46e5',
-                                cancelButtonColor: '#6b7280',
-                            }).then((result) => {
-                                if (result.isConfirmed && e.url) {
-                                    window.location.href = e.url;
-                                }
-                            });
-                            // [PERBAIKAN] Saat notifikasi baru masuk, cukup update angkanya
-                            fetchNotificationCount();
-                        });
 
                     // Listener untuk Notifikasi Umum (Database)
                     const userId = {{ auth()->id() }};
                     window.Echo.private(`App.Models.User.${userId}`)
-                        .on('pusher:subscription_succeeded', () => // console.log(`Subscribed to 'App.Models.User.${userId}' channel!`))
-                        .on('pusher:subscription_error', (status) => console.error(`Subscription to 'App.Models.User.${userId}' failed. Status:`, status))
+                        .on('pusher:subscription_succeeded', () => console.log('Subscribed to User Channel!'))
+                        .on('pusher:subscription_error', (status) => console.error(`Subscription failed. Status:`, status))
                         .notification((notification) => {
-
-                            // console.log('NOTIFIKASI BARU DITERIMA (dari NotifikasiUmum):', notification);
-
                             const data = notification.data ? notification.data : notification;
-
-                            // Tampilkan notifikasi di browser (Pop-up Desktop)
-                            showBrowserNotification(
-                                data.judul,      // <-- DIPERBAIKI
-                                data.pesan_utama, // <-- DIPERBAIKI
-                                data.url          // <-- DIPERBAIKI
-                            );
-
-                            // [PERBAIKAN] Update angka badge.
-                            // Daftar lengkap akan di-refresh saat user mengklik lonceng.
+                            showBrowserNotification(data.judul, data.pesan_utama, data.url);
                             fetchNotificationCount();
                         });
 
@@ -469,7 +379,6 @@
             } else { console.error("Echo or Pusher.js not found."); }
         });
     </script>
-    @endif
     @endauth
 
     {{-- Chat Modal Script --}}
@@ -496,36 +405,26 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const btnToggle = document.getElementById('btn-toggle-sidebar'); // Tombol hamburger (opsional)
-        const btnClose = document.getElementById('btn-close-sidebar');   // Tombol bulat floating
+        const btnToggle = document.getElementById('btn-toggle-sidebar');
+        const btnClose = document.getElementById('btn-close-sidebar');
         const sidebar = document.getElementById('main-sidebar');
         const overlay = document.getElementById('sidebar-overlay');
-        const icon = document.getElementById('toggle-icon'); // <--- Ambil element Icon
+        const icon = document.getElementById('toggle-icon');
 
         function toggleSidebar() {
             if (!sidebar) return;
-
-            // 1. Buka/Tutup Sidebar
             sidebar.classList.toggle('-translate-x-full');
-
-            // 2. Tampilkan/Sembunyikan Overlay
             if (overlay) overlay.classList.toggle('hidden');
 
-            // 3. LOGIKA ROTASI PANAH
             if (icon) {
-                // Cek apakah sidebar sedang SEMBUNYI (ada class -translate-x-full)
                 if (sidebar.classList.contains('-translate-x-full')) {
-                    // Jika sembunyi, putar panah jadi KANAN (tambah class rotate-180)
                     icon.classList.add('rotate-180');
                 } else {
-                    // Jika terbuka, kembalikan panah jadi KIRI (hapus class rotate-180)
                     icon.classList.remove('rotate-180');
                 }
             }
         }
 
-        // Jalankan logika rotasi sekali saat halaman dimuat
-        // untuk memastikan arah panah sesuai status awal sidebar
         if(sidebar && icon) {
              if (sidebar.classList.contains('-translate-x-full')) {
                 icon.classList.add('rotate-180');
@@ -538,34 +437,124 @@
         if(btnClose) btnClose.addEventListener('click', toggleSidebar);
         if(overlay) overlay.addEventListener('click', toggleSidebar);
     });
-</script>
-<script>
-    // Fungsi untuk mengontrol preloader agar hanya muncul sekali per sesi
-    (function() {
-        const preloader = document.getElementById('preloader');
+    </script>
 
-        // Cek apakah user sudah pernah melihat loading di sesi ini
-        if (sessionStorage.getItem('sancaka_loaded')) {
-            // Jika sudah pernah, langsung hilangkan preloader tanpa animasi
-            preloader.style.display = 'none';
-        } else {
-            // Jika ini kunjungan pertama di sesi ini, jalankan animasi loading
-            window.addEventListener('load', function() {
-                setTimeout(() => {
-                    preloader.style.opacity = '0';
+    <script>
+        (function() {
+            const preloader = document.getElementById('preloader');
+            if (sessionStorage.getItem('sancaka_loaded')) {
+                preloader.style.display = 'none';
+            } else {
+                window.addEventListener('load', function() {
                     setTimeout(() => {
-                        preloader.style.display = 'none';
-                        // Simpan status agar tidak muncul lagi saat pindah menu
-                        sessionStorage.setItem('sancaka_loaded', 'true');
+                        preloader.style.opacity = '0';
+                        setTimeout(() => {
+                            preloader.style.display = 'none';
+                            sessionStorage.setItem('sancaka_loaded', 'true');
+                        }, 1000);
                     }, 1000);
-                }, 1000); // Durasi loading awal (bisa dikurangi jika dirasa kelamaan)
-            });
-        }
-    })();
-</script>
+                });
+            }
+        })();
+    </script>
 
-{{-- 4. TAMBAHKAN SCRIPT LIVEWIRE DISINI (SEBELUM BODY TUTUP) --}}
     @livewireScripts
+
+    {{-- ===================================================================== --}}
+    {{-- 1. AUDIO & FIREBASE UNTUK NOTIFIKASI REALTIME ADMIN (SDK v12 MODULAR) --}}
+    {{-- ===================================================================== --}}
+    @if(auth()->check() && (auth()->user()->id_pengguna == 4 || auth()->user()->role == 'Admin'))
+
+    <!-- Elemen Audio (Disembunyikan) -->
+    <audio id="adminNotifAudio" src="https://tokosancaka.com/public/assets/ojek.wav" preload="auto"></audio>
+
+    <script type="module">
+        // Import fungsi spesifik dari SDK v12 Modular
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js";
+        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-messaging.js";
+
+        // Konfigurasi dari Firebase Console Anda
+        const firebaseConfig = {
+            apiKey: "AIzaSyBd4Rl2pnQlr-mYQSVZamWnCkvpi5anU8w",
+            authDomain: "sancaka-express.firebaseapp.com",
+            databaseURL: "https://sancaka-express-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "sancaka-express",
+            storageBucket: "sancaka-express.firebasestorage.app",
+            messagingSenderId: "960582735209",
+            appId: "1:960582735209:web:710a898b750150824ad9f8",
+            measurementId: "G-Z1V0BHLZ6P"
+        };
+
+        // Inisialisasi Firebase & Messaging
+        const app = initializeApp(firebaseConfig);
+        const messaging = getMessaging(app);
+
+        // Minta Izin & Generate Token
+        // PENTING: Ganti "MASUKKAN_VAPID_KEY_ANDA_DI_SINI" dengan VAPID KEY dari Firebase Console!
+        getToken(messaging, { vapidKey: "BGF6BWiam42tA9GQB4mdp3C01ZJ8vk9_vQ9RzkHQUG2l7P1L3niAmiFhcp3gZHYXrtXT76qGuUIZ5QkAaDqiki8" })
+        .then((currentToken) => {
+            if (currentToken) {
+                console.log("Admin FCM Web Token (v12): ", currentToken);
+
+                // Kirim Token ke Backend Laravel (Tabel Pengguna)
+                fetch("{{ url('/api/mobile/save-fcm-token') }}", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ fcm_token: currentToken, is_debug: false })
+                });
+            } else {
+                console.log("Gagal mendapatkan token pendaftaran. Pastikan izin notifikasi diberikan.");
+            }
+        }).catch((err) => {
+            console.log("Izin Notifikasi Ditolak / Error: ", err);
+        });
+
+        // Tangkap Notifikasi secara Realtime saat Tab Admin Terbuka
+        onMessage(messaging, (payload) => {
+            console.log("Menerima Notif FCM (Foreground): ", payload);
+
+            let data = payload.data || {};
+            let notifId = data.notif_id || 'RAND-' + Math.random();
+
+            // Cache Browser: Mencegah bunyi dobel jika Admin buka banyak tab
+            let lastNotif = localStorage.getItem('last_admin_notif_id');
+            if (lastNotif === notifId) return;
+            localStorage.setItem('last_admin_notif_id', notifId);
+
+            // Bunyikan Nada (Ojek.wav)
+            let audio = document.getElementById('adminNotifAudio');
+            audio.currentTime = 0;
+            audio.play().catch(e => console.log("Audio diblokir browser: " + e));
+
+            // Tampilkan SweetAlert
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'info',
+                title: payload.notification?.title || 'Pesanan Baru',
+                text: payload.notification?.body || 'Pesanan baru masuk!',
+                showConfirmButton: true,
+                confirmButtonText: 'Lihat',
+                confirmButtonColor: '#000000',
+                timer: 10000,
+                timerProgressBar: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Refresh halaman ke menu riwayat
+                    window.location.href = "{{ route('admin.pesanan-autokirim.index') }}";
+                }
+            });
+
+            // Update badge notifikasi header (jika fungsi ini ada di sistem Anda)
+            if (typeof window.fetchNotificationCount === "function") {
+                window.fetchNotificationCount();
+            }
+        });
+    </script>
+    @endif
 
 </body>
 </html>

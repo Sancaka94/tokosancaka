@@ -903,6 +903,8 @@ class PesananAutokirimController extends Controller
                         'status'         => 'success_redirect'
                     ]);
 
+                    $this->notifyAdminOrderBaru($localOrderId, $request->pengirim_nama, $request->kurir_terpilih, $request->layanan_terpilih);
+
                     return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbResult['awb']} (Metode: {$metodeTampil})");
 
                 } else {
@@ -2054,6 +2056,86 @@ class PesananAutokirimController extends Controller
             'base_url' => rtrim($baseUrl, '/'),
             'token'    => $token
         ];
+    }
+
+    /**
+     * =========================================================================
+     * PUSH NOTIFICATION KE BROWSER ADMIN & EXPO (FCM v1 + REDIS)
+     * =========================================================================
+     */
+    private function notifyAdminOrderBaru($orderId, $customerName, $kurir, $layanan)
+    {
+        try {
+            $adminId = 4;
+            $admin = \Illuminate\Support\Facades\DB::table('Pengguna')
+                        ->where('id_pengguna', $adminId)
+                        ->select('fcm_token', 'fcm_token_debug')
+                        ->first();
+
+            if (!$admin) return;
+
+            // 1. DATA NOTIFIKASI
+            $notifId = 'NTF-' . time() . '-' . rand(100, 999);
+            $title = '📦 Pesanan Baru Masuk!';
+            $body = "Pelanggan {$customerName} membuat pesanan {$orderId} via {$kurir} {$layanan}.";
+
+            $notifData = [
+                'notif_id' => $notifId,
+                'order_id' => $orderId,
+                'title'    => $title,
+                'body'     => $body,
+                'time'     => now()->timezone('Asia/Jakarta')->format('d M Y H:i:s'),
+                'read'     => false
+            ];
+
+            // 2. SIMPAN KE REDIS (Untuk Riwayat Notifikasi di Header Bell)
+            $redisKey = "admin_notifications_{$adminId}";
+            \Illuminate\Support\Facades\Redis::lpush($redisKey, json_encode($notifData));
+            \Illuminate\Support\Facades\Redis::ltrim($redisKey, 0, 99); // Batasi maksimal 100 notif
+
+            // 3. PUSH KE FIREBASE CLOUD MESSAGING (FCM HTTP v1)
+            $accessToken = $this->getGoogleAccessToken(); // Menggunakan helper dari controller Anda
+            $projectId = 'sancaka-express'; // Sesuaikan dengan Project ID Firebase Anda
+
+            $tokensToTry = [];
+            if (!empty($admin->fcm_token)) $tokensToTry[] = $admin->fcm_token;
+            if (!empty($admin->fcm_token_debug)) $tokensToTry[] = $admin->fcm_token_debug;
+
+            if ($accessToken && count($tokensToTry) > 0) {
+                foreach ($tokensToTry as $tokenStr) {
+                    $response = \Illuminate\Support\Facades\Http::withHeaders([
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Content-Type'  => 'application/json',
+                    ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                        'message' => [
+                            'token' => $tokenStr,
+                            'notification' => [
+                                'title' => $title,
+                                'body'  => $body
+                            ],
+                            'webpush' => [
+                                'fcm_options' => [
+                                    'link' => url('/admin/pesanan-autokirim') // Link saat notif browser di-klik
+                                ]
+                            ],
+                            'data' => [
+                                'action'   => 'new_autokirim_order',
+                                'notif_id' => (string) $notifId,
+                                'order_id' => (string) $orderId
+                            ]
+                        ]
+                    ]);
+
+                    if ($response->successful()) {
+                        \Illuminate\Support\Facades\Log::info("LOG: [NOTIF ADMIN] Berhasil kirim FCM Realtime ke Browser Admin (ID 4) untuk Order $orderId");
+                        break; // Stop jika 1 token sudah berhasil agar tidak double
+                    }
+                }
+            }
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG: [NOTIF ADMIN ERROR] " . $e->getMessage());
+        }
     }
 
 }
