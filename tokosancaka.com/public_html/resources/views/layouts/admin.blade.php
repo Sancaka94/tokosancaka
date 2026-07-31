@@ -364,8 +364,7 @@
 
                     window.EchoInitialized = true;
 
-                    // Listener untuk Notifikasi Umum (Database)
-                    const userId = {{ auth()->id() }};
+                   const userId = {{ auth()->id() }};
                     window.Echo.private(`App.Models.User.${userId}`)
                         .on('pusher:subscription_succeeded', () => console.log('Subscribed to User Channel!'))
                         .on('pusher:subscription_error', (status) => console.error(`Subscription failed. Status:`, status))
@@ -373,6 +372,15 @@
                             const data = notification.data ? notification.data : notification;
                             showBrowserNotification(data.judul, data.pesan_utama, data.url);
                             fetchNotificationCount();
+
+                            // ✅ TAMBAHKAN LOGIKA AUDIO DISINI
+                            if (sessionStorage.getItem('audio_allowed') === 'true') {
+                                const audio = document.getElementById('adminNotifAudio');
+                                if (audio) {
+                                    audio.currentTime = 0;
+                                    audio.play().catch(err => console.log("Gagal play audio via Echo:", err));
+                                }
+                            }
                         });
 
                 } catch (error) { console.error("Failed to initialize Echo:", error); }
@@ -557,7 +565,7 @@
             // Tampilkan SweetAlert Toast di Pojok Kanan Atas
             Swal.fire({
                 toast: true,
-                position: 'top-end',
+                position: 'bottom-end',
                 icon: 'info',
                 title: payload.notification?.title || 'Pesanan Baru Masuk!',
                 text: payload.notification?.body || 'Silakan cek daftar pesanan.',
@@ -585,7 +593,7 @@
             }
         });
     </script>
-    @endif
+
 
 </body>
 </html>
