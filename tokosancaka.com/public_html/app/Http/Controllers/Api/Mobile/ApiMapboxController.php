@@ -1014,6 +1014,21 @@ class ApiMapboxController extends Controller
                 }
             }
 
+            try {
+                $notifData = [
+                    'notif_id' => 'NTF-' . time() . '-' . rand(100, 999),
+                    'order_id' => $orderId,
+                    'title'    => '📦 Pesanan App Expo!',
+                    'body'     => "Pesanan " . strtoupper(str_replace('_', ' ', $layanan)) . " baru masuk dari aplikasi.",
+                    'time'     => now()->timezone('Asia/Jakarta')->format('d M Y H:i:s'),
+                    'read'     => false
+                ];
+                \Illuminate\Support\Facades\Redis::lpush("admin_notifications_4", json_encode($notifData));
+                \Illuminate\Support\Facades\Redis::ltrim("admin_notifications_4", 0, 99);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning("LOG LOG: Gagal push lonceng web admin: " . $e->getMessage());
+            }
+
             // EKSEKUSI PENGIRIMAN
             if ($accessToken && count($targets) > 0) {
                 foreach ($targets as $userTarget) {
@@ -1034,6 +1049,17 @@ class ApiMapboxController extends Controller
                             'message' => [
                                 'token' => $tokenStr,
                                 'android' => ['priority' => 'HIGH'],
+
+                                'notification' => [
+                                    'title' => '📦 Pesanan Expo Masuk!',
+                                    'body'  => "Ada pesanan " . strtoupper(str_replace('_', ' ', $layanan)) . " baru masuk. Cek sekarang!"
+                                ],
+                                'webpush' => [
+                                    'fcm_options' => [
+                                        'link' => url('/admin/pesanan-autokirim')
+                                    ]
+                                ],
+
                                 'data' => [
                                     'action'           => 'new_order',
                                     'layanan'          => (string) $layanan,
