@@ -63,6 +63,14 @@
                     @endif
                 @endif
             </div>
+
+            <!-- TAMBAHAN RATA-RATA HARIAN DI SINI -->
+            <div class="mt-3 pt-2 border-t border-blue-100/50">
+                <span class="text-[10px] md:text-xs text-gray-500">Rata-rata per hari:</span>
+                <span class="text-xs font-bold text-blue-600 ml-1">Rp {{ number_format($data['rata_rata_per_hari'] ?? 0, 0, ',', '.') }}</span>
+            </div>
+            <!-- SELESAI TAMBAHAN -->
+
         </div>
         <div class="absolute right-4 top-1/2 -translate-y-1/2 text-5xl opacity-10 hidden sm:block">📈</div>
     </div>
