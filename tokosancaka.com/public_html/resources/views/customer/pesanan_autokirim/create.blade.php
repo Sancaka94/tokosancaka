@@ -125,9 +125,30 @@
                             <template x-if="senderResults.length > 0">
                                 <div>
                                     <template x-for="res in senderResults">
-                                        <div @click="selectAddress('sender', res)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
-                                            <p class="font-medium text-black text-[11px] leading-relaxed" x-text="res.full_address_display"></p>
-                                            <p class="text-[10px] font-bold text-red-600 mt-1" x-text="'KODEPOS: ' + res.postal_code"></p>
+                                        <!-- Wrapper utama dibuat Flexbox justify-between agar konten kiri dan kanan terpisah -->
+                                        <div @click="selectAddress('sender', res)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 flex items-center justify-between gap-3 transition duration-150">
+
+                                            <!-- Bagian Kiri: Icon PIN & Teks Alamat -->
+                                            <div class="flex items-start gap-3 flex-1 min-w-0">
+                                                <!-- Icon PIN Merah -->
+                                                <div class="mt-0.5 shrink-0">
+                                                    <i class="fa-solid fa-location-dot text-red-600 text-base"></i>
+                                                </div>
+
+                                                <!-- Teks -->
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="font-medium text-black text-[11px] leading-relaxed" x-text="res.full_address_display"></p>
+                                                    <p class="text-[10px] font-bold text-red-600 mt-1" x-text="'KODEPOS: ' + res.postal_code"></p>
+                                                </div>
+                                            </div>
+
+                                            <!-- Bagian Kanan: Tombol Pilih (Visual Saja) -->
+                                            <div class="shrink-0">
+                                                <button type="button" class="bg-black hover:bg-gray-800 text-white text-[10px] font-bold px-3 py-1.5 rounded pointer-events-none transition-colors">
+                                                    Pilih
+                                                </button>
+                                            </div>
+
                                         </div>
                                     </template>
                                 </div>
@@ -234,9 +255,30 @@
                             <template x-if="receiverResults.length > 0">
                                 <div>
                                     <template x-for="res in receiverResults">
-                                        <div @click="selectAddress('receiver', res)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
-                                            <p class="font-medium text-black text-[11px] leading-relaxed" x-text="res.full_address_display"></p>
-                                            <p class="text-[10px] font-bold text-red-600 mt-1" x-text="'KODEPOS: ' + res.postal_code"></p>
+                                        <!-- Wrapper utama dibuat Flexbox justify-between agar konten kiri dan kanan terpisah -->
+                                        <div @click="selectAddress('receiver', res)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 flex items-center justify-between gap-3 transition duration-150">
+
+                                            <!-- Bagian Kiri: Icon PIN & Teks Alamat -->
+                                            <div class="flex items-start gap-3 flex-1 min-w-0">
+                                                <!-- Icon PIN Biru -->
+                                                <div class="mt-0.5 shrink-0">
+                                                    <i class="fa-solid fa-location-dot text-blue-600 text-base"></i>
+                                                </div>
+
+                                                <!-- Teks -->
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="font-medium text-black text-[11px] leading-relaxed" x-text="res.full_address_display"></p>
+                                                    <p class="text-[10px] font-bold text-blue-600 mt-1" x-text="'KODEPOS: ' + res.postal_code"></p>
+                                                </div>
+                                            </div>
+
+                                            <!-- Bagian Kanan: Tombol Pilih (Visual Saja) -->
+                                            <div class="shrink-0">
+                                                <button type="button" class="bg-black hover:bg-gray-800 text-white text-[10px] font-bold px-3 py-1.5 rounded pointer-events-none transition-colors">
+                                                    Pilih
+                                                </button>
+                                            </div>
+
                                         </div>
                                     </template>
                                 </div>
