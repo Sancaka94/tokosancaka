@@ -537,6 +537,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // =========================================================================
 Route::middleware(['auth', 'verified'])->group(function () {
 
+Route::get('/api/cek-saldo-ajax', [\App\Http\Controllers\Customer\ProfileController::class, 'cekSaldoAjax'])->name('api.cek.saldo');
+
     // ✅ 1. ROUTE KHUSUS (WAJIB DI ATAS)
     // URL: /customer/pesanan/riwayat-belanja
     Route::get('/customer/pesanan/riwayat-belanja', [App\Http\Controllers\Customer\PesananController::class, 'riwayatBelanja'])
