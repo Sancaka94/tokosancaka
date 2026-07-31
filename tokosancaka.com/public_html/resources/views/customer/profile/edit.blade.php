@@ -146,7 +146,7 @@
                                                 class="mt-1 block w-full border-slate-300 rounded-lg shadow-sm bg-slate-100 cursor-not-allowed" readonly>
 
                                            <div class="mt-4">
-                                                <label for="district_id" class="block text-sm font-medium text-slate-700">District ID (Agent</label>
+                                                <label for="district_id" class="block text-sm font-medium text-slate-700">District ID (Khusus Agent)</label>
                                                 <input type="text" name="district_id" id="district_id" value="{{ old('district_id', $user->district_id ?? '') }}"
                                                     class="mt-1 block w-full border-slate-300 rounded-lg shadow-sm bg-slate-100 cursor-not-allowed" readonly>
                                             </div>
