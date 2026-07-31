@@ -513,7 +513,7 @@ class ProfileController extends Controller
         return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
     }
 
-    /**
+   /**
      * API KiriminAja Address Search + JOIN dengan DB Autokirim
      */
     public function searchKiriminAjaAddress(Request $request, KiriminAjaService $kiriminAja)
@@ -528,43 +528,68 @@ class ProfileController extends Controller
             // 1. Tembak API KiriminAja
             $apiResponse = $kiriminAja->searchAddress($query);
 
-            if (isset($apiResponse['data']) && !empty($apiResponse['data'])) {
-
-                // 2. Format dan Join dengan Database Lokal
-                $processedData = collect($apiResponse['data'])->map(function ($item) {
-                    $addressParts = array_map('trim', explode(',', $item['full_address'] ?? ''));
-
-                    $village  = $addressParts[0] ?? 'N/A';
-                    $district = $addressParts[1] ?? 'N/A'; // Nama Kecamatan
-                    $regency  = $addressParts[2] ?? 'N/A'; // Nama Kabupaten/Kota
-                    $province = $addressParts[3] ?? 'N/A';
-                    $zip      = $addressParts[4] ?? 'N/A';
-
-                    // 3. Cari district_id di tabel auto_kirims berdasarkan Kecamatan & Kabupaten
-                    // Menghilangkan kata 'KABUPATEN'/'KOTA' jika ada selisih penulisan
-                    $cleanRegency = str_replace(['KABUPATEN ', 'KOTA '], '', strtoupper($regency));
-
-                    $autoKirimDb = \Illuminate\Support\Facades\DB::table('auto_kirims')
-                        ->select('district_id')
-                        ->where('district_name', 'LIKE', '%' . $district . '%')
-                        ->where('regency_name', 'LIKE', '%' . $cleanRegency . '%')
-                        ->first();
-
-                    return [
-                        'province'    => $province,
-                        'regency'     => $regency,
-                        'district'    => $district,
-                        'village'     => $village,
-                        'postal_code' => $zip,
-                        'district_id' => $autoKirimDb ? $autoKirimDb->district_id : null, // HASIL JOIN DISINI
-                        'full_address_display' => $item['full_address'] ?? 'Alamat Tidak Terstruktur',
-                    ];
-                });
-
-                return response()->json($processedData);
+            if (!isset($apiResponse['data']) || empty($apiResponse['data'])) {
+                return response()->json([]);
             }
 
-            return response()->json([]);
+            // 2. Kumpulkan semua nama kecamatan dan kota unik untuk menghindari N+1 Query
+            $searchCriteria = [];
+            $mappedData = [];
+
+            foreach ($apiResponse['data'] as $item) {
+                $addressParts = array_map('trim', explode(',', $item['full_address'] ?? ''));
+
+                $village  = $addressParts[0] ?? 'N/A';
+                $district = $addressParts[1] ?? 'N/A';
+                $regency  = $addressParts[2] ?? 'N/A';
+                $province = $addressParts[3] ?? 'N/A';
+                $zip      = $addressParts[4] ?? 'N/A';
+
+                $cleanRegency = str_replace(['KABUPATEN ', 'KOTA '], '', strtoupper($regency));
+
+                $mappedData[] = [
+                    'province'             => $province,
+                    'regency'              => $regency,
+                    'clean_regency'        => $cleanRegency, // Disimpan sementara untuk pencocokan nanti
+                    'district'             => $district,
+                    'village'              => $village,
+                    'postal_code'          => $zip,
+                    'full_address_display' => $item['full_address'] ?? 'Alamat Tidak Terstruktur',
+                ];
+
+                $searchCriteria[] = $district;
+            }
+
+            // 3. Query ke DB lokal (auto_kirims) DALAM 1 KALI EKSEKUSI
+            // Menggunakan WhereIn untuk performa yang jauh lebih ringan daripada melooping query
+            $autoKirimDbs = \Illuminate\Support\Facades\DB::table('auto_kirims')
+                ->whereIn('district_name', array_unique($searchCriteria))
+                ->get();
+
+            // 4. Gabungkan hasil dari API dan DB Lokal
+            $processedData = collect($mappedData)->map(function ($item) use ($autoKirimDbs) {
+
+                // Cari ID yang paling cocok menggunakan Collection method bawaan Laravel
+                $match = $autoKirimDbs->first(function ($dbItem) use ($item) {
+                    // Cek kemiripan string secara lebih aman
+                    $dbDistrict = strtoupper($dbItem->district_name);
+                    $dbRegency = strtoupper($dbItem->regency_name);
+                    $reqDistrict = strtoupper($item['district']);
+
+                    return str_contains($dbDistrict, $reqDistrict) &&
+                           str_contains($dbRegency, $item['clean_regency']);
+                });
+
+                // Hapus clean_regency agar tidak ikut terkirim di JSON Response
+                unset($item['clean_regency']);
+
+                // Set hasil join
+                $item['district_id'] = $match ? $match->district_id : null;
+
+                return $item;
+            });
+
+            return response()->json($processedData);
 
         } catch (\Exception $e) {
             Log::error("LOG LOG KiriminAja x Autokirim API Error: " . $e->getMessage());

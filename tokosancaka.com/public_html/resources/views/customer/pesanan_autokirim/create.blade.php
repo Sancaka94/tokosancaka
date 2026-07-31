@@ -125,8 +125,8 @@
                                 <div>
                                     <template x-for="res in senderResults">
                                         <div @click="selectAddress('sender', res)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
-                                            <p class="font-medium text-black" x-text="res.district_name + ', ' + res.regency_name"></p>
-                                            <p class="text-xs text-gray-500 mt-0.5" x-text="res.province_name + ' (Kodepos: ' + res.zip + ')'"></p>
+                                            <p class="font-medium text-black text-[11px] leading-relaxed" x-text="res.full_address_display"></p>
+                                            <p class="text-[10px] font-bold text-red-600 mt-1" x-text="'KODEPOS: ' + res.postal_code"></p>
                                         </div>
                                     </template>
                                 </div>
@@ -233,8 +233,8 @@
                                 <div>
                                     <template x-for="res in receiverResults">
                                         <div @click="selectAddress('receiver', res)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
-                                            <p class="font-medium text-black" x-text="res.district_name + ', ' + res.regency_name"></p>
-                                            <p class="text-xs text-gray-500 mt-0.5" x-text="res.province_name + ' (Kodepos: ' + res.zip + ')'"></p>
+                                            <p class="font-medium text-black text-[11px] leading-relaxed" x-text="res.full_address_display"></p>
+                                            <p class="text-[10px] font-bold text-red-600 mt-1" x-text="'KODEPOS: ' + res.postal_code"></p>
                                         </div>
                                     </template>
                                 </div>
@@ -962,7 +962,9 @@ document.addEventListener('alpine:init', () => {
 
         // Update fungsi selectAddress (ketika user klik dropdown kecamatan)
         selectAddress(type, res) {
-            let formatText = `${res.district_name}, ${res.regency_name}`;
+            // Gunakan format kelurahan, kecamatan, kota agar rapi di dalam input text
+            let formatText = `${res.village}, ${res.district}, ${res.regency}`;
+
             if(type === 'sender') {
                 this.senderQuery = formatText;
                 this.senderDistrictId = res.district_id;
@@ -972,7 +974,7 @@ document.addEventListener('alpine:init', () => {
                 setTimeout(() => this.autoGeneratePickup(), 200);
 
             } else {
-                // Logika receiver bawaan
+                // Logika receiver
                 this.receiverQuery = formatText;
                 this.receiverDistrictId = res.district_id;
                 this.showReceiverDropdown = false;

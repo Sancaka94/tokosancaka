@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Helpers\ShippingHelper;
 use App\Services\DokuJokulService;
 use Illuminate\Support\Facades\Cache; // Wajib untuk fitur Idempotency
+use App\Services\KiriminAjaService;
 use Exception;
 
 class PesananAutokirimController extends Controller
@@ -406,21 +407,85 @@ class PesananAutokirimController extends Controller
         ));
     }
 
-    public function searchAddressAjax(Request $request)
+    /**
+     * Mengganti pencarian DB bawaan dengan KiriminAja x Autokirim
+     */
+    public function searchAddressAjax(Request $request, KiriminAjaService $kiriminAja)
     {
-        $keyword = $request->query('q');
-        if (!$keyword || strlen($keyword) < 3) {
+        $query = $request->get('q');
+
+        if (empty($query) || strlen($query) < 3) {
             return response()->json([]);
         }
 
-        $data = AutoKirim::where('district_name', 'like', "%{$keyword}%")
-            ->orWhere('regency_name', 'like', "%{$keyword}%")
-            ->orWhere('zip', 'like', "%{$keyword}%")
-            ->select('district_id', 'district_name', 'regency_name', 'province_name', 'zip')
-            ->limit(100)
-            ->get();
+        try {
+            // 1. Tembak API KiriminAja
+            $apiResponse = $kiriminAja->searchAddress($query);
 
-        return response()->json($data);
+            if (!isset($apiResponse['data']) || empty($apiResponse['data'])) {
+                return response()->json([]);
+            }
+
+            // 2. Kumpulkan data untuk optimasi query (Mencegah N+1)
+            $searchCriteria = [];
+            $mappedData = [];
+
+            foreach ($apiResponse['data'] as $item) {
+                $addressParts = array_map('trim', explode(',', $item['full_address'] ?? ''));
+
+                $village  = $addressParts[0] ?? 'N/A';
+                $district = $addressParts[1] ?? 'N/A';
+                $regency  = $addressParts[2] ?? 'N/A';
+                $province = $addressParts[3] ?? 'N/A';
+                $zip      = $addressParts[4] ?? 'N/A';
+
+                $cleanRegency = str_replace(['KABUPATEN ', 'KOTA '], '', strtoupper($regency));
+
+                $mappedData[] = [
+                    'province'             => $province,
+                    'regency'              => $regency,
+                    'clean_regency'        => $cleanRegency,
+                    'district'             => $district,
+                    'village'              => $village,
+                    'postal_code'          => $zip,
+                    'full_address_display' => $item['full_address'] ?? 'Alamat Tidak Terstruktur',
+                ];
+
+                $searchCriteria[] = $district;
+            }
+
+            // 3. Query ke DB Lokal 1 kali tarikan
+            $autoKirimDbs = \Illuminate\Support\Facades\DB::table('auto_kirims')
+                ->whereIn('district_name', array_unique($searchCriteria))
+                ->get();
+
+            // 4. Join Data & Filter
+            $processedData = collect($mappedData)->map(function ($item) use ($autoKirimDbs) {
+                $match = $autoKirimDbs->first(function ($dbItem) use ($item) {
+                    $dbDistrict = strtoupper($dbItem->district_name);
+                    $dbRegency = strtoupper($dbItem->regency_name);
+                    $reqDistrict = strtoupper($item['district']);
+
+                    return str_contains($dbDistrict, $reqDistrict) &&
+                           str_contains($dbRegency, $item['clean_regency']);
+                });
+
+                unset($item['clean_regency']);
+                $item['district_id'] = $match ? $match->district_id : null;
+
+                return $item;
+            })->filter(function($item) {
+                // PENTING: Sembunyikan alamat dari KiriminAja yang tidak didukung oleh Autokirim (district_id = null)
+                // Ini mencegah user memilih alamat yang nantinya akan gagal saat submit order
+                return !is_null($item['district_id']);
+            })->values();
+
+            return response()->json($processedData);
+
+        } catch (\Exception $e) {
+            Log::error("LOG KiriminAja x Autokirim API Error: " . $e->getMessage());
+            return response()->json([], 500);
+        }
     }
 
     // ========================================================
