@@ -2022,23 +2022,11 @@ class PesananAutokirimController extends Controller
     }
 
 
-   /**
-     * DYNAMIC CONFIG GETTER: Selalu ambil kredensial terbaru dari DB
-     */
-    private function getAutokirimConfig()
+   private function getAutokirimConfig()
     {
         // 1. Ambil mode dari database
         $rawMode = \App\Models\Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
         $mode = strtolower(trim($rawMode));
-
-        // ================================================================
-        // 🛡️ SMART OVERRIDE:
-        // Jika aplikasi Laravel TIDAK berjalan di mode Production (contoh: di Localhost),
-        // paksa mode menjadi 'sandbox' agar tidak merusak data real di pusat logistik.
-        // ================================================================
-        if (!app()->environment('production')) {
-            $mode = 'sandbox';
-        }
 
         if (!in_array($mode, ['sandbox', 'production'])) {
             $mode = 'sandbox'; // Fallback aman
