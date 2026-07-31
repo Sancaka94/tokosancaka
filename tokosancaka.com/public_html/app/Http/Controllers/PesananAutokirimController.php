@@ -553,15 +553,14 @@ class PesananAutokirimController extends Controller
         }
 
         try {
-            $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
-            $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, 'https://api-dev.autokirim.com');
-            $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
+            // [PERBAIKAN]: Gunakan Centralized Config
+            $config = $this->getAutokirimConfig();
+            $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
 
-            // KITA CASTING SEMUA NUMBER MENJADI (int) AGAR JSONNYA BENAR
             $payload = [
                 'origin_id'         => (int) $origin_id,
                 'destination_id'    => (int) $destination_id,
-                'weight'            => (string) $weightApi, // INI KUNCINYA: (int) menghilangkan tanda kutip pada JSON API
+                'weight'            => (string) $weightApi,
                 'length'            => (int) ($request->panjang_cm > 0 ? $request->panjang_cm : 10),
                 'width'             => (int) ($request->lebar_cm > 0 ? $request->lebar_cm : 10),
                 'height'            => (int) ($request->tinggi_cm > 0 ? $request->tinggi_cm : 10),
@@ -571,17 +570,15 @@ class PesananAutokirimController extends Controller
                 ]
             ];
 
-            $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [API CEK ONGKIR] (API: {$config->mode} | APP: {$appMode}) REQUEST:", $payload);
 
-            Log::info("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] ($appMode) REQUEST:", $payload);
-
-            $response = Http::timeout(15)
-                ->withToken($token)
-                ->post("{$baseUrl}/api/v2/check-price", $payload);
+            $response = \Illuminate\Support\Facades\Http::timeout(15)
+                ->withToken($config->token)
+                ->post("{$config->base_url}/api/v2/check-price", $payload);
 
             $result = $response->json();
 
-            Log::info("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] ($appMode) RESPONSE:", $result ?? []);
+            \Illuminate\Support\Facades\Log::info("LOG LOG: [API CEK ONGKIR] (API: {$config->mode} | APP: {$appMode}) RESPONSE:", $result ?? []);
 
             if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
                 $flatOngkir = [];
@@ -608,7 +605,6 @@ class PesananAutokirimController extends Controller
                             'etd'            => $service['etd'] ?? '-',
                             'asuransi_rate'  => $service['insurance'] ?? 0,
                             'fee_cod'        => $service['fee_cod'] ?? 0,
-                            'asuransi_rate'  => $service['insurance'],
                             'is_pickup'      => $service['is_pickup'] ?? false,
                         ];
                     }
@@ -626,7 +622,7 @@ class PesananAutokirimController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error("LOG LOG: [API AUTOKIRIM - CEK ONGKIR] ERROR: " . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("LOG LOG: [API CEK ONGKIR] ERROR: " . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Terjadi kendala jaringan saat menghubungi server logistik.']);
         }
     }
@@ -1704,7 +1700,7 @@ class PesananAutokirimController extends Controller
     }
 
 
-    public function generatePickupPointAjax(Request $request)
+   public function generatePickupPointAjax(Request $request)
     {
         $request->validate([
             'pengirim_nama' => 'required|string',
@@ -2026,13 +2022,23 @@ class PesananAutokirimController extends Controller
     }
 
 
-    /**
+   /**
      * DYNAMIC CONFIG GETTER: Selalu ambil kredensial terbaru dari DB
      */
     private function getAutokirimConfig()
     {
-        // 1. Cek Mode Global (sandbox / production)
-        $mode = \App\Models\Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
+        // 1. Ambil mode dari database
+        $rawMode = \App\Models\Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
+        $mode = strtolower(trim($rawMode));
+
+        // ================================================================
+        // 🛡️ SMART OVERRIDE:
+        // Jika aplikasi Laravel TIDAK berjalan di mode Production (contoh: di Localhost),
+        // paksa mode menjadi 'sandbox' agar tidak merusak data real di pusat logistik.
+        // ================================================================
+        if (!app()->environment('production')) {
+            $mode = 'sandbox';
+        }
 
         if (!in_array($mode, ['sandbox', 'production'])) {
             $mode = 'sandbox'; // Fallback aman
@@ -2040,11 +2046,19 @@ class PesananAutokirimController extends Controller
 
         // 2. Ambil Base URL & Token sesuai mode aktif
         $baseUrl = \App\Models\Api::getValue('AUTOKIRIM_BASE_URL', $mode);
-        $token = \App\Models\Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
+        $token = \App\Models\Api::getValue('AUTOKIRIM_TOKEN', $mode);
 
         // 3. Fallback Base URL jika di database kosong
         if (empty($baseUrl)) {
             $baseUrl = ($mode === 'production') ? 'https://api.autokirim.com' : 'https://api-dev.autokirim.com';
+        }
+
+        // 4. Fallback Token jika di database kosong tapi modenya aktif
+        if (empty($token) && $mode === 'production') {
+            \Illuminate\Support\Facades\Log::warning("LOG: [API CONFIG] Token Production Kosong! Turun ke Sandbox.");
+            $mode = 'sandbox';
+            $baseUrl = \App\Models\Api::getValue('AUTOKIRIM_BASE_URL', 'sandbox', 'https://api-dev.autokirim.com');
+            $token = \App\Models\Api::getValue('AUTOKIRIM_TOKEN', 'sandbox', '');
         }
 
         return (object) [
