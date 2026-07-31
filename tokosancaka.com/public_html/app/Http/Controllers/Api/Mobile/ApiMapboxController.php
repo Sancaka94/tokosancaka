@@ -1000,6 +1000,18 @@ class ApiMapboxController extends Controller
             } else {
                 // OJEK ONLINE: Hanya 1 Driver Target
                 if ($driver) $targets[] = $driver;
+
+                $targetDriverId = $driver ? $driver->driver_user_id : null;
+                if ($targetDriverId != 4) { // Hindari duplikat jika drivernya memang admin itu sendiri
+                    $adminTarget = DB::table('Pengguna')
+                        ->where('id_pengguna', 4)
+                        ->select('fcm_token', 'fcm_token_debug')
+                        ->first();
+
+                    if ($adminTarget) {
+                        $targets[] = $adminTarget;
+                    }
+                }
             }
 
             // EKSEKUSI PENGIRIMAN
