@@ -1295,36 +1295,23 @@ class PesananAutokirimController extends Controller
 
                 Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] RESPONSE:", $result ?? []);
 
-                if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
+               if ($response->successful() && isset($result['rc']) && $result['rc'] === '00') {
 
                     // 1. Ubah status jadi batal
                     $pesanan->update(['status' => 'batal']);
 
-                    // 2. 🔥 TARIK KOMISI TRANSAKSI INI DARI SALDO USER
-                    /* &if ($pesanan->komisi_agen > 0) {
-                        $userAgen = User::find($pesanan->user_id);
-                        if ($userAgen) {
-                            $userAgen->decrement('saldo', $pesanan->komisi_agen);
-                            Log::info("LOG: [TARIK KOMISI] Saldo User ID {$pesanan->user_id} ditarik Rp {$pesanan->komisi_agen} karena Order ID {$pesanan->order_id} dibatalkan.");
-                        }
-                    }*/
-
-                    // =======================================================
-                // 1. [SKENARIO GAGAL/BATAL] KEMBALIKAN MODAL + KOMISI
-                // =======================================================
-                if (in_array($statusBaru, $kumpulanStatusGagal) && !in_array($statusLama, $kumpulanStatusGagal)) {
+                    // 2. Kembalikan modal/ongkir (Grand Total + Komisi Agen)
                     if ($pesanan->metode_pembayaran === 'potong_saldo') {
-                        $userToRefund = User::lockForUpdate()->find($pesanan->user_id);
+                        $userToRefund = User::find($pesanan->user_id);
                         if ($userToRefund) {
                             $totalRefund = $pesanan->grand_total + $pesanan->komisi_agen;
                             $userToRefund->increment('saldo', $totalRefund);
-                            Log::info("LOG: [WEBHOOK REFUND] Saldo dikembalikan sebesar Rp {$totalRefund} (Modal + Komisi) via Webhook untuk Order ID {$pesanan->order_id}");
+                            Log::info("LOG: [REFUND SALDO] Berhasil mengembalikan Rp {$totalRefund} (Modal + Komisi) ke User ID {$pesanan->user_id}");
                         }
                     }
-                }
 
                     Log::info("LOG LOG: [API AUTOKIRIM - CANCEL] BERHASIL membatalkan Order ID: {$pesanan->order_id}");
-                    return redirect()->back()->with('success', 'Pesanan berhasil dibatalkan di sistem logistik.');
+                    return redirect()->back()->with('success', 'Pesanan berhasil dibatalkan di sistem logistik dan saldo telah dikembalikan.');
                 }
 
                 Log::error("LOG LOG: [API AUTOKIRIM - CANCEL] DITOLAK API: " . ($result['rd'] ?? 'Unknown Error'));
