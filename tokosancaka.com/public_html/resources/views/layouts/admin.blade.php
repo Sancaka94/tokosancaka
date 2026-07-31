@@ -488,7 +488,7 @@
     </div>
 
     <!-- Elemen Audio -->
-    <audio id="adminNotifAudio" src="https://tokosancaka.com/public/assets/ojek.wav" preload="auto"></audio>
+    <audio id="adminNotifAudio" src="https://tokosancaka.com/public/assets/ojek.wav" preload="auto" loop></audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js";
@@ -510,6 +510,14 @@
 
         // --- SOLUSI AUTOPLAY AUDIO ---
         const audio = document.getElementById('adminNotifAudio');
+        if (audio) {
+            audio.addEventListener('ended', function() {
+                if (sessionStorage.getItem('audio_allowed') === 'true') {
+                    this.currentTime = 0;
+                    this.play().catch(e => console.log("Gagal mengulang audio:", e));
+                }
+            });
+        }
         const banner = document.getElementById('audioActivationBanner');
         const btnEnable = document.getElementById('btnEnableAudio');
 
