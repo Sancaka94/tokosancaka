@@ -73,9 +73,9 @@ class ProfileController extends Controller
                 $user->store_logo_path = $path;
             }
 
-            $user->fill($validated);
+          $user->fill($validated);
 
-           // =======================================================
+            // =======================================================
             // 🔄 SINKRONISASI OTOMATIS KE API AUTOKIRIM
             // =======================================================
             $apiData = [
@@ -86,30 +86,40 @@ class ProfileController extends Controller
                 'district_id' => $validated['district_id']
             ];
 
-            // Jika User sudah punya pickup_point_code, lakukan UPDATE API
+            $pickupCode = null;
+
             if (!empty($user->pickup_point_code)) {
-                $this->updatePickupPointApi($user->pickup_point_code, $apiData);
-            } else {
-                // Jika belum punya, lakukan INSERT API
+                $updateSuccess = $this->updatePickupPointApi($user->pickup_point_code, $apiData);
+                if ($updateSuccess) {
+                    $pickupCode = $user->pickup_point_code;
+                }
+            }
+
+            if (empty($pickupCode)) {
+                // Lakukan Insert jika belum punya atau update sebelumnya gagal
                 $apiResult = $this->insertPickupPointApi($apiData);
 
                 if (isset($apiResult['rc']) && $apiResult['rc'] === '00') {
-                    // Sukses murni
-                    $user->pickup_point_code = $apiResult['data']['pickup_point_code'];
+                    $pickupCode = $apiResult['data']['pickup_point_code'];
                 }
                 elseif (isset($apiResult['rc']) && $apiResult['rc'] === '01') {
-                    // Ditolak karena No HP sudah terdaftar di pusat -> Lakukan Bypass (tambah 3 digit random)
+                    // Bypass nomor HP duplikat
                     $apiData['no_hp'] = $apiData['no_hp'] . rand(100, 999);
                     $retryResult = $this->insertPickupPointApi($apiData);
 
                     if (isset($retryResult['rc']) && $retryResult['rc'] === '00') {
-                        $user->pickup_point_code = $retryResult['data']['pickup_point_code'];
+                        $pickupCode = $retryResult['data']['pickup_point_code'];
                     }
                 }
             }
+
+            // SIMPAN KODE PICKUP KE OBJECT USER SECARA EKSPLISIT
+            if ($pickupCode) {
+                $user->pickup_point_code = $pickupCode;
+            }
             // =======================================================
 
-            $user->save();
+            $user->save(); // Eksekusi simpan permanen ke database
 
             return redirect()
                 ->route('customer.profile.show')
@@ -235,7 +245,7 @@ class ProfileController extends Controller
         $user->status = 'Aktif';
         $user->setup_token = null;
 
-      // =======================================================
+     // =======================================================
             // 🔄 SINKRONISASI OTOMATIS KE API AUTOKIRIM
             // =======================================================
             $apiData = [
@@ -246,30 +256,40 @@ class ProfileController extends Controller
                 'district_id' => $validated['district_id']
             ];
 
-            // Jika User sudah punya pickup_point_code, lakukan UPDATE API
+            $pickupCode = null;
+
             if (!empty($user->pickup_point_code)) {
-                $this->updatePickupPointApi($user->pickup_point_code, $apiData);
-            } else {
-                // Jika belum punya, lakukan INSERT API
+                $updateSuccess = $this->updatePickupPointApi($user->pickup_point_code, $apiData);
+                if ($updateSuccess) {
+                    $pickupCode = $user->pickup_point_code;
+                }
+            }
+
+            if (empty($pickupCode)) {
+                // Lakukan Insert jika belum punya atau update sebelumnya gagal
                 $apiResult = $this->insertPickupPointApi($apiData);
 
                 if (isset($apiResult['rc']) && $apiResult['rc'] === '00') {
-                    // Sukses murni
-                    $user->pickup_point_code = $apiResult['data']['pickup_point_code'];
+                    $pickupCode = $apiResult['data']['pickup_point_code'];
                 }
                 elseif (isset($apiResult['rc']) && $apiResult['rc'] === '01') {
-                    // Ditolak karena No HP sudah terdaftar di pusat -> Lakukan Bypass (tambah 3 digit random)
+                    // Bypass nomor HP duplikat
                     $apiData['no_hp'] = $apiData['no_hp'] . rand(100, 999);
                     $retryResult = $this->insertPickupPointApi($apiData);
 
                     if (isset($retryResult['rc']) && $retryResult['rc'] === '00') {
-                        $user->pickup_point_code = $retryResult['data']['pickup_point_code'];
+                        $pickupCode = $retryResult['data']['pickup_point_code'];
                     }
                 }
             }
+
+            // SIMPAN KODE PICKUP KE OBJECT USER SECARA EKSPLISIT
+            if ($pickupCode) {
+                $user->pickup_point_code = $pickupCode;
+            }
             // =======================================================
 
-        $user->save();
+            $user->save(); // Eksekusi simpan permanen ke database
 
         return redirect()->route('customer.dashboard')
                          ->with('success', 'Aktivasi dan Profil Anda berhasil diselesaikan! Selamat datang di aplikasi Sancaka Express.');
