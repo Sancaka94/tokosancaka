@@ -468,4 +468,63 @@ class ProfileController extends Controller
 
         return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
     }
+
+    /**
+     * API KiriminAja Address Search + JOIN dengan DB Autokirim
+     */
+    public function searchKiriminAjaAddress(Request $request, KiriminAjaService $kiriminAja)
+    {
+        $query = $request->get('q');
+
+        if (empty($query) || strlen($query) < 3) {
+            return response()->json([]);
+        }
+
+        try {
+            // 1. Tembak API KiriminAja
+            $apiResponse = $kiriminAja->searchAddress($query);
+
+            if (isset($apiResponse['data']) && !empty($apiResponse['data'])) {
+
+                // 2. Format dan Join dengan Database Lokal
+                $processedData = collect($apiResponse['data'])->map(function ($item) {
+                    $addressParts = array_map('trim', explode(',', $item['full_address'] ?? ''));
+
+                    $village  = $addressParts[0] ?? 'N/A';
+                    $district = $addressParts[1] ?? 'N/A'; // Nama Kecamatan
+                    $regency  = $addressParts[2] ?? 'N/A'; // Nama Kabupaten/Kota
+                    $province = $addressParts[3] ?? 'N/A';
+                    $zip      = $addressParts[4] ?? 'N/A';
+
+                    // 3. Cari district_id di tabel auto_kirims berdasarkan Kecamatan & Kabupaten
+                    // Menghilangkan kata 'KABUPATEN'/'KOTA' jika ada selisih penulisan
+                    $cleanRegency = str_replace(['KABUPATEN ', 'KOTA '], '', strtoupper($regency));
+
+                    $autoKirimDb = \Illuminate\Support\Facades\DB::table('auto_kirims')
+                        ->select('district_id')
+                        ->where('district_name', 'LIKE', '%' . $district . '%')
+                        ->where('regency_name', 'LIKE', '%' . $cleanRegency . '%')
+                        ->first();
+
+                    return [
+                        'province'    => $province,
+                        'regency'     => $regency,
+                        'district'    => $district,
+                        'village'     => $village,
+                        'postal_code' => $zip,
+                        'district_id' => $autoKirimDb ? $autoKirimDb->district_id : null, // HASIL JOIN DISINI
+                        'full_address_display' => $item['full_address'] ?? 'Alamat Tidak Terstruktur',
+                    ];
+                });
+
+                return response()->json($processedData);
+            }
+
+            return response()->json([]);
+
+        } catch (\Exception $e) {
+            Log::error("LOG LOG KiriminAja x Autokirim API Error: " . $e->getMessage());
+            return response()->json([], 500);
+        }
+    }
 }

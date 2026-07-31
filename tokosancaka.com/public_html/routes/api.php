@@ -271,6 +271,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Profil Pengguna
     Route::get('/profile', [ProfileController::class, 'show']);
 
+    Route::get('/profile/search-address', [\App\Http\Controllers\Customer\ProfileController::class, 'searchAutokirimAddress'])->name('customer.autokirim.address_search');
+
     Route::get('/cek-saldo-ajax', [ProfileController::class, 'cekSaldoAjax'])->name('api.cek.saldo');
 
     Route::post('/checkout', [CheckoutController::class, 'process']);

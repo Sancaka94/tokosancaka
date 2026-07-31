@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function () {
             div.dataset.district = item.district;
             div.dataset.village = item.village;
             div.dataset.postalCode = item.postal_code;
-            div.dataset.districtId = item.district_id;
+            div.dataset.districtId = item.district_id || '';
 
             // Event klik untuk autofill
             div.addEventListener('click', function() {
@@ -360,6 +360,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 searchResults.classList.add('hidden');
                 searchInput.value = this.textContent;
+
+                if (!this.dataset.districtId) {
+                    showAlert('Perhatian: Kecamatan tidak terdaftar di database Autokirim. Harap periksa manual.', 'error');
+                }
+
             });
 
             searchResults.appendChild(div);
