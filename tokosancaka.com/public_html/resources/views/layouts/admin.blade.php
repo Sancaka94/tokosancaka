@@ -509,51 +509,52 @@
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
 
-        // --- SOLUSI AUTOPLAY AUDIO (TRICK GLOBAL CLICK) ---
+        // --- SOLUSI AUTOPLAY AUDIO (FOOLPROOF) ---
         const audio = document.getElementById('adminNotifAudio');
-        if (audio) {
-            audio.addEventListener('ended', function() {
-                if (sessionStorage.getItem('audio_allowed') === 'true') {
-                    this.currentTime = 0;
-                    this.play().catch(e => console.log("Gagal mengulang audio:", e));
-                }
-            });
-        }
-
         const banner = document.getElementById('audioActivationBanner');
+        const btnEnable = document.getElementById('btnEnableAudio');
+        let audioUnlocked = false;
+
         if (banner) banner.style.display = 'none';
 
-        // ✅ INI ADALAH POSISI JEBAKAN KLIK YANG BENAR
-        if (!sessionStorage.getItem('audio_allowed')) {
-            document.body.addEventListener('click', function unlockAudio() {
+        // 1. Jebakan Klik Global (Selalu aktif tiap halaman di-refresh)
+        document.body.addEventListener('click', function unlockAudio() {
+            if (!audioUnlocked && audio) {
+                audio.play().then(() => {
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audioUnlocked = true;
+                    if (banner) banner.style.display = 'none';
+                    console.log("Audio berhasil di-unlock lewat klik global!");
+                }).catch(e => {}); // Abaikan jika gagal
+            }
+        });
+
+        // 2. Tombol Manual (Hanya muncul kalau jebakan meleset)
+        if (btnEnable) {
+            btnEnable.addEventListener('click', function(e) {
+                e.stopPropagation();
                 if (audio) {
                     audio.play().then(() => {
-                        audio.pause(); // Langsung pause agar tidak bunyi
+                        audio.pause();
                         audio.currentTime = 0;
-                        sessionStorage.setItem('audio_allowed', 'true');
-                        // Hapus jebakan ini karena sudah berhasil
-                        document.body.removeEventListener('click', unlockAudio);
-                        console.log("Audio berhasil di-unlock lewat klik global!");
-                    }).catch(e => {
-                        console.log("Menunggu interaksi user sesungguhnya...");
-                    });
+                        audioUnlocked = true;
+                        if (banner) banner.style.display = 'none';
+                    }).catch(err => console.error("Gagal manual:", err));
                 }
-            }, { once: true }); // event {once: true} memastikan ini hanya jalan 1x
+            });
         }
         // -----------------------------
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/firebase-messaging-sw.js')
             .then(function(registration) {
-
-                // Minta Izin Notifikasi Browser secara eksplisit
                 Notification.requestPermission().then((permission) => {
                     if (permission === 'granted') {
                         getToken(messaging, {
                             vapidKey: "BGF6BWiam42tA9GQB4mdp3C01ZJ8vk9_vQ9RzkHQUG2l7P1L3niAmiFhcp3gZHYXrtXT76qGuUIZ5QkAaDqiki8",
                             serviceWorkerRegistration: registration
-                        })
-                        .then((currentToken) => {
+                        }).then((currentToken) => {
                             if (currentToken) {
                                 fetch("{{ url('/admin/save-fcm-token') }}", {
                                     method: "POST",
@@ -566,11 +567,8 @@
                                 });
                             }
                         });
-                    } else {
-                        console.log('Izin notifikasi browser ditolak oleh pengguna.');
                     }
                 });
-
             });
         }
 
@@ -579,10 +577,16 @@
             console.log("Foreground Payload: ", payload);
 
             // Bunyikan Audio TERUS-MENERUS
-            if (sessionStorage.getItem('audio_allowed') === 'true' && audio) {
+            if (audio) {
                 audio.currentTime = 0;
                 audio.loop = true;
-                audio.play().catch(err => console.log("Gagal play audio:", err));
+                audio.play().then(() => {
+                    audioUnlocked = true;
+                }).catch(err => {
+                    console.log("Gagal play audio (DIBLOKIR BROWSER):", err);
+                    // JIKA DIBLOKIR, MUNCULKAN BANNER KUNING AGAR ADMIN BISA KLIK!
+                    if (banner) banner.style.display = 'flex';
+                });
             }
 
             // Tampilkan SweetAlert Toast
@@ -596,10 +600,9 @@
                 confirmButtonText: 'Lihat',
                 confirmButtonColor: '#000000',
                 showCloseButton: true
-                // HAPUS allowOutsideClick karena dilarang oleh mode toast
             }).then((result) => {
-                // ✅ MATIKAN SUARA JIKA ADMIN MENGKLIK LIHAT ATAU CLOSE DI SWEETALERT
-                if (sessionStorage.getItem('audio_allowed') === 'true' && audio) {
+                // MATIKAN SUARA
+                if (audio) {
                     audio.pause();
                     audio.currentTime = 0;
                 }
@@ -618,8 +621,7 @@
                 });
 
                 browserNotif.onclick = function() {
-                    // ✅ MATIKAN SUARA JIKA ADMIN MENGKLIK NOTIFIKASI WINDOWS
-                    if (sessionStorage.getItem('audio_allowed') === 'true' && audio) {
+                    if (audio) {
                         audio.pause();
                         audio.currentTime = 0;
                     }
