@@ -34,6 +34,37 @@ class DanaWebhookController extends Controller
         Log::info('==========================================');
         // --------------------------------
 
+        // =================================================================
+        // 🔥 PERBAIKAN: LOAD CONFIG DINAMIS DARI DATABASE SEBELUM VERIFIKASI
+        // =================================================================
+        $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
+        $isProduction = ($danaMode == '1');
+
+        if ($isProduction) {
+            $merchantId = \App\Models\Api::getValue('dana_prod_merchant_id', 'production');
+            $partnerId  = \App\Models\Api::getValue('dana_prod_client_id', 'production');
+            $privateKey = \App\Models\Api::getValue('dana_prod_private_key', 'production');
+            $publicKey  = \App\Models\Api::getValue('dana_prod_public_key', 'production');
+            $clientSecret = \App\Models\Api::getValue('dana_prod_client_secret', 'production');
+        } else {
+            $merchantId = \App\Models\Api::getValue('dana_sandbox_merchant_id', 'sandbox');
+            $partnerId  = \App\Models\Api::getValue('dana_sandbox_client_id', 'sandbox');
+            $privateKey = \App\Models\Api::getValue('dana_sandbox_private_key', 'sandbox');
+            $publicKey  = \App\Models\Api::getValue('dana_sandbox_public_key', 'sandbox');
+            $clientSecret = \App\Models\Api::getValue('dana_sandbox_client_secret', 'sandbox');
+        }
+
+        // Timpa config runtime agar DanaSignatureService menggunakan kunci dari database
+        config([
+            'services.dana.merchant_id'   => $merchantId,
+            'services.dana.client_id'     => $partnerId,
+            'services.dana.x_partner_id'  => $partnerId,
+            'services.dana.private_key'   => $privateKey,
+            'services.dana.public_key'    => $publicKey,
+            'services.dana.client_secret' => $clientSecret,
+        ]);
+        // =================================================================
+
         $orderId = $request->input('partnerReferenceNo') ?? $request->input('originalPartnerReferenceNo');
         $statusDana = $request->input('latestTransactionStatus');
         $amountValue = $request->input('amount.value') ?? 0;
@@ -42,7 +73,9 @@ class DanaWebhookController extends Controller
         $incomingSignature = $request->header('X-SIGNATURE');
         $incomingTimestamp = $request->header('X-TIMESTAMP');
         $requestBody = $request->getContent();
-        $targetPath = $request->getRequestUri();
+
+        // Gunakan URI Statis untuk menghindari masalah routing proxy/Cloudflare jika ada
+        $targetPath = '/dana/notify';
 
         $expectedSignature = $danaSignature->generateSignature('POST', $targetPath, $requestBody, $incomingTimestamp);
 
@@ -248,126 +281,126 @@ class DanaWebhookController extends Controller
                         App::make(\App\Http\Controllers\Admin\PesananController::class)->handleDanaCallback($payloadData);
                     }
                     else if ($pesananTokoUtama) {
-					    Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Toko Utama (Tabel orders).");
+                        Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Toko Utama (Tabel orders).");
 
-					    // 1. UPDATE STATUS JADI PAID SEBELUM HIT API
-					    if ($pesananTokoUtama->status !== 'paid' && $pesananTokoUtama->status !== 'processing') {
-					        $pesananTokoUtama->status = 'paid';
-					        $pesananTokoUtama->save();
-					    }
+                        // 1. UPDATE STATUS JADI PAID SEBELUM HIT API
+                        if ($pesananTokoUtama->status !== 'paid' && $pesananTokoUtama->status !== 'processing') {
+                            $pesananTokoUtama->status = 'paid';
+                            $pesananTokoUtama->save();
+                        }
 
-					    // 2. HIT API KIRIMINAJA JIKA BELUM ADA RESI / MASIH MOCK
-					    if (empty($pesananTokoUtama->shipping_reference) || Str::startsWith($pesananTokoUtama->shipping_reference, 'MOCK-')) {
-					        Log::info("🚀 Menyiapkan Payload API KiriminAja untuk Order: $orderId");
+                        // 2. HIT API KIRIMINAJA JIKA BELUM ADA RESI / MASIH MOCK
+                        if (empty($pesananTokoUtama->shipping_reference) || Str::startsWith($pesananTokoUtama->shipping_reference, 'MOCK-')) {
+                            Log::info("🚀 Menyiapkan Payload API KiriminAja untuk Order: $orderId");
 
-					        try {
-					            $kiriminAja = new \App\Services\KiriminAjaService();
-					            $now = now()->timezone('Asia/Jakarta');
-					            $pickupSchedule = ($now->hour >= 15 || $now->isSunday())
-					                ? $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s')
-					                : $now->addHours(1)->format('Y-m-d H:i:s');
+                            try {
+                                $kiriminAja = new \App\Services\KiriminAjaService();
+                                $now = now()->timezone('Asia/Jakarta');
+                                $pickupSchedule = ($now->hour >= 15 || $now->isSunday())
+                                    ? $now->addDay()->setTime(9, 0, 0)->format('Y-m-d H:i:s')
+                                    : $now->addHours(1)->format('Y-m-d H:i:s');
 
-					            // Ekstrak Courier & Service dari shipping_method (Contoh: regular-spx-1-6000-0-0)
-					            $shipParts = explode('-', $pesananTokoUtama->shipping_method);
-					            $shipType = $shipParts[0] ?? 'regular';
-					            $courier = $shipParts[1] ?? 'jne';
-					            $service = $shipParts[2] ?? 'REG';
+                                // Ekstrak Courier & Service dari shipping_method (Contoh: regular-spx-1-6000-0-0)
+                                $shipParts = explode('-', $pesananTokoUtama->shipping_method);
+                                $shipType = $shipParts[0] ?? 'regular';
+                                $courier = $shipParts[1] ?? 'jne';
+                                $service = $shipParts[2] ?? 'REG';
 
-					            $weight = max(1000, (int) $pesananTokoUtama->weight);
-					            $category = ($shipType == 'cargo' || $weight >= 30000) ? 'trucking' : 'regular';
+                                $weight = max(1000, (int) $pesananTokoUtama->weight);
+                                $category = ($shipType == 'cargo' || $weight >= 30000) ? 'trucking' : 'regular';
 
-					            // Ambil data subdistrict pengirim dari tabel Store (karena tidak ada di tabel orders)
-					            $store = \App\Models\Store::find($pesananTokoUtama->store_id);
-					            $originDistId = $pesananTokoUtama->sender_district_id ?? ($store->district_id ?? 4354);
-					            $originSubId  = $pesananTokoUtama->sender_subdistrict_id ?? ($store->subdistrict_id ?? 40343);
+                                // Ambil data subdistrict pengirim dari tabel Store (karena tidak ada di tabel orders)
+                                $store = \App\Models\Store::find($pesananTokoUtama->store_id);
+                                $originDistId = $pesananTokoUtama->sender_district_id ?? ($store->district_id ?? 4354);
+                                $originSubId  = $pesananTokoUtama->sender_subdistrict_id ?? ($store->subdistrict_id ?? 40343);
 
-					            $payloadKA = [
-					                'address'      => $pesananTokoUtama->sender_address ?? ($store->address_detail ?? 'Alamat Toko'),
-					                'phone'        => $pesananTokoUtama->sender_phone ?? '085745808809',
-					                'name'         => $pesananTokoUtama->sender_name ?? 'Toko Sancaka',
-					                'kecamatan_id' => (int) $originDistId,
-					                'kelurahan_id' => (int) $originSubId,
-					                'zipcode'      => '00000',
-					                'latitude'     => (float) ($store->latitude ?? 0),
-					                'longitude'    => (float) ($store->longitude ?? 0),
-					                'schedule'     => $pickupSchedule,
-					                'category'     => $category,
-					                'platform_name'=> 'Sancaka Marketplace',
-					                'packages'     => [[
-					                    'order_id'                 => $orderId,
-					                    'item_name'                => \Illuminate\Support\Str::limit('Pesanan ' . $orderId, 45),
-					                    'package_type_id'          => 1,
-					                    'destination_name'         => $pesananTokoUtama->receiver_name ?? 'Customer',
-					                    'destination_phone' 	   => $pesananTokoUtama->receiver_phone ?? '081234567890',
-					                    'destination_address'      => $pesananTokoUtama->receiver_address ?? $pesananTokoUtama->shipping_address,
-					                    'destination_kecamatan_id' => (int) $pesananTokoUtama->receiver_district_id,
-					                    'destination_kelurahan_id' => (int) ($pesananTokoUtama->receiver_subdistrict_id ?? 40334),
-					                    'destination_zipcode'      => '00000',
-					                    'weight'                   => $weight,
-					                    'width'                    => 10,
-					                    'height'                   => 10,
-					                    'length'                   => 10,
-					                    'item_value'               => (int) ($pesananTokoUtama->subtotal ?? 10000),
-					                    'insurance_amount'         => (int) ($pesananTokoUtama->insurance_cost ?? 0),
-					                    'cod'                      => 0,
-					                    'service'                  => $courier,
-					                    'service_type'             => $service,
-					                    'shipping_cost'            => (int) ($pesananTokoUtama->shipping_cost ?? 0)
-					                ]]
-					            ];
+                                $payloadKA = [
+                                    'address'      => $pesananTokoUtama->sender_address ?? ($store->address_detail ?? 'Alamat Toko'),
+                                    'phone'        => $pesananTokoUtama->sender_phone ?? '085745808809',
+                                    'name'         => $pesananTokoUtama->sender_name ?? 'Toko Sancaka',
+                                    'kecamatan_id' => (int) $originDistId,
+                                    'kelurahan_id' => (int) $originSubId,
+                                    'zipcode'      => '00000',
+                                    'latitude'     => (float) ($store->latitude ?? 0),
+                                    'longitude'    => (float) ($store->longitude ?? 0),
+                                    'schedule'     => $pickupSchedule,
+                                    'category'     => $category,
+                                    'platform_name'=> 'Sancaka Marketplace',
+                                    'packages'     => [[
+                                        'order_id'                 => $orderId,
+                                        'item_name'                => \Illuminate\Support\Str::limit('Pesanan ' . $orderId, 45),
+                                        'package_type_id'          => 1,
+                                        'destination_name'         => $pesananTokoUtama->receiver_name ?? 'Customer',
+                                        'destination_phone'        => $pesananTokoUtama->receiver_phone ?? '081234567890',
+                                        'destination_address'      => $pesananTokoUtama->receiver_address ?? $pesananTokoUtama->shipping_address,
+                                        'destination_kecamatan_id' => (int) $pesananTokoUtama->receiver_district_id,
+                                        'destination_kelurahan_id' => (int) ($pesananTokoUtama->receiver_subdistrict_id ?? 40334),
+                                        'destination_zipcode'      => '00000',
+                                        'weight'                   => $weight,
+                                        'width'                    => 10,
+                                        'height'                   => 10,
+                                        'length'                   => 10,
+                                        'item_value'               => (int) ($pesananTokoUtama->subtotal ?? 10000),
+                                        'insurance_amount'         => (int) ($pesananTokoUtama->insurance_cost ?? 0),
+                                        'cod'                      => 0,
+                                        'service'                  => $courier,
+                                        'service_type'             => $service,
+                                        'shipping_cost'            => (int) ($pesananTokoUtama->shipping_cost ?? 0)
+                                    ]]
+                                ];
 
-					            if ($shipType === 'instant') {
-					                $payloadInstant = [
-					                    'service' => strtolower($courier),
-					                    'service_type' => strtoupper($service),
-					                    'vehicle' => 'motor',
-					                    'order_prefix' => $orderId,
-					                    'packages' => [[
-					                        'origin_lat' => (float) ($store->latitude ?? 0),
-					                        'origin_long' => (float) ($store->longitude ?? 0),
-					                        'origin_name' => $payloadKA['name'],
-					                        'origin_phone' => $payloadKA['phone'],
-					                        'origin_address' => $payloadKA['address'],
-					                        'destination_lat' => (float) ($pesananTokoUtama->customer_latitude ?? 0),
-					                        'destination_long' => (float) ($pesananTokoUtama->customer_longitude ?? 0),
-					                        'destination_name' => $payloadKA['packages'][0]['destination_name'],
-					                        'destination_phone' => $payloadKA['packages'][0]['destination_phone'],
-					                        'destination_address' => $payloadKA['packages'][0]['destination_address'],
-					                        'item' => ['name' => $payloadKA['packages'][0]['item_name'], 'price' => $payloadKA['packages'][0]['item_value'], 'weight' => $weight],
-					                        'shipping_price' => $payloadKA['packages'][0]['shipping_cost']
-					                    ]]
-					                ];
-					                Log::info("🚀 Menembak API KiriminAja INSTANT...", ['payload' => $payloadInstant]);
-					                $kaResponse = $kiriminAja->createInstantOrder($payloadInstant);
-					            } else {
-					                Log::info("🚀 Menembak API KiriminAja EXPRESS...", ['payload' => $payloadKA]);
-					                $kaResponse = $kiriminAja->createExpressOrder($payloadKA);
-					            }
+                                if ($shipType === 'instant') {
+                                    $payloadInstant = [
+                                        'service' => strtolower($courier),
+                                        'service_type' => strtoupper($service),
+                                        'vehicle' => 'motor',
+                                        'order_prefix' => $orderId,
+                                        'packages' => [[
+                                            'origin_lat' => (float) ($store->latitude ?? 0),
+                                            'origin_long' => (float) ($store->longitude ?? 0),
+                                            'origin_name' => $payloadKA['name'],
+                                            'origin_phone' => $payloadKA['phone'],
+                                            'origin_address' => $payloadKA['address'],
+                                            'destination_lat' => (float) ($pesananTokoUtama->customer_latitude ?? 0),
+                                            'destination_long' => (float) ($pesananTokoUtama->customer_longitude ?? 0),
+                                            'destination_name' => $payloadKA['packages'][0]['destination_name'],
+                                            'destination_phone' => $payloadKA['packages'][0]['destination_phone'],
+                                            'destination_address' => $payloadKA['packages'][0]['destination_address'],
+                                            'item' => ['name' => $payloadKA['packages'][0]['item_name'], 'price' => $payloadKA['packages'][0]['item_value'], 'weight' => $weight],
+                                            'shipping_price' => $payloadKA['packages'][0]['shipping_cost']
+                                        ]]
+                                    ];
+                                    Log::info("🚀 Menembak API KiriminAja INSTANT...", ['payload' => $payloadInstant]);
+                                    $kaResponse = $kiriminAja->createInstantOrder($payloadInstant);
+                                } else {
+                                    Log::info("🚀 Menembak API KiriminAja EXPRESS...", ['payload' => $payloadKA]);
+                                    $kaResponse = $kiriminAja->createExpressOrder($payloadKA);
+                                }
 
-					            if ($kaResponse && isset($kaResponse['status']) && $kaResponse['status'] == true) {
+                                if ($kaResponse && isset($kaResponse['status']) && $kaResponse['status'] == true) {
 
-								    // ✅ SESUAIKAN DENGAN DOKUMENTASI RESMI
-								    $bookingId = $kaResponse['pickup_number'] ??
-								                 ($kaResponse['details'][0]['kj_order_id'] ??
-								                 ($kaResponse['details'][0]['awb'] ?? null));
+                                    // ✅ SESUAIKAN DENGAN DOKUMENTASI RESMI
+                                    $bookingId = $kaResponse['pickup_number'] ??
+                                                 ($kaResponse['details'][0]['kj_order_id'] ??
+                                                 ($kaResponse['details'][0]['awb'] ?? null));
 
-								    if ($bookingId) {
-								        $pesananTokoUtama->shipping_reference = $bookingId;
-								        $pesananTokoUtama->status = 'processing';
-								        $pesananTokoUtama->save();
-								        Log::info("✅ AUTO-BOOKING BERHASIL: $bookingId");
-								    }
-								} else {
-								    Log::error("❌ API KA GAGAL:", ['response' => $kaResponse]);
-								}
-					        } catch (\Exception $e) {
-					            Log::error("❌ CRITICAL ERROR API KA:", ['msg' => $e->getMessage()]);
-					        }
-					    }
+                                    if ($bookingId) {
+                                        $pesananTokoUtama->shipping_reference = $bookingId;
+                                        $pesananTokoUtama->status = 'processing';
+                                        $pesananTokoUtama->save();
+                                        Log::info("✅ AUTO-BOOKING BERHASIL: $bookingId");
+                                    }
+                                } else {
+                                    Log::error("❌ API KA GAGAL:", ['response' => $kaResponse]);
+                                }
+                            } catch (\Exception $e) {
+                                Log::error("❌ CRITICAL ERROR API KA:", ['msg' => $e->getMessage()]);
+                            }
+                        }
 
-					    // Notifikasi ke aplikasi/customer tetap dipanggil
-					    $this->sendExpoPaymentNotification($orderId);
-					}
+                        // Notifikasi ke aplikasi/customer tetap dipanggil
+                        $this->sendExpoPaymentNotification($orderId);
+                    }
                     else {
                         Log::info("➡️ Order $orderId terdeteksi sebagai pesanan Marketplace (mysql_second).");
                         try {
