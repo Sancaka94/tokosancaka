@@ -2,9 +2,19 @@
 
 @section('content')
 <div class="max-w-6xl mx-auto px-4 py-8 font-sans" x-data="orderForm">
-    <div class="mb-8 border-b border-gray-200 pb-5">
-        <h1 class="text-3xl font-extrabold text-black tracking-tight">Kirim Paket <span class="text-gray-500 font-medium">Sancaka Express</span></h1>
-        <p class="text-gray-500 mt-2 text-sm">Isi detail pengiriman dengan cepat, akurat, dan dapatkan tarif terbaik dari server logistik.</p>
+    <div class="mb-8 border-b border-gray-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <!-- Bagian Kiri: Judul dan Deskripsi -->
+        <div>
+            <h1 class="text-3xl font-extrabold text-black tracking-tight">Kirim Paket <span class="text-gray-500 font-medium">Sancaka Express</span></h1>
+            <p class="text-gray-500 mt-2 text-sm">Isi detail pengiriman dengan cepat, akurat, dan dapatkan tarif terbaik dari server logistik.</p>
+        </div>
+
+        <!-- Bagian Kanan: Tombol Riwayat Pesanan -->
+        <a href="{{ route('customer.pesanan-autokirim.index') }}"
+           class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm font-bold text-gray-700 hover:bg-gray-50 hover:text-black hover:border-gray-400 transition-all shrink-0">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>Riwayat Pesanan</span>
+        </a>
     </div>
 
     <!-- Alert Notifikasi Berhasil -->
