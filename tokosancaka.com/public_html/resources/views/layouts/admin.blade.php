@@ -460,15 +460,18 @@
 
     @livewireScripts
 
+   {{-- ===================================================================== --}}
+    {{-- TOMBOL AKTIVASI AUDIO (MENGATASI AUTOPLAY POLICY BROWSER) --}}
     {{-- ===================================================================== --}}
-    {{-- 1. AUDIO & FIREBASE UNTUK NOTIFIKASI REALTIME ADMIN (SDK v12 MODULAR) --}}
-    {{-- ===================================================================== --}}
-    @if(auth()->check() && (auth()->user()->id_pengguna == 4 || auth()->user()->role == 'Admin'))
+    <div id="audioActivationBanner" style="display:none;" class="fixed bottom-4 right-4 z-50 bg-yellow-500 text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3">
+        <span>⚠️ Klik untuk mengaktifkan suara notifikasi pesanan masuk!</span>
+        <button id="btnEnableAudio" class="bg-black text-white px-3 py-1 rounded text-xs font-bold hover:bg-gray-800">Aktifkan</button>
+    </div>
 
-    <!-- Elemen Audio (Disembunyikan) -->
+    <!-- Elemen Audio -->
     <audio id="adminNotifAudio" src="https://tokosancaka.com/public/assets/ojek.wav" preload="auto"></audio>
 
-   <script type="module">
+    <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-messaging.js";
 
@@ -486,74 +489,96 @@
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
 
-        // Registrasi Service Worker secara Eksplisit
+        // --- SOLUSI AUTOPLAY AUDIO ---
+        const audio = document.getElementById('adminNotifAudio');
+        const banner = document.getElementById('audioActivationBanner');
+        const btnEnable = document.getElementById('btnEnableAudio');
+
+        // Cek apakah audio sudah diizinkan sebelumnya di session ini
+        if (!sessionStorage.getItem('audio_allowed')) {
+            banner.style.display = 'flex';
+        }
+
+        btnEnable.addEventListener('click', function() {
+            audio.play().then(() => {
+                audio.pause(); // Mainkan lalu langsung pause untuk "membuka kunci" izin browser
+                audio.currentTime = 0;
+                sessionStorage.setItem('audio_allowed', 'true');
+                banner.style.display = 'none';
+                console.log("Audio berhasil diaktifkan oleh user!");
+            }).catch(e => {
+                console.error("Gagal mengaktifkan audio: ", e);
+            });
+        });
+        // -----------------------------
+
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/firebase-messaging-sw.js')
             .then(function(registration) {
 
-                // Minta Izin & Generate Token
-                getToken(messaging, {
-                    vapidKey: "BGF6BWiam42tA9GQB4mdp3C01ZJ8vk9_vQ9RzkHQUG2l7P1L3niAmiFhcp3gZHYXrtXT76qGuUIZ5QkAaDqiki8", // <-- JANGAN LUPA GANTI INI
-                    serviceWorkerRegistration: registration
-                })
-                .then((currentToken) => {
-                    if (currentToken) {
-                        console.log("Admin FCM Web Token (v12): ", currentToken);
-
-                        // Kirim Token ke Backend Laravel MENGGUNAKAN ROUTE WEB (Bukan API)
-                        // GANTI MENJADI INI:
-                        fetch("{{ url('/admin/save-fcm-token') }}", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                "Accept": "application/json",
-                                "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                            },
-                            body: JSON.stringify({ fcm_token: currentToken })
+                // Minta Izin Notifikasi Browser secara eksplisit
+                Notification.requestPermission().then((permission) => {
+                    if (permission === 'granted') {
+                        getToken(messaging, {
+                            vapidKey: "MASUKKAN_VAPID_KEY_ANDA_DI_SINI",
+                            serviceWorkerRegistration: registration
                         })
-                        .then(response => response.json())
-                        .then(data => console.log("Status Simpan Token: ", data));
+                        .then((currentToken) => {
+                            if (currentToken) {
+                                fetch("{{ url('/admin/save-fcm-token') }}", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        "Accept": "application/json",
+                                        "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                                    },
+                                    body: JSON.stringify({ fcm_token: currentToken })
+                                });
+                            }
+                        });
+                    } else {
+                        console.log('Izin notifikasi browser ditolak oleh pengguna.');
                     }
-                }).catch((err) => {
-                    console.log("Izin Notifikasi Ditolak / Error: ", err);
                 });
 
-            }).catch(function(err) {
-                console.log('Service Worker Gagal Diregistrasi: ', err);
             });
         }
 
-        // Tangkap Notifikasi secara Realtime saat Tab Admin Terbuka
+        // Tangkap Notifikasi saat Tab Terbuka (Foreground)
         onMessage(messaging, (payload) => {
-            let data = payload.data || {};
-            let notifId = data.notif_id || 'RAND-' + Math.random();
+            console.log("Foreground Payload: ", payload);
 
-            let lastNotif = localStorage.getItem('last_admin_notif_id');
-            if (lastNotif === notifId) return;
-            localStorage.setItem('last_admin_notif_id', notifId);
-
-            let audio = document.getElementById('adminNotifAudio');
-            if(audio) {
+            // Bunyikan Audio (Jika sudah diaktifkan tombol)
+            if (sessionStorage.getItem('audio_allowed') === 'true') {
                 audio.currentTime = 0;
-                audio.play().catch(e => console.log("Audio diblokir browser: " + e));
+                audio.play().catch(err => console.log("Gagal play audio:", err));
             }
 
+            // Tampilkan SweetAlert Toast di Pojok Kanan Atas
             Swal.fire({
                 toast: true,
                 position: 'top-end',
                 icon: 'info',
-                title: payload.notification?.title || 'Pesanan Baru',
-                text: payload.notification?.body || 'Pesanan baru masuk!',
+                title: payload.notification?.title || 'Pesanan Baru Masuk!',
+                text: payload.notification?.body || 'Silakan cek daftar pesanan.',
                 showConfirmButton: true,
                 confirmButtonText: 'Lihat',
                 confirmButtonColor: '#000000',
-                timer: 10000,
+                timer: 15000,
                 timerProgressBar: true
             }).then((result) => {
                 if (result.isConfirmed) {
                     window.location.href = "{{ route('admin.pesanan-autokirim.index') }}";
                 }
             });
+
+            // Munculkan juga Banner Bawaan Windows/Mac (Notification API)
+            if (Notification.permission === 'granted') {
+                new Notification(payload.notification?.title || 'Pesanan Baru', {
+                    body: payload.notification?.body || 'Ada pesanan masuk.',
+                    icon: 'https://tokosancaka.com/storage/uploads/sancaka.png'
+                });
+            }
 
             if (typeof window.fetchNotificationCount === "function") {
                 window.fetchNotificationCount();

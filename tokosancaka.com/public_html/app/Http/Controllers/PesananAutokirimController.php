@@ -2105,6 +2105,9 @@ class PesananAutokirimController extends Controller
 
             if ($accessToken && count($tokensToTry) > 0) {
                 foreach ($tokensToTry as $tokenStr) {
+                    // ===================================================
+                    // 🚀 TARUH KODE ANDA DI SINI
+                    // ===================================================
                     $response = \Illuminate\Support\Facades\Http::withHeaders([
                         'Authorization' => 'Bearer ' . $accessToken,
                         'Content-Type'  => 'application/json',
@@ -2112,21 +2115,21 @@ class PesananAutokirimController extends Controller
                         'message' => [
                             'token' => $tokenStr,
                             'notification' => [
-                                'title' => $title,
-                                'body'  => $body
+                                'title' => '📦 Pesanan Baru Masuk!',
+                                'body'  => "Ada pesanan baru $orderId dari {$customerName}."
                             ],
                             'webpush' => [
                                 'fcm_options' => [
-                                    'link' => url('/admin/pesanan-autokirim') // Link saat notif browser di-klik
+                                    'link' => url('/admin/pesanan-autokirim')
                                 ]
                             ],
                             'data' => [
-                                'action'   => 'new_autokirim_order',
-                                'notif_id' => (string) $notifId,
+                                'action'   => 'new_order',
                                 'order_id' => (string) $orderId
                             ]
                         ]
                     ]);
+                    // ===================================================
 
                     if ($response->successful()) {
                         \Illuminate\Support\Facades\Log::info("LOG: [NOTIF ADMIN] Berhasil kirim FCM Realtime ke Browser Admin (ID 4) untuk Order $orderId");
