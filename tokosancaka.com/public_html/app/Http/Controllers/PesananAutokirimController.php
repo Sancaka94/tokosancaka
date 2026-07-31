@@ -1301,20 +1301,23 @@ class PesananAutokirimController extends Controller
                     $pesanan->update(['status' => 'batal']);
 
                     // 2. 🔥 TARIK KOMISI TRANSAKSI INI DARI SALDO USER
-                    if ($pesanan->komisi_agen > 0) {
+                    /* &if ($pesanan->komisi_agen > 0) {
                         $userAgen = User::find($pesanan->user_id);
                         if ($userAgen) {
                             $userAgen->decrement('saldo', $pesanan->komisi_agen);
                             Log::info("LOG: [TARIK KOMISI] Saldo User ID {$pesanan->user_id} ditarik Rp {$pesanan->komisi_agen} karena Order ID {$pesanan->order_id} dibatalkan.");
                         }
-                    }
+                    }*/
 
-                    // 3. Kembalikan modal/ongkir jika pakai potong saldo
+
+
+                    // 3. Kembalikan modal/ongkir UTUH 100% (Pokok + Asuransi/Biaya)
                     if ($pesanan->metode_pembayaran === 'potong_saldo') {
                         $userToRefund = User::find($pesanan->user_id);
                         if ($userToRefund) {
+                            // Menggunakan grand_total, bukan sekadar ongkir
                             $userToRefund->increment('saldo', $pesanan->grand_total);
-                            Log::info("LOG: [REFUND SALDO] Berhasil mengembalikan Rp {$pesanan->grand_total} ke User ID {$pesanan->user_id}");
+                            Log::info("LOG: [REFUND SALDO] Berhasil mengembalikan UTUH Rp {$pesanan->grand_total} ke User ID {$pesanan->user_id}");
                         }
                     }
 
@@ -1350,7 +1353,7 @@ class PesananAutokirimController extends Controller
         return redirect()->back()->with('error', 'Pilih minimal satu pesanan untuk dihapus.');
     }
 
-    public function handleWebhook(Request $request)
+   public function handleWebhook(Request $request)
     {
         Log::info('WEBHOOK AUTOKIRIM DITERIMA:', $request->all());
 
@@ -1373,30 +1376,38 @@ class PesananAutokirimController extends Controller
                 ->first();
 
             if ($pesanan) {
-                $statusLama = $pesanan->status;
+                $statusLama = strtolower($pesanan->status);
+                $statusBaru = strtolower($status);
 
                 $pesanan->update([
                     'status' => $status
                 ]);
 
-                // [CEGAH DOUBLE REFUND & DOUBLE TARIK KOMISI]
-                if (in_array(strtolower($status), ['batal', 'gagal', 'cancelled']) && !in_array(strtolower($statusLama), ['batal', 'gagal', 'cancelled'])) {
+                $kumpulanStatusGagal = ['batal', 'gagal', 'cancelled', 'returned'];
+                $kumpulanStatusSukses = ['terkirim', 'selesai', 'sukses', 'delivered', 'success', 'completed'];
 
-                    // 1. 🔥 TARIK KOMISI TRANSAKSI INI DARI SALDO USER
-                    if ($pesanan->komisi_agen > 0) {
-                        $userAgen = User::lockForUpdate()->find($pesanan->user_id);
-                        if ($userAgen) {
-                            $userAgen->decrement('saldo', $pesanan->komisi_agen);
-                            Log::info("LOG: [WEBHOOK TARIK KOMISI] Saldo ditarik Rp {$pesanan->komisi_agen} karena Order ID {$pesanan->order_id} batal/gagal.");
-                        }
-                    }
-
-                    // 2. Kembalikan modal/ongkir
+                // =======================================================
+                // 1. [SKENARIO GAGAL/BATAL] KEMBALIKAN MODAL ONGIR UTUH
+                // =======================================================
+                if (in_array($statusBaru, $kumpulanStatusGagal) && !in_array($statusLama, $kumpulanStatusGagal)) {
                     if ($pesanan->metode_pembayaran === 'potong_saldo') {
                         $userToRefund = User::lockForUpdate()->find($pesanan->user_id);
                         if ($userToRefund) {
-                            $userToRefund->increment('saldo', $pesanan->ongkir);
-                            Log::info("LOG: [WEBHOOK REFUND] Saldo dikembalikan sebesar Rp {$pesanan->ongkir} via Webhook untuk Order ID {$pesanan->order_id}");
+                            $userToRefund->increment('saldo', $pesanan->grand_total);
+                            Log::info("LOG: [WEBHOOK REFUND] Saldo dikembalikan UTUH sebesar Rp {$pesanan->grand_total} via Webhook untuk Order ID {$pesanan->order_id}");
+                        }
+                    }
+                }
+
+                // =======================================================
+                // 2. 🔥 [SKENARIO SUKSES] CAIRKAN KOMISI AGEN
+                // =======================================================
+                if (in_array($statusBaru, $kumpulanStatusSukses) && !in_array($statusLama, $kumpulanStatusSukses)) {
+                    if ($pesanan->komisi_agen > 0) {
+                        $userAgen = User::lockForUpdate()->find($pesanan->user_id);
+                        if ($userAgen) {
+                            $userAgen->increment('saldo', $pesanan->komisi_agen);
+                            Log::info("LOG LOG: [WEBHOOK KOMISI CAIR] Hore! Saldo komisi cair Rp {$pesanan->komisi_agen} ke User ID {$pesanan->user_id} karena Order ID {$pesanan->order_id} berstatus {$statusBaru}.");
                         }
                     }
                 }
