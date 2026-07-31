@@ -7,9 +7,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Validation\Rule;
 use App\Models\User;
+use App\Models\Api; // <-- TAMBAHAN IMPORT
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http; // <-- TAMBAHAN IMPORT
 use App\Services\KiriminAjaService;
 use Carbon\Carbon;
 
@@ -51,6 +53,7 @@ class ProfileController extends Controller
                 'province'              => ['required', 'string', 'max:255'],
                 'regency'               => ['required', 'string', 'max:255'],
                 'district'              => ['required', 'string', 'max:255'],
+                'district_id'           => ['required', 'integer'], // <-- WAJIB UNTUK AUTOKIRIM
                 'village'               => ['required', 'string', 'max:255'],
                 'postal_code'           => ['nullable', 'string', 'max:10'],
                 'address_detail'        => ['required', 'string'],
@@ -71,11 +74,35 @@ class ProfileController extends Controller
             }
 
             $user->fill($validated);
+
+            // =======================================================
+            // 🔄 SINKRONISASI OTOMATIS KE API AUTOKIRIM
+            // =======================================================
+            $apiData = [
+                'nama'        => $validated['nama_lengkap'],
+                'no_hp'       => $validated['no_wa'],
+                'alamat'      => $validated['address_detail'],
+                'email'       => $user->email ?? '',
+                'district_id' => $validated['district_id']
+            ];
+
+            // Jika User sudah punya pickup_point_code, lakukan UPDATE
+            if (!empty($user->pickup_point_code)) {
+                $this->updatePickupPointApi($user->pickup_point_code, $apiData);
+            } else {
+                // Jika belum punya, lakukan INSERT dan simpan kodenya
+                $apiResult = $this->insertPickupPointApi($apiData);
+                if (isset($apiResult['rc']) && $apiResult['rc'] === '00') {
+                    $user->pickup_point_code = $apiResult['data']['pickup_point_code'];
+                }
+            }
+            // =======================================================
+
             $user->save();
 
             return redirect()
                 ->route('customer.profile.show')
-                ->with('success', 'Profil Anda berhasil diperbarui.');
+                ->with('success', 'Profil Anda berhasil diperbarui dan disinkronkan.');
 
         } catch (\Throwable $e) {
             Log::error('Update profile gagal: '.$e->getMessage());
@@ -92,7 +119,6 @@ class ProfileController extends Controller
      */
     public function showOtpForm()
     {
-        // Jika tidak ada session nomor WA dari pendaftaran, tolak akses ke halaman OTP
         if (!session()->has('otp_no_wa')) {
             return redirect()->route('login')->with('error', 'Sesi tidak valid. Silakan login atau daftar terlebih dahulu.');
         }
@@ -105,7 +131,6 @@ class ProfileController extends Controller
      */
     public function verifyOtp(Request $request)
     {
-        // 1. Validasi dilonggarkan sedikit untuk mencegah error spasi
         $request->validate([
             'otp' => 'required|string'
         ], [
@@ -113,18 +138,14 @@ class ProfileController extends Controller
         ]);
 
         $noWa = session('otp_no_wa');
-
-        // 2. PERBAIKAN: Tarik data PALING BARU (berjaga-jaga jika ada nomor WA duplikat/lama)
         $user = User::where('no_wa', $noWa)->orderBy('id_pengguna', 'desc')->first();
 
         if (!$user) {
             return redirect()->route('login')->with('error', 'Data pendaftar tidak ditemukan.');
         }
 
-        // 3. PERBAIKAN: Hapus semua spasi barangkali tidak sengaja terketik
         $inputOtp = preg_replace('/\s+/', '', $request->otp);
 
-        // --- 🛠️ BARIS DEBUGGING (AKAN MUNCUL LAYAR HITAM UNTUK CEK DATA ASLI) ---
         if (strtoupper($user->setup_token) !== strtoupper($inputOtp)) {
             dd([
                 'Penyebab Error' => 'Kode di Database BERBEDA dengan yang diketik!',
@@ -135,12 +156,9 @@ class ProfileController extends Controller
             ]);
         }
 
-        // 4. Proses Cocokkan
         if (strtoupper($user->setup_token) === strtoupper($inputOtp)) {
-
             Auth::login($user);
             session()->forget('otp_no_wa');
-
             return redirect()->route('customer.profile.setup')->with('success', 'Verifikasi berhasil! Silakan lengkapi data profil Anda.');
         }
 
@@ -149,13 +167,11 @@ class ProfileController extends Controller
 
     /**
      * Menampilkan form setup profil (Khusus User yang baru login dari OTP).
-     * Route: customer/profile/setup
      */
     public function setup(Request $request)
     {
         $user = auth()->user();
 
-        // Jika statusnya sudah aktif, langsung tendang ke dashboard (tidak boleh set up ulang)
         if ($user->status === 'Aktif') {
             return redirect()->route('customer.dashboard');
         }
@@ -167,7 +183,6 @@ class ProfileController extends Controller
 
     /**
      * Memperbarui informasi profil dari form setup.
-     * Route: customer/profile/update-setup
      */
     public function updateSetup(Request $request)
     {
@@ -184,6 +199,7 @@ class ProfileController extends Controller
             'province'              => ['required', 'string', 'max:255'],
             'regency'               => ['required', 'string', 'max:255'],
             'district'              => ['required', 'string', 'max:255'],
+            'district_id'           => ['required', 'integer'], // <-- WAJIB UNTUK AUTOKIRIM
             'village'               => ['required', 'string', 'max:255'],
             'postal_code'           => ['nullable', 'string', 'max:10'],
             'address_detail'        => ['required', 'string'],
@@ -203,17 +219,36 @@ class ProfileController extends Controller
             $user->store_logo_path = $path;
         }
 
-        // 🔑 Proses Akhir Setup
         $user->fill($validated);
         $user->profile_setup_at = Carbon::now();
-        $user->status = 'Aktif'; // Ubah status menjadi Aktif agar bisa akses fitur lain
-        $user->setup_token = null; // Hapus token OTP agar bersih
+        $user->status = 'Aktif';
+        $user->setup_token = null;
+
+        // =======================================================
+        // 🔄 SINKRONISASI OTOMATIS KE API AUTOKIRIM SAAT SETUP
+        // =======================================================
+        $apiData = [
+            'nama'        => $validated['nama_lengkap'],
+            'no_hp'       => $validated['no_wa'],
+            'alamat'      => $validated['address_detail'],
+            'email'       => $user->email ?? '',
+            'district_id' => $validated['district_id']
+        ];
+
+        if (!empty($user->pickup_point_code)) {
+            $this->updatePickupPointApi($user->pickup_point_code, $apiData);
+        } else {
+            $apiResult = $this->insertPickupPointApi($apiData);
+            if (isset($apiResult['rc']) && $apiResult['rc'] === '00') {
+                $user->pickup_point_code = $apiResult['data']['pickup_point_code'];
+            }
+        }
+        // =======================================================
 
         $user->save();
 
-        // 🔑 PERBAIKAN: Setelah setup beres, langsung gass ke Dashboard
         return redirect()->route('customer.dashboard')
-                        ->with('success', 'Aktivasi dan Profil Anda berhasil diselesaikan! Selamat datang di aplikasi Sancaka Express.');
+                         ->with('success', 'Aktivasi dan Profil Anda berhasil diselesaikan! Selamat datang di aplikasi Sancaka Express.');
     }
 
     /**
@@ -294,6 +329,128 @@ class ProfileController extends Controller
             return redirect()->back()->withInput()->with('error', 'Terjadi kesalahan pada sistem. Silakan coba beberapa saat lagi.');
         }
     }
+
+    // =======================================================
+    // HELPER API AUTOKIRIM (CONFIG, INSERT, UPDATE, FIND, DELETE)
+    // =======================================================
+
+    private function getAutokirimConfig()
+    {
+        $mode = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
+        $baseUrl = Api::getValue('AUTOKIRIM_BASE_URL', $mode, ($mode === 'production' ? 'https://api.autokirim.com' : 'https://api-dev.autokirim.com'));
+        $token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
+
+        return (object) [
+            'mode'     => strtoupper($mode),
+            'base_url' => rtrim($baseUrl, '/'),
+            'token'    => $token
+        ];
+    }
+
+    private function insertPickupPointApi($data)
+    {
+        $config = $this->getAutokirimConfig();
+
+        try {
+            $payload = [
+                "name"              => (string) $data['nama'],
+                "phone"             => (string) $data['no_hp'],
+                "address"           => (string) $data['alamat'],
+                "email"             => (string) ($data['email'] ?? ''),
+                "longitude"         => "",
+                "latitude"          => "",
+                "district_id"       => (int) $data['district_id'],
+                "is_member_deposit" => false
+            ];
+
+            Log::info("LOG LOG: [USER - API INSERT] REQUEST:", $payload);
+
+            $response = Http::timeout(15)
+                ->withToken($config->token)
+                ->post("{$config->base_url}/api/pickup-point/insert", $payload);
+
+            $result = $response->json();
+            Log::info("LOG LOG: [USER - API INSERT] RESPONSE:", $result ?? []);
+
+            return $result;
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: [USER - API INSERT] ERROR: " . $e->getMessage());
+            return ['rc' => '500', 'rd' => 'Error: ' . $e->getMessage()];
+        }
+    }
+
+    private function updatePickupPointApi($pickupCode, $data)
+    {
+        $config = $this->getAutokirimConfig();
+
+        try {
+            $payload = [
+                "name"              => (string) $data['nama'],
+                "phone"             => (string) $data['no_hp'],
+                "district_id"       => (int) $data['district_id'],
+                "address"           => (string) $data['alamat'],
+                "longitude"         => "",
+                "latitude"          => "",
+                "pickup_point_code" => (string) $pickupCode
+            ];
+
+            Log::info("LOG LOG: [USER - API UPDATE] REQUEST:", $payload);
+
+            $response = Http::timeout(15)
+                ->withToken($config->token)
+                ->post("{$config->base_url}/api/pickup-point/update", $payload);
+
+            $result = $response->json();
+            Log::info("LOG LOG: [USER - API UPDATE] RESPONSE:", $result ?? []);
+
+            return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
+        } catch (\Exception $e) {
+            Log::error("LOG LOG: [USER - API UPDATE] ERROR: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function findPickupPointApi($pickupCode)
+    {
+        $config = $this->getAutokirimConfig();
+
+        try {
+            $payload = [
+                "pickup_point_code" => (string) $pickupCode
+            ];
+
+            $response = Http::timeout(10)
+                ->withToken($config->token)
+                ->post("{$config->base_url}/api/pickup-point/find", $payload);
+
+            $result = $response->json();
+            return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    public function deletePickupPointApi($pickupCode)
+    {
+        $config = $this->getAutokirimConfig();
+
+        try {
+            $payload = [
+                "pickup_point_code" => (string) $pickupCode
+            ];
+
+            $response = Http::timeout(10)
+                ->withToken($config->token)
+                ->post("{$config->base_url}/api/pickup-point/delete", $payload);
+
+            $result = $response->json();
+            return ($response->successful() && isset($result['rc']) && $result['rc'] === '00');
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    // =======================================================
 
     /**
      * Mengambil data saldo terbaru untuk auto-refresh via AJAX
