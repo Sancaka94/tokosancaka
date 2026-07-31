@@ -154,7 +154,7 @@
     <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.15.3/dist/echo.iife.js"></script>
 
-    <script>
+   <script>
         document.addEventListener('DOMContentLoaded', function() {
 
             // ======================================================================
@@ -175,7 +175,7 @@
                 }
             }
 
-          function showBrowserNotification(title, message, url) {
+            function showBrowserNotification(title, message, url) {
                 if (!('Notification' in window) || Notification.permission !== 'granted') {
                     return;
                 }
@@ -198,6 +198,7 @@
                         window.open(url, '_blank');
                     }
                     notification.close();
+                    window.focus();
                 };
             }
 
@@ -373,26 +374,26 @@
 
                     window.EchoInitialized = true;
 
-                  // Listener untuk Notifikasi Umum (Database)
-            const userId = {{ auth()->id() }};
-            window.Echo.private(`App.Models.User.${userId}`)
-                .on('pusher:subscription_succeeded', () => console.log('Subscribed to User Channel!'))
-                .on('pusher:subscription_error', (status) => console.error(`Subscription failed. Status:`, status))
-                .notification((notification) => {
-                    const data = notification.data ? notification.data : notification;
-                    showBrowserNotification(data.judul, data.pesan_utama, data.url);
-                    fetchNotificationCount();
+                    // Listener untuk Notifikasi Umum (Database)
+                    const userId = {{ auth()->id() }};
+                    window.Echo.private(`App.Models.User.${userId}`)
+                        .on('pusher:subscription_succeeded', () => console.log('Subscribed to User Channel!'))
+                        .on('pusher:subscription_error', (status) => console.error(`Subscription failed. Status:`, status))
+                        .notification((notification) => {
+                            const data = notification.data ? notification.data : notification;
+                            showBrowserNotification(data.judul, data.pesan_utama, data.url);
+                            fetchNotificationCount();
 
-                    // ✅ Audio muter terus untuk Echo
-                    if (sessionStorage.getItem('audio_allowed') === 'true') {
-                        const audio = document.getElementById('adminNotifAudio');
-                        if (audio) {
-                            audio.currentTime = 0;
-                            audio.loop = true; // ✅ Bikin suara memutar terus
-                            audio.play().catch(err => console.log("Gagal play audio via Echo:", err));
-                        }
-                    }
-                });
+                            // ✅ Audio muter terus untuk Echo
+                            if (sessionStorage.getItem('audio_allowed') === 'true') {
+                                const audio = document.getElementById('adminNotifAudio');
+                                if (audio) {
+                                    audio.currentTime = 0;
+                                    audio.loop = true; // ✅ Bikin suara memutar terus
+                                    audio.play().catch(err => console.log("Gagal play audio via Echo:", err));
+                                }
+                            }
+                        });
 
                 } catch (error) { console.error("Failed to initialize Echo:", error); }
             } else { console.error("Echo or Pusher.js not found."); }
@@ -508,7 +509,7 @@
         const app = initializeApp(firebaseConfig);
         const messaging = getMessaging(app);
 
-        // --- SOLUSI AUTOPLAY AUDIO ---
+        // --- SOLUSI AUTOPLAY AUDIO (TRICK GLOBAL CLICK) ---
         const audio = document.getElementById('adminNotifAudio');
         if (audio) {
             audio.addEventListener('ended', function() {
@@ -518,25 +519,27 @@
                 }
             });
         }
+
         const banner = document.getElementById('audioActivationBanner');
-        const btnEnable = document.getElementById('btnEnableAudio');
+        if (banner) banner.style.display = 'none';
 
-        // Cek apakah audio sudah diizinkan sebelumnya di session ini
+        // ✅ INI ADALAH POSISI JEBAKAN KLIK YANG BENAR
         if (!sessionStorage.getItem('audio_allowed')) {
-            banner.style.display = 'flex';
+            document.body.addEventListener('click', function unlockAudio() {
+                if (audio) {
+                    audio.play().then(() => {
+                        audio.pause(); // Langsung pause agar tidak bunyi
+                        audio.currentTime = 0;
+                        sessionStorage.setItem('audio_allowed', 'true');
+                        // Hapus jebakan ini karena sudah berhasil
+                        document.body.removeEventListener('click', unlockAudio);
+                        console.log("Audio berhasil di-unlock lewat klik global!");
+                    }).catch(e => {
+                        console.log("Menunggu interaksi user sesungguhnya...");
+                    });
+                }
+            }, { once: true }); // event {once: true} memastikan ini hanya jalan 1x
         }
-
-        btnEnable.addEventListener('click', function() {
-            audio.play().then(() => {
-                audio.pause(); // Mainkan lalu langsung pause untuk "membuka kunci" izin browser
-                audio.currentTime = 0;
-                sessionStorage.setItem('audio_allowed', 'true');
-                banner.style.display = 'none';
-                console.log("Audio berhasil diaktifkan oleh user!");
-            }).catch(e => {
-                console.error("Gagal mengaktifkan audio: ", e);
-            });
-        });
         // -----------------------------
 
         if ('serviceWorker' in navigator) {
@@ -575,8 +578,6 @@
         onMessage(messaging, (payload) => {
             console.log("Foreground Payload: ", payload);
 
-            const audio = document.getElementById('adminNotifAudio');
-
             // Bunyikan Audio TERUS-MENERUS
             if (sessionStorage.getItem('audio_allowed') === 'true' && audio) {
                 audio.currentTime = 0;
@@ -597,6 +598,12 @@
                 showCloseButton: true
                 // HAPUS allowOutsideClick karena dilarang oleh mode toast
             }).then((result) => {
+                // ✅ MATIKAN SUARA JIKA ADMIN MENGKLIK LIHAT ATAU CLOSE DI SWEETALERT
+                if (sessionStorage.getItem('audio_allowed') === 'true' && audio) {
+                    audio.pause();
+                    audio.currentTime = 0;
+                }
+
                 if (result.isConfirmed) {
                     window.location.href = "/admin/pesanan-autokirim";
                 }
@@ -611,6 +618,11 @@
                 });
 
                 browserNotif.onclick = function() {
+                    // ✅ MATIKAN SUARA JIKA ADMIN MENGKLIK NOTIFIKASI WINDOWS
+                    if (sessionStorage.getItem('audio_allowed') === 'true' && audio) {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    }
                     window.focus();
                     browserNotif.close();
                 };
