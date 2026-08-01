@@ -96,32 +96,39 @@
             @endforelse
         </tbody>
        <tfoot>
-            <!-- Baris Total Pengeluaran & Saldo Bersih (yang sudah ada sebelumnya) -->
+            <!-- Baris Total Pendapatan Bersih (Uang Sisa) -->
             <tr>
                 <td colspan="3" class="text-right font-bold">TOTAL PENDAPATAN BERSIH (UANG SISA):</td>
                 <td class="text-right font-bold">
-                    Rp {{ number_format($kas->saldo_bersih, 0, ',', '.') }}
+                    <!-- Menggunakan variabel rekap bulanan Anda -->
+                    Rp {{ number_format($total + $totalPemasukanManual - $totalPengeluaranManual, 0, ',', '.') }}
                 </td>
             </tr>
 
             <!-- MULAI PERHITUNGAN FINAL PROFIT -->
             @php
-                $omzetTotal = $kas->pemasukan_sistem;
+                // 1. Omzet Total = Pemasukan Sistem (Parkir) + Pemasukan Manual
+                $omzetTotal = $total + $totalPemasukanManual;
                 $pengeluaranLainnya = 0;
 
-                // Loop semua rincian pengeluaran
-                foreach($kas->pengeluaran as $item) {
-                    // Hanya tambahkan nominal JIKA kategorinya BUKAN Gaji dan BUKAN Setoran
-                    if(
-                        $item->kategori !== 'Gaji Pegawai' &&
-                        $item->kategori !== 'Setoran' &&
-                        $item->kategori !== 'Setoran Parkir'
-                    ) {
-                        $pengeluaranLainnya += $item->nominal;
+                // 2. Loop semua data pengeluaran kas manual di bulan tersebut
+                if(isset($kasManual)) {
+                    foreach($kasManual as $item) {
+                        // Hanya proses jika jenisnya pengeluaran
+                        if($item->jenis == 'pengeluaran') {
+                            // Hitung nominal jika kategorinya BUKAN Gaji dan BUKAN Setoran
+                            if(
+                                $item->kategori !== 'Gaji Pegawai' &&
+                                $item->kategori !== 'Setoran' &&
+                                $item->kategori !== 'Setoran Parkir'
+                            ) {
+                                $pengeluaranLainnya += $item->nominal;
+                            }
+                        }
                     }
                 }
 
-                // Rumus: (Omzet : 2) - Total Pengeluaran Lainnya
+                // 3. Rumus: (Omzet : 2) - Total Pengeluaran Lainnya
                 $profitFinal = ($omzetTotal / 2) - $pengeluaranLainnya;
             @endphp
 
