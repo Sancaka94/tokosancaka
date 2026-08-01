@@ -1014,20 +1014,15 @@ class ApiMapboxController extends Controller
                 }
             }
 
-            try {
-                $notifData = [
-                    'notif_id' => 'NTF-' . time() . '-' . rand(100, 999),
-                    'order_id' => $orderId,
-                    'title'    => '📦 Pesanan App Expo!',
-                    'body'     => "Pesanan " . strtoupper(str_replace('_', ' ', $layanan)) . " baru masuk dari aplikasi.",
-                    'time'     => now()->timezone('Asia/Jakarta')->format('d M Y H:i:s'),
-                    'read'     => false
-                ];
-                \Illuminate\Support\Facades\Redis::lpush("admin_notifications_4", json_encode($notifData));
-                \Illuminate\Support\Facades\Redis::ltrim("admin_notifications_4", 0, 99);
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::warning("LOG LOG: Gagal push lonceng web admin: " . $e->getMessage());
-            }
+            // ==========================================================
+            // 1. NOTIFIKASI KHUSUS KE BROWSER ADMIN (ID 4) SEPERTI AUTO KIRIM
+            // ==========================================================
+            $customerName = $customer->nama_lengkap ?? 'Pelanggan';
+            $this->notifyAdminOrderBaru($orderId, $customerName, $layanan);
+
+            // ==========================================================
+            // 2. PUSH NOTIFIKASI KE EXPO & POP-UP BROWSER (FCM V1)
+            // ==========================================================
 
             // EKSEKUSI PENGIRIMAN
             if ($accessToken && count($targets) > 0) {
@@ -1056,7 +1051,7 @@ class ApiMapboxController extends Controller
                                 ],
                                 'webpush' => [
                                     'fcm_options' => [
-                                        'link' => url('/admin/pesanan-autokirim')
+                                        'link' => url('/admin/pesanan-ojek/riwayat')
                                     ]
                                 ],
 
@@ -2486,6 +2481,87 @@ class ApiMapboxController extends Controller
 
         } catch (\Exception $e) {
             return ['success' => false, 'message' => 'Koneksi DANA gagal.'];
+        }
+    }
+
+    /**
+     * =========================================================================
+     * PUSH NOTIFICATION KE BROWSER ADMIN LOKAL (SEPERTI AUTO KIRIM)
+     * =========================================================================
+     */
+    private function notifyAdminOrderBaru($orderId, $customerName, $layanan)
+    {
+        try {
+            $adminId = 4;
+            $admin = \Illuminate\Support\Facades\DB::table('Pengguna')
+                        ->where('id_pengguna', $adminId)
+                        ->select('fcm_token', 'fcm_token_debug')
+                        ->first();
+
+            if (!$admin) return;
+
+            // 1. DATA NOTIFIKASI
+            $notifId = 'NTF-' . time() . '-' . rand(100, 999);
+            $layananName = strtoupper(str_replace('_', ' ', $layanan));
+            $title = '📦 Pesanan ' . $layananName . ' Masuk!';
+            $body = "Pelanggan {$customerName} membuat pesanan {$orderId}.";
+
+            $notifData = [
+                'notif_id' => $notifId,
+                'order_id' => $orderId,
+                'title'    => $title,
+                'body'     => $body,
+                'time'     => now()->timezone('Asia/Jakarta')->format('d M Y H:i:s'),
+                'read'     => false
+            ];
+
+            // 2. SIMPAN KE REDIS (Untuk Riwayat Notifikasi Lonceng di Header Admin)
+            $redisKey = "admin_notifications_{$adminId}";
+            \Illuminate\Support\Facades\Redis::lpush($redisKey, json_encode($notifData));
+            \Illuminate\Support\Facades\Redis::ltrim($redisKey, 0, 99); // Batasi maksimal 100 notif
+
+            // 3. PUSH KE FIREBASE CLOUD MESSAGING (FCM HTTP v1) BROWSER
+            $accessToken = $this->getGoogleAccessToken();
+            $projectId = 'sancaka-express'; // Sesuaikan dengan Project ID Firebase Anda
+
+            $tokensToTry = [];
+            if (!empty($admin->fcm_token)) $tokensToTry[] = $admin->fcm_token;
+            if (!empty($admin->fcm_token_debug)) $tokensToTry[] = $admin->fcm_token_debug;
+
+            if ($accessToken && count($tokensToTry) > 0) {
+                foreach ($tokensToTry as $tokenStr) {
+                    $response = \Illuminate\Support\Facades\Http::withHeaders([
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Content-Type'  => 'application/json',
+                    ])->post("https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send", [
+                        'message' => [
+                            'token' => $tokenStr,
+                            'notification' => [
+                                'title' => $title,
+                                'body'  => $body
+                            ],
+                            'webpush' => [
+                                'fcm_options' => [
+                                    // Arahkan ke rute dashboard ojek online admin (Silakan sesuaikan URL)
+                                    'link' => url('/admin/pesanan-ojek/riwayat')
+                                ]
+                            ],
+                            'data' => [
+                                'action'   => 'new_order_mobile',
+                                'order_id' => (string) $orderId
+                            ]
+                        ]
+                    ]);
+
+                    if ($response->successful()) {
+                        \Illuminate\Support\Facades\Log::info("LOG LOG: [NOTIF ADMIN WEB] Berhasil kirim FCM Realtime ke Browser Admin (ID 4) untuk Order $orderId");
+                        break; // Stop jika 1 token sudah berhasil agar tidak double
+                    }
+                }
+            }
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG LOG: [NOTIF ADMIN WEB ERROR] " . $e->getMessage());
         }
     }
 
