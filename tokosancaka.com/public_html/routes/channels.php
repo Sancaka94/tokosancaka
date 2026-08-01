@@ -11,7 +11,7 @@ use App\Models\User;
 |
 | Di sini Anda dapat mendaftarkan semua channel event broadcasting yang
 | didukung oleh aplikasi Anda. Callback otorisasi channel yang diberikan
-| digunakan untuk memeriksa apakah pengguna yang diautentikasi dapat 
+| digunakan untuk memeriksa apakah pengguna yang diautentikasi dapat
 | mendengarkan channel tersebut.
 |
 */
@@ -58,6 +58,14 @@ Broadcast::channel('customer-saldo.{userId}', function ($user, $userId) {
 // Callback yang mengembalikan `true` akan mengizinkan semua user yang login
 // untuk mendengarkan channel ini.
 Broadcast::channel('surat-jalan-created', function ($user) {
-    return true; 
+    return true;
 });
 
+// Tambahkan ini di baris paling bawah routes/channels.php
+Broadcast::channel('admin_notifications_{id}', function ($user, $id) {
+    return (int) $user->id_pengguna === (int) $id;
+});
+
+Broadcast::channel('dashboard', function ($user) {
+    return isset($user->role) && strtolower($user->role) === 'admin';
+});
