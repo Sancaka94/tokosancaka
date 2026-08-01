@@ -489,7 +489,10 @@
     </div>
 
     <!-- Elemen Audio -->
-    <audio id="adminNotifAudio" src="https://tokosancaka.com/public/assets/ojek.wav" preload="auto" loop></audio>
+    <!-- Elemen Audio Sancaka Express -->
+    <audio id="audioExpress" src="https://tokosancaka.com/public/assets/ojek-web.mp3" preload="auto" loop></audio>
+    <!-- Elemen Audio Pesanan Lain / Autokirim -->
+    <audio id="audioPesanLain" src="https://tokosancaka.com/public/assets/pesan.mp3" preload="auto" loop></audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-app.js";
@@ -517,16 +520,39 @@
 
         if (banner) banner.style.display = 'none';
 
-        // 1. Jebakan Klik Global (Selalu aktif tiap halaman di-refresh)
+        // --- SOLUSI AUTOPLAY AUDIO (FOOLPROOF) ---
+        const banner = document.getElementById('audioActivationBanner');
+        const btnEnable = document.getElementById('btnEnableAudio');
+        let audioUnlocked = false;
+
+        if (banner) banner.style.display = 'none';
+
+        // Fungsi Helper untuk mematikan semua audio
+        function stopAllAudio() {
+            const audioExpress = document.getElementById('audioExpress');
+            const audioPesanLain = document.getElementById('audioPesanLain');
+            if (audioExpress) { audioExpress.pause(); audioExpress.currentTime = 0; }
+            if (audioPesanLain) { audioPesanLain.pause(); audioPesanLain.currentTime = 0; }
+        }
+
+        // 1. Jebakan Klik Global
         document.body.addEventListener('click', function unlockAudio() {
-            if (!audioUnlocked && audio) {
-                audio.play().then(() => {
-                    audio.pause();
-                    audio.currentTime = 0;
-                    audioUnlocked = true;
-                    if (banner) banner.style.display = 'none';
-                    console.log("Audio berhasil di-unlock lewat klik global!");
-                }).catch(e => {}); // Abaikan jika gagal
+            if (!audioUnlocked) {
+                const audioExpress = document.getElementById('audioExpress');
+                const audioPesanLain = document.getElementById('audioPesanLain');
+
+                // Unlock Audio Express
+                if (audioExpress) {
+                    audioExpress.play().then(() => { audioExpress.pause(); audioExpress.currentTime = 0; }).catch(()=>{});
+                }
+                // Unlock Audio Pesan Lain
+                if (audioPesanLain) {
+                    audioPesanLain.play().then(() => { audioPesanLain.pause(); audioPesanLain.currentTime = 0; }).catch(()=>{});
+                }
+
+                audioUnlocked = true;
+                if (banner) banner.style.display = 'none';
+                console.log("Semua Audio berhasil di-unlock!");
             }
         });
 
@@ -572,29 +598,32 @@
             });
         }
 
-       // Tangkap Notifikasi saat Tab Terbuka (Foreground)
-        onMessage(messaging, (payload) => {
+       onMessage(messaging, (payload) => {
             console.log("Foreground Payload: ", payload);
 
-            if (audio) {
-                audio.currentTime = 0;
-                audio.loop = true;
+            const audioExpress = document.getElementById('audioExpress');
+            const audioPesanLain = document.getElementById('audioPesanLain');
 
-                const playPromise = audio.play();
+            // Deteksi apakah notifikasi ini dari Sancaka Express
+            const isExpress = (payload.data && payload.data.order_id && payload.data.order_id.includes('S-EXP')) ||
+                            (payload.notification && payload.notification.title && payload.notification.title.toUpperCase().includes('EXPRESS'));
+
+            const activeAudio = isExpress ? audioExpress : audioPesanLain;
+
+            // Bunyikan Audio yang Sesuai
+            if (activeAudio) {
+                activeAudio.currentTime = 0;
+                activeAudio.loop = true;
+
+                const playPromise = activeAudio.play();
                 if (playPromise !== undefined) {
                     playPromise.then(() => {
                         audioUnlocked = true;
-                        // Sembunyikan banner jika audio berhasil diputar
-                        if (banner) banner.style.display = 'none';
                     }).catch(err => {
-                        // Cek apakah ini NotAllowedError (diblokir browser) atau sekadar AbortError
+                        // Tangkap error jika browser nge-block
                         if (err.name === 'NotAllowedError') {
-                            console.log("Gagal play audio (DIBLOKIR BROWSER):", err);
+                            console.log("Audio diblokir browser:", err);
                             if (banner) banner.style.display = 'flex';
-                        } else if (err.name === 'AbortError') {
-                            console.log("Audio diinterupsi oleh notifikasi beruntun. Diabaikan.");
-                        } else {
-                            console.log("Gagal play audio (Error Lain):", err);
                         }
                     });
                 }
@@ -612,18 +641,15 @@
                 confirmButtonColor: '#000000',
                 showCloseButton: true
             }).then((result) => {
-                // MATIKAN SUARA
-                if (audio) {
-                    audio.pause();
-                    audio.currentTime = 0;
-                }
+                // MATIKAN SEMUA SUARA SAAT DIKLIK/DITUTUP
+                stopAllAudio();
 
                 if (result.isConfirmed) {
                     window.location.href = "/admin/pesanan-autokirim";
                 }
             });
 
-            // Munculkan juga Banner Bawaan Windows/Mac
+            // Notifikasi Bawaan OS
             if (Notification.permission === 'granted') {
                 const browserNotif = new Notification(payload.notification?.title || 'Pesanan Baru', {
                     body: payload.notification?.body || 'Ada pesanan masuk.',
@@ -632,10 +658,7 @@
                 });
 
                 browserNotif.onclick = function() {
-                    if (audio) {
-                        audio.pause();
-                        audio.currentTime = 0;
-                    }
+                    stopAllAudio();
                     window.focus();
                     browserNotif.close();
                 };
@@ -646,57 +669,66 @@
             }
         });
 
-       // 👇 🔥 TANGKAP PESAN BACKGROUND DENGAN BROADCAST CHANNEL 🔥 👇
-        const broadcast = new BroadcastChannel('sancaka_notif_channel');
-        broadcast.onmessage = (event) => {
-            const payload = event.data;
-            console.log("Pesan berhasil ditangkap dari Broadcast Channel: ", payload);
+       const broadcast = new BroadcastChannel('sancaka_notif_channel');
+            broadcast.onmessage = (event) => {
+                const payload = event.data;
+                console.log("Pesan berhasil ditangkap dari Broadcast Channel: ", payload);
 
-            if (payload && payload.notification) {
-                // 1. Bunyikan Audio
-                if (audio) {
-                    audio.currentTime = 0;
-                    audio.loop = true;
-                    audio.play().catch(e => {
-                        console.log("Audio diblokir browser:", e);
-                        if (banner) banner.style.display = 'flex';
+                if (payload && payload.notification) {
+                    const audioExpress = document.getElementById('audioExpress');
+                    const audioPesanLain = document.getElementById('audioPesanLain');
+
+                    // Deteksi apakah notifikasi ini dari Sancaka Express
+                    const isExpress = (payload.data && payload.data.order_id && payload.data.order_id.includes('S-EXP')) ||
+                                    (payload.notification && payload.notification.title && payload.notification.title.toUpperCase().includes('EXPRESS'));
+
+                    const activeAudio = isExpress ? audioExpress : audioPesanLain;
+
+                    // 1. Bunyikan Audio
+                    if (activeAudio) {
+                        activeAudio.currentTime = 0;
+                        activeAudio.loop = true;
+
+                        const playPromise = activeAudio.play();
+                        if (playPromise !== undefined) {
+                            playPromise.then(() => {
+                                audioUnlocked = true;
+                            }).catch(err => {
+                                if (err.name === 'NotAllowedError') {
+                                    console.log("Audio diblokir browser:", err);
+                                    if (banner) banner.style.display = 'flex';
+                                }
+                            });
+                        }
+                    }
+
+                    // 2. Tampilkan SweetAlert
+                    Swal.fire({
+                        toast: true,
+                        position: 'bottom-end',
+                        icon: 'info',
+                        title: payload.notification.title || 'Pesanan Baru Masuk!',
+                        text: payload.notification.body || 'Silakan cek daftar pesanan.',
+                        showConfirmButton: true,
+                        confirmButtonText: 'Lihat',
+                        confirmButtonColor: '#000000',
+                        showCloseButton: true
+                    }).then((result) => {
+                        // MATIKAN SEMUA SUARA
+                        stopAllAudio();
+
+                        if (result.isConfirmed) {
+                            const targetUrl = payload.data && payload.data.link
+                                ? payload.data.link
+                                : '/admin/pesanan-ojek/riwayat';
+                            window.location.href = targetUrl;
+                        }
                     });
-                }
 
-                // 2. Tampilkan SweetAlert
-                Swal.fire({
-                    toast: true,
-                    position: 'bottom-end',
-                    icon: 'info',
-                    title: payload.notification.title || 'Pesanan Baru Masuk!',
-                    text: payload.notification.body || 'Silakan cek daftar pesanan.',
-                    showConfirmButton: true,
-                    confirmButtonText: 'Lihat',
-                    confirmButtonColor: '#000000',
-                    showCloseButton: true
-                }).then((result) => {
-                    if (audio) {
-                        audio.pause();
-                        audio.currentTime = 0;
-                    }
-                    if (result.isConfirmed) {
-                        // Ambil link redirect dari payload (jika ada), atau fallback ke riwayat ojek
-                        const targetUrl = payload.data && payload.data.link
-                            ? payload.data.link
-                            : '/admin/pesanan-ojek/riwayat';
-                        window.location.href = targetUrl;
-                    }
-                });
-
-                // 3. Update Lonceng Notifikasi secara Realtime!
-                if (typeof window.fetchNotificationCount === "function") {
-                    window.fetchNotificationCount();
+                    if (typeof window.fetchNotificationCount === "function") window.fetchNotificationCount();
+                    if (typeof window.loadInitialNotifications === "function") window.loadInitialNotifications();
                 }
-                if (typeof window.loadInitialNotifications === "function") {
-                    window.loadInitialNotifications();
-                }
-            }
-        };
+            };
     </script>
 
 
