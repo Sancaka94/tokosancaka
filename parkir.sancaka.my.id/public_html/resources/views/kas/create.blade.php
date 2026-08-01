@@ -92,9 +92,8 @@
                         <thead class="table-custom-header text-center align-middle">
                             <tr>
                                 <th width="5%" style="padding: 12px;">NO</th>
-                                <th width="25%" style="padding: 12px;">KATEGORI</th>
-                                <th width="35%" style="padding: 12px;">KETERANGAN PENGELUARAN</th>
-                                <th width="25%" style="padding: 12px;">NOMINAL (Rp)</th>
+                                <th width="55%" style="padding: 12px;">KETERANGAN PENGELUARAN</th>
+                                <th width="30%" style="padding: 12px;">NOMINAL (Rp)</th>
                                 <th width="10%" style="padding: 12px;">
                                     <button type="button" class="btn btn-sm btn-primary w-100 fw-bold shadow-sm" onclick="addRow()">
                                         + Tambah
@@ -105,16 +104,6 @@
                         <tbody id="tbodyItem">
                             <tr>
                                 <td class="text-center align-middle row-number fw-bold text-secondary">1</td>
-                                <td>
-                                    <select name="pengeluaran[0][kategori]" class="form-select border-0 bg-transparent shadow-none" required>
-                                        <option value="" disabled selected>Pilih Kategori...</option>
-                                        <option value="Gaji Pegawai">Gaji Pegawai</option>
-                                        <option value="Operasional">Operasional (Aplikasi, Sampah, RT)</option>
-                                        <option value="Setoran">Setoran Parkir</option>
-                                        <option value="Mamah">Mamah / Pribadi</option>
-                                        <option value="Lain-lain">Lain-lain</option>
-                                    </select>
-                                </td>
                                 <td>
                                     <input type="text" name="pengeluaran[0][keterangan]" class="form-control border-0 bg-transparent shadow-none" placeholder="Contoh: Bayar listrik..." required>
                                 </td>
@@ -130,12 +119,12 @@
                         </tbody>
                         <tfoot>
                             <tr style="background-color: #f8f9fa;">
-                                <th colspan="3" class="text-end align-middle text-danger fw-bold" style="padding: 15px;">Total Pengeluaran Rp.</th>
+                                <th colspan="2" class="text-end align-middle text-danger fw-bold" style="padding: 15px;">Total Pengeluaran Rp.</th>
                                 <th style="padding: 0;"><input type="text" id="totalPengeluaran" class="form-control text-end fw-bold text-danger bg-transparent border-0 shadow-none h-100" style="font-size: 1.1rem;" readonly value="0"></th>
                                 <th></th>
                             </tr>
                             <tr style="background-color: #fff3cd;">
-                                <th colspan="3" class="text-end align-middle fw-bold" style="padding: 15px; font-size: 1.2rem; color: #856404;">SISA SALDO BERSIH Rp.</th>
+                                <th colspan="2" class="text-end align-middle fw-bold" style="padding: 15px; font-size: 1.2rem; color: #856404;">SISA SALDO BERSIH Rp.</th>
                                 <th style="padding: 0;"><input type="text" id="saldoBersih" class="form-control text-end fw-bold bg-transparent border-0 shadow-none h-100" style="font-size: 1.2rem; color: #856404;" readonly value="0"></th>
                                 <th></th>
                             </tr>
@@ -245,16 +234,6 @@
         let tr = `
         <tr>
             <td class="text-center align-middle row-number fw-bold text-secondary"></td>
-            <td>
-                <select name="pengeluaran[${rowIdx}][kategori]" class="form-select border-0 bg-transparent shadow-none" required>
-                    <option value="" disabled selected>Pilih Kategori...</option>
-                    <option value="Gaji Pegawai">Gaji Pegawai</option>
-                    <option value="Operasional">Operasional (Aplikasi, Sampah, RT)</option>
-                    <option value="Setoran">Setoran Parkir</option>
-                    <option value="Mamah">Mamah / Pribadi</option>
-                    <option value="Lain-lain">Lain-lain</option>
-                </select>
-            </td>
             <td><input type="text" name="pengeluaran[${rowIdx}][keterangan]" class="form-control border-0 bg-transparent shadow-none" placeholder="Keterangan pengeluaran..." required></td>
             <td><input type="number" name="pengeluaran[${rowIdx}][nominal]" class="form-control nominal text-end border-0 bg-transparent shadow-none" min="0" oninput="kalkulasi()" placeholder="0" required></td>
             <td class="text-center align-middle"><button type="button" class="btn btn-sm btn-outline-danger w-75" onclick="removeRow(this)">Hapus</button></td>

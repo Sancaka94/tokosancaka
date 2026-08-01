@@ -316,9 +316,23 @@
                                         <label class="block text-sm font-semibold text-gray-700">Kategori Utama</label>
                                         <select name="transactions[0][kategori]" required class="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 sm:text-sm">
                                             <option value="" disabled selected>-- Pilih Kategori --</option>
-                                            <option value="Parkiran">Parkiran</option>
-                                            <option value="Toilet">Toilet</option>
-                                            <option value="Operasional (Umum)">Operasional (Umum)</option>
+
+                                            <!-- DIKRLOMPOKKAN AGAR RAPI DI TAMPILAN -->
+                                            <optgroup label="Kategori Pemasukan (+)">
+                                                <option value="Parkiran">Parkiran</option>
+                                                <option value="Toilet">Toilet</option>
+                                            </optgroup>
+
+                                            <optgroup label="Kategori Pengeluaran (-)">
+                                                <option value="Gaji Pegawai">Gaji Pegawai</option>
+                                                <option value="Operasional">Operasional (Aplikasi, Sampah, RT)</option>
+                                                <option value="Setoran Parkir">Setoran Parkir</option>
+                                                <option value="Mamah">Pribadi / Mamah</option>
+                                            </optgroup>
+
+                                            <optgroup label="Lainnya">
+                                                <option value="Lain-lain">Lain-lain</option>
+                                            </optgroup>
                                         </select>
                                     </div>
                                     <div>
