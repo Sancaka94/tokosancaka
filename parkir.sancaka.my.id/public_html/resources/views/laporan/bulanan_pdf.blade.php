@@ -106,8 +106,24 @@
                 // 3. Total Gaji Pegawai = Omzet : 2
                 $totalGajiPegawai = $omzetTotal / 2;
 
-                // 4. Total Pengeluaran = Semua total pengeluaran (dari variabel controller)
-                $totalPengeluaranSemua = $totalPengeluaranManual;
+                $totalSetoran = 0; // <-- INI VARIABELNYA DIBUAT DI SINI
+
+                if(isset($kasManual)) {
+                    foreach($kasManual as $item) {
+                        if($item->jenis == 'pengeluaran') {
+                            // Mencari yang kategorinya setoran
+                            if($item->kategori === 'Setoran' || $item->kategori === 'Setoran Parkir') {
+                                $totalSetoran += $item->nominal; // <-- DIJUMLAHKAN DI SINI
+                            }
+                            elseif($item->kategori !== 'Gaji Pegawai') {
+                                $pengeluaranLainnya += $item->nominal;
+                            }
+                        }
+                    }
+                }
+
+                // PENGURANGANNYA DI SINI
+                $totalPengeluaranSemua = $totalPengeluaranManual - $totalSetoran;
 
                 // 5. Hitung Pengeluaran Lainnya (KECUALI Gaji & Setoran)
                 $pengeluaranLainnya = 0;
