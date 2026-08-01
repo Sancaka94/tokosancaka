@@ -97,53 +97,41 @@
         </tbody>
       <tfoot>
             @php
-                // 1. Total Pendapatan = Total Omzet (Parkiran + Manual)
-                $omzetTotal = $total + $totalPemasukanManual;
+            // 1. Total Pendapatan = Total Omzet (Parkiran + Manual)
+            $omzetTotal = $total + $totalPemasukanManual;
 
-                // 2. Total Profit = Omzet : 2
-                $totalProfit = $omzetTotal / 2;
+            // 2. Total Profit = Omzet : 2
+            $totalProfit = $omzetTotal / 2;
 
-                // 3. Total Gaji Pegawai = Omzet : 2
-                $totalGajiPegawai = $omzetTotal / 2;
+            // 3. Total Gaji Pegawai = Omzet : 2
+            $totalGajiPegawai = $omzetTotal / 2;
 
-                $totalSetoran = 0; // <-- INI VARIABELNYA DIBUAT DI SINI
+            // 4. Deklarasikan variabel nilai awal SEBELUM looping dimulai
+            $totalSetoran = 0;
+            $pengeluaranLainnya = 0;
 
-                if(isset($kasManual)) {
-                    foreach($kasManual as $item) {
-                        if($item->jenis == 'pengeluaran') {
-                            // Mencari yang kategorinya setoran
-                            if($item->kategori === 'Setoran' || $item->kategori === 'Setoran Parkir') {
-                                $totalSetoran += $item->nominal; // <-- DIJUMLAHKAN DI SINI
-                            }
-                            elseif($item->kategori !== 'Gaji Pegawai') {
-                                $pengeluaranLainnya += $item->nominal;
-                            }
+            // 5. Cukup SATU KALI looping untuk memilah semua kategori pengeluaran
+            if(isset($kasManual)) {
+                foreach($kasManual as $item) {
+                    if($item->jenis == 'pengeluaran') {
+                        // Jika kategori setoran, kumpulkan di $totalSetoran
+                        if($item->kategori === 'Setoran' || $item->kategori === 'Setoran Parkir') {
+                            $totalSetoran += $item->nominal;
+                        }
+                        // Jika BUKAN setoran dan BUKAN gaji, masukkan ke $pengeluaranLainnya
+                        elseif($item->kategori !== 'Gaji Pegawai') {
+                            $pengeluaranLainnya += $item->nominal;
                         }
                     }
                 }
+            }
 
-                // PENGURANGANNYA DI SINI
-                $totalPengeluaranSemua = $totalPengeluaranManual - $totalSetoran;
+            // 6. Pengurangan Total Pengeluaran (Kecuali Setoran)
+            $totalPengeluaranSemua = $totalPengeluaranManual - $totalSetoran;
 
-                // 5. Hitung Pengeluaran Lainnya (KECUALI Gaji & Setoran)
-                $pengeluaranLainnya = 0;
-                if(isset($kasManual)) {
-                    foreach($kasManual as $item) {
-                        if($item->jenis == 'pengeluaran') {
-                            if(
-                                $item->kategori !== 'Gaji Pegawai' &&
-                                $item->kategori !== 'Setoran' &&
-                                $item->kategori !== 'Setoran Parkir'
-                            ) {
-                                $pengeluaranLainnya += $item->nominal;
-                            }
-                        }
-                    }
-                }
-
-                // 6. Total Final Profit = Profit - Pengeluaran Lainnya
-                $finalProfit = ($totalProfit - $pengeluaranLainnya)/2;
-            @endphp
+            // 7. Total Final Profit = Profit - Pengeluaran Lainnya
+            $finalProfit = ($totalProfit - $pengeluaranLainnya)/2; // Bagi 2 karena profit dibagi 2
+        @endphp
 
             <!-- 1. Baris Total Pendapatan (Omzet) -->
             <tr style="background-color: #f8f9fa;">
