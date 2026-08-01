@@ -566,6 +566,13 @@ class ApiMapboxController extends Controller
                     if ($diffMin <= 3) $isAdminOnline = true;
                 }
 
+                // 🔥 TAMBAHAN BYPASS KHUSUS SANCAKA EXPRESS 🔥
+                // Sancaka Express selalu bisa diorder kapanpun (masuk antrean pusat)
+                // Jadi abaikan status last_seen Admin.
+                if ($layanan === 'sancaka_express') {
+                    $isAdminOnline = true;
+                }
+
                 // Cek Aturan Syariah (Hanya berlaku untuk Ojek Online)
                 $isAdminSyariahPass = true;
                 if ($layanan === 'ojek_online') {
