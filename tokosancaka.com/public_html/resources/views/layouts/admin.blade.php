@@ -576,17 +576,28 @@
         onMessage(messaging, (payload) => {
             console.log("Foreground Payload: ", payload);
 
-            // Bunyikan Audio TERUS-MENERUS
             if (audio) {
                 audio.currentTime = 0;
                 audio.loop = true;
-                audio.play().then(() => {
-                    audioUnlocked = true;
-                }).catch(err => {
-                    console.log("Gagal play audio (DIBLOKIR BROWSER):", err);
-                    // JIKA DIBLOKIR, MUNCULKAN BANNER KUNING AGAR ADMIN BISA KLIK!
-                    if (banner) banner.style.display = 'flex';
-                });
+
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        audioUnlocked = true;
+                        // Sembunyikan banner jika audio berhasil diputar
+                        if (banner) banner.style.display = 'none';
+                    }).catch(err => {
+                        // Cek apakah ini NotAllowedError (diblokir browser) atau sekadar AbortError
+                        if (err.name === 'NotAllowedError') {
+                            console.log("Gagal play audio (DIBLOKIR BROWSER):", err);
+                            if (banner) banner.style.display = 'flex';
+                        } else if (err.name === 'AbortError') {
+                            console.log("Audio diinterupsi oleh notifikasi beruntun. Diabaikan.");
+                        } else {
+                            console.log("Gagal play audio (Error Lain):", err);
+                        }
+                    });
+                }
             }
 
             // Tampilkan SweetAlert Toast
