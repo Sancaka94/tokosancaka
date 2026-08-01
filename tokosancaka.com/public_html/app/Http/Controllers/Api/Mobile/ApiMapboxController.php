@@ -558,19 +558,31 @@ class ApiMapboxController extends Controller
                 ->whereNotNull('longitude')
                 ->first();
 
-            if ($admin && $admin->distance <= $maxJemput) {
+            // 🔥 LOGIKA PELENGKAP (FALLBACK):
+            // Jika layanan Sancaka Express, TETAP MASUKKAN User ID 4 meskipun
+            // jarak tidak ditemukan (GPS null) atau melebihi batas 25 KM.
+            if ($layanan === 'sancaka_express') {
+                $adminDataToPush = [
+                    'id'           => 4,
+                    'id_pengguna'  => 4,
+                    'name'         => 'Pusat Radar Sancaka (Admin)',
+                    'vehicle'      => 'Sancaka Express',
+                    // Jika $admin ketemu pakai jarak aslinya, jika tidak ketemu (null) set 0 KM
+                    'distance'     => $admin ? (round($admin->distance, 1) . ' KM') : '0 KM (Pusat)',
+                    'distance_raw' => $admin ? (float) $admin->distance : 0,
+                    'lat'          => $admin ? (float) $admin->latitude : -7.4025,
+                    'lng'          => $admin ? (float) $admin->longitude : 111.4558,
+                    'is_online'    => true
+                ];
+                Log::info("LOG LOG: [Radar] ✅ BYPASS Sancaka Express: Jarak/Status diabaikan, User ID 4 tetap dimasukkan.");
+            }
+            // KODE ASLI ANDA UNTUK OJEK ONLINE (Tetap Utuh Tidak Dihapus)
+            elseif ($admin && $admin->distance <= $maxJemput) {
                 // Cek Status Online (Maks 3 Menit)
                 $isAdminOnline = false;
                 if (!empty($admin->last_seen)) {
                     $diffMin = \Carbon\Carbon::parse($admin->last_seen)->diffInMinutes(now());
                     if ($diffMin <= 3) $isAdminOnline = true;
-                }
-
-                // 🔥 TAMBAHAN BYPASS KHUSUS SANCAKA EXPRESS 🔥
-                // Sancaka Express selalu bisa diorder kapanpun (masuk antrean pusat)
-                // Jadi abaikan status last_seen Admin.
-                if ($layanan === 'sancaka_express') {
-                    $isAdminOnline = true;
                 }
 
                 // Cek Aturan Syariah (Hanya berlaku untuk Ojek Online)
@@ -587,7 +599,7 @@ class ApiMapboxController extends Controller
                         'id'           => 4,
                         'id_pengguna'  => 4,
                         'name'         => 'Pusat Radar Sancaka (Admin)',
-                        'vehicle'      => 'Sancaka Express',
+                        'vehicle'      => 'Ojek Sancaka',
                         'distance'     => round($admin->distance, 1) . ' KM',
                         'distance_raw' => (float) $admin->distance,
                         'lat'          => (float) $admin->latitude,
