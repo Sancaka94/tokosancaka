@@ -95,28 +95,25 @@
             </tr>
             @endforelse
         </tbody>
-       <tfoot>
-            <!-- Baris Total Pendapatan Bersih (Uang Sisa) -->
-            <tr>
-                <td colspan="3" class="text-right font-bold">TOTAL PENDAPATAN BERSIH (UANG SISA):</td>
-                <td class="text-right font-bold">
-                    <!-- Menggunakan variabel rekap bulanan Anda -->
-                    Rp {{ number_format($total + $totalPemasukanManual - $totalPengeluaranManual, 0, ',', '.') }}
-                </td>
-            </tr>
-
-            <!-- MULAI PERHITUNGAN FINAL PROFIT -->
+      <tfoot>
             @php
-                // 1. Omzet Total = Pemasukan Sistem (Parkir) + Pemasukan Manual
+                // 1. Total Pendapatan = Total Omzet (Parkiran + Manual)
                 $omzetTotal = $total + $totalPemasukanManual;
-                $pengeluaranLainnya = 0;
 
-                // 2. Loop semua data pengeluaran kas manual di bulan tersebut
+                // 2. Total Profit = Omzet : 2
+                $totalProfit = $omzetTotal / 2;
+
+                // 3. Total Gaji Pegawai = Omzet : 2
+                $totalGajiPegawai = $omzetTotal / 2;
+
+                // 4. Total Pengeluaran = Semua total pengeluaran (dari variabel controller)
+                $totalPengeluaranSemua = $totalPengeluaranManual;
+
+                // 5. Hitung Pengeluaran Lainnya (KECUALI Gaji & Setoran)
+                $pengeluaranLainnya = 0;
                 if(isset($kasManual)) {
                     foreach($kasManual as $item) {
-                        // Hanya proses jika jenisnya pengeluaran
                         if($item->jenis == 'pengeluaran') {
-                            // Hitung nominal jika kategorinya BUKAN Gaji dan BUKAN Setoran
                             if(
                                 $item->kategori !== 'Gaji Pegawai' &&
                                 $item->kategori !== 'Setoran' &&
@@ -128,22 +125,64 @@
                     }
                 }
 
-                // 3. Rumus: (Omzet : 2) - Total Pengeluaran Lainnya
-                $profitFinal = ($omzetTotal / 2) - $pengeluaranLainnya;
+                // 6. Total Final Profit = Profit - Pengeluaran Lainnya
+                $finalProfit = $totalProfit - $pengeluaranLainnya;
             @endphp
 
+            <!-- 1. Baris Total Pendapatan (Omzet) -->
+            <tr style="background-color: #f8f9fa;">
+                <td colspan="3" class="text-right font-bold" style="padding-top: 10px;">TOTAL PENDAPATAN (OMZET):</td>
+                <td class="text-right font-bold text-green" style="padding-top: 10px;">
+                    Rp {{ number_format($omzetTotal, 0, ',', '.') }}
+                </td>
+            </tr>
+
+            <!-- 2. Baris Total Profit -->
+            <tr>
+                <td colspan="3" class="text-right font-bold">TOTAL PROFIT (OMZET : 2):</td>
+                <td class="text-right font-bold">
+                    Rp {{ number_format($totalProfit, 0, ',', '.') }}
+                </td>
+            </tr>
+
+            <!-- 3. Baris Total Gaji Pegawai -->
+            <tr>
+                <td colspan="3" class="text-right font-bold">TOTAL GAJI PEGAWAI (OMZET : 2):</td>
+                <td class="text-right font-bold">
+                    Rp {{ number_format($totalGajiPegawai, 0, ',', '.') }}
+                </td>
+            </tr>
+
+            <!-- 4. Baris Total Pengeluaran Keseluruhan -->
+            <tr>
+                <td colspan="3" class="text-right font-bold">TOTAL PENGELUARAN KESELURUHAN:</td>
+                <td class="text-right font-bold text-red">
+                    - Rp {{ number_format($totalPengeluaranSemua, 0, ',', '.') }}
+                </td>
+            </tr>
+
+            <!-- 5. Baris Uang Sisa (Omzet - Semua Pengeluaran) -->
+            <tr>
+                <td colspan="3" class="text-right font-bold" style="padding-top: 10px; border-top: 2px solid #333;">
+                    TOTAL PENDAPATAN BERSIH (UANG SISA):
+                </td>
+                <td class="text-right font-bold" style="padding-top: 10px; border-top: 2px solid #333;">
+                    Rp {{ number_format($omzetTotal - $totalPengeluaranSemua, 0, ',', '.') }}
+                </td>
+            </tr>
+
+            <!-- 6. Baris Final Profit -->
             <tr>
                 <td colspan="3" class="text-right font-bold" style="padding-top: 15px; color: #0000ff;">
                     FINAL PROFIT <br>
                     <span style="font-size: 10px; font-weight: normal; color: #555;">
-                        (Omzet : 2 - Pengeluaran selain Gaji & Setoran)
+                        (Profit - Pengeluaran selain Gaji & Setoran)
                     </span>
                 </td>
                 <td class="text-right font-bold" style="padding-top: 15px; color: #0000ff; font-size: 14px;">
-                    Rp {{ number_format($profitFinal, 0, ',', '.') }}
+                    Rp {{ number_format($finalProfit, 0, ',', '.') }}
                 </td>
             </tr>
-            <!-- SELESAI PERHITUNGAN FINAL PROFIT -->
         </tfoot>
     </table>
 
