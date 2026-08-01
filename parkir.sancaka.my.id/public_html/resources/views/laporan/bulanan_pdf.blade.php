@@ -96,45 +96,47 @@
             @endforelse
         </tbody>
        <tfoot>
+            <!-- Baris Total Pengeluaran & Saldo Bersih (yang sudah ada sebelumnya) -->
             <tr>
-                <td colspan="3" class="text-right font-bold">Total Pemasukan Manual :</td>
-                <td class="text-right font-bold text-green">+ Rp {{ number_format($totalPemasukanManual, 0, ',', '.') }}</td>
-            </tr>
-            <tr>
-                <td colspan="3" class="text-right font-bold">Total Pengeluaran Manual :</td>
-                <td class="text-right font-bold text-red">- Rp {{ number_format($totalPengeluaranManual, 0, ',', '.') }}</td>
-            </tr>
-            <tr>
-                <td colspan="3" class="text-right font-bold" style="font-size: 14px; padding-top: 10px;">TOTAL PENDAPATAN BERSIH (UANG SISA):</td>
-                <td class="text-right font-bold" style="font-size: 14px; padding-top: 10px;">
-                    Rp {{ number_format($total + $totalPemasukanManual - $totalPengeluaranManual, 0, ',', '.') }}
+                <td colspan="3" class="text-right font-bold">TOTAL PENDAPATAN BERSIH (UANG SISA):</td>
+                <td class="text-right font-bold">
+                    Rp {{ number_format($kas->saldo_bersih, 0, ',', '.') }}
                 </td>
             </tr>
 
-            <!-- PERHITUNGAN PROFIT FINAL -->
+            <!-- MULAI PERHITUNGAN FINAL PROFIT -->
             @php
-                // 1. Hitung Omzet (Total Parkir + Total Pemasukan Manual)
-                $omzet = $total + $totalPemasukanManual;
+                $omzetTotal = $kas->pemasukan_sistem;
+                $pengeluaranLainnya = 0;
 
-                // 2. Ambil total gaji pegawai (Pastikan variabel $totalGajiPegawai dikirim dari Controller)
-                // Jika belum dikirim dari controller, maka defaultnya dianggap 0 agar tidak error
-                $gajiPegawai = $totalGajiPegawai ?? 0;
+                // Loop semua rincian pengeluaran
+                foreach($kas->pengeluaran as $item) {
+                    // Hanya tambahkan nominal JIKA kategorinya BUKAN Gaji dan BUKAN Setoran
+                    if(
+                        $item->kategori !== 'Gaji Pegawai' &&
+                        $item->kategori !== 'Setoran' &&
+                        $item->kategori !== 'Setoran Parkir'
+                    ) {
+                        $pengeluaranLainnya += $item->nominal;
+                    }
+                }
 
-                // 3. Hitung pengeluaran di luar gaji
-                $pengeluaranNonGaji = $totalPengeluaranManual - $gajiPegawai;
-
-                // 4. Hitung Profit Final sesuai rumus: (Omzet / 2) - Pengeluaran non-gaji
-                $profitFinal = ($omzet / 2) - $pengeluaranNonGaji;
+                // Rumus: (Omzet : 2) - Total Pengeluaran Lainnya
+                $profitFinal = ($omzetTotal / 2) - $pengeluaranLainnya;
             @endphp
+
             <tr>
-                <td colspan="3" class="text-right font-bold" style="font-size: 14px; padding-top: 10px; color: #0000ff;">
-                    Profit Final <br>
-                    <span style="font-size: 11px; font-weight: normal; color: #555;">(Omzet : 2 - Total pengeluaran diluar gaji pegawai)</span>
+                <td colspan="3" class="text-right font-bold" style="padding-top: 15px; color: #0000ff;">
+                    FINAL PROFIT <br>
+                    <span style="font-size: 10px; font-weight: normal; color: #555;">
+                        (Omzet : 2 - Pengeluaran selain Gaji & Setoran)
+                    </span>
                 </td>
-                <td class="text-right font-bold" style="font-size: 14px; padding-top: 10px; color: #0000ff;">
+                <td class="text-right font-bold" style="padding-top: 15px; color: #0000ff; font-size: 14px;">
                     Rp {{ number_format($profitFinal, 0, ',', '.') }}
                 </td>
             </tr>
+            <!-- SELESAI PERHITUNGAN FINAL PROFIT -->
         </tfoot>
     </table>
 
