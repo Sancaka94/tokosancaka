@@ -520,12 +520,6 @@
 
         if (banner) banner.style.display = 'none';
 
-        // --- SOLUSI AUTOPLAY AUDIO (FOOLPROOF) ---
-        const banner = document.getElementById('audioActivationBanner');
-        const btnEnable = document.getElementById('btnEnableAudio');
-        let audioUnlocked = false;
-
-        if (banner) banner.style.display = 'none';
 
         // Fungsi Helper untuk mematikan semua audio
         function stopAllAudio() {
