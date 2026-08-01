@@ -30,10 +30,31 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- BAGIAN KATEGORI YANG DIPERBARUI -->
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-1">Kategori Utama</label>
-                            <input type="text" name="kategori" value="{{ old('kategori', $kas->kategori) }}" required class="form-control">
+                            <select name="kategori" required class="form-control">
+                                <option value="" disabled>-- Pilih Kategori --</option>
+
+                                <optgroup label="Kategori Pemasukan (+)">
+                                    <option value="Parkiran" {{ old('kategori', $kas->kategori) == 'Parkiran' ? 'selected' : '' }}>Parkiran</option>
+                                    <option value="Toilet" {{ old('kategori', $kas->kategori) == 'Toilet' ? 'selected' : '' }}>Toilet</option>
+                                </optgroup>
+
+                                <optgroup label="Kategori Pengeluaran (-)">
+                                    <option value="Gaji Pegawai" {{ old('kategori', $kas->kategori) == 'Gaji Pegawai' ? 'selected' : '' }}>Gaji Pegawai</option>
+                                    <option value="Operasional" {{ old('kategori', $kas->kategori) == 'Operasional' ? 'selected' : '' }}>Operasional (Aplikasi, Sampah, RT)</option>
+                                    <option value="Setoran Parkir" {{ old('kategori', $kas->kategori) == 'Setoran Parkir' ? 'selected' : '' }}>Setoran Parkir</option>
+                                    <option value="Mamah" {{ old('kategori', $kas->kategori) == 'Mamah' ? 'selected' : '' }}>Pribadi / Mamah</option>
+                                </optgroup>
+
+                                <optgroup label="Lainnya">
+                                    <option value="Lain-lain" {{ old('kategori', $kas->kategori) == 'Lain-lain' ? 'selected' : '' }}>Lain-lain</option>
+                                </optgroup>
+                            </select>
                         </div>
+                        <!-- AKHIR BAGIAN KATEGORI -->
+
                         <div>
                             <label class="block text-sm font-bold text-gray-700 mb-1">Nominal Utama (Rp)</label>
                             <input type="number" name="nominal" value="{{ old('nominal', (int)$kas->nominal) }}" required class="form-control font-bold text-blue-600">
