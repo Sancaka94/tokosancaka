@@ -79,60 +79,86 @@ class KasController extends Controller
 
     public function store(Request $request)
     {
+        // 1. Validasi Input (Ditambahkan validasi untuk kategori dan file TTD)
         $request->validate([
-            'tanggal_mulai' => 'required|date',
-            'tanggal_akhir' => 'required|date',
+            'tanggal_mulai'            => 'required|date',
+            'tanggal_akhir'            => 'required|date',
+            'pemasukan_sistem'         => 'required|numeric',
+            'nama_pembuat'             => 'nullable|string|max:255',
+            'nama_pimpinan'            => 'nullable|string|max:255',
+            'ttd_pembuat'              => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'ttd_pimpinan'             => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+
+            // Validasi array pengeluaran dinamis
+            'pengeluaran'              => 'nullable|array',
+            'pengeluaran.*.kategori'   => 'required|string', // <-- WAJIB MENGISI KATEGORI
             'pengeluaran.*.keterangan' => 'required|string',
-            'pengeluaran.*.nominal' => 'required|numeric',
-            'pemasukan_sistem' => 'required|numeric',
+            'pengeluaran.*.nominal'    => 'required|numeric|min:0',
         ]);
 
         DB::beginTransaction();
         try {
-            // Hitung ulang total pengeluaran untuk keamanan backend
+            // 2. Hitung ulang total pengeluaran untuk keamanan backend
             $totalPengeluaran = 0;
-            if ($request->has('pengeluaran')) {
+            if ($request->has('pengeluaran') && is_array($request->pengeluaran)) {
                 foreach ($request->pengeluaran as $item) {
-                    $totalPengeluaran += $item['nominal'];
+                    $totalPengeluaran += (float) $item['nominal'];
                 }
             }
-            
-            $pemasukan = $request->pemasukan_sistem ?? 0;
+
+            $pemasukan = (float) $request->pemasukan_sistem;
             $saldoBersih = $pemasukan - $totalPengeluaran;
 
-            // Proses Upload Tanda Tangan
-            $pathPembuat = $request->hasFile('ttd_pembuat') ? $request->file('ttd_pembuat')->store('ttd_kas', 'public') : null;
-            $pathPimpinan = $request->hasFile('ttd_pimpinan') ? $request->file('ttd_pimpinan')->store('ttd_kas', 'public') : null;
+            // 3. Proses Upload Tanda Tangan
+            $pathPembuat = $request->hasFile('ttd_pembuat')
+                ? $request->file('ttd_pembuat')->store('ttd_kas', 'public')
+                : null;
 
-            // Simpan Data Induk
+            $pathPimpinan = $request->hasFile('ttd_pimpinan')
+                ? $request->file('ttd_pimpinan')->store('ttd_kas', 'public')
+                : null;
+
+            // 4. Simpan Data Induk (Laporan Kas)
             $kas = KasLaporan::create([
-                'tanggal_mulai' => $request->tanggal_mulai,
-                'tanggal_akhir' => $request->tanggal_akhir,
-                'pemasukan_sistem' => $pemasukan,
+                'tanggal_mulai'     => $request->tanggal_mulai,
+                'tanggal_akhir'     => $request->tanggal_akhir,
+                'pemasukan_sistem'  => $pemasukan,
                 'total_pengeluaran' => $totalPengeluaran,
-                'saldo_bersih' => $saldoBersih,
-                'nama_pembuat' => $request->nama_pembuat,
-                'ttd_pembuat' => $pathPembuat,
-                'nama_pimpinan' => $request->nama_pimpinan,
-                'ttd_pimpinan' => $pathPimpinan,
+                'saldo_bersih'      => $saldoBersih,
+                'nama_pembuat'      => $request->nama_pembuat,
+                'ttd_pembuat'       => $pathPembuat,
+                'nama_pimpinan'     => $request->nama_pimpinan,
+                'ttd_pimpinan'      => $pathPimpinan,
             ]);
 
-            // Simpan Rincian Pengeluaran Dinamis
-            if ($request->has('pengeluaran')) {
+            // 5. Simpan Rincian Pengeluaran Dinamis beserta KATEGORI-nya
+            if ($request->has('pengeluaran') && is_array($request->pengeluaran)) {
                 foreach ($request->pengeluaran as $item) {
                     KasPengeluaran::create([
                         'kas_laporan_id' => $kas->id,
-                        'keterangan' => $item['keterangan'],
-                        'nominal' => $item['nominal'],
+                        'kategori'       => $item['kategori'], // <-- SIMPAN KATEGORI KE DATABASE
+                        'keterangan'     => $item['keterangan'],
+                        'nominal'        => $item['nominal'],
                     ]);
                 }
             }
 
             DB::commit();
             return redirect()->route('kas.index')->with('success', 'Laporan Kas berhasil disimpan!');
+
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+
+            // PENGAMANAN TAMBAHAN: Hapus file TTD yang terlanjur ter-upload jika database error
+            if (isset($pathPembuat)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($pathPembuat);
+            }
+            if (isset($pathPimpinan)) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($pathPimpinan);
+            }
+
+            // withInput() agar isian form yang sudah diketik user tidak hilang
+            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage())->withInput();
         }
     }
 
@@ -168,7 +194,7 @@ class KasController extends Controller
                     $totalPengeluaran += $item['nominal'];
                 }
             }
-            
+
             $pemasukan = $request->pemasukan_sistem;
             $saldoBersih = $pemasukan - $totalPengeluaran;
 
@@ -223,11 +249,11 @@ class KasController extends Controller
     public function destroy($id)
     {
         $kas = KasLaporan::findOrFail($id);
-        
+
         // Bersihkan foto tanda tangan di storage
         if ($kas->ttd_pembuat) Storage::disk('public')->delete($kas->ttd_pembuat);
         if ($kas->ttd_pimpinan) Storage::disk('public')->delete($kas->ttd_pimpinan);
-        
+
         $kas->delete(); // Pengeluaran otomatis terhapus jika pakai cascade
 
         return redirect()->route('kas.index')->with('success', 'Laporan Kas berhasil dihapus.');
@@ -241,7 +267,7 @@ class KasController extends Controller
     public function exportPdfSingle($id)
     {
         $kas = KasLaporan::with('pengeluaran')->findOrFail($id);
-        
+
         $pdf = Pdf::loadView('kas.pdf_single', compact('kas'));
         return $pdf->setPaper('a4', 'portrait')->stream('Laporan_Kas_'.$kas->tanggal_mulai.'_sd_'.$kas->tanggal_akhir.'.pdf');
     }

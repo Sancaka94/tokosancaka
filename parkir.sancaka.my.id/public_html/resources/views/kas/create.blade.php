@@ -32,10 +32,10 @@
 <div class="container-fluid mt-4 mb-5">
     <div class="card shadow border-0 rounded-3">
         <div class="card-body p-4">
-            
+
             <!-- HEADER PERUSAHAAN (BULLETPROOF FLEXBOX) -->
             <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px;">
-                
+
                 <!-- Kiri: Logo & Nama -->
                 <div style="display: flex; align-items: center; gap: 20px; flex: 1; min-width: 350px;">
                     <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Logo Sancaka" style="height: 85px; width: auto;">
@@ -55,17 +55,17 @@
 
             <form action="{{ route('kas.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
-                
+
                 <!-- BAGIAN INFORMASI & PEMASUKAN OTOMATIS -->
                 <div style="display: flex; flex-wrap: wrap; gap: 20px; background-color: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #dee2e6; margin-bottom: 30px;">
-                    
+
                     <!-- Rentang Waktu -->
                     <div style="flex: 1; min-width: 300px;">
                         <label style="font-weight: bold; margin-bottom: 8px; display: block; color: #333;">Rentang Waktu Laporan</label>
                         <div style="display: flex; align-items: stretch; border: 1px solid #ced4da; border-radius: 4px; overflow: hidden; background: #fff;">
                             <span style="background: #e9ecef; padding: 8px 15px; border-right: 1px solid #ced4da; font-weight: bold; display: flex; align-items: center;">Dari</span>
                             <input type="date" name="tanggal_mulai" id="tanggal_mulai" value="{{ date('Y-m-d') }}" style="border: none; padding: 8px 12px; flex: 1; outline: none;" required>
-                            
+
                             <span style="background: #e9ecef; padding: 8px 15px; border-left: 1px solid #ced4da; border-right: 1px solid #ced4da; font-weight: bold; display: flex; align-items: center;">s/d</span>
                             <input type="date" name="tanggal_akhir" id="tanggal_akhir" value="{{ date('Y-m-d') }}" style="border: none; padding: 8px 12px; flex: 1; outline: none;" required>
                         </div>
@@ -86,14 +86,15 @@
                 <div style="border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
                     <h5 style="font-weight: bold; color: #333; margin: 0;">Rincian Pengeluaran</h5>
                 </div>
-                
+
                 <div class="table-responsive shadow-sm rounded-3 mb-5" style="border: 1px solid #dee2e6;">
                     <table class="table table-hover table-bordered table-sm mb-0" id="pengeluaranTable">
                         <thead class="table-custom-header text-center align-middle">
                             <tr>
                                 <th width="5%" style="padding: 12px;">NO</th>
-                                <th width="55%" style="padding: 12px;">KETERANGAN PENGELUARAN</th>
-                                <th width="30%" style="padding: 12px;">NOMINAL (Rp)</th>
+                                <th width="25%" style="padding: 12px;">KATEGORI</th>
+                                <th width="35%" style="padding: 12px;">KETERANGAN PENGELUARAN</th>
+                                <th width="25%" style="padding: 12px;">NOMINAL (Rp)</th>
                                 <th width="10%" style="padding: 12px;">
                                     <button type="button" class="btn btn-sm btn-primary w-100 fw-bold shadow-sm" onclick="addRow()">
                                         + Tambah
@@ -104,6 +105,16 @@
                         <tbody id="tbodyItem">
                             <tr>
                                 <td class="text-center align-middle row-number fw-bold text-secondary">1</td>
+                                <td>
+                                    <select name="pengeluaran[0][kategori]" class="form-select border-0 bg-transparent shadow-none" required>
+                                        <option value="" disabled selected>Pilih Kategori...</option>
+                                        <option value="Gaji Pegawai">Gaji Pegawai</option>
+                                        <option value="Operasional">Operasional (Aplikasi, Sampah, RT)</option>
+                                        <option value="Setoran">Setoran Parkir</option>
+                                        <option value="Mamah">Mamah / Pribadi</option>
+                                        <option value="Lain-lain">Lain-lain</option>
+                                    </select>
+                                </td>
                                 <td>
                                     <input type="text" name="pengeluaran[0][keterangan]" class="form-control border-0 bg-transparent shadow-none" placeholder="Contoh: Bayar listrik..." required>
                                 </td>
@@ -119,12 +130,12 @@
                         </tbody>
                         <tfoot>
                             <tr style="background-color: #f8f9fa;">
-                                <th colspan="2" class="text-end align-middle text-danger fw-bold" style="padding: 15px;">Total Pengeluaran Rp.</th>
+                                <th colspan="3" class="text-end align-middle text-danger fw-bold" style="padding: 15px;">Total Pengeluaran Rp.</th>
                                 <th style="padding: 0;"><input type="text" id="totalPengeluaran" class="form-control text-end fw-bold text-danger bg-transparent border-0 shadow-none h-100" style="font-size: 1.1rem;" readonly value="0"></th>
                                 <th></th>
                             </tr>
                             <tr style="background-color: #fff3cd;">
-                                <th colspan="2" class="text-end align-middle fw-bold" style="padding: 15px; font-size: 1.2rem; color: #856404;">SISA SALDO BERSIH Rp.</th>
+                                <th colspan="3" class="text-end align-middle fw-bold" style="padding: 15px; font-size: 1.2rem; color: #856404;">SISA SALDO BERSIH Rp.</th>
                                 <th style="padding: 0;"><input type="text" id="saldoBersih" class="form-control text-end fw-bold bg-transparent border-0 shadow-none h-100" style="font-size: 1.2rem; color: #856404;" readonly value="0"></th>
                                 <th></th>
                             </tr>
@@ -134,18 +145,18 @@
 
                 <!-- BAGIAN TANDA TANGAN (KIRI & KANAN FIXED) -->
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-top: 50px; padding-top: 20px; border-top: 1px solid #eee; flex-wrap: wrap; gap: 20px;">
-                    
+
                     <!-- Tanda Tangan Kiri (Pembuat) -->
                     <div style="width: 280px; text-align: center;">
                         <p style="font-weight: bold; color: #6c757d; margin-bottom: 10px;">Dibuat Oleh,</p>
                         <div class="signature-box">
                             <input type="file" name="ttd_pembuat" accept="image/png, image/jpeg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;" onchange="previewSig(this, 'imgPembuat', 'textPembuat')">
-                            
+
                             <div id="textPembuat" style="color: #6c757d; font-size: 14px; pointer-events: none;">
                                 <span style="font-size: 24px; color: #0d6efd; display: block; margin-bottom: 5px;">⬆️</span>
                                 Klik Upload TTD<br><small>(PNG/JPG)</small>
                             </div>
-                            
+
                             <img id="imgPembuat" src="#" alt="TTD Pembuat" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; display: none; z-index: 5; padding: 10px;">
                         </div>
                         <div style="margin-top: 15px;">
@@ -158,19 +169,19 @@
                         <p style="font-weight: bold; color: #6c757d; margin-bottom: 10px;">Diketahui Oleh,</p>
                         <div class="signature-box">
                             <input type="file" name="ttd_pimpinan" accept="image/png, image/jpeg" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; z-index: 10; cursor: pointer;" onchange="previewSig(this, 'imgPimpinan', 'textPimpinan')">
-                            
+
                             <div id="textPimpinan" style="color: #6c757d; font-size: 14px; pointer-events: none;">
                                 <span style="font-size: 24px; color: #0d6efd; display: block; margin-bottom: 5px;">⬆️</span>
                                 Klik Upload TTD<br><small>(PNG/JPG)</small>
                             </div>
-                            
+
                             <img id="imgPimpinan" src="#" alt="TTD Pimpinan" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; display: none; z-index: 5; padding: 10px;">
                         </div>
                         <div style="margin-top: 15px;">
                             <input type="text" name="nama_pimpinan" class="form-control text-center bg-transparent shadow-none" style="border: none; border-bottom: 2px solid #333; font-weight: bold; border-radius: 0; padding: 5px 0;" value="Pimpinan AZKEN PARKIR" placeholder="Ketik Nama Pimpinan..." required>
                         </div>
                     </div>
-                    
+
                 </div>
 
                 <!-- TOMBOL SIMPAN -->
@@ -182,7 +193,7 @@
             </form>
         </div>
     </div>
-</div> 
+</div>
 
 <script>
     // LOG LOG
@@ -190,7 +201,7 @@
 
     // === JALANKAN SAAT HALAMAN DIBUKA ===
     window.onload = function() {
-        fetchPemasukan(); 
+        fetchPemasukan();
     };
 
     // === FITUR AJAX AMBIL DATA PEMASUKAN ===
@@ -220,7 +231,7 @@
             .then(data => {
                 document.getElementById('pemasukanOtomatis').value = data.total;
                 displayInput.value = formatRupiah(data.total);
-                kalkulasi(); 
+                kalkulasi();
             })
             .catch(error => {
                 console.error('Error fetching data:', error);
@@ -234,6 +245,16 @@
         let tr = `
         <tr>
             <td class="text-center align-middle row-number fw-bold text-secondary"></td>
+            <td>
+                <select name="pengeluaran[${rowIdx}][kategori]" class="form-select border-0 bg-transparent shadow-none" required>
+                    <option value="" disabled selected>Pilih Kategori...</option>
+                    <option value="Gaji Pegawai">Gaji Pegawai</option>
+                    <option value="Operasional">Operasional (Aplikasi, Sampah, RT)</option>
+                    <option value="Setoran">Setoran Parkir</option>
+                    <option value="Mamah">Mamah / Pribadi</option>
+                    <option value="Lain-lain">Lain-lain</option>
+                </select>
+            </td>
             <td><input type="text" name="pengeluaran[${rowIdx}][keterangan]" class="form-control border-0 bg-transparent shadow-none" placeholder="Keterangan pengeluaran..." required></td>
             <td><input type="number" name="pengeluaran[${rowIdx}][nominal]" class="form-control nominal text-end border-0 bg-transparent shadow-none" min="0" oninput="kalkulasi()" placeholder="0" required></td>
             <td class="text-center align-middle"><button type="button" class="btn btn-sm btn-outline-danger w-75" onclick="removeRow(this)">Hapus</button></td>
@@ -264,7 +285,7 @@
     function kalkulasi() {
         let totalPengeluaran = 0;
         let rows = document.querySelectorAll('#tbodyItem tr');
-        
+
         rows.forEach(row => {
             let nom = parseFloat(row.querySelector('.nominal').value) || 0;
             totalPengeluaran += nom;
