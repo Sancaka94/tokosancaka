@@ -126,7 +126,7 @@
                 }
 
                 // 6. Total Final Profit = Profit - Pengeluaran Lainnya
-                $finalProfit = $totalProfit - $pengeluaranLainnya;
+                $finalProfit = ($totalProfit - $pengeluaranLainnya)/2;
             @endphp
 
             <!-- 1. Baris Total Pendapatan (Omzet) -->
