@@ -635,59 +635,57 @@
             }
         });
 
-        // 👇 🔥 TAMBAHKAN KODE INI DI SINI 🔥 👇
-        // Tangkap pesan yang diteruskan dari Service Worker saat Tab tidak fokus (Background)
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.addEventListener('message', (event) => {
-                const payload = event.data;
-                console.log("Pesan berhasil ditangkap dari Service Worker: ", payload);
+       // 👇 🔥 TANGKAP PESAN BACKGROUND DENGAN BROADCAST CHANNEL 🔥 👇
+        const broadcast = new BroadcastChannel('sancaka_notif_channel');
+        broadcast.onmessage = (event) => {
+            const payload = event.data;
+            console.log("Pesan berhasil ditangkap dari Broadcast Channel: ", payload);
 
-                if (payload && payload.notification) {
-                    // 1. Bunyikan Audio
-                    if (audio) {
-                        audio.currentTime = 0;
-                        audio.loop = true;
-                        audio.play().catch(e => {
-                            console.log("Audio diblokir browser:", e);
-                            if (banner) banner.style.display = 'flex';
-                        });
-                    }
-
-                    // 2. Tampilkan SweetAlert
-                    Swal.fire({
-                        toast: true,
-                        position: 'bottom-end',
-                        icon: 'info',
-                        title: payload.notification.title || 'Pesanan Baru Masuk!',
-                        text: payload.notification.body || 'Silakan cek daftar pesanan.',
-                        showConfirmButton: true,
-                        confirmButtonText: 'Lihat',
-                        confirmButtonColor: '#000000',
-                        showCloseButton: true
-                    }).then((result) => {
-                        if (audio) {
-                            audio.pause();
-                            audio.currentTime = 0;
-                        }
-                        if (result.isConfirmed) {
-                            // Ambil link redirect dari payload (jika ada), atau fallback ke riwayat ojek
-                            const targetUrl = payload.data && payload.data.link
-                                ? payload.data.link
-                                : '/admin/pesanan-ojek/riwayat';
-                            window.location.href = targetUrl;
-                        }
+            if (payload && payload.notification) {
+                // 1. Bunyikan Audio
+                if (audio) {
+                    audio.currentTime = 0;
+                    audio.loop = true;
+                    audio.play().catch(e => {
+                        console.log("Audio diblokir browser:", e);
+                        if (banner) banner.style.display = 'flex';
                     });
-
-                    // 3. Update Lonceng Notifikasi
-                    if (typeof window.fetchNotificationCount === "function") {
-                        window.fetchNotificationCount();
-                    }
-                    if (typeof window.loadInitialNotifications === "function") {
-                        window.loadInitialNotifications();
-                    }
                 }
-            });
-        }
+
+                // 2. Tampilkan SweetAlert
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom-end',
+                    icon: 'info',
+                    title: payload.notification.title || 'Pesanan Baru Masuk!',
+                    text: payload.notification.body || 'Silakan cek daftar pesanan.',
+                    showConfirmButton: true,
+                    confirmButtonText: 'Lihat',
+                    confirmButtonColor: '#000000',
+                    showCloseButton: true
+                }).then((result) => {
+                    if (audio) {
+                        audio.pause();
+                        audio.currentTime = 0;
+                    }
+                    if (result.isConfirmed) {
+                        // Ambil link redirect dari payload (jika ada), atau fallback ke riwayat ojek
+                        const targetUrl = payload.data && payload.data.link
+                            ? payload.data.link
+                            : '/admin/pesanan-ojek/riwayat';
+                        window.location.href = targetUrl;
+                    }
+                });
+
+                // 3. Update Lonceng Notifikasi secara Realtime!
+                if (typeof window.fetchNotificationCount === "function") {
+                    window.fetchNotificationCount();
+                }
+                if (typeof window.loadInitialNotifications === "function") {
+                    window.loadInitialNotifications();
+                }
+            }
+        };
     </script>
 
 

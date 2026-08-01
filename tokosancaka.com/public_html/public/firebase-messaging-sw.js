@@ -24,12 +24,36 @@ messaging.onBackgroundMessage(function(payload) {
         data: payload.data
     };
 
+    // 1. Munculkan notifikasi bawaan OS (Windows/Mac)
     self.registration.showNotification(notificationTitle, notificationOptions);
+
+    // 2. 🔥 GUNAKAN BROADCAST CHANNEL (LEBIH KUAT DARI POSTMESSAGE) 🔥
+    const broadcast = new BroadcastChannel('sancaka_notif_channel');
+    broadcast.postMessage(payload);
 });
 
 self.addEventListener('notificationclick', function(event) {
     event.notification.close();
+
+    // Ambil link dinamis dari payload data FCM, jika tidak ada fallback ke ojek online
+    const targetUrl = (event.notification.data && event.notification.data.link)
+        ? event.notification.data.link
+        : '/admin/pesanan-ojek/riwayat';
+
     event.waitUntil(
-        clients.openWindow('/admin/pesanan-autokirim')
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+            // Cek apakah tab admin sudah terbuka, jika ya fokuskan dan arahkan ke link tujuan
+            for (let i = 0; i < windowClients.length; i++) {
+                const client = windowClients[i];
+                if (client.url.includes('/admin') && 'focus' in client) {
+                    client.navigate(targetUrl);
+                    return client.focus();
+                }
+            }
+            // Jika belum ada tab yang terbuka, buka jendela/tab baru
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
+        })
     );
 });
