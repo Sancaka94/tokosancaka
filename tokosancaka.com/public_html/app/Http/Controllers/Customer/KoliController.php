@@ -21,6 +21,16 @@ class KoliController extends Controller
 {
     public function create()
     {
+        // ==========================================================
+        // 🔥 CEK AUTH: LEMPAR AGENT KE AUTOKIRIM
+        // ==========================================================
+        $user = Auth::user();
+        if ($user && strtolower($user->role) === 'agent') {
+            return redirect()->route('customer.pesanan-autokirim.create')
+                             ->with('info', 'Sebagai Agent, Anda otomatis diarahkan ke layanan Autokirim.');
+        }
+        // ==========================================================
+
         return view('customer.pesanan.create_multi');
     }
     
@@ -98,6 +108,18 @@ class KoliController extends Controller
 
     public function cek_Ongkir(Request $request, KiriminAjaService $kirimaja)
     {
+        // ==========================================================
+        // 🔥 CEK AUTH: BLOKIR AGENT DARI CEK ONGKIR KIRIMINAJA
+        // ==========================================================
+        $user = Auth::user();
+        if ($user && strtolower($user->role) === 'agent') {
+            return response()->json([
+                'status' => false, 
+                'message' => 'Gunakan fitur Cek Ongkir pada menu Autokirim.'
+            ]);
+        }
+        // ==========================================================
+        
         try {
             $request->validate([
                 'sender_district_id' => 'required', 'receiver_district_id' => 'required',
@@ -132,6 +154,16 @@ class KoliController extends Controller
 
     public function store(Request $request, KiriminAjaService $kirimaja)
     {
+        // ==========================================================
+        // 🔥 CEK AUTH: BLOKIR AGENT JIKA MEMAKSA SUBMIT DARI SINI
+        // ==========================================================
+        $user = Auth::user();
+        if ($user && strtolower($user->role) === 'agent') {
+            return redirect()->route('customer.pesanan-autokirim.create')
+                             ->with('error', 'Akses ditolak! Agent hanya dapat memproses pesanan melalui Autokirim.');
+        }
+        // ==========================================================
+
         // 🔥 0. CEK IDEMPOTENCY KEY
         $key = $request->input('idempotency_key');
         if ($key && Pesanan::where('idempotency_key', $key)->exists()) {
@@ -566,6 +598,18 @@ class KoliController extends Controller
 
     public function storeSingle(Request $request, KiriminAjaService $kirimaja)
     {
+        // ==========================================================
+        // 🔥 CEK AUTH: BLOKIR AGENT JIKA MEMAKSA SUBMIT VIA AJAX
+        // ==========================================================
+        $user = Auth::user();
+        if ($user && strtolower($user->role) === 'agent') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akses ditolak! Akun Agent harus menggunakan layanan Autokirim.'
+            ], 403);
+        }
+        // ==========================================================
+
         // 🔥 0. CEK IDEMPOTENCY KEY (AJAX)
         $key = $request->input('idempotency_key');
         if ($key && Pesanan::where('idempotency_key', $key)->exists()) {
