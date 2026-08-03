@@ -230,7 +230,7 @@
 
         {{-- 1. KARTU TAGIHAN REAL (SELALU TAMPIL DI ATAS) --}}
         <div class="mb-4">
-            <div class="relative overflow-hidden rounded-lg bg--600 p-5 sm:p-6 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-red-500">
+           <div class="relative overflow-hidden rounded-lg bg-red-600 p-5 sm:p-6 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border border-red-500">
                 <div class="absolute right-0 top-0 -mt-6 -mr-6 opacity-10 transform rotate-12 pointer-events-none">
                     <i class="fas fa-file-invoice-dollar text-9xl text-white"></i>
                 </div>
@@ -266,7 +266,7 @@
 
             {{-- TOMBOL TOGGLE (KLIK UNTUK MUNCULKAN SEMUA) --}}
             <div class="mt-4 flex justify-center relative z-20">
-                <button type="button" onclick="toggleSemuaCard()" class="bg-white border border-gray-300 text-gray-700 hover:bg-red-50 hover:text-red-700 hover:border-red-300 px-6 py-2.5 rounded-full text-sm font-bold shadow-sm transition-all duration-300 flex items-center gap-2 group cursor-pointer">
+                <button type="button" onclick="toggleSemuaCard()" class="bg-white border border-gray-300 text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300 px-6 py-2.5 rounded-full text-sm font-bold shadow-sm transition-all duration-300 flex items-center gap-2 group cursor-pointer">
                     <span id="textToggleCard">Lihat Semua Statistik & Rincian</span>
                     <i id="iconToggleCard" class="fas fa-chevron-down transform transition-transform duration-300 group-hover:translate-y-1"></i>
                 </button>
@@ -287,7 +287,7 @@
                         <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>Asuransi</span><span class="text-gray-900">Rp {{ number_format($tagihanAsuransi ?? 0, 0, ',', '.') }}</span></div>
                         <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>RTS Fee</span><span class="text-gray-900">Rp {{ number_format($rtsFee ?? 0, 0, ',', '.') }}</span></div>
                         <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>PPN (1.1%)</span><span class="text-gray-900">Rp {{ number_format($ppnShipping ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-300 mt-2"><span class="font-bold text-gray-900">Total Shipping</span><span class="font-bold text-red-700 text-lg">Rp {{ number_format($totalInvoiceShipping ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-300 mt-2"><span class="font-bold text-gray-900">Total Shipping</span><span class="font-bold text-indigo-700 text-lg">Rp {{ number_format($totalInvoiceShipping ?? 0, 0, ',', '.') }}</span></div>
                     </div>
                 </div>
 
@@ -297,7 +297,7 @@
                         <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>COD Fee</span><span class="text-gray-900">Rp {{ number_format($baseCodFee ?? 0, 0, ',', '.') }}</span></div>
                         <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>DPP Nilai lain</span><span class="text-gray-900">Rp {{ number_format($dppCod ?? 0, 0, ',', '.') }}</span></div>
                         <div class="flex justify-between items-center hover:bg-gray-50 px-2 py-1 -mx-2 rounded transition"><span>PPN 12%</span><span class="text-gray-900">Rp {{ number_format($ppnCod ?? 0, 0, ',', '.') }}</span></div>
-                        <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-300 mt-2"><span class="font-bold text-gray-900">Total COD Fee</span><span class="font-bold text-red-700 text-lg">Rp {{ number_format($totalCodFeeAll ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="flex justify-between items-center pt-3 border-t border-dashed border-gray-300 mt-2"><span class="font-bold text-gray-900">Total COD Fee</span><span class="font-bold text-indigo-700 text-lg">Rp {{ number_format($totalCodFeeAll ?? 0, 0, ',', '.') }}</span></div>
                     </div>
                 </div>
             </div>
