@@ -277,7 +277,7 @@
 
             // Tentukan Class CSS dan Teks
             if (in_array($statusPesanan, $statusBatal)) {
-                $watermarkText = 'NOT VALID CANCEL';
+                $watermarkText = 'NOT VALID';
                 $watermarkClass = 'watermark-batal';
             } elseif (in_array($statusPesanan, $statusSukses)) {
                 $watermarkText = 'VALID SUCCESS';
