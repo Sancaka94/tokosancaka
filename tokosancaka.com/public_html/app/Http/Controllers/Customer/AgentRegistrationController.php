@@ -277,4 +277,28 @@ class AgentRegistrationController extends Controller
         return $digiflazz;
     }
 
+    /**
+     * Memproses Pendaftaran Agen Sancaka (GRATIS)
+     */
+    public function processRegistration(Request $request)
+    {
+        $user = Auth::user();
+
+        DB::beginTransaction();
+        try {
+            // Langsung ubah role menjadi Agen tanpa memotong saldo
+            $user->role = 'agent';
+            $user->save();
+
+            DB::commit();
+
+            return redirect()->route('customer.dashboard')->with('success', 'Selamat! Akun Anda berhasil diupgrade menjadi Agen Sancaka secara GRATIS.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Gagal Upgrade Agen: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Terjadi kesalahan sistem saat memproses pendaftaran agen.');
+        }
+    }
+
 }

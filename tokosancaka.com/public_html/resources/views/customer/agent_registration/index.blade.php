@@ -40,66 +40,28 @@
             <i class="fas fa-store text-9xl absolute -bottom-10 -right-10 text-blue-700 opacity-20"></i>
         </div>
 
-        {{-- Sisi Kanan: Form Eksekusi --}}
+       {{-- Sisi Kanan: Form Eksekusi --}}
         <div class="p-10 flex flex-col justify-center">
             <div class="text-center mb-8">
                 <h3 class="text-2xl font-bold text-gray-800">Syarat & Ketentuan</h3>
-                <p class="text-gray-500 text-sm">Cek saldo Anda sebelum melanjutkan.</p>
+                <p class="text-gray-500 text-sm">Bergabunglah bersama kami tanpa biaya pendaftaran.</p>
             </div>
 
-            {{-- Info Saldo User --}}
-            <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6">
-                <div class="flex justify-between items-center mb-1">
-                    <span class="text-gray-600 text-sm">Saldo Anda Saat Ini</span>
-                    <span class="font-bold {{ $user->saldo >= 500000 ? 'text-green-600' : 'text-red-600' }}">
-                        Rp {{ number_format($user->saldo, 0, ',', '.') }}
-                    </span>
-                </div>
-
-                {{-- Progress Bar Visual --}}
-                @php
-                    $percent = min(($user->saldo / 500000) * 100, 100);
-                @endphp
-                <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                    <div class="bg-{{ $user->saldo >= 500000 ? 'green' : 'red' }}-600 h-2.5 rounded-full transition-all duration-1000" style="width: {{ $percent }}%"></div>
-                </div>
-                <p class="text-xs text-gray-400 mt-2 text-right">Target: Rp 500.000</p>
-            </div>
-
-            {{-- Rincian Biaya --}}
-            <div class="space-y-3 mb-8 border-t border-b border-gray-100 py-4">
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Syarat Minimal Saldo</span>
-                    <span class="font-bold text-gray-800">Rp 500.000</span>
-                </div>
-                <div class="flex justify-between text-sm">
-                    <span class="text-gray-600">Biaya Server (Sekali Bayar)</span>
-                    <span class="font-bold text-red-600">- Rp 100.000</span>
-                </div>
-                <div class="flex justify-between text-sm bg-blue-50 p-2 rounded">
-                    <span class="text-blue-800 font-bold">Sisa Saldo Aktif</span>
-                    <span class="font-bold text-blue-800">Rp 400.000</span>
-                </div>
+            {{-- Info Pendaftaran Gratis --}}
+            <div class="bg-green-50 p-6 rounded-xl border border-green-200 mb-8 text-center shadow-sm">
+                <i class="fas fa-gift text-4xl text-green-500 mb-3"></i>
+                <p class="text-green-800 font-extrabold text-xl">Pendaftaran 100% GRATIS!</p>
+                <p class="text-green-600 text-sm mt-2">Tidak ada syarat minimal saldo awal ataupun potongan biaya server.</p>
             </div>
 
             {{-- Form Action --}}
             <form action="{{ route('agent.register.process') }}" method="POST">
                 @csrf
-
-                @if($user->saldo >= 500000)
-                    <button type="submit" onclick="return confirm('Yakin ingin mendaftar? Saldo akan terpotong Rp 100.000')"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition transform hover:-translate-y-1 flex justify-center items-center gap-2">
-                        <span>Daftar Jadi Agen Sekarang</span>
-                        <i class="fas fa-rocket"></i>
-                    </button>
-                @else
-                    <a href="{{ route('topup.index') }}" class="block w-full bg-red-50 hover:bg-red-100 text-red-600 font-bold py-4 rounded-xl text-center border border-red-200 transition">
-                        <i class="fas fa-wallet mr-2"></i> Top Up Saldo Dulu
-                    </a>
-                    <p class="text-center text-xs text-red-500 mt-3">
-                        *Saldo Anda kurang <strong>Rp {{ number_format(500000 - $user->saldo, 0, ',', '.') }}</strong>
-                    </p>
-                @endif
+                <button type="submit" onclick="return confirm('Yakin ingin mengupgrade akun menjadi Agen secara gratis?')"
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition transform hover:-translate-y-1 flex justify-center items-center gap-2">
+                    <span>Daftar Jadi Agen Sekarang</span>
+                    <i class="fas fa-rocket"></i>
+                </button>
             </form>
 
         </div>
