@@ -44,6 +44,14 @@ class PesananController extends Controller
 
     public function index(Request $request)
     {
+        // ==========================================================
+        // 🔥 CEK AUTH: LEMPAR AGENT KE RIWAYAT AUTOKIRIM
+        // ==========================================================
+        $user = Auth::user();
+        if ($user && strtolower($user->role) === 'agent') {
+            return redirect()->route('customer.pesanan-autokirim.index');
+        }
+        // ==========================================================
         // Ambil ID Customer yang sedang login
         $userId = Auth::id();
 
@@ -145,13 +153,23 @@ class PesananController extends Controller
      */
     public function create()
     {
+        // ==========================================================
+        // 🔥 CEK AUTH: LEMPAR AGENT KE AUTOKIRIM
+        // ==========================================================
+        $user = Auth::user();
+        if ($user && strtolower($user->role) === 'agent') {
+            return redirect()->route('customer.pesanan-autokirim.create')
+                             ->with('info', 'Sebagai Agent, Anda otomatis diarahkan ke layanan Autokirim.');
+        }
+        // ==========================================================
+
         $products = Product::all();
 
         // <<< TAMBAHKAN BLOK INI (1/2) >>>
         // Buat Idempotency Key unik sekali saat memuat halaman
         $idempotencyKey = (string) Str::uuid();
 
-        return view('customer.pesanan.create', compact('products'));
+        return view('customer.pesanan.create', compact('products', 'idempotencyKey'));
     }
 
     /**
@@ -354,6 +372,15 @@ class PesananController extends Controller
      */
     public function store(Request $request, KiriminAjaService $kirimaja)
     {
+        // ==========================================================
+        // 🔥 CEK AUTH: BLOKIR AGENT JIKA MEMAKSA SUBMIT DARI SINI
+        // ==========================================================
+        $user = Auth::user();
+        if ($user && strtolower($user->role) === 'agent') {
+            return redirect()->route('customer.pesanan-autokirim.create')
+                             ->with('error', 'Akses ditolak! Agent hanya dapat memproses pesanan melalui Autokirim.');
+        }
+        // ==========================================================
 
         //dd($request->all());
 
