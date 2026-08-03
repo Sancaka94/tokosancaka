@@ -40,6 +40,8 @@
             display: flex;
             flex-direction: column;
             font-size: 8pt;
+            position: relative; /* WAJIB UNTUK WATERMARK */
+            overflow: hidden;   /* WAJIB UNTUK WATERMARK AGAR TIDAK KELUAR BATAS */
         }
         /* Penyesuaian Mobile */
         @media (max-width: 640px) {
@@ -52,13 +54,81 @@
         .barcode {
             width: 100%;
             height: 50px;
-            /* Tambahkan sedikit margin vertikal agar tidak terlalu mepet dengan tulisan di atas/bawahnya */
             margin-top: 5px;
             margin-bottom: 5px;
         }
         .label { font-weight: 600; font-size: 12px; color: #374151; }
         .value { font-weight: 500; font-size: 9px; }
+
+        /* --- CSS WATERMARK DIBATALKAN (MERAH) --- */
+        .watermark-batal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 38px;
+            font-weight: 900;
+            color: rgba(220, 38, 38, 0.25) !important;
+            border: 4px solid rgba(220, 38, 38, 0.25);
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 9999;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        /* --- CSS WATERMARK CREATE (ABU-ABU) --- */
+        .watermark-create {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 42px;
+            font-weight: 900;
+            color: rgba(0, 0, 0, 0.1) !important;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 9999;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        /* --- CSS WATERMARK SUCCESS (HIJAU) --- */
+        .watermark-sukses {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 40px;
+            font-weight: 900;
+            color: rgba(34, 197, 94, 0.25) !important;
+            border: 4px solid rgba(34, 197, 94, 0.25);
+            padding: 10px 20px;
+            border-radius: 10px;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 9999;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
         @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
             body { background: none; }
             .no-print { display: none; }
             .page {
@@ -136,12 +206,13 @@
         </div>
     </div>
 
+    <!-- WADAH RESI KERTAS THERMAL -->
     <div class="page" id="label-resi">
 
         @php
             // 1. Parsing Helper Asli
             $ship = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->expedition);
-            $expeditionName = $ship['courier_name'] ?? 'SANCAKA'; // Contoh: "J&T Express", "JNE", "SiCepat"
+            $expeditionName = $ship['courier_name'] ?? 'SANCAKA'; 
             $expeditionService = $ship['service_name'] ?? 'Regular';
 
             // 2. Definisi Mapping Manual (DATABASE LINK GAMBAR)
@@ -172,34 +243,54 @@
             ];
 
             // 3. Logika Pencocokan (Smart Matching)
-            // Kita ubah nama ekspedisi menjadi huruf kecil semua dan hapus spasi agar mudah dicocokkan
-            // Contoh: "J&T Express" -> "j&texpress", "SiCepat" -> "sicepat"
             $normalizedName = strtolower(str_replace(' ', '', $expeditionName));
             $finalLogoUrl = null;
 
-            // Cek Khusus untuk J&T Cargo vs J&T Express (karena mirip)
             if (str_contains($normalizedName, 'cargo') && (str_contains($normalizedName, 'j&t') || str_contains($normalizedName, 'jt'))) {
                 $finalLogoUrl = $courierMap['jtcargo'];
             }
-            // Cek Loop Normal
             else {
                 foreach ($courierMap as $key => $url) {
-                    // Jika nama ekspedisi mengandung kata kunci (misal 'sicepat' ada di 'sicepathalu')
                     if (str_contains($normalizedName, $key)) {
                         $finalLogoUrl = $url;
-                        break; // Ketemu, berhenti looping
+                        break;
                     }
                 }
             }
 
-            // 4. Fallback Terakhir (Jika tidak ada di list manual, pakai logika lama)
             if (!$finalLogoUrl) {
                 $logoUrlFromHelper = $ship['logo_url'] ?? null;
                 $localLogoPath = strtolower(str_replace(' ', '', $expeditionName));
                 $localLogoAssetUrl = asset('public/storage/logo-ekspedisi/' . $localLogoPath . '.png');
                 $finalLogoUrl = $logoUrlFromHelper ?: $localLogoAssetUrl;
             }
+
+            // ========================================================
+            // 🔥 LOGIKA WATERMARK BERDASARKAN STATUS PESANAN 🔥
+            // ========================================================
+            $statusPesanan = strtolower($pesanan->status ?? '');
+            
+            // Kumpulan tipe status
+            $statusBatal = ['batal', 'gagal', 'dibatalkan', 'cancel', 'cancelled', 'returned'];
+            $statusSukses = ['sedang dikirim', 'perjalanan', 'terkirim', 'selesai', 'delivered', 'dikirim', 'diproses', 'success', 'completed'];
+            $statusCreate = ['sedang dibuat', 'create', 'pesanan dibuat', 'menunggu pembayaran', 'menunggu pickup', 'booking_created', 'dikemas', 'menunggu resi', 'diproses'];
+
+            // Tentukan Class CSS dan Teks
+            if (in_array($statusPesanan, $statusBatal)) {
+                $watermarkText = 'NOT VALID CANCEL';
+                $watermarkClass = 'watermark-batal';
+            } elseif (in_array($statusPesanan, $statusSukses)) {
+                $watermarkText = 'VALID SUCCESS';
+                $watermarkClass = 'watermark-sukses';
+            } else {
+                // Termasuk create, sedang dibuat, dsb.
+                $watermarkText = 'VALID CREATE';
+                $watermarkClass = 'watermark-create';
+            }
         @endphp
+
+        <!-- ELEMENT WATERMARK DITEMPATKAN DI SINI -->
+        <div class="{{ $watermarkClass }}">{{ $watermarkText }}</div>
 
         <div class="flex justify-between items-center border-b border-gray-700 pb-2">
             <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10" onerror="this.style.display='none'">
@@ -216,8 +307,7 @@
             <svg id="barcodeSancaka" class="barcode"></svg>
         </div>
 
-        {{-- LOGIKA COD DIPINDAH KE ATAS AGAR BISA DIAKSES DI KANAN/KIRI --}}
-        {{-- LOGIKA COD DIPINDAH KE ATAS AGAR BISA DIAKSES DI KANAN/KIRI --}}
+        {{-- LOGIKA COD --}}
         @php
             $pm = strtoupper($pesanan->payment_method);
             $isCodBarang = ($pm === 'CODBARANG');
@@ -234,15 +324,13 @@
                 $labelCod = "NILAI COD (BARANG + ONGKIR)";
                 $showCodBlock = true;
             } elseif ($isCodOngkir) {
-                // 🔥 PERBAIKAN: Hapus hitungan manual! Langsung tembak dari database! 🔥
-                // Karena $pesanan->price sudah mengandung Ongkir + Fee API + Asuransi + 1000
                 $nilaiCodFinal = $pesanan->price;
                 $labelCod = "NILAI COD (ONGKIR)";
                 $showCodBlock = true;
             }
         @endphp
 
-        <div class="grid grid-cols-2 gap-3 mt-2 border-b border-gray-700 pb-2">
+        <div class="grid grid-cols-2 gap-3 mt-2 border-b border-gray-700 pb-2 z-10 relative">
 
             <div class="pr-2">
                 <p class="label"><strong>PENGIRIM:</strong></p>
@@ -282,7 +370,6 @@
                             <strong>Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}</strong>
                         </p>
                     @endif
-                     {{-- BAGIAN YANG DIPERBAIKI: LOGIKA COD ONGKIR vs COD BARANG --}}
                 </div>
             </div>
 
@@ -302,7 +389,7 @@
                 </p>
 
                 <div class="flex justify-center mt-4">
-                    <div class="border border-gray-400 rounded-md p-3 inline-block">
+                    <div class="border border-gray-400 rounded-md p-3 inline-block bg-white">
                         <div id="qrcode"></div>
                     </div>
                 </div>
@@ -314,12 +401,11 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-2 text-center mt-2 border-b border-gray-700 pb-2">
+        <div class="grid grid-cols-3 gap-2 text-center mt-2 border-b border-gray-700 pb-2 z-10 relative">
             <div><p class="label"><strong>ORDER ID / RESI</strong></p><p class="value">{{ $pesanan->nomor_invoice }}</p></div>
             <div><p class="label"><strong>BERAT</strong></p><p class="value">{{ $pesanan->weight }} Gram</p></div>
             <div><p class="label"><strong>VOLUME (cm)</strong></p><p class="value">{{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }}</p></div>
             
-            {{-- PERBAIKAN: Tambahkan class "break-all" atau "break-words" agar teks panjang Lalamove turun ke bawah --}}
             <div>
                 <p class="label"><strong>LAYANAN</strong></p>
                 <p class="value break-all max-w-full leading-tight">{{ strtoupper($expeditionService) }}</p>
@@ -331,14 +417,14 @@
 
 
         @if($pesanan->resi_aktual)
-        <div class="text-center mt-3 pt-2 border-t border-gray-700">
+        <div class="text-center mt-3 pt-2 border-t border-gray-700 z-10 relative">
             <p class="label">RESI AKTUAL ({{ $pesanan->jasa_ekspedisi_aktual }})</p>
             {{-- Elemen SVG barcode aktual --}}
             <svg id="barcodeAktual" class="barcode"></svg>
         </div>
         @endif
 
-        <div class="mt-auto pt-3 text-center text-xs">
+        <div class="mt-auto pt-3 text-center text-xs z-10 relative">
             <p>Terima kasih telah menggunakan <span class="font-semibold">Sancaka Express</span>.</p>
             <p class="font-bold mt-1">{{ \Carbon\Carbon::parse($pesanan->created_at)->format('d M Y H:i') }} Kirim Paket DI TOKOSANCAKA.COM</p>
         </div>
@@ -358,11 +444,11 @@
                 if (resiSancaka) {
                     JsBarcode("#barcodeSancaka", resiSancaka, {
                         format: "CODE128",
-                        textMargin: 10,  // Jarak garis Barcode ke teks RESI
+                        textMargin: 10,  
                         fontOptions: "bold",
-                        height: 50,      // Tinggi barcode
-                        width: 3.5,      // LEBAR GARIS BARCODE (MEMPENGARUHI PANJANG KESELURUHAN)
-                        fontSize: 30     // Ukuran font teks di bawah barcode
+                        height: 50,      
+                        width: 3.5,      
+                        fontSize: 30     
                     });
                 }
                 @if($pesanan->resi_aktual)
@@ -370,11 +456,11 @@
                     if (resiAktual) {
                         JsBarcode("#barcodeAktual", resiAktual, {
                             format: "CODE128",
-                            textMargin: 10,  // Jarak garis Barcode ke teks RESI
+                            textMargin: 10,  
                             fontOptions: "bold",
-                            height: 50,      // Tinggi barcode
-                            width: 3.5,      // LEBAR GARIS BARCODE
-                            fontSize: 30     // Ukuran font teks di bawah barcode
+                            height: 50,      
+                            width: 3.5,      
+                            fontSize: 30     
                         });
                     }
                 @endif
