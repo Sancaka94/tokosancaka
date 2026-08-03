@@ -78,9 +78,9 @@
 
                 {{-- Logo: Besar saat expanded/hover, Kecil saat mini --}}
                 <img :class="(isExpanded || isHovered) ? 'w-16 h-16' : 'w-16 h-16 lg:w-10 lg:h-10 lg:mt-6'"
-                     class="object-cover rounded-full mb-3 border-4 border-gray-700 shadow-md transition-all duration-300"
-                     src="{{ $logoSrc }}"
-                     alt="Logo Toko" />
+                    class="bg-white object-cover rounded-full mb-3 border-4 border-white shadow-md transition-all duration-300"
+                    src="{{ $logoSrc }}"
+                    alt="Logo Toko" />
 
                 {{-- Nama Toko --}}
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="truncate w-40 block transition-opacity duration-200">
