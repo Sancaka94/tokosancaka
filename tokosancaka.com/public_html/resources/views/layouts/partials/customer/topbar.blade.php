@@ -18,7 +18,6 @@
             <li class="flex md:hidden items-center space-x-2">
                 <span class="fas fa-wallet font-semibold text-xs sm:text-sm text-gray-700">
                     <a class="text-green-600">Saldo Anda: </a>
-                    {{-- GANTI $saldo JADI Auth::user()->saldo --}}
                     <strong id="saldo-mobile">Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</strong>
                 </span>
                 <a href="{{ route('customer.topup.create') }}" class="inline-flex items-center justify-center w-8 h-8 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-full hover:bg-indigo-700 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -33,7 +32,6 @@
                 <i class="fas fa-wallet text-gray-500"></i>
                 <span class="font-semibold text-sm text-gray-700">
                     <a class="text-green-600">Saldo Anda: </a>
-                    {{-- GANTI $saldo JADI Auth::user()->saldo --}}
                     <strong id="saldo-desktop">Rp {{ number_format(Auth::user()->saldo ?? 0, 0, ',', '.') }}</strong>
 
                     <button type="button" class="ml-2 text-gray-400 hover:text-green-600 focus:outline-none transition-colors" onclick="refreshSaldo(this)" title="Perbarui Saldo">
@@ -47,10 +45,8 @@
                 </a>
             </li>
 
-            {{-- ... SISA KODE KE BAWAH TETAP SAMA ... --}}
-
             {{-- Tombol Ikon Toko --}}
-            @if(Auth::user() && Auth::user()->role == 'Seller')
+            @if(Auth::user() && strtolower(Auth::user()->role) == 'seller')
             <li class="relative">
                 <a href="{{ url('https://tokosancaka.com/seller/dashboard') }}"
                    class="relative align-middle rounded-md focus:outline-none p-2 text-gray-600 hover:text-indigo-600"
@@ -97,11 +93,49 @@
                 </button>
                 <div x-show="isProfileMenuOpen" @click.away="isProfileMenuOpen = false" x-transition:enter="transition ease-out duration-150" x-transition:enter-start="opacity-0 transform scale-95" x-transition:enter-end="opacity-100 transform scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="opacity-100 transform scale-100" x-transition:leave-end="opacity-0 transform scale-95" class="absolute right-0 w-56 mt-2 origin-top-right bg-white rounded-md shadow-lg">
                     <div class="p-2">
+                        
+                        {{-- ========================================== --}}
+                        {{-- LOGIKA BADGE ROLE DINAMIS                  --}}
+                        {{-- ========================================== --}}
                         <div class="px-4 py-3 border-b">
                             <p class="font-semibold text-gray-800">{{ Auth::user()->nama_lengkap }}</p>
-                            <p class="text-xs text-gray-500">{{ Auth::user()->role }}</p>
+                            
+                            @php
+                                $roleStr = strtolower(Auth::user()->role ?? 'pelanggan');
+                                $badgeClass = 'bg-gray-100 text-gray-800'; // Default
+                                $iconClass  = 'fas fa-user'; // Default
+
+                                switch ($roleStr) {
+                                    case 'agent':
+                                        $badgeClass = 'bg-green-100 text-green-800';
+                                        $iconClass  = 'fas fa-user-tie';
+                                        break;
+                                    case 'seller':
+                                        $badgeClass = 'bg-orange-100 text-orange-800';
+                                        $iconClass  = 'fas fa-store';
+                                        break;
+                                    case 'admin':
+                                        $badgeClass = 'bg-red-100 text-red-800';
+                                        $iconClass  = 'fas fa-user-shield';
+                                        break;
+                                    case 'pelanggan':
+                                    default:
+                                        $badgeClass = 'bg-blue-100 text-blue-800';
+                                        $iconClass  = 'fas fa-user';
+                                        break;
+                                }
+                            @endphp
+
+                            <div class="mt-1.5">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $badgeClass }}">
+                                    <i class="{{ $iconClass }} mr-1.5 text-[10px]"></i>
+                                    {{ ucfirst(Auth::user()->role ?? 'Pelanggan') }}
+                                </span>
+                            </div>
                         </div>
-                        <a class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 rounded-md hover:bg-indigo-600 hover:text-white" href="{{ route('customer.profile.show') }}">
+                        {{-- ========================================== --}}
+
+                        <a class="flex items-center w-full text-left px-4 py-2 mt-1 text-sm text-gray-700 rounded-md hover:bg-indigo-600 hover:text-white" href="{{ route('customer.profile.show') }}">
                             <i class="fas fa-user-circle w-4 mr-2"></i> Profil
                         </a>
 
