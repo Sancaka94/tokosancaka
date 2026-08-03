@@ -280,7 +280,7 @@ class AgentRegistrationController extends Controller
     /**
      * Memproses Pendaftaran Agen Sancaka (GRATIS)
      */
-    public function processRegistration(Request $request)
+    public function register(Request $request)
     {
         $user = Auth::user();
 
