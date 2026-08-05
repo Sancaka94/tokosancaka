@@ -105,11 +105,15 @@
 
     /* Autocomplete & Search Results */
     .search-results-container, .ui-autocomplete {
-        position: absolute; z-index: 9999 !important; background: var(--card-bg);
+        position: absolute;
+        top: 100%; /* MEMAKSA KOTAK TURUN KE BAWAH INPUT */
+        left: 0;   /* MERATAKAN KOTAK KE KIRI */
+        z-index: 9999 !important; background: var(--card-bg);
         border: 1px solid var(--input-border-color); border-radius: var(--border-radius-md);
         max-height: 300px; overflow-y: auto; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         padding: 0.5rem; margin-top: 0.25rem; list-style: none;
     }
+
     .ui-menu-item-wrapper, .search-result-item {
         padding: 10px 15px; border-bottom: 1px solid #f3f4f6; cursor: pointer; transition: background-color 0.2s;
     }
