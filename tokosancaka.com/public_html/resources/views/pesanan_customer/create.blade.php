@@ -1660,7 +1660,7 @@
             const serviceType = $('#service_type').val();
 
             $.ajax({
-                url: "{{ route('kirimaja.cekongkir') }}", type: "GET", data: tempForm.serialize(), timeout: 15000,
+                url: "{{ route('kirimaja.cekongkir') }}", type: "GET", data: tempForm.serialize(), timeout: 30000,
                 success: function(res) {
                     let allResults = [];
                     if (typeof res !== 'object' || res === null) {
