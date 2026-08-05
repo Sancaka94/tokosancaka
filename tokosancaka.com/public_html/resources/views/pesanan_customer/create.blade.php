@@ -53,6 +53,11 @@
         padding-bottom: 2rem;
     }
 
+    mapbox-search-box {
+        width: 100% !important;
+        --mapbox-search-box-width: 100%;
+    }
+
     .card {
         border: 1px solid var(--card-border-color);
         border-radius: var(--border-radius-lg);
@@ -509,12 +514,17 @@
                                 <div class="input-group"><span class="input-group-text"><i class="fas fa-phone"></i></span><input type="text" name="sender_phone" id="sender_phone" class="form-control" placeholder="08..." required></div>
                             </div>
                             <div class="col-12">
-                                <label for="sender_address_search" class="form-label">Cari Alamat (Kec/Kel/Kodepos)</label>
-                                <div class="input-group position-relative">
-                                    <span class="input-group-text"><i class="fas fa-search-location"></i></span>
-                                    <input type="text" id="sender_address_search" class="form-control" placeholder="Ketik disini untuk mencari..." autocomplete="off">
-                                    <div id="sender_address_results" class="search-results-container d-none w-100"></div>
-                                </div>
+                               <label class="form-label">Cari Alamat / Titik Jemput</label>
+                                    <!-- Pencarian Biasa (KiriminAja) -->
+                                    <div id="wrapper_sender_kiriminaja" class="input-group position-relative">
+                                        <span class="input-group-text"><i class="fas fa-search-location"></i></span>
+                                        <input type="text" id="sender_address_search" class="form-control" placeholder="Ketik Kelurahan / Kecamatan..." autocomplete="off">
+                                        <div id="sender_address_results" class="search-results-container d-none w-100"></div>
+                                    </div>
+                                    <!-- Pencarian Mapbox (Sancaka & Ojek) -->
+                                    <div id="wrapper_sender_mapbox" class="d-none w-100">
+                                        <mapbox-search-box id="sender_mapbox_search" proximity="111.4558,-7.4025" country="id" language="id" placeholder="Ketik nama tempat/jalan di Peta..."></mapbox-search-box>
+                                    </div>
                             </div>
                             <div class="col-12">
                                 <label for="sender_address" class="form-label">Detail Alamat Lengkap</label>
@@ -549,12 +559,17 @@
                                 <div class="input-group"><span class="input-group-text"><i class="fas fa-mobile-alt"></i></span><input type="text" name="receiver_phone" id="receiver_phone" class="form-control" placeholder="08..." required></div>
                             </div>
                             <div class="col-12">
-                                <label for="receiver_address_search" class="form-label">Cari Alamat (Kec/Kel/Kodepos)</label>
-                                <div class="input-group position-relative">
-                                    <span class="input-group-text"><i class="fas fa-search-location"></i></span>
-                                    <input type="text" id="receiver_address_search" class="form-control" placeholder="Ketik disini untuk mencari..." autocomplete="off">
-                                    <div id="receiver_address_results" class="search-results-container d-none w-100"></div>
-                                </div>
+                               <label class="form-label">Cari Alamat / Titik Antar</label>
+                                    <!-- Pencarian Biasa (KiriminAja) -->
+                                    <div id="wrapper_receiver_kiriminaja" class="input-group position-relative">
+                                        <span class="input-group-text"><i class="fas fa-search-location"></i></span>
+                                        <input type="text" id="receiver_address_search" class="form-control" placeholder="Ketik Kelurahan / Kecamatan..." autocomplete="off">
+                                        <div id="receiver_address_results" class="search-results-container d-none w-100"></div>
+                                    </div>
+                                    <!-- Pencarian Mapbox (Sancaka & Ojek) -->
+                                    <div id="wrapper_receiver_mapbox" class="d-none w-100">
+                                        <mapbox-search-box id="receiver_mapbox_search" proximity="111.4558,-7.4025" country="id" language="id" placeholder="Ketik nama tempat/jalan di Peta..."></mapbox-search-box>
+                                    </div>
                             </div>
                             <div class="col-12">
                                 <label for="receiver_address" class="form-label">Detail Alamat Lengkap</label>
@@ -853,15 +868,21 @@
         let pendingPaymentSelection = null;
 
         // ==============================================================================
-        // 1. INTEGRASI MAPBOX & LOGIKA MENYEMBUNYIKAN PETA
+        // 1. INTEGRASI MAPBOX & LOGIKA MENYEMBUNYIKAN PETA + FORM
         // ==============================================================================
         const mapboxToken = '{{ \App\Models\Api::getValue("MAPBOX_PUBLIC_TOKEN", "global") }}';
         let map, senderMarker, receiverMarker;
 
-        // FUNGSI TOGGLE PETA HANYA UNTUK SANCAKA EXPRESS
+        // FUNGSI TOGGLE PETA DAN FORM PENCARIAN BERDASARKAN VENDOR
         function toggleMapVisibility() {
             const vendor = $('#vendor_filter').val();
+
             if (vendor === 'sancaka_express' || vendor === 'ojek_online') {
+                // 1. Ganti Form Pencarian menjadi Mapbox (Sembunyikan KiriminAja)
+                $('#wrapper_sender_kiriminaja, #wrapper_receiver_kiriminaja').addClass('d-none');
+                $('#wrapper_sender_mapbox, #wrapper_receiver_mapbox').removeClass('d-none');
+
+                // 2. Tampilkan Peta
                 $('#map-section').hide().removeClass('d-none').slideDown(300);
                 if (map) {
                     setTimeout(() => map.resize(), 300); // Pastikan map dirender sesuai width baru
@@ -875,6 +896,11 @@
                     $('#ojek-online-summary').addClass('d-none');
                 }
             } else {
+                // 1. Kembalikan Form Pencarian ke KiriminAja biasa (Sembunyikan Mapbox)
+                $('#wrapper_sender_mapbox, #wrapper_receiver_mapbox').addClass('d-none');
+                $('#wrapper_sender_kiriminaja, #wrapper_receiver_kiriminaja').removeClass('d-none');
+
+                // 2. Sembunyikan Peta
                 $('#map-section').slideUp(300, function() {
                     $(this).addClass('d-none');
                 });
@@ -899,56 +925,55 @@
             map.addControl(geolocateControl, 'bottom-right');
 
             // ==========================================
-            // FITUR BARU: MAPBOX SEARCH JS (Pencarian Cerdas)
+            // MENGAKTIFKAN PENCARIAN MAPBOX DI DALAM FORM
             // ==========================================
-            const searchBox = new MapboxSearchBox();
-            searchBox.accessToken = mapboxgl.accessToken;
-            searchBox.options = {
-                language: 'id',
-                country: 'id'
-            };
+            const senderSearchBox = document.getElementById('sender_mapbox_search');
+            const receiverSearchBox = document.getElementById('receiver_mapbox_search');
 
-            // Set mapboxgl library agar tersambung dengan ekosistem peta
-            searchBox.mapboxgl = mapboxgl;
-            searchBox.marker = false; // Matikan pin bawaan karena kita pakai pin biru/merah sendiri
+            if (senderSearchBox && receiverSearchBox) {
+                senderSearchBox.accessToken = mapboxgl.accessToken;
+                receiverSearchBox.accessToken = mapboxgl.accessToken;
+                senderSearchBox.marker = false;
+                receiverSearchBox.marker = false;
 
-            // Masukkan kotak pencarian ke sudut kiri atas peta
-            map.addControl(searchBox, 'top-left');
+                // Fungsi menangani hasil klik alamat dari Mapbox
+                function handleMapboxSearchRetrieve(e, prefix) {
+                    const feature = e.detail.features ? e.detail.features[0] : e.detail;
+                    if (!feature || !feature.geometry) return;
 
-            // Event saat pembeli mengeklik salah satu saran tempat
-            searchBox.addEventListener('retrieve', function(e) {
-                const feature = e.detail.features ? e.detail.features[0] : e.detail;
-                if (!feature || !feature.geometry) return;
+                    const coords = feature.geometry.coordinates; // Format: [lng, lat]
+                    const shortName = feature.properties.name || feature.text || "Lokasi Terpilih";
+                    const fullAddress = feature.properties.place_formatted || feature.place_name || "";
 
-                const coords = feature.geometry.coordinates; // Format: [lng, lat]
+                    map.flyTo({ center: coords, zoom: 16, essential: true });
 
-                // MENGAMBIL NAMA TEMPAT DAN ALAMAT TERPISAH DARI MAPBOX
-                const shortName = feature.properties.name || feature.text || "Lokasi Terpilih";
-                const fullAddress = feature.properties.place_formatted || feature.place_name || "";
-                const combinedAddress = shortName + (fullAddress ? ', ' + fullAddress : '');
+                    if (prefix === 'sender') {
+                        $('#ojek_summary_origin_name').text(shortName);
+                        $('#ojek_summary_origin_address').text(fullAddress);
+                        senderMarker.setLngLat(coords);
+                        updateInputsFromMarker('sender', senderMarker, true);
+                    } else {
+                        $('#ojek_summary_destination_name').text(shortName);
+                        $('#ojek_summary_destination_address').text(fullAddress);
+                        receiverMarker.setLngLat(coords);
+                        updateInputsFromMarker('receiver', receiverMarker, true);
+                    }
 
-                map.flyTo({ center: coords, zoom: 16, essential: true });
-
-                const activeMode = $('input[name="map_mode"]:checked').val();
-
-                if (activeMode === 'receiver') {
-                    $('#receiver_address_search').val(combinedAddress);
-                    $('#ojek_summary_destination_name').text(shortName);
-                    $('#ojek_summary_destination_address').text(fullAddress);
-
-                    receiverMarker.setLngLat(coords);
-                    updateInputsFromMarker('receiver', receiverMarker, true); // TRUE = Kunci namanya, jangan ditimpa!
-                } else {
-                    $('#sender_address_search').val(combinedAddress);
-                    $('#ojek_summary_origin_name').text(shortName);
-                    $('#ojek_summary_origin_address').text(fullAddress);
-
-                    senderMarker.setLngLat(coords);
-                    updateInputsFromMarker('sender', senderMarker, true); // TRUE = Kunci namanya, jangan ditimpa!
+                    getRoute(senderMarker.getLngLat(), receiverMarker.getLngLat());
                 }
 
-                getRoute(senderMarker.getLngLat(), receiverMarker.getLngLat());
-            });
+                // Saat Pengirim dicari
+                senderSearchBox.addEventListener('retrieve', function(e) {
+                    handleMapboxSearchRetrieve(e, 'sender');
+                    $('#mode_pengirim').prop('checked', true).trigger('change');
+                });
+
+                // Saat Penerima dicari
+                receiverSearchBox.addEventListener('retrieve', function(e) {
+                    handleMapboxSearchRetrieve(e, 'receiver');
+                    $('#mode_penerima').prop('checked', true).trigger('change');
+                });
+            }
 
             const senderPopup = new mapboxgl.Popup({ offset: 25, closeButton: false, closeOnClick: false }).setHTML('<div class="fw-bold text-primary mb-1"><i class="fas fa-arrow-up"></i> PENGIRIM</div><small class="text-muted">Tarik pin biru ini</small>');
             const receiverPopup = new mapboxgl.Popup({ offset: 25, closeButton: false, closeOnClick: false }).setHTML('<div class="fw-bold text-danger mb-1"><i class="fas fa-map-marker-alt"></i> PENERIMA</div><small class="text-muted">Tarik pin merah ini</small>');
@@ -1070,7 +1095,7 @@
                     url: `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
                     success: function(data) {
                         if (data && data.display_name) {
-                            // Update input text pencarian di form atas
+                            // Update input text pencarian di form atas (Bypass KiriminAja)
                             $(`#${prefix}_address_search`).val(data.display_name).addClass('is-valid');
 
                             // =======================================================
@@ -1186,7 +1211,7 @@
                 getRoute(senderMarker.getLngLat(), receiverMarker.getLngLat());
             });
 
-            // Tambahkan juga di window.syncMarkerFromInputs (saat user cari alamat dari text input)
+            // Tambahkan juga di window.syncMarkerFromInputs (saat user cari alamat dari text input KiriminAja)
             window.syncMarkerFromInputs = function(prefix) {
                 const lat = parseFloat($(`#${prefix}_lat`).val());
                 const lng = parseFloat($(`#${prefix}_lng`).val());
@@ -1580,6 +1605,20 @@
         }
 
         function runCekOngkir() {
+            const vendorFilter = $('#vendor_filter').val();
+
+            // --- TAMBAHAN FIX: Isi dummy ID jika menggunakan kurir berbasis Peta ---
+            if (vendorFilter !== 'all' && vendorFilter !== 'kiriminaja') {
+                if (!$('#sender_district_id').val()) {
+                    $('#sender_district_id').val('1');
+                    $('#sender_subdistrict_id').val('1');
+                }
+                if (!$('#receiver_district_id').val()) {
+                    $('#receiver_district_id').val('1');
+                    $('#receiver_subdistrict_id').val('1');
+                }
+            }
+
             let formData = $('#orderForm').serializeArray();
             formData.forEach((item, index) => {
                 let realVal = $(`#${item.name.replace(/\[/g, '\\[').replace(/\]/g, '\\]')}`).attr('data-real-value');
@@ -1587,13 +1626,22 @@
             });
 
             let tempForm = $('<form>').append($.map(formData, item => $('<input>').attr({type: 'hidden', name: item.name, value: item.value})));
-            const vendorFilter = $('#vendor_filter').val();
             tempForm.append($('<input>').attr({type: 'hidden', name: 'vendor_filter', value: vendorFilter}));
 
-            const required = { 'sender_district_id': 'Alamat Pengirim', 'receiver_district_id': 'Alamat Penerima', 'item_price': 'Harga Barang', 'weight': 'Berat' };
+            // --- PERBAIKAN VALIDASI FRONTEND ---
+            let required = { 'item_price': 'Harga Barang', 'weight': 'Berat' };
+
+            if (vendorFilter === 'all' || vendorFilter === 'kiriminaja') {
+                required['sender_district_id'] = 'Alamat Pengirim (Wajib dari dropdown)';
+                required['receiver_district_id'] = 'Alamat Penerima (Wajib dari dropdown)';
+            } else {
+                required['sender_lat'] = 'Titik Koordinat Pengirim di Peta';
+                required['receiver_lat'] = 'Titik Koordinat Penerima di Peta';
+            }
+
             let missing = Object.keys(required).filter(s => !tempForm.find(`[name="${s.replace('#','')}"]`).val());
             if (missing.length > 0) {
-                Swal.fire('Data Belum Lengkap', 'Harap lengkapi form dan alamat sebelum mengecek tarif: ' + missing.map(s => required[s]).join(', '), 'warning');
+                Swal.fire('Data Belum Lengkap', 'Harap lengkapi form dan alamat sebelum mengecek tarif:\n' + missing.map(s => required[s]).join(', '), 'warning');
                 return;
             }
 
@@ -1781,8 +1829,6 @@
                 });
             }
 
-            // ==========================================================
-            // PASTE KODE TAMBAHANNYA DI SINI
             // ==========================================================
             // [AWAL TAMBAHAN] TAMPILKAN RINCIAN DI ATAS PETA JIKA SANCAKA EXPRESS
             if ($('#vendor_filter').val() === 'sancaka_express') {
