@@ -67,15 +67,19 @@ class RabItemController extends Controller
         return redirect()->route('rab.index')->with('success', 'Item RAB berhasil dihapus.');
     }
 
-    public function import(Request $request)
+ // LOG LOG
+    // Pastikan menangkap ID proyek di parameternya
+    public function import(Request $request, $proyek_id)
     {
         $request->validate([
             'file' => 'required|mimes:xlsx,xls,csv|max:2048'
         ]);
 
-        Excel::import(new RabImport, $request->file('file'));
+        // Lempar $proyek_id ke dalam class RabImport
+        Excel::import(new RabImport($proyek_id), $request->file('file'));
 
-        return redirect()->route('rab.index')->with('success', 'Data RAB dari Excel berhasil diunggah dan disimpan.');
+        // Redirect kembali ke halaman detail proyek tersebut
+        return redirect()->route('proyek.show', $proyek_id)->with('success', 'Data RAB dari Excel berhasil diunggah.');
     }
 
     public function exportPdf()

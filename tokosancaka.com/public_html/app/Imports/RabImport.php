@@ -12,9 +12,17 @@ use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 class RabImport implements ToModel, WithHeadingRow, WithBatchInserts, WithChunkReading, SkipsEmptyRows
 {
     // LOG LOG
+    protected $proyek_id;
+
+    // Menangkap ID Proyek yang dikirim dari Controller
+    public function __construct($proyek_id)
+    {
+        $this->proyek_id = $proyek_id;
+    }
+
     public function model(array $row)
     {
-        // Proteksi ekstra: Lewati jika uraian_pekerjaan kosong
+        // Lewati jika uraian pekerjaan kosong
         if (!isset($row['uraian_pekerjaan']) || trim($row['uraian_pekerjaan']) === '') {
             return null;
         }
@@ -23,6 +31,7 @@ class RabImport implements ToModel, WithHeadingRow, WithBatchInserts, WithChunkR
         $harga = isset($row['harga_satuan']) ? (float) $row['harga_satuan'] : 0;
 
         return new RabItem([
+            'proyek_id'        => $this->proyek_id, // Masukkan ID otomatis di sini
             'kategori'         => $row['kategori'] ?? null,
             'uraian_pekerjaan' => $row['uraian_pekerjaan'],
             'volume'           => $volume,
@@ -32,13 +41,11 @@ class RabImport implements ToModel, WithHeadingRow, WithBatchInserts, WithChunkR
         ]);
     }
 
-    // Insert ke database per 100 baris agar tidak membebani memori
     public function batchSize(): int
     {
         return 100;
     }
 
-    // Baca file per 100 baris
     public function chunkSize(): int
     {
         return 100;
