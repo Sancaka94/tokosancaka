@@ -125,13 +125,13 @@
                 <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Formulir Perizinan</span>
             </a>
 
-            <!-- LOG LOG -->
-            {{-- MENU: RAB PROYEK --}}
-            <a href="{{ route('rab.index') }}" wire:navigate
+           <!-- LOG LOG -->
+            {{-- MENU: PROYEK & RAB --}}
+            <a href="{{ route('proyek.index') }}" wire:navigate
                x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
-               class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('rab.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
-                <i class="fa-solid fa-calculator fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('rab.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
-                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">RAB Proyek</span>
+               class="group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-200 {{ request()->routeIs('proyek.*') ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-blue-600 hover:text-white' }}">
+                <i class="fa-solid fa-building fa-fw w-5 h-5 mr-2 flex-shrink-0 {{ request()->routeIs('proyek.*') ? 'text-white' : 'text-gray-400 group-hover:text-white' }}"></i>
+                <span :class="(isExpanded || isHovered) ? 'block' : 'block lg:hidden'" class="whitespace-nowrap">Data Proyek</span>
             </a>
 
             {{-- MENU BARU: SEMINAR & ABSENSI --}}
