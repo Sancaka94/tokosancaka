@@ -18,22 +18,30 @@
         </div>
     </div>
 
-    <!-- Header Tabel Action -->
+   <!-- Header Tabel Action -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
         <h2 class="text-lg font-bold text-gray-900">Rincian Pekerjaan</h2>
         
         <div class="flex flex-wrap items-center gap-3">
-            <!-- Form Upload Excel (Arahkan ke route import, pastikan pass ID proyek) -->
+            <!-- Form Upload Excel -->
             <form action="{{ route('rab.import', $proyek->id) }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-2 py-1 shadow-sm">
                 @csrf
                 <input type="file" name="file" accept=".xlsx,.xls,.csv" required class="block w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer">
                 <button type="submit" class="bg-black hover:bg-gray-800 text-white text-xs font-medium py-1.5 px-3 rounded whitespace-nowrap">Upload Excel</button>
             </form>
             
+            <!-- LOG LOG: TOMBOL SHARE LINK BARU -->
+            <button onclick="copyShareLink('{{ route('proyek.public.share', $proyek->id) }}', this)" class="bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 shadow-sm text-sm font-medium py-2 px-4 rounded-md transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                <span>Copy Link Public</span>
+            </button>
+            
+            <!-- Tombol PDF -->
             <a href="{{ route('rab.pdf', $proyek->id) }}" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm text-sm font-medium py-2 px-4 rounded-md flex items-center gap-2">
                 PDF
             </a>
             
+            <!-- Tombol Tambah Item -->
             <a href="{{ route('rab.create', ['proyek_id' => $proyek->id]) }}" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-md shadow-sm">
                 + Tambah Item
             </a>
@@ -169,6 +177,6 @@
             </div>
         </form>
     </div>
-    
+
 </div>
 @endsection
