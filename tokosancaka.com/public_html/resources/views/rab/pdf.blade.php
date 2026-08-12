@@ -11,9 +11,27 @@
             color: #2d3748;
             margin: 0;
             padding: 20px;
-            /* Watermark SVG untuk PDF DOMPDF */
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Ctext x='50%25' y='50%25' transform='rotate(-45 100 100)' fill='rgba(100,100,100,0.12)' font-size='11' font-family='Helvetica, Arial, sans-serif' font-weight='bold' text-anchor='middle' letter-spacing='1'%3ECV SANCAKA KARYA HUTAMA%3C/text%3E%3C/svg%3E");
-            background-repeat: repeat;
+        }
+
+        /* WATERMARK KHUSUS DOMPDF (Tanpa SVG) */
+        .watermark-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            z-index: -100; /* Berada di bawah konten teks */
+            overflow: hidden;
+        }
+        
+        .watermark-text {
+            position: absolute;
+            transform: rotate(-45deg);
+            color: #cbd5e1; /* Warna abu-abu terang bawaan Tailwind (slate-300) */
+            font-size: 14px;
+            font-weight: bold;
+            white-space: nowrap;
+            opacity: 0.5; /* Efek transparan */
         }
         
         /* Kop Surat */
@@ -144,6 +162,24 @@
     </style>
 </head>
 <body>
+
+    <!-- LAYER WATERMARK MENGGUNAKAN BLADE LOOPING -->
+    <div class="watermark-container">
+        <!-- Looping Y (Baris) -->
+        @for ($y = -20; $y <= 120; $y += 15)
+            @php 
+                /* Memberikan jarak selang-seling agar polanya seperti susunan batu bata */
+                $offsetX = ($loop->iteration % 2 == 0) ? 18 : 0; 
+            @endphp
+            
+            <!-- Looping X (Kolom) -->
+            @for ($x = -20; $x <= 120; $x += 35)
+                <div class="watermark-text" style="top: {{ $y }}%; left: {{ $x + $offsetX }}%;">
+                    CV SANCAKA KARYA HUTAMA
+                </div>
+            @endfor
+        @endfor
+    </div>
 
     <!-- KOP SURAT -->
     <div class="kop-surat">
