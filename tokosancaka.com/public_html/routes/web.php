@@ -2038,3 +2038,5 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 Route::post('/admin/save-fcm-token', [\App\Http\Controllers\PesananAutokirimController::class, 'saveFcmTokenWeb']);
 
 Route::resource('rab', RabItemController::class);
+Route::post('/rab/import', [RabItemController::class, 'import'])->name('rab.import');
+Route::get('/rab/pdf', [RabItemController::class, 'exportPdf'])->name('rab.pdf');

@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\RabItem;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\RabImport;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class RabItemController extends Controller
 {
@@ -62,5 +65,27 @@ class RabItemController extends Controller
     {
         $rab->delete();
         return redirect()->route('rab.index')->with('success', 'Item RAB berhasil dihapus.');
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls,csv|max:2048'
+        ]);
+
+        Excel::import(new RabImport, $request->file('file'));
+
+        return redirect()->route('rab.index')->with('success', 'Data RAB dari Excel berhasil diunggah dan disimpan.');
+    }
+
+    public function exportPdf()
+    {
+        // Mengelompokkan item berdasarkan kategori agar rapi di PDF
+        $items = RabItem::orderBy('kategori')->get();
+        $totalKeseluruhan = $items->sum('total');
+
+        $pdf = Pdf::loadView('rab.pdf', compact('items', 'totalKeseluruhan'));
+        
+        return $pdf->download('RAB_Proyek_Sancaka.pdf');
     }
 }
