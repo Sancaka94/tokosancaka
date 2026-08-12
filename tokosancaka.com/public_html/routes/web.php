@@ -1952,24 +1952,6 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 });
 
 
-// 1. ROUTE UNTUK HALAMAN ADMIN
-Route::prefix('admin/short-urls')->group(function () {
-    Route::get('/', [ShortUrlController::class, 'index']);
-    Route::get('/create', [ShortUrlController::class, 'create']);
-    Route::post('/bulk-destroy', [ShortUrlController::class, 'bulkDestroy']); // Route Bulk Delete
-    Route::get('/check-code', [ShortUrlController::class, 'checkCode']);
-    Route::get('/{id}/edit', [ShortUrlController::class, 'edit']); // Route Edit Form
-    Route::put('/{id}', [ShortUrlController::class, 'update']); // Route Update Action
-    Route::delete('/{id}', [ShortUrlController::class, 'destroy']);
-});
-
-// 2. ROUTE UNTUK SUBMIT/GENERATE
-Route::post('/shorten', [ShortUrlController::class, 'store']);
-
-// 3. ROUTE UNTUK REDIRECT (WAJIB DI PALING BAWAH)
-Route::get('/{short_code}', [ShortUrlController::class, 'redirect']);
-
-
 
 // ------------------------ AREA AUTOKIRIM -------------------------------
 
@@ -2037,6 +2019,29 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 
 Route::post('/admin/save-fcm-token', [\App\Http\Controllers\PesananAutokirimController::class, 'saveFcmTokenWeb']);
 
-Route::resource('rab', RabItemController::class);
-Route::post('/rab/import', [RabItemController::class, 'import'])->name('rab.import');
-Route::get('/rab/pdf', [RabItemController::class, 'exportPdf'])->name('rab.pdf');
+// =========================================================================
+// FITUR RAB PROYEK (WAJIB DI ATAS WILDCARD SHORT URL)
+// =========================================================================
+// LOG LOG
+Route::middleware(['auth'])->group(function () {
+    Route::resource('rab', RabItemController::class);
+    Route::post('/rab/import', [RabItemController::class, 'import'])->name('rab.import');
+    Route::get('/rab/pdf', [RabItemController::class, 'exportPdf'])->name('rab.pdf');
+});
+
+// 1. ROUTE UNTUK HALAMAN ADMIN
+Route::prefix('admin/short-urls')->group(function () {
+    Route::get('/', [ShortUrlController::class, 'index']);
+    Route::get('/create', [ShortUrlController::class, 'create']);
+    Route::post('/bulk-destroy', [ShortUrlController::class, 'bulkDestroy']); // Route Bulk Delete
+    Route::get('/check-code', [ShortUrlController::class, 'checkCode']);
+    Route::get('/{id}/edit', [ShortUrlController::class, 'edit']); // Route Edit Form
+    Route::put('/{id}', [ShortUrlController::class, 'update']); // Route Update Action
+    Route::delete('/{id}', [ShortUrlController::class, 'destroy']);
+});
+
+// 2. ROUTE UNTUK SUBMIT/GENERATE
+Route::post('/shorten', [ShortUrlController::class, 'store']);
+
+// 3. ROUTE UNTUK REDIRECT (WAJIB DI PALING BAWAH)
+Route::get('/{short_code}', [ShortUrlController::class, 'redirect']);
