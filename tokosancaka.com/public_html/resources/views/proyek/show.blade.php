@@ -179,4 +179,33 @@
     </div>
 
 </div>
+
+@push('scripts')
+<script>
+    function copyShareLink(url, btn) {
+        navigator.clipboard.writeText(url).then(function() {
+            // Ubah teks dan warna tombol saat berhasil disalin
+            let span = btn.querySelector('span');
+            let originalText = span.innerText;
+            
+            span.innerText = 'Tersalin!';
+            btn.classList.replace('text-indigo-700', 'text-green-700');
+            btn.classList.replace('bg-indigo-50', 'bg-green-50');
+            btn.classList.replace('border-indigo-200', 'border-green-200');
+
+            // Kembalikan seperti semula setelah 2 detik
+            setTimeout(() => {
+                span.innerText = originalText;
+                btn.classList.replace('text-green-700', 'text-indigo-700');
+                btn.classList.replace('bg-green-50', 'bg-indigo-50');
+                btn.classList.replace('border-green-200', 'border-indigo-200');
+            }, 2000);
+        }).catch(function(err) {
+            alert('Gagal menyalin link: ' + err);
+        });
+    }
+</script>
+@endpush
+
 @endsection
+
