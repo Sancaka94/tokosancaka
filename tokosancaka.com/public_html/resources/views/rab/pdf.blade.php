@@ -11,6 +11,9 @@
             color: #2d3748;
             margin: 0;
             padding: 20px;
+            /* Watermark SVG untuk PDF DOMPDF */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Ctext x='50%25' y='50%25' transform='rotate(-45 100 100)' fill='rgba(100,100,100,0.12)' font-size='11' font-family='Helvetica, Arial, sans-serif' font-weight='bold' text-anchor='middle' letter-spacing='1'%3ECV SANCAKA KARYA HUTAMA%3C/text%3E%3C/svg%3E");
+            background-repeat: repeat;
         }
         
         /* Kop Surat */

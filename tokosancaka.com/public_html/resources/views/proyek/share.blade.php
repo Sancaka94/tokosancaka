@@ -2,7 +2,10 @@
 
 @section('content')
 <!-- LOG LOG -->
-<div class="container py-5">
+<!-- Layer Watermark -->
+<div class="watermark-overlay"></div>
+
+<div class="container py-5 relative-content">
     
     <!-- Bagian Header (Logo & Informasi Proyek) -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
@@ -137,13 +140,39 @@
 
 </div>
 
-<!-- CSS Khusus untuk Print jika Client mengeklik tombol Cetak -->
+<!-- CSS Khusus untuk Print dan Watermark -->
 <style>
+    /* Konfigurasi Watermark */
+    .watermark-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none; /* Agar tidak menghalangi klik/scroll pengguna */
+        z-index: 9999; /* Pastikan selalu berada di paling atas */
+        /* SVG Data URI: Teks "CV SANCAKA KARYA HUTAMA" miring -45 derajat, warna abu-abu opacity 12% */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Ctext x='50%25' y='50%25' transform='rotate(-45 100 100)' fill='rgba(100,100,100,0.12)' font-size='11' font-family='Arial, sans-serif' font-weight='bold' text-anchor='middle' letter-spacing='1'%3ECV SANCAKA KARYA HUTAMA%3C/text%3E%3C/svg%3E");
+        background-repeat: repeat;
+    }
+
+    /* Memastikan konten web berada di bawah watermark tapi tetap bisa diklik */
+    .relative-content {
+        position: relative;
+        z-index: 1;
+    }
+
     @media print {
         body { background-color: #fff !important; }
         .sticky-top, .sticky-bottom { position: static !important; }
         .card, .table-responsive { box-shadow: none !important; border: none !important; max-height: none !important; overflow: visible !important; }
         .btn, nav, footer, header { display: none !important; }
+        
+        /* Watermark tetap dicetak saat di-print via browser */
+        .watermark-overlay {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
     }
 </style>
 @endsection
