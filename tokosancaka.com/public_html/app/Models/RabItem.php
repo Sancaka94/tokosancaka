@@ -10,4 +10,9 @@ class RabItem extends Model
     protected $table = 'rab_items';
     
     protected $guarded = ['id'];
+
+    public function proyek()
+    {
+        return $this->belongsTo(Proyek::class, 'proyek_id');
+    }
 }

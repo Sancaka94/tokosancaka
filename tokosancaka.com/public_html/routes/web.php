@@ -19,6 +19,7 @@ use App\Http\Controllers\PesananAutokirimController;
 use App\Http\Controllers\RegisterDriverOnlineController;
 use App\Http\Controllers\Customer\TopupDanaController;
 use App\Http\Controllers\RabItemController;
+use App\Http\Controllers\ProyekController;
 
 // =========================================================================
 // 1. IMPORT CONTROLLER (LENGKAP)
@@ -2024,9 +2025,13 @@ Route::post('/admin/save-fcm-token', [\App\Http\Controllers\PesananAutokirimCont
 // =========================================================================
 // LOG LOG
 Route::middleware(['auth'])->group(function () {
+    // Route untuk Master Proyek
+    Route::resource('proyek', ProyekController::class);
+    
+    // Ubah Route RAB agar menerima parameter ID proyek untuk Import/Export
+    Route::post('/proyek/{proyek}/rab/import', [RabItemController::class, 'import'])->name('rab.import');
+    Route::get('/proyek/{proyek}/rab/pdf', [RabItemController::class, 'exportPdf'])->name('rab.pdf');
     Route::resource('rab', RabItemController::class);
-    Route::post('/rab/import', [RabItemController::class, 'import'])->name('rab.import');
-    Route::get('/rab/pdf', [RabItemController::class, 'exportPdf'])->name('rab.pdf');
 });
 
 // 1. ROUTE UNTUK HALAMAN ADMIN
