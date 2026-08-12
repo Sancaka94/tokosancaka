@@ -163,13 +163,15 @@
 </head>
 <body>
 
-    <!-- LAYER WATERMARK MENGGUNAKAN BLADE LOOPING -->
+   <!-- LAYER WATERMARK MENGGUNAKAN BLADE LOOPING -->
     <div class="watermark-container">
+        @php $rowNum = 0; @endphp
         <!-- Looping Y (Baris) -->
         @for ($y = -20; $y <= 120; $y += 15)
             @php 
+                $rowNum++;
                 /* Memberikan jarak selang-seling agar polanya seperti susunan batu bata */
-                $offsetX = ($loop->iteration % 2 == 0) ? 18 : 0; 
+                $offsetX = ($rowNum % 2 == 0) ? 18 : 0; 
             @endphp
             
             <!-- Looping X (Kolom) -->
