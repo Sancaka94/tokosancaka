@@ -161,7 +161,7 @@
 
     <!-- INFORMASI PROYEK -->
     <div class="info-proyek">
-        <h2>RENCANA ANGGARAN BIAYA (RAB)</h2>
+        <h2>PENAWARAN HARGA PROYEK SANCAKA</h2>
         <table class="info-table">
             <tr>
                 <td class="info-label">Proyek</td>

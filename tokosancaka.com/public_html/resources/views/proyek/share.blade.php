@@ -10,7 +10,7 @@
             <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" alt="Sancaka Logo" class="rounded shadow-sm" style="width: 60px; height: 60px; object-fit: cover;">
             <div>
                 <h4 class="mb-0 fw-bold text-dark">CV Sancaka Karya Hutama</h4>
-                <p class="text-muted small mb-0">Rencana Anggaran Biaya (RAB) Proyek</p>
+                <p class="text-muted small mb-0">PENAWARAN HARGA PROYEK SANCAKA</p>
             </div>
         </div>
         <div>
