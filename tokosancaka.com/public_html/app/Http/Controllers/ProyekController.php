@@ -60,4 +60,12 @@ class ProyekController extends Controller
         $proyek->delete();
         return redirect()->route('proyek.index')->with('success', 'Data Proyek berhasil dihapus.');
     }
+
+    // LOG LOG
+    public function simpanCatatan(Request $request, Proyek $proyek)
+    {
+        $request->validate(['catatan' => 'nullable|string']);
+        $proyek->update(['catatan' => $request->catatan]);
+        return redirect()->route('proyek.show', $proyek->id)->with('success', 'Catatan proyek berhasil disimpan.');
+    }
 }

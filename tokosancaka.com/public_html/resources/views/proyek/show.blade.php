@@ -149,7 +149,26 @@
             </tfoot>
             @endif
         </table>
-        
+
+        <!-- LOG LOG -->
+    
+
     </div>
+
+    <!-- Form Catatan Tambahan -->
+    <div class="mt-8 bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+        <h3 class="text-lg font-bold text-gray-900 mb-3">Catatan Tambahan</h3>
+        <form action="{{ route('proyek.catatan', $proyek->id) }}" method="POST">
+            @csrf
+            <textarea name="catatan" rows="4" placeholder="Tuliskan catatan khusus untuk proyek ini (Opsional)..." 
+                class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-black focus:border-black mb-3">{{ $proyek->catatan }}</textarea>
+            <div class="flex justify-end">
+                <button type="submit" class="bg-black hover:bg-gray-800 text-white text-sm font-medium py-2 px-6 rounded-md transition-colors">
+                    Simpan Catatan
+                </button>
+            </div>
+        </form>
+    </div>
+    
 </div>
 @endsection

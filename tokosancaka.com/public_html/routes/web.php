@@ -2027,6 +2027,8 @@ Route::post('/admin/save-fcm-token', [\App\Http\Controllers\PesananAutokirimCont
 Route::middleware(['auth'])->group(function () {
     // Route untuk Master Proyek
     Route::resource('proyek', ProyekController::class);
+
+    Route::post('/proyek/{proyek}/catatan', [\App\Http\Controllers\ProyekController::class, 'simpanCatatan'])->name('proyek.catatan');
     
     // Ubah Route RAB agar menerima parameter ID proyek untuk Import/Export
     Route::post('/proyek/{proyek}/rab/import', [RabItemController::class, 'import'])->name('rab.import');
