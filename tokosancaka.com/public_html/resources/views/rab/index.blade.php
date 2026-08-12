@@ -44,17 +44,20 @@
     @endif
 
     <!-- Table Section -->
-    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-x-auto">
-        <table class="w-full text-sm text-left whitespace-nowrap">
-            <thead class="bg-gray-100 border-b-2 border-gray-200 text-gray-900 font-bold text-xs tracking-wider">
+    <!-- Menambahkan max-h-[75vh] dan overflow-auto agar tabel bisa di-scroll di dalam kotaknya -->
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-auto max-h-[75vh]">
+        <!-- Menghapus whitespace-nowrap dari tag table -->
+        <table class="w-full text-sm text-left">
+            <!-- Menambahkan sticky top-0 dan z-20 agar header tetap di atas -->
+            <thead class="bg-gray-100 border-b-2 border-gray-200 text-gray-900 font-bold text-xs tracking-wider sticky top-0 z-30 shadow-sm">
                 <tr>
-                    <th class="px-4 py-3 text-center w-12 border-r border-gray-200">No.</th>
-                    <th class="px-4 py-3 border-r border-gray-200">URAIAN PEKERJAAN</th>
-                    <th class="px-4 py-3 text-center border-r border-gray-200 w-24">VOL</th>
-                    <th class="px-4 py-3 text-center border-r border-gray-200 w-24">SAT</th>
-                    <th class="px-4 py-3 text-center border-r border-gray-200 w-40">HARGA SATUAN</th>
-                    <th class="px-4 py-3 text-center border-r border-gray-200 w-40">TOTAL</th>
-                    <th class="px-4 py-3 text-center w-28 text-gray-500">Aksi</th>
+                    <th class="px-4 py-3 text-center w-12 border-r border-gray-200 whitespace-nowrap">No.</th>
+                    <th class="px-4 py-3 border-r border-gray-200 whitespace-nowrap">URAIAN PEKERJAAN</th>
+                    <th class="px-4 py-3 text-center border-r border-gray-200 w-24 whitespace-nowrap">VOL</th>
+                    <th class="px-4 py-3 text-center border-r border-gray-200 w-24 whitespace-nowrap">SAT</th>
+                    <th class="px-4 py-3 text-center border-r border-gray-200 w-40 whitespace-nowrap">HARGA SATUAN</th>
+                    <th class="px-4 py-3 text-center border-r border-gray-200 w-40 whitespace-nowrap">TOTAL</th>
+                    <th class="px-4 py-3 text-center w-28 text-gray-500 whitespace-nowrap">Aksi</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
@@ -85,13 +88,16 @@
                     <!-- Items Loop -->
                     @foreach ($kategoriItems as $index => $item)
                         <tr class="hover:bg-gray-50 transition-colors group">
-                            <td class="px-4 py-2 text-center text-gray-500 border-r border-gray-200">{{ $index + 1 }}</td>
-                            <td class="px-4 py-2 text-gray-800 border-r border-gray-200">{{ $item->uraian_pekerjaan }}</td>
-                            <td class="px-4 py-2 text-right text-gray-800 border-r border-gray-200">{{ rtrim(rtrim(number_format($item->volume, 2, ',', '.'), '0'), ',') }}</td>
-                            <td class="px-4 py-2 text-center text-gray-500 border-r border-gray-200">{{ $item->satuan }}</td>
-                            <td class="px-4 py-2 text-right text-gray-800 border-r border-gray-200">{{ number_format($item->harga_satuan, 0, ',', '.') }}</td>
-                            <td class="px-4 py-2 text-right text-gray-900 font-medium border-r border-gray-200">{{ number_format($item->total, 0, ',', '.') }}</td>
-                            <td class="px-4 py-2 text-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <td class="px-4 py-2 text-center text-gray-500 border-r border-gray-200 align-top">{{ $index + 1 }}</td>
+                            <!-- Kolom ini diberi whitespace-normal dan min-w agar bisa turun ke bawah/responsif -->
+                            <td class="px-4 py-2 text-gray-800 border-r border-gray-200 whitespace-normal break-words min-w-[250px] align-top">
+                                {{ $item->uraian_pekerjaan }}
+                            </td>
+                            <td class="px-4 py-2 text-right text-gray-800 border-r border-gray-200 align-top whitespace-nowrap">{{ rtrim(rtrim(number_format($item->volume, 2, ',', '.'), '0'), ',') }}</td>
+                            <td class="px-4 py-2 text-center text-gray-500 border-r border-gray-200 align-top whitespace-nowrap">{{ $item->satuan }}</td>
+                            <td class="px-4 py-2 text-right text-gray-800 border-r border-gray-200 align-top whitespace-nowrap">{{ number_format($item->harga_satuan, 0, ',', '.') }}</td>
+                            <td class="px-4 py-2 text-right text-gray-900 font-medium border-r border-gray-200 align-top whitespace-nowrap">{{ number_format($item->total, 0, ',', '.') }}</td>
+                            <td class="px-4 py-2 text-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity align-top whitespace-nowrap">
                                 <a href="{{ route('rab.edit', $item->id) }}" class="text-blue-600 hover:text-blue-800 font-medium text-xs">Edit</a>
                                 <form action="{{ route('rab.destroy', $item->id) }}" method="POST" class="inline-block">
                                     @csrf
@@ -102,16 +108,16 @@
                         </tr>
                     @endforeach
 
-                    <!-- Sub Total Row -->
-                    <tr>
-                        <td class="px-4 py-3 border-r border-gray-200"></td>
-                        <td colspan="4" class="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200">
+                    <!-- Sub Total Row (Menambahkan sticky bottom-0) -->
+                    <tr class="sticky bottom-0 z-10 bg-white outline outline-1 outline-gray-200 shadow-[0_-2px_4px_rgba(0,0,0,0.02)]">
+                        <td class="px-4 py-3 border-r border-gray-200 bg-white"></td>
+                        <td colspan="4" class="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200 bg-white">
                             Sub Total {{ $roman }}
                         </td>
                         <td class="px-4 py-3 text-right font-bold text-gray-900 border-r border-gray-200 bg-gray-50">
                             {{ number_format($subTotal, 0, ',', '.') }}
                         </td>
-                        <td></td>
+                        <td class="bg-white"></td>
                     </tr>
 
                     @php $categoryIndex++; @endphp
@@ -129,9 +135,9 @@
                 @endforelse
             </tbody>
             
-            <!-- Grand Total -->
+            <!-- Grand Total (Menambahkan sticky bottom-0 dengan z-index lebih tinggi) -->
             @if(count($items) > 0)
-            <tfoot class="bg-gray-100 border-t-4 border-double border-gray-300">
+            <tfoot class="sticky bottom-0 z-20 bg-gray-100 outline outline-1 outline-gray-300 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
                 <tr>
                     <td class="px-4 py-4 border-r border-gray-200"></td>
                     <th colspan="4" class="px-4 py-4 text-center font-bold text-gray-900 border-r border-gray-200 uppercase text-sm tracking-wide">
