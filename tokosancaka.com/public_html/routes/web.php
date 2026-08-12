@@ -18,6 +18,7 @@ use App\Http\Controllers\AdminOrderOjekController;
 use App\Http\Controllers\PesananAutokirimController;
 use App\Http\Controllers\RegisterDriverOnlineController;
 use App\Http\Controllers\Customer\TopupDanaController;
+use App\Http\Controllers\RabItemController;
 
 // =========================================================================
 // 1. IMPORT CONTROLLER (LENGKAP)
@@ -2035,3 +2036,5 @@ Route::prefix('admin')->middleware(['auth'])->group(function () {
 });
 
 Route::post('/admin/save-fcm-token', [\App\Http\Controllers\PesananAutokirimController::class, 'saveFcmTokenWeb']);
+
+Route::resource('rab', RabItemController::class);
