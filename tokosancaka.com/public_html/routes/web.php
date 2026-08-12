@@ -2036,6 +2036,11 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('rab', RabItemController::class);
 });
 
+// =========================================================================
+// FITUR SHARE LINK PUBLIC RAB (TANPA LOGIN)
+// =========================================================================
+Route::get('/p/{proyek}/rab', [\App\Http\Controllers\ProyekController::class, 'sharePublic'])->name('proyek.public.share');
+
 // 1. ROUTE UNTUK HALAMAN ADMIN
 Route::prefix('admin/short-urls')->group(function () {
     Route::get('/', [ShortUrlController::class, 'index']);

@@ -68,4 +68,13 @@ class ProyekController extends Controller
         $proyek->update(['catatan' => $request->catatan]);
         return redirect()->route('proyek.show', $proyek->id)->with('success', 'Catatan proyek berhasil disimpan.');
     }
+
+    // LOG LOG
+    public function sharePublic(Proyek $proyek)
+    {
+        // Mengambil semua item RAB untuk proyek ini dan diurutkan berdasarkan kategori
+        $items = $proyek->rabItems()->orderBy('kategori')->get();
+        
+        return view('proyek.share', compact('proyek', 'items'));
+    }
 }
