@@ -3,7 +3,7 @@
 @section('content')
 <!-- LOG LOG -->
 <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-    
+
     <!-- Breadcrumb & Detail Proyek -->
     <div class="mb-6">
         <a href="{{ route('proyek.index') }}" class="text-sm text-gray-500 hover:text-blue-600 mb-3 inline-flex items-center gap-1">
@@ -21,7 +21,7 @@
    <!-- Header Tabel Action -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
         <h2 class="text-lg font-bold text-gray-900">Rincian Pekerjaan</h2>
-        
+
         <div class="flex flex-wrap items-center gap-3">
             <!-- Form Upload Excel -->
             <form action="{{ route('rab.import', $proyek->id) }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2 bg-white border border-gray-200 rounded-md px-2 py-1 shadow-sm">
@@ -29,18 +29,18 @@
                 <input type="file" name="file" accept=".xlsx,.xls,.csv" required class="block w-full text-sm text-gray-500 file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 cursor-pointer">
                 <button type="submit" class="bg-black hover:bg-gray-800 text-white text-xs font-medium py-1.5 px-3 rounded whitespace-nowrap">Upload Excel</button>
             </form>
-            
+
             <!-- LOG LOG: TOMBOL SHARE LINK BARU -->
             <button onclick="copyShareLink('{{ route('proyek.public.share', $proyek->id) }}', this)" class="bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 shadow-sm text-sm font-medium py-2 px-4 rounded-md transition-colors flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
                 <span>Copy Link Public</span>
             </button>
-            
+
             <!-- Tombol PDF -->
             <a href="{{ route('rab.pdf', $proyek->id) }}" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm text-sm font-medium py-2 px-4 rounded-md flex items-center gap-2">
                 PDF
             </a>
-            
+
             <!-- Tombol Tambah Item -->
             <a href="{{ route('rab.create', ['proyek_id' => $proyek->id]) }}" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-md shadow-sm">
                 + Tambah Item
@@ -48,13 +48,8 @@
         </div>
     </div>
 
-    <!-- Gunakan kode tabel sticky yang sudah kita buat sebelumnya di sini -->
     <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-auto max-h-[60vh]">
-         <!-- ... (Paste struktur <table> dari jawaban sebelumnya di sini) ... -->
-
-             <!-- Menghapus whitespace-nowrap dari tag table -->
         <table class="w-full text-sm text-left">
-            <!-- Menambahkan sticky top-0 dan z-20 agar header tetap di atas -->
             <thead class="bg-gray-100 border-b-2 border-gray-200 text-gray-900 font-bold text-xs tracking-wider sticky top-0 z-30 shadow-sm">
                 <tr>
                     <th class="px-4 py-3 text-center w-12 border-r border-gray-200 whitespace-nowrap">No.</th>
@@ -63,22 +58,20 @@
                     <th class="px-4 py-3 text-center border-r border-gray-200 w-24 whitespace-nowrap">SAT</th>
                     <th class="px-4 py-3 text-center border-r border-gray-200 w-40 whitespace-nowrap">HARGA SATUAN</th>
                     <th class="px-4 py-3 text-center border-r border-gray-200 w-40 whitespace-nowrap">TOTAL</th>
-                    <th class="px-4 py-3 text-center w-28 text-gray-500 whitespace-nowrap">Aksi</th>
+                    <th class="px-4 py-3 text-center w-36 text-gray-500 whitespace-nowrap">Aksi</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200">
-                @php 
-                    $grandTotal = 0; 
+                @php
+                    $grandTotal = 0;
                     $romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
                     $categoryIndex = 0;
-                    
-                    // Mengelompokkan item berdasarkan kategori langsung dari Blade
                     $groupedItems = collect($items)->groupBy('kategori');
                 @endphp
 
                 @forelse ($groupedItems as $kategori => $kategoriItems)
-                    @php 
-                        $subTotal = $kategoriItems->sum('total'); 
+                    @php
+                        $subTotal = $kategoriItems->sum('total');
                         $grandTotal += $subTotal;
                         $roman = $romanNumerals[$categoryIndex] ?? ($categoryIndex + 1);
                     @endphp
@@ -93,28 +86,52 @@
 
                     <!-- Items Loop -->
                     @foreach ($kategoriItems as $index => $item)
-                        <tr class="hover:bg-gray-50 transition-colors group">
+                        <!-- Tambahkan ID, URL update, dan class target -->
+                        <tr id="row-{{ $item->id }}" data-update-url="{{ route('rab.update', $item->id) }}" class="hover:bg-gray-50 transition-colors group">
                             <td class="px-4 py-2 text-center text-gray-500 border-r border-gray-200 align-top">{{ $index + 1 }}</td>
-                            <!-- Kolom ini diberi whitespace-normal dan min-w agar bisa turun ke bawah/responsif -->
-                            <td class="px-4 py-2 text-gray-800 border-r border-gray-200 whitespace-normal break-words min-w-[250px] align-top">
+
+                            <!-- Simpan raw data agar mudah dijadikan input value -->
+                            <td class="cell-uraian px-4 py-2 text-gray-800 border-r border-gray-200 whitespace-normal break-words min-w-[250px] align-top" data-raw="{{ $item->uraian_pekerjaan }}">
                                 {{ $item->uraian_pekerjaan }}
                             </td>
-                            <td class="px-4 py-2 text-right text-gray-800 border-r border-gray-200 align-top whitespace-nowrap">{{ rtrim(rtrim(number_format($item->volume, 2, ',', '.'), '0'), ',') }}</td>
-                            <td class="px-4 py-2 text-center text-gray-500 border-r border-gray-200 align-top whitespace-nowrap">{{ $item->satuan }}</td>
-                            <td class="px-4 py-2 text-right text-gray-800 border-r border-gray-200 align-top whitespace-nowrap">{{ number_format($item->harga_satuan, 0, ',', '.') }}</td>
-                            <td class="px-4 py-2 text-right text-gray-900 font-medium border-r border-gray-200 align-top whitespace-nowrap">{{ number_format($item->total, 0, ',', '.') }}</td>
-                            <td class="px-4 py-2 text-center space-x-3 opacity-0 group-hover:opacity-100 transition-opacity align-top whitespace-nowrap">
-                                <a href="{{ route('rab.edit', $item->id) }}" class="text-blue-600 hover:text-blue-800 font-medium text-xs">Edit</a>
-                                <form action="{{ route('rab.destroy', $item->id) }}" method="POST" class="inline-block">
+
+                            <td class="cell-volume px-4 py-2 text-right text-gray-800 border-r border-gray-200 align-top whitespace-nowrap" data-raw="{{ $item->volume }}">
+                                {{ rtrim(rtrim(number_format($item->volume, 2, ',', '.'), '0'), ',') }}
+                            </td>
+
+                            <td class="cell-satuan px-4 py-2 text-center text-gray-500 border-r border-gray-200 align-top whitespace-nowrap" data-raw="{{ $item->satuan }}">
+                                {{ $item->satuan }}
+                            </td>
+
+                            <td class="cell-harga px-4 py-2 text-right text-gray-800 border-r border-gray-200 align-top whitespace-nowrap" data-raw="{{ $item->harga_satuan }}">
+                                {{ number_format($item->harga_satuan, 0, ',', '.') }}
+                            </td>
+
+                            <td class="px-4 py-2 text-right text-gray-900 font-medium border-r border-gray-200 align-top whitespace-nowrap">
+                                {{ number_format($item->total, 0, ',', '.') }}
+                            </td>
+
+                            <!-- Kolom Aksi -->
+                            <td class="action-cell px-4 py-2 text-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity align-top whitespace-nowrap">
+
+                                <!-- Mode Normal (Edit & Hapus) -->
+                                <button type="button" onclick="editRow({{ $item->id }})" class="btn-edit text-blue-600 hover:text-blue-800 font-medium text-xs">Edit</button>
+
+                                <form action="{{ route('rab.destroy', $item->id) }}" method="POST" class="inline-block form-delete">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="text-red-600 hover:text-red-800 font-medium text-xs" onclick="return confirm('Hapus item ini?')">Hapus</button>
                                 </form>
+
+                                <!-- Mode Edit (Save & Batal) -->
+                                <button type="button" onclick="saveRow({{ $item->id }})" class="btn-save hidden text-white bg-green-600 hover:bg-green-700 font-medium text-xs px-2 py-1 rounded shadow-sm">Save</button>
+                                <button type="button" onclick="cancelEdit({{ $item->id }})" class="btn-cancel hidden text-gray-500 hover:text-gray-700 font-medium text-xs">Batal</button>
+
                             </td>
                         </tr>
                     @endforeach
 
-                    <!-- Sub Total Row (Menambahkan sticky bottom-0) -->
+                    <!-- Sub Total Row -->
                     <tr class="sticky bottom-0 z-10 bg-white outline outline-1 outline-gray-200 shadow-[0_-2px_4px_rgba(0,0,0,0.02)]">
                         <td class="px-4 py-3 border-r border-gray-200 bg-white"></td>
                         <td colspan="4" class="px-4 py-3 text-center font-bold text-gray-900 border-r border-gray-200 bg-white">
@@ -140,8 +157,8 @@
                     </tr>
                 @endforelse
             </tbody>
-            
-            <!-- Grand Total (Menambahkan sticky bottom-0 dengan z-index lebih tinggi) -->
+
+            <!-- Grand Total -->
             @if(count($items) > 0)
             <tfoot class="sticky bottom-0 z-20 bg-gray-100 outline outline-1 outline-gray-300 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
                 <tr>
@@ -159,8 +176,6 @@
         </table>
 
         <!-- LOG LOG -->
-    
-
     </div>
 
     <!-- Form Catatan Tambahan -->
@@ -168,7 +183,7 @@
         <h3 class="text-lg font-bold text-gray-900 mb-3">Catatan Tambahan</h3>
         <form action="{{ route('proyek.catatan', $proyek->id) }}" method="POST">
             @csrf
-            <textarea name="catatan" rows="4" placeholder="Tuliskan catatan khusus untuk proyek ini (Opsional)..." 
+            <textarea id="catatan-editor" name="catatan" rows="10" placeholder="Tuliskan catatan khusus untuk proyek ini (Opsional)..."
                 class="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-1 focus:ring-black focus:border-black mb-3">{{ $proyek->catatan }}</textarea>
             <div class="flex justify-end">
                 <button type="submit" class="bg-black hover:bg-gray-800 text-white text-sm font-medium py-2 px-6 rounded-md transition-colors">
@@ -184,16 +199,14 @@
 <script>
     function copyShareLink(url, btn) {
         navigator.clipboard.writeText(url).then(function() {
-            // Ubah teks dan warna tombol saat berhasil disalin
             let span = btn.querySelector('span');
             let originalText = span.innerText;
-            
+
             span.innerText = 'Tersalin!';
             btn.classList.replace('text-indigo-700', 'text-green-700');
             btn.classList.replace('bg-indigo-50', 'bg-green-50');
             btn.classList.replace('border-indigo-200', 'border-green-200');
 
-            // Kembalikan seperti semula setelah 2 detik
             setTimeout(() => {
                 span.innerText = originalText;
                 btn.classList.replace('text-green-700', 'text-indigo-700');
@@ -204,8 +217,128 @@
             alert('Gagal menyalin link: ' + err);
         });
     }
+
+    // --- SCRIPT UNTUK INLINE EDITING ---
+    function editRow(id) {
+        let row = document.getElementById('row-' + id);
+        let fields = ['uraian', 'volume', 'satuan', 'harga'];
+
+        // Mencegah kolom aksi menghilang (hover opacity dihilangkan paksa)
+        let actionCell = row.querySelector('.action-cell');
+        actionCell.classList.remove('opacity-0', 'group-hover:opacity-100');
+
+        fields.forEach(field => {
+            let td = row.querySelector('.cell-' + field);
+            let rawValue = td.getAttribute('data-raw');
+
+            // Simpan HTML asli ke memori agar bisa dibatalkan (Cancel)
+            if (!td.hasAttribute('data-original-html')) {
+                td.setAttribute('data-original-html', td.innerHTML);
+            }
+
+            if (field === 'uraian') {
+                td.innerHTML = `<textarea class="input-${field} w-full border-2 border-blue-400 focus:border-blue-600 rounded px-2 py-1 text-sm outline-none shadow-sm" rows="2">${rawValue}</textarea>`;
+            } else {
+                let inputType = (field === 'volume' || field === 'harga') ? 'number' : 'text';
+                let step = field === 'volume' ? 'any' : '1';
+                td.innerHTML = `<input type="${inputType}" step="${step}" class="input-${field} w-full border-2 border-blue-400 focus:border-blue-600 rounded px-2 py-1 text-sm outline-none shadow-sm" value="${rawValue}">`;
+            }
+        });
+
+        // Ganti visibilitas tombol
+        row.querySelector('.btn-edit').classList.add('hidden');
+        row.querySelector('.form-delete').classList.add('hidden');
+        row.querySelector('.btn-save').classList.remove('hidden');
+        row.querySelector('.btn-cancel').classList.remove('hidden');
+    }
+
+    function cancelEdit(id) {
+        let row = document.getElementById('row-' + id);
+        let fields = ['uraian', 'volume', 'satuan', 'harga'];
+
+        // Kembalikan efek hover
+        let actionCell = row.querySelector('.action-cell');
+        actionCell.classList.add('opacity-0', 'group-hover:opacity-100');
+
+        fields.forEach(field => {
+            let td = row.querySelector('.cell-' + field);
+            td.innerHTML = td.getAttribute('data-original-html'); // Kembalikan ke teks biasa
+        });
+
+        // Kembalikan visibilitas tombol aslinya
+        row.querySelector('.btn-edit').classList.remove('hidden');
+        row.querySelector('.form-delete').classList.remove('hidden');
+        row.querySelector('.btn-save').classList.add('hidden');
+        row.querySelector('.btn-cancel').classList.add('hidden');
+    }
+
+    async function saveRow(id) {
+        let row = document.getElementById('row-' + id);
+        let btnSave = row.querySelector('.btn-save');
+        let originalBtnText = btnSave.innerText;
+
+        // Ubah tombol jadi "Saving..."
+        btnSave.innerText = 'Saving...';
+        btnSave.disabled = true;
+
+        let uraian = row.querySelector('.input-uraian').value;
+        let volume = row.querySelector('.input-volume').value;
+        let satuan = row.querySelector('.input-satuan').value;
+        let harga = row.querySelector('.input-harga').value;
+
+        // Form Setup (Laravel menggunakan _method=PUT untuk update controller)
+        let formData = new FormData();
+        formData.append('_token', '{{ csrf_token() }}');
+        formData.append('_method', 'PUT');
+        formData.append('uraian_pekerjaan', uraian);
+        formData.append('volume', volume);
+        formData.append('satuan', satuan);
+        formData.append('harga_satuan', harga);
+
+        let updateUrl = row.getAttribute('data-update-url');
+
+        try {
+            // Panggil API Route Update milik Controller asli bawaan Anda
+            let response = await fetch(updateUrl, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (response.ok) {
+                alert('Berhasil! Data telah diupdate.');
+                window.location.reload(); // Reload halaman untuk kalkulasi subtotal otomatis
+            } else {
+                alert('Gagal menyimpan data! Pastikan kolom tidak kosong.');
+                btnSave.innerText = originalBtnText;
+                btnSave.disabled = false;
+            }
+        } catch (error) {
+            alert('Terjadi kesalahan pada server.');
+            btnSave.innerText = originalBtnText;
+            btnSave.disabled = false;
+        }
+    }
+</script>
+
+<script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<script>
+    tinymce.init({
+        selector: '#catatan-editor',
+        menubar: false,
+        plugins: 'lists link table',
+        toolbar: 'undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat',
+        height: 400,
+        branding: false,
+        setup: function (editor) {
+            editor.on('change', function () {
+                editor.save();
+            });
+        }
+    });
 </script>
 @endpush
 
 @endsection
-
