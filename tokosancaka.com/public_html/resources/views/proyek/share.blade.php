@@ -226,8 +226,8 @@
             margin: 0 !important;
         }
 
-        /* Membersihkan padding/margin dari Card Bootstrap */
-        .card { border: none !important; box-shadow: none !important; margin-bottom: 15px !important; }
+        /* Membersihkan padding/margin dan MENGHILANGKAN BACKGROUND ABU-ABU */
+        .card { border: none !important; box-shadow: none !important; margin-bottom: 15px !important; background-color: transparent !important; }
         .card-body { padding: 0 !important; border: none !important; background-color: transparent !important; }
         
         /* Merapikan tabel menjadi gaya Excel (Garis tegas hitam) */
@@ -239,10 +239,10 @@
             font-size: 10pt !important; 
             vertical-align: middle !important;
         }
+        
+        /* PERUBAHAN: Menghilangkan background warna abu-abu pada Header Tabel dan Kategori */
         .table-light, .bg-light { 
-            background-color: #f0f0f0 !important; 
-            -webkit-print-color-adjust: exact; 
-            print-color-adjust: exact; 
+            background-color: transparent !important; 
         }
 
         /* Menyamarkan input field menjadi teks biasa */
