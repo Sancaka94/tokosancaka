@@ -62,7 +62,7 @@
                             <th class="text-center py-3 border-end text-muted" style="width: 10%;">VOL</th>
                             <th class="text-center py-3 border-end text-muted" style="width: 10%;">SAT</th>
                             <th class="text-end py-3 border-end text-muted" style="width: 15%;">HARGA SATUAN</th>
-                            <th class="text-end py-3 text-muted" style="width: 20%;">TOTAL</th>
+                            <th class="text-end py-3 text-muted" style="width: 20%;">SUB TOTAL</th>
                         </tr>
                     </thead>
                    <tbody class="border-top-0" id="tableBody">
@@ -149,7 +149,7 @@
                     <tfoot class="sticky-bottom bg-light border-top border-2 shadow-sm" style="z-index: 1;">
                         <tr>
                             <td class="border-end"></td>
-                            <th colspan="3" class="text-center py-3 fw-bold text-dark border-end text-uppercase">TOTAL KESELURUHAN</th>
+                            <th colspan="3" class="text-center py-3 fw-bold text-dark border-end text-uppercase">TOTAL KESELURUHAN (FINAL)</th>
                             <th class="text-end py-3 fw-bold text-dark border-end fs-6 text-nowrap pe-3" id="grandTotalText">Rp {{ number_format($grandTotal, 0, ',', '.') }}</th>
                             <th></th>
                         </tr>
