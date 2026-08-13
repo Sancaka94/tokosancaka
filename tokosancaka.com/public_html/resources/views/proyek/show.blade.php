@@ -218,12 +218,11 @@
         });
     }
 
-    // --- SCRIPT UNTUK INLINE EDITING ---
+    // --- SCRIPT UNTUK INLINE EDITING TETAP SAMA SEPERTI SEBELUMNYA ---
     function editRow(id) {
         let row = document.getElementById('row-' + id);
         let fields = ['uraian', 'volume', 'satuan', 'harga'];
 
-        // Mencegah kolom aksi menghilang (hover opacity dihilangkan paksa)
         let actionCell = row.querySelector('.action-cell');
         actionCell.classList.remove('opacity-0', 'group-hover:opacity-100');
 
@@ -231,7 +230,6 @@
             let td = row.querySelector('.cell-' + field);
             let rawValue = td.getAttribute('data-raw');
 
-            // Simpan HTML asli ke memori agar bisa dibatalkan (Cancel)
             if (!td.hasAttribute('data-original-html')) {
                 td.setAttribute('data-original-html', td.innerHTML);
             }
@@ -245,7 +243,6 @@
             }
         });
 
-        // Ganti visibilitas tombol
         row.querySelector('.btn-edit').classList.add('hidden');
         row.querySelector('.form-delete').classList.add('hidden');
         row.querySelector('.btn-save').classList.remove('hidden');
@@ -256,16 +253,14 @@
         let row = document.getElementById('row-' + id);
         let fields = ['uraian', 'volume', 'satuan', 'harga'];
 
-        // Kembalikan efek hover
         let actionCell = row.querySelector('.action-cell');
         actionCell.classList.add('opacity-0', 'group-hover:opacity-100');
 
         fields.forEach(field => {
             let td = row.querySelector('.cell-' + field);
-            td.innerHTML = td.getAttribute('data-original-html'); // Kembalikan ke teks biasa
+            td.innerHTML = td.getAttribute('data-original-html');
         });
 
-        // Kembalikan visibilitas tombol aslinya
         row.querySelector('.btn-edit').classList.remove('hidden');
         row.querySelector('.form-delete').classList.remove('hidden');
         row.querySelector('.btn-save').classList.add('hidden');
@@ -277,7 +272,6 @@
         let btnSave = row.querySelector('.btn-save');
         let originalBtnText = btnSave.innerText;
 
-        // Ubah tombol jadi "Saving..."
         btnSave.innerText = 'Saving...';
         btnSave.disabled = true;
 
@@ -286,7 +280,6 @@
         let satuan = row.querySelector('.input-satuan').value;
         let harga = row.querySelector('.input-harga').value;
 
-        // Form Setup (Laravel menggunakan _method=PUT untuk update controller)
         let formData = new FormData();
         formData.append('_token', '{{ csrf_token() }}');
         formData.append('_method', 'PUT');
@@ -298,7 +291,6 @@
         let updateUrl = row.getAttribute('data-update-url');
 
         try {
-            // Panggil API Route Update milik Controller asli bawaan Anda
             let response = await fetch(updateUrl, {
                 method: 'POST',
                 body: formData,
@@ -309,7 +301,7 @@
 
             if (response.ok) {
                 alert('Berhasil! Data telah diupdate.');
-                window.location.reload(); // Reload halaman untuk kalkulasi subtotal otomatis
+                window.location.reload();
             } else {
                 alert('Gagal menyimpan data! Pastikan kolom tidak kosong.');
                 btnSave.innerText = originalBtnText;
@@ -323,21 +315,20 @@
     }
 </script>
 
-<script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<!-- INI ADALAH SCRIPT TINYMCE YANG BARU DENGAN API KEY ANDA -->
+<script src="https://cdn.tiny.cloud/1/hsfvd81ihieoadc6tlyol8xucnq3i1n2vzuzfr1948kqqcx5/tinymce/8/tinymce.min.js" referrerpolicy="origin" crossorigin="anonymous"></script>
 <script>
-    tinymce.init({
-        selector: '#catatan-editor',
-        menubar: false,
-        plugins: 'lists link table',
-        toolbar: 'undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat',
-        height: 400,
-        branding: false,
-        setup: function (editor) {
-            editor.on('change', function () {
-                editor.save();
-            });
-        }
-    });
+  tinymce.init({
+    selector: '#catatan-editor', // Pastikan menggunakan ID ini agar menargetkan textarea yang benar
+    plugins: 'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
+    toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
+    height: 400,
+    setup: function (editor) {
+        editor.on('change', function () {
+            editor.save(); // Wajib agar isi ketikan tersimpan ke textarea asli saat form di-submit
+        });
+    }
+  });
 </script>
 @endpush
 
