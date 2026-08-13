@@ -205,10 +205,14 @@
     function tambahBaris() {
         const tbody = document.getElementById('tableBody');
         const newRow = document.createElement('tr');
-
-        // Kita menggunakan name="new_items[...]" agar di backend mudah dibedakan dengan item lama
+        
+        // Menggunakan name="new_items[...]" agar di backend mudah dibedakan dengan item lama
         newRow.innerHTML = `
-            <td class="text-center text-muted border-end align-middle">+</td>
+            <td class="text-center border-end align-middle">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="hapusBaris(this)" title="Hapus baris ini">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
             <td class="border-end align-middle">
                 <input type="text" name="new_items[${newRowIndex}][uraian_pekerjaan]" class="form-control form-control-sm" placeholder="Uraian Pekerjaan Baru" required>
             </td>
@@ -225,6 +229,12 @@
         `;
         tbody.appendChild(newRow);
         newRowIndex++;
+    }
+
+    // 3. Fungsi untuk menghapus baris baru
+    function hapusBaris(button) {
+        // Mencari elemen <tr> terdekat dari tombol yang diklik, lalu menghapusnya
+        button.closest('tr').remove();
     }
 </script>
 @endsection
