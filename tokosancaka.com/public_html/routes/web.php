@@ -2029,7 +2029,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('proyek', ProyekController::class);
 
     Route::post('/proyek/{proyek}/catatan', [\App\Http\Controllers\ProyekController::class, 'simpanCatatan'])->name('proyek.catatan');
-    
+
     // Ubah Route RAB agar menerima parameter ID proyek untuk Import/Export
     Route::post('/proyek/{proyek}/rab/import', [RabItemController::class, 'import'])->name('rab.import');
     Route::get('/proyek/{proyek}/rab/pdf', [RabItemController::class, 'exportPdf'])->name('rab.pdf');
@@ -2061,3 +2061,5 @@ Route::post('/shorten', [ShortUrlController::class, 'store']);
 
 // 3. ROUTE UNTUK REDIRECT (WAJIB DI PALING BAWAH)
 Route::get('/{short_code}', [ShortUrlController::class, 'redirect']);
+
+

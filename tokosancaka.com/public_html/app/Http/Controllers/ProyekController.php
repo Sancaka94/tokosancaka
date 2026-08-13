@@ -145,6 +145,14 @@ class ProyekController extends Controller
             }
         }
 
+        // 5. EKSEKUSI HAPUS DATA ITEM LAMA
+        // Jika ada id item lama yang ditandai untuk dihapus (karena icon tong sampah diklik)
+        if ($request->has('deleted_items') && is_array($request->deleted_items)) {
+            \App\Models\RabItem::whereIn('id', $request->deleted_items)
+                ->where('proyek_id', $proyek->id) // Keamanan tambahan agar hanya bisa menghapus RAB proyek ini
+                ->delete();
+        }
+
         return redirect()->back()->with('success', 'Data RAB dan Catatan berhasil diperbarui!');
     }
 }

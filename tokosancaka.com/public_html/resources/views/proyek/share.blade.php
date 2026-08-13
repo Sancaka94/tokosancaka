@@ -10,7 +10,10 @@
     <!-- FORM BUNGKUS KESELURUHAN -->
     <form action="{{ route('proyek.updateShare', $proyek->id) }}" method="POST">
         @csrf
-        @method('PUT') <!-- Sesuaikan method dengan route Anda -->
+        @method('PUT')
+
+        <!-- WADAH UNTUK MENAMPUNG ID ITEM LAMA YANG DIHAPUS -->
+        <div id="deletedItemsContainer"></div>
 
         <!-- Bagian Header (Logo & Informasi Proyek) -->
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
@@ -22,11 +25,11 @@
                 </div>
             </div>
             <div class="d-flex gap-2">
-                <!-- Tombol Print Browser -->
-                <button type="button" onclick="window.print()" class="btn btn-dark btn-sm px-4 rounded-3 shadow-sm fw-bold">
+                <!-- Tombol Print Browser (Diubah fungsinya ke siapkanPrint) -->
+                <button type="button" onclick="siapkanPrint()" class="btn btn-dark btn-sm px-4 rounded-3 shadow-sm fw-bold">
                     <i class="fas fa-print me-1"></i> Cetak / Simpan PDF
                 </button>
-                <!-- Tombol Simpan (BARU) -->
+                <!-- Tombol Simpan -->
                 <button type="submit" class="btn btn-success btn-sm px-4 rounded-3 shadow-sm fw-bold">
                     <i class="fas fa-save me-1"></i> Simpan Perubahan
                 </button>
@@ -54,7 +57,7 @@
                 <table class="table table-hover align-middle mb-0 text-nowrap" id="rabTable">
                     <thead class="table-light sticky-top shadow-sm" style="z-index: 2;">
                         <tr>
-                            <th class="text-center py-3 border-end text-muted" style="width: 5%;">No.</th>
+                            <th class="text-center py-3 border-end text-muted" style="width: 5%;">Act.</th>
                             <th class="py-3 border-end text-muted" style="width: 40%;">URAIAN PEKERJAAN</th>
                             <th class="text-center py-3 border-end text-muted" style="width: 10%;">VOL</th>
                             <th class="text-center py-3 border-end text-muted" style="width: 10%;">SAT</th>
@@ -85,28 +88,42 @@
                                 </td>
                             </tr>
 
-                            <!-- Looping Item -->
+                            <!-- Looping Item Lama -->
                             @foreach ($kategoriItems as $index => $item)
-                                <tr>
-                                    <td class="text-center text-muted border-end align-middle">{{ $index + 1 }}</td>
+                                <tr class="item-row" data-kategori="{{ $categoryIndex }}">
+                                    <td class="text-center text-muted border-end align-middle">
+                                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="hapusBarisLama(this, {{ $item->id }})" title="Hapus item ini">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
                                     <td class="border-end align-middle">
                                         <input type="hidden" name="items[{{ $item->id }}][id]" value="{{ $item->id }}">
                                         <input type="text" name="items[{{ $item->id }}][uraian_pekerjaan]" class="form-control form-control-sm" value="{{ $item->uraian_pekerjaan }}" required>
                                     </td>
                                     <td class="border-end align-middle">
-                                        <input type="number" step="0.01" name="items[{{ $item->id }}][volume]" class="form-control form-control-sm text-end volume-input" value="{{ $item->volume }}" required>
+                                        <input type="number" step="0.01" name="items[{{ $item->id }}][volume]" class="form-control form-control-sm text-end volume-input" value="{{ $item->volume }}" required oninput="hitungTotal()">
                                     </td>
                                     <td class="border-end align-middle">
                                         <input type="text" name="items[{{ $item->id }}][satuan]" class="form-control form-control-sm text-center" value="{{ $item->satuan }}" required>
                                     </td>
                                     <td class="border-end align-middle">
-                                        <input type="number" name="items[{{ $item->id }}][harga_satuan]" class="form-control form-control-sm text-end harga-input" value="{{ $item->harga_satuan }}" required>
+                                        <input type="number" name="items[{{ $item->id }}][harga_satuan]" class="form-control form-control-sm text-end harga-input" value="{{ $item->harga_satuan }}" required oninput="hitungTotal()">
                                     </td>
-                                    <td class="text-end fw-medium text-dark align-middle total-text">
+                                    <td class="text-end fw-medium text-dark align-middle item-total-text">
                                         {{ number_format($item->total, 0, ',', '.') }}
                                     </td>
                                 </tr>
                             @endforeach
+
+                            <!-- Baris Sub Total -->
+                            <tr class="subtotal-row" data-kategori="{{ $categoryIndex }}">
+                                <td class="border-end"></td>
+                                <td colspan="3" class="text-center fw-bold text-dark border-end">Sub Total {{ $roman }}</td>
+                                <td class="text-end fw-bold text-dark bg-light border-end subtotal-cell" data-kategori="{{ $categoryIndex }}">
+                                    {{ number_format($subTotal, 0, ',', '.') }}
+                                </td>
+                                <td></td>
+                            </tr>
 
                             @php $categoryIndex++; @endphp
                         @empty
@@ -142,12 +159,20 @@
             </div>
         </div>
 
-        <!-- Kotak Catatan (Menggunakan TinyMCE) -->
+        <!-- Kotak Catatan -->
         <div class="card border-0 bg-light shadow-sm rounded-3 mt-4">
             <div class="card-body p-4 border border-light-subtle rounded-3">
                 <h6 class="fw-bold text-dark mb-2"><i class="fas fa-sticky-note me-2 text-muted"></i>Catatan Tambahan:</h6>
-                <!-- Textarea untuk TinyMCE -->
-                <textarea id="catatanTinyMCE" name="catatan">{!! $proyek->catatan !!}</textarea>
+                
+                <!-- Versi Layar (Editor TinyMCE) -->
+                <div class="tampilan-layar">
+                    <textarea id="catatanTinyMCE" name="catatan">{!! $proyek->catatan !!}</textarea>
+                </div>
+
+                <!-- Versi Cetak (Hanya Muncul Saat di-Print) -->
+                <div id="catatanPrintView" class="tampilan-print text-dark">
+                    {!! $proyek->catatan !!}
+                </div>
             </div>
         </div>
 
@@ -172,6 +197,9 @@
     }
     .relative-content { position: relative; z-index: 1; }
 
+    /* Sembunyikan versi cetak di layar normal */
+    .tampilan-print { display: none; }
+
     @media print {
         body { background-color: #fff !important; }
         .sticky-top, .sticky-bottom { position: static !important; }
@@ -181,13 +209,13 @@
         input.form-control { border: none; background: transparent; padding: 0; margin: 0; box-shadow: none; }
         .watermark-overlay { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-        /* Matikan editor tinyMCE tampilan web dan tampilkan hasil teks aslinya saat print */
-        .tox-tinymce { display: none !important; }
-        #catatanTinyMCE { display: block !important; border: none; outline: none; }
+        /* Sembunyikan editor TinyMCE saat dicetak, tampilkan render HTML-nya */
+        .tampilan-layar { display: none !important; }
+        .tampilan-print { display: block !important; }
     }
 </style>
 
-<!-- Script Tambahan: TinyMCE & Fungsi Tambah Baris -->
+<!-- Script Tambahan: TinyMCE, Kalkulasi, & Print -->
 <script src="https://cdn.tiny.cloud/1/hsfvd81ihieoadc6tlyol8xucnq3i1n2vzuzfr1948kqqcx5/tinymce/8/tinymce.min.js" referrerpolicy="origin" crossorigin="anonymous"></script>
 
 <script>
@@ -200,16 +228,84 @@
         toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | code'
     });
 
-    // 2. Fungsi Tambah Baris Baru Secara Dinamis
+    // 2. Fungsi untuk sinkronisasi teks TinyMCE ke tampilan cetak sebelum nge-print
+    function siapkanPrint() {
+        let kontenTerbaru = tinymce.get('catatanTinyMCE').getContent();
+        document.getElementById('catatanPrintView').innerHTML = kontenTerbaru;
+        window.print();
+    }
+
+    // 3. Fungsi format rupiah (1000000 -> 1.000.000)
+    function formatRupiah(angka) {
+        return new Intl.NumberFormat('id-ID').format(Math.round(angka));
+    }
+
+    // 4. Fungsi Kalkulasi Otomatis (Baris, Subtotal, Grand Total)
+    function hitungTotal() {
+        let grandTotal = 0;
+        let subTotals = {};
+
+        // Inisialisasi semua subtotal kategori menjadi 0
+        document.querySelectorAll('.subtotal-cell').forEach(cell => {
+            let katIndex = cell.getAttribute('data-kategori');
+            subTotals[katIndex] = 0;
+        });
+
+        // Loop setiap baris pekerjaan untuk menghitung ulang
+        document.querySelectorAll('.item-row').forEach(row => {
+            let volInput = row.querySelector('.volume-input');
+            let hargaInput = row.querySelector('.harga-input');
+            let totalCell = row.querySelector('.item-total-text');
+            let katIndex = row.getAttribute('data-kategori');
+
+            if (volInput && hargaInput) {
+                let volume = parseFloat(volInput.value) || 0;
+                let harga = parseFloat(hargaInput.value) || 0;
+                let total = volume * harga;
+
+                // Update text di ujung kanan baris
+                totalCell.innerText = formatRupiah(total);
+
+                // Tambahkan ke subtotal kategori terkait
+                if (subTotals[katIndex] !== undefined) {
+                    subTotals[katIndex] += total;
+                }
+                
+                // Tambahkan ke Grand Total
+                grandTotal += total;
+            }
+        });
+
+        // Update text Subtotal per kategori
+        for (let katIndex in subTotals) {
+            let subCell = document.querySelector(`.subtotal-cell[data-kategori="${katIndex}"]`);
+            if (subCell) {
+                subCell.innerText = formatRupiah(subTotals[katIndex]);
+            }
+        }
+
+        // Update text Grand Total
+        let grandTotalCell = document.getElementById('grandTotalText');
+        if (grandTotalCell) {
+            grandTotalCell.innerText = 'Rp ' + formatRupiah(grandTotal);
+        }
+    }
+
+    // 5. Fungsi Tambah Baris Baru Secara Dinamis
     let newRowIndex = 0;
     function tambahBaris() {
         const tbody = document.getElementById('tableBody');
         const newRow = document.createElement('tr');
         
-        // Menggunakan name="new_items[...]" agar di backend mudah dibedakan dengan item lama
+        let lastKategoriIndex = document.querySelectorAll('.subtotal-cell').length - 1;
+        if(lastKategoriIndex < 0) lastKategoriIndex = 0;
+        
+        newRow.classList.add('item-row');
+        newRow.setAttribute('data-kategori', lastKategoriIndex);
+
         newRow.innerHTML = `
             <td class="text-center border-end align-middle">
-                <button type="button" class="btn btn-outline-danger btn-sm" onclick="hapusBaris(this)" title="Hapus baris ini">
+                <button type="button" class="btn btn-outline-danger btn-sm" onclick="hapusBarisBaru(this)" title="Hapus baris ini">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -217,24 +313,42 @@
                 <input type="text" name="new_items[${newRowIndex}][uraian_pekerjaan]" class="form-control form-control-sm" placeholder="Uraian Pekerjaan Baru" required>
             </td>
             <td class="border-end align-middle">
-                <input type="number" step="0.01" name="new_items[${newRowIndex}][volume]" class="form-control form-control-sm text-end" value="1" required>
+                <input type="number" step="0.01" name="new_items[${newRowIndex}][volume]" class="form-control form-control-sm text-end volume-input" value="1" required oninput="hitungTotal()">
             </td>
             <td class="border-end align-middle">
                 <input type="text" name="new_items[${newRowIndex}][satuan]" class="form-control form-control-sm text-center" placeholder="ls/m2" required>
             </td>
             <td class="border-end align-middle">
-                <input type="number" name="new_items[${newRowIndex}][harga_satuan]" class="form-control form-control-sm text-end" value="0" required>
+                <input type="number" name="new_items[${newRowIndex}][harga_satuan]" class="form-control form-control-sm text-end harga-input" value="0" required oninput="hitungTotal()">
             </td>
-            <td class="text-end fw-medium text-dark align-middle">0</td>
+            <td class="text-end fw-medium text-dark align-middle item-total-text">0</td>
         `;
-        tbody.appendChild(newRow);
+        
+        let lastSubtotalRow = document.querySelector(`.subtotal-row[data-kategori="${lastKategoriIndex}"]`);
+        if (lastSubtotalRow) {
+            lastSubtotalRow.parentNode.insertBefore(newRow, lastSubtotalRow);
+        } else {
+            tbody.appendChild(newRow);
+        }
+
         newRowIndex++;
+        hitungTotal(); // Panggil hitung otomatis
     }
 
-    // 3. Fungsi untuk menghapus baris baru
-    function hapusBaris(button) {
-        // Mencari elemen <tr> terdekat dari tombol yang diklik, lalu menghapusnya
+    // 6. Fungsi Hapus Baris Baru (Belum Masuk Database)
+    function hapusBarisBaru(button) {
         button.closest('tr').remove();
+        hitungTotal(); // Panggil hitung otomatis
+    }
+
+    // 7. Fungsi Hapus Baris Lama (Sudah Ada di Database)
+    function hapusBarisLama(button, itemId) {
+        // Buat input hidden agar ID ini dikirim ke Controller untuk dihapus
+        const container = document.getElementById('deletedItemsContainer');
+        container.innerHTML += `<input type="hidden" name="deleted_items[]" value="${itemId}">`;
+        
+        button.closest('tr').remove();
+        hitungTotal(); // Panggil hitung otomatis
     }
 </script>
 @endsection
