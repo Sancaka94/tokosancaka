@@ -5,7 +5,7 @@
 <!-- Layer Watermark -->
 <div class="watermark-overlay"></div>
 
-<div class="container py-5 relative-content">
+<div class="container py-4 relative-content">
 
     <!-- FORM BUNGKUS KESELURUHAN -->
     <form action="{{ route('proyek.updateShare', $proyek->id) }}" method="POST">
@@ -16,7 +16,7 @@
         <div id="deletedItemsContainer"></div>
 
         <!-- Bagian Header (Logo & Informasi Proyek) -->
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3 header-section">
             <div class="d-flex align-items-center gap-3">
                 <img src="https://tokosancaka.com/storage/uploads/logo.jpeg" alt="Sancaka Logo" class="rounded shadow-sm" style="width: 60px; height: 60px; object-fit: cover;">
                 <div>
@@ -25,19 +25,19 @@
                 </div>
             </div>
             <div class="d-flex gap-2">
-                <!-- Tombol Print Browser (Diubah fungsinya ke siapkanPrint) -->
-                <button type="button" onclick="siapkanPrint()" class="btn btn-dark btn-sm px-4 rounded-3 shadow-sm fw-bold">
+                <!-- Tombol Print Browser -->
+                <button type="button" onclick="siapkanPrint()" class="btn btn-dark btn-sm px-4 rounded-3 shadow-sm fw-bold hide-on-print">
                     <i class="fas fa-print me-1"></i> Cetak / Simpan PDF
                 </button>
                 <!-- Tombol Simpan -->
-                <button type="submit" class="btn btn-success btn-sm px-4 rounded-3 shadow-sm fw-bold">
+                <button type="submit" class="btn btn-success btn-sm px-4 rounded-3 shadow-sm fw-bold hide-on-print">
                     <i class="fas fa-save me-1"></i> Simpan Perubahan
                 </button>
             </div>
         </div>
 
         <!-- Card Info Proyek -->
-        <div class="card border-0 shadow-sm rounded-3 mb-4">
+        <div class="card border-0 shadow-sm rounded-3 mb-4 card-info">
             <div class="card-body p-4 bg-light rounded-3 border">
                 <h2 class="h5 fw-bold text-uppercase mb-3 text-dark">{{ $proyek->nama_proyek }}</h2>
                 <div class="row text-secondary small">
@@ -52,17 +52,17 @@
         </div>
 
         <!-- Card Tabel RAB -->
-        <div class="card border border-light-subtle shadow-sm rounded-3 overflow-hidden">
+        <div class="card border border-light-subtle shadow-sm rounded-3 overflow-hidden card-table">
             <div class="table-responsive" style="max-height: 70vh;">
                 <table class="table table-hover align-middle mb-0 text-nowrap" id="rabTable">
                     <thead class="table-light sticky-top shadow-sm" style="z-index: 2;">
                         <tr>
-                            <th class="text-center py-3 border-end text-muted" style="width: 5%;">Act.</th>
+                            <th class="text-center py-3 border-end text-muted" style="width: 5%;">No.</th>
                             <th class="py-3 border-end text-muted" style="width: 40%;">URAIAN PEKERJAAN</th>
                             <th class="text-center py-3 border-end text-muted" style="width: 10%;">VOL</th>
                             <th class="text-center py-3 border-end text-muted" style="width: 10%;">SAT</th>
                             <th class="text-end py-3 border-end text-muted" style="width: 15%;">HARGA SATUAN</th>
-                            <th class="text-end py-3 text-muted" style="width: 20%;">TOTAL (Otomatis)</th>
+                            <th class="text-end py-3 text-muted" style="width: 20%;">TOTAL</th>
                         </tr>
                     </thead>
                     <tbody class="border-top-0" id="tableBody">
@@ -91,8 +91,10 @@
                             <!-- Looping Item Lama -->
                             @foreach ($kategoriItems as $index => $item)
                                 <tr class="item-row" data-kategori="{{ $categoryIndex }}">
+                                    <!-- PERUBAHAN: Menampilkan Nomor & Tombol Hapus berdampingan -->
                                     <td class="text-center text-muted border-end align-middle">
-                                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="hapusBarisLama(this, {{ $item->id }})" title="Hapus item ini">
+                                        <span>{{ $index + 1 }}</span>
+                                        <button type="button" class="btn btn-outline-danger btn-sm p-1 ms-2 hide-on-print" onclick="hapusBarisLama(this, {{ $item->id }})" title="Hapus item ini">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -109,7 +111,7 @@
                                     <td class="border-end align-middle">
                                         <input type="number" name="items[{{ $item->id }}][harga_satuan]" class="form-control form-control-sm text-end harga-input" value="{{ $item->harga_satuan }}" required oninput="hitungTotal()">
                                     </td>
-                                    <td class="text-end fw-medium text-dark align-middle item-total-text">
+                                    <td class="text-end fw-medium text-dark align-middle item-total-text pe-3">
                                         {{ number_format($item->total, 0, ',', '.') }}
                                     </td>
                                 </tr>
@@ -119,7 +121,7 @@
                             <tr class="subtotal-row" data-kategori="{{ $categoryIndex }}">
                                 <td class="border-end"></td>
                                 <td colspan="3" class="text-center fw-bold text-dark border-end">Sub Total {{ $roman }}</td>
-                                <td class="text-end fw-bold text-dark bg-light border-end subtotal-cell" data-kategori="{{ $categoryIndex }}">
+                                <td class="text-end fw-bold text-dark bg-light border-end subtotal-cell pe-3" data-kategori="{{ $categoryIndex }}">
                                     {{ number_format($subTotal, 0, ',', '.') }}
                                 </td>
                                 <td></td>
@@ -134,7 +136,7 @@
                     </tbody>
 
                     <!-- Tombol Tambah Item -->
-                    <tfoot>
+                    <tfoot class="hide-on-print">
                         <tr>
                             <td colspan="6" class="text-center bg-white p-3 border-bottom">
                                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="tambahBaris()">
@@ -149,8 +151,8 @@
                     <tfoot class="sticky-bottom bg-light border-top border-2 shadow-sm" style="z-index: 1;">
                         <tr>
                             <td class="border-end"></td>
-                            <th colspan="3" class="text-center py-4 fw-bold text-dark border-end text-uppercase">TOTAL KESELURUHAN</th>
-                            <th class="text-end py-4 fw-bold text-dark border-end fs-6 text-nowrap" id="grandTotalText">Rp {{ number_format($grandTotal, 0, ',', '.') }}</th>
+                            <th colspan="3" class="text-center py-3 fw-bold text-dark border-end text-uppercase">TOTAL KESELURUHAN</th>
+                            <th class="text-end py-3 fw-bold text-dark border-end fs-6 text-nowrap pe-3" id="grandTotalText">Rp {{ number_format($grandTotal, 0, ',', '.') }}</th>
                             <th></th>
                         </tr>
                     </tfoot>
@@ -160,9 +162,9 @@
         </div>
 
         <!-- Kotak Catatan -->
-        <div class="card border-0 bg-light shadow-sm rounded-3 mt-4">
+        <div class="card border-0 bg-light shadow-sm rounded-3 mt-4 card-note">
             <div class="card-body p-4 border border-light-subtle rounded-3">
-                <h6 class="fw-bold text-dark mb-2"><i class="fas fa-sticky-note me-2 text-muted"></i>Catatan Tambahan:</h6>
+                <h6 class="fw-bold text-dark mb-2"><i class="fas fa-sticky-note me-2 text-muted hide-on-print"></i>Catatan Tambahan:</h6>
                 
                 <!-- Versi Layar (Editor TinyMCE) -->
                 <div class="tampilan-layar">
@@ -179,7 +181,7 @@
     </form> <!-- AKHIR FORM -->
 
     <!-- Footer Credit Sancaka -->
-    <div class="text-center mt-5 mb-4 border-top pt-4">
+    <div class="text-center mt-4 mb-2 pt-3 footer-credit">
         <p class="text-muted small mb-1">Diterbitkan oleh sistem <strong>tokosancaka.com</strong></p>
         <p class="text-muted" style="font-size: 0.75rem;">Jl. Dr. Wahidin No.18A RT.22 RW.05 Kel Ketanggi Kec.Ngawi Kab.Ngawi Jawa Timur 63211</p>
     </div>
@@ -200,18 +202,73 @@
     /* Sembunyikan versi cetak di layar normal */
     .tampilan-print { display: none; }
 
+    /* =========================================================
+       PENGATURAN KHUSUS CETAK (PRINT) - APLIKASI GAYA EXCEL 
+       ========================================================= */
     @media print {
-        body { background-color: #fff !important; }
-        .sticky-top, .sticky-bottom { position: static !important; }
-        .card, .table-responsive { box-shadow: none !important; border: none !important; max-height: none !important; overflow: visible !important; }
-        /* Sembunyikan input border saat di-print dan sembunyikan tombol edit/simpan */
-        .btn, nav, footer, header { display: none !important; }
-        input.form-control { border: none; background: transparent; padding: 0; margin: 0; box-shadow: none; }
+        @page {
+            size: A4 portrait;
+            margin: 1cm; /* Mempersempit margin kertas agar tabel bisa lebar */
+        }
+
+        body { 
+            background-color: #fff !important; 
+            font-size: 11pt !important; /* Huruf lebih kecil dan rapi */
+            color: #000 !important;
+        }
+
+        /* Memaksa kontainer menempati 100% layar (Justify Rata) */
+        .container, .container-fluid {
+            min-width: 100% !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* Membersihkan padding/margin dari Card Bootstrap */
+        .card { border: none !important; box-shadow: none !important; margin-bottom: 15px !important; }
+        .card-body { padding: 0 !important; border: none !important; background-color: transparent !important; }
+        
+        /* Merapikan tabel menjadi gaya Excel (Garis tegas hitam) */
+        .table-responsive { overflow: visible !important; max-height: none !important; }
+        table { width: 100% !important; border-collapse: collapse !important; }
+        table th, table td { 
+            border: 1px solid #000 !important; 
+            padding: 4px 6px !important; /* Jarak sel dipadatkan */
+            font-size: 10pt !important; 
+            vertical-align: middle !important;
+        }
+        .table-light, .bg-light { 
+            background-color: #f0f0f0 !important; 
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact; 
+        }
+
+        /* Menyamarkan input field menjadi teks biasa */
+        input.form-control { 
+            border: none !important; 
+            background: transparent !important; 
+            padding: 0 !important; 
+            margin: 0 !important; 
+            box-shadow: none !important; 
+            font-size: 10pt !important;
+            color: #000 !important;
+            width: 100% !important;
+        }
+
+        /* Sembunyikan elemen yang tidak perlu dicetak */
+        .hide-on-print, nav, footer, header { display: none !important; }
+
+        /* Pertahankan watermark */
         .watermark-overlay { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-        /* Sembunyikan editor TinyMCE saat dicetak, tampilkan render HTML-nya */
+        /* Sembunyikan editor TinyMCE, tampilkan hasil Render HTML-nya */
         .tampilan-layar { display: none !important; }
-        .tampilan-print { display: block !important; }
+        .tampilan-print { display: block !important; margin-top: 5px; font-size: 11pt; }
+        
+        /* Hilangkan garis border atas pada footer credit */
+        .footer-credit { border-top: none !important; margin-top: 30px !important; }
     }
 </style>
 
@@ -235,7 +292,7 @@
         window.print();
     }
 
-    // 3. Fungsi format rupiah (1000000 -> 1.000.000)
+    // 3. Fungsi format rupiah
     function formatRupiah(angka) {
         return new Intl.NumberFormat('id-ID').format(Math.round(angka));
     }
@@ -263,15 +320,11 @@
                 let harga = parseFloat(hargaInput.value) || 0;
                 let total = volume * harga;
 
-                // Update text di ujung kanan baris
                 totalCell.innerText = formatRupiah(total);
 
-                // Tambahkan ke subtotal kategori terkait
                 if (subTotals[katIndex] !== undefined) {
                     subTotals[katIndex] += total;
                 }
-                
-                // Tambahkan ke Grand Total
                 grandTotal += total;
             }
         });
@@ -303,9 +356,11 @@
         newRow.classList.add('item-row');
         newRow.setAttribute('data-kategori', lastKategoriIndex);
 
+        // PERUBAHAN: Menambahkan bintang (*) sebagai pengganti nomor baris baru, serta ikon hapus
         newRow.innerHTML = `
             <td class="text-center border-end align-middle">
-                <button type="button" class="btn btn-outline-danger btn-sm" onclick="hapusBarisBaru(this)" title="Hapus baris ini">
+                <span>*</span>
+                <button type="button" class="btn btn-outline-danger btn-sm p-1 ms-2 hide-on-print" onclick="hapusBarisBaru(this)" title="Hapus baris ini">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -321,7 +376,7 @@
             <td class="border-end align-middle">
                 <input type="number" name="new_items[${newRowIndex}][harga_satuan]" class="form-control form-control-sm text-end harga-input" value="0" required oninput="hitungTotal()">
             </td>
-            <td class="text-end fw-medium text-dark align-middle item-total-text">0</td>
+            <td class="text-end fw-medium text-dark align-middle item-total-text pe-3">0</td>
         `;
         
         let lastSubtotalRow = document.querySelector(`.subtotal-row[data-kategori="${lastKategoriIndex}"]`);
@@ -332,23 +387,22 @@
         }
 
         newRowIndex++;
-        hitungTotal(); // Panggil hitung otomatis
+        hitungTotal();
     }
 
-    // 6. Fungsi Hapus Baris Baru (Belum Masuk Database)
+    // 6. Fungsi Hapus Baris Baru
     function hapusBarisBaru(button) {
         button.closest('tr').remove();
-        hitungTotal(); // Panggil hitung otomatis
+        hitungTotal();
     }
 
-    // 7. Fungsi Hapus Baris Lama (Sudah Ada di Database)
+    // 7. Fungsi Hapus Baris Lama
     function hapusBarisLama(button, itemId) {
-        // Buat input hidden agar ID ini dikirim ke Controller untuk dihapus
         const container = document.getElementById('deletedItemsContainer');
         container.innerHTML += `<input type="hidden" name="deleted_items[]" value="${itemId}">`;
         
         button.closest('tr').remove();
-        hitungTotal(); // Panggil hitung otomatis
+        hitungTotal();
     }
 </script>
 @endsection
