@@ -65,7 +65,7 @@
                             <th class="text-end py-3 text-muted" style="width: 20%;">TOTAL</th>
                         </tr>
                     </thead>
-                    <tbody class="border-top-0" id="tableBody">
+                   <tbody class="border-top-0" id="tableBody">
                         @php
                             $grandTotal = 0;
                             $romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
@@ -91,7 +91,6 @@
                             <!-- Looping Item Lama -->
                             @foreach ($kategoriItems as $index => $item)
                                 <tr class="item-row" data-kategori="{{ $categoryIndex }}">
-                                    <!-- PERUBAHAN: Menampilkan Nomor & Tombol Hapus berdampingan -->
                                     <td class="text-center text-muted border-end align-middle">
                                         <span>{{ $index + 1 }}</span>
                                         <button type="button" class="btn btn-outline-danger btn-sm p-1 ms-2 hide-on-print" onclick="hapusBarisLama(this, {{ $item->id }})" title="Hapus item ini">
@@ -117,6 +116,16 @@
                                 </tr>
                             @endforeach
 
+                            <!-- Baris Tombol Tambah (Dipindah ke dalam setiap kategori) -->
+                            <tr class="hide-on-print button-add-row" data-kategori="{{ $categoryIndex }}">
+                                <td class="border-end"></td>
+                                <td colspan="5" class="bg-white py-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="tambahBaris({{ $categoryIndex }})">
+                                        <i class="fas fa-plus me-1"></i> Tambah Baris {{ $roman }}
+                                    </button>
+                                </td>
+                            </tr>
+
                             <!-- Baris Sub Total -->
                             <tr class="subtotal-row" data-kategori="{{ $categoryIndex }}">
                                 <td class="border-end"></td>
@@ -134,6 +143,19 @@
                             </tr>
                         @endforelse
                     </tbody>
+
+                    <!-- Grand Total Sticky Bottom -->
+                    @if(count($items) > 0)
+                    <tfoot class="sticky-bottom bg-light border-top border-2 shadow-sm" style="z-index: 1;">
+                        <tr>
+                            <td class="border-end"></td>
+                            <th colspan="3" class="text-center py-3 fw-bold text-dark border-end text-uppercase">TOTAL KESELURUHAN</th>
+                            <th class="text-end py-3 fw-bold text-dark border-end fs-6 text-nowrap pe-3" id="grandTotalText">Rp {{ number_format($grandTotal, 0, ',', '.') }}</th>
+                            <th></th>
+                        </tr>
+                    </tfoot>
+                    @endif
+                </table>
 
                     <!-- Tombol Tambah Item -->
                     <tfoot class="hide-on-print">
@@ -272,11 +294,9 @@
     }
 </style>
 
-<!-- Script Tambahan: TinyMCE, Kalkulasi, & Print -->
 <script src="https://cdn.tiny.cloud/1/hsfvd81ihieoadc6tlyol8xucnq3i1n2vzuzfr1948kqqcx5/tinymce/8/tinymce.min.js" referrerpolicy="origin" crossorigin="anonymous"></script>
 
 <script>
-    // 1. Inisialisasi TinyMCE
     tinymce.init({
         selector: '#catatanTinyMCE',
         menubar: false,
@@ -285,30 +305,25 @@
         toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | code'
     });
 
-    // 2. Fungsi untuk sinkronisasi teks TinyMCE ke tampilan cetak sebelum nge-print
     function siapkanPrint() {
         let kontenTerbaru = tinymce.get('catatanTinyMCE').getContent();
         document.getElementById('catatanPrintView').innerHTML = kontenTerbaru;
         window.print();
     }
 
-    // 3. Fungsi format rupiah
     function formatRupiah(angka) {
         return new Intl.NumberFormat('id-ID').format(Math.round(angka));
     }
 
-    // 4. Fungsi Kalkulasi Otomatis (Baris, Subtotal, Grand Total)
     function hitungTotal() {
         let grandTotal = 0;
         let subTotals = {};
 
-        // Inisialisasi semua subtotal kategori menjadi 0
         document.querySelectorAll('.subtotal-cell').forEach(cell => {
             let katIndex = cell.getAttribute('data-kategori');
             subTotals[katIndex] = 0;
         });
 
-        // Loop setiap baris pekerjaan untuk menghitung ulang
         document.querySelectorAll('.item-row').forEach(row => {
             let volInput = row.querySelector('.volume-input');
             let hargaInput = row.querySelector('.harga-input');
@@ -329,7 +344,6 @@
             }
         });
 
-        // Update text Subtotal per kategori
         for (let katIndex in subTotals) {
             let subCell = document.querySelector(`.subtotal-cell[data-kategori="${katIndex}"]`);
             if (subCell) {
@@ -337,32 +351,30 @@
             }
         }
 
-        // Update text Grand Total
         let grandTotalCell = document.getElementById('grandTotalText');
         if (grandTotalCell) {
             grandTotalCell.innerText = 'Rp ' + formatRupiah(grandTotal);
         }
     }
 
-    // 5. Fungsi Tambah Baris Baru Secara Dinamis
     let newRowIndex = 0;
-    function tambahBaris() {
+    
+    // PERUBAHAN: Sekarang menerima parameter kategoriIndex
+    function tambahBaris(kategoriIndex) {
         const tbody = document.getElementById('tableBody');
         const newRow = document.createElement('tr');
         
-        let lastKategoriIndex = document.querySelectorAll('.subtotal-cell').length - 1;
-        if(lastKategoriIndex < 0) lastKategoriIndex = 0;
-        
         newRow.classList.add('item-row');
-        newRow.setAttribute('data-kategori', lastKategoriIndex);
+        newRow.setAttribute('data-kategori', kategoriIndex);
 
-        // PERUBAHAN: Menambahkan bintang (*) sebagai pengganti nomor baris baru, serta ikon hapus
+        // PERUBAHAN: Menambahkan input hidden 'kategori_index' untuk Backend
         newRow.innerHTML = `
             <td class="text-center border-end align-middle">
                 <span>*</span>
                 <button type="button" class="btn btn-outline-danger btn-sm p-1 ms-2 hide-on-print" onclick="hapusBarisBaru(this)" title="Hapus baris ini">
                     <i class="fas fa-trash"></i>
                 </button>
+                <input type="hidden" name="new_items[${newRowIndex}][kategori_index]" value="${kategoriIndex}">
             </td>
             <td class="border-end align-middle">
                 <input type="text" name="new_items[${newRowIndex}][uraian_pekerjaan]" class="form-control form-control-sm" placeholder="Uraian Pekerjaan Baru" required>
@@ -379,9 +391,10 @@
             <td class="text-end fw-medium text-dark align-middle item-total-text pe-3">0</td>
         `;
         
-        let lastSubtotalRow = document.querySelector(`.subtotal-row[data-kategori="${lastKategoriIndex}"]`);
-        if (lastSubtotalRow) {
-            lastSubtotalRow.parentNode.insertBefore(newRow, lastSubtotalRow);
+        // Sisipkan baris persis di atas tombol "Tambah Baris" kategori tersebut
+        let buttonRow = document.querySelector(`.button-add-row[data-kategori="${kategoriIndex}"]`);
+        if (buttonRow) {
+            buttonRow.parentNode.insertBefore(newRow, buttonRow);
         } else {
             tbody.appendChild(newRow);
         }
@@ -390,13 +403,11 @@
         hitungTotal();
     }
 
-    // 6. Fungsi Hapus Baris Baru
     function hapusBarisBaru(button) {
         button.closest('tr').remove();
         hitungTotal();
     }
 
-    // 7. Fungsi Hapus Baris Lama
     function hapusBarisLama(button, itemId) {
         const container = document.getElementById('deletedItemsContainer');
         container.innerHTML += `<input type="hidden" name="deleted_items[]" value="${itemId}">`;

@@ -122,25 +122,27 @@ class ProyekController extends Controller
 
         // 4. Insert Data Item Baru (Dari tombol Tambah Baris)
         if ($request->has('new_items')) {
-
-            // Ambil kategori terakhir yang ada di form, jika tidak ada gunakan default
-            $kategoriDefault = 'PEKERJAAN UMUM';
-            if ($request->has('kategori') && is_array($request->kategori)) {
-                $kategoriDefault = end($request->kategori);
-            }
-
+            // Ambil array kategori dari form agar bisa dicocokkan
+            $kategoriArray = $request->kategori ?? []; 
+            
             foreach ($request->new_items as $new_data) {
                 // Abaikan jika baris kosong tidak sengaja terkirim
                 if (empty($new_data['uraian_pekerjaan'])) continue;
 
+                // Tentukan nama kategori yang tepat berdasarkan kategori_index yang dikirim dari JS
+                $kategoriIndex = $new_data['kategori_index'] ?? null;
+                $kategoriFix = ($kategoriIndex !== null && isset($kategoriArray[$kategoriIndex])) 
+                               ? $kategoriArray[$kategoriIndex] 
+                               : 'PEKERJAAN UMUM';
+
                 \App\Models\RabItem::create([
                     'proyek_id'        => $proyek->id,
-                    'kategori'         => $kategoriDefault,
+                    'kategori'         => $kategoriFix, // <-- Simpan dengan nama kategori yang tepat
                     'uraian_pekerjaan' => $new_data['uraian_pekerjaan'],
                     'volume'           => $new_data['volume'],
                     'satuan'           => $new_data['satuan'],
                     'harga_satuan'     => $new_data['harga_satuan'],
-                    'total'            => $new_data['volume'] * $new_data['harga_satuan'], // Kalkulasi total
+                    'total'            => $new_data['volume'] * $new_data['harga_satuan'],
                 ]);
             }
         }
