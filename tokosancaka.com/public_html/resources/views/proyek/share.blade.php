@@ -62,7 +62,7 @@
                             <th class="text-center py-3 border-end text-muted" style="width: 10%;">VOL</th>
                             <th class="text-center py-3 border-end text-muted" style="width: 10%;">SAT</th>
                             <th class="text-end py-3 border-end text-muted" style="width: 15%;">HARGA SATUAN</th>
-                            <th class="text-end py-3 text-muted" style="width: 20%;">TOTAL</th>
+                            <th class="text-end py-3 text-muted" style="width: 20%;">JUMLAH</th>
                         </tr>
                     </thead>
                     <tbody class="border-top-0" id="tableBody">
