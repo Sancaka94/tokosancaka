@@ -2041,6 +2041,10 @@ Route::middleware(['auth'])->group(function () {
 // =========================================================================
 Route::get('/p/{proyek}/rab', [\App\Http\Controllers\ProyekController::class, 'sharePublic'])->name('proyek.public.share');
 
+// LOG LOG: Route untuk memproses form update/simpan dari halaman public RAB
+Route::put('/proyek/{proyek}/share-update', [\App\Http\Controllers\ProyekController::class, 'updateSharePublic'])->name('proyek.updateShare');
+
+
 // 1. ROUTE UNTUK HALAMAN ADMIN
 Route::prefix('admin/short-urls')->group(function () {
     Route::get('/', [ShortUrlController::class, 'index']);
