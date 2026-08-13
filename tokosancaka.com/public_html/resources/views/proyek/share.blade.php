@@ -188,7 +188,8 @@
 </style>
 
 <!-- Script Tambahan: TinyMCE & Fungsi Tambah Baris -->
-<script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+<script src="https://cdn.tiny.cloud/1/hsfvd81ihieoadc6tlyol8xucnq3i1n2vzuzfr1948kqqcx5/tinymce/8/tinymce.min.js" referrerpolicy="origin" crossorigin="anonymous"></script>
+
 <script>
     // 1. Inisialisasi TinyMCE
     tinymce.init({
