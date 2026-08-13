@@ -51,7 +51,7 @@
             </div>
         </div>
 
-        <!-- Card Tabel RAB -->
+       <!-- Card Tabel RAB -->
         <div class="card border border-light-subtle shadow-sm rounded-3 overflow-hidden card-table">
             <div class="table-responsive" style="max-height: 70vh;">
                 <table class="table table-hover align-middle mb-0 text-nowrap" id="rabTable">
@@ -62,10 +62,10 @@
                             <th class="text-center py-3 border-end text-muted" style="width: 10%;">VOL</th>
                             <th class="text-center py-3 border-end text-muted" style="width: 10%;">SAT</th>
                             <th class="text-end py-3 border-end text-muted" style="width: 15%;">HARGA SATUAN</th>
-                            <th class="text-end py-3 text-muted" style="width: 20%;">SUB TOTAL</th>
+                            <th class="text-end py-3 text-muted" style="width: 20%;">TOTAL</th>
                         </tr>
                     </thead>
-                   <tbody class="border-top-0" id="tableBody">
+                    <tbody class="border-top-0" id="tableBody">
                         @php
                             $grandTotal = 0;
                             $romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
@@ -144,31 +144,7 @@
                         @endforelse
                     </tbody>
 
-                    <!-- Grand Total Sticky Bottom -->
-                    @if(count($items) > 0)
-                    <tfoot class="sticky-bottom bg-light border-top border-2 shadow-sm" style="z-index: 1;">
-                        <tr>
-                            <td class="border-end"></td>
-                            <th colspan="3" class="text-center py-3 fw-bold text-dark border-end text-uppercase">TOTAL KESELURUHAN (FINAL)</th>
-                            <th class="text-end py-3 fw-bold text-dark border-end fs-6 text-nowrap pe-3" id="grandTotalText">Rp {{ number_format($grandTotal, 0, ',', '.') }}</th>
-                            <th></th>
-                        </tr>
-                    </tfoot>
-                    @endif
-                </table>
-
-                    <!-- Tombol Tambah Item -->
-                    <tfoot class="hide-on-print">
-                        <tr>
-                            <td colspan="6" class="text-center bg-white p-3 border-bottom">
-                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="tambahBaris()">
-                                    <i class="fas fa-plus me-1"></i> Tambah Baris Pekerjaan Baru
-                                </button>
-                            </td>
-                        </tr>
-                    </tfoot>
-
-                    <!-- Grand Total Sticky Bottom -->
+                    <!-- Grand Total Sticky Bottom (Sisa kode lama yang nyangkut sudah dibersihkan dari sini) -->
                     @if(count($items) > 0)
                     <tfoot class="sticky-bottom bg-light border-top border-2 shadow-sm" style="z-index: 1;">
                         <tr>
