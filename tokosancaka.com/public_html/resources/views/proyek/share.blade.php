@@ -8,7 +8,7 @@
 <div class="container py-5 relative-content">
 
     <!-- FORM BUNGKUS KESELURUHAN -->
-    <form action="{{ route('proyek.update', $proyek->id) }}" method="POST">
+    <form action="{{ route('proyek.updateShare', $proyek->id) }}" method="POST">
         @csrf
         @method('PUT') <!-- Sesuaikan method dengan route Anda -->
 
