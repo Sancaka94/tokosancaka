@@ -23,7 +23,7 @@
             z-index: -100; /* Berada di bawah konten teks */
             overflow: hidden;
         }
-        
+
         .watermark-text {
             position: absolute;
             transform: rotate(-45deg);
@@ -33,7 +33,7 @@
             white-space: nowrap;
             opacity: 0.5; /* Efek transparan */
         }
-        
+
         /* Kop Surat */
         .kop-surat {
             width: 100%;
@@ -125,7 +125,7 @@
         .text-left { text-align: left; }
         .font-bold { font-weight: bold; }
         .bg-gray { background-color: #f7fafc; }
-        
+
         /* Catatan & Footer Branding */
         .catatan-box {
             margin-top: 20px;
@@ -143,7 +143,7 @@
             line-height: 1.5;
             white-space: pre-wrap;
         }
-        
+
         .footer-branding {
             margin-top: 40px;
             padding-top: 20px;
@@ -168,12 +168,12 @@
         @php $rowNum = 0; @endphp
         <!-- Looping Y (Baris) -->
         @for ($y = -20; $y <= 120; $y += 15)
-            @php 
+            @php
                 $rowNum++;
                 /* Memberikan jarak selang-seling agar polanya seperti susunan batu bata */
-                $offsetX = ($rowNum % 2 == 0) ? 18 : 0; 
+                $offsetX = ($rowNum % 2 == 0) ? 18 : 0;
             @endphp
-            
+
             <!-- Looping X (Kolom) -->
             @for ($x = -20; $x <= 120; $x += 35)
                 <div class="watermark-text" style="top: {{ $y }}%; left: {{ $x + $offsetX }}%;">
@@ -236,7 +236,7 @@
         </thead>
         <tbody>
             @php $currentCategory = null; $no = 1; @endphp
-            
+
             @foreach($items as $item)
                 @if($item->kategori !== $currentCategory)
                     <tr class="bg-gray">
@@ -245,7 +245,7 @@
                     </tr>
                     @php $currentCategory = $item->kategori; @endphp
                 @endif
-                
+
                 <tr>
                     <td class="text-center">{{ $no++ }}</td>
                     <td class="text-left">{{ $item->uraian_pekerjaan }}</td>
@@ -268,7 +268,7 @@
     @if($proyek->catatan)
     <div class="catatan-box">
         <h4>Catatan Tambahan:</h4>
-        <p>{{ $proyek->catatan }}</p>
+        {!! $proyek->catatan !!}
     </div>
     @endif
 
