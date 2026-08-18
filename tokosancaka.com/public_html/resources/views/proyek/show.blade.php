@@ -36,10 +36,23 @@
                 <span>Copy Link Public</span>
             </button>
 
-            <!-- Tombol PDF -->
-            <a href="{{ route('rab.pdf', $proyek->id) }}" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm text-sm font-medium py-2 px-4 rounded-md flex items-center gap-2">
-                PDF
-            </a>
+            <!-- LOG LOG: Form Export PDF berdasarkan Kategori -->
+            <form action="{{ route('rab.pdf', $proyek->id) }}" method="GET" class="flex items-center gap-2 m-0">
+                <select name="kategori" class="bg-white border border-gray-300 text-gray-700 text-sm py-2 px-3 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:border-black cursor-pointer">
+                    <option value="">-- Cetak Semua (PDF) --</option>
+                    @php
+                        // Mengambil otomatis daftar kategori yang ada di RAB ini
+                        $listKategori = collect($items)->pluck('kategori')->unique()->filter();
+                    @endphp
+                    @foreach($listKategori as $kat)
+                        <option value="{{ $kat }}">{{ $kat }}</option>
+                    @endforeach
+                </select>
+                <button type="submit" class="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm text-sm font-medium py-2 px-4 rounded-md flex items-center gap-2 transition-colors">
+                    <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    PDF
+                </button>
+            </form>
 
             <!-- Tombol Tambah Item -->
             <a href="{{ route('rab.create', ['proyek_id' => $proyek->id]) }}" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-md shadow-sm">

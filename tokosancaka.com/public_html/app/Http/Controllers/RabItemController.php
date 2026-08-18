@@ -76,16 +76,33 @@ class RabItemController extends Controller
         return redirect()->route('proyek.show', $proyek_id)->with('success', 'Data RAB dari Excel berhasil diunggah.');
     }
 
-    public function exportPdf($proyek_id)
+    public function exportPdf(Request $request, $proyek_id)
     {
         $proyek = Proyek::findOrFail($proyek_id);
-        $items = $proyek->rabItems()->orderBy('kategori')->get();
+
+        // Memulai query ke tabel rabItems
+        $query = $proyek->rabItems()->orderBy('kategori');
+
+        // Mengecek apakah ada parameter request 'kategori'
+        if ($request->filled('kategori')) {
+            $query->where('kategori', $request->kategori);
+        }
+
+        // Mengeksekusi query
+        $items = $query->get();
         $totalKeseluruhan = $items->sum('total');
 
         // Mengaktifkan remote URL agar gambar logo dari HTTPS bisa di-load oleh PDF
         $pdf = Pdf::setOptions(['isRemoteEnabled' => true])
                   ->loadView('rab.pdf', compact('proyek', 'items', 'totalKeseluruhan'));
-        
-        return $pdf->download('RAB_' . str_replace(' ', '_', $proyek->nama_proyek) . '.pdf');
+
+        // Penamaan file dinamis mengikuti kategori jika ada
+        $namaFile = 'RAB_' . str_replace(' ', '_', $proyek->nama_proyek);
+        if ($request->filled('kategori')) {
+            $namaFile .= '_' . str_replace(' ', '_', $request->kategori);
+        }
+        $namaFile .= '.pdf';
+
+        return $pdf->download($namaFile);
     }
 }
