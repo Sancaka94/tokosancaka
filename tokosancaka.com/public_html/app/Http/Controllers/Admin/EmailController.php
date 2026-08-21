@@ -165,6 +165,7 @@ class EmailController extends Controller
                 return response()->json([
                     'emails' => array_values($pagedEmails), // array_values memastikan format respons JSON aman
                     'unread_count' => 0,
+                    'starred_count' => $total,
                     'pagination' => [
                         'current_page' => $page,
                         'last_page' => $lastPage > 0 ? $lastPage : 1,
@@ -195,7 +196,6 @@ class EmailController extends Controller
         return response()->json([
             'emails' => $paginator->items(),
             'unread_count' => 0,
-            'starred_count' => $total,
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
