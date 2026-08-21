@@ -351,25 +351,110 @@ class EmailController extends Controller
 
     /**
      * Memproses pengiriman pesan dari Form Kontak Web (Frontend) via AJAX
-     * Ditambahkan tanpa mengubah method lain.
+     * Ditambahkan tanpa mengubah method lain. (Dilengkapi Keamanan & Template HTML)
      */
     public function submitContactForm(Request $request)
     {
+        // =========================================================================
+        // 1. KEAMANAN: ANTI-SPAM & IDEMPOTENCY (RATE LIMITING)
+        // Membatasi 1 IP address hanya boleh mengirim 1 pesan setiap 60 detik.
+        // =========================================================================
+        $throttleKey = 'contact-form:' . $request->ip();
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, 1)) {
+            $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($throttleKey);
+            Log::warning('Indikasi spam form kontak diblokir.', ['ip' => $request->ip()]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => "Anda mengirim terlalu cepat. Silakan tunggu {$seconds} detik sebelum mengirim pesan lagi."
+            ], 429); // HTTP 429: Too Many Requests
+        }
+
+        // =========================================================================
+        // 2. KEAMANAN: VALIDASI KETAT (ANTI-VIRUS & ANTI-FILE ANEH)
+        // Hanya menerima Teks String. Menolak array, file, atau karakter berbahaya.
+        // =========================================================================
         $validated = $request->validate([
-            'name'    => 'required|string|max:255',
-            'email'   => 'required|email|max:255',
-            'message' => 'required|string',
+            // Nama hanya boleh huruf dan spasi, maksimal 100 karakter
+            'name'    => 'required|string|max:100|regex:/^[a-zA-Z\s]+$/', 
+            // Email harus format valid dan domainnya benar-benar ada (rfc,dns)
+            'email'   => 'required|email:rfc,dns|max:100', 
+            // Pesan murni teks, maksimal 2000 karakter (mencegah payload raksasa)
+            'message' => 'required|string|max:2000', 
+        ], [
+            'name.regex' => 'Nama hanya boleh mengandung huruf dan spasi.',
+            'email.email' => 'Format alamat email tidak valid.',
         ]);
+
+        // Catat "Hit" ke sistem Rate Limiter (Cooldown 60 detik diaktifkan)
+        \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, 60);
 
         try {
             $adminEmail = config('mail.from.address', 'admin@tokosancaka.com'); 
             $subject = 'Pesan Baru dari Form Kontak: ' . $validated['name'];
             
+            // =========================================================================
+            // 3. KEAMANAN: SANITASI OUTPUT (ANTI XSS / HTML INJECTION)
+            // Mengubah karakter <script> menjadi teks aman agar tidak dieksekusi browser
+            // =========================================================================
+            $safeName = htmlspecialchars($validated['name'], ENT_QUOTES, 'UTF-8');
+            $safeEmail = htmlspecialchars($validated['email'], ENT_QUOTES, 'UTF-8');
+            $safeMessage = nl2br(htmlspecialchars($validated['message'], ENT_QUOTES, 'UTF-8'));
+            $ipAddress = $request->ip();
+            $date = now()->format('d M Y, H:i');
+
+            // =========================================================================
+            // 4. DESAIN EMAIL: TEMPLATE HTML MODERN & PROFESIONAL (INLINE CSS)
+            // =========================================================================
             $bodyHtml = "
-                <h3>Pesan Baru dari Pengunjung Website!</h3>
-                <p><strong>Nama:</strong> {$validated['name']}</p>
-                <p><strong>Email:</strong> {$validated['email']}</p>
-                <p><strong>Isi Pesan:</strong><br>" . nl2br(htmlspecialchars($validated['message'])) . "</p>
+            <div style='font-family: Helvetica, Arial, sans-serif; background-color: #f3f4f6; padding: 40px 20px; margin: 0;'>
+                <div style='max-width: 600px; background-color: #ffffff; margin: 0 auto; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05);'>
+                    
+                    <!-- Header -->
+                    <div style='background: linear-gradient(135deg, #dc2626, #991b1b); color: #ffffff; padding: 30px 20px; text-align: center;'>
+                        <h2 style='margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;'>SANCAKA EXPRESS</h2>
+                        <p style='margin: 8px 0 0 0; font-size: 14px; color: #fca5a5;'>Pesan Baru dari Pengunjung Website</p>
+                    </div>
+
+                    <!-- Body Content -->
+                    <div style='padding: 35px 30px;'>
+                        <h3 style='color: #1f2937; font-size: 16px; font-weight: 700; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;'>
+                            Informasi Pengirim
+                        </h3>
+                        
+                        <table style='width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 15px;'>
+                            <tr>
+                                <td style='padding: 10px 0; color: #6b7280; width: 120px; font-weight: 600;'>Nama</td>
+                                <td style='padding: 10px 0; color: #111827; font-weight: 600;'>: {$safeName}</td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 10px 0; color: #6b7280; font-weight: 600;'>Email</td>
+                                <td style='padding: 10px 0;'>
+                                    : <a href='mailto:{$safeEmail}' style='color: #2563eb; text-decoration: none; font-weight: 600;'>{$safeEmail}</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style='padding: 10px 0; color: #6b7280; font-weight: 600;'>Waktu Masuk</td>
+                                <td style='padding: 10px 0; color: #4b5563;'>: {$date} WIB</td>
+                            </tr>
+                        </table>
+
+                        <h3 style='color: #1f2937; font-size: 16px; font-weight: 700; margin: 0 0 15px 0; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;'>
+                            Isi Pesan
+                        </h3>
+                        <div style='background-color: #f8fafc; padding: 20px; border-radius: 8px; border-left: 4px solid #dc2626; color: #374151; line-height: 1.8; font-size: 15px;'>
+                            {$safeMessage}
+                        </div>
+                    </div>
+
+                    <!-- Footer / Audit Trail -->
+                    <div style='background-color: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #9ca3af; border-top: 1px solid #f3f4f6;'>
+                        <p style='margin: 0;'>Email ini dibuat otomatis oleh Sistem Keamanan Website Sancaka Express.</p>
+                        <p style='margin: 6px 0 0 0; font-family: monospace;'>IP Pengirim: {$ipAddress}</p>
+                    </div>
+                    
+                </div>
+            </div>
             ";
 
             Mail::html($bodyHtml, function ($message) use ($adminEmail, $subject, $validated) {
@@ -378,21 +463,20 @@ class EmailController extends Controller
                         ->replyTo($validated['email'], $validated['name']);
             });
 
-            Log::info('Pesan kontak frontend sukses dikirim.', ['pengirim' => $validated['email']]);
+            Log::info('Pesan kontak frontend sukses dikirim.', ['pengirim' => $validated['email'], 'ip' => $request->ip()]);
 
-            // [UPDATE] Ubah return menjadi JSON untuk ditangkap oleh AJAX
             return response()->json([
                 'success' => true,
                 'message' => 'Terima kasih! Pesan Anda berhasil dikirim dan akan segera kami proses.'
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Gagal mengirim pesan dari form kontak.', ['error' => $e->getMessage()]);
+            // TRADISI LOG LOG TETAP AMAN
+            Log::error('Gagal mengirim pesan dari form kontak.', ['error' => $e->getMessage(), 'ip' => $request->ip()]);
             
-            // [UPDATE] Ubah return error menjadi JSON
             return response()->json([
                 'success' => false,
-                'message' => 'Maaf, terjadi kesalahan saat mengirim pesan: ' . $e->getMessage()
+                'message' => 'Maaf, terjadi kendala pada server kami. Silakan coba beberapa saat lagi.'
             ], 500);
         }
     }
