@@ -332,12 +332,11 @@ class EmailController extends Controller
     }
 
     /**
-     * Memproses pengiriman pesan dari Form Kontak Web (Frontend)
+     * Memproses pengiriman pesan dari Form Kontak Web (Frontend) via AJAX
      * Ditambahkan tanpa mengubah method lain.
      */
     public function submitContactForm(Request $request)
     {
-        // 1. Validasi input dari pengunjung
         $validated = $request->validate([
             'name'    => 'required|string|max:255',
             'email'   => 'required|email|max:255',
@@ -345,11 +344,9 @@ class EmailController extends Controller
         ]);
 
         try {
-            // 2. Tentukan email tujuan (Email admin/perusahaan Anda)
             $adminEmail = config('mail.from.address', 'admin@tokosancaka.com'); 
             $subject = 'Pesan Baru dari Form Kontak: ' . $validated['name'];
             
-            // 3. Susun body email
             $bodyHtml = "
                 <h3>Pesan Baru dari Pengunjung Website!</h3>
                 <p><strong>Nama:</strong> {$validated['name']}</p>
@@ -357,23 +354,28 @@ class EmailController extends Controller
                 <p><strong>Isi Pesan:</strong><br>" . nl2br(htmlspecialchars($validated['message'])) . "</p>
             ";
 
-            // 4. Kirim email
             Mail::html($bodyHtml, function ($message) use ($adminEmail, $subject, $validated) {
                 $message->to($adminEmail)
                         ->subject($subject)
-                        // Set Reply-To agar jika admin membalas email, langsung terkirim ke pengunjung
                         ->replyTo($validated['email'], $validated['name']);
             });
 
-            // Tetap pertahankan tradisi LOG
             Log::info('Pesan kontak frontend sukses dikirim.', ['pengirim' => $validated['email']]);
 
-            // 5. Kembalikan ke halaman sebelumnya dengan pesan sukses
-            return back()->with('success', 'Terima kasih! Pesan Anda berhasil dikirim dan akan segera kami proses.');
+            // [UPDATE] Ubah return menjadi JSON untuk ditangkap oleh AJAX
+            return response()->json([
+                'success' => true,
+                'message' => 'Terima kasih! Pesan Anda berhasil dikirim dan akan segera kami proses.'
+            ]);
 
         } catch (\Exception $e) {
             Log::error('Gagal mengirim pesan dari form kontak.', ['error' => $e->getMessage()]);
-            return back()->with('error', 'Maaf, terjadi kesalahan saat mengirim pesan: ' . $e->getMessage());
+            
+            // [UPDATE] Ubah return error menjadi JSON
+            return response()->json([
+                'success' => false,
+                'message' => 'Maaf, terjadi kesalahan saat mengirim pesan: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

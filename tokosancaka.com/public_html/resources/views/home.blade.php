@@ -2006,32 +2006,24 @@ width: 22px;
         <div class="row g-5">
 
             <div class="col-lg-6">
-
                 <h4>Kirim Pesan</h4>
+                
+                <!-- Tempat notifikasi muncul tanpa refresh -->
+                <div id="contactNotification"></div>
 
-                <!-- Tambahan Notifikasi Sukses/Error -->
-                @if(session('success'))
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        {{ session('success') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
-                @if(session('error'))
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        {{ session('error') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
-
-                <!-- Form yang sudah ditambahkan action, method, @csrf, dan name -->
-                <form action="{{ route('contact.submit') }}" method="POST">
+                <!-- Tambahkan id="contactForm" dan hapus action/method -->
+                <form id="contactForm">
                     @csrf
                     <div class="mb-3"><label for="contactName" class="form-label">Nama Anda</label><input type="text" class="form-control" id="contactName" name="name" required></div>
                     <div class="mb-3"><label for="contactEmail" class="form-label">Email</label><input type="email" class="form-control" id="contactEmail" name="email" required></div>
                     <div class="mb-3"><label for="contactMessage" class="form-label">Pesan</label><textarea class="form-control" id="contactMessage" name="message" rows="5" required></textarea></div>
-                    <button type="submit" class="btn btn-danger">Kirim Pesan</button>
+                    
+                    <!-- Tambahkan id untuk tombol dan spinner loading -->
+                    <button type="submit" class="btn btn-danger" id="contactSubmitBtn">
+                        <span id="contactBtnText">Kirim Pesan</span>
+                        <span id="contactBtnSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                    </button>
                 </form>
-
             </div>
 
             <div class="col-lg-6">
@@ -3103,6 +3095,76 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
 });
+
+document.addEventListener('DOMContentLoaded', function () {
+    const contactForm = document.getElementById('contactForm');
+    const contactSubmitBtn = document.getElementById('contactSubmitBtn');
+    const contactBtnText = document.getElementById('contactBtnText');
+    const contactBtnSpinner = document.getElementById('contactBtnSpinner');
+    const contactNotification = document.getElementById('contactNotification');
+
+    if (contactForm) {
+        contactForm.addEventListener('submit', async function (e) {
+            e.preventDefault(); // Mencegah halaman refresh
+
+            // 1. Ubah tombol jadi "Mengirim..." dan putar spinner
+            contactSubmitBtn.disabled = true;
+            contactBtnText.textContent = 'Mengirim...';
+            contactBtnSpinner.classList.remove('d-none');
+            contactNotification.innerHTML = ''; // Bersihkan notifikasi sebelumnya
+
+            try {
+                // 2. Ambil semua data inputan form
+                const formData = new FormData(contactForm);
+                
+                // 3. Kirim data ke backend (Route kita yang baru)
+                const response = await fetch("{{ route('contact.submit') }}", {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const result = await response.json();
+
+                // 4. Cek hasil dari server
+                if (response.ok && result.success) {
+                    // Tampilkan kotak sukses
+                    contactNotification.innerHTML = `
+                        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+                            ${result.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                    contactForm.reset(); // Kosongkan form setelah terkirim
+                } else {
+                    // Tampilkan kotak error dari server
+                    contactNotification.innerHTML = `
+                        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+                            ${result.message || 'Terjadi kesalahan saat memproses data.'}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                // Jika server mati atau koneksi putus
+                contactNotification.innerHTML = `
+                    <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+                        Terjadi kesalahan jaringan. Silakan periksa koneksi Anda dan coba lagi.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+            } finally {
+                // 5. Kembalikan tombol ke keadaan normal
+                contactSubmitBtn.disabled = false;
+                contactBtnText.textContent = 'Kirim Pesan';
+                contactBtnSpinner.classList.add('d-none');
+            }
+        });
+    }
+});
+
 </script>
 
 
