@@ -169,7 +169,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const ui = {
         list: document.getElementById('email-list'), 
         content: document.getElementById('email-content'),
-        placeholder: document.getElementById('email-placeholder'), 
+        placeholder: document.getElementById('email-placeholder'),
+        starredBadge: document.getElementById('starred-count'),
         unreadBadge: document.getElementById('unread-count'),
         search: document.getElementById('search-input'),
         selectAll: document.getElementById('select-all'),
@@ -375,6 +376,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if(data.unread_count !== undefined) {
                 ui.unreadBadge.textContent = data.unread_count;
                 ui.unreadBadge.style.display = data.unread_count > 0 ? 'inline-block' : 'none';
+            }
+            if(data.starred_count !== undefined && folder === 'starred') {
+                ui.starredBadge.textContent = data.starred_count;
+                ui.starredBadge.style.display = data.starred_count > 0 ? 'inline-block' : 'none';
             }
         } catch (err) {
             ui.list.innerHTML = `<div class="p-8 text-center text-sm text-red-500">Gagal memuat: ${err.message}</div>`;
