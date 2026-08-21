@@ -42,8 +42,12 @@ class EmailController extends Controller
 
                 // Siapkan Query
                 $query = $inboxFolder->query();
+                
+                // Tambahkan pengecekan if-else ini
                 if (!empty($search)) {
                     $query = $query->text($search);
+                } else {
+                    $query = $query->all(); // <--- INI KUNCI PERBAIKANNYA
                 }
 
                 // Gunakan setFetchOrder('desc') agar dibaca dari terbaru, lalu gunakan paginate(15)
