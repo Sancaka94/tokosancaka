@@ -2014,6 +2014,7 @@ width: 22px;
                 <!-- Tambahkan id="contactForm" dan hapus action/method -->
                 <form id="contactForm">
                     @csrf
+                    @honeypot
                     <div class="mb-3"><label for="contactName" class="form-label">Nama Anda</label><input type="text" class="form-control" id="contactName" name="name" required></div>
                     <div class="mb-3"><label for="contactEmail" class="form-label">Email</label><input type="email" class="form-control" id="contactEmail" name="email" required></div>
                     <div class="mb-3"><label for="contactMessage" class="form-label">Pesan</label><textarea class="form-control" id="contactMessage" name="message" rows="5" required></textarea></div>
