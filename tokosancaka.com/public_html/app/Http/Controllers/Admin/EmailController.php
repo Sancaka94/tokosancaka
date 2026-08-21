@@ -41,9 +41,11 @@ class EmailController extends Controller
 
                 // Tarik 15 pesan terbaru (dengan atau tanpa pencarian)
                 if (!empty($search)) {
-                    $messages = $inboxFolder->query()->text($search)->limit(15)->get();
+                    // Tambahkan setFetchOrder('desc')
+                    $messages = $inboxFolder->query()->text($search)->setFetchOrder('desc')->limit(15)->get();
                 } else {
-                    $messages = $inboxFolder->messages()->all()->limit(15)->get();
+                    // Ubah messages() menjadi query() agar bisa menggunakan setFetchOrder('desc')
+                    $messages = $inboxFolder->query()->all()->setFetchOrder('desc')->limit(15)->get();
                 }
 
                 $emails = [];
