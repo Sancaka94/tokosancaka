@@ -512,6 +512,21 @@ width: 22px;
     }
     /* === AKHIR BLOK TAMBAHAN === */
 
+    /* --- CSS KEAMANAN FORM KONTAK --- */
+    #contactSubmitBtn:disabled, #contactSubmitBtn[disabled] {
+        background-color: #6c757d !important;
+        border-color: #6c757d !important;
+        color: #ffffff !important;
+        opacity: 0.65;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    .disabled-btn-wrapper {
+        cursor: not-allowed;
+        display: block;
+    }
+
 </style>
 
 @endpush
@@ -2008,22 +2023,38 @@ width: 22px;
             <div class="col-lg-6">
                 <h4>Kirim Pesan</h4>
                 
-                <!-- Tempat notifikasi muncul tanpa refresh -->
+                <!-- Alert Info Keamanan -->
+                <div id="contact-security-alert" class="alert alert-warning py-2 small mb-3 text-center shadow-sm">
+                    <i class="fas fa-shield-alt me-1"></i> Sistem mendeteksi keamanan. Aktifkan GPS & Captcha untuk mengirim pesan.
+                </div>
+                
+                <!-- Tempat notifikasi AJAX (Sukses/Gagal) -->
                 <div id="contactNotification"></div>
 
-                <!-- Tambahkan id="contactForm" dan hapus action/method -->
                 <form id="contactForm">
                     @csrf
-                    @honeypot
+                    @honeypot <!-- Sistem Anti Bot Bawaan Anda -->
+                    
+                    <!-- Hidden Input untuk Koordinat GPS -->
+                    <input type="hidden" name="latitude" id="contact_latitude" value="">
+                    <input type="hidden" name="longitude" id="contact_longitude" value="">
+
                     <div class="mb-3"><label for="contactName" class="form-label">Nama Anda</label><input type="text" class="form-control" id="contactName" name="name" required></div>
                     <div class="mb-3"><label for="contactEmail" class="form-label">Email</label><input type="email" class="form-control" id="contactEmail" name="email" required></div>
                     <div class="mb-3"><label for="contactMessage" class="form-label">Pesan</label><textarea class="form-control" id="contactMessage" name="message" rows="5" required></textarea></div>
                     
-                    <!-- Tambahkan id untuk tombol dan spinner loading -->
-                    <button type="submit" class="btn btn-danger" id="contactSubmitBtn">
-                        <span id="contactBtnText">Kirim Pesan</span>
-                        <span id="contactBtnSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
-                    </button>
+                    <!-- WIDGET CLOUDFLARE TURNSTILE -->
+                    <div class="mb-4 d-flex justify-content-center">
+                        <div class="cf-turnstile" data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}" data-callback="onContactTurnstileSuccess"></div>
+                    </div>
+
+                    <!-- Wrapper Penahan Klik & Tombol Default Terkunci -->
+                    <div class="disabled-btn-wrapper" onclick="checkContactSecurityClick()">
+                        <button type="submit" class="btn btn-danger w-100" id="contactSubmitBtn" disabled>
+                            <span id="contactBtnText">Kirim Pesan</span>
+                            <span id="contactBtnSpinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        </button>
+                    </div>
                 </form>
             </div>
 
