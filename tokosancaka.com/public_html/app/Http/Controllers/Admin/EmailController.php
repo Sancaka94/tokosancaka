@@ -23,34 +23,33 @@ class EmailController extends Controller
     }
 
     /**
-     * Mengambil daftar email (IMAP untuk Inbox, DB untuk lainnya)
+     * Mengambil daftar email (IMAP untuk Inbox, DB untuk lainnya, Gabungan untuk Berbintang)
      */
     public function fetch(Request $request)
     {
         $folder = $request->query('folder', 'inbox');
         $search = $request->query('search', '');
-        $page = (int) $request->query('page', 1); // Tangkap nomor halaman dari URL
+        $page = (int) $request->query('page', 1);
 
         Log::info('Memuat daftar email.', ['user_id' => Auth::id(), 'folder' => $folder, 'page' => $page]);
 
-        // === JIKA FOLDER INBOX (AMBIL DARI SERVER IMAP ASLI) ===
+        // =========================================================
+        // SKENARIO 1: KOTAK MASUK (MURNI DARI IMAP SERVER)
+        // =========================================================
         if ($folder === 'inbox') {
             try {
                 $client = Client::account('default');
                 $client->connect();
                 $inboxFolder = $client->getFolder('INBOX');
 
-                // Siapkan Query
                 $query = $inboxFolder->query();
                 
-                // Tambahkan pengecekan if-else ini
                 if (!empty($search)) {
                     $query = $query->text($search);
                 } else {
-                    $query = $query->all(); // <--- INI KUNCI PERBAIKANNYA
+                    $query = $query->all();
                 }
 
-                // Gunakan setFetchOrder('desc') agar dibaca dari terbaru, lalu gunakan paginate(15)
                 $paginator = $query->setFetchOrder('desc')->paginate(15, $page, 'page');
 
                 $emails = [];
@@ -67,7 +66,6 @@ class EmailController extends Controller
                     ];
                 }
 
-                // Tetap diurutkan agar tampilan di layar presisi
                 usort($emails, function($a, $b) {
                     return strtotime($b['created_at']) - strtotime($a['created_at']);
                 });
@@ -88,14 +86,94 @@ class EmailController extends Controller
             }
         }
 
-        // === JIKA FOLDER TERKIRIM/LAINNYA (AMBIL DARI DB LOKAL) ===
-        $query = Email::where('user_id', Auth::id());
-
+        // =========================================================
+        // SKENARIO 2: BERBINTANG (GABUNGAN DARI IMAP & LOKAL DB)
+        // =========================================================
         if ($folder === 'starred') {
-            $query->where('is_starred', true);
-        } else {
-            $query->where('folder', $folder);
+            $emails = [];
+
+            // A. Ambil dari DB Lokal (Pesan Terkirim yang dibintangi)
+            $localQuery = Email::where('user_id', Auth::id())->where('is_starred', true);
+            if (!empty($search)) {
+                $localQuery->where(function($q) use ($search) {
+                    $q->where('subject', 'like', "%{$search}%")
+                      ->orWhere('from_name', 'like', "%{$search}%");
+                });
+            }
+            $localData = $localQuery->orderBy('created_at', 'desc')->get();
+            
+            foreach($localData as $dbEmail) {
+                $emails[] = [
+                    'id' => $dbEmail->id,
+                    'from_name' => $dbEmail->from_name,
+                    'from_address' => $dbEmail->from_address,
+                    'subject' => $dbEmail->subject,
+                    'body' => $dbEmail->body,
+                    'created_at' => $dbEmail->created_at->format('Y-m-d H:i:s'),
+                    'read_at' => $dbEmail->read_at,
+                    'is_starred' => true,
+                ];
+            }
+
+            // B. Ambil dari IMAP Server (Pesan Inbox yang dibintangi)
+            try {
+                $client = Client::account('default');
+                $client->connect();
+                $inboxFolder = $client->getFolder('INBOX');
+
+                // Tarik pesan dengan Flag "FLAGGED" (Berbintang)
+                $imapQuery = $inboxFolder->query()->flagged();
+                
+                if (!empty($search)) {
+                    $imapQuery = $imapQuery->text($search);
+                }
+
+                // Ambil 50 terbaru untuk mencegah memori penuh
+                $imapData = $imapQuery->setFetchOrder('desc')->limit(50)->get();
+
+                foreach($imapData as $message){
+                    $emails[] = [
+                        'id' => $message->getUid(),
+                        'from_name' => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail,
+                        'from_address' => $message->getFrom()[0]->mail,
+                        'subject' => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
+                        'body' => 'Pesan belum dimuat sepenuhnya...',
+                        'created_at' => $message->getDate()[0]->format('Y-m-d H:i:s'),
+                        'read_at' => $message->hasFlag('SEEN') ? now() : null,
+                        'is_starred' => true,
+                    ];
+                }
+            } catch (\Exception $e) {
+                Log::error('IMAP Starred Fetch Error', ['error' => $e->getMessage()]);
+            }
+
+            // C. Urutkan gabungan berdasarkan waktu terbaru
+            usort($emails, function($a, $b) {
+                return strtotime($b['created_at']) - strtotime($a['created_at']);
+            });
+
+            // D. Manual Pagination untuk hasil gabungan
+            $total = count($emails);
+            $perPage = 15;
+            $lastPage = ceil($total / $perPage);
+            $offset = ($page - 1) * $perPage;
+            $pagedEmails = array_slice($emails, $offset, $perPage);
+
+            return response()->json([
+                'emails' => $pagedEmails,
+                'unread_count' => 0,
+                'pagination' => [
+                    'current_page' => $page,
+                    'last_page' => $lastPage > 0 ? $lastPage : 1,
+                    'has_more' => $page < $lastPage
+                ]
+            ]);
         }
+
+        // =========================================================
+        // SKENARIO 3: KOTAK TERKIRIM & LAINNYA (MURNI DB LOKAL)
+        // =========================================================
+        $query = Email::where('user_id', Auth::id())->where('folder', $folder);
 
         if (!empty($search)) {
             $query->where(function($q) use ($search) {
@@ -104,7 +182,6 @@ class EmailController extends Controller
             });
         }
 
-        // Ubah get() menjadi paginate(15) untuk lokal DB
         $paginator = $query->orderBy('created_at', 'desc')->paginate(15, ['*'], 'page', $page);
 
         return response()->json([
