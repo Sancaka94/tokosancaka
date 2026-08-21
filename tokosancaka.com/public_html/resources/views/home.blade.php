@@ -3199,6 +3199,70 @@ document.addEventListener('DOMContentLoaded', function () {
 
 </script>
 
+<!-- Script Cloudflare Turnstile -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+
+<script>
+    let isContactGpsActive = false;
+    let isContactTurnstileSuccess = false;
+
+    // Fungsi membuka kunci jika GPS dan Turnstile selesai
+    function checkContactValidations() {
+        if (isContactGpsActive && isContactTurnstileSuccess) {
+            const btn = document.getElementById('contactSubmitBtn');
+            if (btn) btn.removeAttribute('disabled');
+            
+            const statusAlert = document.getElementById('contact-security-alert');
+            if (statusAlert) {
+                statusAlert.classList.replace('alert-warning', 'alert-success');
+                statusAlert.innerHTML = '<i class="fas fa-check-circle me-1"></i> Keamanan tervalidasi: GPS & Captcha Berhasil.';
+            }
+        }
+    }
+
+    // Dipanggil otomatis oleh Cloudflare jika centang sukses
+    function onContactTurnstileSuccess(token) {
+        isContactTurnstileSuccess = true;
+        checkContactValidations();
+    }
+
+    // Memunculkan peringatan jika mencoba klik tombol abu-abu
+    function checkContactSecurityClick() {
+        if (!isContactGpsActive || !isContactTurnstileSuccess) {
+            let alertMsg = "Akses Ditolak!\n";
+            if (!isContactGpsActive) alertMsg += "- Anda wajib mengaktifkan dan mengizinkan GPS lokasi.\n";
+            if (!isContactTurnstileSuccess) alertMsg += "- Anda wajib menyelesaikan verifikasi keamanan (Cloudflare).\n";
+            
+            alert(alertMsg);
+            if (!isContactGpsActive) requestContactLocation();
+        }
+    }
+
+    // Fungsi meminta izin GPS
+    function requestContactLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    isContactGpsActive = true;
+                    document.getElementById('contact_latitude').value = position.coords.latitude;
+                    document.getElementById('contact_longitude').value = position.coords.longitude;
+                    checkContactValidations();
+                },
+                function(error) {
+                    isContactGpsActive = false;
+                    console.warn("Akses GPS ditolak: ", error.message);
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+    }
+
+    // Jalankan permintaan GPS saat halaman dimuat
+    document.addEventListener("DOMContentLoaded", function() {
+        requestContactLocation();
+    });
+</script>
+
 
     <!-- Memuat JS khusus untuk halaman home -->
 
