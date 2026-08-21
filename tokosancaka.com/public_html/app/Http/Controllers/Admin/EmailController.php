@@ -195,6 +195,7 @@ class EmailController extends Controller
         return response()->json([
             'emails' => $paginator->items(),
             'unread_count' => 0,
+            'starred_count' => $total,
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),

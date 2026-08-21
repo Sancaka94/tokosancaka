@@ -44,8 +44,12 @@
                     <div class="flex items-center gap-3"><i class="fa-solid fa-inbox w-4 text-center"></i><span class="text-sm">Kotak Masuk</span></div>
                     <span class="text-xs font-bold bg-blue-200/50 text-blue-800 px-2 py-0.5 rounded-full" id="unread-count" style="display:none;">0</span>
                 </a>
-                <a href="#" data-folder="starred" class="folder-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 text-gray-600 font-medium">
-                    <i class="fa-solid fa-star w-4 text-center"></i><span class="text-sm">Berbintang</span>
+                <a href="#" data-folder="starred" class="folder-link flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-gray-100 text-gray-600 font-medium">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-star w-4 text-center"></i><span class="text-sm">Berbintang</span>
+                    </div>
+                    <!-- Badge Warna Hijau Baru -->
+                    <span class="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full shadow-sm" id="starred-count" style="display:none;">0</span>
                 </a>
                 <a href="#" data-folder="sent" class="folder-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-100 text-gray-600 font-medium">
                     <i class="fa-solid fa-paper-plane w-4 text-center"></i><span class="text-sm">Terkirim</span>
