@@ -29,8 +29,9 @@ class EmailController extends Controller
     {
         $folder = $request->query('folder', 'inbox');
         $search = $request->query('search', '');
+        $page = (int) $request->query('page', 1); // Tangkap nomor halaman dari URL
 
-        Log::info('Memuat daftar email.', ['user_id' => Auth::id(), 'folder' => $folder]);
+        Log::info('Memuat daftar email.', ['user_id' => Auth::id(), 'folder' => $folder, 'page' => $page]);
 
         // === JIKA FOLDER INBOX (AMBIL DARI SERVER IMAP ASLI) ===
         if ($folder === 'inbox') {
@@ -39,17 +40,17 @@ class EmailController extends Controller
                 $client->connect();
                 $inboxFolder = $client->getFolder('INBOX');
 
-                // Tarik 15 pesan terbaru (dengan atau tanpa pencarian)
+                // Siapkan Query
+                $query = $inboxFolder->query();
                 if (!empty($search)) {
-                    // Tambahkan setFetchOrder('desc')
-                    $messages = $inboxFolder->query()->text($search)->setFetchOrder('desc')->limit(15)->get();
-                } else {
-                    // Ubah messages() menjadi query() agar bisa menggunakan setFetchOrder('desc')
-                    $messages = $inboxFolder->query()->all()->setFetchOrder('desc')->limit(15)->get();
+                    $query = $query->text($search);
                 }
 
+                // Gunakan setFetchOrder('desc') agar dibaca dari terbaru, lalu gunakan paginate(15)
+                $paginator = $query->setFetchOrder('desc')->paginate(15, $page, 'page');
+
                 $emails = [];
-                foreach($messages as $message){
+                foreach($paginator as $message){
                     $emails[] = [
                         'id' => $message->getUid(),
                         'from_name' => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail,
@@ -62,14 +63,19 @@ class EmailController extends Controller
                     ];
                 }
 
-                // Urutkan dari yang terbaru
+                // Tetap diurutkan agar tampilan di layar presisi
                 usort($emails, function($a, $b) {
                     return strtotime($b['created_at']) - strtotime($a['created_at']);
                 });
 
                 return response()->json([
                     'emails' => $emails,
-                    'unread_count' => $inboxFolder->query()->unseen()->count()
+                    'unread_count' => $inboxFolder->query()->unseen()->count(),
+                    'pagination' => [
+                        'current_page' => $paginator->currentPage(),
+                        'last_page' => $paginator->lastPage(),
+                        'has_more' => $paginator->hasMorePages()
+                    ]
                 ]);
 
             } catch (\Exception $e) {
@@ -94,11 +100,17 @@ class EmailController extends Controller
             });
         }
 
-        $emails = $query->orderBy('created_at', 'desc')->get();
+        // Ubah get() menjadi paginate(15) untuk lokal DB
+        $paginator = $query->orderBy('created_at', 'desc')->paginate(15, ['*'], 'page', $page);
 
         return response()->json([
-            'emails' => $emails,
-            'unread_count' => 0
+            'emails' => $paginator->items(),
+            'unread_count' => 0,
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'has_more' => $paginator->hasMorePages()
+            ]
         ]);
     }
 

@@ -351,20 +351,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- FUNGSI MENGAMBIL DAFTAR EMAIL ---
-    async function fetchEmails(folder = 'inbox', query = '') {
+   // --- FUNGSI MENGAMBIL DAFTAR EMAIL (Tambahkan Page) ---
+    async function fetchEmails(folder = 'inbox', query = '', page = 1) {
         ui.list.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-gray-400"><div class="loader mb-3"></div><p class="text-xs">Sinkronisasi ${folder}...</p></div>`;
         ui.selectAll.checked = false;
         toggleDeleteButton();
 
         try {
-            const res = await fetch(`${API_BASE_URL}?folder=${folder}&search=${encodeURIComponent(query)}`, { 
+            // Selipkan &page=${page} pada URL
+            const res = await fetch(`${API_BASE_URL}?folder=${folder}&search=${encodeURIComponent(query)}&page=${page}`, { 
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'} 
             });
             const data = await res.json();
             if(!res.ok) throw new Error(data.error);
             
-            renderList(data.emails);
+            // Panggil renderList beserta data pagination-nya
+            renderList(data.emails, data.pagination);
             
             if(data.unread_count !== undefined) {
                 ui.unreadBadge.textContent = data.unread_count;
@@ -374,6 +376,89 @@ document.addEventListener('DOMContentLoaded', () => {
             ui.list.innerHTML = `<div class="p-8 text-center text-sm text-red-500">Gagal memuat: ${err.message}</div>`;
         }
     }
+
+    // --- FUNGSI RENDER LIST EMAIL (Ditambah Tombol Prev & Next) ---
+    function renderList(emails, pagination = null) {
+        ui.list.innerHTML = '';
+        if(emails.length === 0) return ui.list.innerHTML = `<div class="p-10 text-center text-gray-400 text-sm">Kosong.</div>`;
+        
+        emails.forEach(em => {
+            const isUnread = !em.read_at;
+            const star = em.is_starred ? 'fa-solid fa-star text-yellow-400' : 'fa-regular fa-star text-gray-300';
+            const color = ['bg-red-500', 'bg-blue-500', 'bg-green-500'][em.from_name.length % 3];
+            
+            ui.list.innerHTML += `
+                <div class="email-item flex items-start gap-3 p-3.5 border-b cursor-pointer ${isUnread ? 'bg-[#f4f8ff] font-semibold border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'}" data-id="${em.id}">
+                    <div class="flex items-center h-full pt-1.5 z-10">
+                        <input type="checkbox" value="${em.id}" class="email-checkbox w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                    </div>
+
+                    <div class="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full ${color} text-white flex items-center justify-center text-xs font-bold">${em.from_name.charAt(0).toUpperCase()}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-baseline mb-1">
+                            <span class="truncate w-32 lg:w-44 text-[13px]">${em.from_name}</span>
+                            <span class="text-[11px] ${isUnread ? 'text-blue-600' : 'text-gray-400'}">${new Date(em.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'short'})}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <p class="truncate text-[13px] ${isUnread ? 'text-gray-800' : 'text-gray-500'} flex-1">${em.subject}</p>
+                            <button class="star-btn p-1 hover:bg-gray-200 rounded-full z-10" data-id="${em.id}" data-starred="${em.is_starred}"><i class="${star} text-xs"></i></button>
+                        </div>
+                    </div>
+                </div>`;
+        });
+
+        // Buat Tombol Pagination jika ada lebih dari 1 halaman
+        if (pagination && pagination.last_page > 1) {
+            ui.list.innerHTML += `
+                <div class="flex justify-between items-center p-3 border-t bg-gray-50 sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                    <button class="btn-prev-page px-3 py-1.5 bg-white border rounded text-xs text-gray-700 font-semibold hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
+                        ${pagination.current_page <= 1 ? 'disabled' : ''} 
+                        data-page="${pagination.current_page - 1}">
+                        <i class="fa-solid fa-chevron-left mr-1"></i> Prev
+                    </button>
+                    <span class="text-xs text-gray-500 font-semibold">Hal ${pagination.current_page} / ${pagination.last_page}</span>
+                    <button class="btn-next-page px-3 py-1.5 bg-white border rounded text-xs text-gray-700 font-semibold hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
+                        ${!pagination.has_more ? 'disabled' : ''} 
+                        data-page="${pagination.current_page + 1}">
+                        Next <i class="fa-solid fa-chevron-right ml-1"></i>
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    // --- KLIK LIST EMAIL ATAU TOMBOL PAGINATION ---
+    ui.list.onclick = (e) => {
+        // Tangkap klik Prev/Next Pagination
+        const btnPrev = e.target.closest('.btn-prev-page');
+        const btnNext = e.target.closest('.btn-next-page');
+        if(btnPrev && !btnPrev.disabled) return fetchEmails(currentFolder, ui.search.value, parseInt(btnPrev.dataset.page));
+        if(btnNext && !btnNext.disabled) return fetchEmails(currentFolder, ui.search.value, parseInt(btnNext.dataset.page));
+
+        // Cegah klik checkbox agar tidak membuka detail email
+        if(e.target.classList.contains('email-checkbox')) {
+            toggleDeleteButton();
+            return;
+        }
+
+        const star = e.target.closest('.star-btn');
+        if(star) {
+            e.stopPropagation();
+            fetch(`${API_BASE_URL}/${star.dataset.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
+                body: JSON.stringify({ is_starred: !(star.dataset.starred === 'true') })
+            }).then(() => fetchEmails(currentFolder, ui.search.value, 1)); // reset ke page 1 jika di-star
+            return;
+        }
+        
+        const item = e.target.closest('.email-item');
+        if(item) {
+            document.querySelectorAll('.email-item').forEach(el => el.classList.remove('active'));
+            item.classList.add('active');
+            fetchDetail(item.dataset.id);
+        }
+    };
 
     // --- FUNGSI MENGAMBIL DETAIL EMAIL ---
     async function fetchDetail(id) {
@@ -398,38 +483,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch {
             document.getElementById('email-body').innerHTML = '<p class="text-red-500 text-center mt-10">Gagal memuat isi pesan.</p>';
         }
-    }
-
-    // --- FUNGSI RENDER LIST EMAIL (Dengan Checkbox) ---
-    function renderList(emails) {
-        ui.list.innerHTML = '';
-        if(emails.length === 0) return ui.list.innerHTML = `<div class="p-10 text-center text-gray-400 text-sm">Kosong.</div>`;
-        
-        emails.forEach(em => {
-            const isUnread = !em.read_at;
-            const star = em.is_starred ? 'fa-solid fa-star text-yellow-400' : 'fa-regular fa-star text-gray-300';
-            const color = ['bg-red-500', 'bg-blue-500', 'bg-green-500'][em.from_name.length % 3];
-            
-            ui.list.innerHTML += `
-                <div class="email-item flex items-start gap-3 p-3.5 border-b cursor-pointer ${isUnread ? 'bg-[#f4f8ff] font-semibold border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'}" data-id="${em.id}">
-                    <!-- Checkbox -->
-                    <div class="flex items-center h-full pt-1.5 z-10">
-                        <input type="checkbox" value="${em.id}" class="email-checkbox w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
-                    </div>
-
-                    <div class="mt-0.5 flex-shrink-0 w-8 h-8 rounded-full ${color} text-white flex items-center justify-center text-xs font-bold">${em.from_name.charAt(0).toUpperCase()}</div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-baseline mb-1">
-                            <span class="truncate w-32 lg:w-44 text-[13px]">${em.from_name}</span>
-                            <span class="text-[11px] ${isUnread ? 'text-blue-600' : 'text-gray-400'}">${new Date(em.created_at).toLocaleDateString('id-ID',{day:'numeric',month:'short'})}</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <p class="truncate text-[13px] ${isUnread ? 'text-gray-800' : 'text-gray-500'} flex-1">${em.subject}</p>
-                            <button class="star-btn p-1 hover:bg-gray-200 rounded-full z-10" data-id="${em.id}" data-starred="${em.is_starred}"><i class="${star} text-xs"></i></button>
-                        </div>
-                    </div>
-                </div>`;
-        });
     }
 
     // --- MODAL KIRIM EMAIL ---
@@ -510,33 +563,6 @@ document.addEventListener('DOMContentLoaded', () => {
             fetchEmails(currentFolder);
         }
     });
-
-    // --- KLIK LIST EMAIL ---
-    ui.list.onclick = (e) => {
-        // Cegah klik checkbox agar tidak membuka detail email
-        if(e.target.classList.contains('email-checkbox')) {
-            toggleDeleteButton();
-            return;
-        }
-
-        const star = e.target.closest('.star-btn');
-        if(star) {
-            e.stopPropagation();
-            fetch(`${API_BASE_URL}/${star.dataset.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF_TOKEN },
-                body: JSON.stringify({ is_starred: !(star.dataset.starred === 'true') })
-            }).then(() => fetchEmails(currentFolder, ui.search.value));
-            return;
-        }
-        
-        const item = e.target.closest('.email-item');
-        if(item) {
-            document.querySelectorAll('.email-item').forEach(el => el.classList.remove('active'));
-            item.classList.add('active');
-            fetchDetail(item.dataset.id);
-        }
-    };
 
     // --- PENCARIAN EMAIL ---
     let toSearch; 
