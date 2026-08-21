@@ -56,11 +56,12 @@ class EmailController extends Controller
                 foreach($paginator as $message){
                     $emails[] = [
                         'id' => $message->getUid(),
-                        'from_name' => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail,
-                        'from_address' => $message->getFrom()[0]->mail,
+                        'from_name' => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail ?? 'Unknown',
+                        'from_address' => $message->getFrom()[0]->mail ?? 'Unknown',
                         'subject' => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
                         'body' => 'Pesan belum dimuat sepenuhnya...',
-                        'created_at' => $message->getDate()[0]->format('Y-m-d H:i:s'),
+                        // PERBAIKAN: Pengecekan aman header tanggal agar tidak terjadi error format() pada null
+                        'created_at' => !empty($message->getDate()) ? $message->getDate()[0]->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
                         'read_at' => $message->hasFlag('SEEN') ? now() : null,
                         'is_starred' => $message->hasFlag('FLAGGED'),
                     ];
@@ -80,7 +81,7 @@ class EmailController extends Controller
                     ]
                 ]);
 
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) { // Menggunakan Throwable untuk menangkap semua level error
                 Log::error('IMAP Fetch Error', ['error' => $e->getMessage()]);
                 return response()->json(['error' => 'Gagal terhubung ke IMAP: ' . $e->getMessage()], 500);
             }
@@ -90,84 +91,91 @@ class EmailController extends Controller
         // SKENARIO 2: BERBINTANG (GABUNGAN DARI IMAP & LOKAL DB)
         // =========================================================
         if ($folder === 'starred') {
-            $emails = [];
-
-            // A. Ambil dari DB Lokal (Pesan Terkirim yang dibintangi)
-            $localQuery = Email::where('user_id', Auth::id())->where('is_starred', true);
-            if (!empty($search)) {
-                $localQuery->where(function($q) use ($search) {
-                    $q->where('subject', 'like', "%{$search}%")
-                      ->orWhere('from_name', 'like', "%{$search}%");
-                });
-            }
-            $localData = $localQuery->orderBy('created_at', 'desc')->get();
-            
-            foreach($localData as $dbEmail) {
-                $emails[] = [
-                    'id' => $dbEmail->id,
-                    'from_name' => $dbEmail->from_name,
-                    'from_address' => $dbEmail->from_address,
-                    'subject' => $dbEmail->subject,
-                    'body' => $dbEmail->body,
-                    'created_at' => $dbEmail->created_at->format('Y-m-d H:i:s'),
-                    'read_at' => $dbEmail->read_at,
-                    'is_starred' => true,
-                ];
-            }
-
-            // B. Ambil dari IMAP Server (Pesan Inbox yang dibintangi)
             try {
-                $client = Client::account('default');
-                $client->connect();
-                $inboxFolder = $client->getFolder('INBOX');
+                $emails = [];
 
-                // Tarik pesan dengan Flag "FLAGGED" (Berbintang)
-                $imapQuery = $inboxFolder->query()->flagged();
-                
+                // A. Ambil dari DB Lokal (Pesan Terkirim yang dibintangi)
+                $localQuery = Email::where('user_id', Auth::id())->where('is_starred', true);
                 if (!empty($search)) {
-                    $imapQuery = $imapQuery->text($search);
+                    $localQuery->where(function($q) use ($search) {
+                        $q->where('subject', 'like', "%{$search}%")
+                          ->orWhere('from_name', 'like', "%{$search}%");
+                    });
                 }
-
-                // Ambil 50 terbaru untuk mencegah memori penuh
-                $imapData = $imapQuery->setFetchOrder('desc')->limit(50)->get();
-
-                foreach($imapData as $message){
+                $localData = $localQuery->orderBy('created_at', 'desc')->get();
+                
+                foreach($localData as $dbEmail) {
                     $emails[] = [
-                        'id' => $message->getUid(),
-                        'from_name' => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail,
-                        'from_address' => $message->getFrom()[0]->mail,
-                        'subject' => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
-                        'body' => 'Pesan belum dimuat sepenuhnya...',
-                        'created_at' => $message->getDate()[0]->format('Y-m-d H:i:s'),
-                        'read_at' => $message->hasFlag('SEEN') ? now() : null,
+                        'id' => $dbEmail->id,
+                        'from_name' => $dbEmail->from_name,
+                        'from_address' => $dbEmail->from_address,
+                        'subject' => $dbEmail->subject,
+                        'body' => $dbEmail->body,
+                        // PERBAIKAN: Gunakan Carbon::parse untuk menghindari error format() on string
+                        'created_at' => \Carbon\Carbon::parse($dbEmail->created_at)->format('Y-m-d H:i:s'),
+                        'read_at' => $dbEmail->read_at,
                         'is_starred' => true,
                     ];
                 }
-            } catch (\Exception $e) {
-                Log::error('IMAP Starred Fetch Error', ['error' => $e->getMessage()]);
+
+                // B. Ambil dari IMAP Server (Pesan Inbox yang dibintangi)
+                try {
+                    $client = Client::account('default');
+                    $client->connect();
+                    $inboxFolder = $client->getFolder('INBOX');
+
+                    // PERBAIKAN: Menggunakan format where('FLAGGED') untuk sintaks Webklex IMAP yang valid
+                    $imapQuery = $inboxFolder->query()->where('FLAGGED');
+                    
+                    if (!empty($search)) {
+                        $imapQuery = $imapQuery->text($search);
+                    }
+
+                    $imapData = $imapQuery->setFetchOrder('desc')->limit(50)->get();
+
+                    foreach($imapData as $message){
+                        $emails[] = [
+                            'id' => $message->getUid(),
+                            'from_name' => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail ?? 'Unknown',
+                            'from_address' => $message->getFrom()[0]->mail ?? 'Unknown',
+                            'subject' => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
+                            'body' => 'Pesan belum dimuat sepenuhnya...',
+                            // PERBAIKAN: Pengecekan aman header tanggal IMAP
+                            'created_at' => !empty($message->getDate()) ? $message->getDate()[0]->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
+                            'read_at' => $message->hasFlag('SEEN') ? now() : null,
+                            'is_starred' => true,
+                        ];
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('IMAP Starred Fetch Error', ['error' => $e->getMessage()]);
+                }
+
+                // C. Urutkan gabungan berdasarkan waktu terbaru
+                usort($emails, function($a, $b) {
+                    return strtotime($b['created_at']) - strtotime($a['created_at']);
+                });
+
+                // D. Manual Pagination untuk hasil gabungan
+                $total = count($emails);
+                $perPage = 15;
+                $lastPage = ceil($total / $perPage);
+                $offset = ($page - 1) * $perPage;
+                $pagedEmails = array_slice($emails, $offset, $perPage);
+
+                return response()->json([
+                    'emails' => array_values($pagedEmails), // array_values memastikan format respons JSON aman
+                    'unread_count' => 0,
+                    'pagination' => [
+                        'current_page' => $page,
+                        'last_page' => $lastPage > 0 ? $lastPage : 1,
+                        'has_more' => $page < $lastPage
+                    ]
+                ]);
+            } catch (\Throwable $e) {
+                // PERBAIKAN: Menangkap error utama agar tidak memicu 500 Internal Error di browser console
+                Log::error('Starred Folder Fatal Error', ['error' => $e->getMessage(), 'line' => $e->getLine()]);
+                return response()->json(['error' => 'Gagal memuat pesan berbintang: ' . $e->getMessage()], 500);
             }
-
-            // C. Urutkan gabungan berdasarkan waktu terbaru
-            usort($emails, function($a, $b) {
-                return strtotime($b['created_at']) - strtotime($a['created_at']);
-            });
-
-            // D. Manual Pagination untuk hasil gabungan
-            $total = count($emails);
-            $perPage = 15;
-            $lastPage = ceil($total / $perPage);
-            $offset = ($page - 1) * $perPage;
-            $pagedEmails = array_slice($emails, $offset, $perPage);
-
-            return response()->json([
-                'emails' => $pagedEmails,
-                'unread_count' => 0,
-                'pagination' => [
-                    'current_page' => $page,
-                    'last_page' => $lastPage > 0 ? $lastPage : 1,
-                    'has_more' => $page < $lastPage
-                ]
-            ]);
         }
 
         // =========================================================
