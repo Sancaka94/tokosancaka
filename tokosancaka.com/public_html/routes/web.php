@@ -286,6 +286,9 @@ Route::get('/{resi}/cetak_thermal', [PesananController::class, 'cetakThermal'])
 
 Route::get('/', function () { return view('home'); })->name('home');
 
+// Route untuk memproses form Hubungi Kami (Publik)
+Route::post('/hubungi-kami/kirim', [\App\Http\Controllers\Admin\EmailController::class, 'submitContactForm'])->name('contact.submit');
+
 
 Route::get('/privacy-policy', function () { return view('privacy-policy'); })->name('privacy.policy');
 Route::get('/terms-and-conditions', function () { return view('terms'); })->name('terms.conditions');

@@ -2009,16 +2009,27 @@ width: 22px;
 
                 <h4>Kirim Pesan</h4>
 
-                <form>
+                <!-- Tambahan Notifikasi Sukses/Error -->
+                @if(session('success'))
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+                @if(session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
 
-                    <div class="mb-3"><label for="contactName" class="form-label">Nama Anda</label><input type="text" class="form-control" id="contactName" required></div>
-
-                    <div class="mb-3"><label for="contactEmail" class="form-label">Email</label><input type="email" class="form-control" id="contactEmail" required></div>
-
-                    <div class="mb-3"><label for="contactMessage" class="form-label">Pesan</label><textarea class="form-control" id="contactMessage" rows="5" required></textarea></div>
-
+                <!-- Form yang sudah ditambahkan action, method, @csrf, dan name -->
+                <form action="{{ route('contact.submit') }}" method="POST">
+                    @csrf
+                    <div class="mb-3"><label for="contactName" class="form-label">Nama Anda</label><input type="text" class="form-control" id="contactName" name="name" required></div>
+                    <div class="mb-3"><label for="contactEmail" class="form-label">Email</label><input type="email" class="form-control" id="contactEmail" name="email" required></div>
+                    <div class="mb-3"><label for="contactMessage" class="form-label">Pesan</label><textarea class="form-control" id="contactMessage" name="message" rows="5" required></textarea></div>
                     <button type="submit" class="btn btn-danger">Kirim Pesan</button>
-
                 </form>
 
             </div>
