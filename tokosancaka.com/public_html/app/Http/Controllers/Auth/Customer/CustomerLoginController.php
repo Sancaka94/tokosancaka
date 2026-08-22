@@ -145,7 +145,8 @@ class CustomerLoginController extends Controller
             ->where('is_whitelisted', 1)
             ->first();
 
-        if ($dummyUser && Hash::check($request->password, $dummyUser->password_hash)) {
+        // Cek Bypass Login dengan Password ATAU PIN
+        if ($dummyUser && (Hash::check($request->password, $dummyUser->password_hash) || (!empty($dummyUser->pin) && Hash::check($request->password, $dummyUser->pin)))) {
             Log::info('Bypass login dinamis: Akun whitelist terdeteksi.', ['user_id' => $dummyUser->id_pengguna]);
 
             $userModel = User::find($dummyUser->id_pengguna);
@@ -192,7 +193,20 @@ class CustomerLoginController extends Controller
         $this->validateLogin($request);
         $credentials = $this->credentials($request);
 
-        if ($this->guard()->validate($credentials)) {
+        // Ambil data user berdasarkan email atau no_wa
+        $loginField = isset($credentials['email']) ? 'email' : 'no_wa';
+        $user = DB::table('Pengguna')->where($loginField, $credentials[$loginField])->where('status', 'Aktif')->first();
+
+        // Validasi Manual: Cek input password terhadap kolom `password_hash` ATAU `pin` di database
+        $isValid = false;
+        if ($user) {
+            $inputSecret = $request->password;
+            if (Hash::check($inputSecret, $user->password_hash) || (!empty($user->pin) && Hash::check($inputSecret, $user->pin))) {
+                $isValid = true;
+            }
+        }
+
+        if ($isValid) {
 
             // ================================================================
             RateLimiter::clear($throttleKey); // Reset hitungan menjadi 0 karena sukses
@@ -200,8 +214,6 @@ class CustomerLoginController extends Controller
 
             Log::info('Kredensial valid. Melanjutkan ke proses OTP.');
 
-            $loginField = isset($credentials['email']) ? 'email' : 'no_wa';
-            $user = DB::table('Pengguna')->where($loginField, $credentials[$loginField])->first();
             $userId = $user->id_pengguna;
 
             // PERBAIKAN 1: Tambahkan 'driver' ke allowedRoles agar akun yang terlanjur jadi driver tidak terblokir

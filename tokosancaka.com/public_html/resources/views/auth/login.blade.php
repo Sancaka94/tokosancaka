@@ -71,7 +71,7 @@
         border-color: #dc3545;
         box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.15);
     }
-    
+
     /* MODIFIKASI: Style tombol aktif dan tidak aktif */
     .btn-danger {
         background-color: #dc3545;
@@ -87,7 +87,7 @@
         transform: translateY(-2px);
         box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
     }
-    
+
     /* Tombol saat disabled (Abu-abu) */
     .btn:disabled, .btn[disabled] {
         background-color: #6c757d !important;
@@ -98,7 +98,7 @@
         transform: none !important;
         box-shadow: none !important;
     }
-    
+
     /* Wrapper untuk menangkap klik saat tombol disabled */
     .disabled-btn-wrapper {
         cursor: not-allowed;
@@ -210,8 +210,8 @@
 
                     <div class="form-floating mb-3 position-relative">
                         {{-- Memaksa atribut new-password agar Chrome tidak menyuntikkan password lama --}}
-                        <input type="password" class="form-control" id="password" name="password" placeholder="Password" required autocomplete="new-password">
-                        <label for="password" class="text-muted">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Password atau PIN" required autocomplete="new-password">
+                        <label for="password" class="text-muted">Password atau PIN</label>
                         <i class="fas fa-eye password-toggle-icon" onclick="togglePasswordVisibility('password')"></i>
                     </div>
 
@@ -249,11 +249,11 @@
                             <span class="mx-2 text-muted small">ATAU</span>
                             <hr class="flex-grow-1 text-muted opacity-25">
                         </div>
-                        
+
                         <div class="row g-2 mb-3">
                             <div class="col-12 col-sm-6 disabled-btn-wrapper" onclick="checkGpsClick()">
                                 <a href="{{ route('login.google') }}" id="btn-submit-google" class="btn btn-outline-dark btn-lg w-100 d-flex justify-content-center align-items-center disabled" role="button" aria-disabled="true">
-                                    <img src="https://tokosancaka.com/public/assets/google.png" alt="Google Logo" style="width: 20px; height: 20px; object-fit: contain;" class="me-2"> 
+                                    <img src="https://tokosancaka.com/public/assets/google.png" alt="Google Logo" style="width: 20px; height: 20px; object-fit: contain;" class="me-2">
                                     Google
                                 </a>
                             </div>
@@ -356,7 +356,7 @@
         if (isGpsActive && isTurnstileSuccess) {
             const btnManual = document.getElementById('btn-submit-manual');
             if(btnManual) btnManual.removeAttribute('disabled');
-            
+
             const btnGoogle = document.getElementById('btn-submit-google');
             if(btnGoogle) {
                 btnGoogle.classList.remove('disabled');
@@ -368,7 +368,7 @@
                 btnFacebook.classList.remove('disabled');
                 btnFacebook.removeAttribute('aria-disabled');
             }
-            
+
             const statusAlert = document.getElementById('gps-status-alert');
             if(statusAlert) {
                 statusAlert.classList.replace('alert-warning', 'alert-success');
@@ -394,9 +394,9 @@
             let alertMsg = "Akses Ditolak!\n";
             if (!isGpsActive) alertMsg += "- Anda wajib mengaktifkan dan mengizinkan GPS lokasi.\n";
             if (!isTurnstileSuccess) alertMsg += "- Anda wajib menyelesaikan verifikasi keamanan (Cloudflare).\n";
-            
+
             alert(alertMsg);
-            
+
             if (!isGpsActive) requestLocation();
         }
     }
@@ -407,10 +407,10 @@
             navigator.geolocation.getCurrentPosition(
                 function(position) {
                     isGpsActive = true;
-                    
+
                     document.getElementById('latitude').value = position.coords.latitude;
                     document.getElementById('longitude').value = position.coords.longitude;
-                    
+
                     checkAllValidations();
                 },
                 function(error) {
