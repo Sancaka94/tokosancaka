@@ -265,12 +265,19 @@ class CustomerLoginController extends Controller
                 Log::error('FonnteService gagal kirim OTP: ' . $e->getMessage());
             }
 
-            if (!empty($user->email)) {
+           if (!empty($user->email)) {
                 try {
-                    $emailBody = "Halo Kak {$user->nama_lengkap},\n\nBerikut adalah kode verifikasi OTP Anda: {$otpCode}\nAtau klik link: {$otpLink}";
-                    Mail::raw($emailBody, function ($mail) use ($user) {
+                    // MENGGUNAKAN VIEW EMAIL (HTML) BUKAN MAIL::RAW
+                    $dataEmail = [
+                        'namaLengkap' => $user->nama_lengkap,
+                        'otpCode'     => $otpCode,
+                        'otpLink'     => $otpLink
+                    ];
+
+                    Mail::send('emails.otp_login', $dataEmail, function ($mail) use ($user) {
                         $mail->to($user->email)->subject('Kode Verifikasi (OTP) Login Sancaka');
                     });
+
                     Log::info('OTP berhasil dikirim ke Email: ' . $user->email);
                 } catch (\Exception $e) {
                     Log::error('Gagal kirim OTP ke Email: ' . $e->getMessage());
