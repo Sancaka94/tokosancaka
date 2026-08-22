@@ -20,15 +20,16 @@
             overflow: hidden;
         }
         .email-header {
-            background-color: #dc3545; /* Merah ala Sancaka */
+            background-color: #ffffff;
             padding: 25px;
             text-align: center;
-            color: #ffffff;
+            border-bottom: 4px solid #dc3545; /* Aksen garis merah di bawah logo */
         }
-        .email-header h2 {
-            margin: 0;
-            font-size: 24px;
-            letter-spacing: 1px;
+        .email-header img {
+            max-height: 50px;
+            width: auto;
+            display: block;
+            margin: 0 auto;
         }
         .email-body {
             padding: 30px;
@@ -78,9 +79,12 @@
 </head>
 <body>
     <div class="email-container">
+
+        {{-- HEADER DENGAN LOGO --}}
         <div class="email-header">
-            <h2>SANCAKA EXPRESS</h2>
+            <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express">
         </div>
+
         <div class="email-body">
             <p>Halo <strong>{{ $namaLengkap }}</strong>,</p>
             <p>Sistem kami mendeteksi upaya login ke akun Sancaka Anda. Berikut adalah kode verifikasi (OTP) Anda. <strong>Jangan bagikan kode ini kepada siapa pun.</strong></p>
