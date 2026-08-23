@@ -33,33 +33,61 @@
             <input type="hidden" name="type" id="trx_type" value="prabayar">
             <input type="hidden" name="product_code" id="final_product_code" value="">
 
-            <!-- TABS MENU -->
+            <!-- TABS MENU UTAMA -->
             <div class="bg-white p-2 rounded-2xl shadow-sm border border-gray-100 mb-6 flex relative z-0">
                 <button type="button" id="tabPraBtn" class="flex-1 py-3 text-center font-bold text-white bg-red-600 rounded-xl transition-colors shadow-md" onclick="switchMainTab('prabayar')">
-                    📱 Prabayar
+                    📱 Prabayar & Digital
                 </button>
                 <button type="button" id="tabPascaBtn" class="flex-1 py-3 text-center font-bold text-gray-500 bg-transparent rounded-xl hover:bg-gray-50 transition-colors" onclick="switchMainTab('pascabayar')">
-                    🧾 Pascabayar
+                    🧾 Pascabayar & Tagihan
                 </button>
             </div>
 
             <!-- ==============================================
-                 KONTEN PRABAYAR
+                 KONTEN PRABAYAR (DENGAN KATEGORI LENGKAP)
             =============================================== -->
             <div id="contentPrabayar" class="space-y-6 relative z-10">
 
-                <div class="flex space-x-3 overflow-x-auto pb-2 custom-scrollbar">
-                    <button type="button" onclick="switchPraCategory('pulsa')" id="cat_pulsa" class="pra-cat-btn flex-shrink-0 px-5 py-2.5 rounded-full border-2 border-blue-500 bg-blue-500 text-white font-bold transition-all">
-                        📱 Pulsa & Data
+                <!-- KATEGORI SCROLL -->
+                <div class="flex space-x-3 overflow-x-auto pb-4 pt-1 px-1 custom-scrollbar">
+                    <button type="button" onclick="switchPraCategory('pulsa')" id="cat_pulsa" class="pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-blue-600 bg-blue-600 text-white font-bold transition-all shadow-sm">
+                        📱 Pulsa Prabayar
                     </button>
-                    <button type="button" onclick="switchPraCategory('ewallet')" id="cat_ewallet" class="pra-cat-btn flex-shrink-0 px-5 py-2.5 rounded-full border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
-                        💳 E-Wallet
+                    <button type="button" onclick="switchPraCategory('data')" id="cat_data" class="pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
+                        🌐 Paket Data
                     </button>
-                    <button type="button" onclick="switchPraCategory('pln')" id="cat_pln" class="pra-cat-btn flex-shrink-0 px-5 py-2.5 rounded-full border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
+                    <button type="button" onclick="switchPraCategory('paket_bicara')" id="cat_paket_bicara" class="pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
+                        📞 Paket Bicara
+                    </button>
+                    <button type="button" onclick="switchPraCategory('pln')" id="cat_pln" class="pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
                         ⚡ Token PLN
                     </button>
-                    <button type="button" onclick="switchPraCategory('game')" id="cat_game" class="pra-cat-btn flex-shrink-0 px-5 py-2.5 rounded-full border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
-                        🎮 Topup Game
+                    <button type="button" onclick="switchPraCategory('ewallet')" id="cat_ewallet" class="pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
+                        💳 E-Money
+                    </button>
+                    <button type="button" onclick="switchPraCategory('game')" id="cat_game" class="pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
+                        🎮 Game
+                    </button>
+                    <button type="button" onclick="switchPraCategory('voucher')" id="cat_voucher" class="pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
+                        🎟️ Voucher Belanja
+                    </button>
+                    <button type="button" onclick="switchPraCategory('internasional')" id="cat_internasional" class="pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
+                        🌍 Internasional
+                    </button>
+                    <button type="button" onclick="switchPraCategory('esim')" id="cat_esim" class="pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
+                        📲 e-SIM
+                    </button>
+                    <button type="button" onclick="switchPraCategory('emeterai')" id="cat_emeterai" class="pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
+                        📜 E-Meterai
+                    </button>
+                    <button type="button" onclick="switchPraCategory('streaming')" id="cat_streaming" class="pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
+                        🎬 Streaming
+                    </button>
+                    <button type="button" onclick="switchPraCategory('pgn')" id="cat_pgn" class="pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
+                        🔥 PGN
+                    </button>
+                    <button type="button" onclick="switchPraCategory('roaming')" id="cat_roaming" class="pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all">
+                        ✈️ Roaming
                     </button>
                 </div>
 
@@ -68,23 +96,16 @@
                         <label id="label_target" class="block text-sm font-bold text-gray-700 mb-2">Nomor HP</label>
                         <input type="text" name="customer_id_pra" id="customer_id_pra" class="w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium text-gray-900" placeholder="Contoh: 081234567890" onkeyup="handleTargetInput()">
 
+                        <!-- Operator Badge -->
                         <div id="operator_badge" class="hidden mt-3 flex items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
                             <span id="op_name" class="font-bold text-blue-700 uppercase tracking-wide">TELKOMSEL</span>
-                            <span class="ml-2 text-xs text-blue-500">✔ Nomor Valid</span>
+                            <span class="ml-2 text-xs text-blue-500">✔ Provider Terdeteksi</span>
                         </div>
 
-                        <!-- TAB SUB-KATEGORI PULSA / DATA -->
-                        <div id="pulsa_type_wrapper" class="hidden mt-4">
-                            <label class="block text-sm font-bold text-gray-700 mb-2">Jenis Layanan</label>
-                            <div class="flex space-x-2">
-                                <button type="button" id="tipe_pulsa_reguler" onclick="switchPulsaType('pulsa')" class="flex-1 py-2.5 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 font-bold transition-colors">Pulsa Reguler</button>
-                                <button type="button" id="tipe_pulsa_data" onclick="switchPulsaType('data')" class="flex-1 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-colors">Paket Data</button>
-                            </div>
-                        </div>
-
+                        <!-- Dropdown Khusus Game -->
                         <div id="game_selector_wrapper" class="hidden mb-4 mt-4">
                             <select id="game_selector" class="w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 font-medium" onchange="renderProducts()">
-                                <option value="">-- Pilih Game --</option>
+                                <option value="">-- Pilih Nama Game --</option>
                             </select>
                         </div>
                     </div>
@@ -99,7 +120,7 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                                 </div>
-                                <input type="text" id="searchNominal" class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-50" placeholder="Cari nama/nominal..." onkeyup="renderProducts()">
+                                <input type="text" id="searchNominal" class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-50" placeholder="Cari nama, detail, harga..." onkeyup="renderProducts()">
                             </div>
                         </div>
 
@@ -126,7 +147,7 @@
                         <input type="hidden" id="pasca_biller" value="" onchange="handlePascaBiller()">
 
                         <button type="button" id="customSelectTrigger" class="flex items-center justify-between w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-gray-50 hover:bg-gray-100 focus:ring-2 focus:ring-blue-500 font-medium text-left transition-colors" onclick="toggleCustomSelect()">
-                            <span id="customSelectText" class="text-gray-500 truncate pr-4">-- Pilih Layanan (PLN, PDAM, BPJS) --</span>
+                            <span id="customSelectText" class="text-gray-500 truncate pr-4">-- Pilih Layanan Tagihan (PLN, PDAM, BPJS, dll) --</span>
                             <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                         </button>
 
@@ -136,7 +157,7 @@
                                     <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                                     </div>
-                                    <input type="text" id="customSelectSearch" class="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Cari layanan..." onkeyup="filterCustomSelect()">
+                                    <input type="text" id="customSelectSearch" class="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Ketik nama layanan..." onkeyup="filterCustomSelect()">
                                 </div>
                             </div>
 
@@ -148,7 +169,7 @@
 
                     <div class="mb-6 relative z-10">
                         <label class="block text-sm font-bold text-gray-700 mb-2">Nomor Pelanggan / ID</label>
-                        <input type="text" name="customer_id_pasca" id="customer_id_pasca" class="w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 font-medium" placeholder="Masukkan ID Pelanggan">
+                        <input type="text" name="customer_id_pasca" id="customer_id_pasca" class="w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 font-medium" placeholder="Masukkan ID Pelanggan Tagihan">
                     </div>
 
                     <div class="p-4 bg-yellow-50 rounded-xl border border-yellow-200 relative z-10">
@@ -205,7 +226,7 @@
 </div>
 
 <!-- ========================================================== -->
-<!-- MODAL: METODE PEMBAYARAN (TAILWIND) -->
+<!-- MODAL: METODE PEMBAYARAN (TAILWIND MEGA MODAL) -->
 <!-- ========================================================== -->
 <div id="paymentModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[200] hidden transition-opacity">
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl mx-4 transform transition-all flex flex-col max-h-[90vh]">
@@ -433,7 +454,7 @@
                     </div>
                 </li>
 
-                <!-- 8. TRIPAY (JIKA DISEDIAKAN CONTROLLER) -->
+                <!-- 8. TRIPAY DINAMIS -->
                 @if(isset($tripayChannels) && count($tripayChannels) > 0)
                     <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
                         Metode Pembayaran Otomatis (Tripay)
@@ -475,10 +496,8 @@
 
     let activeMainTab = 'prabayar';
     let activePraCat = 'pulsa';
-    let activePulsaType = 'pulsa'; // default: Pulsa Reguler
     let detectedOp = '';
 
-    // Variabel Pagination
     let currentPage = 1;
     const itemsPerPage = 12;
     let currentFilteredData = [];
@@ -582,7 +601,6 @@
         if(filename) {
             return `https://tokosancaka.com/storage/logo-ppob/${filename}`;
         }
-
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(operatorName)}&background=f1f5f9&color=64748b&rounded=true&bold=true`;
     }
 
@@ -674,49 +692,38 @@
         }
     }
 
-    // FUNGSI BARU: TOGGLE JENIS PULSA/DATA
-    function switchPulsaType(type) {
-        activePulsaType = type;
-        if (type === 'pulsa') {
-            document.getElementById('tipe_pulsa_reguler').className = "flex-1 py-2.5 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 font-bold transition-colors";
-            document.getElementById('tipe_pulsa_data').className = "flex-1 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-colors";
-        } else {
-            document.getElementById('tipe_pulsa_data').className = "flex-1 py-2.5 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 font-bold transition-colors";
-            document.getElementById('tipe_pulsa_reguler').className = "flex-1 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-colors";
-        }
-        renderProducts();
-    }
-
     function switchPraCategory(cat) {
         activePraCat = cat;
 
         document.querySelectorAll('.pra-cat-btn').forEach(el => {
-            el.className = "pra-cat-btn flex-shrink-0 px-5 py-2.5 rounded-full border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all";
+            el.className = "pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all shadow-sm";
         });
 
-        let activeColor = 'bg-blue-500 border-blue-500';
-        if(cat === 'ewallet') activeColor = 'bg-purple-500 border-purple-500';
-        if(cat === 'pln') activeColor = 'bg-yellow-500 border-yellow-500';
-        if(cat === 'game') activeColor = 'bg-green-500 border-green-500';
+        let activeColor = 'bg-blue-600 border-blue-600 text-white';
 
-        document.getElementById('cat_'+cat).className = `pra-cat-btn flex-shrink-0 px-5 py-2.5 rounded-full border-2 text-white font-bold transition-all ${activeColor}`;
+        document.getElementById('cat_'+cat).className = `pra-cat-btn flex-shrink-0 px-4 py-2 rounded-xl border-2 font-bold transition-all shadow-sm ${activeColor}`;
 
         document.getElementById('customer_id_pra').value = '';
         document.getElementById('operator_badge').classList.add('hidden');
-        document.getElementById('pulsa_type_wrapper').classList.add('hidden');
         document.getElementById('game_selector_wrapper').classList.add('hidden');
         detectedOp = '';
 
         const labelTarget = document.getElementById('label_target');
-        if(cat === 'pulsa') {
+
+        // Sesuaikan teks label berdasarkan kategori
+        if(['pulsa', 'data', 'paket_bicara', 'roaming', 'internasional'].includes(cat)) {
             labelTarget.innerText = "Nomor HP / Tujuan";
         } else if(cat === 'ewallet') {
-            labelTarget.innerText = "Nomor HP E-Wallet (OVO, DANA, dll)";
+            labelTarget.innerText = "Nomor E-Wallet (OVO, DANA, dll)";
         } else if(cat === 'pln') {
             labelTarget.innerText = "Nomor Meter / ID Pelanggan PLN";
         } else if(cat === 'game') {
             labelTarget.innerText = "Player ID / User ID Game";
             document.getElementById('game_selector_wrapper').classList.remove('hidden');
+        } else if(cat === 'pgn') {
+            labelTarget.innerText = "Nomor Pelanggan PGN";
+        } else {
+            labelTarget.innerText = "Nomor HP (Pengiriman Kode)";
         }
 
         renderProducts();
@@ -725,7 +732,7 @@
     function handleTargetInput() {
         let number = document.getElementById('customer_id_pra').value.replace(/[^0-9]/g, '');
 
-        if (activePraCat === 'pulsa') {
+        if (['pulsa', 'data', 'paket_bicara', 'roaming'].includes(activePraCat)) {
             if (number.length >= 4) {
                 let foundOp = '';
                 let foundColor = '';
@@ -747,31 +754,28 @@
                 if (foundOp) {
                     detectedOp = foundOp;
                     document.getElementById('operator_badge').classList.remove('hidden');
-                    document.getElementById('pulsa_type_wrapper').classList.remove('hidden');
                     document.getElementById('op_name').innerText = foundOp;
                     document.getElementById('op_name').style.color = foundColor;
                 } else {
                     detectedOp = '';
                     document.getElementById('operator_badge').classList.add('hidden');
-                    document.getElementById('pulsa_type_wrapper').classList.add('hidden');
                 }
             } else {
                 detectedOp = '';
                 document.getElementById('operator_badge').classList.add('hidden');
-                document.getElementById('pulsa_type_wrapper').classList.add('hidden');
             }
         }
         renderProducts();
     }
 
     // ==========================================
-    // RENDER PRODUK DENGAN PAGINATION JS
+    // RENDER PRODUK DENGAN PAGINATION JS & FILTER LENGKAP
     // ==========================================
     function renderProducts() {
         const searchKeyword = document.getElementById('searchNominal').value.toLowerCase();
         let filtered = [];
 
-        if(activePraCat === 'pulsa') {
+        if(['pulsa', 'data', 'paket_bicara', 'roaming'].includes(activePraCat)) {
             let searchOp = detectedOp ? detectedOp.toLowerCase() : '';
             if (searchOp === 'smartfren') searchOp = 'smart';
             if (searchOp === 'three') searchOp = 'three';
@@ -782,19 +786,19 @@
                 let o = p.operator.toLowerCase();
 
                 let isTypeMatch = false;
-                if (activePulsaType === 'pulsa') {
-                    // IAK biasanya mendaftarkan pulsa reguler dengan type "pulsa" atau "umum"
-                    isTypeMatch = t.includes('pulsa') && !t.includes('data');
-                } else {
-                    // Filter untuk Paket Data
-                    isTypeMatch = t.includes('data');
-                }
+                if (activePraCat === 'pulsa') isTypeMatch = t === 'pulsa' || t === 'umum';
+                if (activePraCat === 'data') isTypeMatch = t.includes('data');
+                if (activePraCat === 'paket_bicara') isTypeMatch = t.includes('sms') || t.includes('telepon') || t.includes('call') || t.includes('paket_bicara');
+                if (activePraCat === 'roaming') isTypeMatch = t.includes('roaming');
 
                 if(!searchOp) return isTypeMatch;
 
                 let isMatchOp = o.includes(searchOp) || (searchOp === 'three' && o.includes('tri'));
                 return isTypeMatch && isMatchOp;
             });
+        }
+        else if(activePraCat === 'pln') {
+            filtered = dbPrepaid.filter(p => p.operator && p.operator.toLowerCase() === 'pln');
         }
         else if(activePraCat === 'ewallet') {
             filtered = dbPrepaid.filter(p => {
@@ -803,9 +807,6 @@
                 return t.includes('emoney') || t.includes('ewallet') || t.includes('etoll') || t.includes('saldo');
             });
         }
-        else if(activePraCat === 'pln') {
-            filtered = dbPrepaid.filter(p => p.operator && p.operator.toLowerCase() === 'pln');
-        }
         else if(activePraCat === 'game') {
             let selectedGame = document.getElementById('game_selector').value;
             filtered = dbPrepaid.filter(p => {
@@ -813,6 +814,24 @@
                 if(selectedGame) return p.operator === selectedGame;
                 return true;
             });
+        }
+        else if(activePraCat === 'voucher') {
+            filtered = dbPrepaid.filter(p => p.type && p.type.toLowerCase().includes('voucher'));
+        }
+        else if(activePraCat === 'internasional') {
+            filtered = dbPrepaid.filter(p => p.type && (p.type.toLowerCase().includes('internasional') || p.type.toLowerCase().includes('global')));
+        }
+        else if(activePraCat === 'esim') {
+            filtered = dbPrepaid.filter(p => p.type && (p.type.toLowerCase().includes('esim') || p.type.toLowerCase().includes('e-sim')));
+        }
+        else if(activePraCat === 'emeterai') {
+            filtered = dbPrepaid.filter(p => p.type && p.type.toLowerCase().includes('meterai'));
+        }
+        else if(activePraCat === 'streaming') {
+            filtered = dbPrepaid.filter(p => p.type && (p.type.toLowerCase().includes('streaming') || p.type.toLowerCase().includes('tv') || p.type.toLowerCase().includes('entertainment')));
+        }
+        else if(activePraCat === 'pgn') {
+            filtered = dbPrepaid.filter(p => p.operator && p.operator.toLowerCase().includes('pgn'));
         }
 
         if(searchKeyword) {
