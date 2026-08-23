@@ -237,7 +237,63 @@
         <p><i>* Layanan didukung oleh Sancaka Express</i></p>
     </div>
 
+    <!-- ELEMEN YANG TIDAK IKUT TERCETAK KE KERTAS (TOMBOL & FORM BAYAR) -->
     <div class="no-print">
+
+        <!-- ========================================== -->
+        <!-- TOMBOL BAYAR KHUSUS PASCABAYAR PENDING     -->
+        <!-- ========================================== -->
+        @if($transaction->status === 'PENDING' && $transaction->type === 'pascabayar')
+            <div style="margin-top: 20px; text-align: left; padding: 15px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;">
+                <p style="font-size: 13px; font-weight: bold; color: #b45309; margin-bottom: 12px; text-align: center;">
+                    ⚠️ Tagihan Belum Dibayar
+                </p>
+                <form action="{{ route('ppob.pay_postpaid') }}" method="POST">
+                    @csrf
+                    <!-- Lempar ID Transaksi ke Controller -->
+                    <input type="hidden" name="tr_id" value="{{ $transaction->tr_id }}">
+
+                    <label style="font-size: 12px; font-weight: bold; display: block; margin-bottom: 5px;">Metode Pembayaran:</label>
+                    <select name="payment_method" id="payMethodPasca" onchange="togglePascaFields()" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 10px;" required>
+                        <option value="" disabled selected>-- Pilih Metode --</option>
+                        <option value="SALDO">💰 Potong Saldo</option>
+                        <option value="DANA">🔵 DANA Otomatis</option>
+                        <option value="DOKU">🛡️ DOKU Gateway</option>
+                    </select>
+
+                    <!-- Form Input WA & PIN (Hanya Muncul Jika Pilih Saldo) -->
+                    <div id="pascaSaldoFields" style="display: none;">
+                        <input type="number" name="wa_pembayaran" id="wa_pembayaran" placeholder="Nomor WA Akun" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 10px;">
+                        <input type="password" name="pin_pembayaran" id="pin_pembayaran" placeholder="PIN Keamanan" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 10px;">
+                    </div>
+
+                    <button type="submit" style="width: 100%; padding: 12px; background: #16a34a; color: #fff; font-weight: bold; border-radius: 5px; border: none; cursor: pointer; margin-bottom: 10px;">
+                        💸 Bayar Sekarang (Rp {{ number_format($transaction->price, 0, ',', '.') }})
+                    </button>
+                </form>
+            </div>
+
+            <script>
+                function togglePascaFields() {
+                    var method = document.getElementById('payMethodPasca').value;
+                    var fields = document.getElementById('pascaSaldoFields');
+                    var wa = document.getElementById('wa_pembayaran');
+                    var pin = document.getElementById('pin_pembayaran');
+
+                    if(method === 'SALDO') {
+                        fields.style.display = 'block';
+                        wa.required = true;
+                        pin.required = true;
+                    } else {
+                        fields.style.display = 'none';
+                        wa.required = false;
+                        pin.required = false;
+                    }
+                }
+            </script>
+        @endif
+        <!-- ========================================== -->
+
         {{-- Kontainer Flexbox untuk tombol --}}
         <div class="action-buttons">
             @if($transaction->status === 'PROCESS' || $transaction->status === 'PENDING')
@@ -247,7 +303,7 @@
                     </a>
                 @else
                     <a href="{{ route('ppob.check_status', $transaction->tr_id) }}" class="btn-check">
-                        Cek Tagihan
+                        Refresh Status
                     </a>
                 @endif
             @endif
