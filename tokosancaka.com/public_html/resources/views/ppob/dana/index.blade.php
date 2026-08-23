@@ -73,9 +73,18 @@
                             <span class="ml-2 text-xs text-blue-500">✔ Nomor Valid</span>
                         </div>
 
+                        <!-- TAB SUB-KATEGORI PULSA / DATA -->
+                        <div id="pulsa_type_wrapper" class="hidden mt-4">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Jenis Layanan</label>
+                            <div class="flex space-x-2">
+                                <button type="button" id="tipe_pulsa_reguler" onclick="switchPulsaType('pulsa')" class="flex-1 py-2.5 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 font-bold transition-colors">Pulsa Reguler</button>
+                                <button type="button" id="tipe_pulsa_data" onclick="switchPulsaType('data')" class="flex-1 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-colors">Paket Data</button>
+                            </div>
+                        </div>
+
                         <div id="game_selector_wrapper" class="hidden mb-4 mt-4">
                             <select id="game_selector" class="w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 font-medium" onchange="renderProducts()">
-                                <option value="">-- Semua Game --</option>
+                                <option value="">-- Pilih Game --</option>
                             </select>
                         </div>
                     </div>
@@ -466,6 +475,7 @@
 
     let activeMainTab = 'prabayar';
     let activePraCat = 'pulsa';
+    let activePulsaType = 'pulsa'; // default: Pulsa Reguler
     let detectedOp = '';
 
     // Variabel Pagination
@@ -664,6 +674,19 @@
         }
     }
 
+    // FUNGSI BARU: TOGGLE JENIS PULSA/DATA
+    function switchPulsaType(type) {
+        activePulsaType = type;
+        if (type === 'pulsa') {
+            document.getElementById('tipe_pulsa_reguler').className = "flex-1 py-2.5 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 font-bold transition-colors";
+            document.getElementById('tipe_pulsa_data').className = "flex-1 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-colors";
+        } else {
+            document.getElementById('tipe_pulsa_data').className = "flex-1 py-2.5 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700 font-bold transition-colors";
+            document.getElementById('tipe_pulsa_reguler').className = "flex-1 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-colors";
+        }
+        renderProducts();
+    }
+
     function switchPraCategory(cat) {
         activePraCat = cat;
 
@@ -680,14 +703,18 @@
 
         document.getElementById('customer_id_pra').value = '';
         document.getElementById('operator_badge').classList.add('hidden');
+        document.getElementById('pulsa_type_wrapper').classList.add('hidden');
         document.getElementById('game_selector_wrapper').classList.add('hidden');
         detectedOp = '';
 
         const labelTarget = document.getElementById('label_target');
-        if(cat === 'pulsa') labelTarget.innerText = "Nomor HP / Tujuan";
-        if(cat === 'ewallet') labelTarget.innerText = "Nomor HP E-Wallet (OVO, DANA, dll)";
-        if(cat === 'pln') labelTarget.innerText = "Nomor Meter / ID Pelanggan PLN";
-        if(cat === 'game') {
+        if(cat === 'pulsa') {
+            labelTarget.innerText = "Nomor HP / Tujuan";
+        } else if(cat === 'ewallet') {
+            labelTarget.innerText = "Nomor HP E-Wallet (OVO, DANA, dll)";
+        } else if(cat === 'pln') {
+            labelTarget.innerText = "Nomor Meter / ID Pelanggan PLN";
+        } else if(cat === 'game') {
             labelTarget.innerText = "Player ID / User ID Game";
             document.getElementById('game_selector_wrapper').classList.remove('hidden');
         }
@@ -720,15 +747,18 @@
                 if (foundOp) {
                     detectedOp = foundOp;
                     document.getElementById('operator_badge').classList.remove('hidden');
+                    document.getElementById('pulsa_type_wrapper').classList.remove('hidden');
                     document.getElementById('op_name').innerText = foundOp;
                     document.getElementById('op_name').style.color = foundColor;
                 } else {
                     detectedOp = '';
                     document.getElementById('operator_badge').classList.add('hidden');
+                    document.getElementById('pulsa_type_wrapper').classList.add('hidden');
                 }
             } else {
                 detectedOp = '';
                 document.getElementById('operator_badge').classList.add('hidden');
+                document.getElementById('pulsa_type_wrapper').classList.add('hidden');
             }
         }
         renderProducts();
@@ -751,11 +781,19 @@
                 let t = p.type.toLowerCase();
                 let o = p.operator.toLowerCase();
 
-                let isPulsaData = t.includes('pulsa') || t.includes('data');
-                if(!searchOp) return isPulsaData;
+                let isTypeMatch = false;
+                if (activePulsaType === 'pulsa') {
+                    // IAK biasanya mendaftarkan pulsa reguler dengan type "pulsa" atau "umum"
+                    isTypeMatch = t.includes('pulsa') && !t.includes('data');
+                } else {
+                    // Filter untuk Paket Data
+                    isTypeMatch = t.includes('data');
+                }
+
+                if(!searchOp) return isTypeMatch;
 
                 let isMatchOp = o.includes(searchOp) || (searchOp === 'three' && o.includes('tri'));
-                return isPulsaData && isMatchOp;
+                return isTypeMatch && isMatchOp;
             });
         }
         else if(activePraCat === 'ewallet') {
