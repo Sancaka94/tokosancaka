@@ -66,10 +66,45 @@
                                 </td>
 
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2.5 py-0.5 inline-flex text-[10px] leading-4 font-bold rounded bg-gray-100 text-gray-700 border border-gray-300 uppercase tracking-wider mb-1">
-                                        {{ $trx->type }}
-                                    </span>
-                                    <div class="text-sm font-bold text-blue-600 truncate max-w-[150px]" title="{{ $trx->product_code }}">{{ $trx->product_code }}</div>
+                                    @php
+                                        // LOGIKA DETEKSI LOGO OTOMATIS BERDASARKAN KODE PRODUK IAK
+                                        $codeLower = strtolower($trx->product_code);
+                                        $logo = '';
+
+                                        if (str_contains($codeLower, 'isat') || str_contains($codeLower, 'indosat')) $logo = 'indosat.png';
+                                        elseif (str_contains($codeLower, 'xl') || str_contains($codeLower, 'xld')) $logo = 'xl.png';
+                                        elseif (str_contains($codeLower, 'axis') || str_contains($codeLower, 'ax')) $logo = 'axis.png';
+                                        elseif (str_contains($codeLower, 'tsel') || str_contains($codeLower, 'telkomsel') || preg_match('/^t(sel|elkomsel|elkom)/i', $codeLower)) $logo = 'telkomsel.png';
+                                        elseif (str_contains($codeLower, 'smart') || str_contains($codeLower, 'sm')) $logo = 'smartfren.png';
+                                        elseif (str_contains($codeLower, 'tri') || str_contains($codeLower, 'three')) $logo = 'tri.png';
+                                        elseif (str_contains($codeLower, 'byu') || str_contains($codeLower, 'by.u')) $logo = 'by.u.png';
+                                        elseif (str_contains($codeLower, 'pln')) $logo = 'pln.png';
+                                        elseif (str_contains($codeLower, 'pdam')) $logo = 'pdam.png';
+                                        elseif (str_contains($codeLower, 'bpjs')) $logo = 'bpjs.png';
+                                        elseif (str_contains($codeLower, 'ovo')) $logo = 'ovo.png';
+                                        elseif (str_contains($codeLower, 'dana')) $logo = 'dana.png';
+                                        elseif (str_contains($codeLower, 'gopay')) $logo = 'go pay.png';
+                                        elseif (str_contains($codeLower, 'shopee')) $logo = 'shopee pay.png';
+                                        elseif (str_contains($codeLower, 'mlbb') || str_contains($codeLower, 'mobile legend')) $logo = 'mobile legends.png';
+                                        elseif (str_contains($codeLower, 'baf')) $logo = 'baf.png';
+                                        elseif (str_contains($codeLower, 'bni')) $logo = 'kredit_bni.png';
+                                        elseif (str_contains($codeLower, 'gas') || str_contains($codeLower, 'pgn')) $logo = 'pertamina gas.png';
+
+                                        // Fallback ke Inisial UI Avatars jika tidak ditemukan
+                                        $logoUrl = $logo ? 'https://tokosancaka.com/storage/logo-ppob/' . $logo : 'https://ui-avatars.com/api/?name=' . urlencode(substr($trx->product_code, 0, 4)) . '&background=f1f5f9&color=64748b&rounded=true&bold=true';
+                                    @endphp
+
+                                    <div class="flex items-center">
+                                        <div class="w-10 h-10 flex-shrink-0 bg-white rounded-full p-1 border border-gray-200 shadow-sm flex items-center justify-center mr-3">
+                                            <img src="{{ $logoUrl }}" alt="Logo" class="w-full h-full object-contain rounded-full" onerror="this.src='https://ui-avatars.com/api/?name={{ urlencode(substr($trx->product_code, 0, 3)) }}&background=f1f5f9&color=64748b&rounded=true&bold=true'">
+                                        </div>
+                                        <div>
+                                            <span class="px-2.5 py-0.5 inline-flex text-[10px] leading-4 font-bold rounded bg-gray-100 text-gray-700 border border-gray-300 uppercase tracking-wider mb-1">
+                                                {{ $trx->type }}
+                                            </span>
+                                            <div class="text-sm font-bold text-blue-600 truncate max-w-[150px]" title="{{ $trx->product_code }}">{{ $trx->product_code }}</div>
+                                        </div>
+                                    </div>
                                 </td>
 
                                 <td class="px-6 py-4 whitespace-nowrap">
@@ -361,7 +396,6 @@
         document.getElementById('historyPaymentModal').classList.add('hidden');
         document.body.style.overflow = 'auto';
 
-        // Reset State
         document.getElementById('modal_payment_method').value = '';
         document.getElementById('modal_saldo_fields').classList.add('hidden');
         document.getElementById('modal_wa_pembayaran').required = false;
@@ -379,11 +413,9 @@
             const paymentValue = this.dataset.value;
             document.getElementById('modal_payment_method').value = paymentValue;
 
-            // Handle styling
             document.querySelectorAll('.payment-option').forEach(li => li.classList.remove('bg-red-50', 'border-red-500'));
             this.classList.add('bg-red-50', 'border-red-500');
 
-            // Handle WA & PIN fields
             const sFields = document.getElementById('modal_saldo_fields');
             const wa = document.getElementById('modal_wa_pembayaran');
             const pin = document.getElementById('modal_pin_pembayaran');
@@ -398,7 +430,6 @@
                 pin.required = false;
             }
 
-            // Enable submit button
             const btn = document.getElementById('btnSubmitHistory');
             btn.disabled = false;
             btn.classList.remove('opacity-50', 'cursor-not-allowed');
