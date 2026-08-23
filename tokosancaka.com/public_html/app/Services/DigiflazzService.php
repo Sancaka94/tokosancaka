@@ -41,12 +41,14 @@ class DigiflazzService
     /**
      * PENTING: Method untuk mengatur kredensial dari Controller (digunakan untuk testing/override)
      */
-    public function setCredentials(string $username, string $apiKey, bool $testingMode): void
+    public function setCredentials(string $username, string $apiKey, bool $isProduction): void
     {
         $this->username = trim($username);
         $this->apiKey = trim($apiKey);
-        //$this->testingMode = $testingMode;
+
+        // Mode testing aktif jika BUKAN production
         $this->testingMode = !$isProduction;
+
         // Atur Base URL sesuai mode testing
         $this->baseUrl = self::URL_PROD;
     }
