@@ -3,7 +3,7 @@
 @section('content')
 <div class="min-h-screen bg-gray-50 py-10 font-sans">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         <div class="mb-8 text-center">
             <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Top Up & Tagihan</h1>
             <p class="mt-2 text-sm text-gray-500">Beli Pulsa, Paket Data, dan Token Listrik otomatis langsung masuk.</p>
@@ -36,7 +36,7 @@
         <div class="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
             <form action="{{ route('ppob.pay') }}" method="POST" class="p-6 sm:p-8" id="formPpob">
                 @csrf
-                
+
                 <div class="mb-8">
                     <label for="primary_param" class="block text-sm font-bold text-gray-700 mb-2">Nomor HP / Tujuan</label>
                     <div class="relative rounded-xl shadow-sm">
@@ -45,8 +45,8 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                             </svg>
                         </div>
-                        <input type="number" name="primary_param" id="primary_param" value="{{ old('primary_param') }}" 
-                            class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-12 pr-4 py-3.5 sm:text-base border-gray-300 rounded-xl bg-gray-50 transition-colors duration-200" 
+                        <input type="number" name="primary_param" id="primary_param" value="{{ old('primary_param') }}"
+                            class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-12 pr-4 py-3.5 sm:text-base border-gray-300 rounded-xl bg-gray-50 transition-colors duration-200"
                             placeholder="Contoh: 081234567890" required>
                     </div>
                     <p class="mt-2 text-xs text-gray-500">Pastikan nomor tujuan sudah benar dan aktif.</p>
@@ -56,7 +56,7 @@
 
                 <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <h3 class="text-lg font-bold text-gray-900">Pilih Nominal</h3>
-                    
+
                     <div class="relative w-full sm:w-64">
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <svg class="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -66,47 +66,52 @@
                         <input type="text" id="searchProduct" class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-9 pr-3 py-2 text-sm border-gray-300 rounded-lg" placeholder="Cari pulsa, data, provider...">
                     </div>
                 </div>
-                
+
                 <div class="mb-8 max-h-[400px] overflow-y-auto pr-2 pb-2 custom-scrollbar">
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4" id="productGrid">
                         @forelse($products as $product)
-                        <label class="product-card-item cursor-pointer h-full" data-search="{{ strtolower($product->provider . ' ' . $product->product_type . ' ' . $product->price_value) }}">
-                            <input type="radio" name="product_id" value="{{ $product->product_id }}" class="peer sr-only" required>
-                            
+                        <label class="product-card-item cursor-pointer h-full" data-search="{{ strtolower($product->brand . ' ' . $product->product_name . ' ' . $product->sell_price) }}">
+
+                            <!-- PERBAIKAN: name diubah jadi "sku" dan value diubah ke buyer_sku_code -->
+                            <input type="radio" name="sku" value="{{ $product->buyer_sku_code }}" class="peer sr-only" required>
+
                             <div class="h-full rounded-xl border-2 border-gray-100 bg-white p-4 hover:bg-gray-50 hover:border-gray-200 peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:shadow-md transition-all duration-200 flex flex-col justify-between">
-                                
+
                                 <div class="flex items-start space-x-3 mb-3">
                                     <div class="flex-shrink-0">
                                         @php
-                                            // Warna dinamis berdasarkan nama provider (Opsional, agar lebih cantik)
-                                            $color = match(strtolower($product->provider)) {
-                                                'telkomsel' => 'e11d48', // Rose 600
-                                                'indosat' => 'f59e0b',   // Amber 500
-                                                'xl', 'axis' => '0284c7', // Sky 600
-                                                'tri', 'three' => '000000', // Black
-                                                'smartfren' => 'be185d', // Pink 700
-                                                'pln' => '0ea5e9',       // Sky 500
-                                                default => '4f46e5'      // Indigo 600
+                                            // PERBAIKAN: Gunakan brand
+                                            $brandName = $product->brand ?? 'PPOB';
+                                            $color = match(strtolower($brandName)) {
+                                                'telkomsel' => 'e11d48',
+                                                'indosat' => 'f59e0b',
+                                                'xl', 'axis' => '0284c7',
+                                                'tri', 'three' => '000000',
+                                                'smartfren' => 'be185d',
+                                                'pln' => '0ea5e9',
+                                                default => '4f46e5'
                                             };
                                         @endphp
-                                        <img src="https://ui-avatars.com/api/?name={{ urlencode($product->provider) }}&background={{ $color }}&color=fff&rounded=true&bold=true&size=128" 
-                                             alt="{{ $product->provider }}" 
+                                        <img src="https://ui-avatars.com/api/?name={{ urlencode($brandName) }}&background={{ $color }}&color=fff&rounded=true&bold=true&size=128"
+                                             alt="{{ $brandName }}"
                                              class="w-10 h-10 rounded-full shadow-sm">
                                     </div>
-                                    
+
                                     <div class="flex-1 min-w-0">
+                                        <!-- PERBAIKAN: Gunakan product_name -->
                                         <p class="text-sm font-bold text-gray-900 truncate uppercase">
-                                            {{ str_replace('_', ' ', $product->product_type) }}
+                                            {{ $product->product_name }}
                                         </p>
                                         <p class="text-xs text-gray-500 truncate capitalize">
-                                            {{ $product->provider }}
+                                            {{ $brandName }}
                                         </p>
                                     </div>
                                 </div>
-                                
+
                                 <div class="mt-2 flex items-center justify-between">
+                                    <!-- PERBAIKAN: Gunakan sell_price -->
                                     <p class="text-lg font-black text-gray-900">
-                                        Rp {{ number_format($product->price_value, 0, ',', '.') }}
+                                        Rp {{ number_format($product->sell_price, 0, ',', '.') }}
                                     </p>
                                     <div class="hidden peer-checked:block text-blue-600">
                                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>
@@ -172,7 +177,7 @@
                 </div>
             </form>
         </div>
-        
+
     </div>
 </div>
 
@@ -181,15 +186,15 @@
         width: 6px;
     }
     .custom-scrollbar::-webkit-scrollbar-track {
-        background: #f1f1f1; 
+        background: #f1f1f1;
         border-radius: 10px;
     }
     .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: #cbd5e1; 
+        background: #cbd5e1;
         border-radius: 10px;
     }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8; 
+        background: #94a3b8;
     }
 </style>
 
@@ -206,7 +211,7 @@
             productCards.forEach(card => {
                 // Mengambil string pencarian dari atribut data-search yang sudah kita buat di blade
                 const searchString = card.getAttribute('data-search');
-                
+
                 if (searchString.includes(searchTerm)) {
                     card.classList.remove('hidden');
                     visibleCount++;
