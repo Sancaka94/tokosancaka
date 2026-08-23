@@ -1186,4 +1186,69 @@ class PpobIakController extends Controller
         }
     }
 
+    // ========================================================
+    // FUNGSI PRIVATE: INQUIRY PASCABAYAR (VERSI WEB)
+    // ========================================================
+    private function inquiryPostpaid(Request $request)
+    {
+        Log::info('LOG LOG - [WEB] inquiryPostpaid Executed:', $request->all());
+
+        $refId = 'I' . date('ymd') . rand(1000, 9999);
+        $sign = md5($this->username . $this->apiKey . $refId);
+        $productCode = strtoupper($request->product_code);
+
+        $payload = [
+            'commands' => 'inq-pasca',
+            'username' => $this->username,
+            'code'     => $productCode,
+            'hp'       => $request->customer_id,
+            'ref_id'   => $refId,
+            'sign'     => $sign
+        ];
+
+        // Tambahan Parameter Opsional (Sesuai IAK)
+        if (in_array($productCode, ['BPJS', 'BPJSTK', 'BPJSTKPU'])) $payload['month'] = $request->month ?? 1;
+        if (str_starts_with($productCode, 'ESAMSAT.')) $payload['nomor_identitas'] = $request->nomor_identitas ?? '';
+        if ($request->filled('amount')) $payload['desc'] = ['amount' => (int) $request->amount];
+        if (str_starts_with($productCode, 'PBB')) $payload['year'] = $request->year ?? date('Y');
+
+        try {
+            $user = auth()->user();
+
+            // Tembak IAK
+            $response = \Illuminate\Support\Facades\Http::post($this->postpaidBaseUrl . '/api/v1/bill/check', $payload);
+            $result = $response->json();
+
+            if ($response->successful() && isset($result['data']) && $result['data']['response_code'] === '00') {
+                $data = $result['data'];
+
+                // Simpan transaksi di database lokal dengan status PENDING
+                // Jangan potong saldo dulu sebelum user setuju di halaman invoice!
+                $transaction = \App\Models\TransactionPpobIak::create([
+                    'user_id'         => $user->id_pengguna ?? $user->id,
+                    'ref_id'          => $refId,
+                    'tr_id'           => $data['tr_id'],
+                    'type'            => 'pascabayar',
+                    'customer_id'     => $request->customer_id,
+                    'product_code'    => $productCode,
+                    'price'           => $data['price'],
+                    'whatsapp_number' => $request->whatsapp_number,
+                    'status'          => 'PENDING',
+                    'message'         => 'Inquiry Sukses (Menunggu Pembayaran)'
+                ]);
+
+                // Redirect ke halaman Invoice agar pelanggan bisa Review tagihan dan klik Bayar
+                return redirect()->route('ppob.iak.invoice', ['ref_id' => $refId])
+                                 ->with('success', 'Rincian Tagihan ditemukan! Silakan cek kembali total tagihan sebelum melakukan pembayaran.');
+            }
+
+            // Jika gagal (Nomor salah / Sudah Lunas)
+            return back()->with('error', 'Tagihan tidak ditemukan atau sudah lunas. (' . ($result['data']['message'] ?? 'Unknown Error') . ')');
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("LOG LOG: Inquiry Postpaid Web Error: " . $e->getMessage());
+            return back()->with('error', 'Koneksi ke server provider terputus: ' . $e->getMessage());
+        }
+    }
+
 }
