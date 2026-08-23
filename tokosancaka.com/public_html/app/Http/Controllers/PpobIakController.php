@@ -933,8 +933,10 @@ class PpobIakController extends Controller
 
     public function history()
     {
-        // Ambil riwayat transaksi user yang sedang login, urutkan dari yang terbaru
-        $transactions = TransactionPpobIak::where('user_id', auth()->id())
+        $user = auth()->user();
+
+        // FILTER MUTLAK MENGGUNAKAN id_pengguna AGAR TIDAK BOCOR KE USER LAIN
+        $transactions = TransactionPpobIak::where('user_id', $user->id_pengguna ?? $user->id)
                             ->orderBy('created_at', 'desc')
                             ->paginate(15);
 
