@@ -9,7 +9,6 @@
                 <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Pulsa & PPOB</h1>
                 <p class="mt-2 text-sm text-gray-500">Beli Pulsa, Data, E-Wallet, Game, dan Bayar Tagihan.</p>
             </div>
-            <!-- FIX ROUTE HISTORY -->
             <a href="{{ route('ppob.iak.history') }}" class="p-3 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50">
                 <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </a>
@@ -29,7 +28,6 @@
         </div>
         @endif
 
-        <!-- FIX ROUTE STORE -->
         <form action="{{ route('ppob.iak.store') }}" method="POST" id="formPpob">
             @csrf
             <input type="hidden" name="type" id="trx_type" value="prabayar">
@@ -50,7 +48,7 @@
             =============================================== -->
             <div id="contentPrabayar" class="space-y-6">
 
-                <!-- KATEGORI SCROLL (PULSA, PLN, OVO, GAME) -->
+                <!-- KATEGORI SCROLL -->
                 <div class="flex space-x-3 overflow-x-auto pb-2 custom-scrollbar">
                     <button type="button" onclick="switchPraCategory('pulsa')" id="cat_pulsa" class="pra-cat-btn flex-shrink-0 px-5 py-2.5 rounded-full border-2 border-blue-500 bg-blue-500 text-white font-bold transition-all">
                         📱 Pulsa & Data
@@ -178,9 +176,9 @@
 </style>
 
 <script>
-    // Data langsung dari Laravel Controller
-    const dbPrepaid = @json($pricelistPrepaid ?? []);
-    const dbPostpaid = @json($pricelist ?? []);
+    // Injeksi JSON yang lebih aman
+    const dbPrepaid = {!! json_encode($pricelistPrepaid ?? []) !!};
+    const dbPostpaid = {!! json_encode($pricelist ?? []) !!};
 
     const prefixes = {
         'INDOSAT': { codes: ['0814','0815','0816','0855','0856','0857','0858'], color: '#f59e0b' },
@@ -311,22 +309,37 @@
                 grid.innerHTML = `<div class="col-span-full py-8 text-center text-gray-400 font-medium border-2 border-dashed border-gray-200 rounded-xl">Masukkan minimal 4 digit nomor HP untuk memunculkan produk.</div>`;
                 return;
             }
-            // Filter Data (Pulsa/Data telco)
-            filtered = dbPrepaid.filter(p =>
-                !p.type.toLowerCase().includes('game') &&
-                !p.type.toLowerCase().includes('ewallet') &&
-                p.operator.toLowerCase().includes(detectedOp.toLowerCase())
-            );
+
+            // MAPPING NAMA OPERATOR AGAR COCOK DENGAN IAK
+            let searchOp = detectedOp.toLowerCase();
+            if (searchOp === 'smartfren') searchOp = 'smart';
+            if (searchOp === 'three') searchOp = 'three';
+
+            filtered = dbPrepaid.filter(p => {
+                if (!p.type || !p.operator) return false;
+                let t = p.type.toLowerCase();
+                let o = p.operator.toLowerCase();
+
+                let isPulsaData = t.includes('pulsa') || t.includes('data');
+                // IAK kadang pakai kata 'tri', kadang 'three'
+                let isMatchOp = o.includes(searchOp) || (searchOp === 'three' && o.includes('tri'));
+
+                return isPulsaData && isMatchOp;
+            });
         }
         else if(activePraCat === 'ewallet') {
-            filtered = dbPrepaid.filter(p => p.type.toLowerCase().includes('emoney') || p.type.toLowerCase().includes('ewallet'));
+            filtered = dbPrepaid.filter(p => {
+                if (!p.type) return false;
+                let t = p.type.toLowerCase();
+                return t.includes('emoney') || t.includes('ewallet') || t.includes('etoll');
+            });
             if(targetNum === '') {
                  grid.innerHTML = `<div class="col-span-full py-8 text-center text-gray-400 font-medium border-2 border-dashed border-gray-200 rounded-xl">Isi nomor E-Wallet terlebih dahulu.</div>`;
                  return;
             }
         }
         else if(activePraCat === 'pln') {
-            filtered = dbPrepaid.filter(p => p.operator.toLowerCase() === 'pln');
+            filtered = dbPrepaid.filter(p => p.operator && p.operator.toLowerCase() === 'pln');
             if(targetNum === '') {
                  grid.innerHTML = `<div class="col-span-full py-8 text-center text-gray-400 font-medium border-2 border-dashed border-gray-200 rounded-xl">Isi ID Pelanggan PLN terlebih dahulu.</div>`;
                  return;
@@ -343,8 +356,8 @@
 
         if(searchKeyword) {
             filtered = filtered.filter(p =>
-                p.description.toLowerCase().includes(searchKeyword) ||
-                p.price.toString().includes(searchKeyword)
+                (p.description && p.description.toLowerCase().includes(searchKeyword)) ||
+                (p.price && p.price.toString().includes(searchKeyword))
             );
         }
 
@@ -354,7 +367,7 @@
         }
 
         filtered.forEach(p => {
-            let priceFormat = new Intl.NumberFormat('id-ID').format(p.price);
+            let priceFormat = new Intl.NumberFormat('id-ID').format(p.price || 0);
             let html = `
                 <label class="cursor-pointer h-full">
                     <input type="radio" name="temp_code_pra" value="${p.code}" class="peer sr-only">
@@ -373,8 +386,9 @@
 
     function populateGameDropdown() {
         const gameSelect = document.getElementById('game_selector');
-        let games = [...new Set(dbPrepaid.filter(p => p.type.toLowerCase().includes('game')).map(item => item.operator))];
+        let games = [...new Set(dbPrepaid.filter(p => p.type && p.type.toLowerCase().includes('game')).map(item => item.operator))];
         games.sort().forEach(g => {
+            if(!g) return;
             let opt = document.createElement('option');
             opt.value = g;
             opt.innerHTML = g;
@@ -387,7 +401,11 @@
         dbPostpaid.forEach(p => {
             let opt = document.createElement('option');
             opt.value = p.code;
-            opt.innerHTML = `${p.name} (${p.category.toUpperCase()})`;
+
+            // ANTI CRASH JIKA CATEGORY / TYPE NULL DI DATABASE
+            let catName = p.category ? p.category.toUpperCase() : (p.type ? p.type.toUpperCase() : 'TAGIHAN');
+            opt.innerHTML = `${p.name} - ${catName}`;
+
             pascaSelect.appendChild(opt);
         });
     }
@@ -441,7 +459,6 @@
             form.appendChild(hiddenCust);
         }
 
-        // Pastikan payment method telah dipilih
         if (!document.getElementById('payment_method').value) {
             return alert("Pilih metode pembayaran terlebih dahulu!");
         }
