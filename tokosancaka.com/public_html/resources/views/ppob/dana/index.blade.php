@@ -82,7 +82,7 @@
 
                     <hr class="border-gray-100 mb-6">
 
-                    <!-- DAFTAR PRODUK GRID DENGAN PAGINATION & PENCARIAN -->
+                    <!-- DAFTAR PRODUK GRID -->
                     <div>
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-bold text-gray-900">Pilih Produk</h3>
@@ -90,7 +90,7 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                                 </div>
-                                <input type="text" id="searchNominal" class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-50" placeholder="Cari nama, nominal, provider..." onkeyup="renderProducts()">
+                                <input type="text" id="searchNominal" class="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 bg-gray-50" placeholder="Cari nama/nominal..." onkeyup="renderProducts()">
                             </div>
                         </div>
 
@@ -98,7 +98,6 @@
                             <!-- Dihasilkan JS -->
                         </div>
 
-                        <!-- KONTROL PAGINATION -->
                         <div id="pagination_container" class="flex justify-center items-center space-x-2 mt-8">
                             <!-- Dihasilkan JS -->
                         </div>
@@ -107,7 +106,7 @@
             </div>
 
             <!-- ==============================================
-                 KONTEN PASCABAYAR (CUSTOM SELECT DENGAN SEARCH)
+                 KONTEN PASCABAYAR
             =============================================== -->
             <div id="contentPascabayar" class="hidden space-y-6 relative z-50">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -151,33 +150,41 @@
             </div>
 
             <!-- ==============================================
-                 BAGIAN BAWAH (METODE PEMBAYARAN & SUBMIT)
+                 BAGIAN BAWAH (METODE PEMBAYARAN CUSTOM MODAL)
             =============================================== -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mt-6 relative z-0">
+
                 <div class="mb-6">
-                    <label class="block text-sm font-bold text-gray-700 mb-3">Metode Pembayaran</label>
-                    <select name="payment_method" id="payment_method" class="w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-gray-50 focus:ring-blue-500 font-bold text-gray-800" required onchange="toggleSaldoFields()">
-                        <option value="" disabled selected>-- Pilih Metode --</option>
-                        <option value="SALDO">💰 Potong Saldo Sancaka</option>
-                        <option value="DANA">🔵 DANA (E-Wallet)</option>
-                        <option value="DOKU">🛡️ DOKU Payment Gateway</option>
-                    </select>
+                    <label class="block text-sm font-bold text-gray-700 mb-3">Pilih Metode Pembayaran</label>
+                    <div class="w-full">
+                        <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full border border-gray-300 p-4 rounded-xl cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-gray-50">
+                            <div class="flex items-center">
+                                <img id="paymentMethodImg" src="https://placehold.co/32x32/EFEFEF/AAAAAA?text=?" alt="Logo" class="h-6 w-8 object-contain mr-3">
+                                <span id="paymentMethodLabel" class="text-sm font-medium text-gray-900">-- Pilih Metode Pembayaran --</span>
+                            </div>
+                            <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <input type="hidden" name="payment_method" id="payment_method" value="">
+                    </div>
                 </div>
 
-                <div id="saldoFields" class="hidden bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 space-y-4">
+                <!-- Input Saldo Tersembunyi -->
+                <div id="saldoFields" class="hidden bg-red-50 p-4 rounded-xl border border-red-200 mb-6 space-y-4">
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 mb-1">No. WhatsApp Akun (Pembayar)</label>
-                        <input type="number" name="wa_pembayaran" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: 0812...">
+                        <label class="block text-xs font-bold text-red-800 mb-1">No. WhatsApp Akun (Pembayar)</label>
+                        <input type="number" name="wa_pembayaran" id="wa_pembayaran" class="w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-red-500 focus:border-red-500 bg-white" placeholder="Contoh: 0812...">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-700 mb-1">PIN Keamanan Sancaka</label>
-                        <input type="password" name="pin_pembayaran" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="******">
+                        <label class="block text-xs font-bold text-red-800 mb-1">PIN Keamanan Sancaka</label>
+                        <input type="password" name="pin_pembayaran" id="pin_pembayaran" class="w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-red-500 focus:border-red-500 bg-white" placeholder="******">
                     </div>
                 </div>
 
                 <div class="mb-6">
                     <label class="block text-sm font-bold text-gray-700 mb-2">No. WhatsApp (Opsional)</label>
-                    <input type="number" name="whatsapp_number" class="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50" placeholder="Untuk menerima struk transaksi">
+                    <input type="number" name="whatsapp_number" class="w-full px-4 py-3 border border-gray-300 rounded-xl bg-gray-50" placeholder="Untuk menerima struk transaksi via WA">
                 </div>
 
                 <button type="button" id="btnSubmit" onclick="validateAndSubmit()" class="w-full py-4 rounded-xl shadow-lg text-base font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all">
@@ -185,6 +192,61 @@
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- ========================================================== -->
+<!-- MODAL: METODE PEMBAYARAN (TAILWIND) -->
+<!-- ========================================================== -->
+<div id="paymentModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[200] hidden transition-opacity">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl mx-4 transform transition-all flex flex-col max-h-[90vh]">
+
+        <div class="flex justify-between items-center p-5 border-b border-gray-200">
+            <h3 class="text-lg font-bold text-gray-900">Pilih Metode Pembayaran</h3>
+            <button type="button" id="closeModalButton" class="text-gray-400 hover:text-red-600 bg-gray-100 hover:bg-red-50 p-2 rounded-full transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="p-2 overflow-y-auto custom-scrollbar flex-1">
+            <ul id="paymentOptionsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
+
+                <!-- 1. OPSI INTERNAL (SALDO) -->
+                @auth
+                <li class="payment-option col-span-full cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="SALDO" data-label="Saldo Sancaka" data-img="{{ asset('public/assets/saldo.png') }}">
+                    <img src="{{ asset('public/assets/saldo.png') }}" class="h-8 w-8 object-contain mr-4" onerror="this.src='https://placehold.co/32x32/EFEFEF/AAAAAA?text=Rp'">
+                    <span class="text-sm font-medium text-gray-900">Saldo {{ optional(Auth::user())->nama_lengkap }}: (Rp{{ number_format(optional(Auth::user())->saldo ?? 0, 0, ',', '.') }})</span>
+                </li>
+                @endauth
+
+                <!-- 2. OPSI KHUSUS (DOKU) -->
+                <li class="payment-option col-span-full cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU" data-label="Doku (Kartu Kredit, E-Wallet, VA)" data-img="{{ asset('public/assets/doku.png') }}">
+                    <img src="{{ asset('public/assets/doku.png') }}" class="h-8 w-8 object-contain mr-4" onerror="this.src='https://placehold.co/32x32/EFEFEF/AAAAAA?text=DK'">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">DOKU Payment Gateway</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Semua Pembayaran Tersedia</span>
+                    </div>
+                </li>
+
+                <!-- 3. DANA ENTERPRISE -->
+                <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                    DANA Enterprise
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DANA" data-label="DANA (Web Checkout)" data-img="{{ asset('public/assets/dana.webp') }}">
+                    <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="h-8 w-8 object-contain mr-4" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">DANA Checkout</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diarahkan ke aplikasi DANA</span>
+                    </div>
+                </li>
+
+                <!-- Opsi tambahan bisa ditambahkan di sini secara statis atau dinamis -->
+            </ul>
+        </div>
     </div>
 </div>
 
@@ -196,7 +258,6 @@
 </style>
 
 <script>
-    // Injeksi JSON
     const dbPrepaid = {!! json_encode($pricelistPrepaid ?? []) !!};
     const dbPostpaid = {!! json_encode($pricelist ?? []) !!};
 
@@ -222,8 +283,69 @@
     document.addEventListener('DOMContentLoaded', () => {
         populatePostpaidDropdown();
         populateGameDropdown();
-        renderProducts(); // Render awal saat halaman dimuat
+        renderProducts();
     });
+
+    // ==========================================
+    // SCRIPT MODAL PEMBAYARAN
+    // ==========================================
+    const paymentModal = document.getElementById('paymentModal');
+    const paymentMethodButton = document.getElementById('paymentMethodButton');
+    const closeModalButton = document.getElementById('closeModalButton');
+    const paymentOptionsList = document.getElementById('paymentOptionsList');
+    const paymentMethodInput = document.getElementById('payment_method');
+
+    function openPaymentModal() {
+        paymentModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closePaymentModal() {
+        paymentModal.classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    paymentMethodButton.addEventListener('click', openPaymentModal);
+    closeModalButton.addEventListener('click', closePaymentModal);
+
+    paymentModal.addEventListener('click', function(e) {
+        if (e.target === paymentModal) {
+            closePaymentModal();
+        }
+    });
+
+    paymentOptionsList.querySelectorAll('.payment-option').forEach(item => {
+        item.addEventListener('click', function () {
+            const paymentValue = this.dataset.value;
+            paymentMethodInput.value = paymentValue;
+
+            paymentOptionsList.querySelectorAll('.payment-option').forEach(li => li.classList.remove('bg-red-50', 'border-red-500'));
+            this.classList.add('bg-red-50', 'border-red-500');
+
+            document.getElementById('paymentMethodLabel').textContent = this.dataset.label;
+            document.getElementById('paymentMethodImg').src = this.dataset.img;
+
+            toggleSaldoFields();
+            closePaymentModal();
+        });
+    });
+
+    function toggleSaldoFields() {
+        const method = paymentMethodInput.value;
+        const sFields = document.getElementById('saldoFields');
+        const wa = document.getElementById('wa_pembayaran');
+        const pin = document.getElementById('pin_pembayaran');
+
+        if(method === 'SALDO') {
+            sFields.classList.remove('hidden');
+            wa.required = true;
+            pin.required = true;
+        } else {
+            sFields.classList.add('hidden');
+            wa.required = false;
+            pin.required = false;
+        }
+    }
 
     // ==========================================
     // MAPPING LOGO PPOB
@@ -258,7 +380,6 @@
             return `https://tokosancaka.com/storage/logo-ppob/${filename}`;
         }
 
-        // Fallback jika logo belum ada
         return `https://ui-avatars.com/api/?name=${encodeURIComponent(operatorName)}&background=f1f5f9&color=64748b&rounded=true&bold=true`;
     }
 
@@ -421,13 +542,12 @@
     }
 
     // ==========================================
-    // RENDER PRODUK DENGAN PAGINATION JS (ANTI LEMOT)
+    // RENDER PRODUK DENGAN PAGINATION JS
     // ==========================================
     function renderProducts() {
         const searchKeyword = document.getElementById('searchNominal').value.toLowerCase();
         let filtered = [];
 
-        // Filter berdasar Kategori Tabs
         if(activePraCat === 'pulsa') {
             let searchOp = detectedOp ? detectedOp.toLowerCase() : '';
             if (searchOp === 'smartfren') searchOp = 'smart';
@@ -439,8 +559,6 @@
                 let o = p.operator.toLowerCase();
 
                 let isPulsaData = t.includes('pulsa') || t.includes('data');
-
-                // Jika prefix belum ditemukan, Tampilkan SEMUA produk pulsa
                 if(!searchOp) return isPulsaData;
 
                 let isMatchOp = o.includes(searchOp) || (searchOp === 'three' && o.includes('tri'));
@@ -461,13 +579,11 @@
             let selectedGame = document.getElementById('game_selector').value;
             filtered = dbPrepaid.filter(p => {
                 if (!p.type || !p.type.toLowerCase().includes('game')) return false;
-                // Jika dropdown ada isinya, filter. Jika kosong, tampilkan SEMUA game.
                 if(selectedGame) return p.operator === selectedGame;
                 return true;
             });
         }
 
-        // Terapkan Pencarian dari Search Box
         if(searchKeyword) {
             filtered = filtered.filter(p =>
                 (p.description && p.description.toLowerCase().includes(searchKeyword)) ||
@@ -477,7 +593,7 @@
         }
 
         currentFilteredData = filtered;
-        displayPage(1); // Mulai dari Halaman 1
+        displayPage(1);
     }
 
     function displayPage(page) {
@@ -496,7 +612,6 @@
         const end = start + itemsPerPage;
         const paginatedItems = currentFilteredData.slice(start, end);
 
-        // Cetak HTML untuk 12 item yang terpilih
         paginatedItems.forEach(p => {
             let priceFormat = new Intl.NumberFormat('id-ID').format(p.price || 0);
             let logoUrl = getLogoUrl(p.operator);
@@ -532,21 +647,18 @@
         const container = document.getElementById('pagination_container');
         container.innerHTML = '';
 
-        if(totalPages <= 1) return; // Jika cuma 1 halaman, sembunyikan pagination
+        if(totalPages <= 1) return;
 
         let html = '';
 
-        // Tombol Prev
         if (page > 1) {
             html += `<button type="button" onclick="displayPage(${page - 1})" class="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors shadow-sm">« Prev</button>`;
         } else {
             html += `<button type="button" disabled class="px-4 py-2 rounded-lg bg-gray-100 border border-gray-200 text-gray-400 font-medium cursor-not-allowed">« Prev</button>`;
         }
 
-        // Teks Halaman
         html += `<div class="px-4 py-2 text-sm font-bold text-gray-700">Halaman ${page} dari ${totalPages}</div>`;
 
-        // Tombol Next
         if (page < totalPages) {
             html += `<button type="button" onclick="displayPage(${page + 1})" class="px-4 py-2 rounded-lg bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors shadow-sm">Next »</button>`;
         } else {
@@ -556,9 +668,6 @@
         container.innerHTML = html;
     }
 
-    // ==========================================
-    // POPULATE DROPDOWN
-    // ==========================================
     function populateGameDropdown() {
         const gameSelect = document.getElementById('game_selector');
         let games = [...new Set(dbPrepaid.filter(p => p.type && p.type.toLowerCase().includes('game')).map(item => item.operator))];
@@ -573,16 +682,6 @@
 
     function handlePascaBiller() {
         document.getElementById('final_product_code').value = document.getElementById('pasca_biller').value;
-    }
-
-    function toggleSaldoFields() {
-        const method = document.getElementById('payment_method').value;
-        const sFields = document.getElementById('saldoFields');
-        if(method === 'SALDO') {
-            sFields.classList.remove('hidden');
-        } else {
-            sFields.classList.add('hidden');
-        }
     }
 
     function validateAndSubmit() {
@@ -620,7 +719,7 @@
             form.appendChild(hiddenCust);
         }
 
-        if (!document.getElementById('payment_method').value) {
+        if (!paymentMethodInput.value) {
             return alert("Pilih metode pembayaran terlebih dahulu!");
         }
 
