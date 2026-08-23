@@ -3,8 +3,9 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\ProductDanaPpob;
 use Illuminate\Support\Facades\Log;
+use App\Models\IakPricelistPrepaid;  // Wajib panggil model IAK Prabayar
+use App\Models\IakPricelistPostpaid; // Wajib panggil model IAK Pascabayar
 
 class MarketplacePpobController extends Controller
 {
@@ -15,13 +16,19 @@ class MarketplacePpobController extends Controller
     {
         Log::info('LOG LOG - User accessing PPOB Marketplace page');
 
-        // Ambil produk yang tersedia (aktif) dan urutkan dari harga termurah
-        $products = ProductDanaPpob::where('is_available', true)
-                        ->orderBy('price_value', 'asc')
-                        ->get();
+        // 1. Ambil data produk PRABAYAR dari database IAK
+        $pricelistPrepaid = IakPricelistPrepaid::whereIn('status', ['Active', 'active', '1', 1])
+                                ->orderBy('type')
+                                ->orderBy('operator')
+                                ->get();
 
-        // Mengarahkan tampilan ke resources/views/ppob/dana/index.blade.php
-        return view('ppob.dana.index', compact('products'));
+        // 2. Ambil data produk PASCABAYAR dari database IAK
+        $pricelist = IakPricelistPostpaid::where('status', 1)
+                                ->orderBy('type')
+                                ->get();
+
+        // 3. Kirim variabel $pricelistPrepaid dan $pricelist ke Blade!
+        return view('ppob.dana.index', compact('pricelistPrepaid', 'pricelist'));
     }
 
     /*
@@ -29,16 +36,13 @@ class MarketplacePpobController extends Controller
     | CATATAN ARSITEKTUR UNTUK DEVELOPER:
     |--------------------------------------------------------------------------
     | Fungsi checkout() yang sebelumnya ada di sini TELAH DIHAPUS.
-    | Seluruh pemrosesan transaksi (Validasi form, Potong Saldo, 
-    | pembuatan Invoice, dan Hit API Tripay) sekarang ditangani secara 
+    | Seluruh pemrosesan transaksi (Validasi form, Potong Saldo,
+    | pembuatan Invoice, dan Hit API Tripay) sekarang ditangani secara
     | terpusat oleh:
-    | 
-    | Class  : App\Http\Controllers\CheckoutController
-    | Method : storePpobDanaPayment
-    | Route  : POST /ppob/pay
-    | 
-    | Hal ini dilakukan agar kode tidak tumpang tindih dan PPOB bisa
-    | menggunakan fasilitas Payment Gateway (Tripay/Doku) yang sudah
-    | ada di sistem TokoSancaka.
+    |
+    | Class  : App\Http\Controllers\CheckoutController ATAU PpobIakController
+    | Method : storePpobDanaPayment / store
+    | Route  : POST /ppob/pay atau /ppob/store
+    |
     */
 }
