@@ -9,7 +9,8 @@
                 <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Pulsa & PPOB</h1>
                 <p class="mt-2 text-sm text-gray-500">Beli Pulsa, Data, E-Wallet, Game, dan Bayar Tagihan.</p>
             </div>
-            <a href="{{ route('ppob.history') ?? '#' }}" class="p-3 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50">
+            <!-- FIX ROUTE HISTORY -->
+            <a href="{{ route('ppob.iak.history') }}" class="p-3 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50">
                 <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </a>
         </div>
@@ -28,8 +29,8 @@
         </div>
         @endif
 
-        <!-- MAIN FORM -->
-        <form action="{{ route('ppob.store') ?? '#' }}" method="POST" id="formPpob">
+        <!-- FIX ROUTE STORE -->
+        <form action="{{ route('ppob.iak.store') }}" method="POST" id="formPpob">
             @csrf
             <input type="hidden" name="type" id="trx_type" value="prabayar">
             <input type="hidden" name="product_code" id="final_product_code" value="">
@@ -67,7 +68,7 @@
 
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
 
-                    <!-- INPUT TARGET (Dinamis berubah sesuai kategori) -->
+                    <!-- INPUT TARGET -->
                     <div class="mb-6">
                         <label id="label_target" class="block text-sm font-bold text-gray-700 mb-2">Nomor HP</label>
                         <input type="text" name="customer_id" id="customer_id_pra" class="w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium text-gray-900" placeholder="Contoh: 081234567890" onkeyup="handleTargetInput()">
@@ -78,8 +79,8 @@
                             <span class="ml-2 text-xs text-blue-500">✔ Nomor Valid</span>
                         </div>
 
-                        <!-- Dropdown Game (Muncul kalau tab game dipilih) -->
-                        <div id="game_selector_wrapper" class="hidden mb-4">
+                        <!-- Dropdown Game -->
+                        <div id="game_selector_wrapper" class="hidden mb-4 mt-4">
                             <select id="game_selector" class="w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 font-medium" onchange="renderProducts()">
                                 <option value="">-- Pilih Game --</option>
                             </select>
@@ -88,7 +89,7 @@
 
                     <hr class="border-gray-100 mb-6">
 
-                    <!-- DAFTAR PRODUK (Dihasilkan oleh Javascript) -->
+                    <!-- DAFTAR PRODUK GRID -->
                     <div>
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="text-lg font-bold text-gray-900">Pilih Nominal</h3>
@@ -96,7 +97,6 @@
                         </div>
 
                         <div id="product_grid" class="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                            <!-- Produk akan dirender di sini via JS -->
                             <div class="col-span-full py-8 text-center text-gray-400 font-medium border-2 border-dashed border-gray-200 rounded-xl">
                                 Masukkan nomor tujuan untuk memunculkan produk.
                             </div>
@@ -116,7 +116,6 @@
                         <label class="block text-sm font-bold text-gray-700 mb-2">Pilih Layanan Tagihan</label>
                         <select id="pasca_biller" class="w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 font-medium" onchange="handlePascaBiller()">
                             <option value="" disabled selected>-- Pilih Layanan (PLN, PDAM, BPJS) --</option>
-                            <!-- Diisi oleh JS -->
                         </select>
                     </div>
 
@@ -125,7 +124,6 @@
                         <input type="text" name="customer_id_pasca" id="customer_id_pasca" class="w-full px-4 py-3.5 border border-gray-300 rounded-xl bg-gray-50 focus:ring-2 focus:ring-blue-500 font-medium" placeholder="Masukkan ID Pelanggan">
                     </div>
 
-                    <!-- Input Tambahan (Dinamis jika butuh bulan/tahun dsb, disiapkan hidden) -->
                     <div class="p-4 bg-yellow-50 rounded-xl border border-yellow-200">
                         <p class="text-sm text-yellow-800 font-medium">Sistem akan mengecek rincian tagihan Anda ke pusat sebelum Anda melakukan pembayaran.</p>
                     </div>
@@ -152,7 +150,7 @@
                 <div id="saldoFields" class="hidden bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-gray-700 mb-1">No. WhatsApp Akun (Pembayar)</label>
-                        <input type="number" name="wa_pembayaran" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <input type="number" name="wa_pembayaran" class="w-full px-3 py-2 border border-gray-300 rounded-lg" placeholder="Contoh: 0812...">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-gray-700 mb-1">PIN Keamanan Sancaka</label>
@@ -179,13 +177,11 @@
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 </style>
 
-<!-- JSON DATA INJECTION DARI CONTROLLER -->
 <script>
     // Data langsung dari Laravel Controller
     const dbPrepaid = @json($pricelistPrepaid ?? []);
     const dbPostpaid = @json($pricelist ?? []);
 
-    // Prefix Nomor HP (Sama persis seperti React Native Anda)
     const prefixes = {
         'INDOSAT': { codes: ['0814','0815','0816','0855','0856','0857','0858'], color: '#f59e0b' },
         'XL': { codes: ['0817','0818','0819','0859','0878','0877'], color: '#3b82f6' },
@@ -200,17 +196,11 @@
     let activePraCat = 'pulsa';
     let detectedOp = '';
 
-    // ==========================================
-    // INIT PADA SAAT HALAMAN DIMUAT
-    // ==========================================
     document.addEventListener('DOMContentLoaded', () => {
         populatePostpaidDropdown();
         populateGameDropdown();
     });
 
-    // ==========================================
-    // LOGIKA TABS (PRABAYAR / PASCABAYAR)
-    // ==========================================
     function switchMainTab(tab) {
         activeMainTab = tab;
         document.getElementById('trx_type').value = tab;
@@ -238,18 +228,13 @@
         }
     }
 
-    // ==========================================
-    // LOGIKA KATEGORI PRABAYAR
-    // ==========================================
     function switchPraCategory(cat) {
         activePraCat = cat;
 
-        // Reset warna tombol
         document.querySelectorAll('.pra-cat-btn').forEach(el => {
             el.className = "pra-cat-btn flex-shrink-0 px-5 py-2.5 rounded-full border-2 border-gray-200 bg-white text-gray-600 font-bold hover:bg-gray-50 transition-all";
         });
 
-        // Warnai tombol yang aktif
         let activeColor = 'bg-blue-500 border-blue-500';
         if(cat === 'ewallet') activeColor = 'bg-purple-500 border-purple-500';
         if(cat === 'pln') activeColor = 'bg-yellow-500 border-yellow-500';
@@ -257,13 +242,11 @@
 
         document.getElementById('cat_'+cat).className = `pra-cat-btn flex-shrink-0 px-5 py-2.5 rounded-full border-2 text-white font-bold transition-all ${activeColor}`;
 
-        // Reset Input Target
         document.getElementById('customer_id_pra').value = '';
         document.getElementById('operator_badge').classList.add('hidden');
         document.getElementById('game_selector_wrapper').classList.add('hidden');
         detectedOp = '';
 
-        // Ubah Label Input
         const labelTarget = document.getElementById('label_target');
         if(cat === 'pulsa') labelTarget.innerText = "Nomor HP / Tujuan";
         if(cat === 'ewallet') labelTarget.innerText = "Nomor HP E-Wallet (OVO, DANA, dll)";
@@ -276,9 +259,6 @@
         renderProducts();
     }
 
-    // ==========================================
-    // DETEKSI PREFIX OTOMATIS (MURNI JS)
-    // ==========================================
     function handleTargetInput() {
         let number = document.getElementById('customer_id_pra').value.replace(/[^0-9]/g, '');
 
@@ -287,13 +267,11 @@
                 let foundOp = '';
                 let foundColor = '';
 
-                // Cek by.U khusus (6 digit)
                 if (number.length >= 6) {
                     let prefix6 = number.substring(0, 6);
                     if (prefixes['by.U'].codes.includes(prefix6)) { foundOp = 'by.U'; foundColor = prefixes['by.U'].color; }
                 }
 
-                // Cek 4 Digit Umum
                 if (!foundOp) {
                     let prefix4 = number.substring(0, 4);
                     for (const [op, data] of Object.entries(prefixes)) {
@@ -320,18 +298,12 @@
         renderProducts();
     }
 
-    // ==========================================
-    // RENDER GRID PRODUK PRABAYAR LOKAL
-    // ==========================================
     function renderProducts() {
         const grid = document.getElementById('product_grid');
         const searchKeyword = document.getElementById('searchNominal').value.toLowerCase();
         let targetNum = document.getElementById('customer_id_pra').value;
 
-        // Kosongkan grid
         grid.innerHTML = '';
-
-        // Tentukan aturan filter berdasar tab yang aktif
         let filtered = [];
 
         if(activePraCat === 'pulsa') {
@@ -339,23 +311,24 @@
                 grid.innerHTML = `<div class="col-span-full py-8 text-center text-gray-400 font-medium border-2 border-dashed border-gray-200 rounded-xl">Masukkan minimal 4 digit nomor HP untuk memunculkan produk.</div>`;
                 return;
             }
-            // Tampilkan produk pulsa/data yang operatornya sesuai
+            // Filter Data (Pulsa/Data telco)
             filtered = dbPrepaid.filter(p =>
-                ['pulsa', 'data'].includes(p.type.toLowerCase()) &&
+                !p.type.toLowerCase().includes('game') &&
+                !p.type.toLowerCase().includes('ewallet') &&
                 p.operator.toLowerCase().includes(detectedOp.toLowerCase())
             );
         }
         else if(activePraCat === 'ewallet') {
-            filtered = dbPrepaid.filter(p => ['ewallet', 'emoney'].includes(p.type.toLowerCase()));
+            filtered = dbPrepaid.filter(p => p.type.toLowerCase().includes('emoney') || p.type.toLowerCase().includes('ewallet'));
             if(targetNum === '') {
-                 grid.innerHTML = `<div class="col-span-full py-8 text-center text-gray-400 font-medium border-2 border-dashed border-gray-200 rounded-xl">Isi nomor HP OVO/DANA dulu.</div>`;
+                 grid.innerHTML = `<div class="col-span-full py-8 text-center text-gray-400 font-medium border-2 border-dashed border-gray-200 rounded-xl">Isi nomor E-Wallet terlebih dahulu.</div>`;
                  return;
             }
         }
         else if(activePraCat === 'pln') {
             filtered = dbPrepaid.filter(p => p.operator.toLowerCase() === 'pln');
             if(targetNum === '') {
-                 grid.innerHTML = `<div class="col-span-full py-8 text-center text-gray-400 font-medium border-2 border-dashed border-gray-200 rounded-xl">Isi ID Pelanggan PLN dulu.</div>`;
+                 grid.innerHTML = `<div class="col-span-full py-8 text-center text-gray-400 font-medium border-2 border-dashed border-gray-200 rounded-xl">Isi ID Pelanggan PLN terlebih dahulu.</div>`;
                  return;
             }
         }
@@ -368,7 +341,6 @@
             filtered = dbPrepaid.filter(p => p.operator === selectedGame);
         }
 
-        // Terapkan Pencarian Kotak Search
         if(searchKeyword) {
             filtered = filtered.filter(p =>
                 p.description.toLowerCase().includes(searchKeyword) ||
@@ -381,7 +353,6 @@
             return;
         }
 
-        // Generate HTML Card
         filtered.forEach(p => {
             let priceFormat = new Intl.NumberFormat('id-ID').format(p.price);
             let html = `
@@ -400,13 +371,9 @@
         });
     }
 
-    // ==========================================
-    // DROPDOWNS SETUP
-    // ==========================================
     function populateGameDropdown() {
         const gameSelect = document.getElementById('game_selector');
-        // Cari unique operator yang typenya game
-        let games = [...new Set(dbPrepaid.filter(p => p.type.toLowerCase() === 'game').map(item => item.operator))];
+        let games = [...new Set(dbPrepaid.filter(p => p.type.toLowerCase().includes('game')).map(item => item.operator))];
         games.sort().forEach(g => {
             let opt = document.createElement('option');
             opt.value = g;
@@ -429,9 +396,6 @@
         document.getElementById('final_product_code').value = document.getElementById('pasca_biller').value;
     }
 
-    // ==========================================
-    // TOGGLE SALDO (WA & PIN)
-    // ==========================================
     function toggleSaldoFields() {
         const method = document.getElementById('payment_method').value;
         const sFields = document.getElementById('saldoFields');
@@ -442,23 +406,19 @@
         }
     }
 
-    // ==========================================
-    // VALIDASI SEBELUM SUBMIT
-    // ==========================================
     function validateAndSubmit() {
         const form = document.getElementById('formPpob');
         const finalCodeInput = document.getElementById('final_product_code');
 
         if(activeMainTab === 'prabayar') {
             let custId = document.getElementById('customer_id_pra').value;
-            if(!custId) return alert("Silakan masukkan Nomor HP/ID Tujuan!");
+            if(!custId) return alert("Silakan masukkan Nomor Target/ID Tujuan!");
 
             let selectedProduct = document.querySelector('input[name="temp_code_pra"]:checked');
             if(!selectedProduct) return alert("Pilih nominal produk prabayar terlebih dahulu!");
 
             finalCodeInput.value = selectedProduct.value;
 
-            // Pindahkan customer_id karena name di input asli kita bedakan id-nya
             let hiddenCust = document.createElement('input');
             hiddenCust.type = 'hidden';
             hiddenCust.name = 'customer_id';
@@ -479,6 +439,11 @@
             hiddenCust.name = 'customer_id';
             hiddenCust.value = custIdPasca;
             form.appendChild(hiddenCust);
+        }
+
+        // Pastikan payment method telah dipilih
+        if (!document.getElementById('payment_method').value) {
+            return alert("Pilih metode pembayaran terlebih dahulu!");
         }
 
         form.submit();
