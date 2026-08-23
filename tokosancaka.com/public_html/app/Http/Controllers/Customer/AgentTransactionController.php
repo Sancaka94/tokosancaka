@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\Api;
 use App\Models\PpobProduct;
 use App\Models\PpobTransaction;
 use App\Services\DigiflazzService;
@@ -17,18 +18,22 @@ class AgentTransactionController extends Controller
 {
     protected $digiflazz;
 
-    // Dependency Injection Service
-    public function __construct(DigiflazzService $digiflazz)
+   public function __construct(DigiflazzService $digiflazz)
     {
         $this->digiflazz = $digiflazz;
-        
-        // Setup Credentials diambil dari .env (LEBIH AMAN)
-        // Pastikan di .env ada: DIGIFLAZZ_USERNAME, DIGIFLAZZ_KEY_PROD, dll
-        $username = env('DIGIFLAZZ_USERNAME', 'mihetiDVGdeW');
-        $apiKey   = env('DIGIFLAZZ_KEY_PROD', '1f48c69f-8676-5d56-a868-10a46a69f9b7');
-        $isDev = false; // Atau buat env khusus DIGIFLAZZ_MODE_DEV
-        
-        $this->digiflazz->setCredentials($username, $apiKey, $isDev);
+
+        // 👇 1. Ambil mode yang sedang aktif (development / production) dari Database
+        $mode = Api::getValue('DIGIFLAZZ_MODE', 'global', 'development');
+
+        // 👇 2. Ambil kredensial sesuai mode yang aktif dari Database
+        $username = Api::getValue('DIGIFLAZZ_USERNAME', $mode);
+        $apiKey   = Api::getValue('DIGIFLAZZ_API_KEY', $mode);
+
+        // 👇 3. Set true jika production (Sesuai dengan update DigiflazzService sebelumnya)
+        $isProduction = ($mode === 'production');
+
+        // 👇 4. Terapkan kredensial secara dinamis
+        $this->digiflazz->setCredentials($username, $apiKey, $isProduction);
     }
 
     /**
@@ -68,25 +73,25 @@ class AgentTransactionController extends Controller
             'customer_no' => 'required|numeric',
             'payment_type' => 'required|in:pra,pasca',
             // Pastikan ada input untuk no hp pembeli di form view Anda (name="customer_wa")
-            'customer_wa'  => 'nullable|numeric|digits_between:10,15', 
+            'customer_wa'  => 'nullable|numeric|digits_between:10,15',
         ];
 
         if ($request->payment_type == 'pra') {
             $rules['sku'] = 'required|exists:ppob_products,buyer_sku_code';
         } else {
-            $rules['sku'] = 'required|string'; 
+            $rules['sku'] = 'required|string';
             $rules['selling_price'] = 'required|numeric|min:1';
-            $rules['ref_id'] = 'required|string'; 
+            $rules['ref_id'] = 'required|string';
         }
 
         $request->validate($rules);
         $user = Auth::user();
-        
+
         // 2. Persiapan Data
         $modalAgen = 0;
         $hargaJual = 0;
         $profit    = 0;
-        $apiRefId  = ''; 
+        $apiRefId  = '';
 
         if ($request->payment_type == 'pra') {
             // --- PRABAYAR ---
@@ -104,16 +109,16 @@ class AgentTransactionController extends Controller
             if (!$productData) return back()->with('error', 'Produk tidak ditemukan.');
 
             $modalAgen = $productData->sell_price;
-            $hargaJual = $productData->custom_price ?? ($modalAgen + 2000); 
-            
+            $hargaJual = $productData->custom_price ?? ($modalAgen + 2000);
+
             $apiRefId = 'TRX-PRA-' . time() . rand(100, 999);
 
         } else {
             // --- PASCABAYAR ---
-            $hargaJual = $request->selling_price; 
-            $marginEstimasi = 2500; 
+            $hargaJual = $request->selling_price;
+            $marginEstimasi = 2500;
             $modalAgen = $hargaJual - $marginEstimasi;
-            $apiRefId = $request->ref_id; 
+            $apiRefId = $request->ref_id;
         }
 
         $profit = $hargaJual - $modalAgen;
@@ -131,22 +136,22 @@ class AgentTransactionController extends Controller
             // Simpan Transaksi Lokal
             $trx = new PpobTransaction();
             // Perbaikan: Gunakan getKey() agar dinamis (baik 'id' maupun 'id_pengguna')
-            $trx->user_id      = $user->getKey(); 
+            $trx->user_id      = $user->getKey();
             $trx->order_id     = $apiRefId;
             $trx->buyer_sku_code = $request->sku;
             $trx->customer_no  = $request->customer_no;
-            
+
             // [FIX UTAMA] Simpan Customer WA ke kolomnya langsung!
             // Agar webhook tidak error/null lagi saat ambil data
-            $trx->customer_wa  = $request->customer_wa; 
-            
+            $trx->customer_wa  = $request->customer_wa;
+
             $trx->price        = $modalAgen;
             $trx->selling_price = $hargaJual;
             $trx->profit       = $profit;
             $trx->payment_method = 'SALDO_AGEN';
             $trx->status       = 'Processing';
             $trx->message      = 'Sedang diproses...';
-            
+
             // Desc tetap disimpan sebagai cadangan/detail tambahan
             $trx->desc         = json_encode([
                 'type' => $request->payment_type,
@@ -158,44 +163,44 @@ class AgentTransactionController extends Controller
             $command = ($request->payment_type == 'pasca') ? 'pay-pasca' : null;
 
             $respData = $this->digiflazz->transaction(
-                $request->sku, 
-                $request->customer_no, 
+                $request->sku,
+                $request->customer_no,
                 $apiRefId,
                 0,
-                $command 
+                $command
             );
-            
+
             // 6. Handle Response
             $statusApi = $respData['data']['status'] ?? 'Pending';
             $messageApi = $respData['data']['message'] ?? '-';
-            
+
             // Jika Gagal
             if (in_array($statusApi, ['Gagal', 'Failed'])) {
                  $trx->status = 'Failed';
                  $trx->message = $messageApi;
                  $trx->sn = $respData['data']['sn'] ?? '';
                  $trx->save();
-                 
+
                  // Refund Saldo Full
                  $user->increment('saldo', $modalAgen);
-                 
+
                  DB::commit();
                  return back()->with('error', 'Transaksi Gagal: ' . $messageApi);
             }
-            
+
             // Jika Sukses / Pending
             $trx->message = $messageApi;
             $trx->sn = $respData['data']['sn'] ?? '';
-            
+
             // Update Data Real dari API (Price Adjustment)
             if (isset($respData['data']['price']) && $respData['data']['price'] > 0) {
                 $realModal = $respData['data']['price'];
                 $trx->price = $realModal;
                 $trx->profit = $trx->selling_price - $realModal; // Recalculate Profit
-                
+
                 // Koreksi Saldo User (Refund kelebihan / Potong kekurangan)
                 if ($realModal != $modalAgen) {
-                    $selisih = $modalAgen - $realModal; 
+                    $selisih = $modalAgen - $realModal;
                     if ($selisih > 0) {
                         $user->increment('saldo', $selisih); // Modal asli lebih murah -> Refund selisih
                     } elseif ($selisih < 0) {
@@ -210,14 +215,14 @@ class AgentTransactionController extends Controller
             } elseif ($statusApi == 'Pending') {
                 $trx->status = 'Pending';
             }
-            
+
             $trx->save();
             DB::commit(); // Commit dulu sebelum kirim WA (supaya data aman)
 
             // 7. NOTIFIKASI WA (JIKA SUKSES LANGSUNG)
             // Hanya kirim jika status SUKSES. Jika PENDING, biarkan Webhook yang mengirim nanti.
             if ($trx->status == 'Success') {
-                
+
                 $fmt = function($val) { return number_format($val, 0, ',', '.'); };
 
                 // A. Pesan Pembeli
@@ -229,13 +234,13 @@ class AgentTransactionController extends Controller
                     $msgPembeli .= "SN/Ref: " . ($trx->sn ?? '-') . "\n";
                     $msgPembeli .= "Total: Rp " . $fmt($trx->selling_price) . "\n\n";
                     $msgPembeli .= "Simpan bukti ini sebagai referensi.";
-                    
+
                     // Gunakan Service Fonnte
                     FonnteService::sendMessage($request->customer_wa, $msgPembeli);
                 }
 
                 // B. Pesan Seller (Owner)
-                $nomorSeller = $user->no_hp ?? $user->no_wa; 
+                $nomorSeller = $user->no_hp ?? $user->no_wa;
                 if ($nomorSeller) {
                     $msgSeller = "[INFO TRANSAKSI]\n";
                     $msgSeller .= "Status: SUKSES\n";
@@ -249,12 +254,12 @@ class AgentTransactionController extends Controller
                 }
             }
 
-            $pesanBalikan = ($trx->status == 'Pending') 
-                ? 'Transaksi Sedang Diproses. Mohon Tunggu.' 
+            $pesanBalikan = ($trx->status == 'Pending')
+                ? 'Transaksi Sedang Diproses. Mohon Tunggu.'
                 : 'Transaksi Berhasil! SN: ' . $trx->sn;
 
         return redirect('customer/ppob/history')->with('success', $pesanBalikan);
-        
+
         } catch (Exception $e) {
             DB::rollBack();
             Log::error('Agent Transaction Error: ' . $e->getMessage());
@@ -278,7 +283,7 @@ class AgentTransactionController extends Controller
             }
 
             $cities = $query->orderBy('city_name', 'asc')->get();
-            
+
             $finalCities = $cities->map(function ($city) {
                 return ['sku' => $city->sku, 'name' => $city->name];
             })->toArray();
@@ -288,7 +293,7 @@ class AgentTransactionController extends Controller
             if (!$cimahiExists) {
                  array_unshift($finalCities, ['sku' => 'cimahi', 'name' => 'CIMAHI (TEST CASE)']);
             }
-            
+
             return response()->json(['success' => true, 'cities' => $finalCities]);
 
         } catch (\Exception $e) {
