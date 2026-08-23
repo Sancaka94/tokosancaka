@@ -45,7 +45,8 @@ class DigiflazzService
     {
         $this->username = trim($username);
         $this->apiKey = trim($apiKey);
-        $this->testingMode = $testingMode;
+        //$this->testingMode = $testingMode;
+        $this->testingMode = !$isProduction;
         // Atur Base URL sesuai mode testing
         $this->baseUrl = self::URL_PROD;
     }
