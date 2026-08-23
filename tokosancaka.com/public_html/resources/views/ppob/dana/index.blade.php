@@ -108,7 +108,7 @@
             <!-- ==============================================
                  KONTEN PASCABAYAR
             =============================================== -->
-            <div id="contentPascabayar" class="hidden space-y-6 relative z-50">
+            <div id="contentPascabayar" class="hidden space-y-6 relative z-40">
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
 
                     <div class="mb-6 relative">
@@ -155,7 +155,7 @@
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mt-6 relative z-0">
 
                 <div class="mb-6">
-                    <label class="block text-sm font-bold text-gray-700 mb-3">Pilih Metode Pembayaran</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-3">Metode Pembayaran</label>
                     <div class="w-full">
                         <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full border border-gray-300 p-4 rounded-xl cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-gray-50">
                             <div class="flex items-center">
@@ -222,10 +222,10 @@
 
                 <!-- 2. OPSI KHUSUS (DOKU) -->
                 <li class="payment-option col-span-full cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
-                    data-value="DOKU" data-label="Doku (Kartu Kredit, E-Wallet, VA)" data-img="{{ asset('public/assets/doku.png') }}">
+                    data-value="DOKU_JOKUL" data-label="Doku (Kartu Kredit, E-Wallet, VA)" data-img="{{ asset('public/assets/doku.png') }}">
                     <img src="{{ asset('public/assets/doku.png') }}" class="h-8 w-8 object-contain mr-4" onerror="this.src='https://placehold.co/32x32/EFEFEF/AAAAAA?text=DK'">
                     <div class="flex flex-col">
-                        <span class="text-sm font-bold text-gray-900">DOKU Payment Gateway</span>
+                        <span class="text-sm font-bold text-gray-900">Rekomendasi Sancaka (DOKU)</span>
                         <span class="text-[11px] text-gray-500 mt-0.5">Semua Pembayaran Tersedia</span>
                     </div>
                 </li>
@@ -234,6 +234,13 @@
                 <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
                     DANA Enterprise
                 </li>
+
+                @php
+                    $user = Auth::user();
+                    $userDanaToken = $user ? $user->dana_access_token : null;
+                    $userDanaBalance = $user ? ($user->dana_user_balance ?? 0) : 0;
+                    $hasDanaBinding = !empty($userDanaToken);
+                @endphp
 
                 <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
                     data-value="DANA" data-label="DANA (Web Checkout)" data-img="{{ asset('public/assets/dana.webp') }}">
@@ -244,7 +251,193 @@
                     </div>
                 </li>
 
-                <!-- Opsi tambahan bisa ditambahkan di sini secara statis atau dinamis -->
+                @if($hasDanaBinding)
+                    <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
+                        data-value="DANA_BINDING" data-label="DANA Auto-Debit" data-img="{{ asset('public/assets/dana.webp') }}">
+                        <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="h-8 w-8 object-contain mr-4">
+                        <div class="flex flex-col flex-1">
+                            <span class="text-sm font-bold text-gray-900">DANA Auto-Debit</span>
+                            <span class="text-[11px] text-gray-600 font-medium mt-0.5">Saldo: <span class="text-blue-700">Rp{{ number_format($userDanaBalance, 0, ',', '.') }}</span></span>
+                        </div>
+                        <span class="ml-auto bg-blue-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded shadow-sm">
+                            Tersambung
+                        </span>
+                    </li>
+                @else
+                    <li class="col-span-1 flex items-center p-3 border border-dashed border-gray-300 rounded-lg bg-gray-50 justify-between">
+                        <div class="flex items-center">
+                            <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="h-8 w-8 object-contain mr-4 grayscale opacity-50">
+                            <div class="flex flex-col">
+                                <span class="text-sm font-bold text-gray-500">DANA Auto-Debit</span>
+                                <span class="text-[11px] text-gray-400 mt-0.5">Bayar instan 1-klik</span>
+                            </div>
+                        </div>
+                        <a href="{{ url('/dana/start-binding') }}" class="px-2.5 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded hover:bg-blue-700 shadow-sm transition-colors">
+                            Hubungkan
+                        </a>
+                    </li>
+                @endif
+
+                <!-- 4. LAINNYA (PAYPAL DLL) -->
+                <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                    Lainnya
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="PAYPAL" data-label="PayPal / Credit Card" data-img="https://tokosancaka.com/public/assets/paypal.png">
+                    <img src="https://tokosancaka.com/public/assets/paypal.png" alt="PayPal" class="h-8 object-contain mr-4" onerror="this.src='https://placehold.co/32x32/EFEFEF/AAAAAA?text=PP'">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">PayPal / Kartu Kredit</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Pembayaran Global (Otomatis USD)</span>
+                    </div>
+                </li>
+
+                <!-- 5. VIRTUAL ACCOUNT -->
+                <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                    Virtual Account (Transfer Bank)
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU_BCA_VA" data-label="BCA Virtual Account" data-img="{{ asset('public/assets/bca.webp') }}">
+                    <img src="{{ asset('public/assets/bca.webp') }}" alt="BCA" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">BCA Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU_MANDIRI_VA" data-label="Mandiri Virtual Account" data-img="{{ asset('public/assets/mandiri.webp') }}">
+                    <img src="{{ asset('public/assets/mandiri.webp') }}" alt="Mandiri" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">Mandiri Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU_BRI_VA" data-label="BRI Virtual Account" data-img="{{ asset('public/assets/bri.webp') }}">
+                    <img src="{{ asset('public/assets/bri.webp') }}" alt="BRI" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">BRIVA</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU_BNI_VA" data-label="BNI Virtual Account" data-img="{{ asset('public/assets/bni.webp') }}">
+                    <img src="{{ asset('public/assets/bni.webp') }}" alt="BNI" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">BNI Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU_BSI_VA" data-label="BSI Virtual Account" data-img="{{ asset('public/assets/bsi.png') }}">
+                    <img src="{{ asset('public/assets/bsi.png') }}" alt="BSI" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">BSI Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU_PERMATA_VA" data-label="Permata Virtual Account" data-img="{{ asset('public/assets/permata.webp') }}">
+                    <img src="{{ asset('public/assets/permata.webp') }}" alt="Permata" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">Permata Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU_CIMB_VA" data-label="CIMB Niaga Virtual Account" data-img="{{ asset('public/assets/cimb.svg') }}">
+                    <img src="{{ asset('public/assets/cimb.svg') }}" alt="CIMB" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">CIMB Niaga VA</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU_DANAMON_VA" data-label="Danamon Virtual Account" data-img="{{ asset('public/assets/danamon.png') }}">
+                    <img src="{{ asset('public/assets/danamon.png') }}" alt="Danamon" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">Danamon Virtual Account</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Diverifikasi Otomatis</span>
+                    </div>
+                </li>
+
+                <!-- 6. QRIS & MINIMARKET -->
+                <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                    Scan QRIS & Minimarket
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU_QRIS" data-label="QRIS (Gopay, OVO, Dana, LinkAja)" data-img="{{ asset('public/assets/qris.png') }}">
+                    <img src="{{ asset('public/assets/qris.png') }}" alt="QRIS" class="h-8 w-14 object-contain mr-3">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">QRIS (E-Wallet & Bank)</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Scan kode barcode di Invoice</span>
+                    </div>
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU_ALFAMART" data-label="Alfamart / Alfamidi" data-img="{{ asset('public/assets/alfamart.webp') }}">
+                    <img src="{{ asset('public/assets/alfamart.webp') }}" alt="Alfamart" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">Alfamart / Alfamidi</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Tunjukkan kode bayar ke kasir</span>
+                    </div>
+                </li>
+
+                <!-- 7. E-WALLET -->
+                <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                    E-Wallet & Kartu Kredit
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU_SHOPEEPAY" data-label="ShopeePay" data-img="{{ asset('public/assets/shopeepay.webp') }}">
+                    <img src="{{ asset('public/assets/shopeepay.webp') }}" alt="ShopeePay" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">ShopeePay</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Akan diarahkan ke aplikasi Shopee</span>
+                    </div>
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU_OVO" data-label="OVO" data-img="{{ asset('public/assets/ovo.webp') }}">
+                    <img src="{{ asset('public/assets/ovo.webp') }}" alt="OVO" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">OVO</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Akan diarahkan ke aplikasi OVO</span>
+                    </div>
+                </li>
+
+                <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    data-value="DOKU_CREDIT_CARD" data-label="Kartu Kredit / Debit Online" data-img="{{ asset('public/assets/card.png') }}">
+                    <img src="{{ asset('public/assets/card.png') }}" alt="Credit Card" class="h-6 w-12 object-contain mr-4">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-bold text-gray-900">Kartu Kredit / Debit</span>
+                        <span class="text-[11px] text-gray-500 mt-0.5">Pembayaran aman dengan 3D Secure</span>
+                    </div>
+                </li>
+
+                <!-- 8. TRIPAY (JIKA DISEDIAKAN CONTROLLER) -->
+                @if(isset($tripayChannels) && count($tripayChannels) > 0)
+                    <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                        Metode Pembayaran Otomatis (Tripay)
+                    </li>
+                    @foreach($tripayChannels as $channel)
+                        <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                            data-value="{{ $channel['code'] }}" data-label="{{ $channel['name'] }}" data-img="{{ $channel['icon_url'] }}">
+                            <img src="{{ $channel['icon_url'] }}" alt="{{ $channel['name'] }}" class="h-8 w-8 object-contain mr-4" onerror="this.src='https://placehold.co/32x32?text=IMG'">
+                            <span class="text-sm font-medium text-gray-900">{{ $channel['name'] }}</span>
+                        </li>
+                    @endforeach
+                @endif
+
             </ul>
         </div>
     </div>
