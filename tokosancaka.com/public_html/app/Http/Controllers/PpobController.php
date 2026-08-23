@@ -355,24 +355,62 @@ public function checkBill(Request $request)
             ]);
         }
 
+       // =======================================================================
+        // 4. PROSES KE API DIGIFLAZZ (AUTO-FALLBACK SYSTEM)
         // =======================================================================
-        // 4. PROSES KE API DIGIFLAZZ (Tetap Sama)
-        // =======================================================================
-
-
 
         try {
-            $response = $this->digiflazz->inquiryPasca($finalSku, $customerNo, $refId);
+            // A. Ambil SEMUA produk cadangan dengan brand & kategori yang sama
+            // Diurutkan dari harga termurah agar user mendapat harga terbaik
+            $alternativeProducts = PpobProduct::where('brand', $activeProduct->brand)
+                ->where('category', $activeProduct->category)
+                ->where('seller_product_status', true) // Hanya yang diaktifkan oleh admin
+                ->orderBy('price', 'asc')
+                ->get();
 
-            if (isset($response['data']) && ($response['data']['rc'] === '00' || $response['data']['status'] === 'Sukses' || $response['data']['status'] === 'Pending')) {
+            $successData = null;
+            $successfulSku = null;
+            $successfulProduct = null;
+            $lastErrorMsg = 'Tagihan tidak ditemukan atau sedang gangguan.';
 
-                $data = $response['data'];
+            // B. Looping untuk mencoba SKU satu per satu
+            foreach ($alternativeProducts as $prod) {
+                $currentSku = $prod->buyer_sku_code;
+
+                // Wajib buat ref_id baru untuk setiap percobaan agar tidak ditolak sistem (duplicate ref_id)
+                $currentRefId = 'INQ-' . time() . rand(100,999);
+
+                Log::info("LOG LOG: Mencoba Inquiry SKU: {$currentSku} untuk tujuan: {$customerNo}");
+
+                // Eksekusi API
+                $response = $this->digiflazz->inquiryPasca($currentSku, $customerNo, $currentRefId);
+
+                // C. Cek apakah responsnya Sukses
+                if (isset($response['data']) && ($response['data']['rc'] === '00' || $response['data']['status'] === 'Sukses' || $response['data']['status'] === 'Pending')) {
+
+                    $successData = $response['data'];
+                    $successfulSku = $currentSku;
+                    $successfulProduct = $prod;
+
+                    Log::info("LOG LOG: Inquiry SUKSES menggunakan SKU cadangan: {$currentSku}");
+                    break; // Hentikan Looping karena tagihan sudah berhasil ditarik!
+
+                } else {
+                    // Jika Gagal (RC 43, 02, dll), catat pesan error dan biarkan looping lanjut ke SKU berikutnya
+                    $lastErrorMsg = $response['data']['message'] ?? $lastErrorMsg;
+                    Log::warning("LOG LOG: Inquiry GAGAL untuk SKU {$currentSku}. Reason: {$lastErrorMsg}. Sistem mencari cadangan lain...");
+                }
+            }
+
+            // D. Evaluasi Akhir: Jika dari semua percobaan ada yang sukses
+            if ($successData) {
+                $data = $successData;
                 $tagihanPenyedia = (float) ($data['price'] ?? $data['selling_price'] ?? $data['amount'] ?? 0);
                 $adminFeePenyedia = (float) ($data['admin'] ?? 0);
 
-                // Hitung Profit
-                $marginAgen = ($activeProduct->sell_price > $activeProduct->price)
-                              ? ($activeProduct->sell_price - $activeProduct->price)
+                // Hitung Profit (Sesuai dengan rumus asli Anda)
+                $marginAgen = ($successfulProduct->sell_price > $successfulProduct->price)
+                              ? ($successfulProduct->sell_price - $successfulProduct->price)
                               : 2500;
 
                 $totalTagihanUser = $tagihanPenyedia + $adminFeePenyedia + $marginAgen;
@@ -381,20 +419,21 @@ public function checkBill(Request $request)
                     'status' => 'success',
                     'customer_name' => $data['customer_name'] ?? $data['name'],
                     'customer_no'   => $data['customer_no'],
-                    'product_name'  => $activeProduct->product_name, // Gunakan nama dari DB kita agar rapi
+                    'product_name'  => $successfulProduct->product_name, // Menggunakan nama produk dari database
                     'amount_pokok'  => $tagihanPenyedia,
                     'total_tagihan' => $totalTagihanUser,
-                    'buyer_sku_code' => $finalSku,
-                    'ref_id'         => $data['ref_id'] ?? $refId,
-                    'desc'           => $data['desc'] ?? []
+                    'buyer_sku_code'=> $successfulSku, // PENTING: Melempar SKU yang sukses ke Frontend untuk proses Store/Payment
+                    'ref_id'        => $data['ref_id'] ?? $currentRefId,
+                    'desc'          => $data['desc'] ?? []
                 ]);
             }
 
-            $msg = $response['data']['message'] ?? 'Tagihan tidak ditemukan atau Nomor Salah.';
-            return response()->json(['status' => 'error', 'message' => $msg]);
+            // E. Jika SEMUA SKU sudah dicoba dan tidak ada satupun yang berhasil
+            Log::warning("LOG LOG: Semua produk {$activeProduct->brand} gagal. Error terakhir: {$lastErrorMsg}");
+            return response()->json(['status' => 'error', 'message' => $lastErrorMsg]);
 
         } catch (\Exception $e) {
-            Log::error("Inquiry Error: " . $e->getMessage());
+            Log::error("LOG LOG: Inquiry Error Sistem: " . $e->getMessage());
             return response()->json(['status' => 'error', 'message' => 'Gagal koneksi ke server provider.'], 500);
         }
     }
