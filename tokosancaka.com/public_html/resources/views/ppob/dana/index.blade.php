@@ -176,9 +176,26 @@
 </style>
 
 <script>
-    // Injeksi JSON yang lebih aman
+    // INJEKSI DATA DARI LARAVEL
     const dbPrepaid = {!! json_encode($pricelistPrepaid ?? []) !!};
     const dbPostpaid = {!! json_encode($pricelist ?? []) !!};
+
+    // ==========================================
+    // 🚨 DEBUGGING LOG UNTUK CONSOLE BROWSER 🚨
+    // ==========================================
+    console.log("=== CEK DATA DARI LARAVEL CONTROLLER ===");
+    console.log("Total Data Prabayar: ", dbPrepaid.length);
+    console.log("Total Data Pascabayar: ", dbPostpaid.length);
+    console.log("Isi Data Prabayar: ", dbPrepaid);
+    console.log("Isi Data Pascabayar: ", dbPostpaid);
+
+    if (dbPrepaid.length === 0) {
+        console.error("❌ ERROR BLADE: Variabel $pricelistPrepaid KOSONG! Cek Controller yang memanggil view ini, pastikan mengirim data pricelistPrepaid.");
+    }
+    if (dbPostpaid.length === 0) {
+        console.error("❌ ERROR BLADE: Variabel $pricelist KOSONG! Dropdown pascabayar tidak akan muncul. Pastikan Controller mengirim data pricelist.");
+    }
+    // ==========================================
 
     const prefixes = {
         'INDOSAT': { codes: ['0814','0815','0816','0855','0856','0857','0858'], color: '#f59e0b' },
@@ -310,7 +327,6 @@
                 return;
             }
 
-            // MAPPING NAMA OPERATOR AGAR COCOK DENGAN IAK
             let searchOp = detectedOp.toLowerCase();
             if (searchOp === 'smartfren') searchOp = 'smart';
             if (searchOp === 'three') searchOp = 'three';
@@ -321,7 +337,6 @@
                 let o = p.operator.toLowerCase();
 
                 let isPulsaData = t.includes('pulsa') || t.includes('data');
-                // IAK kadang pakai kata 'tri', kadang 'three'
                 let isMatchOp = o.includes(searchOp) || (searchOp === 'three' && o.includes('tri'));
 
                 return isPulsaData && isMatchOp;
@@ -402,7 +417,6 @@
             let opt = document.createElement('option');
             opt.value = p.code;
 
-            // ANTI CRASH JIKA CATEGORY / TYPE NULL DI DATABASE
             let catName = p.category ? p.category.toUpperCase() : (p.type ? p.type.toUpperCase() : 'TAGIHAN');
             opt.innerHTML = `${p.name} - ${catName}`;
 
