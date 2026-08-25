@@ -13,6 +13,13 @@ require __DIR__ . '/backup.php';
 require __DIR__ . '/etalase.php';
 // ==========================
 
+// >>> RUTE KHUSUS LPK HONGKONG (BYPASS) <<<
+Route::domain('lpkhongkong.tokosancaka.com')->group(function () {
+    Route::get('/', function () {
+        return view('lpkhongkong');
+    });
+});
+// =========================================
 
 /*
 |--------------------------------------------------------------------------
