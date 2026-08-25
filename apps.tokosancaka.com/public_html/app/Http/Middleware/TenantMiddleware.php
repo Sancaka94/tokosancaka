@@ -28,7 +28,7 @@ class TenantMiddleware
         URL::defaults(['subdomain' => $subdomain]);
 
         // 3. PENGECUALIAN DOMAIN UTAMA / DEMO
-        $excludedSubdomains = ['apps', 'admin', 'www', 'localhost', '127'];
+        $excludedSubdomains = ['apps', 'admin', 'www', 'localhost', '127', 'lpkhongkong'];
         if (in_array($subdomain, $excludedSubdomains)) {
             return $next($request);
         }
@@ -70,9 +70,9 @@ class TenantMiddleware
 
         // 6. WHITELIST URL (Halaman yang boleh diakses meski Expired)
         if (
-            $request->is('account-suspended') || 
-            $request->is('*account-suspended*') || 
-            $request->is('suspended') || 
+            $request->is('account-suspended') ||
+            $request->is('*account-suspended*') ||
+            $request->is('suspended') ||
             $request->is('tenant/generate-payment') ||
             $request->is('logout') ||
             $request->is('*/logout')
@@ -92,9 +92,9 @@ class TenantMiddleware
             if ($isExpired && $tenant->status !== 'inactive') {
                 $tenant->update(['status' => 'inactive']);
             }
-            
+
             // Arahkan ke halaman Suspended dengan aman
-            return redirect('/account-suspended'); 
+            return redirect('/account-suspended');
         }
 
         // 8. CEK LISENSI REDEEM (Hanya jika toko sedang Aktif)
