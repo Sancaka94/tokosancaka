@@ -89,3 +89,6 @@ Thumbs.db
 google-services.json
 GoogleService-Info.plist*.apk
 tokosancaka.com/public_html/public/assets/app/SancakaExpress.apk
+*.apk*.apk
+*.apk
+tokosancaka.com/public_html/vendor_backup/

@@ -1,124 +1,124 @@
 {
-    "version": "1.0.0.3972",
-    "last_update": "04 Jun 2026 08:31",
+    "version": "1.0.0.5597",
+    "last_update": "25 Aug 2026 12:11",
     "commits": [
         {
-            "hash": "2995fd83",
-            "date": "2026-06-04 08:31:23 +0700",
+            "hash": "f229af6e",
+            "date": "2026-08-25 12:11:39 +0700",
             "author": "Server Bot",
             "message": "Update System"
         },
         {
-            "hash": "66c545e8",
-            "date": "2026-06-02 18:55:04 +0700",
+            "hash": "e2ca5008",
+            "date": "2026-08-23 21:21:59 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "e209a7b1",
-            "date": "2026-06-02 17:54:18 +0700",
+            "hash": "eda2b510",
+            "date": "2026-08-23 21:17:11 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "4e25b734",
-            "date": "2026-06-02 15:25:36 +0700",
+            "hash": "d7435db1",
+            "date": "2026-08-23 21:10:22 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "12bbb984",
-            "date": "2026-06-02 14:53:31 +0700",
+            "hash": "6f95de3c",
+            "date": "2026-08-23 21:08:11 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "0de63121",
-            "date": "2026-06-02 14:41:51 +0700",
+            "hash": "d00f0835",
+            "date": "2026-08-23 20:45:21 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "3f7b0e63",
-            "date": "2026-06-02 14:39:12 +0700",
+            "hash": "929566e3",
+            "date": "2026-08-23 20:41:23 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "8879bd35",
-            "date": "2026-06-02 14:25:42 +0700",
+            "hash": "3b0e220e",
+            "date": "2026-08-23 20:36:09 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "95c380a6",
-            "date": "2026-06-02 14:18:56 +0700",
+            "hash": "75b962b9",
+            "date": "2026-08-23 20:30:56 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "9b12f04c",
-            "date": "2026-06-02 14:13:48 +0700",
+            "hash": "d588f90b",
+            "date": "2026-08-23 20:26:23 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "19467062",
-            "date": "2026-06-02 14:08:48 +0700",
+            "hash": "c14fc6a2",
+            "date": "2026-08-23 20:21:43 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "c09c56a5",
-            "date": "2026-06-02 13:53:30 +0700",
+            "hash": "787ac8e2",
+            "date": "2026-08-23 20:13:06 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "cb540932",
-            "date": "2026-06-02 13:52:40 +0700",
+            "hash": "ca24ac5d",
+            "date": "2026-08-23 20:11:03 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "18c97c5b",
-            "date": "2026-06-02 13:28:12 +0700",
+            "hash": "bd280aed",
+            "date": "2026-08-23 20:07:14 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "487b66bd",
-            "date": "2026-06-02 13:24:50 +0700",
+            "hash": "30c615b7",
+            "date": "2026-08-23 19:59:59 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "c5f8ae13",
-            "date": "2026-06-02 12:55:36 +0700",
+            "hash": "cdbd181c",
+            "date": "2026-08-23 19:55:05 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "d0071095",
-            "date": "2026-06-02 12:54:30 +0700",
+            "hash": "87983dd1",
+            "date": "2026-08-23 19:50:39 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "9e7f0498",
-            "date": "2026-06-01 23:48:09 +0700",
+            "hash": "815a437c",
+            "date": "2026-08-23 19:43:06 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "5a231d20",
-            "date": "2026-06-01 20:12:34 +0700",
+            "hash": "e2c1046c",
+            "date": "2026-08-23 19:24:11 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         },
         {
-            "hash": "1ec01fd5",
-            "date": "2026-06-01 20:05:14 +0700",
+            "hash": "72aba593",
+            "date": "2026-08-23 19:13:18 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         }
