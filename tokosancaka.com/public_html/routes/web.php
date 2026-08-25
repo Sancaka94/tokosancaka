@@ -196,6 +196,14 @@ use App\Http\Controllers\DanaWebhookController;
 use App\Http\Controllers\ApiMapboxController;
 use App\Http\Controllers\Auth\Admin\AdminLoginController;
 
+// >>> RUTE KHUSUS LPK HONGKONG (BYPASS) <<<
+Route::domain('lpkhongkong.tokosancaka.com')->group(function () {
+    Route::get('/', function () {
+        return view('lpkhongkong');
+    });
+});
+// =========================================
+
 
 // Route untuk menampilkan form login admin
 Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])->name('admin.login');
