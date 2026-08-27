@@ -1,12 +1,36 @@
 {
-    "version": "1.0.0.5597",
-    "last_update": "25 Aug 2026 12:11",
+    "version": "1.0.0.5601",
+    "last_update": "27 Aug 2026 14:39",
     "commits": [
         {
-            "hash": "f229af6e",
-            "date": "2026-08-25 12:11:39 +0700",
+            "hash": "de2bda80",
+            "date": "2026-08-27 14:39:33 +0700",
             "author": "Server Bot",
             "message": "Update System"
+        },
+        {
+            "hash": "5ed48ed3",
+            "date": "2026-08-25 12:55:41 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "0d0d1eb8",
+            "date": "2026-08-25 12:52:49 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "39579bc3",
+            "date": "2026-08-25 12:38:34 +0700",
+            "author": "Sancaka94",
+            "message": "Auto commit"
+        },
+        {
+            "hash": "ee8980a7",
+            "date": "2026-08-25 12:35:30 +0700",
+            "author": "Server Bot",
+            "message": "Pembaruan version.json dan pembersihan riwayat file APK"
         },
         {
             "hash": "e2ca5008",
@@ -95,30 +119,6 @@
         {
             "hash": "cdbd181c",
             "date": "2026-08-23 19:55:05 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "87983dd1",
-            "date": "2026-08-23 19:50:39 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "815a437c",
-            "date": "2026-08-23 19:43:06 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "e2c1046c",
-            "date": "2026-08-23 19:24:11 +0700",
-            "author": "Sancaka94",
-            "message": "Auto commit"
-        },
-        {
-            "hash": "72aba593",
-            "date": "2026-08-23 19:13:18 +0700",
             "author": "Sancaka94",
             "message": "Auto commit"
         }
