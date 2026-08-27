@@ -452,6 +452,45 @@
             <ul id="paymentOptionsList" class="divide-y">
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="w-8 h-8 mr-4">Potong Saldo (Tersedia: Rp {{ number_format(Auth::user()->saldo ?? 0) }})</li>
 
+                {{-- MULAI METODE PEMBAYARAN DANA BINDING --}}
+                @php
+                    $isDanaBound = Auth::check() && !empty(Auth::user()->dana_access_token);
+                @endphp
+
+                @if($isDanaBound)
+                    {{-- Jika Sudah Binding (Tersambung) --}}
+                    <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 justify-between"
+                        data-value="DANA_BINDING"
+                        data-label="Saldo DANA">
+                        <div class="flex items-center">
+                            <img src="{{ asset('assets/dana.webp') }}" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'" class="w-8 h-8 mr-4 object-contain">
+                            <div>
+                                <span class="block font-semibold text-gray-800">Saldo DANA</span>
+                                <span class="text-[10px] text-green-700 font-bold bg-green-100 px-2 py-0.5 rounded border border-green-200"><i class="fas fa-link mr-1"></i>Tersambung</span>
+                            </div>
+                        </div>
+                        {{-- Tombol Cek Saldo AJAX --}}
+                        <button type="button" class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg shadow hover:bg-blue-700 transition z-10 font-medium" onclick="event.stopPropagation(); cekSaldoDanaModal(this);">
+                            Cek Saldo
+                        </button>
+                    </li>
+                @else
+                    {{-- Jika Belum Binding --}}
+                    <li class="p-4 flex flex-col sm:flex-row items-center justify-between bg-orange-50 border-b border-orange-100 cursor-not-allowed">
+                        <div class="flex items-center mb-2 sm:mb-0">
+                            <img src="{{ asset('assets/dana.webp') }}" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'" class="w-8 h-8 mr-4 object-contain grayscale">
+                            <div>
+                                <span class="block font-semibold text-gray-500">Saldo DANA</span>
+                                <span class="text-[10px] text-red-600 font-bold bg-red-100 px-2 py-0.5 rounded border border-red-200"><i class="fas fa-unlink mr-1"></i>Belum Terhubung</span>
+                            </div>
+                        </div>
+                        <a href="{{ url('/customer/dana/bind') }}" class="text-xs bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-1.5 rounded-lg shadow hover:shadow-md transition flex items-center">
+                            <i class="fas fa-link mr-1.5"></i> Hubungkan
+                        </a>
+                    </li>
+                @endif
+                {{-- AKHIR METODE PEMBAYARAN DANA BINDING --}}
+
                 <li class="bg-blue-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Transfer VA Bank, Minimarket, E-Wallet (Otomatis)</li>
 
                 {{--
@@ -1690,6 +1729,40 @@ function submitFinalForm() {
     document.querySelectorAll('#paymentOptionsList > li.payment-option').forEach(li => {
         li.addEventListener('click', () => selectPayment(li));
     });
+
+    // --- FUNGSI CEK SALDO DANA DI DALAM MODAL PEMBAYARAN ---
+    function cekSaldoDanaModal(btn) {
+        let originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        btn.disabled = true;
+
+        fetch("{{ route('customer.dana.check_balance') }}", {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.success) {
+                // Menambahkan elemen saldo di bawah tulisan "Saldo DANA"
+                let titleDiv = btn.parentElement.querySelector('.block.font-semibold');
+                titleDiv.innerHTML = 'Saldo DANA <br><span class="text-blue-600 text-sm font-extrabold mt-1 block">' + data.formatted_balance + '</span>';
+
+                // Sembunyikan tombol cek saldo setelah berhasil dimuat
+                btn.style.display = 'none';
+            } else {
+                Swal.fire('Informasi', data.message || 'Gagal mengecek saldo DANA', 'error');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            Swal.fire('Error', 'Terjadi kesalahan koneksi jaringan.', 'error');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    }
 
 </script>
 @endpush
