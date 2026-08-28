@@ -6,6 +6,19 @@
 <div class="p-6 bg-gray-50 min-h-screen">
 
     <!-- HEADER -->
+
+    @if(session('success'))
+        <div class="mb-4 p-4 text-sm text-green-800 rounded-lg bg-green-50" role="alert">
+            <span class="font-medium">Berhasil!</span> {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="mb-4 p-4 text-sm text-red-800 rounded-lg bg-red-50" role="alert">
+            <span class="font-medium">Gagal!</span> {{ session('error') }}
+        </div>
+    @endif
+
     <div class="mb-8 flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
             <h1 class="text-2xl font-bold text-gray-900 tracking-tight">Riwayat Pesanan</h1>
