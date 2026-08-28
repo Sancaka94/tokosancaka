@@ -19,7 +19,7 @@ class EmailController extends Controller
     public function index()
     {
         Log::info('Akses halaman Kotak Masuk Email.', ['user_id' => Auth::id()]);
-        return view('admin.email.index'); 
+        return view('admin.email.index');
     }
 
     /**
@@ -43,7 +43,7 @@ class EmailController extends Controller
                 $inboxFolder = $client->getFolder('INBOX');
 
                 $query = $inboxFolder->query();
-                
+
                 if (!empty($search)) {
                     $query = $query->text($search);
                 } else {
@@ -103,7 +103,7 @@ class EmailController extends Controller
                     });
                 }
                 $localData = $localQuery->orderBy('created_at', 'desc')->get();
-                
+
                 foreach($localData as $dbEmail) {
                     $emails[] = [
                         'id' => $dbEmail->id,
@@ -126,7 +126,7 @@ class EmailController extends Controller
 
                     // PERBAIKAN: Menggunakan format where('FLAGGED') untuk sintaks Webklex IMAP yang valid
                     $imapQuery = $inboxFolder->query()->where('FLAGGED');
-                    
+
                     if (!empty($search)) {
                         $imapQuery = $imapQuery->text($search);
                     }
@@ -213,7 +213,7 @@ class EmailController extends Controller
 
         // Cek DB Lokal Dulu
         $localEmail = Email::where('user_id', Auth::id())->find($id);
-        
+
         if ($localEmail) {
             if (is_null($localEmail->read_at)) {
                 $localEmail->update(['read_at' => now()]);
@@ -233,7 +233,37 @@ class EmailController extends Controller
             }
 
             if (!$message->hasFlag('SEEN')) {
-                $message->setFlag('SEEN'); // Tandai terbaca di server asli
+                $message->setFlag('SEEN');
+            }
+
+            // 1. Ambil body HTML mentah
+            $body = $message->getHTMLBody() ?? $message->getTextBody();
+            $attachmentsArr = [];
+
+            // 2. Proses semua lampiran jika ada
+            if ($message->hasAttachments()) {
+                foreach ($message->getAttachments() as $attachment) {
+
+                    // A. Cek apakah lampiran adalah gambar inline (seperti E-Signature BCA di dalam teks)
+                    if ($attachment->isInline() && $attachment->getContentId()) {
+                        // Hilangkan kurung sudut pada Content-ID jika ada (Webklex kadang menyertakan < >)
+                        $cid = str_replace(['<', '>'], '', $attachment->getContentId());
+
+                        $mime = $attachment->getMimeType();
+                        $base64 = base64_encode($attachment->getContent());
+
+                        // Replace src="cid:..." dengan Base64 Image agar muncul di browser
+                        $body = str_replace('cid:' . $cid, "data:{$mime};base64,{$base64}", $body);
+                    }
+                    // B. Ini adalah lampiran file fisik (PDF, DOCX, dll)
+                    else {
+                        // Konversi ke Base64 Data URI agar bisa didownload langsung via JavaScript frontend
+                        $attachmentsArr[] = [
+                            'name' => $attachment->getName(),
+                            'url'  => 'data:' . $attachment->getMimeType() . ';base64,' . base64_encode($attachment->getContent())
+                        ];
+                    }
+                }
             }
 
             return response()->json([
@@ -241,7 +271,8 @@ class EmailController extends Controller
                 'from_name' => $message->getFrom()[0]->personal ?? $message->getFrom()[0]->mail,
                 'from_address' => $message->getFrom()[0]->mail,
                 'subject' => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
-                'body' => $message->getHTMLBody() ?? $message->getTextBody(), 
+                'body' => $body,
+                'attachments' => $attachmentsArr, // Data lampiran dikirim ke sini
                 'created_at' => $message->getDate()[0]->format('Y-m-d H:i:s'),
             ]);
 
@@ -261,26 +292,26 @@ class EmailController extends Controller
             'to'            => 'required|email',
             'subject'       => 'required|string|max:255',
             'body'          => 'required|string',
-            'attachments.*' => 'nullable|file|max:10240', 
+            'attachments.*' => 'nullable|file|max:10240',
         ]);
 
         try {
-            // 2. HAPUS htmlspecialchars() & nl2br(). 
+            // 2. HAPUS htmlspecialchars() & nl2br().
             // Biarkan $bodyHtml berisi tag HTML asli bawaan Quill.js
             $bodyHtml = $validated['body'];
-            
+
             $subject = $validated['subject'];
             $to = $validated['to'];
-            
+
             // Tangkap file lampiran dari frontend
-            $attachments = $request->file('attachments'); 
+            $attachments = $request->file('attachments');
 
             // 3. Eksekusi Kirim SMTP dengan Lampiran
             Mail::html($bodyHtml, function ($message) use ($to, $subject, $attachments) {
                 $message->to($to)
                         ->subject($subject)
                         ->from(config('mail.from.address'), config('mail.from.name'));
-                
+
                 // Jika ada file lampiran, loop dan attach ke email
                 if (!empty($attachments)) {
                     foreach ($attachments as $file) {
@@ -295,14 +326,14 @@ class EmailController extends Controller
             // 4. Simpan Riwayat ke DB lokal
             $email = Email::create([
                 'user_id'      => Auth::id(),
-                'folder'       => 'sent', 
+                'folder'       => 'sent',
                 'from_name'    => config('mail.from.name', 'Admin Sancaka'),
                 'from_address' => config('mail.from.address', 'admin@tokosancaka.com'),
                 'to_address'   => $to,
                 'subject'      => $subject,
                 'body'         => $bodyHtml,
                 'is_starred'   => false,
-                'read_at'      => now(), 
+                'read_at'      => now(),
             ]);
 
             Log::info('Email sukses dikirim via SMTP dengan lampiran.', ['to' => $to]);
@@ -375,7 +406,7 @@ class EmailController extends Controller
         // Tangkap data ids dan folder dari frontend
         $request->validate([
             'ids' => 'required|array',
-            'folder' => 'required|string', 
+            'folder' => 'required|string',
         ]);
 
         $deletedCount = 0;
@@ -393,17 +424,17 @@ class EmailController extends Controller
                         $message = $inboxFolder->query()->getMessageByUid((int) $id);
                         if ($message) {
                             // Coba tandai sebagai deleted dengan format yang didukung banyak server
-                            $message->setFlag(['\Deleted', 'Deleted']); 
+                            $message->setFlag(['\Deleted', 'Deleted']);
                             $deletedCount++;
                         }
                     } catch (\Exception $e) {
                         Log::warning("Gagal menandai hapus UID $id: " . $e->getMessage());
                     }
                 }
-                
+
                 // Coba bersihkan server. Jika metode ini tidak ada di versi Webklex Anda, abaikan saja
                 try {
-                    $client->expunge(); 
+                    $client->expunge();
                 } catch (\Exception $e) {
                     try {
                         $inboxFolder->expunge();
@@ -412,7 +443,7 @@ class EmailController extends Controller
                     }
                 }
 
-            } 
+            }
             // === JALUR 2: HAPUS DI DATABASE LOKAL (TERKIRIM, BERBINTANG, DLL) ===
             else {
                 $deletedCount = Email::where('user_id', Auth::id())
@@ -447,8 +478,8 @@ class EmailController extends Controller
 
         // 2. KEAMANAN: VALIDASI KETAT (Termasuk menolak payload Cloudflare kosong)
         $validated = $request->validate([
-            'name'                  => 'required|string|max:100|regex:/^[a-zA-Z\s]+$/', 
-            'email'                 => 'required|email:rfc,dns|max:100', 
+            'name'                  => 'required|string|max:100|regex:/^[a-zA-Z\s]+$/',
+            'email'                 => 'required|email:rfc,dns|max:100',
             'message'               => 'required|string|max:2000',
             'latitude'              => 'nullable|string',
             'longitude'             => 'nullable|string',
@@ -458,9 +489,9 @@ class EmailController extends Controller
         \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, 60);
 
         try {
-            $adminEmail = config('mail.from.address', 'admin@tokosancaka.com'); 
+            $adminEmail = config('mail.from.address', 'admin@tokosancaka.com');
             $subject = 'Pesan Baru dari Form Kontak: ' . $validated['name'];
-            
+
             // 3. SANITASI XSS
             $safeName = htmlspecialchars($validated['name'], ENT_QUOTES, 'UTF-8');
             $safeEmail = htmlspecialchars($validated['email'], ENT_QUOTES, 'UTF-8');
@@ -478,7 +509,7 @@ class EmailController extends Controller
             $bodyHtml = "
             <div style='font-family: Helvetica, Arial, sans-serif; background-color: #f3f4f6; padding: 40px 20px; margin: 0;'>
                 <div style='max-width: 600px; background-color: #ffffff; margin: 0 auto; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05);'>
-                    
+
                     <div style='background: linear-gradient(135deg, #dc2626, #991b1b); color: #ffffff; padding: 30px 20px; text-align: center;'>
                         <h2 style='margin: 0; font-size: 24px; font-weight: 800; letter-spacing: 1px;'>SANCAKA EXPRESS</h2>
                         <p style='margin: 8px 0 0 0; font-size: 14px; color: #fca5a5;'>Pesan Baru dari Pengunjung Website</p>
