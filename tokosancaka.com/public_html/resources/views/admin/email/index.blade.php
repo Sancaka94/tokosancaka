@@ -492,16 +492,16 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('email-body').innerHTML = data.body;
             document.getElementById('email-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.from_name)}&background=random&color=fff&size=128`;
 
-            // --- LOGIKA MENAMPILKAN LAMPIRAN (BARU) ---
+            // --- LOGIKA MENAMPILKAN LAMPIRAN ---
             const attachContainer = document.getElementById('email-attachments');
-            attachContainer.innerHTML = ''; // Bersihkan lampiran sebelumnya
+            attachContainer.innerHTML = '';
 
             if (data.attachments && data.attachments.length > 0) {
                 attachContainer.classList.remove('hidden');
                 data.attachments.forEach(file => {
-                    // Pastikan backend Anda mengirim format: name (nama file), url (link download), size (opsional)
+                    // Tambahkan atribut download="${file.name}" agar langsung terunduh
                     attachContainer.innerHTML += `
-                        <a href="${file.url}" target="_blank" class="flex items-center gap-2 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors text-xs font-medium text-gray-700 shadow-sm cursor-pointer">
+                        <a href="${file.url}" download="${file.name}" class="flex items-center gap-2 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors text-xs font-medium text-gray-700 shadow-sm cursor-pointer">
                             <i class="fa-solid fa-paperclip text-blue-500"></i>
                             <span class="truncate max-w-[200px]" title="${file.name}">${file.name}</span>
                         </a>
@@ -510,7 +510,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 attachContainer.classList.add('hidden');
             }
-            // ----------------------------------------
 
             fetchEmails(currentFolder, ui.search.value);
         } catch {
