@@ -276,13 +276,13 @@ class EmailController extends Controller
                                 $thumbRelPath = 'public/email_attachments/' . $id . '/' . $thumbName;
                                 $thumbAbsPath = storage_path('app/' . $thumbRelPath);
 
-                                // Konversi Halaman 1 PDF ke JPG (Default Spatie otomatis halaman 1)
+                                // Konversi Halaman 1 PDF ke JPG (Fungsi 'save' untuk versi 3.x)
                                 $pdf = new \Spatie\PdfToImage\Pdf($pdfAbsPath);
-                                $pdf->saveImage($thumbAbsPath);
+                                $pdf->selectPage(1)->save($thumbAbsPath);
 
                                 $thumbUrl = asset('storage/email_attachments/' . $id . '/' . $thumbName);
 
-                            } catch (\Throwable $e) { // PERBAIKAN: Gunakan \Throwable agar kebal dari Fatal Error
+                            } catch (\Throwable $e) {
                                 // LOG LOG: Abaikan jika Ghostscript server gagal, fallback ke kotak PDF
                                 Log::warning("Gagal membuat thumbnail PDF {$name}: " . $e->getMessage());
                             }
