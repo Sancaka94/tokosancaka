@@ -236,32 +236,41 @@ class EmailController extends Controller
                 $message->setFlag('SEEN');
             }
 
-            // 1. Ambil body HTML mentah
-            $body = $message->getHTMLBody() ?? $message->getTextBody();
+            // 1. Ambil body HTML mentah (Pastikan tidak null)
+            $body = $message->getHTMLBody() ?? $message->getTextBody() ?? '';
             $attachmentsArr = [];
 
-            // 2. Proses semua lampiran jika ada
+            // 2. Proses semua lampiran dengan sangat aman
             if ($message->hasAttachments()) {
                 foreach ($message->getAttachments() as $attachment) {
+                    try {
+                        // Akses data menggunakan properti standar Webklex IMAP
+                        $cid = $attachment->id ?? $attachment->content_id ?? null;
+                        $name = $attachment->name ?? $attachment->filename ?? 'Lampiran_Tanpa_Nama';
+                        $mime = $attachment->content_type ?? $attachment->mime ?? 'application/octet-stream';
 
-                    // A. Cek apakah lampiran adalah gambar inline (seperti E-Signature BCA di dalam teks)
-                    if ($attachment->isInline() && $attachment->getContentId()) {
-                        // Hilangkan kurung sudut pada Content-ID jika ada (Webklex kadang menyertakan < >)
-                        $cid = str_replace(['<', '>'], '', $attachment->getContentId());
+                        // Ambil konten file
+                        $content = $attachment->content ?? $attachment->getContent();
+                        $disposition = strtolower($attachment->disposition ?? '');
 
-                        $mime = $attachment->getMimeType();
-                        $base64 = base64_encode($attachment->getContent());
+                        // Cek apakah ini gambar inline (berada di dalam body HTML)
+                        $cleanCid = $cid ? str_replace(['<', '>'], '', $cid) : '';
+                        $isInline = $cleanCid && ($disposition === 'inline' || str_contains($body, 'cid:' . $cleanCid));
 
-                        // Replace src="cid:..." dengan Base64 Image agar muncul di browser
-                        $body = str_replace('cid:' . $cid, "data:{$mime};base64,{$base64}", $body);
-                    }
-                    // B. Ini adalah lampiran file fisik (PDF, DOCX, dll)
-                    else {
-                        // Konversi ke Base64 Data URI agar bisa didownload langsung via JavaScript frontend
-                        $attachmentsArr[] = [
-                            'name' => $attachment->getName(),
-                            'url'  => 'data:' . $attachment->getMimeType() . ';base64,' . base64_encode($attachment->getContent())
-                        ];
+                        if ($isInline) {
+                            // Ganti src="cid:xxxx" menjadi gambar Base64 (E-Signature)
+                            $base64 = base64_encode($content);
+                            $body = str_replace('cid:' . $cleanCid, "data:{$mime};base64,{$base64}", $body);
+                        } else {
+                            // Ini adalah dokumen/file murni (PDF, Excel, dll)
+                            $attachmentsArr[] = [
+                                'name' => $name,
+                                'url'  => "data:{$mime};base64," . base64_encode($content)
+                            ];
+                        }
+                    } catch (\Exception $e) {
+                        // LOG LOG tetap dilestarikan: Jika 1 file error, email tetap terbuka!
+                        Log::warning("Gagal memproses lampiran email ID {$id}: " . $e->getMessage());
                     }
                 }
             }
@@ -273,7 +282,7 @@ class EmailController extends Controller
                 'subject' => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
                 'body' => $body,
                 'attachments' => $attachmentsArr, // Data lampiran dikirim ke sini
-                'created_at' => $message->getDate()[0]->format('Y-m-d H:i:s'),
+                'created_at' => !empty($message->getDate()) ? $message->getDate()[0]->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
             ]);
 
         } catch (\Exception $e) {
