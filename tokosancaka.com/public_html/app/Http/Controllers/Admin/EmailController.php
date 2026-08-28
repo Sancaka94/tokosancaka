@@ -259,40 +259,51 @@ class EmailController extends Controller
                     else {
                         $fileContent = $attachment->getContent();
 
-                        // Buat path: storage/app/public/email_attachments/105/nama_file.pdf
+                        // Path PDF asli
                         $path = 'public/email_attachments/' . $id . '/' . $name;
-
-                        // Simpan file ke server
                         \Illuminate\Support\Facades\Storage::put($path, $fileContent);
 
-                        $fileUrl = asset('storage/email_attachments/' . $id . '/' . $name);
-                        $thumbUrl = null; // Default null
+                        // URL file asli (di-encode agar aman jika ada spasi saat didownload)
+                        $fileUrl = asset('storage/email_attachments/' . $id . '/' . rawurlencode($name));
+                        $thumbUrl = null;
 
-                        // --- LOGIKA PEMBUATAN THUMBNAIL PDF ---
+                        // --- LOGIKA PEMBUATAN THUMBNAIL PDF (NATIVE IMAGICK) ---
                         if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) === 'pdf') {
                             try {
                                 $pdfAbsPath = storage_path('app/' . $path);
-                                $thumbName = pathinfo($name, PATHINFO_FILENAME) . '_thumb.jpg';
+
+                                // PERBAIKAN UTAMA: Gunakan MD5 agar nama file bersih dari spasi & tanda kurung
+                                $thumbName = md5($name) . '_thumb.jpg';
                                 $thumbRelPath = 'public/email_attachments/' . $id . '/' . $thumbName;
                                 $thumbAbsPath = storage_path('app/' . $thumbRelPath);
 
-                                // Konversi Halaman 1 PDF ke JPG (Fungsi 'save' untuk versi 3.x)
-                                $pdf = new \Spatie\PdfToImage\Pdf($pdfAbsPath);
-                                $pdf->selectPage(1)->save($thumbAbsPath);
+                                // Gunakan Native Imagick (Jauh lebih cepat & stabil daripada Spatie)
+                                $imagick = new \Imagick();
+                                $imagick->setResolution(150, 150);
+                                $imagick->readImage($pdfAbsPath . '[0]'); // Angka [0] untuk mengambil halaman pertama saja
 
+                                // Wajib: Ubah background transparan PDF menjadi putih agar tidak jadi kotak hitam
+                                $imagick->setImageBackgroundColor('white');
+                                $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
+
+                                $imagick->setImageFormat('jpg');
+                                $imagick->setImageCompressionQuality(80);
+                                $imagick->writeImage($thumbAbsPath);
+                                $imagick->clear();
+                                $imagick->destroy();
+
+                                // URL Thumbnail sekarang dijamin bersih dari spasi (misal: 1a2b3c4d_thumb.jpg)
                                 $thumbUrl = asset('storage/email_attachments/' . $id . '/' . $thumbName);
 
                             } catch (\Throwable $e) {
-                                // LOG LOG: Abaikan jika Ghostscript server gagal, fallback ke kotak PDF
-                                Log::warning("Gagal membuat thumbnail PDF {$name}: " . $e->getMessage());
+                                Log::warning("Gagal membuat thumbnail PDF Imagick untuk {$name}: " . $e->getMessage());
                             }
                         }
 
-                        // Kirimkan URL file fisik & Thumbnail ke JSON Frontend
                         $attachmentsArr[] = [
                             'name'      => $name,
                             'url'       => $fileUrl,
-                            'thumbnail' => $thumbUrl // Akan terisi link JPG jika berhasil
+                            'thumbnail' => $thumbUrl
                         ];
                     }
                 } catch (\Exception $e) {
