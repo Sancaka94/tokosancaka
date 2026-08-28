@@ -482,24 +482,20 @@ class EmailController extends Controller
                     try {
                         $message = $inboxFolder->query()->getMessageByUid((int) $id);
                         if ($message) {
-                            // Coba tandai sebagai deleted dengan format yang didukung banyak server
-                            $message->setFlag(['\Deleted', 'Deleted']);
+                            // PERBAIKAN 1: Gunakan string 'Deleted' yang lebih stabil di Webklex IMAP
+                            $message->setFlag('Deleted');
                             $deletedCount++;
                         }
-                    } catch (\Exception $e) {
+                    } catch (\Throwable $e) { // PERBAIKAN 2: Ubah \Exception ke \Throwable
                         Log::warning("Gagal menandai hapus UID $id: " . $e->getMessage());
                     }
                 }
 
-                // Coba bersihkan server. Jika metode ini tidak ada di versi Webklex Anda, abaikan saja
+                // PERBAIKAN 3: Langsung jalankan expunge() pada Folder, bukan Client
                 try {
-                    $client->expunge();
-                } catch (\Exception $e) {
-                    try {
-                        $inboxFolder->expunge();
-                    } catch (\Exception $e2) {
-                        Log::warning("Fungsi Expunge tidak didukung oleh versi Webklex atau Server ini.");
-                    }
+                    $inboxFolder->expunge();
+                } catch (\Throwable $e) { // PERBAIKAN 2: Ubah \Exception ke \Throwable
+                    Log::warning("Fungsi Expunge tidak didukung oleh versi Webklex atau Server ini: " . $e->getMessage());
                 }
 
             }
@@ -515,8 +511,9 @@ class EmailController extends Controller
                 'message' => $deletedCount . ' pesan berhasil dihapus.'
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) { // PERBAIKAN 2: Ubah \Exception ke \Throwable agar fatal error tertangkap
             // Ini akan memastikan errornya terlihat di pop-up SweetAlert, BUKAN cuma Error 500 blank
+            // LOG LOG TETAP AMAN SESUAI INSTRUKSI
             Log::error('Hapus Email Masal Error.', ['error' => $e->getMessage(), 'line' => $e->getLine()]);
             return response()->json([
                 'success' => false,
