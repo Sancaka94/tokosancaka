@@ -492,24 +492,78 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('email-body').innerHTML = data.body;
             document.getElementById('email-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.from_name)}&background=random&color=fff&size=128`;
 
-            // --- LOGIKA MENAMPILKAN LAMPIRAN ---
+            // --- LOGIKA MENAMPILKAN LAMPIRAN (STYLE GMAIL) ---
             const attachContainer = document.getElementById('email-attachments');
             attachContainer.innerHTML = '';
 
             if (data.attachments && data.attachments.length > 0) {
-                attachContainer.classList.remove('hidden');
+                // Hapus class flex bawaan dari container luar agar kita bisa mengontrol layout di dalam
+                attachContainer.className = 'px-6 py-4 bg-white border-b border-gray-100 block';
+
+                // Tambahkan Header Jumlah Lampiran
+                let htmlContent = `
+                    <div class="flex items-center gap-2 mb-4 text-sm font-semibold text-gray-700">
+                        <i class="fa-solid fa-paperclip text-gray-400"></i>
+                        <span>${data.attachments.length} Lampiran</span>
+                    </div>
+                    <div class="flex flex-wrap gap-4">
+                `;
+
                 data.attachments.forEach(file => {
-                    // Tambahkan atribut download="${file.name}" agar langsung terunduh
-                    attachContainer.innerHTML += `
-                        <a href="${file.url}" download="${file.name}" class="flex items-center gap-2 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors text-xs font-medium text-gray-700 shadow-sm cursor-pointer">
-                            <i class="fa-solid fa-paperclip text-blue-500"></i>
-                            <span class="truncate max-w-[200px]" title="${file.name}">${file.name}</span>
+                    // 1. Dapatkan ekstensi file dari nama file
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+
+                    let thumbHtml = '';
+                    let iconHtml = '';
+
+                    // 2. Tentukan Thumbnail & Icon berdasarkan tipe file
+                    if (isImage) {
+                        iconHtml = '<i class="fa-solid fa-image text-red-500"></i>';
+                        thumbHtml = `<img src="${file.url}" class="w-full h-full object-cover" alt="preview">`;
+                    } else if (ext === 'pdf') {
+                        iconHtml = '<i class="fa-solid fa-file-pdf text-red-600"></i>';
+                        thumbHtml = `<div class="flex items-center justify-center w-full h-full text-gray-300 font-black text-2xl tracking-widest bg-gray-50">PDF</div>`;
+                    } else {
+                        iconHtml = '<i class="fa-solid fa-file-lines text-blue-500"></i>';
+                        thumbHtml = `<div class="flex items-center justify-center w-full h-full text-gray-300 font-bold text-xl uppercase bg-gray-50">${ext.substring(0, 4)}</div>`;
+                    }
+
+                    // 3. Gabungkan ke dalam struktur Card style Gmail
+                    htmlContent += `
+                        <a href="${file.url}" target="_blank" download="${file.name}" class="group relative flex flex-col w-44 h-36 border border-gray-200 rounded-lg overflow-hidden bg-white hover:border-gray-300 hover:shadow-md transition-all cursor-pointer">
+
+                            <!-- Area Thumbnail Atas -->
+                            <div class="h-24 w-full bg-gray-100 flex items-center justify-center border-b border-gray-100 overflow-hidden relative">
+                                ${thumbHtml}
+
+                                <!-- Overlay Hover Gelap (Efek Gmail) -->
+                                <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <div class="bg-white/90 p-2.5 rounded-full text-gray-700 shadow-sm transform scale-90 group-hover:scale-100 transition-transform">
+                                        <i class="fa-solid fa-download"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Area Label Bawah -->
+                            <div class="flex-1 px-3 py-2 flex items-center gap-2 bg-white">
+                                <div class="bg-gray-100 rounded p-1 w-6 h-6 flex items-center justify-center flex-shrink-0">
+                                    ${iconHtml}
+                                </div>
+                                <span class="truncate text-xs font-medium text-gray-600" title="${file.name}">${file.name}</span>
+                            </div>
+
                         </a>
                     `;
                 });
+
+                htmlContent += '</div>';
+                attachContainer.innerHTML = htmlContent;
+
             } else {
-                attachContainer.classList.add('hidden');
+                attachContainer.className = 'hidden';
             }
+            // ----------------------------------------------------
 
             fetchEmails(currentFolder, ui.search.value);
         } catch {
