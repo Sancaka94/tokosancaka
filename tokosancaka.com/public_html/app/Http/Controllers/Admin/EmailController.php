@@ -255,7 +255,7 @@ class EmailController extends Controller
                         $base64 = base64_encode($attachment->getContent());
                         $body = str_replace('cid:' . $cleanCid, "data:{$mime};base64,{$base64}", $body);
                     }
-                    // B. Jika File Dokumen Fisik (PDF 13MB, Excel, dll) -> Simpan ke Storage agar memori aman
+                    // B. Jika File Dokumen Fisik (PDF, Excel, dll) -> Simpan ke Storage & Buat Thumbnail PDF
                     else {
                         $fileContent = $attachment->getContent();
 
@@ -265,10 +265,33 @@ class EmailController extends Controller
                         // Simpan file ke server
                         \Illuminate\Support\Facades\Storage::put($path, $fileContent);
 
-                        // Kirimkan URL file fisik ke JSON Frontend
+                        $fileUrl = asset('storage/email_attachments/' . $id . '/' . $name);
+                        $thumbUrl = null; // Default null
+
+                        // --- LOGIKA PEMBUATAN THUMBNAIL PDF ---
+                        if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) === 'pdf') {
+                            try {
+                                $pdfAbsPath = storage_path('app/' . $path);
+                                $thumbName = pathinfo($name, PATHINFO_FILENAME) . '_thumb.jpg';
+                                $thumbRelPath = 'public/email_attachments/' . $id . '/' . $thumbName;
+                                $thumbAbsPath = storage_path('app/' . $thumbRelPath);
+
+                                // Konversi Halaman 1 PDF ke JPG menggunakan library Spatie
+                                $pdf = new \Spatie\PdfToImage\Pdf($pdfAbsPath);
+                                $pdf->selectPage(1)->saveImage($thumbAbsPath);
+
+                                $thumbUrl = asset('storage/email_attachments/' . $id . '/' . $thumbName);
+                            } catch (\Exception $e) {
+                                // LOG LOG: Abaikan jika Ghostscript server gagal, fallback ke kotak PDF
+                                Log::warning("Gagal membuat thumbnail PDF {$name}: " . $e->getMessage());
+                            }
+                        }
+
+                        // Kirimkan URL file fisik & Thumbnail ke JSON Frontend
                         $attachmentsArr[] = [
-                            'name' => $name,
-                            'url'  => asset('storage/email_attachments/' . $id . '/' . $name)
+                            'name'      => $name,
+                            'url'       => $fileUrl,
+                            'thumbnail' => $thumbUrl // Sekarang ini akan terisi link JPG!
                         ];
                     }
                 } catch (\Exception $e) {
