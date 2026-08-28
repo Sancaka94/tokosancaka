@@ -456,6 +456,44 @@
 
                 {{-- MULAI METODE PEMBAYARAN DANA BINDING --}}
 
+                @php
+                    $isDanaBound = Auth::check() && !empty(Auth::user()->dana_access_token);
+                @endphp
+
+
+
+                @if($isDanaBound)
+                    {{-- Jika Sudah Binding (Tersambung) --}}
+                    <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 justify-between"
+                        data-value="DANA_BINDING"
+                        data-label="Saldo DANA">
+                        <div class="flex items-center">
+                            <img src="{{ asset('assets/dana.webp') }}" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'" class="w-8 h-8 mr-4 object-contain">
+                            <div>
+                                <span class="block font-semibold text-gray-800">Saldo DANA</span>
+                                <span class="text-[10px] text-green-700 font-bold bg-green-100 px-2 py-0.5 rounded border border-green-200"><i class="fas fa-link mr-1"></i>Tersambung</span>
+                            </div>
+                        </div>
+                        {{-- Tombol Cek Saldo AJAX --}}
+                        <button type="button" class="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg shadow hover:bg-blue-700 transition z-10 font-medium" onclick="event.stopPropagation(); cekSaldoDanaModal(this);">
+                            Cek Saldo
+                        </button>
+                    </li>
+                @else
+                    {{-- Jika Belum Binding --}}
+                    <li class="p-4 flex flex-col sm:flex-row items-center justify-between bg-orange-50 border-b border-orange-100 cursor-not-allowed">
+                        <div class="flex items-center mb-2 sm:mb-0">
+                            <img src="{{ asset('assets/dana.webp') }}" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'" class="w-8 h-8 mr-4 object-contain grayscale">
+                            <div>
+                                <span class="block font-semibold text-gray-500">Saldo DANA</span>
+                                <span class="text-[10px] text-red-600 font-bold bg-red-100 px-2 py-0.5 rounded border border-red-200"><i class="fas fa-unlink mr-1"></i>Belum Terhubung</span>
+                            </div>
+                        </div>
+                        <a href="{{ url('/customer/dana/bind') }}" class="text-xs bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-1.5 rounded-lg shadow hover:shadow-md transition flex items-center">
+                            <i class="fas fa-link mr-1.5"></i> Hubungkan
+                        </a>
+                    </li>
+                @endif
 
                 {{-- AKHIR METODE PEMBAYARAN DANA BINDING --}}
 
