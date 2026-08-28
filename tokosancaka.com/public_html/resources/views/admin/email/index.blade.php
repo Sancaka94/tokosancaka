@@ -539,7 +539,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // 3. Gabungkan ke dalam struktur Card style Gmail
                     htmlContent += `
-                        <a href="${file.url}" target="_blank" download="${file.name}" class="group relative flex flex-col w-44 h-36 border border-gray-200 rounded-lg overflow-hidden bg-white hover:border-gray-300 hover:shadow-md transition-all cursor-pointer">
+                        <!-- PERBAIKAN: Hapus atribut download="..." dan biarkan target="_blank" -->
+                        <a href="${file.url}" target="_blank" class="group relative flex flex-col w-44 h-36 border border-gray-200 rounded-lg overflow-hidden bg-white hover:border-gray-300 hover:shadow-md transition-all cursor-pointer">
 
                             <!-- Area Thumbnail Atas -->
                             <div class="h-24 w-full bg-gray-100 flex items-center justify-center border-b border-gray-100 overflow-hidden relative">
@@ -548,7 +549,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <!-- Overlay Hover Gelap (Efek Gmail) -->
                                 <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                     <div class="bg-white/90 p-2.5 rounded-full text-gray-700 shadow-sm transform scale-90 group-hover:scale-100 transition-transform">
-                                        <i class="fa-solid fa-download"></i>
+                                        <!-- PERBAIKAN: Ganti ikon panah download menjadi ikon mata (preview) -->
+                                        <i class="fa-solid fa-eye"></i>
                                     </div>
                                 </div>
                             </div>
