@@ -288,7 +288,8 @@ class EmailController extends Controller
 
                                 $imagick->setImageFormat('jpg');
                                 $imagick->setImageCompressionQuality(80);
-                                $imagick->writeImage($thumbAbsPath);
+                                $imageBlob = $imagick->getImageBlob();
+                                \Illuminate\Support\Facades\Storage::put($thumbRelPath, $imageBlob);
                                 $imagick->clear();
                                 $imagick->destroy();
 
