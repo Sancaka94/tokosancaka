@@ -4,7 +4,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <!-- Tambahkan CSS Quill.js -->
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    
+
     <style>
         .email-item.active { background-color: #e8f0fe; border-left: 4px solid #1a73e8; }
         .email-item:not(.active):hover { background-color: #f8fafc; }
@@ -18,7 +18,7 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         /* Style untuk body email dari server agar tidak tembus container */
         #email-body iframe, #email-body img { max-width: 100%; height: auto; }
-        
+
         /* Customisasi Quill agar pas di modal */
         .ql-container { min-height: 200px; flex: 1; font-family: inherit; font-size: 14px; }
         .ql-toolbar { border-radius: 0.5rem 0.5rem 0 0; background: #f8fafc; }
@@ -28,7 +28,7 @@
 
 @section('content')
     <div id="app" class="w-full flex h-[calc(100vh-8rem)] min-h-[600px] bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        
+
         <!-- Sidebar Kiri -->
         <aside class="w-56 lg:w-64 flex-shrink-0 flex flex-col h-full border-r border-gray-200 bg-gray-50/50">
             <div class="px-5 h-16 flex items-center border-b border-transparent">
@@ -64,7 +64,7 @@
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3"><i class="fa-solid fa-search text-gray-400 text-sm"></i></span>
                     <input type="search" id="search-input" placeholder="Cari pesan..." class="w-full bg-gray-100/80 focus:bg-white focus:ring-2 focus:ring-blue-200 rounded-lg py-2 pl-9 pr-4 text-sm outline-none transition-all">
                 </form>
-                
+
                 <!-- Aksi Masal: Checkbox Pilih Semua & Tombol Hapus -->
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
@@ -100,6 +100,10 @@
                         <div class="text-xs text-gray-400 font-medium bg-gray-50 px-2.5 py-1 rounded-md" id="email-timestamp"></div>
                     </div>
                 </header>
+
+                <!-- CONTAINER LAMPIRAN (BARU) -->
+                <div id="email-attachments" class="px-6 py-3 bg-gray-50 border-b border-gray-200 hidden flex-wrap gap-2"></div>
+
                 <!-- Menampilkan HTML langsung -->
                 <div class="flex-1 p-8 overflow-y-auto text-gray-800 text-sm" id="email-body"></div>
             </div>
@@ -113,7 +117,7 @@
                 <h3 class="text-sm font-semibold tracking-wide flex items-center gap-2"><i class="fa-solid fa-paper-plane text-xs"></i> Pesan Baru</h3>
                 <button id="close-compose-btn" class="p-1 hover:bg-gray-600 rounded-lg text-lg leading-none transition-colors w-7 h-7">&times;</button>
             </header>
-            
+
             <form id="compose-form" class="p-4 flex-1 flex flex-col gap-3 overflow-y-auto">
                 <!-- Autocomplete Input Kepada -->
                 <div class="relative w-full">
@@ -129,7 +133,7 @@
 
                 <!-- Input Subjek -->
                 <input type="text" id="compose-subject" placeholder="Subjek email..." class="w-full pb-2 text-sm border-b border-gray-200 focus:outline-none focus:border-blue-500" required>
-                
+
                 <!-- Container untuk Rich Text Editor (Quill) -->
                 <div class="flex-1 flex flex-col mt-2">
                     <div id="editor-container"></div>
@@ -140,7 +144,7 @@
                 <!-- Input file tersembunyi -->
                 <input type="file" id="compose-attachments" class="hidden" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip">
             </form>
-            
+
             <footer class="px-4 py-3 border-t bg-gray-50 rounded-b-xl flex justify-between items-center">
                 <!-- Tombol Lampiran -->
                 <button type="button" id="btn-attach" class="text-gray-500 hover:text-blue-600 p-2 rounded-full hover:bg-blue-50 transition-colors flex items-center justify-center" title="Lampirkan File">
@@ -167,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentFolder = 'inbox';
     const ui = {
-        list: document.getElementById('email-list'), 
+        list: document.getElementById('email-list'),
         content: document.getElementById('email-content'),
         placeholder: document.getElementById('email-placeholder'),
         starredBadge: document.getElementById('starred-count'),
@@ -183,11 +187,11 @@ document.addEventListener('DOMContentLoaded', () => {
         placeholder: 'Tulis email Anda di sini...',
         modules: {
             toolbar: [
-                ['bold', 'italic', 'underline', 'strike'], 
-                [{ 'list': 'ordered'}, { 'list': 'bullet' }], 
-                [{ 'align': [] }],                            
-                ['link', 'image'],                            
-                ['clean']                                     
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                [{ 'align': [] }],
+                ['link', 'image'],
+                ['clean']
             ]
         }
     });
@@ -237,12 +241,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     users.forEach(user => {
                         const item = document.createElement('div');
                         item.className = 'p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0 transition-colors';
-                        
+
                         item.innerHTML = `
                             <div class="flex justify-between items-center">
                                 <div class="flex flex-col">
                                     <span class="text-sm font-semibold text-gray-800">
-                                        ${user.nama_lengkap} 
+                                        ${user.nama_lengkap}
                                         <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full ml-1 font-normal">${user.role}</span>
                                     </span>
                                     <span class="text-xs text-gray-500 mt-0.5"><i class="fa-solid fa-envelope text-gray-400 mr-1"></i> ${user.email}</span>
@@ -252,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                             </div>
                         `;
-                        
+
                         item.onclick = () => {
                             inputTo.value = user.email;
                             suggestionsBox.classList.add('hidden');
@@ -266,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Gagal mengambil data user:", e);
                 suggestionsBox.innerHTML = '<div class="p-3 text-xs text-red-500 text-center">Terjadi kesalahan koneksi</div>';
             }
-        }, 400); 
+        }, 400);
     });
 
     document.addEventListener('click', function(e) {
@@ -279,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function toggleDeleteButton() {
         const checkedBoxes = document.querySelectorAll('.email-checkbox:checked');
         const allBoxes = document.querySelectorAll('.email-checkbox');
-        
+
         if (checkedBoxes.length > 0) {
             ui.deleteBtn.classList.remove('hidden');
         } else {
@@ -325,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ui.deleteBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
             try {
                 // UBAH URL DITAMBAH /destroy DAN METHOD JADI POST
-                const res = await fetch(`${API_BASE_URL}/destroy`, { 
+                const res = await fetch(`${API_BASE_URL}/destroy`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -339,13 +343,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!res.ok) throw new Error(data.error || 'Gagal menghapus pesan.');
 
                 Swal.fire('Terhapus!', data.message, 'success');
-                
+
                 // Reset UI
                 ui.selectAll.checked = false;
                 toggleDeleteButton();
                 ui.content.classList.add('hidden');
                 ui.placeholder.classList.remove('hidden');
-                
+
                 // Refresh list
                 fetchEmails(currentFolder, ui.search.value);
 
@@ -364,15 +368,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Selipkan &page=${page} pada URL
-            const res = await fetch(`${API_BASE_URL}?folder=${folder}&search=${encodeURIComponent(query)}&page=${page}`, { 
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'} 
+            const res = await fetch(`${API_BASE_URL}?folder=${folder}&search=${encodeURIComponent(query)}&page=${page}`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
             });
             const data = await res.json();
             if(!res.ok) throw new Error(data.error);
-            
+
             // Panggil renderList beserta data pagination-nya
             renderList(data.emails, data.pagination);
-            
+
             if(data.unread_count !== undefined) {
                 ui.unreadBadge.textContent = data.unread_count;
                 ui.unreadBadge.style.display = data.unread_count > 0 ? 'inline-block' : 'none';
@@ -390,12 +394,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderList(emails, pagination = null) {
         ui.list.innerHTML = '';
         if(emails.length === 0) return ui.list.innerHTML = `<div class="p-10 text-center text-gray-400 text-sm">Kosong.</div>`;
-        
+
         emails.forEach(em => {
             const isUnread = !em.read_at;
             const star = em.is_starred ? 'fa-solid fa-star text-yellow-400' : 'fa-regular fa-star text-gray-300';
             const color = ['bg-red-500', 'bg-blue-500', 'bg-green-500'][em.from_name.length % 3];
-            
+
             ui.list.innerHTML += `
                 <div class="email-item flex items-start gap-3 p-3.5 border-b cursor-pointer ${isUnread ? 'bg-[#f4f8ff] font-semibold border-l-4 border-l-blue-500' : 'border-l-4 border-l-transparent'}" data-id="${em.id}">
                     <div class="flex items-center h-full pt-1.5 z-10">
@@ -420,14 +424,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pagination && pagination.last_page > 1) {
             ui.list.innerHTML += `
                 <div class="flex justify-between items-center p-3 border-t bg-gray-50 sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-                    <button class="btn-prev-page px-3 py-1.5 bg-white border rounded text-xs text-gray-700 font-semibold hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
-                        ${pagination.current_page <= 1 ? 'disabled' : ''} 
+                    <button class="btn-prev-page px-3 py-1.5 bg-white border rounded text-xs text-gray-700 font-semibold hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        ${pagination.current_page <= 1 ? 'disabled' : ''}
                         data-page="${pagination.current_page - 1}">
                         <i class="fa-solid fa-chevron-left mr-1"></i> Prev
                     </button>
                     <span class="text-xs text-gray-500 font-semibold">Hal ${pagination.current_page} / ${pagination.last_page}</span>
-                    <button class="btn-next-page px-3 py-1.5 bg-white border rounded text-xs text-gray-700 font-semibold hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all" 
-                        ${!pagination.has_more ? 'disabled' : ''} 
+                    <button class="btn-next-page px-3 py-1.5 bg-white border rounded text-xs text-gray-700 font-semibold hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        ${!pagination.has_more ? 'disabled' : ''}
                         data-page="${pagination.current_page + 1}">
                         Next <i class="fa-solid fa-chevron-right ml-1"></i>
                     </button>
@@ -460,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }).then(() => fetchEmails(currentFolder, ui.search.value, 1)); // reset ke page 1 jika di-star
             return;
         }
-        
+
         const item = e.target.closest('.email-item');
         if(item) {
             document.querySelectorAll('.email-item').forEach(el => el.classList.remove('active'));
@@ -480,14 +484,34 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${API_BASE_URL}/${id}`);
             const data = await res.json();
             if(!res.ok) throw new Error();
-            
+
             document.getElementById('email-subject').textContent = data.subject;
             document.getElementById('email-sender-name').textContent = data.from_name;
             document.getElementById('email-sender-address').textContent = `<${data.from_address}>`;
             document.getElementById('email-timestamp').textContent = new Date(data.created_at).toLocaleString('id-ID');
             document.getElementById('email-body').innerHTML = data.body;
             document.getElementById('email-avatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(data.from_name)}&background=random&color=fff&size=128`;
-            
+
+            // --- LOGIKA MENAMPILKAN LAMPIRAN (BARU) ---
+            const attachContainer = document.getElementById('email-attachments');
+            attachContainer.innerHTML = ''; // Bersihkan lampiran sebelumnya
+
+            if (data.attachments && data.attachments.length > 0) {
+                attachContainer.classList.remove('hidden');
+                data.attachments.forEach(file => {
+                    // Pastikan backend Anda mengirim format: name (nama file), url (link download), size (opsional)
+                    attachContainer.innerHTML += `
+                        <a href="${file.url}" target="_blank" class="flex items-center gap-2 bg-white border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors text-xs font-medium text-gray-700 shadow-sm cursor-pointer">
+                            <i class="fa-solid fa-paperclip text-blue-500"></i>
+                            <span class="truncate max-w-[200px]" title="${file.name}">${file.name}</span>
+                        </a>
+                    `;
+                });
+            } else {
+                attachContainer.classList.add('hidden');
+            }
+            // ----------------------------------------
+
             fetchEmails(currentFolder, ui.search.value);
         } catch {
             document.getElementById('email-body').innerHTML = '<p class="text-red-500 text-center mt-10">Gagal memuat isi pesan.</p>';
@@ -512,15 +536,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const btn = this; 
-        btn.disabled = true; 
+        const btn = this;
+        btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim...';
-        
+
         const formData = new FormData();
         formData.append('to', to);
         formData.append('subject', subject);
         formData.append('body', bodyHTML);
-        
+
         for (let i = 0; i < fileInput.files.length; i++) {
             formData.append('attachments[]', fileInput.files[i]);
         }
@@ -528,30 +552,30 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await fetch(`${API_BASE_URL}/send`, {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'X-CSRF-TOKEN': CSRF_TOKEN,
                     'Accept': 'application/json'
                 },
                 body: formData
             });
-            
+
             const data = await res.json();
-            
+
             if(res.ok) {
                 Swal.fire({icon: 'success', title: 'Pesan Terkirim', showConfirmButton: false, timer: 1500});
                 modal.classList.add('opacity-0', 'pointer-events-none', 'translate-y-8');
                 document.getElementById('compose-form').reset();
-                quill.setContents([]); 
-                attachmentList.innerHTML = ''; 
-                fileInput.value = ''; 
+                quill.setContents([]);
+                attachmentList.innerHTML = '';
+                fileInput.value = '';
             } else {
                 throw new Error(data.message || 'Gagal mengirim pesan.');
             }
-        } catch(err) { 
-            Swal.fire('Error', err.message, 'error'); 
+        } catch(err) {
+            Swal.fire('Error', err.message, 'error');
         }
-        
-        btn.disabled = false; 
+
+        btn.disabled = false;
         btn.innerHTML = 'Kirim Pesan <i class="fa-solid fa-location-arrow"></i>';
     };
 
@@ -564,24 +588,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 l.classList.remove('text-blue-700','font-semibold');
             });
             link.classList.add('bg-blue-50', 'text-blue-700', 'font-semibold');
-            
+
             currentFolder = link.dataset.folder;
-            ui.content.classList.add('hidden'); 
+            ui.content.classList.add('hidden');
             ui.placeholder.classList.remove('hidden');
-            
+
             fetchEmails(currentFolder);
         }
     });
 
     // --- PENCARIAN EMAIL ---
-    let toSearch; 
-    ui.search.oninput = () => { 
-        clearTimeout(toSearch); 
-        toSearch = setTimeout(() => fetchEmails(currentFolder, ui.search.value), 500); 
+    let toSearch;
+    ui.search.oninput = () => {
+        clearTimeout(toSearch);
+        toSearch = setTimeout(() => fetchEmails(currentFolder, ui.search.value), 500);
     };
-    
+
     // Inisialisasi awal
-    fetchEmails(); 
+    fetchEmails();
 });
 </script>
 @endpush
