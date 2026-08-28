@@ -221,7 +221,7 @@ class EmailController extends Controller
             return response()->json($localEmail);
         }
 
-        // Cek Server IMAP
+       // Cek Server IMAP
         try {
             $client = Client::account('default');
             $client->connect();
@@ -236,42 +236,44 @@ class EmailController extends Controller
                 $message->setFlag('SEEN');
             }
 
-            // 1. Ambil body HTML mentah (Pastikan tidak null)
             $body = $message->getHTMLBody() ?? $message->getTextBody() ?? '';
             $attachmentsArr = [];
 
-            // 2. Proses semua lampiran dengan sangat aman
-            if ($message->hasAttachments()) {
-                foreach ($message->getAttachments() as $attachment) {
-                    try {
-                        // Akses data menggunakan properti standar Webklex IMAP
-                        $cid = $attachment->id ?? $attachment->content_id ?? null;
-                        $name = $attachment->name ?? $attachment->filename ?? 'Lampiran_Tanpa_Nama';
-                        $mime = $attachment->content_type ?? $attachment->mime ?? 'application/octet-stream';
+            // 2. Proses lampiran menggunakan method standar Webklex
+            $attachments = $message->getAttachments();
 
-                        // Ambil konten file
-                        $content = $attachment->content ?? $attachment->getContent();
-                        $disposition = strtolower($attachment->disposition ?? '');
+            foreach ($attachments as $attachment) {
+                try {
+                    $name = $attachment->getName() ?? 'Lampiran_Tanpa_Nama';
+                    $mime = $attachment->getMimeType() ?? 'application/octet-stream';
 
-                        // Cek apakah ini gambar inline (berada di dalam body HTML)
-                        $cleanCid = $cid ? str_replace(['<', '>'], '', $cid) : '';
-                        $isInline = $cleanCid && ($disposition === 'inline' || str_contains($body, 'cid:' . $cleanCid));
+                    $contentId = $attachment->getContentId();
+                    $cleanCid = $contentId ? str_replace(['<', '>'], '', $contentId) : null;
 
-                        if ($isInline) {
-                            // Ganti src="cid:xxxx" menjadi gambar Base64 (E-Signature)
-                            $base64 = base64_encode($content);
-                            $body = str_replace('cid:' . $cleanCid, "data:{$mime};base64,{$base64}", $body);
-                        } else {
-                            // Ini adalah dokumen/file murni (PDF, Excel, dll)
-                            $attachmentsArr[] = [
-                                'name' => $name,
-                                'url'  => "data:{$mime};base64," . base64_encode($content)
-                            ];
-                        }
-                    } catch (\Exception $e) {
-                        // LOG LOG tetap dilestarikan: Jika 1 file error, email tetap terbuka!
-                        Log::warning("Gagal memproses lampiran email ID {$id}: " . $e->getMessage());
+                    // A. Jika Inline Image (E-Signature) -> Ubah ke Base64 (Karena ukurannya kecil)
+                    if ($cleanCid && (str_contains($mime, 'image') || str_contains($body, 'cid:' . $cleanCid))) {
+                        $base64 = base64_encode($attachment->getContent());
+                        $body = str_replace('cid:' . $cleanCid, "data:{$mime};base64,{$base64}", $body);
                     }
+                    // B. Jika File Dokumen Fisik (PDF 13MB, Excel, dll) -> Simpan ke Storage agar memori aman
+                    else {
+                        $fileContent = $attachment->getContent();
+
+                        // Buat path: storage/app/public/email_attachments/105/nama_file.pdf
+                        $path = 'public/email_attachments/' . $id . '/' . $name;
+
+                        // Simpan file ke server
+                        \Illuminate\Support\Facades\Storage::put($path, $fileContent);
+
+                        // Kirimkan URL file fisik ke JSON Frontend
+                        $attachmentsArr[] = [
+                            'name' => $name,
+                            'url'  => asset('storage/email_attachments/' . $id . '/' . $name)
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    // LOG LOG tetap dilestarikan: Jika 1 file error, email tetap terbuka!
+                    Log::warning("Gagal memproses lampiran email ID {$id}: " . $e->getMessage());
                 }
             }
 
@@ -281,7 +283,8 @@ class EmailController extends Controller
                 'from_address' => $message->getFrom()[0]->mail,
                 'subject' => mb_decode_mimeheader($message->getSubject()[0] ?? '(Tanpa Subjek)'),
                 'body' => $body,
-                'attachments' => $attachmentsArr, // Data lampiran dikirim ke sini
+                'attachments' => $attachmentsArr,
+                // Pencegahan error parsing format tanggal pada versi Webklex tertentu
                 'created_at' => !empty($message->getDate()) ? $message->getDate()[0]->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
             ]);
 
