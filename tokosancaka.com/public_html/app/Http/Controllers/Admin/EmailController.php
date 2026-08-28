@@ -276,12 +276,13 @@ class EmailController extends Controller
                                 $thumbRelPath = 'public/email_attachments/' . $id . '/' . $thumbName;
                                 $thumbAbsPath = storage_path('app/' . $thumbRelPath);
 
-                                // Konversi Halaman 1 PDF ke JPG menggunakan library Spatie
+                                // Konversi Halaman 1 PDF ke JPG (Default Spatie otomatis halaman 1)
                                 $pdf = new \Spatie\PdfToImage\Pdf($pdfAbsPath);
-                                $pdf->selectPage(1)->saveImage($thumbAbsPath);
+                                $pdf->saveImage($thumbAbsPath);
 
                                 $thumbUrl = asset('storage/email_attachments/' . $id . '/' . $thumbName);
-                            } catch (\Exception $e) {
+
+                            } catch (\Throwable $e) { // PERBAIKAN: Gunakan \Throwable agar kebal dari Fatal Error
                                 // LOG LOG: Abaikan jika Ghostscript server gagal, fallback ke kotak PDF
                                 Log::warning("Gagal membuat thumbnail PDF {$name}: " . $e->getMessage());
                             }
@@ -291,7 +292,7 @@ class EmailController extends Controller
                         $attachmentsArr[] = [
                             'name'      => $name,
                             'url'       => $fileUrl,
-                            'thumbnail' => $thumbUrl // Sekarang ini akan terisi link JPG!
+                            'thumbnail' => $thumbUrl // Akan terisi link JPG jika berhasil
                         ];
                     }
                 } catch (\Exception $e) {
@@ -311,8 +312,8 @@ class EmailController extends Controller
                 'created_at' => !empty($message->getDate()) ? $message->getDate()[0]->format('Y-m-d H:i:s') : now()->format('Y-m-d H:i:s'),
             ]);
 
-        } catch (\Exception $e) {
-            Log::error('IMAP Show Detail Error', ['error' => $e->getMessage()]);
+        } catch (\Throwable $e) { // PERBAIKAN: Ubah \Exception menjadi \Throwable
+            Log::error('IMAP Show Detail Error', ['error' => $e->getMessage(), 'line' => $e->getLine()]);
             return response()->json(['error' => 'Gagal memuat isi pesan: ' . $e->getMessage()], 500);
         }
     }
