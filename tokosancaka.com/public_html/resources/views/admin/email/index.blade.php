@@ -523,7 +523,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         thumbHtml = `<img src="${file.url}" class="w-full h-full object-cover" alt="preview">`;
                     } else if (ext === 'pdf') {
                         iconHtml = '<i class="fa-solid fa-file-pdf text-red-600"></i>';
-                        thumbHtml = `<div class="flex items-center justify-center w-full h-full text-gray-300 font-black text-2xl tracking-widest bg-gray-50">PDF</div>`;
+
+                        // --- BAGIAN INI YANG SEBELUMNYA TERLEWAT ---
+                        if (file.thumbnail) {
+                            // Jika server berhasil membuat thumbnail, tampilkan gambarnya!
+                            thumbHtml = `<img src="${file.thumbnail}" class="w-full h-full object-cover border border-gray-200" alt="pdf-preview">`;
+                        } else {
+                            // Jika gagal/tidak ada, tampilkan kotak tulisan PDF
+                            thumbHtml = `<div class="flex items-center justify-center w-full h-full text-gray-300 font-black text-2xl tracking-widest bg-gray-50">PDF</div>`;
+                        }
                     } else {
                         iconHtml = '<i class="fa-solid fa-file-lines text-blue-500"></i>';
                         thumbHtml = `<div class="flex items-center justify-center w-full h-full text-gray-300 font-bold text-xl uppercase bg-gray-50">${ext.substring(0, 4)}</div>`;
