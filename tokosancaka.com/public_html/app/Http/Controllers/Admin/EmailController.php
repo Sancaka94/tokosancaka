@@ -277,19 +277,30 @@ class EmailController extends Controller
                                 $thumbRelPath = 'public/email_attachments/' . $id . '/' . $thumbName;
                                 $thumbAbsPath = storage_path('app/' . $thumbRelPath);
 
-                                // Gunakan Native Imagick (Jauh lebih cepat & stabil daripada Spatie)
+                                // Gunakan Native Imagick
                                 $imagick = new \Imagick();
-                                $imagick->setResolution(150, 150);
-                                $imagick->readImage($pdfAbsPath . '[0]'); // Angka [0] untuk mengambil halaman pertama saja
 
-                                // Wajib: Ubah background transparan PDF menjadi putih agar tidak jadi kotak hitam
+                                // 1. PERBAIKAN: Render dengan resolusi super tajam (300 DPI) SEBELUM membaca file
+                                $imagick->setResolution(300, 300);
+                                $imagick->readImage($pdfAbsPath . '[0]');
+
+                                // 2. PERBAIKAN: Beri background putih padat & gabungkan layar (Flatten)
+                                // Ini membuang efek pinggiran teks yang bergerigi (anti-aliasing)
                                 $imagick->setImageBackgroundColor('white');
                                 $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
+                                $imagick = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+
+                                // 3. PERBAIKAN: Resize ke ukuran ideal web (Lebar 600px, Tinggi otomatis)
+                                // Hasil render 300 DPI itu sangat raksasa, jadi harus dikecilkan agar web tidak lemot
+                                $imagick->thumbnailImage(600, 0);
 
                                 $imagick->setImageFormat('jpg');
-                                $imagick->setImageCompressionQuality(80);
+                                $imagick->setImageCompressionQuality(85); // Kualitas JPG 85% sudah sangat tajam
+
+                                // Simpan menggunakan Laravel Storage agar izinnya publik (Aman dari Error 403)
                                 $imageBlob = $imagick->getImageBlob();
                                 \Illuminate\Support\Facades\Storage::put($thumbRelPath, $imageBlob);
+
                                 $imagick->clear();
                                 $imagick->destroy();
 
