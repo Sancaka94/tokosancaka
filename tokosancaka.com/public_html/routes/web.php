@@ -998,9 +998,21 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
     Route::post('/kode-pos/import', [KodePosController::class, 'import'])->name('kodepos.import');
 
     // Email & Chat
-    Route::get('/imap', [EmailController::class, 'index'])->name('imap.index');
-    Route::get('/imap/{id}', [EmailController::class, 'show'])->name('imap.show');
-    Route::delete('/imap/{id}', [EmailController::class, 'destroy'])->name('imap.destroy');
+    // Route::get('/imap', [EmailController::class, 'index'])->name('imap.index');
+    // Route::get('/imap/{id}', [EmailController::class, 'show'])->name('imap.show');
+    // Route::delete('/imap/{id}', [EmailController::class, 'destroy'])->name('imap.destroy');
+
+    // Email & Chat
+    Route::get('/imap', [EmailController::class, 'index'])->name('imap.index'); // Untuk halaman view Blade
+    
+    // --- ROUTE API UNTUK APLIKASI EMAIL ---
+    Route::prefix('api/email')->group(function () {
+        Route::get('/', [EmailController::class, 'fetch'])->name('api.email.fetch'); // Get list email
+        Route::post('/send', [EmailController::class, 'send'])->name('api.email.send'); // Kirim email
+        Route::post('/destroy', [EmailController::class, 'destroy'])->name('api.email.destroy'); // Hapus pesan massal (Metode POST)
+        Route::get('/{id}', [EmailController::class, 'show'])->name('api.email.show'); // Baca detail
+        Route::patch('/{id}', [EmailController::class, 'update'])->name('api.email.update'); // Update bintang
+    });
 
     Route::prefix('chat')->name('chat.')->group(function () {
         Route::get('/', [AdminChatController::class, 'index'])->name('index');
