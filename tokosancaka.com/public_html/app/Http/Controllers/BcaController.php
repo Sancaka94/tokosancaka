@@ -52,7 +52,7 @@ class BcaController extends Controller
      */
     public function getSnapToken(): string
     {
-        $cacheKey = 'bca_snap_token_v2_' . $this->mode;
+        $cacheKey = 'bca_snap_token_v3_' . $this->mode;
 
         if (Cache::has($cacheKey)) {
             Log::info("LOG LOG: [BCA SNAP] Menggunakan Access Token dari Cache.");
