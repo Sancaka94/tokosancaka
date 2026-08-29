@@ -1183,6 +1183,45 @@
                         </div>
                         <p class="text-sm text-zinc-500">Konfigurasi Standard Open API & SNAP BI BCA.</p>
                     </div>
+
+                    {{-- 🔥 PANEL DEBUG TOKEN BCA 🔥 --}}
+                    <div class="p-6 pb-0">
+                        <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <h4 class="text-xs font-bold text-blue-800 uppercase">Live Access Token Tracker</h4>
+                                <span class="text-[9px] bg-blue-200 text-blue-800 px-2 py-0.5 rounded font-bold">Copy untuk Test Manual</span>
+                            </div>
+
+                            @php
+                                // Mengambil token dari cache Laravel (Mendukung versi standar, v2, dan v3)
+                                $sandboxToken = \Illuminate\Support\Facades\Cache::get('bca_snap_token_v3_sandbox')
+                                                ?? \Illuminate\Support\Facades\Cache::get('bca_snap_token_v2_sandbox')
+                                                ?? \Illuminate\Support\Facades\Cache::get('bca_snap_token_sandbox')
+                                                ?? 'KOSONG / EXPIRED (Buat 1 pesanan BCA untuk memancing token)';
+
+                                $prodToken = \Illuminate\Support\Facades\Cache::get('bca_snap_token_v3_production')
+                                                ?? \Illuminate\Support\Facades\Cache::get('bca_snap_token_production')
+                                                ?? 'KOSONG / EXPIRED';
+                            @endphp
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                                <div>
+                                    <p class="text-[10px] text-blue-600 font-bold uppercase mb-1">Sandbox Token</p>
+                                    <div class="p-2 bg-white border border-blue-100 rounded text-xs font-mono text-zinc-800 break-all select-all">
+                                        {{ $sandboxToken }}
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-blue-600 font-bold uppercase mb-1">Production Token</p>
+                                    <div class="p-2 bg-white border border-blue-100 rounded text-xs font-mono text-zinc-800 break-all select-all">
+                                        {{ $prodToken }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{-- 🔥 AKHIR PANEL DEBUG 🔥 --}}
+
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
                         @csrf @method('PUT')
                         <input type="hidden" name="type" value="bca">
