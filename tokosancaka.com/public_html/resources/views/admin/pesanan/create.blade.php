@@ -375,13 +375,13 @@
 
                 {{-- OPSI BCA QRIS (TAMBAHKAN INI) --}}
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BCA_QRIS" data-label="BCA QRIS (Otomatis)">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a0/QRIS_logo.svg" class="w-8 h-8 mr-4 object-contain">
+                    <img src="https://tokosancaka.com/assets/bca.png" class="w-8 h-8 mr-4 object-contain">
                     BCA QRIS (Generate Barcode)
                 </li>
 
                 {{-- OPSI DOKU JOKUL (TAMBAHKAN JIKA PERLU) --}}
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DOKU_JOKUL" data-label="DOKU Payment Gateway">
-                    <img src="https://doku.com/wp-content/uploads/2022/10/Logo-DOKU-Red.png" class="w-8 h-8 mr-4 object-contain">
+                    <img src="https://tokosancaka.com/public/assets/doku.png" class="w-8 h-8 mr-4 object-contain">
                     DOKU Payment Gateway
                 </li>
 
