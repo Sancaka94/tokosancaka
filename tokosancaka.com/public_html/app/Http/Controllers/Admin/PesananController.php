@@ -183,11 +183,11 @@ class PesananController extends Controller
 
        // 4. Eksekusi Perhitungan Khusus Paket Selesai
         $statusFinalTagihan = ['Terkirim', 'Selesai'];
-        
+
         $countTagihanReal = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->count();
         $tagihanOngkir    = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->sum('shipping_cost');
         $tagihanAsuransi  = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->sum('insurance_cost');
-        
+
         $tagihanCodOngkir = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->where('payment_method', 'COD')->sum('cod_fee');
         $tagihanCodBarang = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->where('payment_method', 'CODBARANG')->sum('cod_fee');
 
@@ -196,23 +196,23 @@ class PesananController extends Controller
         // =================================================================
         // A. RINCIAN SHIPPING
         $shipCostCOD    = (clone $tagihanQuery)->whereIn('status_pesanan', $statusFinalTagihan)->whereIn('payment_method', ['COD', 'CODBARANG'])->sum('shipping_cost');
-        $shipCostNonCOD = $tagihanOngkir - $shipCostCOD; 
-        
+        $shipCostNonCOD = $tagihanOngkir - $shipCostCOD;
+
         $discountShipping = 0; // Diisi 0 karena Sancaka tidak mencatat diskon internal KiriminAja
         $rtsFee = 0;           // Return to Sender fee
-        
+
         // PPN 1.1% dihitung dari: (Ongkir - Diskon + Asuransi + RTS Fee)
         $dasarPengenaanPajak = ($tagihanOngkir - $discountShipping + $tagihanAsuransi + $rtsFee);
-        $ppnShipping = round($dasarPengenaanPajak * 0.011); 
-        
+        $ppnShipping = round($dasarPengenaanPajak * 0.011);
+
         $totalInvoiceShipping = $dasarPengenaanPajak + $ppnShipping;
 
         // B. RINCIAN COD
         $totalCodFeeAll = $tagihanCodOngkir + $tagihanCodBarang;
-        
+
         // Proporsi PPN 12% sesuai rincian KiriminAja
-        $ppnCod = round($totalCodFeeAll * 0.0992); 
-        $dppCod = $ppnCod > 0 ? round($ppnCod / 0.12) : 0; 
+        $ppnCod = round($totalCodFeeAll * 0.0992);
+        $dppCod = $ppnCod > 0 ? round($ppnCod / 0.12) : 0;
         $baseCodFee = $totalCodFeeAll - $ppnCod;
 
         // C. GRAND TOTAL REAL (Total Shipping + Total COD)
@@ -239,10 +239,10 @@ class PesananController extends Controller
             'incomeDikirim', 'incomeDikirimCash', 'incomeDikirimCod', 'incomeDikirimSaldo',
             'incomeGagal', 'incomeGagalCash', 'incomeGagalCod', 'incomeGagalSaldo',
             'countSelesai', 'countPickup', 'countDikirim', 'countGagal',
-            
+
             // Variabel Tagihan Real (Final Date)
             'countTagihanReal', 'tagihanOngkir', 'tagihanAsuransi', 'tagihanCodOngkir', 'tagihanCodBarang', 'totalTagihanReal',
-            
+
             // Variabel Rincian Invoice
             'shipCostCOD', 'shipCostNonCOD', 'discountShipping', 'rtsFee', 'ppnShipping', 'totalInvoiceShipping',
             'totalCodFeeAll', 'ppnCod', 'dppCod', 'baseCodFee'
@@ -340,9 +340,11 @@ class PesananController extends Controller
 
                 $paymentGateway = 'tripay'; // Default
 
-                // Tentukan gateway. Kita asumsikan DOKU akan mengirim 'DOKU_JOKUL'
+                // Tentukan gateway.
                 if (strtoupper($validatedData['payment_method']) === 'DOKU_JOKUL') {
                     $paymentGateway = 'doku';
+                } elseif (strtoupper($validatedData['payment_method']) === 'BCA_QRIS') {
+                    $paymentGateway = 'bca'; // <--- TAMBAHAN UNTUK BCA
                 }
 
                 if ($paymentGateway === 'doku') {
@@ -383,6 +385,40 @@ class PesananController extends Controller
                     }
 
                     $pesanan->payment_url = $paymentUrl;
+
+                } elseif ($paymentGateway === 'bca') {
+                    // ======================================================
+                    // 🔥 PROSES VIA BCA QRIS MPM (SNAP) 🔥
+                    // ======================================================
+                    Log::info('Memulai proses BCA QRIS dari Admin Panel untuk ' . $pesanan->nomor_invoice);
+
+                    // Panggil BcaController
+                    $bcaService = app(\App\Http\Controllers\BcaController::class);
+
+                    // Panggil fungsi Generate QRIS MPM
+                    $bcaResponse = $bcaService->generateQrisMpm([
+                        'partnerReferenceNo' => $pesanan->nomor_invoice,
+                        'amount'             => $total_paid_ongkir,
+                        'terminalId'         => 'A0000001', // Ubah terminal ID jika ada
+                        'qrOption'           => 'A' // C=Content, I=Image, A=All
+                    ]);
+
+                    if (empty($bcaResponse) || ($bcaResponse['responseCode'] ?? '') !== '2004700') {
+                        DB::rollBack();
+                        $bcaError = $bcaResponse['responseMessage'] ?? 'Gagal generate QR BCA';
+                        Log::error("BCA QRIS Error: " . json_encode($bcaResponse));
+                        return redirect()->back()
+                            ->withInput()
+                            ->with('error', 'Gagal memproses pembayaran BCA QRIS: ' . $bcaError);
+                    }
+
+                    // Jika sukses, simpan reference no dari BCA dan URL gambar QR (jika ada) ke database
+                    $pesanan->shipping_ref = $bcaResponse['referenceNo']; // Pakai field ini sementara untuk simpan Ref BCA
+                    // $paymentUrl akan diisi String QRIS (yang berawalan 000201010212...)
+                    // Nanti di halaman sukses/invoice, string ini akan di-render jadi barcode/QR
+                    $paymentUrl = route('admin.pesanan.show', ['resi' => $pesanan->nomor_invoice]);
+                    $pesanan->payment_url = $bcaResponse['qrContent'];
+                    $pesanan->save();
 
                 } else {
                     // --- PROSES VIA TRIPAY (Logika Asli Anda) ---
@@ -534,7 +570,7 @@ class PesananController extends Controller
             self::_sendEmailNotifToAdmin($pesanan);
             self::_sendEmailNotifToCustomer($pesanan);
             // ============================================
-            
+
             // 9. Arahkan pengguna
             if ($paymentUrl) {
                 // Arahkan ke Tripay atau DOKU
@@ -559,6 +595,32 @@ class PesananController extends Controller
     public function show($resi)
     {
         $order = Pesanan::where('resi', $resi)->orWhere('nomor_invoice', $resi)->firstOrFail();
+
+        // ======================================================
+        // Cek Status Pembayaran Langsung ke BCA (Inquiry QRIS)
+        // Jika pembayarannya menggunakan BCA_QRIS dan status masih Menunggu
+        // ======================================================
+        if (strtoupper($order->payment_method) === 'BCA_QRIS' && $order->status === 'Menunggu Pembayaran') {
+            try {
+                $bcaService = app(\App\Http\Controllers\BcaController::class);
+                $inquiry = $bcaService->queryQrisMpm([
+                    'originalPartnerReferenceNo' => $order->nomor_invoice,
+                    'originalReferenceNo'        => $order->shipping_ref, // Ref BCA yang disimpan waktu generate
+                    'terminalId'                 => 'A0000001'
+                ]);
+
+                // Jika status dari BCA adalah 00 (Lunas)
+                if (isset($inquiry['latestTransactionStatus']) && $inquiry['latestTransactionStatus'] === '00') {
+                    // Proses callback langsung di dalam sistem layaknya webhook
+                    self::processPesananCallback($order->nomor_invoice, 'PAID', $inquiry);
+                    // Reload data karena statusnya baru saja diubah ke lunas oleh fungsi callback
+                    $order = Pesanan::where('nomor_invoice', $order->nomor_invoice)->firstOrFail();
+                }
+            } catch (Exception $e) {
+                Log::error("Gagal inquiry BCA QRIS di halaman Show: " . $e->getMessage());
+            }
+        }
+
         return view('admin.pesanan.show', compact('order'));
     }
 
@@ -2459,7 +2521,7 @@ public function cetakThermal($resi)
         // Menentukan ID untuk link tracking dan cetak resi
         // Prioritas: Resi Asli (AWB) -> Kode Booking API -> Nomor Invoice
         $linkIdentifier = $pesanan->resi ?? $pesanan->shipping_ref ?? $pesanan->nomor_invoice;
-        
+
         $linkTracking = "https://tokosancaka.com/tracking/search?resi=" . $linkIdentifier;
         $linkCetakResi = "https://tokosancaka.com/tracking/cetak-resi/" . $linkIdentifier;
 
@@ -2523,7 +2585,7 @@ public function cetakThermal($resi)
             <h2 style='color: #d32f2f;'>Terima Kasih Menggunakan Sancaka Express!</h2>
             <p>Halo <strong>{$pesanan->sender_name}</strong>,</p>
             <p>Pesanan Anda telah berhasil masuk ke sistem kami dan sedang diproses. Berikut adalah rincian pesanan Anda:</p>
-            
+
             <table border='1' cellpadding='10' cellspacing='0' style='border-collapse: collapse; width: 100%; max-width: 600px; margin-bottom: 20px;'>
                 <tr><td width='35%'><strong>No. Invoice</strong></td><td>{$pesanan->nomor_invoice}</td></tr>
                 <tr><td><strong>No. Resi</strong></td><td style='color: blue;'><strong>{$resi}</strong></td></tr>
@@ -2532,7 +2594,7 @@ public function cetakThermal($resi)
                 <tr><td><strong>Detail Paket</strong></td><td>{$pesanan->item_description} ({$pesanan->weight} Gram)</td></tr>
                 <tr><td><strong>Total Tagihan</strong></td><td><strong>{$harga}</strong></td></tr>
             </table>
-            
+
             <p>
                 <a href='{$linkTracking}' target='_blank' style='display: inline-block; padding: 10px 20px; background-color: #d32f2f; color: #fff; text-decoration: none; border-radius: 5px; font-weight: bold;'>
                     Lacak Paket Saya
