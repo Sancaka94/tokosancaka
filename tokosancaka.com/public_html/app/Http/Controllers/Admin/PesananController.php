@@ -395,12 +395,12 @@ class PesananController extends Controller
                     // Panggil BcaController
                     $bcaService = app(\App\Http\Controllers\BcaController::class);
 
-                    // Panggil fungsi Generate QRIS MPM
-                    $bcaResponse = $bcaService->generateQrisMpm([
+                   $bcaResponse = $bcaService->generateQrisMpm([
                         'partnerReferenceNo' => $pesanan->nomor_invoice,
                         'amount'             => $total_paid_ongkir,
-                        'terminalId'         => 'A0000001', // Ubah terminal ID jika ada
-                        'qrOption'           => 'A' // C=Content, I=Image, A=All
+                        'merchantId'         => '001932637', // <--- MASUKKAN MERCHANT ID BCA ANDA
+                        'terminalId'         => 'A0000001',
+                        'qrOption'           => 'A'
                     ]);
 
                     if (empty($bcaResponse) || ($bcaResponse['responseCode'] ?? '') !== '2004700') {
