@@ -357,4 +357,42 @@ class BcaController extends Controller
 
         return $isValid;
     }
+
+    /**
+     * Endpoint khusus untuk alat Debugging BCA Sandbox di Panel Admin
+     */
+    public function generateDebugTools(Request $request)
+    {
+        try {
+            $type = $request->input('type');
+
+            if ($type === 'token') {
+                Cache::forget('bca_snap_token_v3_' . $this->mode); // Paksa hapus cache lama
+                $token = $this->getSnapToken(); // Fungsi Anda akan memicu LOG LOG
+                return response()->json(['success' => true, 'token' => $token]);
+            }
+
+            if ($type === 'signature') {
+                $token = $request->input('token');
+                $timestamp = $request->input('timestamp');
+                $url = $request->input('url');
+
+                // Pastikan body string di-decode ke array agar fungsi Anda tidak error
+                $rawBody = $request->input('bodyData');
+                $body = !empty($rawBody) ? json_decode($rawBody, true) : [];
+
+                if (json_last_error() !== JSON_ERROR_NONE && !empty($rawBody)) {
+                    return response()->json(['success' => false, 'message' => 'Format Payload JSON tidak valid!']);
+                }
+
+                $signature = $this->generateSnapSymmetricSignature('POST', $url, $token, $body, $timestamp);
+                return response()->json(['success' => true, 'signature' => $signature]);
+            }
+
+            return response()->json(['success' => false, 'message' => 'Invalid type']);
+        } catch (Exception $e) {
+            Log::error("LOG LOG: [BCA Debug API] Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
 }

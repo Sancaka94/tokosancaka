@@ -1844,7 +1844,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
 Route::post('/admin/settings/api/toggle-debug', [ApiSettingsController::class, 'toggleAppDebug'])->name('admin.settings.api.toggleDebug');
 
-
+// RUTE BARU UNTUK TOMBOL DEBUG BCA SANDBOX
+Route::post('/admin/settings/api/bca-debug', [\App\Http\Controllers\BcaController::class, 'generateDebugTools'])->name('admin.settings.api.bcaDebug');
 
 // =========================================================================
 // FITUR HYBRID CHECKOUT & CART (BEBAS AKSES TANPA LOGIN)

@@ -1184,42 +1184,144 @@
                         <p class="text-sm text-zinc-500">Konfigurasi Standard Open API & SNAP BI BCA.</p>
                     </div>
 
-                    {{-- 🔥 PANEL DEBUG TOKEN BCA 🔥 --}}
-                    <div class="p-6 pb-0">
-                        <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
-                            <div class="flex justify-between items-center mb-2">
-                                <h4 class="text-xs font-bold text-blue-800 uppercase">Live Access Token Tracker</h4>
-                                <span class="text-[9px] bg-blue-200 text-blue-800 px-2 py-0.5 rounded font-bold">Copy untuk Test Manual</span>
+                    {{-- 🔥 PANEL DEBUG TOKEN & SIGNATURE BCA 🔥 --}}
+                    <div class="p-6 pb-0" x-data="bcaDebugTool()">
+                        <div class="bg-blue-50 border border-blue-200 rounded-md p-4 shadow-sm">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                                <div>
+                                    <h4 class="text-xs font-bold text-blue-800 uppercase">Live BCA Debug Tools</h4>
+                                    <p class="text-[10px] text-blue-600">Alat bantu test manual API BCA Sandbox</p>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <button @click="generateTimestamp()" type="button" class="text-[10px] bg-white border border-blue-300 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded font-bold shadow-sm flex items-center gap-1 transition-colors">
+                                        <i class="fas fa-clock"></i> New Timestamp
+                                    </button>
+                                    <button @click="generateToken()" type="button" class="text-[10px] bg-white border border-blue-300 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded font-bold shadow-sm flex items-center gap-1 transition-colors" :disabled="isLoadingToken">
+                                        <i class="fas fa-key" x-show="!isLoadingToken"></i>
+                                        <i class="fas fa-spinner fa-spin" x-show="isLoadingToken" x-cloak></i> New Token
+                                    </button>
+                                    <button @click="showSignatureForm = !showSignatureForm" type="button" class="text-[10px] bg-blue-700 border border-blue-800 text-white hover:bg-blue-800 px-3 py-1.5 rounded font-bold shadow-sm flex items-center gap-1 transition-colors">
+                                        <i class="fas fa-pen-nib"></i> New Signature
+                                    </button>
+                                </div>
                             </div>
 
-                            @php
-                                // Mengambil token dari cache Laravel (Mendukung versi standar, v2, dan v3)
-                                $sandboxToken = \Illuminate\Support\Facades\Cache::get('bca_snap_token_v3_sandbox')
-                                                ?? \Illuminate\Support\Facades\Cache::get('bca_snap_token_v2_sandbox')
-                                                ?? \Illuminate\Support\Facades\Cache::get('bca_snap_token_sandbox')
-                                                ?? 'KOSONG / EXPIRED (Buat 1 pesanan BCA untuk memancing token)';
-
-                                $prodToken = \Illuminate\Support\Facades\Cache::get('bca_snap_token_v3_production')
-                                                ?? \Illuminate\Support\Facades\Cache::get('bca_snap_token_production')
-                                                ?? 'KOSONG / EXPIRED';
-                            @endphp
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                                <div>
-                                    <p class="text-[10px] text-blue-600 font-bold uppercase mb-1">Sandbox Token</p>
-                                    <div class="p-2 bg-white border border-blue-100 rounded text-xs font-mono text-zinc-800 break-all select-all">
-                                        {{ $sandboxToken }}
+                            <!-- Panel Form Signature (Hidden by default) -->
+                            <div x-show="showSignatureForm" x-transition x-cloak class="mb-4 p-3 bg-white border border-blue-200 rounded">
+                                <p class="text-[10px] font-bold text-zinc-700 mb-2 uppercase">Kalkulator Symmetric Signature</p>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+                                    <div>
+                                        <label class="text-[9px] text-zinc-500 uppercase">Endpoint URL</label>
+                                        <input type="text" x-model="sigUrl" class="w-full border-zinc-300 rounded p-1.5 text-xs font-mono" placeholder="/openapi/v1.0/qr/qr-mpm-generate">
+                                    </div>
+                                    <div>
+                                        <label class="text-[9px] text-zinc-500 uppercase">Payload (Body JSON)</label>
+                                        <textarea x-model="sigBody" class="w-full border-zinc-300 rounded p-1.5 text-[10px] font-mono" rows="3" placeholder='{"partnerReferenceNo": "123..."}'></textarea>
                                     </div>
                                 </div>
+                                <button @click="generateSignature()" type="button" class="text-[10px] bg-green-600 text-white px-3 py-1.5 rounded font-bold shadow-sm hover:bg-green-700 w-full flex justify-center items-center gap-2">
+                                    <i class="fas fa-magic" x-show="!isLoadingSig"></i>
+                                    <i class="fas fa-spinner fa-spin" x-show="isLoadingSig" x-cloak></i> Generate X-SIGNATURE
+                                </button>
+                            </div>
+
+                            <!-- Output Results -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
                                 <div>
-                                    <p class="text-[10px] text-blue-600 font-bold uppercase mb-1">Production Token</p>
-                                    <div class="p-2 bg-white border border-blue-100 rounded text-xs font-mono text-zinc-800 break-all select-all">
-                                        {{ $prodToken }}
-                                    </div>
+                                    <p class="text-[10px] text-blue-600 font-bold uppercase mb-1 flex justify-between">
+                                        X-TIMESTAMP
+                                        <i class="fas fa-copy cursor-pointer hover:text-blue-800" title="Copy" @click="copyToClipboard(debugTimestamp)"></i>
+                                    </p>
+                                    <textarea x-model="debugTimestamp" class="w-full p-2 bg-white border border-blue-100 rounded text-[10px] font-mono text-zinc-800 focus:outline-none" rows="2" readonly></textarea>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-blue-600 font-bold uppercase mb-1 flex justify-between">
+                                        ACCESS TOKEN
+                                        <i class="fas fa-copy cursor-pointer hover:text-blue-800" title="Copy" @click="copyToClipboard(debugToken)"></i>
+                                    </p>
+                                    <textarea x-model="debugToken" class="w-full p-2 bg-white border border-blue-100 rounded text-[10px] font-mono text-zinc-800 focus:outline-none" rows="2" placeholder="Klik New Token..."></textarea>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] text-blue-600 font-bold uppercase mb-1 flex justify-between">
+                                        X-SIGNATURE
+                                        <i class="fas fa-copy cursor-pointer hover:text-blue-800" title="Copy" @click="copyToClipboard(debugSignature)"></i>
+                                    </p>
+                                    <textarea x-model="debugSignature" class="w-full p-2 bg-white border border-blue-100 rounded text-[10px] font-mono text-zinc-800 focus:outline-none" rows="2" placeholder="Klik New Signature..."></textarea>
                                 </div>
                             </div>
                         </div>
                     </div>
+
+                    <script>
+                        document.addEventListener('alpine:init', () => {
+                            Alpine.data('bcaDebugTool', () => ({
+                                debugTimestamp: '{{ now()->format("Y-m-d\TH:i:sP") }}',
+                                debugToken: '{{ \Illuminate\Support\Facades\Cache::get("bca_snap_token_v3_" . \App\Models\Api::getValue("BCA_MODE", "global", "sandbox")) ?? "" }}',
+                                debugSignature: '',
+
+                                showSignatureForm: false,
+                                sigUrl: '/openapi/v1.0/qr/qr-mpm-generate',
+                                sigBody: '',
+
+                                isLoadingToken: false,
+                                isLoadingSig: false,
+
+                                generateTimestamp() {
+                                    let d = new Date();
+                                    let tzo = -d.getTimezoneOffset(),
+                                        dif = tzo >= 0 ? '+' : '-',
+                                        pad = function(num) { return (num < 10 ? '0' : '') + num; };
+                                    this.debugTimestamp = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+                                        'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) +
+                                        dif + pad(Math.floor(Math.abs(tzo) / 60)) + ':' + pad(Math.abs(tzo) % 60);
+                                },
+
+                                async generateToken() {
+                                    this.isLoadingToken = true;
+                                    this.generateTimestamp(); // Sync timestamp
+                                    try {
+                                        let response = await fetch('{{ route("admin.settings.api.bcaDebug") }}', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                                            body: JSON.stringify({ type: 'token' })
+                                        });
+                                        let data = await response.json();
+                                        if(data.success) { this.debugToken = data.token; }
+                                        else { alert('Gagal: ' + data.message); }
+                                    } catch (e) { alert('Error jaringan.'); }
+                                    this.isLoadingToken = false;
+                                },
+
+                                async generateSignature() {
+                                    if(!this.debugToken) return alert('Silakan Generate New Token terlebih dahulu!');
+                                    this.isLoadingSig = true;
+                                    this.generateTimestamp(); // Sync timestamp
+                                    try {
+                                        let response = await fetch('{{ route("admin.settings.api.bcaDebug") }}', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                                            body: JSON.stringify({
+                                                type: 'signature',
+                                                token: this.debugToken,
+                                                timestamp: this.debugTimestamp,
+                                                url: this.sigUrl,
+                                                bodyData: this.sigBody
+                                            })
+                                        });
+                                        let data = await response.json();
+                                        if(data.success) { this.debugSignature = data.signature; }
+                                        else { alert('Gagal: ' + data.message); }
+                                    } catch (e) { alert('Error jaringan.'); }
+                                    this.isLoadingSig = false;
+                                },
+
+                                copyToClipboard(text) {
+                                    if(!text) return;
+                                    navigator.clipboard.writeText(text);
+                                }
+                            }))
+                        })
+                    </script>
                     {{-- 🔥 AKHIR PANEL DEBUG 🔥 --}}
 
                     <form action="{{ route('admin.settings.api.update') }}" method="POST" class="p-6 space-y-5">
