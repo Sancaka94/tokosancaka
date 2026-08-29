@@ -484,7 +484,7 @@ class EmailController extends Controller
                         if ($message) {
                             // PERBAIKAN: Menggunakan fungsi delete() bawaan Webklex.
                             // Secara otomatis akan memberikan flag \Deleted dengan aman.
-                            $message->delete(); 
+                            $message->delete();
                             $deletedCount++;
                         }
                     } catch (\Throwable $e) { // Tangkap error internal per email

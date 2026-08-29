@@ -32,6 +32,12 @@ class ApiSettingsController extends Controller
         $mandiriMode        = Api::getValue('MANDIRI_MODE', 'global', 'sandbox');
         $autokirimMode      = Api::getValue('AUTOKIRIM_MODE', 'global', 'sandbox');
         $digiflazzMode      = Api::getValue('DIGIFLAZZ_MODE', 'global', 'development');
+        $bcaMode            = Api::getValue('BCA_MODE', 'global', 'sandbox');
+
+        // KUNCI ANTI CRASH BCA
+        if (!in_array($bcaMode, ['sandbox', 'production'])) {
+            $bcaMode = 'sandbox';
+        }
 
         // KUNCI ANTI CRASH: Paksa ke sandbox kalau databasenya nyangkut di nilai lain
         if (!in_array($mandiriMode, ['sandbox', 'production'])) {
@@ -295,7 +301,26 @@ class ApiSettingsController extends Controller
             ]
         ];
 
-        return view('admin.settings.api_settings', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu', 'mandiri', 'mapbox', 'autokirim', 'digiflazz'));
+        // --- TAMBAHAN BCA ---
+        $bca = [
+            'mode' => $bcaMode,
+            'sandbox' => [
+                'client_id'     => Api::getValue('BCA_CLIENT_ID', 'sandbox'),
+                'client_secret' => Api::getValue('BCA_CLIENT_SECRET', 'sandbox'),
+                'api_key'       => Api::getValue('BCA_API_KEY', 'sandbox'),
+                'api_secret'    => Api::getValue('BCA_API_SECRET', 'sandbox'),
+                'private_key'   => Api::getValue('BCA_PRIVATE_KEY', 'sandbox'),
+            ],
+            'production' => [
+                'client_id'     => Api::getValue('BCA_CLIENT_ID', 'production'),
+                'client_secret' => Api::getValue('BCA_CLIENT_SECRET', 'production'),
+                'api_key'       => Api::getValue('BCA_API_KEY', 'production'),
+                'api_secret'    => Api::getValue('BCA_API_SECRET', 'production'),
+                'private_key'   => Api::getValue('BCA_PRIVATE_KEY', 'production'),
+            ]
+        ];
+
+        return view('admin.settings.api_settings', compact('appDebug', 'kiriminaja', 'tripay', 'doku', 'iak', 'fonnte', 'dharmawisata', 'dana', 'midtrans', 'lalamove', 'paypal', 'deliveree', 'ipaymu', 'mandiri', 'mapbox', 'autokirim', 'digiflazz', 'bca'));
 
 
     }
@@ -521,6 +546,21 @@ class ApiSettingsController extends Controller
                 Api::setValue('DIGIFLAZZ_API_KEY', $request->digiflazz_api_key, 'digiflazz', $env);
             }
 
+            elseif ($type === 'bca') {
+                $env = $request->bca_mode;
+                if (empty($env) || !in_array($env, ['sandbox', 'production'])) {
+                    $env = 'sandbox';
+                }
+                Api::setValue('BCA_MODE', $env, 'bca', 'global');
+                Api::setValue('BCA_CLIENT_ID', trim(strip_tags($request->bca_client_id)), 'bca', $env);
+                Api::setValue('BCA_CLIENT_SECRET', trim(strip_tags($request->bca_client_secret)), 'bca', $env);
+                Api::setValue('BCA_API_KEY', trim(strip_tags($request->bca_api_key)), 'bca', $env);
+                Api::setValue('BCA_API_SECRET', trim(strip_tags($request->bca_api_secret)), 'bca', $env);
+                if ($request->has('bca_private_key')) {
+                    Api::setValue('BCA_PRIVATE_KEY', $request->bca_private_key, 'bca', $env);
+                }
+            }
+
             Log::info("Konfigurasi API {$type} berhasil disimpan.");
 
             return back()->with('success', 'Konfigurasi ' . strtoupper($type) . ' berhasil diperbarui untuk mode ' . strtoupper($request->input("{$type}_mode") ?? 'GLOBAL') . '.');
@@ -551,6 +591,7 @@ class ApiSettingsController extends Controller
                 $targetMandiri      = 'sandbox';
                 $targetAutokirim    = 'sandbox';
                 $targetDigiflazz    = 'development';
+                $targetBca          = 'sandbox';
                 $label              = 'SANDBOX / STAGING / DEVELOPMENT';
             } else {
                 $targetKA           = 'production';
@@ -567,6 +608,7 @@ class ApiSettingsController extends Controller
                 $targetMandiri      = 'production';
                 $targetAutokirim    = 'production';
                 $targetDigiflazz    = 'production';
+                $targetBca          = 'production';
                 $label              = 'PRODUCTION (LIVE)';
             }
 
@@ -584,6 +626,7 @@ class ApiSettingsController extends Controller
             Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
             Api::setValue('AUTOKIRIM_MODE', $targetAutokirim, 'autokirim', 'global');
             Api::setValue('DIGIFLAZZ_MODE', $targetDigiflazz, 'digiflazz', 'global');
+            Api::setValue('BCA_MODE', $targetBca, 'bca', 'global');
 
             // Log proses toggle
             Log::info("Sistem API Global Mode diubah secara manual ke: {$label}");
@@ -618,6 +661,7 @@ class ApiSettingsController extends Controller
                 $targetMandiri      = 'production';
                 $targetAutokirim    = 'production';
                 $targetDigiflazz    = 'production';
+                $targetBca          = 'production';
                 $label              = 'PRODUCTION (LIVE)';
             } else {
                 $targetKA           = 'staging';
@@ -634,6 +678,7 @@ class ApiSettingsController extends Controller
                 $targetMandiri      = 'sandbox';
                 $targetAutokirim    = 'sandbox';
                 $targetDigiflazz    = 'development';
+                $targetBca          = 'sandbox';
                 $label              = 'SANDBOX / MAINTENANCE';
             }
 
@@ -651,6 +696,7 @@ class ApiSettingsController extends Controller
             Api::setValue('PAYPAL_MODE', $targetPaypal, 'paypal', 'global');
             Api::setValue('AUTOKIRIM_MODE', $targetAutokirim, 'autokirim', 'global');
             Api::setValue('DIGIFLAZZ_MODE', $targetDigiflazz, 'digiflazz', 'global');
+            Api::setValue('BCA_MODE', $targetBca, 'bca', 'global');
 
             // Log proses toggle via AJAX
             Log::info("Sistem API Mode di-toggle via API ke: {$label}");
