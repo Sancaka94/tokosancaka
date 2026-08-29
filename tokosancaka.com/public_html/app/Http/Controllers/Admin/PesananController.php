@@ -392,14 +392,16 @@ class PesananController extends Controller
                     // ======================================================
                     Log::info('Memulai proses BCA QRIS dari Admin Panel untuk ' . $pesanan->nomor_invoice);
 
-                    // Panggil BcaController
                     $bcaService = app(\App\Http\Controllers\BcaController::class);
 
-                   $bcaResponse = $bcaService->generateQrisMpm([
-                        // Hapus tanda strip (-) dari nomor invoice
-                        'partnerReferenceNo' => str_replace('-', '', $pesanan->nomor_invoice),
+                    // BUAT REFERENSI ANGKA MURNI 16 DIGIT (Contoh: 2026082900000123)
+                    $bcaReference = date('Ymd', strtotime($pesanan->tanggal_pesanan)) . str_pad($pesanan->id, 8, '0', STR_PAD_LEFT);
+
+                    // Panggil fungsi Generate QRIS MPM
+                    $bcaResponse = $bcaService->generateQrisMpm([
+                        'partnerReferenceNo' => $bcaReference,
                         'amount'             => $total_paid_ongkir,
-                        'merchantId'         => '001932637', // Sudah benar terisi
+                        'merchantId'         => '001932637',
                         'terminalId'         => 'A0000001',
                         'qrOption'           => 'A'
                     ]);
@@ -604,11 +606,14 @@ class PesananController extends Controller
         if (strtoupper($order->payment_method) === 'BCA_QRIS' && $order->status === 'Menunggu Pembayaran') {
             try {
                 $bcaService = app(\App\Http\Controllers\BcaController::class);
+
+                // BUAT ULANG REFERENSI ANGKA MURNI YANG SAMA
+                $bcaReference = date('Ymd', strtotime($order->tanggal_pesanan)) . str_pad($order->id, 8, '0', STR_PAD_LEFT);
+
                 $inquiry = $bcaService->queryQrisMpm([
-                    // Hapus tanda strip agar cocok dengan saat generate
-                    'originalPartnerReferenceNo' => str_replace('-', '', $order->nomor_invoice),
+                    'originalPartnerReferenceNo' => $bcaReference,
                     'originalReferenceNo'        => $order->shipping_ref,
-                    'merchantId'                 => '001932637', // Jangan lupa tambahkan merchantId
+                    'merchantId'                 => '001932637',
                     'terminalId'                 => 'A0000001'
                 ]);
 
