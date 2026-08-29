@@ -401,8 +401,8 @@ class PesananController extends Controller
                     $bcaResponse = $bcaService->generateQrisMpm([
                         'partnerReferenceNo' => $bcaReference,
                         'amount'             => $total_paid_ongkir,
-                        'merchantId'         => '001932637',
-                        'terminalId'         => 'A0000001',
+                        'merchantId'         => '123456789', // Wajib gunakan dummy Sandbox ini
+                        'terminalId'         => 'A1234567',  // Wajib gunakan dummy Sandbox ini
                         'qrOption'           => 'A'
                     ]);
 
@@ -613,8 +613,8 @@ class PesananController extends Controller
                 $inquiry = $bcaService->queryQrisMpm([
                     'originalPartnerReferenceNo' => $bcaReference,
                     'originalReferenceNo'        => $order->shipping_ref,
-                    'merchantId'                 => '001932637',
-                    'terminalId'                 => 'A0000001'
+                    'merchantId'                 => '123456789', // Wajib gunakan dummy Sandbox ini
+                    'terminalId'                 => 'A1234567'   // Wajib gunakan dummy Sandbox ini
                 ]);
 
                 // Jika status dari BCA adalah 00 (Lunas)
