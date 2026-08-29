@@ -1004,7 +1004,7 @@ Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->
 
     // Email & Chat
     Route::get('/imap', [EmailController::class, 'index'])->name('imap.index'); // Untuk halaman view Blade
-    
+
     // --- ROUTE API UNTUK APLIKASI EMAIL ---
     Route::prefix('api/email')->group(function () {
         Route::get('/', [EmailController::class, 'fetch'])->name('api.email.fetch'); // Get list email

@@ -365,7 +365,7 @@ class BcaController extends Controller
     {
         try {
             $type = $request->input('type');
-
+            
             if ($type === 'token') {
                 Cache::forget('bca_snap_token_v3_' . $this->mode); // Paksa hapus cache lama
                 $token = $this->getSnapToken(); // Fungsi Anda akan memicu LOG LOG
@@ -376,11 +376,9 @@ class BcaController extends Controller
                 $token = $request->input('token');
                 $timestamp = $request->input('timestamp');
                 $url = $request->input('url');
-
-                // Pastikan body string di-decode ke array agar fungsi Anda tidak error
                 $rawBody = $request->input('bodyData');
                 $body = !empty($rawBody) ? json_decode($rawBody, true) : [];
-
+                
                 if (json_last_error() !== JSON_ERROR_NONE && !empty($rawBody)) {
                     return response()->json(['success' => false, 'message' => 'Format Payload JSON tidak valid!']);
                 }
@@ -389,7 +387,42 @@ class BcaController extends Controller
                 return response()->json(['success' => true, 'signature' => $signature]);
             }
 
-            return response()->json(['success' => false, 'message' => 'Invalid type']);
+            // === LOGIKA BARU: EKSEKUSI API LANGSUNG KE BCA ===
+            if ($type === 'execute') {
+                $token = $request->input('token');
+                $timestamp = $request->input('timestamp');
+                $signature = $request->input('signature');
+                $url = $request->input('url');
+                
+                $rawBody = $request->input('bodyData');
+                $bodyArray = !empty($rawBody) ? json_decode($rawBody, true) : [];
+
+                // Siapkan header sesuai standar SNAP BCA
+                $headers = [
+                    'Authorization'  => 'Bearer ' . $token,
+                    'Content-Type'   => 'application/json',
+                    'X-TIMESTAMP'    => $timestamp,
+                    'X-SIGNATURE'    => $signature,
+                    'ORIGIN'         => request()->getHost(),
+                    'X-EXTERNAL-ID'  => date('YmdHis') . rand(100000, 999999),
+                    'CHANNEL-ID'     => '95251',
+                    'X-PARTNER-ID'   => $bodyArray['merchantId'] ?? '123456789', // Ambil dari payload
+                ];
+
+                // URL berdasarkan environment
+                $bcaUrl = ($this->mode === 'production') ? 'https://api.bca.co.id' : 'https://sandbox.bca.co.id';
+                $fullUrl = $bcaUrl . $url;
+
+                // Tembak API
+                $response = Http::withHeaders($headers)->post($fullUrl, $bodyArray);
+
+                return response()->json([
+                    'success'  => true,
+                    'response' => $response->json() // Tampilkan balasan mentah JSON dari BCA
+                ]);
+            }
+
+            return response()->json(['success' => false, 'message' => 'Invalid type action']);
         } catch (Exception $e) {
             Log::error("LOG LOG: [BCA Debug API] Error: " . $e->getMessage());
             return response()->json(['success' => false, 'message' => $e->getMessage()]);

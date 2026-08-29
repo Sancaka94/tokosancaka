@@ -1201,14 +1201,14 @@
                                         <i class="fas fa-spinner fa-spin" x-show="isLoadingToken" x-cloak></i> New Token
                                     </button>
                                     <button @click="showSignatureForm = !showSignatureForm" type="button" class="text-[10px] bg-blue-700 border border-blue-800 text-white hover:bg-blue-800 px-3 py-1.5 rounded font-bold shadow-sm flex items-center gap-1 transition-colors">
-                                        <i class="fas fa-pen-nib"></i> New Signature
+                                        <i class="fas fa-pen-nib"></i> Kalkulator Signature
                                     </button>
                                 </div>
                             </div>
 
                             <!-- Panel Form Signature (Hidden by default) -->
                             <div x-show="showSignatureForm" x-transition x-cloak class="mb-4 p-3 bg-white border border-blue-200 rounded">
-                                <p class="text-[10px] font-bold text-zinc-700 mb-2 uppercase">Kalkulator Symmetric Signature</p>
+                                <p class="text-[10px] font-bold text-zinc-700 mb-2 uppercase">1. Kalkulator Symmetric Signature</p>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
                                     <div>
                                         <label class="text-[9px] text-zinc-500 uppercase">Endpoint URL</label>
@@ -1224,29 +1224,43 @@
                                     <i class="fas fa-spinner fa-spin" x-show="isLoadingSig" x-cloak></i> Generate X-SIGNATURE
                                 </button>
                             </div>
-
+                            
                             <!-- Output Results -->
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                            <p class="text-[10px] font-bold text-zinc-700 mb-2 uppercase" x-show="showSignatureForm">2. Komponen Auth (Otomatis)</p>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <p class="text-[10px] text-blue-600 font-bold uppercase mb-1 flex justify-between">
-                                        X-TIMESTAMP
-                                        <i class="fas fa-copy cursor-pointer hover:text-blue-800" title="Copy" @click="copyToClipboard(debugTimestamp)"></i>
+                                        X-TIMESTAMP <i class="fas fa-copy cursor-pointer hover:text-blue-800" @click="copyToClipboard(debugTimestamp)"></i>
                                     </p>
                                     <textarea x-model="debugTimestamp" class="w-full p-2 bg-white border border-blue-100 rounded text-[10px] font-mono text-zinc-800 focus:outline-none" rows="2" readonly></textarea>
                                 </div>
                                 <div>
                                     <p class="text-[10px] text-blue-600 font-bold uppercase mb-1 flex justify-between">
-                                        ACCESS TOKEN
-                                        <i class="fas fa-copy cursor-pointer hover:text-blue-800" title="Copy" @click="copyToClipboard(debugToken)"></i>
+                                        ACCESS TOKEN <i class="fas fa-copy cursor-pointer hover:text-blue-800" @click="copyToClipboard(debugToken)"></i>
                                     </p>
                                     <textarea x-model="debugToken" class="w-full p-2 bg-white border border-blue-100 rounded text-[10px] font-mono text-zinc-800 focus:outline-none" rows="2" placeholder="Klik New Token..."></textarea>
                                 </div>
                                 <div>
                                     <p class="text-[10px] text-blue-600 font-bold uppercase mb-1 flex justify-between">
-                                        X-SIGNATURE
-                                        <i class="fas fa-copy cursor-pointer hover:text-blue-800" title="Copy" @click="copyToClipboard(debugSignature)"></i>
+                                        X-SIGNATURE <i class="fas fa-copy cursor-pointer hover:text-blue-800" @click="copyToClipboard(debugSignature)"></i>
                                     </p>
-                                    <textarea x-model="debugSignature" class="w-full p-2 bg-white border border-blue-100 rounded text-[10px] font-mono text-zinc-800 focus:outline-none" rows="2" placeholder="Klik New Signature..."></textarea>
+                                    <textarea x-model="debugSignature" class="w-full p-2 bg-white border border-blue-100 rounded text-[10px] font-mono text-zinc-800 focus:outline-none" rows="2" placeholder="Klik Generate X-SIGNATURE..."></textarea>
+                                </div>
+                            </div>
+
+                            <!-- TOMBOL EKSEKUSI API -->
+                            <div class="mt-4 pt-4 border-t border-blue-200" x-show="debugSignature !== ''" x-transition x-cloak>
+                                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+                                    <h4 class="text-xs font-bold text-zinc-800 uppercase">3. Tembak API BCA</h4>
+                                    <button @click="executeApi()" type="button" class="text-[11px] bg-blue-900 text-white px-5 py-2 rounded font-bold shadow hover:bg-black w-full md:w-auto flex justify-center items-center gap-2" :disabled="isLoadingExecute">
+                                        <i class="fas fa-rocket" x-show="!isLoadingExecute"></i>
+                                        <i class="fas fa-spinner fa-spin" x-show="isLoadingExecute" x-cloak></i> SEND REQUEST KE BCA
+                                    </button>
+                                </div>
+                                
+                                <div x-show="apiResponse" class="mt-3" x-transition>
+                                    <p class="text-[10px] text-zinc-500 font-bold uppercase mb-1">Response JSON</p>
+                                    <pre class="p-3 bg-zinc-900 rounded text-green-400 font-mono text-[10px] overflow-auto max-h-64 whitespace-pre-wrap border border-zinc-700 shadow-inner" x-text="apiResponse"></pre>
                                 </div>
                             </div>
                         </div>
@@ -1258,13 +1272,15 @@
                                 debugTimestamp: '{{ now()->format("Y-m-d\TH:i:sP") }}',
                                 debugToken: '{{ \Illuminate\Support\Facades\Cache::get("bca_snap_token_v3_" . \App\Models\Api::getValue("BCA_MODE", "global", "sandbox")) ?? "" }}',
                                 debugSignature: '',
-
-                                showSignatureForm: false,
+                                
+                                showSignatureForm: true, // Dibuka secara default
                                 sigUrl: '/openapi/v1.0/qr/qr-mpm-generate',
                                 sigBody: '',
-
+                                
                                 isLoadingToken: false,
                                 isLoadingSig: false,
+                                isLoadingExecute: false,
+                                apiResponse: '',
 
                                 generateTimestamp() {
                                     let d = new Date();
@@ -1274,11 +1290,13 @@
                                     this.debugTimestamp = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
                                         'T' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) +
                                         dif + pad(Math.floor(Math.abs(tzo) / 60)) + ':' + pad(Math.abs(tzo) % 60);
+                                    this.debugSignature = ''; // Reset signature jika timestamp berubah
+                                    this.apiResponse = '';
                                 },
 
                                 async generateToken() {
                                     this.isLoadingToken = true;
-                                    this.generateTimestamp(); // Sync timestamp
+                                    this.generateTimestamp();
                                     try {
                                         let response = await fetch('{{ route("admin.settings.api.bcaDebug") }}', {
                                             method: 'POST',
@@ -1286,33 +1304,54 @@
                                             body: JSON.stringify({ type: 'token' })
                                         });
                                         let data = await response.json();
-                                        if(data.success) { this.debugToken = data.token; }
+                                        if(data.success) { this.debugToken = data.token; } 
                                         else { alert('Gagal: ' + data.message); }
                                     } catch (e) { alert('Error jaringan.'); }
                                     this.isLoadingToken = false;
                                 },
 
                                 async generateSignature() {
-                                    if(!this.debugToken) return alert('Silakan Generate New Token terlebih dahulu!');
+                                    if(!this.debugToken) return alert('Silakan klik New Token terlebih dahulu!');
+                                    if(!this.sigBody) return alert('Payload JSON tidak boleh kosong!');
                                     this.isLoadingSig = true;
-                                    this.generateTimestamp(); // Sync timestamp
+                                    this.apiResponse = '';
                                     try {
                                         let response = await fetch('{{ route("admin.settings.api.bcaDebug") }}', {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                                             body: JSON.stringify({
-                                                type: 'signature',
-                                                token: this.debugToken,
-                                                timestamp: this.debugTimestamp,
-                                                url: this.sigUrl,
-                                                bodyData: this.sigBody
+                                                type: 'signature', token: this.debugToken, timestamp: this.debugTimestamp,
+                                                url: this.sigUrl, bodyData: this.sigBody
                                             })
                                         });
                                         let data = await response.json();
-                                        if(data.success) { this.debugSignature = data.signature; }
+                                        if(data.success) { this.debugSignature = data.signature; } 
                                         else { alert('Gagal: ' + data.message); }
                                     } catch (e) { alert('Error jaringan.'); }
                                     this.isLoadingSig = false;
+                                },
+
+                                async executeApi() {
+                                    if(!this.debugSignature) return alert('Generate Signature dulu!');
+                                    this.isLoadingExecute = true;
+                                    this.apiResponse = 'Menghubungi server BCA...';
+                                    try {
+                                        let response = await fetch('{{ route("admin.settings.api.bcaDebug") }}', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                                            body: JSON.stringify({
+                                                type: 'execute', token: this.debugToken, timestamp: this.debugTimestamp,
+                                                signature: this.debugSignature, url: this.sigUrl, bodyData: this.sigBody
+                                            })
+                                        });
+                                        let data = await response.json();
+                                        if(data.success) { 
+                                            this.apiResponse = JSON.stringify(data.response, null, 2); 
+                                        } else { 
+                                            this.apiResponse = 'Error Eksekusi:\n' + data.message; 
+                                        }
+                                    } catch (e) { this.apiResponse = 'Error jaringan saat menembak API BCA.'; }
+                                    this.isLoadingExecute = false;
                                 },
 
                                 copyToClipboard(text) {
