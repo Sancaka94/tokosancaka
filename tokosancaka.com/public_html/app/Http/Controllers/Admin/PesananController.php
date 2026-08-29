@@ -396,9 +396,10 @@ class PesananController extends Controller
                     $bcaService = app(\App\Http\Controllers\BcaController::class);
 
                    $bcaResponse = $bcaService->generateQrisMpm([
-                        'partnerReferenceNo' => $pesanan->nomor_invoice,
+                        // Hapus tanda strip (-) dari nomor invoice
+                        'partnerReferenceNo' => str_replace('-', '', $pesanan->nomor_invoice),
                         'amount'             => $total_paid_ongkir,
-                        'merchantId'         => '001932637', // <--- MASUKKAN MERCHANT ID BCA ANDA
+                        'merchantId'         => '001932637', // Sudah benar terisi
                         'terminalId'         => 'A0000001',
                         'qrOption'           => 'A'
                     ]);
@@ -604,8 +605,10 @@ class PesananController extends Controller
             try {
                 $bcaService = app(\App\Http\Controllers\BcaController::class);
                 $inquiry = $bcaService->queryQrisMpm([
-                    'originalPartnerReferenceNo' => $order->nomor_invoice,
-                    'originalReferenceNo'        => $order->shipping_ref, // Ref BCA yang disimpan waktu generate
+                    // Hapus tanda strip agar cocok dengan saat generate
+                    'originalPartnerReferenceNo' => str_replace('-', '', $order->nomor_invoice),
+                    'originalReferenceNo'        => $order->shipping_ref,
+                    'merchantId'                 => '001932637', // Jangan lupa tambahkan merchantId
                     'terminalId'                 => 'A0000001'
                 ]);
 
