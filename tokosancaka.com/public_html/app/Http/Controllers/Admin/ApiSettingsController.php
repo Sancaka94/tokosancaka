@@ -310,6 +310,7 @@ class ApiSettingsController extends Controller
                 'api_key'       => Api::getValue('BCA_API_KEY', 'sandbox'),
                 'api_secret'    => Api::getValue('BCA_API_SECRET', 'sandbox'),
                 'private_key'   => Api::getValue('BCA_PRIVATE_KEY', 'sandbox'),
+                'public_key'    => Api::getValue('BCA_PUBLIC_KEY', 'sandbox'),
             ],
             'production' => [
                 'client_id'     => Api::getValue('BCA_CLIENT_ID', 'production'),
@@ -317,6 +318,7 @@ class ApiSettingsController extends Controller
                 'api_key'       => Api::getValue('BCA_API_KEY', 'production'),
                 'api_secret'    => Api::getValue('BCA_API_SECRET', 'production'),
                 'private_key'   => Api::getValue('BCA_PRIVATE_KEY', 'production'),
+                'public_key'    => Api::getValue('BCA_PUBLIC_KEY', 'production'),
             ]
         ];
 
@@ -558,6 +560,9 @@ class ApiSettingsController extends Controller
                 Api::setValue('BCA_API_SECRET', trim(strip_tags($request->bca_api_secret)), 'bca', $env);
                 if ($request->has('bca_private_key')) {
                     Api::setValue('BCA_PRIVATE_KEY', $request->bca_private_key, 'bca', $env);
+                }
+                if ($request->has('bca_public_key')) {
+                    Api::setValue('BCA_PUBLIC_KEY', $request->bca_public_key, 'bca', $env);
                 }
             }
 

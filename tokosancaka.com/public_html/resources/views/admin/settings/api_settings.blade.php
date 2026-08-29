@@ -1209,6 +1209,11 @@
                                 <label class="block text-xs font-medium text-zinc-700 uppercase">Private Key (Format .pem)</label>
                                 <textarea name="bca_private_key" x-model="bcaData[bcaData.mode].private_key" rows="6" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono text-xs whitespace-pre" placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"></textarea>
                             </div>
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-medium text-zinc-700 uppercase">Public Key</label>
+                                <textarea name="bca_public_key" x-model="bcaData[bcaData.mode].public_key" rows="3" class="mt-1 block w-full rounded-md border-zinc-300 focus:border-zinc-900 focus:ring-zinc-900 sm:text-sm p-2 border font-mono text-xs whitespace-pre" placeholder="MIIBIjANBgkqhkiG9w0..."></textarea>
+                                <p class="text-[10px] text-zinc-500 mt-1">Isikan Public Key (tanpa header/footer jika tidak diminta) untuk kebutuhan verifikasi.</p>
+                            </div>
                         </div>
 
                         <div class="flex justify-end pt-4">

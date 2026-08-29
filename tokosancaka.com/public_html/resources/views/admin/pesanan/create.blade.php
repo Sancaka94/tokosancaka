@@ -106,7 +106,7 @@
                         <label for="customer_email" class="block mb-2 text-sm font-medium text-gray-700">Email Notifikasi Pelanggan (Opsional)</label>
                         <div class="relative">
                             <input type="email" id="customer_email" name="customer_email"
-                                class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" 
+                                class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md"
                                 placeholder="contoh@gmail.com" autocomplete="off">
                             <i class="fas fa-envelope text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
                         </div>
@@ -263,7 +263,7 @@
                             <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Layanan</label>
                             <div class="relative">
                                 <select name="service_type" id="service_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required>
-                                    <option value="" disabled>Pilih...</option> 
+                                    <option value="" disabled>Pilih...</option>
                                     <option value="regular" selected>Regular</option>
                                     <option value="express">Express</option>
                                     <option value="sameday">Sameday</option>
@@ -370,8 +370,23 @@
                 {{-- Opsi Cash khusus Admin --}}
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Cash" data-label="Cash (Tanpa Saldo)"><img src="https://cdn-icons-png.flaticon.com/512/2489/2489756.png" class="w-8 h-8 mr-4">Cash (Tanpa Saldo)</li>
 
-            {{-- Pembatas Antara Saldo dan COD --}}
-            <li class="bg-red-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Bayar Ditempat</li>
+            {{-- Pembatas Antara Saldo dan E-Wallet --}}
+                <li class="bg-blue-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Direct Payment (Bebas Biaya Tripay)</li>
+
+                {{-- OPSI BCA QRIS (TAMBAHKAN INI) --}}
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BCA_QRIS" data-label="BCA QRIS (Otomatis)">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a0/QRIS_logo.svg" class="w-8 h-8 mr-4 object-contain">
+                    BCA QRIS (Generate Barcode)
+                </li>
+
+                {{-- OPSI DOKU JOKUL (TAMBAHKAN JIKA PERLU) --}}
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DOKU_JOKUL" data-label="DOKU Payment Gateway">
+                    <img src="https://doku.com/wp-content/uploads/2022/10/Logo-DOKU-Red.png" class="w-8 h-8 mr-4 object-contain">
+                    DOKU Payment Gateway
+                </li>
+
+                {{-- Pembatas Antara Saldo dan COD --}}
+                <li class="bg-red-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Bayar Ditempat</li>
 
                 {{-- Opsi dari KiriminAja --}}
                 <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
