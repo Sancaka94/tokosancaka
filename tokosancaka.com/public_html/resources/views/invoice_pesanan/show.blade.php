@@ -378,7 +378,7 @@
                         
                         <!-- Tombol Sinkron -->
                         <button onclick="syncTracking(this)" class="no-print mt-1.5 w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded py-1 px-2 text-[9px] font-bold transition-colors flex items-center justify-center uppercase tracking-wider">
-                            <i class="fas fa-sync-alt mr-1"></i> Sinkron API
+                            <i class="fas fa-sync-alt mr-1"></i> Cek Status
                         </button>
                     </div>
 
