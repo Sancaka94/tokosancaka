@@ -365,7 +365,8 @@
         <input type="hidden" name="receiver_district_id" id="receiver_district_id" required>
         <input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" required>
         <input type="hidden" name="expedition" id="expedition" required>
-        <input type="hidden" name="payment_method" id="payment_method" required>
+        <!-- <input type="hidden" name="payment_method" id="payment_method" required> -->
+        <input type="hidden" name="payment_method" id="payment_method">
         {{-- 👇 KODE PENGAMAN DITAMBAHKAN DI SINI 👇 --}}
         <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
     </form>
