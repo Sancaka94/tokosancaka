@@ -120,31 +120,68 @@
         
         if ($pesanan->resi) {
             try {
-                // CEK DB LOKAL: Cek histori tracking Sancaka
-                $cekDb = \Illuminate\Support\Facades\DB::table('tracking_histories')
-                            ->where('resi', $pesanan->resi)
-                            ->orderBy('created_at', 'desc')
-                            ->first();
-                
-                if ($cekDb && isset($cekDb->status)) {
-                    $statusText = $cekDb->status;
+                $resi = $pesanan->resi;
+                $expeditionRaw = strtolower($pesanan->expedition ?? $pesanan->jasa_ekspedisi_aktual ?? $pesanan->service_type ?? '');
+                $foundStatus = false;
+
+                // Cek DB Lokal: SpxScan
+                if (class_exists(\App\Models\SpxScan::class)) {
+                    $spxScan = \App\Models\SpxScan::where('resi', $resi)->first();
+                    if ($spxScan) {
+                        $statusText = $spxScan->status;
+                        $foundStatus = true;
+                    }
+                }
+
+                // Cek DB Lokal: ScannedPackage
+                if (!$foundStatus && class_exists(\App\Models\ScannedPackage::class)) {
+                    $scanned = \App\Models\ScannedPackage::where('resi_number', $resi)->orderBy('created_at', 'desc')->first();
+                    if ($scanned) {
+                        $statusText = $scanned->status;
+                        $foundStatus = true;
+                    }
+                }
+
+                // Cek DB Lokal: tracking_histories
+                if (!$foundStatus) {
+                    $cekDb = \Illuminate\Support\Facades\DB::table('tracking_histories')
+                                ->where('resi', $resi)
+                                ->orderBy('created_at', 'desc')
+                                ->first();
+                    if ($cekDb && isset($cekDb->status)) {
+                        $statusText = $cekDb->status;
+                        $foundStatus = true;
+                    }
+                }
+
+                // Cek API KiriminAja
+                if (!$foundStatus && class_exists(\App\Services\KiriminAjaService::class)) {
+                    if (!str_contains($expeditionRaw, 'deliveree') && 
+                        !str_contains($expeditionRaw, 'lalamove') && 
+                        !str_contains($expeditionRaw, 'ipaymu') && 
+                        !str_contains($expeditionRaw, 'komship') && 
+                        !isset($pesanan->is_autokirim)) {
+                        
+                        $kiriminAja = new \App\Services\KiriminAjaService();
+                        $serviceType = $pesanan->service_type ?? 'regular';
+                        if (str_contains($serviceType, '-')) {
+                            $serviceType = explode('-', $serviceType)[0];
+                        }
+                        
+                        $trackingData = $kiriminAja->track($serviceType, $resi);
+                        if ($trackingData && isset($trackingData['text'])) {
+                            $statusText = $trackingData['text'];
+                        }
+                    }
                 }
                 
-                // ATAU CEK API LANGSUNG: (Uncomment jika Anda menggunakan Helper API)
-                /*
-                $apiData = \App\Helpers\TrackingHelper::getTrackingData($pesanan->resi);
-                if(isset($apiData['status']) && !empty($apiData['status'])) {
-                    $statusText = $apiData['status'];
-                }
-                */
-                
-                // LOGIKA OVERRIDE: Jika status realtime mengandung kata batal/cancel
+                // LOGIKA OVERRIDE: Jika status realtime mengandung kata batal/cancel, ubah invoice jadi BATAL MERAH
                 $rtStatusLower = strtolower($statusText);
                 if (str_contains($rtStatusLower, 'cancel') || str_contains($rtStatusLower, 'batal') || str_contains($rtStatusLower, 'retur') || str_contains($rtStatusLower, 'gagal')) {
                     $isCancelled = true;
                 }
             } catch(\Exception $e) {
-                // Jangan crash jika gagal
+                // Abaikan jika error agar halaman tidak crash
             }
         }
     @endphp
