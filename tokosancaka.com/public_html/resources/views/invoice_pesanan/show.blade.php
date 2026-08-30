@@ -371,10 +371,15 @@
                 <p class="text-xs font-bold mb-3 text-center uppercase tracking-widest {{ $isCancelled ? 'text-red-700' : ($statusLunas ? 'text-green-700' : 'text-gray-500') }}">Lacak Pengiriman</p>
                 
                 @if($isCancelled)
-                    <!-- KOTAK STATUS JIKA BATAL (MERAH) -->
-                    <div class="w-full bg-white border border-red-200 rounded p-1.5 mb-2 shadow-sm text-center">
+                    <!-- KOTAK STATUS JIKA BATAL (MERAH) + TOMBOL SINKRON -->
+                    <div class="w-full bg-white border border-red-200 rounded p-1.5 mb-2 shadow-sm text-center relative">
                         <p class="text-[8px] text-red-500 font-bold uppercase tracking-widest mb-0.5">Status Paket:</p>
                         <p class="text-[10px] font-bold text-red-700 leading-tight">{{ $statusText }}</p>
+                        
+                        <!-- Tombol Sinkron -->
+                        <button onclick="syncTracking(this)" class="no-print mt-1.5 w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded py-1 px-2 text-[9px] font-bold transition-colors flex items-center justify-center uppercase tracking-wider">
+                            <i class="fas fa-sync-alt mr-1"></i> Sinkron API
+                        </button>
                     </div>
 
                     <div class="w-[100px] h-[100px] bg-white border border-red-200 flex flex-col items-center justify-center rounded-lg shadow-sm">
@@ -385,12 +390,17 @@
                     <p class="text-[10px] font-bold text-red-600 mt-2 text-center uppercase tracking-widest"><i class="fas fa-times-circle mr-1"></i> REFUND</p>
                 @elseif($statusLunas && $pesanan->resi)
                     
-                    <!-- KOTAK STATUS JIKA LUNAS (HIJAU) -->
-                    <div class="w-full bg-white border border-green-200 rounded p-1.5 mb-2 shadow-sm text-center">
+                    <!-- KOTAK STATUS JIKA LUNAS (HIJAU) + TOMBOL SINKRON -->
+                    <div class="w-full bg-white border border-green-200 rounded p-1.5 mb-2 shadow-sm text-center relative">
                         <p class="text-[8px] text-gray-500 font-bold uppercase tracking-widest mb-0.5">Status Paket:</p>
                         <p class="text-[10px] font-bold text-green-700 leading-tight" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
                             {{ $statusText }}
                         </p>
+
+                        <!-- Tombol Sinkron -->
+                        <button onclick="syncTracking(this)" class="no-print mt-1.5 w-full bg-green-50 hover:bg-green-100 text-green-600 border border-green-200 rounded py-1 px-2 text-[9px] font-bold transition-colors flex items-center justify-center uppercase tracking-wider">
+                            <i class="fas fa-sync-alt mr-1"></i> Sinkron API
+                        </button>
                     </div>
 
                     <div id="qrcode" class="p-2 bg-white border border-green-200 rounded-lg shadow-sm"></div>
@@ -623,6 +633,19 @@
 
     <!-- JAVASCRIPT: BARCODE, QR CODE & MODAL -->
     <script>
+    // JS FUNGSI TOMBOL SINKRON
+    function syncTracking(btn) {
+        const icon = btn.querySelector('i');
+        icon.classList.add('fa-spin');
+        btn.innerHTML = '<i class="fas fa-sync-alt fa-spin mr-1"></i> Menyinkronkan...';
+        btn.disabled = true;
+        
+        // Reload halaman menggunakan href agar aman dari warning "Confirm Form Resubmission"
+        setTimeout(() => {
+            window.location.href = window.location.href;
+        }, 800);
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const isPaid = {{ $statusLunas ? 'true' : 'false' }};
         const isCancelled = {{ $isCancelled ? 'true' : 'false' }};
