@@ -138,7 +138,13 @@
                 
                 @if($statusLunas && $pesanan->resi)
                     <!-- BARCODE 1D MUNCUL JIKA LUNAS -->
-                    <svg id="barcodeResi" class="w-full max-w-[220px] mx-auto h-14"></svg>
+                    <div class="bg-white rounded px-2 py-1 mb-2">
+                        <svg id="barcodeResi" class="w-full max-w-[220px] mx-auto h-12"></svg>
+                    </div>
+                    
+                    <a href="https://tokosancaka.com/tracking/search?resi={{ $pesanan->resi }}" target="_blank" class="inline-flex items-center justify-center bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-4 rounded shadow-sm transition-colors w-full uppercase tracking-wider mt-1">
+                        <i class="fas fa-truck-fast mr-2"></i> Lacak Pengiriman
+                    </a>
                 @else
                     <span class="bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded text-sm font-semibold italic inline-block mt-1">
                         <i class="fas fa-lock mr-1"></i> Diterbitkan setelah lunas
