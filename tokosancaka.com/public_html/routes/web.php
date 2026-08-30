@@ -441,6 +441,18 @@ Route::get('/cek-ip-hosting', function () {
         return response()->json(['real_ip_hosting' => $response->json()['ip']]);
     } catch (\Exception $e) { return "Gagal: " . $e->getMessage(); }
 });
+
+// ==========================================
+// SITEMAP XML (SEO)
+// ==========================================
+Route::get('/sitemap.xml', function () {
+    // Pastikan memanggil model secara absolut agar aman
+    $posts = \App\Models\Post::where('status', 'published')->latest()->get();
+    
+    return response()->view('sitemap', compact('posts'))
+                     ->header('Content-Type', 'text/xml');
+});
+
 Route::get('/controllers-list', function () {
     $files = File::allFiles(app_path('Http/Controllers'));
     $controllers = collect($files)->map(function ($file) {
