@@ -30,9 +30,50 @@
         .ribbon.paid { background: #16a34a; }
         
         @media print {
+            /* 1. Atur ukuran kertas dan kecilkan margin default browser */
+            @page {
+                size: A4 portrait;
+                margin: 0.5cm; 
+            }
+            
+            /* 2. Pastikan warna background (seperti logo/pita) ikut ter-print */
+            body { 
+                background: white !important; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
+            
             .no-print { display: none !important; }
-            body { background: white; padding: 0; }
-            .print-container { box-shadow: none; max-width: 100%; margin: 0; padding: 0; border: none; }
+            
+            .print-container { 
+                box-shadow: none !important; 
+                max-width: 100% !important; 
+                width: 100% !important;
+                margin: 0 !important; 
+                padding: 10px !important; 
+                border: none !important; 
+            }
+            
+            /* 3. Override class margin/padding Tailwind agar lebih rapat saat diprint */
+            .mb-4, .mb-6, .mb-8, .md\:mb-8 { margin-bottom: 12px !important; }
+            .pb-6 { padding-bottom: 12px !important; }
+            .gap-4, .gap-6, .md\:gap-8 { gap: 12px !important; }
+            .p-4, .p-5, .sm\:p-8, .md\:p-12 { padding: 12px !important; }
+            .mt-8 { margin-top: 16px !important; }
+            
+            /* 4. Skalakan ukuran font sedikit lebih kecil agar muat */
+            body, table { font-size: 11px !important; }
+            h2, .text-xl, .sm\:text-2xl { font-size: 16px !important; }
+            .text-xs { font-size: 9px !important; }
+            .text-sm { font-size: 10px !important; }
+            .text-base { font-size: 11px !important; }
+            .text-lg { font-size: 13px !important; }
+            
+            /* 5. Cegah elemen tabel atau kotak terpotong setengah ke halaman 2 */
+            table, .grid, .flex, .border { 
+                break-inside: avoid; 
+                page-break-inside: avoid; 
+            }
         }
 
         /* Custom Scrollbar Modal */
