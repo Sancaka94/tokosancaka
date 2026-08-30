@@ -116,72 +116,78 @@
         $isCancelled = in_array($statusPesanan, ['batal', 'cancel', 'gagal', 'dibatalkan', 'cancelled']);
         
         // 3. OVERRIDE DENGAN STATUS REALTIME TRACKING API / DATABASE HISTORI
-        $statusText = 'Diproses / Menunggu Manifest';
+        $statusText = $pesanan->status ?? 'Diproses / Menunggu Manifest';
         
-        if ($pesanan->resi) {
+        if (!empty($pesanan->resi) || !empty($pesanan->nomor_invoice)) {
             try {
                 $resi = $pesanan->resi;
+                $nomorInvoice = $pesanan->nomor_invoice ?? $resi;
                 $expeditionRaw = strtolower($pesanan->expedition ?? $pesanan->jasa_ekspedisi_aktual ?? $pesanan->service_type ?? '');
-                $foundStatus = false;
+                
+                $apiStatusDitemukan = false;
 
-                // Cek DB Lokal: SpxScan
-                if (class_exists(\App\Models\SpxScan::class)) {
-                    $spxScan = \App\Models\SpxScan::where('resi', $resi)->first();
-                    if ($spxScan) {
-                        $statusText = $spxScan->status;
-                        $foundStatus = true;
-                    }
-                }
-
-                // Cek DB Lokal: ScannedPackage
-                if (!$foundStatus && class_exists(\App\Models\ScannedPackage::class)) {
-                    $scanned = \App\Models\ScannedPackage::where('resi_number', $resi)->orderBy('created_at', 'desc')->first();
-                    if ($scanned) {
-                        $statusText = $scanned->status;
-                        $foundStatus = true;
-                    }
-                }
-
-                // Cek DB Lokal: tracking_histories
-                if (!$foundStatus) {
-                    $cekDb = \Illuminate\Support\Facades\DB::table('tracking_histories')
-                                ->where('resi', $resi)
-                                ->orderBy('created_at', 'desc')
-                                ->first();
-                    if ($cekDb && isset($cekDb->status)) {
-                        $statusText = $cekDb->status;
-                        $foundStatus = true;
-                    }
-                }
-
-                // Cek API KiriminAja
-                if (!$foundStatus && class_exists(\App\Services\KiriminAjaService::class)) {
-                    if (!str_contains($expeditionRaw, 'deliveree') && 
-                        !str_contains($expeditionRaw, 'lalamove') && 
-                        !str_contains($expeditionRaw, 'ipaymu') && 
-                        !str_contains($expeditionRaw, 'komship') && 
-                        !isset($pesanan->is_autokirim)) {
-                        
+                // --- PRIORITAS 1: TEMBAK API LANGSUNG (KIRIMINAJA DLL) ---
+                if (!str_contains($expeditionRaw, 'deliveree') && 
+                    !str_contains($expeditionRaw, 'lalamove') && 
+                    !str_contains($expeditionRaw, 'ipaymu') && 
+                    !str_contains($expeditionRaw, 'komship') && 
+                    !isset($pesanan->is_autokirim)) {
+                    
+                    if (class_exists(\App\Services\KiriminAjaService::class)) {
                         $kiriminAja = new \App\Services\KiriminAjaService();
                         $serviceType = $pesanan->service_type ?? 'regular';
                         if (str_contains($serviceType, '-')) {
                             $serviceType = explode('-', $serviceType)[0];
                         }
                         
-                        $trackingData = $kiriminAja->track($serviceType, $resi);
-                        if ($trackingData && isset($trackingData['text'])) {
-                            $statusText = $trackingData['text'];
+                        // Coba lacak pakai nomor invoice terlebih dahulu (Sesuai Controller)
+                        $trackingData = $kiriminAja->track($serviceType, $nomorInvoice);
+                        
+                        // Jika gagal, fallback coba lacak pakai resi
+                        if (!$trackingData || !isset($trackingData['status']) || $trackingData['status'] !== true) {
+                            if($resi) {
+                                $trackingData = $kiriminAja->track($serviceType, $resi);
+                            }
+                        }
+
+                        // Jika API berhasil, update statusText
+                        if ($trackingData && isset($trackingData['status']) && $trackingData['status'] === true) {
+                            if (isset($trackingData['text']) && !empty($trackingData['text'])) {
+                                $statusText = $trackingData['text'];
+                                $apiStatusDitemukan = true;
+                            } elseif (isset($trackingData['histories']) && is_array($trackingData['histories']) && count($trackingData['histories']) > 0) {
+                                $statusText = $trackingData['histories'][0]['status'];
+                                $apiStatusDitemukan = true;
+                            }
                         }
                     }
                 }
-                
-                // LOGIKA OVERRIDE: Jika status realtime mengandung kata batal/cancel, ubah invoice jadi BATAL MERAH
+
+                // --- PRIORITAS 2: JIKA API GAGAL, BARU CEK DB LOKAL ---
+                if (!$apiStatusDitemukan && $resi) {
+                    $cekDb = \Illuminate\Support\Facades\DB::table('tracking_histories')
+                                ->where('resi', $resi)
+                                ->orderBy('created_at', 'desc')
+                                ->first();
+                    
+                    if ($cekDb && isset($cekDb->status)) {
+                        $statusText = $cekDb->status;
+                    } elseif (class_exists(\App\Models\ScannedPackage::class)) {
+                        $scanned = \App\Models\ScannedPackage::where('resi_number', $resi)->orderBy('created_at', 'desc')->first();
+                        if ($scanned) {
+                            $statusText = $scanned->status;
+                        }
+                    }
+                }
+
+                // --- PENENTUAN STATUS BATAL (REFUND MERAH) ---
                 $rtStatusLower = strtolower($statusText);
                 if (str_contains($rtStatusLower, 'cancel') || str_contains($rtStatusLower, 'batal') || str_contains($rtStatusLower, 'retur') || str_contains($rtStatusLower, 'gagal')) {
                     $isCancelled = true;
                 }
+
             } catch(\Exception $e) {
-                // Abaikan jika error agar halaman tidak crash
+                // Abaikan error agar halaman tidak mati
             }
         }
     @endphp
@@ -376,9 +382,8 @@
                         <p class="text-[8px] text-red-500 font-bold uppercase tracking-widest mb-0.5">Status Paket:</p>
                         <p class="text-[10px] font-bold text-red-700 leading-tight">{{ $statusText }}</p>
                         
-                        <!-- Tombol Sinkron -->
                         <button onclick="syncTracking(this)" class="no-print mt-1.5 w-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded py-1 px-2 text-[9px] font-bold transition-colors flex items-center justify-center uppercase tracking-wider">
-                            <i class="fas fa-sync-alt mr-1"></i> Cek Status
+                            <i class="fas fa-sync-alt mr-1"></i> Sinkron API
                         </button>
                     </div>
 
@@ -397,7 +402,6 @@
                             {{ $statusText }}
                         </p>
 
-                        <!-- Tombol Sinkron -->
                         <button onclick="syncTracking(this)" class="no-print mt-1.5 w-full bg-green-50 hover:bg-green-100 text-green-600 border border-green-200 rounded py-1 px-2 text-[9px] font-bold transition-colors flex items-center justify-center uppercase tracking-wider">
                             <i class="fas fa-sync-alt mr-1"></i> Sinkron API
                         </button>
@@ -640,10 +644,8 @@
         btn.innerHTML = '<i class="fas fa-sync-alt fa-spin mr-1"></i> Menyinkronkan...';
         btn.disabled = true;
         
-        // Reload halaman menggunakan href agar aman dari warning "Confirm Form Resubmission"
-        setTimeout(() => {
-            window.location.href = window.location.href;
-        }, 800);
+        // Reload halaman
+        setTimeout(() => { window.location.reload(); }, 500);
     }
 
     document.addEventListener('DOMContentLoaded', function () {
