@@ -81,7 +81,7 @@
         <!-- HEADER INVOICE -->
         <div class="flex justify-between items-start mb-8">
             <div>
-                <img src="https://tokosancaka.com/assets/logo.png" alt="Sancaka Express" class="h-16 mb-4 object-contain" onerror="this.src='https://placehold.co/200x50?text=Logo+Sancaka'">
+                <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-16 mb-4 object-contain" onerror="this.src='https://placehold.co/200x50?text=Logo+Sancaka'">
             </div>
             <div class="text-right text-sm">
                 <p class="font-bold text-lg">Sancaka Express</p>
