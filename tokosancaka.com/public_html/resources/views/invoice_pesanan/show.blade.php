@@ -527,13 +527,13 @@
             try {
                 JsBarcode("#barcodeResi", resiSancaka, {
                     format: "CODE128", 
-                    lineColor: "#16a34a", 
+                    lineColor: "#16a34a", // Warna Hijau Tailwind (green-600)
                     textMargin: 4, 
                     fontOptions: "bold", 
                     fontSize: 14,
                     height: 45, 
                     width: 2, 
-                    displayValue: false
+                    displayValue: true // <--- UBAH JADI TRUE AGAR ANGKA RESI MUNCUL
                 });
             } catch (e) { console.error("Gagal JSBarcode:", e); }
 
