@@ -366,7 +366,7 @@
         <input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" required>
         <input type="hidden" name="expedition" id="expedition" required>
         <!-- <input type="hidden" name="payment_method" id="payment_method" required> -->
-        <input type="hidden" name="payment_method" id="payment_method">
+        <!-- <input type="hidden" name="payment_method" id="payment_method"> -->
         {{-- 👇 KODE PENGAMAN DITAMBAHKAN DI SINI 👇 --}}
         <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
     </form>
@@ -762,7 +762,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    document.getElementById('paymentMethodButton').addEventListener('click', () => paymentModalEl.classList.remove('hidden'));
+    /* document.getElementById('paymentMethodButton').addEventListener('click', () => paymentModalEl.classList.remove('hidden'));
 
     document.querySelectorAll('.payment-option').forEach(item => {
         item.addEventListener('click', function() {
@@ -792,6 +792,12 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('click', () => {
             ongkirModalEl.classList.add('hidden');
             paymentModalEl.classList.add('hidden');
+        });
+    }); */
+
+    document.querySelectorAll('.close-modal-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            ongkirModalEl.classList.add('hidden');
         });
     });
 
