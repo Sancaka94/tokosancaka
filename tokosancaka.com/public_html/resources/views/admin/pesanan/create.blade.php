@@ -105,7 +105,7 @@
                     <div class="md:col-span-2 relative">
                         <label for="customer_email" class="block mb-2 text-sm font-medium text-gray-700">Email Notifikasi Pelanggan (Opsional)</label>
                         <div class="relative">
-                            <input type="email" id="customer_email" name="customer_email"
+                            <input type="email" id="customer_email" name="customer_email" value="tokosancaka@gmail.com"
                                 class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md"
                                 placeholder="contoh@gmail.com" autocomplete="off">
                             <i class="fas fa-envelope text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
