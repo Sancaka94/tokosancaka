@@ -14,7 +14,12 @@ class InvoicePesananController extends Controller
     public function show($nomor_invoice)
     {
         $pesanan = Pesanan::where('nomor_invoice', $nomor_invoice)->firstOrFail();
-        $statusLunas = in_array(strtoupper($pesanan->status_pesanan), ['PAID', 'LUNAS', 'SELESAI', 'TERKIRIM']);
+        
+        // Tentukan status lunas atau belum
+        $statusLunas = in_array(strtoupper($pesanan->status_pesanan), [
+            'PAID', 'LUNAS', 'SELESAI', 'TERKIRIM', 
+            'MENUNGGU PICKUP', 'PESANAN DIBUAT', 'DIPROSES', 'SEDANG DIKIRIM'
+        ]);
 
         // Tarik daftar Tripay Channels (Virtual Account, E-Wallet, Alfamart, dll)
         $tripayChannels = [];
@@ -48,11 +53,35 @@ class InvoicePesananController extends Controller
         $totalTagihan = $pesanan->price; // Gunakan total final yang sudah dikalkulasi sistem
         $paymentUrl = null;
 
+        // 🔥 INI URL KEMBALIAN AGAR DOKU/PAYPAL BALIK KE HALAMAN INVOICE 🔥
+        $returnUrl = route('invoice.show', ['nomor_invoice' => $pesanan->nomor_invoice]);
+
         try {
-            // 1. JIKA PILIH DOKU
+            // 1. JIKA PILIH DOKU (Menggunakan createSpecificCheckoutPayment agar support Return URL)
             if ($gateway === 'DOKU_JOKUL') {
                 $dokuService = new \App\Services\DokuJokulService();
-                $paymentUrl = $dokuService->createPayment($pesanan->nomor_invoice, $totalTagihan);
+                
+                $customerData = [
+                    'name' => $pesanan->receiver_name,
+                    'email' => 'customer@tokosancaka.com',
+                    'phone' => $pesanan->receiver_phone
+                ];
+
+                // Parameter ke-6 adalah $returnUrl untuk kembalian otomatis
+                $resDoku = $dokuService->createSpecificCheckoutPayment(
+                    $pesanan->nomor_invoice, 
+                    $totalTagihan, 
+                    $customerData, 
+                    'DOKU_JOKUL', 
+                    null, 
+                    $returnUrl 
+                );
+
+                if (isset($resDoku['success']) && $resDoku['success'] === true) {
+                    $paymentUrl = $resDoku['payment_url'];
+                } else {
+                    return back()->with('error', 'Gagal membuat tagihan DOKU: ' . ($resDoku['message'] ?? 'Unknown Error'));
+                }
             } 
             // 2. JIKA PILIH BCA QRIS
             elseif ($gateway === 'BCA_QRIS') {
@@ -67,11 +96,63 @@ class InvoicePesananController extends Controller
                 ]);
                 if (!empty($bcaResponse) && ($bcaResponse['responseCode'] ?? '') === '2004700') {
                     $pesanan->shipping_ref = $bcaResponse['referenceNo'];
-                    $paymentUrl = route('invoice.show', ['nomor_invoice' => $pesanan->nomor_invoice]);
-                    $pesanan->payment_url = $bcaResponse['qrContent']; // Simpan string QR
+                    $paymentUrl = $returnUrl; // Refresh halaman
+                    $pesanan->payment_url = $bcaResponse['qrContent']; 
                 }
             } 
-            // 3. JIKA PILIH TRIPAY (OVO, DANA, VA MANDIRI, BNI, DLL)
+            // 3. JIKA PILIH PAYPAL
+            elseif ($gateway === 'PAYPAL') {
+                $mode = Api::getValue('PAYPAL_MODE', 'global', 'sandbox');
+                $clientId = Api::getValue('PAYPAL_CLIENT_ID', $mode);
+                $secret = Api::getValue('PAYPAL_SECRET', $mode); 
+                $baseUrl = $mode === 'production' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
+
+                // Konversi Rupiah ke USD (Estimasi kurs 15.000)
+                $usdAmount = round($totalTagihan / 15000, 2);
+
+                // Minta Access Token PayPal
+                $response = Http::withBasicAuth($clientId, $secret)
+                    ->asForm()->post($baseUrl . '/v1/oauth2/token', ['grant_type' => 'client_credentials']);
+                
+                if ($response->successful()) {
+                    $token = $response->json()['access_token'];
+                    
+                    // Buat Pesanan di PayPal
+                    $orderRes = Http::withToken($token)->post($baseUrl . '/v2/checkout/orders', [
+                        'intent' => 'CAPTURE',
+                        'purchase_units' => [[
+                            'reference_id' => $pesanan->nomor_invoice,
+                            'amount' => ['currency_code' => 'USD', 'value' => (string) $usdAmount]
+                        ]],
+                        'payment_source' => [
+                            'paypal' => [
+                                'experience_context' => [
+                                    'return_url' => $returnUrl, // KEMBALI KE INVOICE BILA SUKSES
+                                    'cancel_url' => $returnUrl  // KEMBALI KE INVOICE BILA BATAL
+                                ]
+                            ]
+                        ]
+                    ]);
+
+                    if ($orderRes->successful()) {
+                        foreach ($orderRes->json()['links'] as $link) {
+                            if ($link['rel'] === 'payer-action' || $link['rel'] === 'approve') {
+                                $paymentUrl = $link['href'];
+                                break;
+                            }
+                        }
+                    } else {
+                        return back()->with('error', 'Gagal memproses PayPal: ' . $orderRes->body());
+                    }
+                } else {
+                    return back()->with('error', 'Kredensial PayPal tidak valid atau belum diatur di sistem.');
+                }
+            }
+            // 4. JIKA PILIH DANA REGULER BINDING
+            elseif ($gateway === 'DANA') {
+                return redirect()->route('dana.payment.create', $pesanan->nomor_invoice);
+            }
+            // 5. JIKA PILIH TRIPAY (OVO, DANA, VA MANDIRI, BNI, DLL)
             else {
                 $mode = Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
                 $apiKey = Api::getValue('TRIPAY_API_KEY', $mode);
@@ -87,7 +168,7 @@ class InvoicePesananController extends Controller
                     'customer_email' => 'customer+'.Str::random(5).'@tokosancaka.com',
                     'customer_phone' => $pesanan->receiver_phone,
                     'order_items' => [['sku' => 'SHIPPING', 'name' => 'Ongkos Kirim & Layanan', 'price' => $totalTagihan, 'quantity' => 1]],
-                    'return_url' => route('invoice.show', ['nomor_invoice' => $pesanan->nomor_invoice]),
+                    'return_url' => $returnUrl, // 🔥 KEMBALI KE INVOICE BILA SUKSES 🔥
                     'expired_time' => time() + (24 * 60 * 60),
                     'signature' => hash_hmac('sha256', $merchantCode . $pesanan->nomor_invoice . $totalTagihan, $privateKey),
                 ];
