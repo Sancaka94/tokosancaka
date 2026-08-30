@@ -396,10 +396,10 @@
         <div class="modal-body-scroll">
            <ul id="paymentOptionsList" class="divide-y">
                 {{-- Opsi Potong Saldo khusus Admin --}}
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://cdn-icons-png.flaticon.com/512/1086/1086060.png" class="w-8 h-8 mr-4">Potong Saldo</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://tokosancaka.com/public/assets/saldo.png" class="w-8 h-8 mr-4">Potong Saldo</li>
 
                 {{-- Opsi Cash khusus Admin --}}
-                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Cash" data-label="Cash (Tanpa Saldo)"><img src="https://cdn-icons-png.flaticon.com/512/2489/2489756.png" class="w-8 h-8 mr-4">Cash (Tanpa Saldo)</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Cash" data-label="Cash (Tanpa Saldo)"><img src="https://tokosancaka.com/public/assets/cash.png" class="w-8 h-8 mr-4">Cash (Tanpa Saldo)</li>
 
             {{-- Pembatas Antara Saldo dan E-Wallet --}}
                 <li class="bg-blue-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Direct Payment (Bebas Biaya Tripay)</li>

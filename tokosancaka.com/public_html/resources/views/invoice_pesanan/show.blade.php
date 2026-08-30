@@ -241,7 +241,7 @@
                     
                     <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full bg-white border border-gray-300 p-4 rounded-lg cursor-pointer hover:border-red-500 hover:shadow-md focus:outline-none transition-all">
                         <div class="flex items-center">
-                            <img id="paymentMethodImg" src="https://placehold.co/32x32/EFEFEF/AAAAAA?text=?" alt="Logo" class="h-8 w-12 object-contain mr-4 border rounded p-1">
+                            <img id="paymentMethodImg" src="https://tokosancaka.com/public/assets/saldo.png" alt="Logo" class="h-8 w-12 object-contain mr-4 border rounded p-1">
                             <span id="paymentMethodLabel" class="text-sm font-bold text-gray-900">Ketuk di sini untuk memilih bank...</span>
                         </div>
                         <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
