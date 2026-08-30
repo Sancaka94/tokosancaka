@@ -4,50 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice #{{ $pesanan->nomor_invoice }}</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    
+    {{-- LIBRARY WAJIB UNTUK BARCODE & QR CODE --}}
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+
     <style>
         /* Desain Pita (Ribbon) UNPAID / LUNAS */
         .ribbon-wrapper {
-            position: absolute;
-            right: -5px; top: -5px;
-            z-index: 10;
-            overflow: hidden;
-            width: 150px; height: 150px;
-            text-align: right;
+            position: absolute; right: -5px; top: -5px; z-index: 10;
+            overflow: hidden; width: 150px; height: 150px; text-align: right;
         }
         .ribbon {
-            font-size: 1.25rem;
-            font-weight: bold;
-            color: #FFF;
-            text-transform: uppercase;
-            text-align: center;
-            line-height: 40px;
-            transform: rotate(45deg);
-            -webkit-transform: rotate(45deg);
-            width: 200px;
-            display: block;
-            background: #dc2626; /* red-600 */
-            position: absolute;
-            top: 25px; right: -45px;
+            font-size: 1.1rem; font-weight: 900; color: #FFF;
+            text-transform: uppercase; text-align: center; line-height: 40px;
+            transform: rotate(45deg); -webkit-transform: rotate(45deg);
+            width: 200px; display: block; background: #dc2626; 
+            position: absolute; top: 25px; right: -45px;
             box-shadow: 0 3px 10px -5px rgba(0, 0, 0, 1);
+            letter-spacing: 1px;
         }
-        .ribbon.paid { background: #16a34a; /* green-600 */ }
+        .ribbon.paid { background: #16a34a; }
         
         @media print {
             .no-print { display: none !important; }
-            body { background: white; }
+            body { background: white; padding: 0; }
             .print-container { box-shadow: none; max-width: 100%; margin: 0; padding: 0; border: none; }
         }
 
-        /* Custom Scrollbar untuk Modal */
+        /* Custom Scrollbar Modal */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
 </head>
-<body class="bg-gray-100 py-10 font-sans text-gray-800">
+<body class="bg-gray-100 py-4 sm:py-8 font-sans text-gray-800">
 
     @php
         // 1. Parsing Helper Ekspedisi
@@ -55,7 +50,37 @@
         $expeditionName = $ship['courier_name'] ?? 'SANCAKA'; 
         $expeditionService = $ship['service_name'] ?? 'Regular';
 
-        // 2. Format Alamat Lengkap
+        // 2. Mapping Logo Ekspedisi
+        $courierMap = [
+            'jne'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png',
+            'tiki'          => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png',
+            'pos'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png',
+            'posindonesia'  => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png',
+            'sicepat'       => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png',
+            'sap'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png',
+            'jnt'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png',
+            'j&t'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png',
+            'jtcargo'       => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png',
+            'lion'          => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png',
+            'spx'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png',
+            'ninja'         => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png',
+            'anteraja'      => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png',
+        ];
+
+        $normalizedName = strtolower(str_replace(' ', '', $expeditionName));
+        $finalLogoUrl = $ship['logo_url'] ?? asset('public/storage/logo-ekspedisi/' . $normalizedName . '.png');
+
+        if (str_contains($normalizedName, 'cargo') && (str_contains($normalizedName, 'j&t') || str_contains($normalizedName, 'jt'))) {
+            $finalLogoUrl = $courierMap['jtcargo'];
+        } else {
+            foreach ($courierMap as $key => $url) {
+                if (str_contains($normalizedName, $key)) {
+                    $finalLogoUrl = $url; break;
+                }
+            }
+        }
+
+        // 3. Format Alamat
         $senderAddress = implode(', ', array_filter([
             $pesanan->sender_address, $pesanan->sender_village, 
             $pesanan->sender_district, $pesanan->sender_regency, 
@@ -69,7 +94,18 @@
         ]));
     @endphp
 
-    <div class="max-w-4xl mx-auto bg-white p-10 print-container relative shadow-lg border border-gray-200">
+    <!-- ACTION BAR -->
+    <div class="max-w-4xl mx-auto mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-center no-print px-4 md:px-0 gap-3">
+        <a href="javascript:history.back()" class="w-full sm:w-auto text-center bg-white border border-gray-300 text-gray-800 px-5 py-2.5 rounded shadow-sm hover:bg-gray-50 font-semibold transition">
+            <i class="fas fa-arrow-left mr-2"></i> Kembali
+        </a>
+        <button onclick="window.print()" class="w-full sm:w-auto text-center bg-gray-800 text-white px-6 py-2.5 rounded shadow-md hover:bg-gray-700 font-bold transition">
+            <i class="fas fa-print mr-2"></i> Print Invoice
+        </button>
+    </div>
+
+    <!-- KERTAS INVOICE A4 -->
+    <div class="max-w-4xl mx-auto bg-white p-5 sm:p-8 md:p-12 print-container relative shadow-2xl sm:rounded-lg border border-gray-200">
         
         <!-- PITA STATUS (UNPAID / LUNAS) -->
         <div class="ribbon-wrapper no-print">
@@ -79,292 +115,328 @@
         </div>
 
         <!-- HEADER INVOICE -->
-        <div class="flex justify-between items-start mb-8">
-            <div>
-                <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-16 mb-4 object-contain" onerror="this.src='https://placehold.co/200x50?text=Logo+Sancaka'">
-            </div>
-            <div class="text-right text-sm">
-                <p class="font-bold text-lg">Sancaka Express</p>
-                <p>Jl. Dr. Wahidin No. 18A</p>
-                <p>Kabupaten Ngawi, Jawa Timur 63211</p>
-                <p>Indonesia</p>
+        <div class="mb-6 md:mb-8 border-b border-gray-300 pb-6 text-center md:text-left">
+            <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-16 md:h-20 object-contain mx-auto md:mx-0 mb-3" onerror="this.src='https://placehold.co/250x80?text=Sancaka+Express'">
+            <div class="text-sm">
+                <p class="font-extrabold text-xl text-gray-900 mb-1 uppercase tracking-wider">Sancaka Express</p>
+                <p class="text-gray-600">Jl. Dr. Wahidin No. 18A, Ketanggi</p>
+                <p class="text-gray-600">Kabupaten Ngawi, Jawa Timur 63211</p>
+                <p class="text-gray-600 font-medium">Telp: 08574580809</p>
             </div>
         </div>
 
-        <!-- INVOICE INFO BLOCK -->
-        <div class="bg-gray-100 p-4 border border-gray-300 mb-8 text-sm grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <h2 class="text-xl font-bold mb-2">Invoice #{{ $pesanan->nomor_invoice }}</h2>
-                <p><strong>Tanggal Order:</strong> {{ \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->format('d/m/Y H:i') }}</p>
-                <p><strong>Batas Bayar:</strong> {{ \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->addDays(1)->format('d/m/Y H:i') }}</p>
+        <!-- INVOICE INFO & BARCODE RESI (1D) -->
+        <div class="bg-gray-50 p-4 sm:p-5 border border-gray-200 mb-6 md:mb-8 rounded-lg flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="w-full md:w-auto text-center md:text-left">
+                <h2 class="text-xl sm:text-2xl font-black text-gray-800 mb-1 uppercase tracking-wider break-all">Invoice #{{ $pesanan->nomor_invoice }}</h2>
+                <p class="text-xs sm:text-sm text-gray-600"><strong>Tgl Order:</strong> {{ \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->format('d M Y, H:i') }}</p>
+                <p class="text-xs sm:text-sm text-gray-600"><strong>Batas Bayar:</strong> {{ \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->addDays(1)->format('d M Y, H:i') }}</p>
             </div>
-            <div class="md:text-right">
-                <!-- LOGIKA TAMPIL RESI (HANYA MUNCUL JIKA LUNAS) -->
+            
+            <div class="w-full md:w-auto text-center bg-white p-3 rounded-lg border {{ $statusLunas ? 'border-green-400 bg-green-50 shadow-sm' : 'border-gray-200' }}">
+                <p class="text-xs font-bold uppercase tracking-widest mb-1 {{ $statusLunas ? 'text-green-700' : 'text-gray-500' }}">NO. RESI (AWB)</p>
+                
                 @if($statusLunas && $pesanan->resi)
-                    <p class="text-sm"><strong>No. Resi (AWB):</strong></p>
-                    <p class="text-xl font-bold text-blue-600">{{ $pesanan->resi }}</p>
+                    <!-- BARCODE 1D MUNCUL JIKA LUNAS -->
+                    <svg id="barcodeResi" class="w-full max-w-[220px] mx-auto h-14"></svg>
                 @else
-                    <p class="text-sm"><strong>No. Resi (AWB):</strong></p>
-                    <p class="text-sm italic text-gray-500 bg-gray-200 inline-block px-2 py-1 rounded mt-1">Diterbitkan setelah lunas</p>
+                    <span class="bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded text-sm font-semibold italic inline-block mt-1">
+                        <i class="fas fa-lock mr-1"></i> Diterbitkan setelah lunas
+                    </span>
                 @endif
             </div>
         </div>
 
         <!-- PENGIRIM & PENERIMA -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 text-sm">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 mb-6 md:mb-8 text-sm">
             <!-- PENGIRIM -->
-            <div>
-                <p class="font-bold mb-1 border-b border-gray-300 pb-1">Pengirim (Invoiced To)</p>
-                <p class="font-bold uppercase text-red-600">{{ $pesanan->sender_name }}</p>
-                <p class="text-gray-600 mt-1 leading-snug">{{ $senderAddress }}</p>
-                <p class="mt-1"><i class="fas fa-phone-alt text-gray-400 mr-1"></i> {{ $pesanan->sender_phone }}</p>
+            <div class="border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm bg-white">
+                <p class="font-bold text-xs text-gray-400 mb-2 uppercase tracking-wider border-b border-gray-100 pb-2">Pengirim (Invoiced To)</p>
+                <p class="font-bold text-base sm:text-lg text-gray-800 uppercase">{{ $pesanan->sender_name }}</p>
+                <p class="text-gray-600 mt-2 leading-relaxed text-xs sm:text-sm">{{ $senderAddress }}</p>
+                <p class="mt-2 font-medium text-gray-800"><i class="fas fa-phone-alt text-gray-400 mr-2"></i> {{ $pesanan->sender_phone }}</p>
             </div>
             
             <!-- PENERIMA -->
-            <div>
-                <p class="font-bold mb-1 border-b border-gray-300 pb-1">Penerima (Ship To)</p>
-                <p class="font-bold uppercase text-green-600">{{ $pesanan->receiver_name }}</p>
-                <p class="text-gray-600 mt-1 leading-snug">{{ $receiverAddress }}</p>
-                <p class="mt-1"><i class="fas fa-phone-alt text-gray-400 mr-1"></i> {{ $pesanan->receiver_phone }}</p>
+            <div class="border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm bg-white">
+                <p class="font-bold text-xs text-gray-400 mb-2 uppercase tracking-wider border-b border-gray-100 pb-2">Penerima (Ship To)</p>
+                <p class="font-bold text-base sm:text-lg text-gray-800 uppercase">{{ $pesanan->receiver_name }}</p>
+                <p class="text-gray-600 mt-2 leading-relaxed text-xs sm:text-sm">{{ $receiverAddress }}</p>
+                <p class="mt-2 font-medium text-gray-800"><i class="fas fa-phone-alt text-gray-400 mr-2"></i> {{ $pesanan->receiver_phone }}</p>
             </div>
         </div>
 
         <!-- RINCIAN TAGIHAN TABLE -->
-        <table class="w-full text-sm border-collapse border border-gray-300 mb-8">
-            <thead>
-                <tr class="bg-gray-100">
-                    <th class="border border-gray-300 px-4 py-2 text-left font-bold w-3/4">Detail Pesanan & Layanan</th>
-                    <th class="border border-gray-300 px-4 py-2 text-center font-bold w-1/4">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="border border-gray-300 px-4 py-3">
-                        <p class="font-bold mb-1">Pengiriman Paket: {{ $pesanan->item_description }}</p>
-                        <ul class="text-gray-600 space-y-1 list-disc list-inside ml-1">
-                            <li><strong>Ekspedisi:</strong> {{ strtoupper($expeditionName) }} - {{ strtoupper($expeditionService) }}</li>
-                            <li><strong>Berat Aktual:</strong> {{ $pesanan->weight }} gram</li>
-                            <li><strong>Dimensi (PxLxT):</strong> {{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }} cm</li>
-                            <li><strong>Nilai Barang:</strong> Rp {{ number_format($pesanan->item_price, 0, ',', '.') }}</li>
-                        </ul>
-                    </td>
-                    <td class="border border-gray-300 px-4 py-3 text-right align-top font-medium">
-                        Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
-                    </td>
-                </tr>
-                
-                @if($pesanan->insurance_cost > 0)
-                <tr>
-                    <td class="border border-gray-300 px-4 py-2">Biaya Asuransi Pengiriman</td>
-                    <td class="border border-gray-300 px-4 py-2 text-right">Rp {{ number_format($pesanan->insurance_cost, 0, ',', '.') }}</td>
-                </tr>
-                @endif
-                
-                @if($pesanan->cod_fee > 0)
-                <tr>
-                    <td class="border border-gray-300 px-4 py-2">Biaya Penanganan (Fee COD)</td>
-                    <td class="border border-gray-300 px-4 py-2 text-right">Rp {{ number_format($pesanan->cod_fee, 0, ',', '.') }}</td>
-                </tr>
-                @endif
-                
-                <!-- TOTALS SECTION -->
-                <tr>
-                    <td class="border border-gray-300 px-4 py-2 text-right font-bold bg-gray-50">Sub Total</td>
-                    <td class="border border-gray-300 px-4 py-2 text-right font-bold bg-gray-50">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
-                </tr>
-                <tr>
-                    <td class="border border-gray-300 px-4 py-2 text-right font-bold bg-gray-50">Credit</td>
-                    <td class="border border-gray-300 px-4 py-2 text-right font-bold bg-gray-50">Rp 0,00</td>
-                </tr>
-                <tr>
-                    <td class="border border-gray-300 px-4 py-3 text-right font-bold bg-gray-200 text-base">Grand Total</td>
-                    <td class="border border-gray-300 px-4 py-3 text-right font-bold bg-gray-200 text-base text-red-600">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="overflow-x-auto mb-6 md:mb-8 border border-gray-300 rounded-lg">
+            <table class="w-full text-sm border-collapse min-w-[500px]">
+                <thead>
+                    <tr class="bg-gray-800 text-white">
+                        <th class="border-b border-gray-700 px-4 py-3 text-left font-bold w-3/4">Rincian Paket & Layanan Pengiriman</th>
+                        <th class="border-b border-gray-700 px-4 py-3 text-right font-bold w-1/4">Biaya</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 bg-white">
+                    <tr>
+                        <td class="px-4 py-4">
+                            <div class="flex items-center mb-3">
+                                <div class="w-12 h-12 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded p-1 bg-white mr-3">
+                                    <img src="{{ $finalLogoUrl }}" alt="{{ $expeditionName }}" class="max-h-full max-w-full object-contain" onerror="this.style.display='none'">
+                                </div>
+                                <div>
+                                    <p class="font-bold text-base text-gray-900 leading-tight">{{ strtoupper($expeditionName) }} - {{ strtoupper($expeditionService) }}</p>
+                                    <p class="text-gray-500 text-[11px] uppercase tracking-wide">Layanan Ekspedisi Utama</p>
+                                </div>
+                            </div>
+                            <ul class="text-gray-700 space-y-1 mt-3 bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs sm:text-sm">
+                                <li><span class="font-semibold text-gray-900">Isi Paket:</span> {{ $pesanan->item_description }}</li>
+                                <li><span class="font-semibold text-gray-900">Berat Aktual:</span> {{ number_format($pesanan->weight, 0, ',', '.') }} Gram</li>
+                                <li><span class="font-semibold text-gray-900">Dimensi (PxLxT):</span> {{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }} cm</li>
+                                <li><span class="font-semibold text-gray-900">Nilai Barang:</span> Rp {{ number_format($pesanan->item_price, 0, ',', '.') }}</li>
+                            </ul>
+                        </td>
+                        <td class="px-4 py-4 text-right align-top font-bold text-gray-800 text-base">
+                            Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
+                        </td>
+                    </tr>
+                    
+                    @if($pesanan->insurance_cost > 0)
+                    <tr class="bg-gray-50">
+                        <td class="px-4 py-3 font-medium text-gray-700">Biaya Asuransi Pengiriman</td>
+                        <td class="px-4 py-3 text-right font-medium">Rp {{ number_format($pesanan->insurance_cost, 0, ',', '.') }}</td>
+                    </tr>
+                    @endif
+                    
+                    @if($pesanan->cod_fee > 0)
+                    <tr class="bg-gray-50">
+                        <td class="px-4 py-3 font-medium text-gray-700">Biaya Penanganan (Fee Layanan)</td>
+                        <td class="px-4 py-3 text-right font-medium">Rp {{ number_format($pesanan->cod_fee, 0, ',', '.') }}</td>
+                    </tr>
+                    @endif
+                    
+                    <!-- TOTALS SECTION -->
+                    <tr>
+                        <td class="px-4 py-3 text-right font-bold text-gray-600">Sub Total</td>
+                        <td class="px-4 py-3 text-right font-bold text-gray-900">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-4 py-3 text-right font-bold text-gray-600">Credit</td>
+                        <td class="px-4 py-3 text-right font-bold text-gray-900">Rp 0,00</td>
+                    </tr>
+                    <tr class="bg-gray-800 text-white">
+                        <td class="px-4 py-4 text-right font-black text-lg uppercase tracking-wider">Grand Total</td>
+                        <td class="px-4 py-4 text-right font-black text-lg text-green-400">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-        <!-- TRANSACTIONS SECTION -->
-        <h3 class="font-bold text-lg mb-2">Transactions</h3>
-        <table class="w-full text-sm border-collapse border border-gray-300 mb-8 text-center">
-            <thead>
-                <tr class="bg-gray-100">
-                    <th class="border border-gray-300 px-4 py-2 font-bold">Transaction Date</th>
-                    <th class="border border-gray-300 px-4 py-2 font-bold">Gateway</th>
-                    <th class="border border-gray-300 px-4 py-2 font-bold">Transaction ID</th>
-                    <th class="border border-gray-300 px-4 py-2 font-bold">Amount</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if($statusLunas)
-                <tr>
-                    <td class="border border-gray-300 px-4 py-2">{{ \Carbon\Carbon::parse($pesanan->updated_at)->format('d/m/Y H:i') }}</td>
-                    <td class="border border-gray-300 px-4 py-2 uppercase">{{ str_replace('_', ' ', $pesanan->payment_method) }}</td>
-                    <td class="border border-gray-300 px-4 py-2">{{ $pesanan->nomor_invoice }}</td>
-                    <td class="border border-gray-300 px-4 py-2 text-right text-green-600 font-medium">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
-                </tr>
+        <!-- TRANSACTIONS & QR CODE SECTION -->
+        <div class="flex flex-col-reverse md:flex-row gap-6 mb-8">
+            
+            <div class="w-full md:w-3/4">
+                <h3 class="font-bold text-lg mb-3 text-gray-800 border-b border-gray-300 pb-2">Riwayat Transaksi</h3>
+                <div class="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table class="w-full text-sm border-collapse text-center min-w-[400px]">
+                        <thead>
+                            <tr class="bg-gray-100 border-b border-gray-200">
+                                <th class="px-3 py-3 font-bold text-gray-700">Tanggal</th>
+                                <th class="px-3 py-3 font-bold text-gray-700">Metode</th>
+                                <th class="px-3 py-3 font-bold text-gray-700 text-right">Nominal</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 bg-white">
+                            @if($statusLunas)
+                            <tr>
+                                <td class="px-3 py-3">{{ \Carbon\Carbon::parse($pesanan->updated_at)->format('d/m/Y H:i') }}</td>
+                                <td class="px-3 py-3 font-semibold uppercase text-xs">{{ str_replace('_', ' ', $pesanan->payment_method) }}</td>
+                                <td class="px-3 py-3 text-right text-green-600 font-bold">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
+                            </tr>
+                            @else
+                            <tr>
+                                <td colspan="3" class="px-3 py-5 italic text-gray-400">Belum ada transaksi pembayaran masuk.</td>
+                            </tr>
+                            @endif
+                            <tr class="bg-gray-50 border-t border-gray-200">
+                                <td colspan="2" class="px-3 py-3 text-right font-bold text-gray-700 uppercase">Sisa Tagihan</td>
+                                <td class="px-3 py-3 text-right font-black text-base {{ !$statusLunas ? 'text-red-600' : 'text-gray-900' }}">
+                                    Rp {{ $statusLunas ? '0,00' : number_format($pesanan->price, 0, ',', '.') }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- QR CODE TRACKING (BARCODE 2D) -->
+            <div class="w-full md:w-1/4 flex flex-col justify-center items-center border-2 border-dashed {{ $statusLunas ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50' }} rounded-xl p-4">
+                <p class="text-xs font-bold mb-3 text-center uppercase tracking-widest {{ $statusLunas ? 'text-green-700' : 'text-gray-500' }}">Lacak Pengiriman</p>
+                
+                @if($statusLunas && $pesanan->resi)
+                    <div id="qrcode" class="p-2 bg-white border border-green-200 rounded-lg shadow-sm"></div>
+                    <p class="text-[10px] font-bold text-green-600 mt-3 text-center uppercase tracking-widest"><i class="fas fa-check-circle mr-1"></i> VALID (LUNAS)</p>
                 @else
-                <tr>
-                    <td colspan="4" class="border border-gray-300 px-4 py-4 italic text-gray-500">No Related Transactions Found</td>
-                </tr>
+                    <div class="w-[100px] h-[100px] bg-white border border-gray-200 flex flex-col items-center justify-center rounded-lg shadow-sm">
+                        <i class="fas fa-qrcode text-gray-300 text-3xl mb-2"></i>
+                        <span class="text-[9px] text-gray-400 font-bold">Terkunci</span>
+                    </div>
                 @endif
-                <tr>
-                    <td colspan="3" class="border border-gray-300 px-4 py-2 text-right font-bold bg-gray-50">Balance Due</td>
-                    <td class="border border-gray-300 px-4 py-2 text-right font-bold bg-gray-50 {{ !$statusLunas ? 'text-red-600' : 'text-gray-900' }}">
-                        Rp {{ $statusLunas ? '0,00' : number_format($pesanan->price, 0, ',', '.') }}
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+            </div>
 
-        <div class="text-center text-xs text-gray-500 mb-8">
-            PDF Generated on {{ date('d M Y, H:i') }} WIB
+        </div>
+
+        <div class="text-center text-[11px] text-gray-400 mt-8 border-t border-gray-200 pt-4">
+            Dokumen ini dicetak otomatis dari sistem <strong>tokosancaka.com</strong> pada {{ date('d M Y, H:i') }} WIB dan sah tanpa tanda tangan fisik.
         </div>
 
         <!-- ======================================================== -->
         <!-- AREA PEMBAYARAN (HANYA MUNCUL JIKA UNPAID)               -->
         <!-- ======================================================== -->
         @if(session('error'))
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 text-center font-medium shadow-sm">
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-6 text-center font-medium shadow-sm no-print">
                 <i class="fas fa-exclamation-triangle mr-1"></i> {{ session('error') }}
             </div>
         @endif
 
         <!-- 1. JIKA BELUM MEMILIH METODE PEMBAYARAN SAMA SEKALI -->
         @if(!$statusLunas && empty($pesanan->payment_url) && !in_array($pesanan->payment_method, ['COD', 'CODBARANG', 'Cash', 'Potong Saldo']))
-        <div class="no-print border-t border-gray-300 pt-6">
-            <form id="invoice-payment-form" action="{{ route('invoice.proses_bayar', $pesanan->nomor_invoice) }}" method="POST" class="max-w-2xl mx-auto">
+        <div class="no-print mt-8 border-2 border-red-100 bg-red-50/50 p-5 sm:p-8 rounded-2xl shadow-sm">
+            <h4 class="text-lg sm:text-xl font-black mb-5 text-center text-red-700 uppercase tracking-widest">Selesaikan Pembayaran Anda</h4>
+            
+            <form id="invoice-payment-form" action="{{ route('invoice.proses_bayar', $pesanan->nomor_invoice) }}" method="POST" class="max-w-xl mx-auto">
                 @csrf
-                
                 <!-- TOMBOL TRIGGER MODAL -->
-                <div class="bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-5 mb-6 relative">
-                    <h2 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider text-center">Pilih Metode Pembayaran</h2>
-                    
-                    <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full bg-white border border-gray-300 p-4 rounded-lg cursor-pointer hover:border-red-500 hover:shadow-md focus:outline-none transition-all">
-                        <div class="flex items-center">
-                            <img id="paymentMethodImg" src="https://tokosancaka.com/public/assets/saldo.png" alt="Logo" class="h-8 w-12 object-contain mr-4 border rounded p-1">
-                            <span id="paymentMethodLabel" class="text-sm font-bold text-gray-900">Klik di sini untuk memilih bank...</span>
+                <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full bg-white border-2 border-red-300 p-3 sm:p-4 rounded-xl cursor-pointer hover:border-red-600 hover:shadow-md focus:outline-none transition-all mb-5 group">
+                    <div class="flex items-center overflow-hidden">
+                        <div class="w-12 h-10 sm:w-14 sm:h-10 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded-lg bg-gray-50 mr-3 sm:mr-4">
+                            <img id="paymentMethodImg" src="https://placehold.co/40x40/EFEFEF/AAAAAA?text=?" alt="Logo" class="max-h-full max-w-full object-contain p-1">
                         </div>
-                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
-                    </button>
-                    
-                    <input type="hidden" name="payment_method" id="payment_method" required>
-                </div>
+                        <div class="text-left flex-1 min-w-0">
+                            <span class="block text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Pilih Bank / E-Wallet</span>
+                            <span id="paymentMethodLabel" class="block text-sm sm:text-base font-bold text-gray-900 truncate group-hover:text-red-600 transition-colors">Ketuk untuk memilih metode...</span>
+                        </div>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-300 group-hover:text-red-500 ml-2 flex-shrink-0"></i>
+                </button>
+                <input type="hidden" name="payment_method" id="payment_method" required>
                 
-                <div class="text-center">
-                    <button type="submit" id="submit-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-10 rounded-lg text-lg transition duration-300 w-full md:w-2/3 mx-auto shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
-                        <i class="fas fa-lock mr-2"></i> Bayar Sekarang
-                    </button>
-                </div>
+                <button type="submit" id="submit-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 sm:py-4 px-10 rounded-xl text-base sm:text-lg transition duration-300 w-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider">
+                    <i class="fas fa-shield-alt mr-2"></i> Bayar Tagihan
+                </button>
             </form>
         </div>
 
         <!-- 2. JIKA SUDAH MEMILIH & ADA URL/QRIS -->
         @elseif(!$statusLunas && !empty($pesanan->payment_url))
-        <div class="no-print border-t border-gray-300 pt-6 text-center">
-            <h4 class="text-lg font-bold mb-4">Selesaikan Pembayaran Anda</h4>
+        <div class="no-print mt-8 border border-blue-200 bg-blue-50 p-6 rounded-xl shadow-sm text-center">
+            <h4 class="text-xl font-black mb-2 text-blue-800 uppercase tracking-widest">Selesaikan Pembayaran Anda</h4>
             
             @if($pesanan->payment_method == 'BCA_QRIS')
-                <p class="mb-2 text-sm text-gray-600">Scan QR Code di bawah ini menggunakan M-Banking / E-Wallet Anda:</p>
+                <p class="mb-4 text-sm text-gray-700">Scan QR Code di bawah ini menggunakan M-Banking / E-Wallet Anda:</p>
                 <div class="flex justify-center mb-4">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={{ urlencode($pesanan->payment_url) }}" alt="QRIS BCA" class="border p-2 rounded shadow">
+                    <div class="bg-white p-4 rounded-xl shadow-lg border-2 border-blue-200 inline-block">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={{ urlencode($pesanan->payment_url) }}" alt="QRIS BCA" class="w-48 h-48">
+                    </div>
                 </div>
+                <p class="font-bold text-blue-700 text-lg">BCA QRIS</p>
             @else
-                <p class="mb-4 text-sm text-gray-600">Anda telah memilih pembayaran menggunakan <strong>{{ str_replace('_', ' ', strtoupper($pesanan->payment_method)) }}</strong></p>
-                <a href="{{ $pesanan->payment_url }}" class="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded text-lg transition duration-300 shadow">
-                    Lanjutkan Pembayaran <i class="fas fa-arrow-right ml-2"></i>
+                <p class="mb-5 text-gray-700">Anda telah memilih pembayaran menggunakan <strong class="uppercase text-blue-800">{{ str_replace('_', ' ', $pesanan->payment_method) }}</strong></p>
+                <a href="{{ $pesanan->payment_url }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-xl text-lg transition duration-300 shadow-lg uppercase tracking-wider">
+                    Bayar Sekarang <i class="fas fa-external-link-alt ml-2"></i>
                 </a>
             @endif
         </div>
         
-        <!-- 3. JIKA METODE OFFLINE (CASH/COD/SALDO) MENUNGGU KONFIRMASI ADMIN -->
+        <!-- 3. JIKA METODE OFFLINE (CASH/COD/SALDO) -->
         @elseif(!$statusLunas)
-        <div class="no-print border-t border-gray-300 pt-6 text-center">
-            <h4 class="text-lg font-bold mb-2">Menunggu Konfirmasi Pembayaran</h4>
-            <p class="text-sm text-gray-600">Metode: <strong>{{ strtoupper($pesanan->payment_method) }}</strong></p>
-            <p class="text-red-500 italic mt-2">Pesanan ini sedang dalam antrean verifikasi manual oleh admin Sancaka.</p>
+        <div class="no-print mt-8 border border-yellow-200 bg-yellow-50 p-6 rounded-xl shadow-sm text-center">
+            <i class="fas fa-clock text-5xl text-yellow-500 mb-4 drop-shadow-sm"></i>
+            <h4 class="text-xl font-black text-yellow-800 mb-2 uppercase tracking-widest">Menunggu Verifikasi Admin</h4>
+            <p class="text-base text-gray-700">Metode: <strong class="uppercase bg-yellow-200 px-2 py-1 rounded">{{ $pesanan->payment_method }}</strong></p>
+            <p class="text-sm text-gray-600 mt-3">Pesanan akan diproses otomatis setelah admin Sancaka memverifikasi pembayaran Anda.</p>
         </div>
         @endif
-        
-        <!-- TOMBOL PRINT -->
-        <div class="no-print absolute top-10 left-10">
-            <button onclick="window.print()" class="bg-gray-800 text-white px-4 py-2 rounded text-sm hover:bg-gray-700 shadow">
-                <i class="fas fa-print mr-1"></i> Print Invoice
-            </button>
-        </div>
 
     </div>
 
     <!-- ======================================================== -->
-    <!-- MODAL PEMILIHAN PEMBAYARAN                               -->
+    <!-- MODAL PEMILIHAN PEMBAYARAN (3 KOLOM LANDSCAPE)           -->
     <!-- ======================================================== -->
-    <div id="paymentModal" class="no-print fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden transition-opacity">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl mx-4 transform transition-all flex flex-col max-h-[90vh]">
-
+    <div id="paymentModal" class="no-print fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 hidden transition-all duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 sm:mx-auto transform transition-all flex flex-col max-h-[90vh] md:max-h-[85vh]">
+            
             <!-- Modal Header -->
-            <div class="flex justify-between items-center p-5 border-b border-gray-200">
-                <h3 class="text-lg font-bold text-gray-900">Pilih Metode Pembayaran</h3>
-                <button type="button" id="closeModalButton" class="text-gray-400 hover:text-red-600 bg-gray-100 hover:bg-red-50 p-2 rounded-full transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <div class="flex justify-between items-center p-5 md:p-6 border-b border-gray-100 bg-gray-50/50 rounded-t-2xl">
+                <h3 class="text-lg md:text-xl font-black text-gray-900 tracking-wide">Pilih Metode Pembayaran</h3>
+                <button type="button" id="closeModalButton" class="text-gray-400 hover:text-red-600 bg-white border border-gray-200 hover:border-red-200 hover:bg-red-50 p-2 md:p-2.5 rounded-full transition-all shadow-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
 
-            <!-- Modal Body (Custom Scrollbar) -->
-            <div class="p-2 overflow-y-auto custom-scrollbar flex-1">
-                <ul id="paymentOptionsList" class="grid grid-cols-1 md:grid-cols-2 gap-3 p-4">
-
+            <!-- Modal Body -->
+            <div class="p-2 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
+                <ul id="paymentOptionsList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 p-4 md:p-6">
+                    
                     <!-- DIRECT PAYMENT HEADER -->
-                    <li class="col-span-full px-1 pt-2 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                    <li class="col-span-full pb-2 text-xs font-black text-gray-500 uppercase tracking-widest border-b border-gray-200 mt-2 first:mt-0">
                         Direct Payment (Bebas Biaya Tripay)
                     </li>
                     
                     <!-- BCA QRIS -->
-                    <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-red-500 hover:bg-red-50 hover:shadow-md transition-all group"
                         data-value="BCA_QRIS" data-label="BCA QRIS (Generate Barcode)" data-img="https://tokosancaka.com/assets/bca.png">
-                        <img src="https://tokosancaka.com/assets/bca.png" class="h-8 w-12 object-contain mr-4 bg-white p-1 border rounded" alt="BCA">
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold text-gray-900">BCA QRIS</span>
-                            <span class="text-[11px] text-gray-500 mt-0.5">Generate Barcode Pembayaran</span>
+                        <div class="w-16 h-12 flex-shrink-0 flex items-center justify-center bg-white border border-gray-100 rounded-lg mr-3.5 p-1 group-hover:border-red-200 transition-colors">
+                            <img src="https://tokosancaka.com/assets/bca.png" class="max-h-full max-w-full object-contain" alt="BCA">
+                        </div>
+                        <div class="flex flex-col flex-1 overflow-hidden">
+                            <span class="text-sm font-bold text-gray-900 truncate group-hover:text-red-700 transition-colors">BCA QRIS</span>
+                            <span class="text-[11px] text-gray-500 mt-0.5 truncate">Generate Barcode Pembayaran</span>
                         </div>
                     </li>
 
                     <!-- DOKU -->
-                    <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-red-500 hover:bg-red-50 hover:shadow-md transition-all group"
                         data-value="DOKU_JOKUL" data-label="DOKU Payment Gateway" data-img="https://tokosancaka.com/public/assets/doku.png">
-                        <img src="https://tokosancaka.com/public/assets/doku.png" class="h-8 w-12 object-contain mr-4 bg-white p-1 border rounded" alt="DOKU">
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold text-gray-900">DOKU Gateway</span>
-                            <span class="text-[11px] text-gray-500 mt-0.5">VA, E-Wallet, Kartu Kredit Lokal</span>
+                        <div class="w-16 h-12 flex-shrink-0 flex items-center justify-center bg-white border border-gray-100 rounded-lg mr-3.5 p-1 group-hover:border-red-200 transition-colors">
+                            <img src="https://tokosancaka.com/public/assets/doku.png" class="max-h-full max-w-full object-contain" alt="DOKU">
+                        </div>
+                        <div class="flex flex-col flex-1 overflow-hidden">
+                            <span class="text-sm font-bold text-gray-900 truncate group-hover:text-red-700 transition-colors">DOKU Gateway</span>
+                            <span class="text-[11px] text-gray-500 mt-0.5 truncate">VA, E-Wallet, Kartu Kredit Lokal</span>
                         </div>
                     </li>
 
                     <!-- E-WALLET & KARTU KREDIT GLOBAL -->
-                    <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                    <li class="col-span-full pt-4 pb-2 text-xs font-black text-gray-500 uppercase tracking-widest border-b border-gray-200 mt-2">
                         Kartu Kredit Global & PayPal
                     </li>
 
                     <!-- PAYPAL -->
-                    <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                    <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-red-500 hover:bg-red-50 hover:shadow-md transition-all group"
                         data-value="PAYPAL" data-label="PayPal / Credit Card" data-img="https://tokosancaka.com/public/assets/paypal.png">
-                        <img src="https://tokosancaka.com/public/assets/paypal.png" alt="PayPal" class="h-8 w-12 object-contain mr-4 bg-white p-1 border rounded" onerror="this.src='https://placehold.co/32x32/EFEFEF/AAAAAA?text=PP'">
-                        <div class="flex flex-col">
-                            <span class="text-sm font-bold text-gray-900">PayPal / Kartu Kredit</span>
-                            <span class="text-[11px] text-gray-500 mt-0.5">Pembayaran Global (Otomatis USD)</span>
+                        <div class="w-16 h-12 flex-shrink-0 flex items-center justify-center bg-white border border-gray-100 rounded-lg mr-3.5 p-1 group-hover:border-red-200 transition-colors">
+                            <img src="https://tokosancaka.com/public/assets/paypal.png" alt="PayPal" class="max-h-full max-w-full object-contain" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=PP'">
+                        </div>
+                        <div class="flex flex-col flex-1 overflow-hidden">
+                            <span class="text-sm font-bold text-gray-900 truncate group-hover:text-red-700 transition-colors">PayPal / Kartu Kredit</span>
+                            <span class="text-[11px] text-gray-500 mt-0.5 truncate">Pembayaran Global (USD)</span>
                         </div>
                     </li>
 
                     <!-- TRIPAY CHANNELS -->
                     @if(isset($tripayChannels) && count($tripayChannels) > 0)
-                    <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                    <li class="col-span-full pt-4 pb-2 text-xs font-black text-gray-500 uppercase tracking-widest border-b border-gray-200 mt-2">
                         Transfer Bank & Minimarket (Otomatis)
                     </li>
                     @foreach($tripayChannels as $channel)
                         @if($channel['active'])
-                        <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                        <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-red-500 hover:bg-red-50 hover:shadow-md transition-all group"
                             data-value="{{ $channel['code'] }}" data-label="{{ $channel['name'] }}" data-img="{{ $channel['icon_url'] }}">
-                            <img src="{{ $channel['icon_url'] }}" alt="{{ $channel['name'] }}" class="h-8 w-12 object-contain mr-4 bg-white p-1 border rounded" onerror="this.src='https://placehold.co/32x32?text=IMG'">
-                            <div class="flex flex-col">
-                                <span class="text-sm font-bold text-gray-900">{{ $channel['name'] }}</span>
-                                <span class="text-[11px] text-gray-500 mt-0.5">Tripay Payment</span>
+                            <div class="w-16 h-12 flex-shrink-0 flex items-center justify-center bg-white border border-gray-100 rounded-lg mr-3.5 p-1.5 group-hover:border-red-200 transition-colors">
+                                <img src="{{ $channel['icon_url'] }}" alt="{{ $channel['name'] }}" class="max-h-full max-w-full object-contain" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=IMG'">
+                            </div>
+                            <div class="flex flex-col flex-1 overflow-hidden">
+                                <span class="text-sm font-bold text-gray-900 truncate group-hover:text-red-700 transition-colors">{{ $channel['name'] }}</span>
+                                <span class="text-[11px] text-gray-500 mt-0.5 truncate">Tripay Payment</span>
                             </div>
                         </li>
                         @endif
@@ -375,9 +447,42 @@
         </div>
     </div>
 
-    <!-- JAVASCRIPT MODAL PEMBAYARAN -->
+    <!-- JAVASCRIPT: BARCODE, QR CODE & MODAL -->
     <script>
     document.addEventListener('DOMContentLoaded', function () {
+        // --- 1. RENDER BARCODE (1D) & QR CODE (2D) HANYA JIKA LUNAS ---
+        const isPaid = {{ $statusLunas ? 'true' : 'false' }};
+        const resiSancaka = "{!! $pesanan->resi !!}";
+
+        if (isPaid && resiSancaka) {
+            // Barcode 1D (Warna Hijau)
+            try {
+                JsBarcode("#barcodeResi", resiSancaka, {
+                    format: "CODE128", 
+                    lineColor: "#16a34a", 
+                    textMargin: 4, 
+                    fontOptions: "bold", 
+                    fontSize: 14,
+                    height: 45, 
+                    width: 2, 
+                    displayValue: false
+                });
+            } catch (e) { console.error("Gagal JSBarcode:", e); }
+
+            // QR Code 2D (Tracking Link)
+            try {
+                new QRCode(document.getElementById("qrcode"), {
+                    text: "https://tokosancaka.com/tracking/search?resi=" + resiSancaka,
+                    width: 85, 
+                    height: 85,
+                    colorDark : "#16a34a",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.M
+                });
+            } catch (e) { console.error("Gagal QRCode:", e); }
+        }
+
+        // --- 2. LOGIKA MODAL PEMBAYARAN ---
         const paymentModal = document.getElementById('paymentModal');
         const paymentMethodButton = document.getElementById('paymentMethodButton');
         const closeModalButton = document.getElementById('closeModalButton');
@@ -386,64 +491,39 @@
         const invoiceForm = document.getElementById('invoice-payment-form');
         const submitButton = document.getElementById('submit-button');
 
-        // Fungsi Buka Modal
-        function openPaymentModal() {
-            paymentModal.classList.remove('hidden');
-            document.body.style.overflow = 'hidden'; 
-        }
-
-        // Fungsi Tutup Modal
-        function closePaymentModal() {
-            paymentModal.classList.add('hidden');
-            document.body.style.overflow = 'auto'; 
-        }
+        function openPaymentModal() { paymentModal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
+        function closePaymentModal() { paymentModal.classList.add('hidden'); document.body.style.overflow = 'auto'; }
 
         if(paymentMethodButton) {
             paymentMethodButton.addEventListener('click', openPaymentModal);
             closeModalButton.addEventListener('click', closePaymentModal);
-            
-            // Tutup jika klik area background gelap
-            paymentModal.addEventListener('click', function(e) {
-                if (e.target === paymentModal) {
-                    closePaymentModal();
-                }
-            });
+            paymentModal.addEventListener('click', e => { if (e.target === paymentModal) closePaymentModal(); });
 
-            // Logika Klik Opsi Pembayaran di Modal
             paymentOptionsList.querySelectorAll('.payment-option').forEach(item => {
                 item.addEventListener('click', function () {
-                    const paymentValue = this.dataset.value;
-                    const label = this.dataset.label;
-                    const img = this.dataset.img;
-
-                    // Isi hidden input
-                    paymentMethodInput.value = paymentValue;
-
-                    // Hilangkan highlight dari semua opsi
+                    paymentMethodInput.value = this.dataset.value;
+                    
                     paymentOptionsList.querySelectorAll('.payment-option').forEach(li => {
-                        li.classList.remove('bg-red-50', 'border-red-500');
+                        li.classList.remove('bg-red-50', 'border-red-500', 'ring-1', 'ring-red-500');
+                        li.classList.add('bg-white', 'border-gray-200');
                     });
                     
-                    // Beri highlight pada opsi yang dipilih
-                    this.classList.add('bg-red-50', 'border-red-500');
-
-                    // Update UI Tombol Utama
-                    document.getElementById('paymentMethodLabel').textContent = label;
-                    document.getElementById('paymentMethodImg').src = img;
-
+                    this.classList.remove('bg-white', 'border-gray-200');
+                    this.classList.add('bg-red-50', 'border-red-500', 'ring-1', 'ring-red-500');
+                    
+                    document.getElementById('paymentMethodLabel').textContent = this.dataset.label;
+                    document.getElementById('paymentMethodImg').src = this.dataset.img;
+                    
                     closePaymentModal();
                 });
             });
 
-            // Validasi dan Loading State saat Form disubmit
             invoiceForm.addEventListener('submit', function(e) {
                 if (paymentMethodInput.value === "") {
-                    e.preventDefault();
-                    alert('Silakan ketuk tombol untuk memilih metode pembayaran terlebih dahulu.');
-                    return;
+                    e.preventDefault(); alert('Silakan ketuk tombol kotak putih di atas untuk memilih bank/metode pembayaran terlebih dahulu.'); return;
                 }
                 submitButton.disabled = true;
-                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mengarahkan ke Gateway...';
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
             });
         }
     });
