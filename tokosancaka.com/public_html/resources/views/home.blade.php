@@ -4,7 +4,28 @@
 
 @section('title', 'Selamat Datang di Sancaka Express')
 
+@section('meta')
+    <!-- Primary Meta Tags -->
+    <meta name="description" content="Sancaka Express: Solusi pengiriman barang, motor, cargo, dan paket reguler terpercaya ke seluruh Indonesia. Cek resi dan ongkir secara real-time dengan harga terbaik.">
+    <meta name="keywords" content="Sancaka Express, ekspedisi pengiriman, cek resi, cek ongkir, kirim paket, kirim motor, cargo murah, PPOB terlengkap, jasa ekspedisi Ngawi, Sancaka Karya Hutama">
+    <meta name="author" content="CV. Sancaka Karya Hutama">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <link rel="canonical" href="{{ url()->current() }}">
 
+    <!-- Open Graph / Facebook / WhatsApp (Agar saat link dishare muncul gambar & deskripsi) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:title" content="Sancaka Express - Solusi Pengiriman Terlengkap dan Terpercaya">
+    <meta property="og:description" content="Kirim paket ke seluruh Indonesia dengan mudah, cepat, dan aman. Nikmati layanan cek resi, cek ongkir, dan PPOB terlengkap.">
+    <meta property="og:image" content="{{ asset('storage/uploads/logo.jpeg') }}">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ url()->current() }}">
+    <meta property="twitter:title" content="Sancaka Express - Solusi Pengiriman Terlengkap dan Terpercaya">
+    <meta property="twitter:description" content="Kirim paket ke seluruh Indonesia dengan mudah, cepat, dan aman. Nikmati layanan cek resi, cek ongkir, dan PPOB terlengkap.">
+    <meta property="twitter:image" content="{{ asset('storage/uploads/logo.jpeg') }}">
+@endsection
 
 @push('styles')
 
@@ -2022,19 +2043,19 @@ width: 22px;
 
             <div class="col-lg-6">
                 <h4>Kirim Pesan</h4>
-                
+
                 <!-- Alert Info Keamanan -->
                 <div id="contact-security-alert" class="alert alert-warning py-2 small mb-3 text-center shadow-sm">
                     <i class="fas fa-shield-alt me-1"></i> Sistem mendeteksi keamanan. Aktifkan GPS & Captcha untuk mengirim pesan.
                 </div>
-                
+
                 <!-- Tempat notifikasi AJAX (Sukses/Gagal) -->
                 <div id="contactNotification"></div>
 
                 <form id="contactForm">
                     @csrf
                     @honeypot <!-- Sistem Anti Bot Bawaan Anda -->
-                    
+
                     <!-- Hidden Input untuk Koordinat GPS -->
                     <input type="hidden" name="latitude" id="contact_latitude" value="">
                     <input type="hidden" name="longitude" id="contact_longitude" value="">
@@ -2042,7 +2063,7 @@ width: 22px;
                     <div class="mb-3"><label for="contactName" class="form-label">Nama Anda</label><input type="text" class="form-control" id="contactName" name="name" required></div>
                     <div class="mb-3"><label for="contactEmail" class="form-label">Email</label><input type="email" class="form-control" id="contactEmail" name="email" required></div>
                     <div class="mb-3"><label for="contactMessage" class="form-label">Pesan</label><textarea class="form-control" id="contactMessage" name="message" rows="5" required></textarea></div>
-                    
+
                     <!-- WIDGET CLOUDFLARE TURNSTILE -->
                     <div class="mb-4 d-flex justify-content-center">
                         <div class="cf-turnstile" data-sitekey="{{ env('TURNSTILE_SITE_KEY') }}" data-callback="onContactTurnstileSuccess"></div>
@@ -3148,7 +3169,7 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 // 2. Ambil semua data inputan form
                 const formData = new FormData(contactForm);
-                
+
                 // 3. Kirim data ke backend (Route kita yang baru)
                 const response = await fetch("{{ route('contact.submit') }}", {
                     method: 'POST',
@@ -3211,7 +3232,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (isContactGpsActive && isContactTurnstileSuccess) {
             const btn = document.getElementById('contactSubmitBtn');
             if (btn) btn.removeAttribute('disabled');
-            
+
             const statusAlert = document.getElementById('contact-security-alert');
             if (statusAlert) {
                 statusAlert.classList.replace('alert-warning', 'alert-success');
@@ -3232,7 +3253,7 @@ document.addEventListener('DOMContentLoaded', function () {
             let alertMsg = "Akses Ditolak!\n";
             if (!isContactGpsActive) alertMsg += "- Anda wajib mengaktifkan dan mengizinkan GPS lokasi.\n";
             if (!isContactTurnstileSuccess) alertMsg += "- Anda wajib menyelesaikan verifikasi keamanan (Cloudflare).\n";
-            
+
             alert(alertMsg);
             if (!isContactGpsActive) requestContactLocation();
         }

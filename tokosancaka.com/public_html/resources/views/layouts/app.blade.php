@@ -6,6 +6,9 @@
     <meta name="google-site-verification" content="M5GwyjoDoCcRA93IrehnwMAWLPXZPP2HNPMYU8pnIk8" />
     <title>@yield('title', 'Sancaka Express')</title>
 
+    <!-- PANGGIL META TAG SEO DARI HALAMAN (WAJIB) -->
+    @yield('meta')
+
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="https://tokosancaka.com/storage/uploads/sancaka.png">
 
