@@ -49,6 +49,26 @@
 </head>
 <body class="bg-gray-100 py-10 font-sans text-gray-800">
 
+    @php
+        // 1. Parsing Helper Ekspedisi
+        $ship = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->expedition);
+        $expeditionName = $ship['courier_name'] ?? 'SANCAKA'; 
+        $expeditionService = $ship['service_name'] ?? 'Regular';
+
+        // 2. Format Alamat Lengkap
+        $senderAddress = implode(', ', array_filter([
+            $pesanan->sender_address, $pesanan->sender_village, 
+            $pesanan->sender_district, $pesanan->sender_regency, 
+            $pesanan->sender_province, $pesanan->sender_postal_code
+        ]));
+
+        $receiverAddress = implode(', ', array_filter([
+            $pesanan->receiver_address, $pesanan->receiver_village, 
+            $pesanan->receiver_district, $pesanan->receiver_regency, 
+            $pesanan->receiver_province, $pesanan->receiver_postal_code
+        ]));
+    @endphp
+
     <div class="max-w-4xl mx-auto bg-white p-10 print-container relative shadow-lg border border-gray-200">
         
         <!-- PITA STATUS (UNPAID / LUNAS) -->
@@ -72,51 +92,77 @@
         </div>
 
         <!-- INVOICE INFO BLOCK -->
-        <div class="bg-gray-100 p-4 border border-gray-300 mb-8 text-sm">
-            <h2 class="text-xl font-bold mb-2">Invoice #{{ $pesanan->nomor_invoice }}</h2>
-            <p>Invoice Date: {{ \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->format('d/m/Y') }}</p>
-            <p>Due Date: {{ \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->addDays(1)->format('d/m/Y') }}</p>
+        <div class="bg-gray-100 p-4 border border-gray-300 mb-8 text-sm grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <h2 class="text-xl font-bold mb-2">Invoice #{{ $pesanan->nomor_invoice }}</h2>
+                <p><strong>Tanggal Order:</strong> {{ \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->format('d/m/Y H:i') }}</p>
+                <p><strong>Batas Bayar:</strong> {{ \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->addDays(1)->format('d/m/Y H:i') }}</p>
+            </div>
+            <div class="md:text-right">
+                <!-- LOGIKA TAMPIL RESI (HANYA MUNCUL JIKA LUNAS) -->
+                @if($statusLunas && $pesanan->resi)
+                    <p class="text-sm"><strong>No. Resi (AWB):</strong></p>
+                    <p class="text-xl font-bold text-blue-600">{{ $pesanan->resi }}</p>
+                @else
+                    <p class="text-sm"><strong>No. Resi (AWB):</strong></p>
+                    <p class="text-sm italic text-gray-500 bg-gray-200 inline-block px-2 py-1 rounded mt-1">Diterbitkan setelah lunas</p>
+                @endif
+            </div>
         </div>
 
-        <!-- INVOICED TO -->
-        <div class="mb-8 text-sm">
-            <p class="font-bold mb-1">Invoiced To</p>
-            <p class="font-bold uppercase">{{ $pesanan->sender_name }}</p>
-            <p class="uppercase">{{ $pesanan->sender_address }}</p>
-            <p class="uppercase">{{ $pesanan->sender_phone }}</p>
-            <p>Indonesia</p>
+        <!-- PENGIRIM & PENERIMA -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8 text-sm">
+            <!-- PENGIRIM -->
+            <div>
+                <p class="font-bold mb-1 border-b border-gray-300 pb-1">Pengirim (Invoiced To)</p>
+                <p class="font-bold uppercase text-red-600">{{ $pesanan->sender_name }}</p>
+                <p class="text-gray-600 mt-1 leading-snug">{{ $senderAddress }}</p>
+                <p class="mt-1"><i class="fas fa-phone-alt text-gray-400 mr-1"></i> {{ $pesanan->sender_phone }}</p>
+            </div>
+            
+            <!-- PENERIMA -->
+            <div>
+                <p class="font-bold mb-1 border-b border-gray-300 pb-1">Penerima (Ship To)</p>
+                <p class="font-bold uppercase text-green-600">{{ $pesanan->receiver_name }}</p>
+                <p class="text-gray-600 mt-1 leading-snug">{{ $receiverAddress }}</p>
+                <p class="mt-1"><i class="fas fa-phone-alt text-gray-400 mr-1"></i> {{ $pesanan->receiver_phone }}</p>
+            </div>
         </div>
 
         <!-- RINCIAN TAGIHAN TABLE -->
         <table class="w-full text-sm border-collapse border border-gray-300 mb-8">
             <thead>
                 <tr class="bg-gray-100">
-                    <th class="border border-gray-300 px-4 py-2 text-left font-bold w-3/4">Description</th>
+                    <th class="border border-gray-300 px-4 py-2 text-left font-bold w-3/4">Detail Pesanan & Layanan</th>
                     <th class="border border-gray-300 px-4 py-2 text-center font-bold w-1/4">Total</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td class="border border-gray-300 px-4 py-2">
-                        Pengiriman Paket: {{ $pesanan->item_description }} <br>
-                        <span class="text-gray-500">Penerima: {{ $pesanan->receiver_name }} ({{ $pesanan->weight }} gram)</span><br>
-                        <span class="text-gray-500">Ekspedisi: {{ $pesanan->expedition }} - {{ strtoupper($pesanan->service_type) }}</span>
+                    <td class="border border-gray-300 px-4 py-3">
+                        <p class="font-bold mb-1">Pengiriman Paket: {{ $pesanan->item_description }}</p>
+                        <ul class="text-gray-600 space-y-1 list-disc list-inside ml-1">
+                            <li><strong>Ekspedisi:</strong> {{ strtoupper($expeditionName) }} - {{ strtoupper($expeditionService) }}</li>
+                            <li><strong>Berat Aktual:</strong> {{ $pesanan->weight }} gram</li>
+                            <li><strong>Dimensi (PxLxT):</strong> {{ $pesanan->length ?? 0 }} x {{ $pesanan->width ?? 0 }} x {{ $pesanan->height ?? 0 }} cm</li>
+                            <li><strong>Nilai Barang:</strong> Rp {{ number_format($pesanan->item_price, 0, ',', '.') }}</li>
+                        </ul>
                     </td>
-                    <td class="border border-gray-300 px-4 py-2 text-right align-top">
+                    <td class="border border-gray-300 px-4 py-3 text-right align-top font-medium">
                         Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
                     </td>
                 </tr>
                 
                 @if($pesanan->insurance_cost > 0)
                 <tr>
-                    <td class="border border-gray-300 px-4 py-2">Biaya Asuransi Paket</td>
+                    <td class="border border-gray-300 px-4 py-2">Biaya Asuransi Pengiriman</td>
                     <td class="border border-gray-300 px-4 py-2 text-right">Rp {{ number_format($pesanan->insurance_cost, 0, ',', '.') }}</td>
                 </tr>
                 @endif
                 
                 @if($pesanan->cod_fee > 0)
                 <tr>
-                    <td class="border border-gray-300 px-4 py-2">Biaya Layanan (Fee)</td>
+                    <td class="border border-gray-300 px-4 py-2">Biaya Penanganan (Fee COD)</td>
                     <td class="border border-gray-300 px-4 py-2 text-right">Rp {{ number_format($pesanan->cod_fee, 0, ',', '.') }}</td>
                 </tr>
                 @endif
@@ -131,8 +177,8 @@
                     <td class="border border-gray-300 px-4 py-2 text-right font-bold bg-gray-50">Rp 0,00</td>
                 </tr>
                 <tr>
-                    <td class="border border-gray-300 px-4 py-2 text-right font-bold bg-gray-200">Total</td>
-                    <td class="border border-gray-300 px-4 py-2 text-right font-bold bg-gray-200">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
+                    <td class="border border-gray-300 px-4 py-3 text-right font-bold bg-gray-200 text-base">Grand Total</td>
+                    <td class="border border-gray-300 px-4 py-3 text-right font-bold bg-gray-200 text-base text-red-600">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
                 </tr>
             </tbody>
         </table>
@@ -152,18 +198,18 @@
                 @if($statusLunas)
                 <tr>
                     <td class="border border-gray-300 px-4 py-2">{{ \Carbon\Carbon::parse($pesanan->updated_at)->format('d/m/Y H:i') }}</td>
-                    <td class="border border-gray-300 px-4 py-2">{{ $pesanan->payment_method }}</td>
+                    <td class="border border-gray-300 px-4 py-2 uppercase">{{ str_replace('_', ' ', $pesanan->payment_method) }}</td>
                     <td class="border border-gray-300 px-4 py-2">{{ $pesanan->nomor_invoice }}</td>
-                    <td class="border border-gray-300 px-4 py-2 text-right">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
+                    <td class="border border-gray-300 px-4 py-2 text-right text-green-600 font-medium">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
                 </tr>
                 @else
                 <tr>
-                    <td colspan="4" class="border border-gray-300 px-4 py-2">No Related Transactions Found</td>
+                    <td colspan="4" class="border border-gray-300 px-4 py-4 italic text-gray-500">No Related Transactions Found</td>
                 </tr>
                 @endif
                 <tr>
-                    <td colspan="3" class="border border-gray-300 px-4 py-2 text-right font-bold bg-gray-50">Balance</td>
-                    <td class="border border-gray-300 px-4 py-2 text-right font-bold bg-gray-50">
+                    <td colspan="3" class="border border-gray-300 px-4 py-2 text-right font-bold bg-gray-50">Balance Due</td>
+                    <td class="border border-gray-300 px-4 py-2 text-right font-bold bg-gray-50 {{ !$statusLunas ? 'text-red-600' : 'text-gray-900' }}">
                         Rp {{ $statusLunas ? '0,00' : number_format($pesanan->price, 0, ',', '.') }}
                     </td>
                 </tr>
@@ -171,15 +217,15 @@
         </table>
 
         <div class="text-center text-xs text-gray-500 mb-8">
-            PDF Generated on {{ date('d/m/Y') }}
+            PDF Generated on {{ date('d M Y, H:i') }} WIB
         </div>
 
         <!-- ======================================================== -->
         <!-- AREA PEMBAYARAN (HANYA MUNCUL JIKA UNPAID)               -->
         <!-- ======================================================== -->
         @if(session('error'))
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 text-center">
-                {{ session('error') }}
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 text-center font-medium shadow-sm">
+                <i class="fas fa-exclamation-triangle mr-1"></i> {{ session('error') }}
             </div>
         @endif
 
@@ -190,13 +236,13 @@
                 @csrf
                 
                 <!-- TOMBOL TRIGGER MODAL -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6 relative">
-                    <h2 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">Pilih Metode Pembayaran</h2>
+                <div class="bg-gray-50 rounded-xl shadow-sm border border-gray-200 p-5 mb-6 relative">
+                    <h2 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider text-center">Pilih Metode Pembayaran</h2>
                     
-                    <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full border border-gray-300 p-4 rounded-lg cursor-pointer hover:bg-gray-50 focus:outline-none transition-colors">
+                    <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full bg-white border border-gray-300 p-4 rounded-lg cursor-pointer hover:border-red-500 hover:shadow-md focus:outline-none transition-all">
                         <div class="flex items-center">
-                            <img id="paymentMethodImg" src="https://placehold.co/32x32/EFEFEF/AAAAAA?text=?" alt="Logo" class="h-8 w-12 object-contain mr-4 bg-white border rounded p-1">
-                            <span id="paymentMethodLabel" class="text-sm font-bold text-gray-900">Pilih Metode Pembayaran...</span>
+                            <img id="paymentMethodImg" src="https://placehold.co/32x32/EFEFEF/AAAAAA?text=?" alt="Logo" class="h-8 w-12 object-contain mr-4 border rounded p-1">
+                            <span id="paymentMethodLabel" class="text-sm font-bold text-gray-900">Ketuk di sini untuk memilih bank...</span>
                         </div>
                         <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                     </button>
@@ -205,8 +251,8 @@
                 </div>
                 
                 <div class="text-center">
-                    <button type="submit" id="submit-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-10 rounded-lg text-lg transition duration-300 w-full shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
-                        <i class="fas fa-lock mr-2"></i> Proses Pembayaran
+                    <button type="submit" id="submit-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-10 rounded-lg text-lg transition duration-300 w-full md:w-2/3 mx-auto shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-lock mr-2"></i> Bayar Sekarang
                     </button>
                 </div>
             </form>
@@ -223,9 +269,9 @@
                     <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={{ urlencode($pesanan->payment_url) }}" alt="QRIS BCA" class="border p-2 rounded shadow">
                 </div>
             @else
-                <p class="mb-4 text-sm text-gray-600">Anda memilih pembayaran menggunakan <strong>{{ str_replace('_', ' ', $pesanan->payment_method) }}</strong></p>
+                <p class="mb-4 text-sm text-gray-600">Anda telah memilih pembayaran menggunakan <strong>{{ str_replace('_', ' ', strtoupper($pesanan->payment_method)) }}</strong></p>
                 <a href="{{ $pesanan->payment_url }}" class="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded text-lg transition duration-300 shadow">
-                    Lanjutkan Pembayaran
+                    Lanjutkan Pembayaran <i class="fas fa-arrow-right ml-2"></i>
                 </a>
             @endif
         </div>
@@ -233,15 +279,17 @@
         <!-- 3. JIKA METODE OFFLINE (CASH/COD/SALDO) MENUNGGU KONFIRMASI ADMIN -->
         @elseif(!$statusLunas)
         <div class="no-print border-t border-gray-300 pt-6 text-center">
-            <h4 class="text-lg font-bold mb-2">Menunggu Konfirmasi</h4>
-            <p class="text-sm text-gray-600">Metode: <strong>{{ $pesanan->payment_method }}</strong></p>
-            <p class="text-red-500 italic mt-2">Pesanan ini akan diproses setelah diverifikasi oleh admin.</p>
+            <h4 class="text-lg font-bold mb-2">Menunggu Konfirmasi Pembayaran</h4>
+            <p class="text-sm text-gray-600">Metode: <strong>{{ strtoupper($pesanan->payment_method) }}</strong></p>
+            <p class="text-red-500 italic mt-2">Pesanan ini sedang dalam antrean verifikasi manual oleh admin Sancaka.</p>
         </div>
         @endif
         
         <!-- TOMBOL PRINT -->
         <div class="no-print absolute top-10 left-10">
-            <button onclick="window.print()" class="bg-gray-800 text-white px-4 py-2 rounded text-sm hover:bg-gray-700 shadow">Print Invoice</button>
+            <button onclick="window.print()" class="bg-gray-800 text-white px-4 py-2 rounded text-sm hover:bg-gray-700 shadow">
+                <i class="fas fa-print mr-1"></i> Print Invoice
+            </button>
         </div>
 
     </div>
@@ -275,7 +323,7 @@
                         <img src="https://tokosancaka.com/assets/bca.png" class="h-8 w-12 object-contain mr-4 bg-white p-1 border rounded" alt="BCA">
                         <div class="flex flex-col">
                             <span class="text-sm font-bold text-gray-900">BCA QRIS</span>
-                            <span class="text-[11px] text-gray-500 mt-0.5">Generate Barcode</span>
+                            <span class="text-[11px] text-gray-500 mt-0.5">Generate Barcode Pembayaran</span>
                         </div>
                     </li>
 
@@ -285,7 +333,22 @@
                         <img src="https://tokosancaka.com/public/assets/doku.png" class="h-8 w-12 object-contain mr-4 bg-white p-1 border rounded" alt="DOKU">
                         <div class="flex flex-col">
                             <span class="text-sm font-bold text-gray-900">DOKU Gateway</span>
-                            <span class="text-[11px] text-gray-500 mt-0.5">VA, E-Wallet, Kartu Kredit</span>
+                            <span class="text-[11px] text-gray-500 mt-0.5">VA, E-Wallet, Kartu Kredit Lokal</span>
+                        </div>
+                    </li>
+
+                    <!-- E-WALLET & KARTU KREDIT GLOBAL -->
+                    <li class="col-span-full px-1 pt-4 pb-1 text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                        Kartu Kredit Global & PayPal
+                    </li>
+
+                    <!-- PAYPAL -->
+                    <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border rounded-lg hover:bg-red-50 transition-colors"
+                        data-value="PAYPAL" data-label="PayPal / Credit Card" data-img="https://tokosancaka.com/public/assets/paypal.png">
+                        <img src="https://tokosancaka.com/public/assets/paypal.png" alt="PayPal" class="h-8 w-12 object-contain mr-4 bg-white p-1 border rounded" onerror="this.src='https://placehold.co/32x32/EFEFEF/AAAAAA?text=PP'">
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold text-gray-900">PayPal / Kartu Kredit</span>
+                            <span class="text-[11px] text-gray-500 mt-0.5">Pembayaran Global (Otomatis USD)</span>
                         </div>
                     </li>
 
@@ -301,7 +364,7 @@
                             <img src="{{ $channel['icon_url'] }}" alt="{{ $channel['name'] }}" class="h-8 w-12 object-contain mr-4 bg-white p-1 border rounded" onerror="this.src='https://placehold.co/32x32?text=IMG'">
                             <div class="flex flex-col">
                                 <span class="text-sm font-bold text-gray-900">{{ $channel['name'] }}</span>
-                                <span class="text-[11px] text-gray-500 mt-0.5">Tripay Virtual Account</span>
+                                <span class="text-[11px] text-gray-500 mt-0.5">Tripay Payment</span>
                             </div>
                         </li>
                         @endif
@@ -376,11 +439,11 @@
             invoiceForm.addEventListener('submit', function(e) {
                 if (paymentMethodInput.value === "") {
                     e.preventDefault();
-                    alert('Silakan pilih metode pembayaran terlebih dahulu.');
+                    alert('Silakan ketuk tombol untuk memilih metode pembayaran terlebih dahulu.');
                     return;
                 }
                 submitButton.disabled = true;
-                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mengarahkan...';
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Mengarahkan ke Gateway...';
             });
         }
     });
