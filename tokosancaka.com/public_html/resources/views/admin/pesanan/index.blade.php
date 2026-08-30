@@ -580,6 +580,16 @@
                         <td class="hidden md:table-cell px-4 py-4 align-middle whitespace-nowrap text-sm font-medium sticky-col bg-gray-50 md:bg-white border-t md:border-none toggle-target-{{$index}}">
                              <span class="md:hidden block font-bold text-gray-500 text-xs mb-2 text-center uppercase border-b pb-2">⚙️ Aksi</span>
                             <div class="flex items-center justify-center md:justify-center space-x-3 md:space-x-3 w-full py-2 md:py-0">
+                                
+                                {{-- ======================================================= --}}
+                                {{-- TOMBOL INVOICE/BAYAR (Khusus Menunggu Pembayaran)       --}}
+                                {{-- ======================================================= --}}
+                                @if($order->status_pesanan === 'Menunggu Pembayaran')
+                                    <a href="{{ route('invoice.show', $order->nomor_invoice) }}" target="_blank" class="text-red-600 hover:text-red-800 transform hover:scale-125 transition duration-300" title="Buka Invoice & Bayar">
+                                        <i class="fas fa-file-invoice-dollar fa-lg"></i>
+                                    </a>
+                                @endif
+
                                 {{-- Detail --}}
                                 <a href="{{ route('admin.pesanan.show', ['resi' => $order->resi ?? $order->nomor_invoice]) }}" class="text-gray-500 hover:text-blue-600 transform hover:scale-110 transition" title="Detail">
                                     <i class="fas fa-eye fa-lg"></i>
@@ -607,7 +617,6 @@
                                 {{-- Cancel Order Trigger Button --}}
                                 @if(in_array($order->status_pesanan, ['Menunggu Pickup', 'Pesanan Dibuat']) && !empty($order->resi) && !Str::startsWith($order->resi, 'REF-') && !Str::contains($order->resi, 'MOCK'))
                                     <button type="button" onclick="document.getElementById('cancelModal_{{ $order->nomor_invoice }}').classList.remove('hidden')" class="text-gray-500 hover:text-yellow-500 transform hover:scale-110 transition cursor-pointer relative z-50 p-2" title="Batalkan via API">
-                                        {{-- pointer-events-none akan memaksa klik tembus ke button --}}
                                         <i class="fas fa-times-circle fa-xl pointer-events-none"></i>
                                     </button>
                                 @endif
