@@ -313,11 +313,14 @@ class PesananController extends Controller
 
             $paymentUrl = null; // Inisialisasi URL Pembayaran
 
+            //  ========================       INI ADALAH BATAS AWAL PEMBAYARAN ONLINE (TRIPAY/DOKU) YANG TIDAK PERLU KIRIMINAJA       =========================
+
+
             // 5. Proses logika pembayaran spesifik
             // ======================================================
             // === MODIFIKASI DIMULAI: TAMBAHKAN LOGIKA DOKU JOKUL ===
             // ======================================================
-            if ($validatedData['payment_method'] === 'Potong Saldo') {
+            /* if ($validatedData['payment_method'] === 'Potong Saldo') {
                 $customer = User::find($validatedData['customer_id']);
 
                 if (!$customer) {
@@ -451,6 +454,41 @@ class PesananController extends Controller
             // === MODIFIKASI SELESAI ===
             // ======================================================
 
+
+            // 6. Proses KiriminAja HANYA jika COD/Saldo/Cash
+            if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'Potong Saldo', 'Cash'])) {
+
+            ========================       INI ADALAH BATAS AKHIR PEMBAYARAN ONLINE (TRIPAY/DOKU) YANG TIDAK PERLU KIRIMINAJA       =========================
+            // Jika pembayaran online, biarkan pelanggan yang memilih gateway-nya nanti di halaman Invoice.
+
+            */
+
+            if ($validatedData['payment_method'] === 'Potong Saldo') {
+                $customer = User::find($validatedData['customer_id']);
+
+                if (!$customer) {
+                    throw new Exception('Pelanggan untuk potong saldo tidak ditemukan.');
+                }
+                if ($customer->saldo < $total_paid_ongkir) {
+                    throw new Exception('Saldo pelanggan tidak mencukupi.');
+                }
+
+                $customer->decrement('saldo', $total_paid_ongkir);
+                $pesanan->customer_id = $customer->id_pengguna;
+            }
+            // --- PASTE KODE BARUNYA DI SINI ---
+            elseif (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'Cash'])) {
+                 // Logika COD & Cash Admin, biarkan kosong. Ditangani di Langkah 6 (KiriminAja)
+            }
+            elseif ($validatedData['payment_method'] === 'Online') {
+                // JANGAN GENERATE DOKU/TRIPAY DI SINI. 
+                // Biarkan pelanggan yang memilih gateway-nya nanti di halaman Invoice.
+                $pesanan->payment_method = 'Menunggu Pilihan Customer';
+                $pesanan->save();
+                
+                $paymentUrl = null; 
+            }
+            // --- SELESAI ---
 
             // 6. Proses KiriminAja HANYA jika COD/Saldo/Cash
             if (in_array($validatedData['payment_method'], ['COD', 'CODBARANG', 'Potong Saldo', 'Cash'])) {

@@ -289,10 +289,26 @@
                             <label for="selected_expedition_display" class="block mb-2 text-sm font-medium text-gray-700">Pilih Ekspedisi</label>
                             <input type="text" id="selected_expedition_display" class="cursor-pointer bg-red-50 border border-red-300 text-red-600 text-sm rounded-lg block w-full p-2.5 text-center font-semibold" placeholder="Lengkapi data & klik di sini" readonly required>
                         </div>
-                        <div>
+                        {{--<div>
                             <label for="paymentMethodButton" class="block mb-2 text-sm font-medium text-gray-700">Metode Pembayaran</label>
                             <div id="paymentMethodButton" class="cursor-pointer bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5 flex justify-between items-center">
                                 <div class="flex items-center"><img id="selectedPaymentLogo" src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" alt="Logo" class="w-6 h-6 mr-2"><span id="selectedPaymentName">Pilih...</span></div><i class="fas fa-chevron-down text-gray-400"></i>
+                            </div>
+                        </div>
+                        --}}
+
+                        <div>
+                            <label for="payment_method" class="block mb-2 text-sm font-medium text-gray-700">Metode Pembayaran</label>
+                            <div class="relative">
+                                <select name="payment_method" id="payment_method" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required>
+                                    <option value="" disabled selected>Pilih Metode...</option>
+                                    <option value="Online">Transfer Online (Customer Pilih di Invoice)</option>
+                                    <option value="Potong Saldo">Potong Saldo Customer</option>
+                                    <option value="Cash">Cash (Tanpa Saldo)</option>
+                                    <option value="COD">COD Ongkir Saja</option>
+                                    <option value="CODBARANG">COD Barang + Ongkir</option>
+                                </select>
+                                <i class="fas fa-wallet text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
                             </div>
                         </div>
 

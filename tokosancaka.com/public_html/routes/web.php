@@ -1314,6 +1314,7 @@ Route::prefix('admin/invoice')->name('invoice.')->group(function () {
 // ========================================================
 
 Route::get('/invoice-pesanan/{nomor_invoice}', [InvoicePesananController::class, 'show'])->name('invoice.show');
+Route::post('/invoice-pesanan/{nomor_invoice}/bayar', [InvoicePesananController::class, 'prosesPembayaran'])->name('invoice.proses_bayar');
 
 // 1. Halaman Pencarian & Lacak Progress Invoice
 Route::get('/cek-invoice', [App\Http\Controllers\InvoiceController::class, 'track'])->name('public.invoice.track');
