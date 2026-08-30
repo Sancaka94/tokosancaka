@@ -13,7 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
 
     <style>
-        /* Desain Pita (Ribbon) UNPAID / LUNAS */
+        /* Desain Pita (Ribbon) UNPAID / LUNAS / REFUND */
         .ribbon-wrapper {
             position: absolute; right: -5px; top: -5px; z-index: 10;
             overflow: hidden; width: 150px; height: 150px; text-align: right;
@@ -22,83 +22,51 @@
             font-size: 1.1rem; font-weight: 900; color: #FFF;
             text-transform: uppercase; text-align: center; line-height: 40px;
             transform: rotate(45deg); -webkit-transform: rotate(45deg);
-            width: 200px; display: block; background: #dc2626; 
+            width: 200px; display: block; background: #dc2626; /* Default Merah untuk Unpaid/Refund */
             position: absolute; top: 25px; right: -45px;
             box-shadow: 0 3px 10px -5px rgba(0, 0, 0, 1);
             letter-spacing: 1px;
         }
-        .ribbon.paid { background: #16a34a; }
-        .ribbon.cancelled { background: #4b5563; }
+        .ribbon.paid { background: #16a34a; } /* Hijau untuk Lunas */
+        .ribbon.cancelled { background: #ef4444; } /* Merah Terang untuk Refund/Batal */
         
         @media print {
-            /* 1. Reset Ukuran Kertas & Margin */
-            @page {
-                size: A4 portrait;
-                margin: 5mm; 
-            }
+            @page { size: A4 portrait; margin: 5mm; }
             body { 
-                background: white !important; 
-                padding: 0 !important; 
-                margin: 0 !important; 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
+                background: white !important; padding: 0 !important; margin: 0 !important; 
+                -webkit-print-color-adjust: exact; print-color-adjust: exact; 
             }
             .no-print { display: none !important; }
-
-            /* 2. Hapus Shadow & Padding Container Utama */
             .print-container { 
-                box-shadow: none !important; 
-                max-width: 100% !important; 
-                width: 100% !important; 
-                margin: 0 !important; 
-                padding: 0 !important; 
-                border: none !important; 
+                box-shadow: none !important; max-width: 100% !important; width: 100% !important; 
+                margin: 0 !important; padding: 0 !important; border: none !important; 
             }
-
-            /* 3. PAKSA ELEMEN BERSEBELAHAN */
             .flex.flex-col.md\:flex-row {
-                flex-direction: row !important;
-                justify-content: space-between !important;
-                align-items: center !important;
-                gap: 10px !important;
+                flex-direction: row !important; justify-content: space-between !important;
+                align-items: center !important; gap: 10px !important;
             }
-            
             .grid.grid-cols-1.md\:grid-cols-2 {
-                display: grid !important;
-                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                gap: 10px !important;
+                display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important;
             }
-
-            .flex.flex-col-reverse.md\:flex-row {
-                flex-direction: row !important;
-                gap: 10px !important;
-            }
+            .flex.flex-col-reverse.md\:flex-row { flex-direction: row !important; gap: 10px !important; }
             .w-full.md\:w-3\/4 { width: 75% !important; }
             .w-full.md\:w-1\/4 { width: 25% !important; }
-
-            /* 4. PRESS SEMUA PADDING & MARGIN */
             .mb-6, .md\:mb-8, .mb-8, .mb-4 { margin-bottom: 8px !important; }
             .pb-6 { padding-bottom: 8px !important; }
             .p-4, .p-5, .sm\:p-8, .md\:p-12 { padding: 8px !important; }
             .mt-8 { margin-top: 10px !important; }
-            
             table th, table td { padding: 4px 6px !important; }
             .py-4 { padding-top: 6px !important; padding-bottom: 6px !important; }
-
-            /* 5. KECILKAN UKURAN FONT GLOBAL SAAT PRINT */
             * { font-size: 10px !important; line-height: 1.3 !important; }
             h2, .text-xl, .sm\:text-2xl, .font-extrabold { font-size: 14px !important; margin-bottom: 2px !important; }
             .text-lg, .sm\:text-lg { font-size: 12px !important; }
             .text-xs, .sm\:text-sm { font-size: 9px !important; }
-
-            /* 6. KECILKAN LOGO & BARCODE SAAT PRINT */
             img[alt="Sancaka Express"] { height: 40px !important; margin-bottom: 5px !important; }
             svg#barcodeResi { height: 35px !important; max-width: 180px !important; }
             #qrcode { padding: 2px !important; }
             #qrcode img { width: 45px !important; height: 45px !important; margin: 0 auto; }
         }
 
-        /* Custom Scrollbar Modal */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f8fafc; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
@@ -108,26 +76,25 @@
 <body class="bg-gray-100 py-4 sm:py-8 font-sans text-gray-800">
 
     @php
-        // 1. Parsing Helper Ekspedisi
+        // 1. Pengecekan Ekspedisi & Alamat
         $ship = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->expedition);
         $expeditionName = $ship['courier_name'] ?? 'SANCAKA'; 
         $expeditionService = $ship['service_name'] ?? 'Regular';
 
-        // 2. Mapping Logo Ekspedisi
         $courierMap = [
-            'jne'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png',
-            'tiki'          => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png',
-            'pos'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png',
-            'posindonesia'  => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png',
-            'sicepat'       => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png',
-            'sap'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png',
-            'jnt'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png',
-            'j&t'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png',
-            'jtcargo'       => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png',
-            'lion'          => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png',
-            'spx'           => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png',
-            'ninja'         => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png',
-            'anteraja'      => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png',
+            'jne' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png',
+            'tiki' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png',
+            'pos' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png',
+            'posindonesia' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png',
+            'sicepat' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png',
+            'sap' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png',
+            'jnt' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png',
+            'j&t' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png',
+            'jtcargo' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png',
+            'lion' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png',
+            'spx' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png',
+            'ninja' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png',
+            'anteraja' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png',
         ];
 
         $normalizedName = strtolower(str_replace(' ', '', $expeditionName));
@@ -137,28 +104,49 @@
             $finalLogoUrl = $courierMap['jtcargo'];
         } else {
             foreach ($courierMap as $key => $url) {
-                if (str_contains($normalizedName, $key)) {
-                    $finalLogoUrl = $url; break;
-                }
+                if (str_contains($normalizedName, $key)) { $finalLogoUrl = $url; break; }
             }
         }
 
-        // 3. Format Alamat
-        $senderAddress = implode(', ', array_filter([
-            $pesanan->sender_address, $pesanan->sender_village, 
-            $pesanan->sender_district, $pesanan->sender_regency, 
-            $pesanan->sender_province, $pesanan->sender_postal_code
-        ]));
+        $senderAddress = implode(', ', array_filter([$pesanan->sender_address, $pesanan->sender_village, $pesanan->sender_district, $pesanan->sender_regency, $pesanan->sender_province, $pesanan->sender_postal_code]));
+        $receiverAddress = implode(', ', array_filter([$pesanan->receiver_address, $pesanan->receiver_village, $pesanan->receiver_district, $pesanan->receiver_regency, $pesanan->receiver_province, $pesanan->receiver_postal_code]));
 
-        $receiverAddress = implode(', ', array_filter([
-            $pesanan->receiver_address, $pesanan->receiver_village, 
-            $pesanan->receiver_district, $pesanan->receiver_regency, 
-            $pesanan->receiver_province, $pesanan->receiver_postal_code
-        ]));
-
+        // 2. CEK STATUS DASAR (Database pesanan)
         $statusPesanan = strtolower($pesanan->status ?? '');
         $isCancelled = in_array($statusPesanan, ['batal', 'cancel', 'gagal', 'dibatalkan', 'cancelled']);
-
+        
+        // 3. OVERRIDE DENGAN STATUS REALTIME TRACKING API / DATABASE HISTORI
+        $statusText = 'Diproses / Menunggu Manifest';
+        
+        if ($pesanan->resi) {
+            try {
+                // CEK DB LOKAL: Cek histori tracking Sancaka
+                $cekDb = \Illuminate\Support\Facades\DB::table('tracking_histories')
+                            ->where('resi', $pesanan->resi)
+                            ->orderBy('created_at', 'desc')
+                            ->first();
+                
+                if ($cekDb && isset($cekDb->status)) {
+                    $statusText = $cekDb->status;
+                }
+                
+                // ATAU CEK API LANGSUNG: (Uncomment jika Anda menggunakan Helper API)
+                /*
+                $apiData = \App\Helpers\TrackingHelper::getTrackingData($pesanan->resi);
+                if(isset($apiData['status']) && !empty($apiData['status'])) {
+                    $statusText = $apiData['status'];
+                }
+                */
+                
+                // LOGIKA OVERRIDE: Jika status realtime mengandung kata batal/cancel
+                $rtStatusLower = strtolower($statusText);
+                if (str_contains($rtStatusLower, 'cancel') || str_contains($rtStatusLower, 'batal') || str_contains($rtStatusLower, 'retur') || str_contains($rtStatusLower, 'gagal')) {
+                    $isCancelled = true;
+                }
+            } catch(\Exception $e) {
+                // Jangan crash jika gagal
+            }
+        }
     @endphp
 
     <!-- ACTION BAR -->
@@ -174,10 +162,10 @@
     <!-- KERTAS INVOICE A4 -->
     <div class="max-w-4xl mx-auto bg-white p-5 sm:p-8 md:p-12 print-container relative shadow-2xl sm:rounded-lg border border-gray-200">
         
-        <!-- PITA STATUS (UNPAID / LUNAS / BATAL) -->
+        <!-- PITA STATUS (UNPAID / LUNAS / REFUND) -->
         <div class="ribbon-wrapper no-print">
             <div class="ribbon {{ $isCancelled ? 'cancelled' : ($statusLunas ? 'paid' : '') }}">
-                {{ $isCancelled ? 'DIBATALKAN' : ($statusLunas ? 'LUNAS' : 'UNPAID') }}
+                {{ $isCancelled ? 'REFUND' : ($statusLunas ? 'LUNAS' : 'UNPAID') }}
             </div>
         </div>
 
@@ -200,18 +188,18 @@
                 <p class="text-xs sm:text-sm text-gray-600"><strong>Batas Bayar:</strong> {{ \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->addDays(1)->format('d M Y, H:i') }}</p>
             </div>
             
-            <div class="w-full md:w-auto text-center bg-white p-3 rounded-lg border {{ $isCancelled ? 'border-gray-300 bg-gray-50' : ($statusLunas ? 'border-green-400 bg-green-50 shadow-sm' : 'border-gray-200') }}">
-                <p class="text-xs font-bold uppercase tracking-widest mb-1 {{ $isCancelled ? 'text-gray-500' : ($statusLunas ? 'text-green-700' : 'text-gray-500') }}">NO. RESI (AWB)</p>
+            <!-- KOTAK NO. RESI (MERAH BILA REFUND) -->
+            <div class="w-full md:w-auto text-center bg-white p-3 rounded-lg border {{ $isCancelled ? 'border-red-400 bg-red-50 shadow-sm' : ($statusLunas ? 'border-green-400 bg-green-50 shadow-sm' : 'border-gray-200') }}">
+                <p class="text-xs font-bold uppercase tracking-widest mb-1 {{ $isCancelled ? 'text-red-700' : ($statusLunas ? 'text-green-700' : 'text-gray-500') }}">NO. RESI (AWB)</p>
                 
                 @if($isCancelled)
-                    <span class="bg-gray-100 text-gray-500 border border-gray-200 px-3 py-1.5 rounded text-sm font-bold inline-block mt-1 uppercase tracking-wider">
-                        <i class="fas fa-ban mr-1"></i> Dibatalkan
+                    <span class="bg-red-100 text-red-600 border border-red-200 px-3 py-1.5 rounded text-sm font-bold inline-block mt-1 uppercase tracking-wider">
+                        <i class="fas fa-undo-alt mr-1"></i> DANA REFUND
                     </span>
                 @elseif($statusLunas && $pesanan->resi)
                     <div class="bg-white rounded px-2 py-1 mb-2">
                         <svg id="barcodeResi" class="w-full max-w-[220px] mx-auto h-12"></svg>
                     </div>
-                    
                     <a href="https://tokosancaka.com/tracking/search?resi={{ $pesanan->resi }}" target="_blank" class="inline-flex items-center justify-center bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-4 rounded shadow-sm transition-colors w-full uppercase tracking-wider mt-1">
                         <i class="fas fa-truck-fast mr-2"></i> Lacak Pengiriman
                     </a>
@@ -225,7 +213,6 @@
 
         <!-- PENGIRIM & PENERIMA -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 mb-6 md:mb-8 text-sm">
-            <!-- PENGIRIM -->
             <div class="border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm bg-white">
                 <p class="font-bold text-xs text-gray-400 mb-2 uppercase tracking-wider border-b border-gray-100 pb-2">Pengirim (Invoiced To)</p>
                 <p class="font-bold text-base sm:text-lg text-gray-800 uppercase">{{ $pesanan->sender_name }}</p>
@@ -233,7 +220,6 @@
                 <p class="mt-2 font-medium text-gray-800"><i class="fas fa-phone-alt text-gray-400 mr-2"></i> {{ $pesanan->sender_phone }}</p>
             </div>
             
-            <!-- PENERIMA -->
             <div class="border border-gray-200 rounded-lg p-4 sm:p-5 shadow-sm bg-white">
                 <p class="font-bold text-xs text-gray-400 mb-2 uppercase tracking-wider border-b border-gray-100 pb-2">Penerima (Ship To)</p>
                 <p class="font-bold text-base sm:text-lg text-gray-800 uppercase">{{ $pesanan->receiver_name }}</p>
@@ -300,7 +286,7 @@
                     </tr>
                     <tr class="bg-gray-800 text-white">
                         <td class="px-4 py-4 text-right font-black text-lg uppercase tracking-wider">Grand Total</td>
-                        <td class="px-4 py-4 text-right font-black text-lg text-green-400">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
+                        <td class="px-4 py-4 text-right font-black text-lg {{ $isCancelled ? 'text-red-400' : 'text-green-400' }}">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -344,45 +330,25 @@
             </div>
 
             <!-- QR CODE TRACKING & STATUS PAKET TERAKHIR -->
-            <div class="w-full md:w-1/4 flex flex-col justify-center items-center border-2 border-dashed {{ $isCancelled ? 'border-gray-300 bg-gray-50' : ($statusLunas ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50') }} rounded-xl p-3 sm:p-4">
-                <p class="text-xs font-bold mb-3 text-center uppercase tracking-widest {{ $isCancelled ? 'text-gray-500' : ($statusLunas ? 'text-green-700' : 'text-gray-500') }}">Lacak Pengiriman</p>
+            <div class="w-full md:w-1/4 flex flex-col justify-center items-center border-2 border-dashed {{ $isCancelled ? 'border-red-300 bg-red-50' : ($statusLunas ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50') }} rounded-xl p-3 sm:p-4">
+                <p class="text-xs font-bold mb-3 text-center uppercase tracking-widest {{ $isCancelled ? 'text-red-700' : ($statusLunas ? 'text-green-700' : 'text-gray-500') }}">Lacak Pengiriman</p>
                 
                 @if($isCancelled)
-                    <div class="w-[100px] h-[100px] bg-gray-100 border border-gray-200 flex flex-col items-center justify-center rounded-lg shadow-sm">
-                        <i class="fas fa-ban text-gray-400 text-3xl mb-2"></i>
-                        <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Batal</span>
+                    <!-- KOTAK STATUS JIKA BATAL (MERAH) -->
+                    <div class="w-full bg-white border border-red-200 rounded p-1.5 mb-2 shadow-sm text-center">
+                        <p class="text-[8px] text-red-500 font-bold uppercase tracking-widest mb-0.5">Status Paket:</p>
+                        <p class="text-[10px] font-bold text-red-700 leading-tight">{{ $statusText }}</p>
                     </div>
+
+                    <div class="w-[100px] h-[100px] bg-white border border-red-200 flex flex-col items-center justify-center rounded-lg shadow-sm">
+                        <i class="fas fa-hand-holding-usd text-red-400 text-4xl mb-1"></i>
+                        <span class="text-[10px] font-bold text-red-500 mt-1">DIKEMBALIKAN</span>
+                    </div>
+                    
+                    <p class="text-[10px] font-bold text-red-600 mt-2 text-center uppercase tracking-widest"><i class="fas fa-times-circle mr-1"></i> REFUND</p>
                 @elseif($statusLunas && $pesanan->resi)
                     
-                    @php
-                        // TEMBAK DATABASE ATAU API UNTUK MENDAPATKAN STATUS
-                        $statusText = 'Diproses / Manifest';
-                        
-                        try {
-                            // 1. Cek dari Database Lokal (Ganti 'tracking_histories' dengan nama tabel riwayat Anda)
-                            $cekDb = \Illuminate\Support\Facades\DB::table('tracking_histories')
-                                        ->where('resi', $pesanan->resi)
-                                        ->orderBy('created_at', 'desc')
-                                        ->first();
-                            
-                            if ($cekDb && isset($cekDb->status)) {
-                                $statusText = $cekDb->status;
-                            }
-                            
-                            // 2. ATAU TEMBAK API LANGSUNG (Jika Anda punya helper/fungsi tracking tersendiri)
-                            // Hapus komentar di bawah ini jika ingin langsung hit API
-                            /*
-                            $apiData = \App\Helpers\TrackingHelper::getTrackingData($pesanan->resi);
-                            if(isset($apiData['status'])) {
-                                $statusText = $apiData['status'];
-                            }
-                            */
-                        } catch(\Exception $e) {
-                            // Biarkan kosong agar tidak crash jika tabel tidak ada
-                        }
-                    @endphp
-
-                    <!-- TAMPILAN STATUS PAKET -->
+                    <!-- KOTAK STATUS JIKA LUNAS (HIJAU) -->
                     <div class="w-full bg-white border border-green-200 rounded p-1.5 mb-2 shadow-sm text-center">
                         <p class="text-[8px] text-gray-500 font-bold uppercase tracking-widest mb-0.5">Status Paket:</p>
                         <p class="text-[10px] font-bold text-green-700 leading-tight" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
@@ -410,10 +376,10 @@
         <!-- AREA PEMBAYARAN -->
         <!-- ======================================================== -->
         @if($isCancelled)
-            <div class="no-print mt-8 border border-gray-300 bg-gray-50 p-6 rounded-xl shadow-sm text-center">
-                <i class="fas fa-file-excel text-5xl text-gray-400 mb-4 drop-shadow-sm"></i>
-                <h4 class="text-xl font-black text-gray-700 mb-2 uppercase tracking-widest">Pesanan Dibatalkan</h4>
-                <p class="text-sm text-gray-600 mt-2">Tagihan ini sudah tidak berlaku karena pesanan telah dibatalkan atau gagal diproses.</p>
+            <div class="no-print mt-8 border border-red-200 bg-red-50 p-6 rounded-xl shadow-sm text-center">
+                <i class="fas fa-undo-alt text-5xl text-red-500 mb-4 drop-shadow-sm"></i>
+                <h4 class="text-xl font-black text-red-700 mb-2 uppercase tracking-widest">Pesanan Dibatalkan & Refund</h4>
+                <p class="text-sm text-red-600 mt-2">Tagihan ini sudah tidak berlaku karena pesanan telah <strong>{{ $statusText }}</strong>. Dana pembayaran Anda akan atau telah di-refund.</p>
             </div>
         @else
 
@@ -628,24 +594,15 @@
         if (!isCancelled && isPaid && resiSancaka) {
             try {
                 JsBarcode("#barcodeResi", resiSancaka, {
-                    format: "CODE128", 
-                    lineColor: "#16a34a", 
-                    textMargin: 4, 
-                    fontOptions: "bold", 
-                    fontSize: 14,
-                    height: 45, 
-                    width: 2, 
-                    displayValue: true 
+                    format: "CODE128", lineColor: "#16a34a", textMargin: 4, 
+                    fontOptions: "bold", fontSize: 14, height: 45, width: 2, displayValue: true 
                 });
             } catch (e) { console.error("Gagal JSBarcode:", e); }
 
             try {
                 new QRCode(document.getElementById("qrcode"), {
                     text: "https://tokosancaka.com/tracking/search?resi=" + resiSancaka,
-                    width: 85, 
-                    height: 85,
-                    colorDark : "#16a34a",
-                    colorLight : "#ffffff",
+                    width: 85, height: 85, colorDark : "#16a34a", colorLight : "#ffffff",
                     correctLevel : QRCode.CorrectLevel.M
                 });
             } catch (e) { console.error("Gagal QRCode:", e); }
@@ -670,18 +627,14 @@
             paymentOptionsList.querySelectorAll('.payment-option').forEach(item => {
                 item.addEventListener('click', function () {
                     paymentMethodInput.value = this.dataset.value;
-                    
                     paymentOptionsList.querySelectorAll('.payment-option').forEach(li => {
                         li.classList.remove('bg-red-50', 'border-red-500', 'ring-1', 'ring-red-500');
                         li.classList.add('bg-white', 'border-gray-200');
                     });
-                    
                     this.classList.remove('bg-white', 'border-gray-200');
                     this.classList.add('bg-red-50', 'border-red-500', 'ring-1', 'ring-red-500');
-                    
                     document.getElementById('paymentMethodLabel').textContent = this.dataset.label;
                     document.getElementById('paymentMethodImg').src = this.dataset.img;
-                    
                     closePaymentModal();
                 });
             });
