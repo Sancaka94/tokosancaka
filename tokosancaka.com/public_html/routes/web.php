@@ -1241,6 +1241,9 @@ Route::get('/seminar/tiket/{ticket_number}', [SeminarController::class, 'showTic
 // Sebaiknya dibungkus middleware auth/admin jika aplikasi sudah live
 Route::prefix('admin')->name('admin.')->group(function () {
 
+    // API Pencarian Customer untuk form pesanan
+    Route::get('/pesanan/search-customer', [\App\Http\Controllers\Admin\PesananController::class, 'searchCustomerAjax'])->name('pesanan.search_customer');
+
     // Dashboard Data Peserta & Statistik
     Route::get('/seminar/peserta', [SeminarController::class, 'index'])->name('seminar.index');
 

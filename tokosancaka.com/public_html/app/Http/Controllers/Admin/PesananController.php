@@ -2666,6 +2666,47 @@ public function cetakThermal($resi)
         }
     }
 
+    /**
+     * API Pencarian Customer dengan Pagination untuk Select2 (Potong Saldo)
+     */
+    public function searchCustomerAjax(Request $request)
+    {
+        $search = $request->get('q');
+        $page = $request->get('page', 1);
+
+        $query = User::query(); // Pastikan mengarah ke tabel Pengguna
+
+        // Filter pencarian berdasarkan Nama, Toko, atau WA
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('nama_lengkap', 'like', "%{$search}%")
+                  ->orWhere('store_name', 'like', "%{$search}%")
+                  ->orWhere('no_wa', 'like', "%{$search}%");
+            });
+        }
+
+        // Ambil data dengan paginasi (15 per halaman)
+        $customers = $query->select('id_pengguna', 'nama_lengkap', 'store_name', 'saldo')
+                           ->paginate(15, ['*'], 'page', $page);
+
+        // Format hasil untuk dibaca oleh Select2
+        $formatted = $customers->map(function ($user) {
+            return [
+                'id' => $user->id_pengguna,
+                'nama_lengkap' => $user->nama_lengkap,
+                'store_name' => $user->store_name,
+                'saldo' => (float) $user->saldo
+            ];
+        });
+
+        return response()->json([
+            'results' => $formatted,
+            'pagination' => [
+                'more' => $customers->hasMorePages()
+            ]
+        ]);
+    }
+
 
 } // Akhir Class PesananController
 

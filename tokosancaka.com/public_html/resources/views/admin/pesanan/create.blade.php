@@ -317,7 +317,7 @@
                             </div>
                         </div>
 
-                          <div id="customer_container" class="md:col-span-2 hidden">
+                        {{--   <div id="customer_container" class="md:col-span-2 hidden">
                             <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib untuk Potong Saldo)</label>
                             <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
                                 <option value="">-- Pilih Pelanggan --</option>
@@ -328,6 +328,15 @@
 
                                 @endforeach
                             </select>
+                        </div> --}} 
+
+                        <!-- WADAH PENCARIAN CUSTOMER (AJAX SELECT2) -->
+                        <div id="customer_container" class="md:col-span-2 hidden mt-2">
+                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">
+                                <i class="fas fa-users text-red-600 mr-1"></i> Pilih Pelanggan (Pemilik Saldo)
+                            </label>
+                            <select id="customer_id" name="customer_id" class="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-lg"></select>
+                            <p class="text-xs text-gray-500 mt-2"><i class="fas fa-info-circle mr-1"></i>Ketik nama, nama toko, atau No. WA untuk memfilter data.</p>
                         </div>
 
                         <div class="pt-4">
@@ -1115,6 +1124,92 @@ applyStrictInsurance(true);
 
 </script>
 @endif
+
+{{-- LIBRARY SELECT2 UNTUK PENCARIAN AJAX --}}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<style>
+    /* Styling agar Select2 menyatu dengan desain Tailwind */
+    .select2-container .select2-selection--single {
+        height: 42px !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 0.5rem !important;
+        display: flex;
+        align-items: center;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 40px !important;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 1. Logika Muncul/Hilang Kolom Pelanggan saat pilih "Potong Saldo"
+    const paymentSelect = document.getElementById('payment_method');
+    if (paymentSelect) {
+        paymentSelect.addEventListener('change', function() {
+            const val = this.value;
+            const container = document.getElementById('customer_container');
+            const select = $('#customer_id');
+
+            if (val === 'Potong Saldo') {
+                container.classList.remove('hidden');
+                select.prop('required', true);
+            } else {
+                container.classList.add('hidden');
+                select.prop('required', false);
+                select.val(null).trigger('change'); // Kosongkan jika batal potong saldo
+            }
+            
+            if (typeof runValidityChecks === "function") runValidityChecks();
+        });
+    }
+
+    // 2. Inisialisasi Select2 AJAX API
+    $('#customer_id').select2({
+        width: '100%',
+        placeholder: 'Ketik nama / toko / no WA...',
+        allowClear: true,
+        ajax: {
+            url: "{{ route('admin.pesanan.search_customer') }}", // Pastikan Route ini sudah ada di web.php
+            dataType: 'json',
+            delay: 300,
+            data: function (params) {
+                return {
+                    q: params.term, // Kata yang diketik admin
+                    page: params.page || 1
+                };
+            },
+            cache: true
+        },
+        // Desain daftar yang muncul ke bawah saat diketik
+        templateResult: function(repo) {
+            if (repo.loading) return "Mencari data...";
+            
+            let toko = repo.store_name ? `<span class="text-xs text-gray-500 block mt-0.5"><i class="fas fa-store text-gray-400 mr-1"></i> ${repo.store_name}</span>` : '';
+            let saldoFormat = new Intl.NumberFormat('id-ID').format(repo.saldo || 0);
+            
+            return $(`
+                <div class="p-2 border-b border-gray-100">
+                    <div class="font-bold text-gray-800">${repo.nama_lengkap}</div>
+                    ${toko}
+                    <div class="text-xs text-red-600 font-bold mt-1 bg-red-50 inline-block px-2 py-0.5 rounded border border-red-100">
+                        <i class="fas fa-wallet mr-1"></i> Saldo: Rp ${saldoFormat}
+                    </div>
+                </div>
+            `);
+        },
+        // Desain teks saat data sudah diklik/dipilih
+        templateSelection: function(repo) {
+            if (!repo.id) return repo.text;
+            let saldoFormat = new Intl.NumberFormat('id-ID').format(repo.saldo || 0);
+            return repo.nama_lengkap + ' (Saldo: Rp ' + saldoFormat + ')';
+        }
+    });
+});
+</script>
 
 @endpush
 
