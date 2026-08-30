@@ -575,13 +575,17 @@ class PesananController extends Controller
             // ============================================
 
             // 9. Arahkan pengguna
-            if ($paymentUrl) {
+            /*if ($paymentUrl) {
                 // Arahkan ke Tripay atau DOKU
                 return redirect()->away($paymentUrl);
             }
 
             // Ke index jika COD/Saldo
-            return redirect()->route('admin.pesanan.index')->with('success', $notifMessage);
+            return redirect()->route('admin.pesanan.index')->with('success', $notifMessage); */
+
+            // 9. Arahkan pengguna HANYA KE HALAMAN INVOICE
+            return redirect()->route('invoice.show', $pesanan->nomor_invoice)
+                ->with('success', 'Pesanan berhasil dibuat. Silakan selesaikan pembayaran di halaman ini.');
 
         } catch (ValidationException $e) {
             DB::rollBack();
@@ -2570,7 +2574,7 @@ public function cetakThermal($resi)
     }
 
     /**
-     * HELPER: Kirim Notifikasi Email ke Pelanggan (Jika Diinput Admin)
+     * HELPER: Kirim Notifikasi Email ke Pelanggan
      */
     public static function _sendEmailNotifToCustomer(Pesanan $pesanan)
     {
@@ -2580,32 +2584,31 @@ public function cetakThermal($resi)
         }
 
         $emailTarget = $pesanan->customer_email;
-        $subject = 'Rincian Pesanan Anda - Sancaka Express (' . $pesanan->nomor_invoice . ')';
+        $subject = 'Invoice Pesanan Anda - Sancaka Express (' . $pesanan->nomor_invoice . ')';
 
-        $resi = $pesanan->resi ? $pesanan->resi : 'Menunggu / Belum Ada Resi';
-        $expedition = $pesanan->expedition . ' (' . $pesanan->service_type . ')';
+        $resi = $pesanan->resi ? $pesanan->resi : 'Menunggu Resi';
         $harga = 'Rp ' . number_format($pesanan->price, 0, ',', '.');
-        $linkIdentifier = $pesanan->resi ?? $pesanan->shipping_ref ?? $pesanan->nomor_invoice;
-        $linkTracking = "https://tokosancaka.com/tracking/search?resi=" . $linkIdentifier;
+        
+        // Buat link yang mengarah ke halaman publik Invoice
+        $linkInvoice = route('invoice.show', $pesanan->nomor_invoice);
 
         $bodyHtml = "
         <div style='font-family: Arial, sans-serif; color: #333; line-height: 1.6;'>
             <h2 style='color: #d32f2f;'>Terima Kasih Menggunakan Sancaka Express!</h2>
             <p>Halo <strong>{$pesanan->sender_name}</strong>,</p>
-            <p>Pesanan Anda telah berhasil masuk ke sistem kami dan sedang diproses. Berikut adalah rincian pesanan Anda:</p>
+            <p>Pesanan Anda telah berhasil masuk ke sistem kami. Berikut adalah ringkasan tagihan Anda:</p>
 
             <table border='1' cellpadding='10' cellspacing='0' style='border-collapse: collapse; width: 100%; max-width: 600px; margin-bottom: 20px;'>
                 <tr><td width='35%'><strong>No. Invoice</strong></td><td>{$pesanan->nomor_invoice}</td></tr>
                 <tr><td><strong>No. Resi</strong></td><td style='color: blue;'><strong>{$resi}</strong></td></tr>
-                <tr><td><strong>Ekspedisi</strong></td><td>{$expedition}</td></tr>
-                <tr><td><strong>Penerima</strong></td><td>{$pesanan->receiver_name} ({$pesanan->receiver_phone})</td></tr>
-                <tr><td><strong>Detail Paket</strong></td><td>{$pesanan->item_description} ({$pesanan->weight} Gram)</td></tr>
-                <tr><td><strong>Total Tagihan</strong></td><td><strong>{$harga}</strong></td></tr>
+                <tr><td><strong>Penerima</strong></td><td>{$pesanan->receiver_name}</td></tr>
+                <tr><td><strong>Total Tagihan</strong></td><td style='color: #d32f2f; font-size: 18px;'><strong>{$harga}</strong></td></tr>
             </table>
 
+            <p>Silakan klik tombol di bawah ini untuk melihat detail lengkap Halaman Invoice dan memproses pembayaran:</p>
             <p>
-                <a href='{$linkTracking}' target='_blank' style='display: inline-block; padding: 10px 20px; background-color: #d32f2f; color: #fff; text-decoration: none; border-radius: 5px; font-weight: bold;'>
-                    Lacak Paket Saya
+                <a href='{$linkInvoice}' target='_blank' style='display: inline-block; padding: 12px 25px; background-color: #d32f2f; color: #fff; text-decoration: none; border-radius: 5px; font-weight: bold;'>
+                    Lihat & Bayar Invoice
                 </a>
             </p>
             <br>
@@ -2614,14 +2617,14 @@ public function cetakThermal($resi)
         ";
 
         try {
-            Mail::html($bodyHtml, function ($message) use ($emailTarget, $subject) {
+            \Illuminate\Support\Facades\Mail::html($bodyHtml, function ($message) use ($emailTarget, $subject) {
                 $message->to($emailTarget)
                         ->subject($subject)
                         ->from(config('mail.from.address', 'admin@tokosancaka.com'), config('mail.from.name', 'Sancaka Express'));
             });
-            Log::info('Berhasil kirim email notif pelanggan ke: ' . $emailTarget . ' untuk invoice: ' . $pesanan->nomor_invoice);
+            \Illuminate\Support\Facades\Log::info('Berhasil kirim email notif pelanggan ke: ' . $emailTarget . ' untuk invoice: ' . $pesanan->nomor_invoice);
         } catch (\Exception $e) {
-            Log::error('Gagal kirim email notif pelanggan: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Gagal kirim email notif pelanggan: ' . $e->getMessage());
         }
     }
 

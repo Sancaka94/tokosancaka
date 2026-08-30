@@ -137,6 +137,7 @@ use App\Http\Controllers\Admin\PerizinanController;
 use App\Http\Controllers\Admin\SancakaExpressController;
 use App\Http\Controllers\Admin\WhitelistController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\InvoicePesananController;
 use App\Http\Controllers\CashflowController;
 use App\Http\Controllers\AdminPricelistController;
 use App\Http\Controllers\Admin\ProdukController; // Pastikan namespace controller sesuai
@@ -1311,6 +1312,8 @@ Route::prefix('admin/invoice')->name('invoice.')->group(function () {
 // ========================================================
 // RUTE PUBLIK INVOICE & TRACKING (Akses Customer)
 // ========================================================
+
+Route::get('/invoice-pesanan/{nomor_invoice}', [InvoicePesananController::class, 'show'])->name('invoice.show');
 
 // 1. Halaman Pencarian & Lacak Progress Invoice
 Route::get('/cek-invoice', [App\Http\Controllers\InvoiceController::class, 'track'])->name('public.invoice.track');
