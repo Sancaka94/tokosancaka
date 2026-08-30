@@ -308,11 +308,11 @@
                 <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full bg-white border-2 border-red-300 p-3 sm:p-4 rounded-xl cursor-pointer hover:border-red-600 hover:shadow-md focus:outline-none transition-all mb-5 group">
                     <div class="flex items-center overflow-hidden">
                         <div class="w-12 h-10 sm:w-14 sm:h-10 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded-lg bg-gray-50 mr-3 sm:mr-4">
-                            <img id="paymentMethodImg" src="https://placehold.co/40x40/EFEFEF/AAAAAA?text=?" alt="Logo" class="max-h-full max-w-full object-contain p-1">
+                            <img id="paymentMethodImg" src="https://tokosancaka.com/public/assets/cash.png" alt="Logo" class="max-h-full max-w-full object-contain p-1">
                         </div>
                         <div class="text-left flex-1 min-w-0">
                             <span class="block text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Pilih Bank / E-Wallet</span>
-                            <span id="paymentMethodLabel" class="block text-sm sm:text-base font-bold text-gray-900 truncate group-hover:text-red-600 transition-colors">Ketuk untuk memilih metode...</span>
+                            <span id="paymentMethodLabel" class="block text-sm sm:text-base font-bold text-gray-900 truncate group-hover:text-red-600 transition-colors">Klik untuk memilih metode...</span>
                         </div>
                     </div>
                     <i class="fas fa-chevron-right text-gray-300 group-hover:text-red-500 ml-2 flex-shrink-0"></i>
@@ -405,7 +405,67 @@
                         </div>
                     </li>
 
-                    <!-- E-WALLET & KARTU KREDIT GLOBAL -->
+                    <!-- ========================================== -->
+                    <!-- DANA ENTERPRISE SECTION                    -->
+                    <!-- ========================================== -->
+                    <li class="col-span-full pt-4 pb-2 text-xs font-black text-gray-500 uppercase tracking-widest border-b border-gray-200 mt-2">
+                        DANA Enterprise
+                    </li>
+
+                    @php
+                        $user = Auth::user();
+                        $userDanaToken = $user ? $user->dana_access_token : null;
+                        $userDanaBalance = $user ? ($user->dana_user_balance ?? 0) : 0;
+                        $hasDanaBinding = !empty($userDanaToken);
+                    @endphp
+
+                    <!-- DANA REGULER -->
+                    <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-red-500 hover:bg-red-50 hover:shadow-md transition-all group"
+                        data-value="DANA" data-label="DANA (Web Checkout)" data-img="{{ asset('public/assets/dana.webp') }}">
+                        <div class="w-16 h-12 flex-shrink-0 flex items-center justify-center bg-white border border-gray-100 rounded-lg mr-3.5 p-1 group-hover:border-red-200 transition-colors">
+                            <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="max-h-full max-w-full object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                        </div>
+                        <div class="flex flex-col flex-1 overflow-hidden">
+                            <span class="text-sm font-bold text-gray-900 truncate group-hover:text-red-700 transition-colors">DANA Checkout</span>
+                            <span class="text-[11px] text-gray-500 mt-0.5 truncate">Diarahkan ke aplikasi DANA</span>
+                        </div>
+                    </li>
+
+                    <!-- DANA BINDING (AUTO-DEBIT) -->
+                    @if($hasDanaBinding)
+                        <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border border-blue-200 rounded-xl bg-blue-50 hover:border-blue-400 hover:bg-blue-100 hover:shadow-md transition-all group"
+                            data-value="DANA_BINDING" data-label="DANA Auto-Debit" data-img="{{ asset('public/assets/dana.webp') }}">
+                            <div class="w-16 h-12 flex-shrink-0 flex items-center justify-center bg-white border border-blue-100 rounded-lg mr-3.5 p-1 group-hover:border-blue-300 transition-colors">
+                                <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="max-h-full max-w-full object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                            </div>
+                            <div class="flex flex-col flex-1 overflow-hidden">
+                                <span class="text-sm font-bold text-gray-900 truncate group-hover:text-blue-700 transition-colors">DANA Auto-Debit</span>
+                                <span class="text-[11px] text-gray-600 font-medium mt-0.5 truncate">Saldo: <span class="text-blue-700">Rp{{ number_format($userDanaBalance, 0, ',', '.') }}</span></span>
+                            </div>
+                            <span class="ml-2 bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
+                                Tersambung
+                            </span>
+                        </li>
+                    @else
+                        <li class="col-span-1 flex items-center p-3 border border-dashed border-gray-300 rounded-xl bg-gray-50 justify-between">
+                            <div class="flex items-center overflow-hidden mr-2">
+                                <div class="w-16 h-12 flex-shrink-0 flex items-center justify-center bg-gray-100 border border-gray-200 rounded-lg mr-3.5 p-1 opacity-60 grayscale">
+                                    <img src="{{ asset('public/assets/dana.webp') }}" alt="DANA" class="max-h-full max-w-full object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                                </div>
+                                <div class="flex flex-col flex-1 overflow-hidden">
+                                    <span class="text-sm font-bold text-gray-500 truncate">DANA Auto-Debit</span>
+                                    <span class="text-[11px] text-gray-400 mt-0.5 truncate">Bayar instan 1-klik</span>
+                                </div>
+                            </div>
+                            <a href="{{ url('/dana/start-binding') }}" class="flex-shrink-0 px-2.5 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 shadow-sm transition-colors text-center">
+                                Hubungkan
+                            </a>
+                        </li>
+                    @endif
+
+                    <!-- ========================================== -->
+                    <!-- KARTU KREDIT GLOBAL & PAYPAL               -->
+                    <!-- ========================================== -->
                     <li class="col-span-full pt-4 pb-2 text-xs font-black text-gray-500 uppercase tracking-widest border-b border-gray-200 mt-2">
                         Kartu Kredit Global & PayPal
                     </li>
@@ -422,7 +482,9 @@
                         </div>
                     </li>
 
-                    <!-- TRIPAY CHANNELS -->
+                    <!-- ========================================== -->
+                    <!-- TRIPAY CHANNELS                            -->
+                    <!-- ========================================== -->
                     @if(isset($tripayChannels) && count($tripayChannels) > 0)
                     <li class="col-span-full pt-4 pb-2 text-xs font-black text-gray-500 uppercase tracking-widest border-b border-gray-200 mt-2">
                         Transfer Bank & Minimarket (Otomatis)
@@ -520,7 +582,7 @@
 
             invoiceForm.addEventListener('submit', function(e) {
                 if (paymentMethodInput.value === "") {
-                    e.preventDefault(); alert('Silakan ketuk tombol kotak putih di atas untuk memilih bank/metode pembayaran terlebih dahulu.'); return;
+                    e.preventDefault(); alert('Silakan Klik tombol kotak putih di atas untuk memilih bank/metode pembayaran terlebih dahulu.'); return;
                 }
                 submitButton.disabled = true;
                 submitButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
