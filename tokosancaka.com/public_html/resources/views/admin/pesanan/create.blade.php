@@ -1167,19 +1167,29 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // 2. Inisialisasi Select2 AJAX API
+   // 2. Inisialisasi Select2 AJAX API
     $('#customer_id').select2({
         width: '100%',
         placeholder: 'Ketik nama / toko / no WA...',
         allowClear: true,
         ajax: {
-            url: "{{ route('admin.pesanan.search_customer') }}", // Pastikan Route ini sudah ada di web.php
+            url: "{{ route('admin.pesanan.search_customer') }}", 
             dataType: 'json',
             delay: 300,
             data: function (params) {
                 return {
                     q: params.term, // Kata yang diketik admin
-                    page: params.page || 1
+                    page: params.page || 1 // Halaman pagination
+                };
+            },
+            // INI YANG MEMBUAT PAGINATION & ICON LOADING MUNCUL
+            processResults: function (data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: data.results,
+                    pagination: {
+                        more: data.pagination.more
+                    }
                 };
             },
             cache: true
@@ -1203,7 +1213,7 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         // Desain teks saat data sudah diklik/dipilih
         templateSelection: function(repo) {
-            if (!repo.id) return repo.text;
+            if (!repo.id) return repo.text || "Pilih Pelanggan...";
             let saldoFormat = new Intl.NumberFormat('id-ID').format(repo.saldo || 0);
             return repo.nama_lengkap + ' (Saldo: Rp ' + saldoFormat + ')';
         }

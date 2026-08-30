@@ -830,6 +830,9 @@ Route::prefix('admin/akuntansi')->name('admin.akuntansi.')->group(function () {
 
 Route::middleware(['auth', RoleMiddleware::class . ':Admin'])->prefix('admin')->name('admin.')->group(function () {
 
+    // API Pencarian Pelanggan (Select2 Pagination)
+    Route::get('/pesanan/search-customer-ajax', [\App\Http\Controllers\Admin\PesananController::class, 'searchCustomerAjax'])->name('pesanan.search_customer');
+    
     // === 1. TARUH SEMUA ROUTE STATIC DI PALING ATAS ===
     Route::get('kontak/search-district', [\App\Http\Controllers\KontakController::class, 'searchDistrict'])->name('kontak.search-district');
     Route::get('kontak/api-search-pickup', [\App\Http\Controllers\KontakController::class, 'searchPickupApi'])->name('kontak.api.search_pickup');
@@ -1241,8 +1244,6 @@ Route::get('/seminar/tiket/{ticket_number}', [SeminarController::class, 'showTic
 // Sebaiknya dibungkus middleware auth/admin jika aplikasi sudah live
 Route::prefix('admin')->name('admin.')->group(function () {
 
-    // API Pencarian Customer untuk form pesanan
-    Route::get('/pesanan/search-customer', [\App\Http\Controllers\Admin\PesananController::class, 'searchCustomerAjax'])->name('pesanan.search_customer');
 
     // Dashboard Data Peserta & Statistik
     Route::get('/seminar/peserta', [SeminarController::class, 'index'])->name('seminar.index');
