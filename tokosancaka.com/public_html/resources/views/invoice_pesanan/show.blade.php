@@ -28,6 +28,7 @@
             letter-spacing: 1px;
         }
         .ribbon.paid { background: #16a34a; }
+        .ribbon.cancelled { background: #4b5563; } /* Warna Abu-abu Tua */
         
         @media print {
             /* 1. Reset Ukuran Kertas & Margin */
@@ -159,6 +160,10 @@
             $pesanan->receiver_district, $pesanan->receiver_regency, 
             $pesanan->receiver_province, $pesanan->receiver_postal_code
         ]));
+
+        $statusPesanan = strtolower($pesanan->status ?? '');
+        $isCancelled = in_array($statusPesanan, ['batal', 'cancel', 'gagal', 'dibatalkan', 'cancelled']);
+
     @endphp
 
     <!-- ACTION BAR -->
@@ -174,10 +179,10 @@
     <!-- KERTAS INVOICE A4 -->
     <div class="max-w-4xl mx-auto bg-white p-5 sm:p-8 md:p-12 print-container relative shadow-2xl sm:rounded-lg border border-gray-200">
         
-        <!-- PITA STATUS (UNPAID / LUNAS) -->
+        <!-- PITA STATUS (UNPAID / LUNAS / BATAL) -->
         <div class="ribbon-wrapper no-print">
-            <div class="ribbon {{ $statusLunas ? 'paid' : '' }}">
-                {{ $statusLunas ? 'LUNAS' : 'UNPAID' }}
+            <div class="ribbon {{ $isCancelled ? 'cancelled' : ($statusLunas ? 'paid' : '') }}">
+                {{ $isCancelled ? 'DIBATALKAN' : ($statusLunas ? 'LUNAS' : 'UNPAID') }}
             </div>
         </div>
 
@@ -200,10 +205,14 @@
                 <p class="text-xs sm:text-sm text-gray-600"><strong>Batas Bayar:</strong> {{ \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->addDays(1)->format('d M Y, H:i') }}</p>
             </div>
             
-            <div class="w-full md:w-auto text-center bg-white p-3 rounded-lg border {{ $statusLunas ? 'border-green-400 bg-green-50 shadow-sm' : 'border-gray-200' }}">
-                <p class="text-xs font-bold uppercase tracking-widest mb-1 {{ $statusLunas ? 'text-green-700' : 'text-gray-500' }}">NO. RESI (AWB)</p>
+            <div class="w-full md:w-auto text-center bg-white p-3 rounded-lg border {{ $isCancelled ? 'border-gray-300 bg-gray-50' : ($statusLunas ? 'border-green-400 bg-green-50 shadow-sm' : 'border-gray-200') }}">
+                <p class="text-xs font-bold uppercase tracking-widest mb-1 {{ $isCancelled ? 'text-gray-500' : ($statusLunas ? 'text-green-700' : 'text-gray-500') }}">NO. RESI (AWB)</p>
                 
-                @if($statusLunas && $pesanan->resi)
+                @if($isCancelled)
+                    <span class="bg-gray-100 text-gray-500 border border-gray-200 px-3 py-1.5 rounded text-sm font-bold inline-block mt-1 uppercase tracking-wider">
+                        <i class="fas fa-ban mr-1"></i> Dibatalkan
+                    </span>
+                @elseif($statusLunas && $pesanan->resi)
                     <!-- BARCODE 1D MUNCUL JIKA LUNAS -->
                     <div class="bg-white rounded px-2 py-1 mb-2">
                         <svg id="barcodeResi" class="w-full max-w-[220px] mx-auto h-12"></svg>
@@ -341,10 +350,15 @@
             </div>
 
             <!-- QR CODE TRACKING (BARCODE 2D) -->
-            <div class="w-full md:w-1/4 flex flex-col justify-center items-center border-2 border-dashed {{ $statusLunas ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50' }} rounded-xl p-4">
-                <p class="text-xs font-bold mb-3 text-center uppercase tracking-widest {{ $statusLunas ? 'text-green-700' : 'text-gray-500' }}">Lacak Pengiriman</p>
+            <div class="w-full md:w-1/4 flex flex-col justify-center items-center border-2 border-dashed {{ $isCancelled ? 'border-gray-300 bg-gray-50' : ($statusLunas ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50') }} rounded-xl p-4">
+                <p class="text-xs font-bold mb-3 text-center uppercase tracking-widest {{ $isCancelled ? 'text-gray-500' : ($statusLunas ? 'text-green-700' : 'text-gray-500') }}">Lacak Pengiriman</p>
                 
-                @if($statusLunas && $pesanan->resi)
+                @if($isCancelled)
+                    <div class="w-[100px] h-[100px] bg-gray-100 border border-gray-200 flex flex-col items-center justify-center rounded-lg shadow-sm">
+                        <i class="fas fa-ban text-gray-400 text-3xl mb-2"></i>
+                        <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Batal</span>
+                    </div>
+                @elseif($statusLunas && $pesanan->resi)
                     <div id="qrcode" class="p-2 bg-white border border-green-200 rounded-lg shadow-sm"></div>
                     <p class="text-[10px] font-bold text-green-600 mt-3 text-center uppercase tracking-widest"><i class="fas fa-check-circle mr-1"></i> VALID (LUNAS)</p>
                 @else
@@ -362,72 +376,82 @@
         </div>
 
         <!-- ======================================================== -->
-        <!-- AREA PEMBAYARAN (HANYA MUNCUL JIKA UNPAID)               -->
+        <!-- AREA PEMBAYARAN (HANYA MUNCUL JIKA UNPAID & TIDAK BATAL) -->
         <!-- ======================================================== -->
-        @if(session('error'))
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-6 text-center font-medium shadow-sm no-print">
-                <i class="fas fa-exclamation-triangle mr-1"></i> {{ session('error') }}
+        @if($isCancelled)
+            <div class="no-print mt-8 border border-gray-300 bg-gray-50 p-6 rounded-xl shadow-sm text-center">
+                <i class="fas fa-file-excel text-5xl text-gray-400 mb-4 drop-shadow-sm"></i>
+                <h4 class="text-xl font-black text-gray-700 mb-2 uppercase tracking-widest">Pesanan Dibatalkan</h4>
+                <p class="text-sm text-gray-600 mt-2">Tagihan ini sudah tidak berlaku karena pesanan telah dibatalkan atau gagal diproses.</p>
             </div>
-        @endif
+        @else
 
-        <!-- 1. JIKA BELUM MEMILIH METODE PEMBAYARAN SAMA SEKALI -->
-        @if(!$statusLunas && empty($pesanan->payment_url) && !in_array($pesanan->payment_method, ['COD', 'CODBARANG', 'Cash', 'Potong Saldo']))
-        <div class="no-print mt-8 border-2 border-red-100 bg-red-50/50 p-5 sm:p-8 rounded-2xl shadow-sm">
-            <h4 class="text-lg sm:text-xl font-black mb-5 text-center text-red-700 uppercase tracking-widest">Selesaikan Pembayaran Anda</h4>
-            
-            <form id="invoice-payment-form" action="{{ route('invoice.proses_bayar', $pesanan->nomor_invoice) }}" method="POST" class="max-w-xl mx-auto">
-                @csrf
-                <!-- TOMBOL TRIGGER MODAL -->
-                <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full bg-white border-2 border-red-300 p-3 sm:p-4 rounded-xl cursor-pointer hover:border-red-600 hover:shadow-md focus:outline-none transition-all mb-5 group">
-                    <div class="flex items-center overflow-hidden">
-                        <div class="w-12 h-10 sm:w-14 sm:h-10 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded-lg bg-gray-50 mr-3 sm:mr-4">
-                            <img id="paymentMethodImg" src="https://tokosancaka.com/public/assets/saldo.png" alt="Logo" class="max-h-full max-w-full object-contain p-1">
-                        </div>
-                        <div class="text-left flex-1 min-w-0">
-                            <span class="block text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Pilih Bank / E-Wallet</span>
-                            <span id="paymentMethodLabel" class="block text-sm sm:text-base font-bold text-gray-900 truncate group-hover:text-red-600 transition-colors">Klik untuk memilih metode...</span>
-                        </div>
-                    </div>
-                    <i class="fas fa-chevron-right text-gray-300 group-hover:text-red-500 ml-2 flex-shrink-0"></i>
-                </button>
-                <input type="hidden" name="payment_method" id="payment_method" required>
-                
-                <button type="submit" id="submit-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 sm:py-4 px-10 rounded-xl text-base sm:text-lg transition duration-300 w-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider">
-                    <i class="fas fa-shield-alt mr-2"></i> Bayar Tagihan
-                </button>
-            </form>
-        </div>
-
-        <!-- 2. JIKA SUDAH MEMILIH & ADA URL/QRIS -->
-        @elseif(!$statusLunas && !empty($pesanan->payment_url))
-        <div class="no-print mt-8 border border-blue-200 bg-blue-50 p-6 rounded-xl shadow-sm text-center">
-            <h4 class="text-xl font-black mb-2 text-blue-800 uppercase tracking-widest">Selesaikan Pembayaran Anda</h4>
-            
-            @if($pesanan->payment_method == 'BCA_QRIS')
-                <p class="mb-4 text-sm text-gray-700">Scan QR Code di bawah ini menggunakan M-Banking / E-Wallet Anda:</p>
-                <div class="flex justify-center mb-4">
-                    <div class="bg-white p-4 rounded-xl shadow-lg border-2 border-blue-200 inline-block">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={{ urlencode($pesanan->payment_url) }}" alt="QRIS BCA" class="w-48 h-48">
-                    </div>
+            @if(session('error'))
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-6 text-center font-medium shadow-sm no-print">
+                    <i class="fas fa-exclamation-triangle mr-1"></i> {{ session('error') }}
                 </div>
-                <p class="font-bold text-blue-700 text-lg">BCA QRIS</p>
-            @else
-                <p class="mb-5 text-gray-700">Anda telah memilih pembayaran menggunakan <strong class="uppercase text-blue-800">{{ str_replace('_', ' ', $pesanan->payment_method) }}</strong></p>
-                <a href="{{ $pesanan->payment_url }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-xl text-lg transition duration-300 shadow-lg uppercase tracking-wider">
-                    Bayar Sekarang <i class="fas fa-external-link-alt ml-2"></i>
-                </a>
             @endif
-        </div>
-        
-        <!-- 3. JIKA METODE OFFLINE (CASH/COD/SALDO) -->
-        @elseif(!$statusLunas)
-        <div class="no-print mt-8 border border-yellow-200 bg-yellow-50 p-6 rounded-xl shadow-sm text-center">
-            <i class="fas fa-clock text-5xl text-yellow-500 mb-4 drop-shadow-sm"></i>
-            <h4 class="text-xl font-black text-yellow-800 mb-2 uppercase tracking-widest">Menunggu Verifikasi Admin</h4>
-            <p class="text-base text-gray-700">Metode: <strong class="uppercase bg-yellow-200 px-2 py-1 rounded">{{ $pesanan->payment_method }}</strong></p>
-            <p class="text-sm text-gray-600 mt-3">Pesanan akan diproses otomatis setelah admin Sancaka memverifikasi pembayaran Anda.</p>
-        </div>
-        @endif
+
+            <!-- 1. JIKA BELUM MEMILIH METODE PEMBAYARAN SAMA SEKALI -->
+            @if(!$statusLunas && empty($pesanan->payment_url) && !in_array($pesanan->payment_method, ['COD', 'CODBARANG', 'Cash', 'Potong Saldo']))
+            <div class="no-print mt-8 border-2 border-red-100 bg-red-50/50 p-5 sm:p-8 rounded-2xl shadow-sm">
+                <h4 class="text-lg sm:text-xl font-black mb-5 text-center text-red-700 uppercase tracking-widest">Selesaikan Pembayaran Anda</h4>
+                
+                <form id="invoice-payment-form" action="{{ route('invoice.proses_bayar', $pesanan->nomor_invoice) }}" method="POST" class="max-w-xl mx-auto">
+                    @csrf
+                    <!-- TOMBOL TRIGGER MODAL -->
+                    <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full bg-white border-2 border-red-300 p-3 sm:p-4 rounded-xl cursor-pointer hover:border-red-600 hover:shadow-md focus:outline-none transition-all mb-5 group">
+                        <div class="flex items-center overflow-hidden">
+                            <div class="w-12 h-10 sm:w-14 sm:h-10 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded-lg bg-gray-50 mr-3 sm:mr-4">
+                                <img id="paymentMethodImg" src="https://tokosancaka.com/public/assets/saldo.png" alt="Logo" class="max-h-full max-w-full object-contain p-1">
+                            </div>
+                            <div class="text-left flex-1 min-w-0">
+                                <span class="block text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Pilih Bank / E-Wallet</span>
+                                <span id="paymentMethodLabel" class="block text-sm sm:text-base font-bold text-gray-900 truncate group-hover:text-red-600 transition-colors">Klik untuk memilih metode...</span>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right text-gray-300 group-hover:text-red-500 ml-2 flex-shrink-0"></i>
+                    </button>
+                    <input type="hidden" name="payment_method" id="payment_method" required>
+                    
+                    <button type="submit" id="submit-button" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 sm:py-4 px-10 rounded-xl text-base sm:text-lg transition duration-300 w-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider">
+                        <i class="fas fa-shield-alt mr-2"></i> Bayar Tagihan
+                    </button>
+                </form>
+            </div>
+
+            <!-- 2. JIKA SUDAH MEMILIH & ADA URL/QRIS -->
+            @elseif(!$statusLunas && !empty($pesanan->payment_url))
+            <div class="no-print mt-8 border border-blue-200 bg-blue-50 p-6 rounded-xl shadow-sm text-center">
+                <h4 class="text-xl font-black mb-2 text-blue-800 uppercase tracking-widest">Selesaikan Pembayaran Anda</h4>
+                
+                @if($pesanan->payment_method == 'BCA_QRIS')
+                    <p class="mb-4 text-sm text-gray-700">Scan QR Code di bawah ini menggunakan M-Banking / E-Wallet Anda:</p>
+                    <div class="flex justify-center mb-4">
+                        <div class="bg-white p-4 rounded-xl shadow-lg border-2 border-blue-200 inline-block">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={{ urlencode($pesanan->payment_url) }}" alt="QRIS BCA" class="w-48 h-48">
+                        </div>
+                    </div>
+                    <p class="font-bold text-blue-700 text-lg">BCA QRIS</p>
+                @else
+                    <p class="mb-5 text-gray-700">Anda telah memilih pembayaran menggunakan <strong class="uppercase text-blue-800">{{ str_replace('_', ' ', $pesanan->payment_method) }}</strong></p>
+                    <a href="{{ $pesanan->payment_url }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-10 rounded-xl text-lg transition duration-300 shadow-lg uppercase tracking-wider">
+                        Bayar Sekarang <i class="fas fa-external-link-alt ml-2"></i>
+                    </a>
+                @endif
+            </div>
+            
+            <!-- 3. JIKA METODE OFFLINE (CASH/COD/SALDO) -->
+            @elseif(!$statusLunas)
+            <div class="no-print mt-8 border border-yellow-200 bg-yellow-50 p-6 rounded-xl shadow-sm text-center">
+                <i class="fas fa-clock text-5xl text-yellow-500 mb-4 drop-shadow-sm"></i>
+                <h4 class="text-xl font-black text-yellow-800 mb-2 uppercase tracking-widest">Menunggu Verifikasi Admin</h4>
+                <p class="text-base text-gray-700">Metode: <strong class="uppercase bg-yellow-200 px-2 py-1 rounded">{{ $pesanan->payment_method }}</strong></p>
+                <p class="text-sm text-gray-600 mt-3">Pesanan akan diproses otomatis setelah admin Sancaka memverifikasi pembayaran Anda.</p>
+            </div>
+            @endif
+
+        @endif <!-- Akhir dari If isCancelled Area Pembayaran -->
 
     </div>
 
@@ -585,11 +609,12 @@
     <!-- JAVASCRIPT: BARCODE, QR CODE & MODAL -->
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // --- 1. RENDER BARCODE (1D) & QR CODE (2D) HANYA JIKA LUNAS ---
+        // --- 1. RENDER BARCODE (1D) & QR CODE (2D) HANYA JIKA LUNAS & TIDAK BATAL ---
         const isPaid = {{ $statusLunas ? 'true' : 'false' }};
+        const isCancelled = {{ $isCancelled ? 'true' : 'false' }};
         const resiSancaka = "{!! $pesanan->resi !!}";
 
-        if (isPaid && resiSancaka) {
+        if (!isCancelled && isPaid && resiSancaka) {
             // Barcode 1D (Warna Hijau)
             try {
                 JsBarcode("#barcodeResi", resiSancaka, {
@@ -600,7 +625,7 @@
                     fontSize: 14,
                     height: 45, 
                     width: 2, 
-                    displayValue: true // <--- UBAH JADI TRUE AGAR ANGKA RESI MUNCUL
+                    displayValue: true 
                 });
             } catch (e) { console.error("Gagal JSBarcode:", e); }
 
