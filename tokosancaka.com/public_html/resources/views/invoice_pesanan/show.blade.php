@@ -30,50 +30,76 @@
         .ribbon.paid { background: #16a34a; }
         
         @media print {
-            /* 1. Atur ukuran kertas dan kecilkan margin default browser */
+            /* 1. Reset Ukuran Kertas & Margin */
             @page {
                 size: A4 portrait;
-                margin: 0.5cm; 
+                margin: 5mm; /* Perkecil margin kertas mentok ke 0.5cm */
             }
-            
-            /* 2. Pastikan warna background (seperti logo/pita) ikut ter-print */
             body { 
                 background: white !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
                 -webkit-print-color-adjust: exact; 
                 print-color-adjust: exact; 
             }
-            
             .no-print { display: none !important; }
-            
+
+            /* 2. Hapus Shadow & Padding Container Utama */
             .print-container { 
                 box-shadow: none !important; 
                 max-width: 100% !important; 
-                width: 100% !important;
+                width: 100% !important; 
                 margin: 0 !important; 
-                padding: 10px !important; 
+                padding: 0 !important; 
                 border: none !important; 
             }
-            
-            /* 3. Override class margin/padding Tailwind agar lebih rapat saat diprint */
-            .mb-4, .mb-6, .mb-8, .md\:mb-8 { margin-bottom: 12px !important; }
-            .pb-6 { padding-bottom: 12px !important; }
-            .gap-4, .gap-6, .md\:gap-8 { gap: 12px !important; }
-            .p-4, .p-5, .sm\:p-8, .md\:p-12 { padding: 12px !important; }
-            .mt-8 { margin-top: 16px !important; }
-            
-            /* 4. Skalakan ukuran font sedikit lebih kecil agar muat */
-            body, table { font-size: 11px !important; }
-            h2, .text-xl, .sm\:text-2xl { font-size: 16px !important; }
-            .text-xs { font-size: 9px !important; }
-            .text-sm { font-size: 10px !important; }
-            .text-base { font-size: 11px !important; }
-            .text-lg { font-size: 13px !important; }
-            
-            /* 5. Cegah elemen tabel atau kotak terpotong setengah ke halaman 2 */
-            table, .grid, .flex, .border { 
-                break-inside: avoid; 
-                page-break-inside: avoid; 
+
+            /* 3. PAKSA ELEMEN BERSEBELAHAN (Anti Numpuk Atas-Bawah) */
+            /* Paksa Info Invoice & Barcode sejajar */
+            .flex.flex-col.md\:flex-row {
+                flex-direction: row !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                gap: 10px !important;
             }
+            
+            /* Paksa Pengirim & Penerima sejajar 2 kolom */
+            .grid.grid-cols-1.md\:grid-cols-2 {
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 10px !important;
+            }
+
+            /* Paksa Tabel Riwayat & QR Code sejajar */
+            .flex.flex-col-reverse.md\:flex-row {
+                flex-direction: row !important;
+                gap: 10px !important;
+            }
+            /* Atur persentase lebarnya */
+            .w-full.md\:w-3\/4 { width: 75% !important; }
+            .w-full.md\:w-1\/4 { width: 25% !important; }
+
+            /* 4. PRESS SEMUA PADDING & MARGIN (Biar Rapat) */
+            .mb-6, .md\:mb-8, .mb-8, .mb-4 { margin-bottom: 8px !important; }
+            .pb-6 { padding-bottom: 8px !important; }
+            .p-4, .p-5, .sm\:p-8, .md\:p-12 { padding: 8px !important; }
+            .mt-8 { margin-top: 10px !important; }
+            
+            /* Rapatkan Tabel */
+            table th, table td { padding: 4px 6px !important; }
+            .py-4 { padding-top: 6px !important; padding-bottom: 6px !important; }
+
+            /* 5. KECILKAN UKURAN FONT GLOBAL SAAT PRINT */
+            * { font-size: 10px !important; line-height: 1.3 !important; }
+            h2, .text-xl, .sm\:text-2xl, .font-extrabold { font-size: 14px !important; margin-bottom: 2px !important; }
+            .text-lg, .sm\:text-lg { font-size: 12px !important; }
+            .text-xs, .sm\:text-sm { font-size: 9px !important; }
+
+            /* 6. KECILKAN LOGO & BARCODE SAAT PRINT */
+            img[alt="Sancaka Express"] { height: 40px !important; margin-bottom: 5px !important; }
+            svg#barcodeResi { height: 35px !important; max-width: 180px !important; }
+            #qrcode { padding: 2px !important; }
+            #qrcode img { width: 50px !important; height: 50px !important; margin: 0 auto; }
         }
 
         /* Custom Scrollbar Modal */
