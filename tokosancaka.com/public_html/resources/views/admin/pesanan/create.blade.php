@@ -300,15 +300,20 @@
                         <div>
                             <label for="payment_method" class="block mb-2 text-sm font-medium text-gray-700">Metode Pembayaran</label>
                             <div class="relative">
-                                <select name="payment_method" id="payment_method" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required>
+                                <select name="payment_method" id="payment_method" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 pr-8 appearance-none cursor-pointer focus:ring-red-500 focus:border-red-500" required>
                                     <option value="" disabled selected>Pilih Metode...</option>
-                                    <option value="Online">Transfer Online (Customer Pilih di Invoice)</option>
-                                    <option value="Potong Saldo">Potong Saldo Customer</option>
-                                    <option value="Cash">Cash (Tanpa Saldo)</option>
-                                    <option value="COD">COD Ongkir Saja</option>
-                                    <option value="CODBARANG">COD Barang + Ongkir</option>
+                                    <option value="Online">📱 Transfer Online (Customer Pilih di Invoice)</option>
+                                    <option value="Potong Saldo">💳 Potong Saldo Customer</option>
+                                    <option value="Cash">💵 Cash (Tanpa Saldo)</option>
+                                    <option value="COD">🚚 COD Ongkir Saja</option>
+                                    <option value="CODBARANG">📦 COD Barang + Ongkir</option>
                                 </select>
-                                <i class="fas fa-wallet text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                                
+                                <!-- Icon Dompet di Kiri -->
+                                <i class="fas fa-wallet text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2 pointer-events-none"></i>
+                                
+                                <!-- Icon Panah Custom di Kanan -->
+                                <i class="fas fa-chevron-down text-gray-400 absolute top-1/2 right-3 transform -translate-y-1/2 pointer-events-none text-xs"></i>
                             </div>
                         </div>
 
