@@ -308,7 +308,7 @@
                 <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full bg-white border-2 border-red-300 p-3 sm:p-4 rounded-xl cursor-pointer hover:border-red-600 hover:shadow-md focus:outline-none transition-all mb-5 group">
                     <div class="flex items-center overflow-hidden">
                         <div class="w-12 h-10 sm:w-14 sm:h-10 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded-lg bg-gray-50 mr-3 sm:mr-4">
-                            <img id="paymentMethodImg" src="https://tokosancaka.com/public/assets/cash.png" alt="Logo" class="max-h-full max-w-full object-contain p-1">
+                            <img id="paymentMethodImg" src="https://tokosancaka.com/public/assets/saldo.png" alt="Logo" class="max-h-full max-w-full object-contain p-1">
                         </div>
                         <div class="text-left flex-1 min-w-0">
                             <span class="block text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Pilih Bank / E-Wallet</span>
