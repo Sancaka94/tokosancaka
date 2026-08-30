@@ -28,13 +28,13 @@
             letter-spacing: 1px;
         }
         .ribbon.paid { background: #16a34a; }
-        .ribbon.cancelled { background: #4b5563; } /* Warna Abu-abu Tua */
+        .ribbon.cancelled { background: #4b5563; }
         
         @media print {
             /* 1. Reset Ukuran Kertas & Margin */
             @page {
                 size: A4 portrait;
-                margin: 5mm; /* Perkecil margin kertas mentok ke 0.5cm */
+                margin: 5mm; 
             }
             body { 
                 background: white !important; 
@@ -55,8 +55,7 @@
                 border: none !important; 
             }
 
-            /* 3. PAKSA ELEMEN BERSEBELAHAN (Anti Numpuk Atas-Bawah) */
-            /* Paksa Info Invoice & Barcode sejajar */
+            /* 3. PAKSA ELEMEN BERSEBELAHAN */
             .flex.flex-col.md\:flex-row {
                 flex-direction: row !important;
                 justify-content: space-between !important;
@@ -64,29 +63,25 @@
                 gap: 10px !important;
             }
             
-            /* Paksa Pengirim & Penerima sejajar 2 kolom */
             .grid.grid-cols-1.md\:grid-cols-2 {
                 display: grid !important;
                 grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
                 gap: 10px !important;
             }
 
-            /* Paksa Tabel Riwayat & QR Code sejajar */
             .flex.flex-col-reverse.md\:flex-row {
                 flex-direction: row !important;
                 gap: 10px !important;
             }
-            /* Atur persentase lebarnya */
             .w-full.md\:w-3\/4 { width: 75% !important; }
             .w-full.md\:w-1\/4 { width: 25% !important; }
 
-            /* 4. PRESS SEMUA PADDING & MARGIN (Biar Rapat) */
+            /* 4. PRESS SEMUA PADDING & MARGIN */
             .mb-6, .md\:mb-8, .mb-8, .mb-4 { margin-bottom: 8px !important; }
             .pb-6 { padding-bottom: 8px !important; }
             .p-4, .p-5, .sm\:p-8, .md\:p-12 { padding: 8px !important; }
             .mt-8 { margin-top: 10px !important; }
             
-            /* Rapatkan Tabel */
             table th, table td { padding: 4px 6px !important; }
             .py-4 { padding-top: 6px !important; padding-bottom: 6px !important; }
 
@@ -100,7 +95,7 @@
             img[alt="Sancaka Express"] { height: 40px !important; margin-bottom: 5px !important; }
             svg#barcodeResi { height: 35px !important; max-width: 180px !important; }
             #qrcode { padding: 2px !important; }
-            #qrcode img { width: 50px !important; height: 50px !important; margin: 0 auto; }
+            #qrcode img { width: 45px !important; height: 45px !important; margin: 0 auto; }
         }
 
         /* Custom Scrollbar Modal */
@@ -213,7 +208,6 @@
                         <i class="fas fa-ban mr-1"></i> Dibatalkan
                     </span>
                 @elseif($statusLunas && $pesanan->resi)
-                    <!-- BARCODE 1D MUNCUL JIKA LUNAS -->
                     <div class="bg-white rounded px-2 py-1 mb-2">
                         <svg id="barcodeResi" class="w-full max-w-[220px] mx-auto h-12"></svg>
                     </div>
@@ -349,8 +343,8 @@
                 </div>
             </div>
 
-            <!-- QR CODE TRACKING (BARCODE 2D) -->
-            <div class="w-full md:w-1/4 flex flex-col justify-center items-center border-2 border-dashed {{ $isCancelled ? 'border-gray-300 bg-gray-50' : ($statusLunas ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50') }} rounded-xl p-4">
+            <!-- QR CODE TRACKING & STATUS PAKET TERAKHIR -->
+            <div class="w-full md:w-1/4 flex flex-col justify-center items-center border-2 border-dashed {{ $isCancelled ? 'border-gray-300 bg-gray-50' : ($statusLunas ? 'border-green-300 bg-green-50' : 'border-gray-300 bg-gray-50') }} rounded-xl p-3 sm:p-4">
                 <p class="text-xs font-bold mb-3 text-center uppercase tracking-widest {{ $isCancelled ? 'text-gray-500' : ($statusLunas ? 'text-green-700' : 'text-gray-500') }}">Lacak Pengiriman</p>
                 
                 @if($isCancelled)
@@ -359,8 +353,45 @@
                         <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-1">Batal</span>
                     </div>
                 @elseif($statusLunas && $pesanan->resi)
+                    
+                    @php
+                        // TEMBAK DATABASE ATAU API UNTUK MENDAPATKAN STATUS
+                        $statusText = 'Diproses / Manifest';
+                        
+                        try {
+                            // 1. Cek dari Database Lokal (Ganti 'tracking_histories' dengan nama tabel riwayat Anda)
+                            $cekDb = \Illuminate\Support\Facades\DB::table('tracking_histories')
+                                        ->where('resi', $pesanan->resi)
+                                        ->orderBy('created_at', 'desc')
+                                        ->first();
+                            
+                            if ($cekDb && isset($cekDb->status)) {
+                                $statusText = $cekDb->status;
+                            }
+                            
+                            // 2. ATAU TEMBAK API LANGSUNG (Jika Anda punya helper/fungsi tracking tersendiri)
+                            // Hapus komentar di bawah ini jika ingin langsung hit API
+                            /*
+                            $apiData = \App\Helpers\TrackingHelper::getTrackingData($pesanan->resi);
+                            if(isset($apiData['status'])) {
+                                $statusText = $apiData['status'];
+                            }
+                            */
+                        } catch(\Exception $e) {
+                            // Biarkan kosong agar tidak crash jika tabel tidak ada
+                        }
+                    @endphp
+
+                    <!-- TAMPILAN STATUS PAKET -->
+                    <div class="w-full bg-white border border-green-200 rounded p-1.5 mb-2 shadow-sm text-center">
+                        <p class="text-[8px] text-gray-500 font-bold uppercase tracking-widest mb-0.5">Status Paket:</p>
+                        <p class="text-[10px] font-bold text-green-700 leading-tight" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                            {{ $statusText }}
+                        </p>
+                    </div>
+
                     <div id="qrcode" class="p-2 bg-white border border-green-200 rounded-lg shadow-sm"></div>
-                    <p class="text-[10px] font-bold text-green-600 mt-3 text-center uppercase tracking-widest"><i class="fas fa-check-circle mr-1"></i> VALID (LUNAS)</p>
+                    <p class="text-[10px] font-bold text-green-600 mt-2 text-center uppercase tracking-widest"><i class="fas fa-check-circle mr-1"></i> VALID (LUNAS)</p>
                 @else
                     <div class="w-[100px] h-[100px] bg-white border border-gray-200 flex flex-col items-center justify-center rounded-lg shadow-sm">
                         <i class="fas fa-qrcode text-gray-300 text-3xl mb-2"></i>
@@ -376,7 +407,7 @@
         </div>
 
         <!-- ======================================================== -->
-        <!-- AREA PEMBAYARAN (HANYA MUNCUL JIKA UNPAID & TIDAK BATAL) -->
+        <!-- AREA PEMBAYARAN -->
         <!-- ======================================================== -->
         @if($isCancelled)
             <div class="no-print mt-8 border border-gray-300 bg-gray-50 p-6 rounded-xl shadow-sm text-center">
@@ -392,14 +423,12 @@
                 </div>
             @endif
 
-            <!-- 1. JIKA BELUM MEMILIH METODE PEMBAYARAN SAMA SEKALI -->
             @if(!$statusLunas && empty($pesanan->payment_url) && !in_array($pesanan->payment_method, ['COD', 'CODBARANG', 'Cash', 'Potong Saldo']))
             <div class="no-print mt-8 border-2 border-red-100 bg-red-50/50 p-5 sm:p-8 rounded-2xl shadow-sm">
                 <h4 class="text-lg sm:text-xl font-black mb-5 text-center text-red-700 uppercase tracking-widest">Selesaikan Pembayaran Anda</h4>
                 
                 <form id="invoice-payment-form" action="{{ route('invoice.proses_bayar', $pesanan->nomor_invoice) }}" method="POST" class="max-w-xl mx-auto">
                     @csrf
-                    <!-- TOMBOL TRIGGER MODAL -->
                     <button type="button" id="paymentMethodButton" class="flex items-center justify-between w-full bg-white border-2 border-red-300 p-3 sm:p-4 rounded-xl cursor-pointer hover:border-red-600 hover:shadow-md focus:outline-none transition-all mb-5 group">
                         <div class="flex items-center overflow-hidden">
                             <div class="w-12 h-10 sm:w-14 sm:h-10 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded-lg bg-gray-50 mr-3 sm:mr-4">
@@ -420,7 +449,6 @@
                 </form>
             </div>
 
-            <!-- 2. JIKA SUDAH MEMILIH & ADA URL/QRIS -->
             @elseif(!$statusLunas && !empty($pesanan->payment_url))
             <div class="no-print mt-8 border border-blue-200 bg-blue-50 p-6 rounded-xl shadow-sm text-center">
                 <h4 class="text-xl font-black mb-2 text-blue-800 uppercase tracking-widest">Selesaikan Pembayaran Anda</h4>
@@ -441,7 +469,6 @@
                 @endif
             </div>
             
-            <!-- 3. JIKA METODE OFFLINE (CASH/COD/SALDO) -->
             @elseif(!$statusLunas)
             <div class="no-print mt-8 border border-yellow-200 bg-yellow-50 p-6 rounded-xl shadow-sm text-center">
                 <i class="fas fa-clock text-5xl text-yellow-500 mb-4 drop-shadow-sm"></i>
@@ -451,12 +478,12 @@
             </div>
             @endif
 
-        @endif <!-- Akhir dari If isCancelled Area Pembayaran -->
+        @endif
 
     </div>
 
     <!-- ======================================================== -->
-    <!-- MODAL PEMILIHAN PEMBAYARAN (3 KOLOM LANDSCAPE)           -->
+    <!-- MODAL PEMILIHAN PEMBAYARAN -->
     <!-- ======================================================== -->
     <div id="paymentModal" class="no-print fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 hidden transition-all duration-300">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 sm:mx-auto transform transition-all flex flex-col max-h-[90vh] md:max-h-[85vh]">
@@ -473,12 +500,10 @@
             <div class="p-2 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/30">
                 <ul id="paymentOptionsList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 p-4 md:p-6">
                     
-                    <!-- DIRECT PAYMENT HEADER -->
                     <li class="col-span-full pb-2 text-xs font-black text-gray-500 uppercase tracking-widest border-b border-gray-200 mt-2 first:mt-0">
                         Direct Payment (Bebas Biaya Tripay)
                     </li>
                     
-                    <!-- BCA QRIS -->
                     <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-red-500 hover:bg-red-50 hover:shadow-md transition-all group"
                         data-value="BCA_QRIS" data-label="BCA QRIS (Generate Barcode)" data-img="https://tokosancaka.com/assets/bca.png">
                         <div class="w-16 h-12 flex-shrink-0 flex items-center justify-center bg-white border border-gray-100 rounded-lg mr-3.5 p-1 group-hover:border-red-200 transition-colors">
@@ -490,7 +515,6 @@
                         </div>
                     </li>
 
-                    <!-- DOKU -->
                     <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-red-500 hover:bg-red-50 hover:shadow-md transition-all group"
                         data-value="DOKU_JOKUL" data-label="DOKU Payment Gateway" data-img="https://tokosancaka.com/public/assets/doku.png">
                         <div class="w-16 h-12 flex-shrink-0 flex items-center justify-center bg-white border border-gray-100 rounded-lg mr-3.5 p-1 group-hover:border-red-200 transition-colors">
@@ -502,9 +526,6 @@
                         </div>
                     </li>
 
-                    <!-- ========================================== -->
-                    <!-- DANA ENTERPRISE SECTION                    -->
-                    <!-- ========================================== -->
                     <li class="col-span-full pt-4 pb-2 text-xs font-black text-gray-500 uppercase tracking-widest border-b border-gray-200 mt-2">
                         DANA Enterprise
                     </li>
@@ -516,7 +537,6 @@
                         $hasDanaBinding = !empty($userDanaToken);
                     @endphp
 
-                    <!-- DANA REGULER -->
                     <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-red-500 hover:bg-red-50 hover:shadow-md transition-all group"
                         data-value="DANA" data-label="DANA (Web Checkout)" data-img="{{ asset('public/assets/dana.webp') }}">
                         <div class="w-16 h-12 flex-shrink-0 flex items-center justify-center bg-white border border-gray-100 rounded-lg mr-3.5 p-1 group-hover:border-red-200 transition-colors">
@@ -528,7 +548,6 @@
                         </div>
                     </li>
 
-                    <!-- DANA BINDING (AUTO-DEBIT) -->
                     @if($hasDanaBinding)
                         <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border border-blue-200 rounded-xl bg-blue-50 hover:border-blue-400 hover:bg-blue-100 hover:shadow-md transition-all group"
                             data-value="DANA_BINDING" data-label="DANA Auto-Debit" data-img="{{ asset('public/assets/dana.webp') }}">
@@ -560,14 +579,10 @@
                         </li>
                     @endif
 
-                    <!-- ========================================== -->
-                    <!-- KARTU KREDIT GLOBAL & PAYPAL               -->
-                    <!-- ========================================== -->
                     <li class="col-span-full pt-4 pb-2 text-xs font-black text-gray-500 uppercase tracking-widest border-b border-gray-200 mt-2">
                         Kartu Kredit Global & PayPal
                     </li>
 
-                    <!-- PAYPAL -->
                     <li class="payment-option col-span-1 cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-red-500 hover:bg-red-50 hover:shadow-md transition-all group"
                         data-value="PAYPAL" data-label="PayPal / Credit Card" data-img="https://tokosancaka.com/public/assets/paypal.png">
                         <div class="w-16 h-12 flex-shrink-0 flex items-center justify-center bg-white border border-gray-100 rounded-lg mr-3.5 p-1 group-hover:border-red-200 transition-colors">
@@ -579,9 +594,6 @@
                         </div>
                     </li>
 
-                    <!-- ========================================== -->
-                    <!-- TRIPAY CHANNELS                            -->
-                    <!-- ========================================== -->
                     @if(isset($tripayChannels) && count($tripayChannels) > 0)
                     <li class="col-span-full pt-4 pb-2 text-xs font-black text-gray-500 uppercase tracking-widest border-b border-gray-200 mt-2">
                         Transfer Bank & Minimarket (Otomatis)
@@ -609,17 +621,15 @@
     <!-- JAVASCRIPT: BARCODE, QR CODE & MODAL -->
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // --- 1. RENDER BARCODE (1D) & QR CODE (2D) HANYA JIKA LUNAS & TIDAK BATAL ---
         const isPaid = {{ $statusLunas ? 'true' : 'false' }};
         const isCancelled = {{ $isCancelled ? 'true' : 'false' }};
         const resiSancaka = "{!! $pesanan->resi !!}";
 
         if (!isCancelled && isPaid && resiSancaka) {
-            // Barcode 1D (Warna Hijau)
             try {
                 JsBarcode("#barcodeResi", resiSancaka, {
                     format: "CODE128", 
-                    lineColor: "#16a34a", // Warna Hijau Tailwind (green-600)
+                    lineColor: "#16a34a", 
                     textMargin: 4, 
                     fontOptions: "bold", 
                     fontSize: 14,
@@ -629,7 +639,6 @@
                 });
             } catch (e) { console.error("Gagal JSBarcode:", e); }
 
-            // QR Code 2D (Tracking Link)
             try {
                 new QRCode(document.getElementById("qrcode"), {
                     text: "https://tokosancaka.com/tracking/search?resi=" + resiSancaka,
@@ -642,7 +651,6 @@
             } catch (e) { console.error("Gagal QRCode:", e); }
         }
 
-        // --- 2. LOGIKA MODAL PEMBAYARAN ---
         const paymentModal = document.getElementById('paymentModal');
         const paymentMethodButton = document.getElementById('paymentMethodButton');
         const closeModalButton = document.getElementById('closeModalButton');
