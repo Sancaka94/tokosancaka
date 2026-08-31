@@ -8,7 +8,7 @@
         // 1. LOGIKA STATUS
         $isLunas = (isset($invoice->sisa_tagihan) && $invoice->sisa_tagihan <= 0) || (isset($invoice->grand_total) && $invoice->grand_total <= 0);
         $statusText = $isLunas ? 'LUNAS' : 'BELUM LUNAS';
-        $isCancelled = false; // Ganti jika ada status batal/refund
+        $isCancelled = false; // Ganti jika ada status batal
 
         // 2. SENSOR NAMA (Amal Ibnu -> A*** I***)
         $maskName = function($name) {
@@ -22,91 +22,105 @@
             return implode(' ', $words);
         };
 
-        // 3. SENSOR HP (085745808809 -> 0857458*****)
+        // 3. SENSOR HP (Menyisakan 7 angka depan)
         $maskPhone = function($phone) {
-            $phone = preg_replace('/[^0-9]/', '', $phone ?? '');
+            $phone = preg_replace('/[^0-9]/', '', (string) $phone);
             if (strlen($phone) > 7) {
                 return substr($phone, 0, 7) . str_repeat('*', strlen($phone) - 7);
+            } elseif (strlen($phone) > 0) {
+                return $phone . '***';
             }
-            return $phone;
+            return '-';
         };
 
-        // 4. GENERATE WATERMARK RAPAT (SVG BASE64)
+        // 4. TEKS WATERMARK
         $tglTerbitWmk = date('d M Y', strtotime($invoice->date ?? now()));
         $nomorResiInvoice = $invoice->resi ?? $invoice->invoice_no;
         $wmText = "VALID {$statusText} CV SANCAKA KARYA HUTAMA SANCAKA EXPRESS CREATED {$tglTerbitWmk} {$nomorResiInvoice}";
 
-        // Membuat kotak SVG ukuran 350x150 agar berulang (loop) dengan rapat
-        $svgWatermark = "<svg xmlns='http://www.w3.org/2000/svg' width='350' height='150'>
-            <text x='50%' y='50%' font-size='10' font-weight='bold' fill='black' fill-opacity='0.04' font-family='Helvetica, Arial, sans-serif' text-anchor='middle' transform='rotate(-35, 175, 75)'>" . htmlspecialchars($wmText) . "</text>
-        </svg>";
-        $base64Watermark = base64_encode($svgWatermark);
+        // 5. FETCH QR CODE BASE64 (Agar DomPDF tidak memblokir URL luar)
+        $qrData = urlencode($invoice->invoice_no);
+        $qrUrl = "https://chart.googleapis.com/chart?chs=80x80&cht=qr&chl={$qrData}";
+        $qrBase64 = null;
+        try {
+            $qrContent = @file_get_contents($qrUrl);
+            if ($qrContent) {
+                $qrBase64 = 'data:image/png;base64,' . base64_encode($qrContent);
+            }
+        } catch (\Exception $e) {}
     @endphp
 
     <style>
         /* PENGATURAN KERTAS DOMPDF */
         @page {
-            margin: 0px; /* Margin dinolkan agar watermark dan pita bisa menyentuh ujung kertas */
+            margin: 0px;
         }
         body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             font-size: 11px;
             color: #000;
             line-height: 1.4;
-            padding: 40px 50px; /* Padding dipindah ke body */
+            padding: 40px 50px;
         }
 
-        /* SEMBUNYIKAN TOMBOL SAAT CETAK */
-        .no-print, button { display: none !important; }
-
-        /* WATERMARK PALING DEPAN (MENUTUPI SEMUA LAPISAN) */
-        .watermark-bg {
+        /* WATERMARK NATIVE HTML (Mendukung DomPDF Penuh) */
+        .watermark-container {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 9999;
-            background-image: url("data:image/svg+xml;base64,{{ $base64Watermark }}");
-            background-repeat: repeat;
+            top: -20%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            z-index: 9999; /* Lapisan Paling Depan */
+            transform: rotate(-35deg);
+            text-align: center;
+        }
+        .watermark-container p {
+            color: rgba(0, 0, 0, 0.05); /* Teks Hitam dengan Transparansi 5% (Samar) */
+            font-size: 14px;
+            font-weight: bold;
+            line-height: 4;
+            white-space: nowrap;
+            margin: 0;
+            padding: 0;
+            letter-spacing: 1px;
         }
 
-        /* PITA STATUS POJOK KANAN (Ukurannya dirapikan agar teks tidak tumpah) */
+        /* PITA STATUS POJOK KANAN */
         .ribbon-wrapper {
             position: absolute;
             top: 0px;
             right: 0px;
-            width: 130px;
-            height: 130px;
+            width: 140px;
+            height: 140px;
             overflow: hidden;
-            z-index: 100;
+            z-index: 10000;
         }
         .ribbon {
             position: absolute;
             display: block;
-            width: 190px;
+            width: 200px;
             padding: 6px 0;
             background-color: #dc2626; /* MERAH */
             color: #fff;
             font-weight: bold;
-            font-size: 10px;
+            font-size: 11px;
             text-transform: uppercase;
             text-align: center;
             transform: rotate(45deg);
-            top: 25px;
+            top: 30px;
             right: -45px;
             letter-spacing: 1px;
         }
         .ribbon.paid { background-color: #16a34a; } /* HIJAU */
 
-        /* STRUKTUR TABEL PENGGANTI FLEXBOX */
+        /* LAYOUT & TABEL */
         table { width: 100%; border-collapse: collapse; }
-        td { vertical-align: top; }
+        td { vertical-align: top; z-index: 10; position: relative; }
 
         /* HEADER & LOGO */
-        .header-table { margin-bottom: 35px; border-bottom: 2px solid #000; padding-bottom: 15px; }
-        .logo-img { height: 50px; width: auto; } /* ANTI GEPENG: Jangan set width */
-        .invoice-title { font-size: 30px; font-weight: 900; text-transform: uppercase; margin: 0; letter-spacing: 1px; }
+        .header-table { margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 15px; }
+        .logo-img { height: 50px; width: auto; }
+        .invoice-title { font-size: 32px; font-weight: 900; text-transform: uppercase; margin: 0; letter-spacing: 1px; }
 
         /* INFO PELANGGAN */
         .info-table { margin-bottom: 30px; }
@@ -114,24 +128,24 @@
         .info-data { font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 3px; }
         .info-text { color: #333; font-size: 11px; line-height: 1.5; }
 
-        /* TABEL ITEM (Desain Clean Next.js Hitam) */
+        /* TABEL ITEM */
         .item-table { margin-bottom: 35px; border-bottom: 1px solid #000; }
         .item-table th { background-color: #000; color: #fff; padding: 10px 12px; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; text-align: left; font-weight: bold; }
         .item-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 11px; color: #000; }
-        .item-table tr:nth-child(even) { background-color: #f9fafb; } /* Zebra striping tipis */
+        .item-table tr:nth-child(even) { background-color: #f9fafb; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
         .font-bold { font-weight: bold; }
 
         /* PERHITUNGAN TOTAL */
-        .notes-area { width: 50%; float: left; padding-right: 20px; }
-        .math-area { width: 45%; float: right; }
+        .notes-area { width: 50%; float: left; padding-right: 20px; position: relative; z-index: 10;}
+        .math-area { width: 45%; float: right; position: relative; z-index: 10;}
         .math-table td { padding: 6px 0; font-size: 11px; border-bottom: 1px dashed #e5e7eb; }
         .math-table .grand-total { font-weight: 900; font-size: 14px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 10px 0; border-style: solid; }
         .clear { clear: both; }
 
         /* TANDA TANGAN */
-        .signature-area { text-align: center; float: right; width: 200px; margin-top: 40px; }
+        .signature-area { text-align: center; float: right; width: 200px; margin-top: 40px; position: relative; z-index: 10;}
         .signature-img { height: 60px; width: auto; margin: 0 auto 5px auto; }
         .signature-line { border-top: 1px solid #000; font-weight: 900; font-size: 11px; padding-top: 5px; margin-top: 60px; text-transform: uppercase; }
         .signature-role { font-size: 9px; color: #666; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
@@ -139,8 +153,12 @@
 </head>
 <body>
 
-    <!-- LAYER WATERMARK RAPAT & DINAMIS -->
-    <div class="watermark-bg"></div>
+    <!-- LAYER WATERMARK HTML (Teks diulang menggunakan perulangan PHP) -->
+    <div class="watermark-container">
+        @for($i=0; $i<25; $i++)
+            <p>{{ $wmText }} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {{ $wmText }} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {{ $wmText }}</p>
+        @endfor
+    </div>
 
     <!-- PITA STATUS -->
     <div class="ribbon-wrapper">
@@ -154,7 +172,6 @@
         <tr>
             <td style="width: 50%; vertical-align: middle;">
                 @if(file_exists(storage_path('app/public/uploads/logo.jpeg')))
-                    <!-- Kunci height saja agar logo tidak melebar gepeng -->
                     <img src="data:image/jpeg;base64,{{ base64_encode(file_get_contents(storage_path('app/public/uploads/logo.jpeg'))) }}" class="logo-img">
                 @else
                     <h2 style="margin:0; font-weight:900; font-size:18px;">CV SANCAKA KARYA HUTAMA</h2>
@@ -191,14 +208,19 @@
                 <div class="info-text">Ketanggi, Ngawi, Jawa Timur 63211</div>
             </td>
 
-            <!-- Kolom Kanan (Pindah API Barcode ke Google agar tidak silang) -->
+            <!-- Kolom Kanan (QR Code dari Base64) -->
             <td style="width: 30%; text-align: right;">
                 <div class="label" style="text-align: right;">DATE DETAILS</div>
                 <div class="info-text" style="margin-bottom: 5px;">Tanggal Terbit:</div>
                 <div class="info-data">{{ date('d F Y', strtotime($invoice->date)) }}</div>
 
                 <div style="margin-top: 15px;">
-                    <img src="https://chart.googleapis.com/chart?chs=70x70&cht=qr&chl={{ urlencode($invoice->invoice_no) }}" style="width: 70px; height: 70px; border: 1px solid #ccc; padding: 2px; background: white;">
+                    @if($qrBase64)
+                        <img src="{{ $qrBase64 }}" style="width: 70px; height: 70px; border: 1px solid #ccc; padding: 2px; background: white;">
+                    @else
+                        <!-- Fallback jika gagal generate QR -->
+                        <div style="width: 70px; height: 70px; border: 1px dashed #ccc; text-align: center; line-height: 70px; font-size: 9px; color: #999; float: right;">NO QR</div>
+                    @endif
                 </div>
             </td>
         </tr>
