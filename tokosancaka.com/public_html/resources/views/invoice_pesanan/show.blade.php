@@ -19,6 +19,7 @@
             font-family: 'Inter', sans-serif;
         }
 
+
         /* Desain Pita (Ribbon) UNPAID / LUNAS / REFUND */
         .ribbon-wrapper {
             position: absolute; right: -5px; top: -5px; z-index: 20;
