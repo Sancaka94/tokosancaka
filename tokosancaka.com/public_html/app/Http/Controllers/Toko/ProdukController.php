@@ -111,7 +111,8 @@ public function index(Request $request) // Tambahkan Request
             //'jenis_barang' => 'required|string', // atau integer, sesuaikan
             'status' => 'required|in:active,inactive',
             'sku' => ['nullable', 'string', 'max:100', Rule::unique('products', 'sku')->where('store_id', $store->id)],
-
+            'supporting_images' => 'nullable|array|max:5', // Maksimal 5 file
+            'supporting_images.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048', // Syarat tiap file
             // --- DITAMBAHKAN: Validasi Opsional ---
             'original_price' => 'nullable|numeric|min:0|gt:price', // Harga coret harus > harga jual
             'length' => 'nullable|numeric|min:0',
@@ -351,6 +352,8 @@ public function index(Request $request) // Tambahkan Request
             'status' => 'required|in:active,inactive',
             'sku' => ['nullable', 'string', 'max:100', Rule::unique('products', 'sku')->where('store_id', $storeId)->ignore($product->id)],
             'attributes' => 'nullable|array',
+            'supporting_images' => 'nullable|array|max:5', // Maksimal 5 file
+            'supporting_images.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048', // Syarat tiap file
             'variant_types' => 'nullable|array',
             'variant_types.*.name' => 'required_with:variant_types|string|max:255',
             'variant_types.*.options' => 'required_with:variant_types|string',
@@ -369,7 +372,8 @@ public function index(Request $request) // Tambahkan Request
             'digital_file' => 'nullable|file|mimes:pdf,zip,jpg,png|max:5120',
             'digital_sn_list' => 'nullable|string',
             'id_master_layanan' => 'nullable|integer',
-            
+            'supporting_images' => 'nullable|array|max:5',
+            'supporting_images.*' => 'image|mimes:jpeg,png,jpg,webp|max:2048',
         ], [
             'original_price.gt' => 'Harga Asli (Coret) harus lebih besar dari Harga Jual.'
         ]);
@@ -435,6 +439,7 @@ public function index(Request $request) // Tambahkan Request
             unset($dataToUpdate['attributes']);
             unset($dataToUpdate['variant_types']);
             unset($dataToUpdate['product_variants']); // <-- DITAMBAHKAN
+            unset($dataToUpdate['supporting_images']); // <-- DITAMBAHKAN
 
             if ($request->has('id_master_layanan') && $request->id_master_layanan != null) {
                 $data['id_master_layanan'] = $request->id_master_layanan;

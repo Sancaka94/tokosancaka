@@ -76,15 +76,37 @@
                         </div>
                     </div>
 
-                    {{-- Gambar Produk --}}
+                    {{-- Gambar Produk (Utama & Pendukung) --}}
                     <div class="bg-white p-6 rounded-lg shadow-md">
-                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Gambar / Foto Pendukung</h2>
-                        <div id="image-uploader" class="image-uploader" tabindex="0">
-                            <p class="font-semibold text-red-600">Klik untuk upload</p>
-                            <p class="text-xs text-gray-500">atau seret file ke sini (PNG, JPG, WEBP hingga 2MB)</p>
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Gambar / Foto Produk</h2>
+                        
+                        {{-- 1. GAMBAR UTAMA (WAJIB) --}}
+                        <div class="mb-6">
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Gambar Utama (Wajib)</label>
+                            <div id="image-uploader" class="image-uploader" tabindex="0">
+                                <p class="font-semibold text-red-600">Klik untuk upload Gambar Utama</p>
+                                <p class="text-xs text-gray-500">PNG, JPG, WEBP hingga 2MB</p>
+                            </div>
+                            <input type="file" name="product_image" id="product_image" class="hidden" accept="image/png, image/jpeg, image/webp" required>
+                            <img id="image-preview" alt="Pratinjau Gambar Utama" class="image-preview border-2 border-red-500 p-1" />
+                            @error('product_image') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
                         </div>
-                        <input type="file" name="product_image" id="product_image" class="hidden" accept="image/png, image/jpeg, image/webp" required>
-                        <img id="image-preview" alt="Pratinjau Gambar" class="image-preview" />
+
+                        <hr class="border-gray-200 mb-6">
+
+                        {{-- 2. GAMBAR PENDUKUNG (MAKS 5) --}}
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Gambar Pendukung (Maks 5 Foto)</label>
+                            <div id="support-image-uploader" class="image-uploader py-6" tabindex="0">
+                                <p class="font-semibold text-gray-600"><i class="fas fa-images"></i> Klik / Seret hingga 5 gambar pendukung</p>
+                                <p class="text-xs text-gray-500 mt-1">Gunakan foto dari sisi lain atau detail produk.</p>
+                            </div>
+                            <input type="file" name="supporting_images[]" id="supporting_images" class="hidden" accept="image/png, image/jpeg, image/webp" multiple>
+                            
+                            {{-- Tempat munculnya pratinjau 5 gambar --}}
+                            <div id="support-preview-container" class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4"></div>
+                            @error('supporting_images.*') <p class="mt-2 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
                     </div>
 
                     {{-- Varian Produk --}}
@@ -275,7 +297,9 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- Uploader Gambar ---
+    // ==========================================
+    // 1. UPLOADER GAMBAR UTAMA (1 FOTO)
+    // ==========================================
     const uploader = document.getElementById('image-uploader');
     const input = document.getElementById('product_image');
     const preview = document.getElementById('image-preview');
@@ -294,7 +318,87 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- LOGIKA CERDAS: BERALIH ANTARA PRODUK FISIK & JASA ---
+    // ==========================================
+    // 2. UPLOADER GAMBAR PENDUKUNG (MAKS 5 FOTO)
+    // ==========================================
+    const supportUploader = document.getElementById('support-image-uploader');
+    const supportInput = document.getElementById('supporting_images');
+    const supportPreviewContainer = document.getElementById('support-preview-container');
+    let supportingFiles = []; // Array penampung file asli
+
+    if (supportUploader && supportInput && supportPreviewContainer) {
+        
+        // Buka dialog file saat kotak diklik
+        supportUploader.addEventListener('click', () => supportInput.click());
+        
+        // Efek Drag & Drop
+        supportUploader.addEventListener('dragover', (e) => { e.preventDefault(); supportUploader.classList.add('dragging'); });
+        supportUploader.addEventListener('dragleave', () => supportUploader.classList.remove('dragging'));
+        supportUploader.addEventListener('drop', (e) => {
+            e.preventDefault(); supportUploader.classList.remove('dragging');
+            handleSupportFiles(e.dataTransfer.files);
+        });
+
+        // Tangkap file dari input dialog
+        supportInput.addEventListener('change', (e) => {
+            handleSupportFiles(e.target.files);
+        });
+
+        function handleSupportFiles(newFiles) {
+            Array.from(newFiles).forEach(file => {
+                // Hanya izinkan format gambar
+                if (!file.type.match('image.*')) return;
+                
+                // Cek batas maksimum 5 gambar
+                if (supportingFiles.length < 5) {
+                    supportingFiles.push(file);
+                } else {
+                    alert('Maksimal hanya 5 gambar pendukung!');
+                }
+            });
+            renderSupportPreviews();
+            syncSupportInput();
+        }
+
+        // Tampilkan pratinjau gambar (thumbnail)
+        function renderSupportPreviews() {
+            supportPreviewContainer.innerHTML = '';
+            supportingFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const div = document.createElement('div');
+                    div.className = 'relative group rounded-md border border-gray-200 overflow-hidden shadow-sm aspect-square bg-gray-50';
+                    div.innerHTML = `
+                        <img src="${e.target.result}" class="w-full h-full object-cover">
+                        <button type="button" class="absolute top-1 right-1 bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity" onclick="removeSupportImage(${index})" title="Hapus Gambar">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    supportPreviewContainer.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Fungsi hapus gambar dari list
+        window.removeSupportImage = function(index) {
+            supportingFiles.splice(index, 1);
+            renderSupportPreviews();
+            syncSupportInput();
+        }
+
+        // Sinkronisasi array JS ke Input HTML untuk dikirim ke Backend Laravel
+        function syncSupportInput() {
+            const dataTransfer = new DataTransfer();
+            supportingFiles.forEach(file => dataTransfer.items.add(file));
+            supportInput.files = dataTransfer.files;
+        }
+    }
+
+
+    // ==========================================
+    // 3. LOGIKA CERDAS: BERALIH ANTARA PRODUK FISIK & JASA
+    // ==========================================
     const bidangSelect = document.getElementById('id_bidang');
     const subBidangWrapper = document.getElementById('sub-bidang-wrapper');
     const layananWrapper = document.getElementById('layanan-wrapper');
@@ -344,7 +448,10 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleJasaConstraints(); 
     }
 
-    // --- AJAX DROPDOWN JASA ---
+
+    // ==========================================
+    // 4. AJAX DROPDOWN JASA
+    // ==========================================
     window.loadSubBidang = function(id_bidang) {
         if (!id_bidang) return;
         const subBidangSelect = document.getElementById('id_sub_bidang');
@@ -375,7 +482,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     };
 
-    // --- Varian Dinamis ---
+
+    // ==========================================
+    // 5. VARIAN PRODUK DINAMIS
+    // ==========================================
     const variantContainer = document.getElementById('variant-groups-container');
     const addVariantBtn = document.getElementById('add-variant-group');
     const mainStockInput = document.getElementById('stock');
