@@ -229,7 +229,7 @@
                     </div>
 
                     {{-- ⚡ KATEGORI JASA (Tambahan Baru) ⚡ --}}
-                    <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-red-600 hidden" id="jasa-asset-container">
+                    <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-red-600" id="jasa-asset-container">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">Kategori Layanan Jasa</h2>
                         <p class="text-xs text-gray-500 mb-4">Silakan atur Detail Bidang Pekerjaan dan Tarif Dasar Anda.</p>
                         
