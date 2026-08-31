@@ -101,7 +101,7 @@
             z-index: 9999;
             pointer-events: none; /* Klik tetap tembus ke tombol di bawahnya */
             transform: rotate(-35deg);
-            background-image: url("data:image/svg+xml,%3Csvg width='1400' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='700' y='60' fill='black' font-family='Arial, sans-serif' font-size='12' font-weight='800' text-anchor='middle'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg width='850' height='70' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='425' y='45' fill='black' font-family='Arial, sans-serif' font-size='12' font-weight='800' text-anchor='middle'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3C/svg%3E");
             background-repeat: repeat;
             background-position: center;
             opacity: 0.04; /* Sangat samar agar tidak mengganggu bacaan (hanya 4%) */
