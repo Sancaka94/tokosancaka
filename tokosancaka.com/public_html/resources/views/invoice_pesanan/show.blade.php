@@ -69,15 +69,16 @@
         // FITUR BARU: GENERATE WATERMARK & PIN KEAMANAN DINAMIS
         // =========================================================
 
-        // Mengambil 4 angka terakhir nomor HP Pengirim untuk PIN
+        // Mengambil 4 angka terakhir nomor HP Pengirim untuk PIN (TETAP RAHASIA)
         $hpPengirim = preg_replace('/[^0-9]/', '', $pesanan->sender_phone);
         $pinRahasia = substr($hpPengirim, -4);
         if (strlen($pinRahasia) < 4) $pinRahasia = str_pad($pinRahasia, 4, '0', STR_PAD_LEFT);
 
-        // RUMUS KISI-KISI NOMOR HP
-        $duaDepan = substr($hpPengirim, 0, 2);
-        $empatBelakang = substr($hpPengirim, -4);
-        $kisiKisiHp = $duaDepan . ' *** *** **' . $empatBelakang;
+        // RUMUS KISI-KISI NOMOR HP YANG BENAR (Menampilkan 7 angka depan, sisanya bintang)
+        $panjangHp = strlen($hpPengirim);
+        $tampilDepan = substr($hpPengirim, 0, 7);
+        $jumlahBintang = $panjangHp > 7 ? $panjangHp - 7 : 4;
+        $kisiKisiHp = $tampilDepan . str_repeat('*', $jumlahBintang);
 
         // Format Teks Watermark
         $tglTerbitWmk = \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->format('d M Y H:i');
@@ -161,7 +162,7 @@
 
             <p class="text-sm text-gray-500 mb-6 leading-relaxed">
                 Masukkan <strong class="text-red-600">4 Angka Terakhir</strong> Nomor HP Pengirim untuk membuka invoice ini.<br>
-                <span class="inline-block mt-3 px-4 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-gray-600 font-mono tracking-widest text-[13px] font-bold shadow-sm">
+                <span class="inline-block mt-3 px-4 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-gray-600 font-mono tracking-[0.2em] text-[14px] font-bold shadow-sm">
                     {{ $kisiKisiHp }}
                 </span>
             </p>
@@ -574,56 +575,39 @@
         const mainContent = document.getElementById('mainContentWrapper');
 
         if (pinInput.value === correctPin) {
-            // Efek Transisi Membuka Kunci
             pinModal.style.opacity = '0';
             setTimeout(() => {
                 pinModal.remove();
                 document.getElementById('bodyMain').classList.remove('overflow-hidden');
-
-                // Menghilangkan blur dari invoice
                 mainContent.classList.remove('blur-xl', 'opacity-20', 'pointer-events-none', 'select-none');
             }, 300);
         } else {
-            // Jika Salah PIN (Efek Error Merah)
             pinError.classList.remove('hidden');
             pinInput.value = '';
             pinInput.focus();
-
             pinInput.classList.add('translate-x-[-10px]', 'border-red-500');
             setTimeout(() => pinInput.classList.remove('translate-x-[-10px]', 'border-red-500'), 150);
         }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        // Event Listener PIN Modal
         const pinInput = document.getElementById('pinInput');
-
-        pinInput.focus(); // Auto-focus ketika halaman pertama dimuat
-
+        pinInput.focus();
         pinInput.addEventListener('keypress', function (e) {
             if (e.key === 'Enter') verifyPin();
         });
-
         pinInput.addEventListener('input', function() {
-            // Hanya izinkan angka
             this.value = this.value.replace(/[^0-9]/g, '');
-            // Auto submit jika angka sudah 4
             if(this.value.length === 4) verifyPin();
         });
 
-        // --- Logika Invoice & Pembayaran Bawaan ---
         const isPaid = {{ $statusLunas ? 'true' : 'false' }};
         const isCancelled = {{ $isCancelled ? 'true' : 'false' }};
         const resiSancaka = "{!! $pesanan->resi !!}";
 
         if (!isCancelled && isPaid && resiSancaka) {
-            try {
-                JsBarcode("#barcodeResi", resiSancaka, { format: "CODE128", lineColor: "#000000", textMargin: 4, fontOptions: "bold", fontSize: 13, height: 40, width: 2, displayValue: true });
-            } catch (e) {}
-
-            try {
-                new QRCode(document.getElementById("qrcode"), { text: "https://tokosancaka.com/tracking/search?resi=" + resiSancaka, width: 75, height: 75, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.M });
-            } catch (e) {}
+            try { JsBarcode("#barcodeResi", resiSancaka, { format: "CODE128", lineColor: "#000000", textMargin: 4, fontOptions: "bold", fontSize: 13, height: 40, width: 2, displayValue: true }); } catch (e) {}
+            try { new QRCode(document.getElementById("qrcode"), { text: "https://tokosancaka.com/tracking/search?resi=" + resiSancaka, width: 75, height: 75, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.M }); } catch (e) {}
         }
 
         const paymentModal = document.getElementById('paymentModal');
@@ -651,7 +635,6 @@
                     });
                     this.classList.remove('border-gray-200');
                     this.classList.add('border-black', 'ring-1', 'ring-black');
-
                     document.getElementById('paymentMethodLabel').textContent = this.dataset.label;
                     document.getElementById('paymentMethodImg').src = this.dataset.img;
                     closePaymentModal();
