@@ -30,7 +30,7 @@
         <changefreq>monthly</changefreq>
         <priority>0.7</priority>
     </url>
-    
+
     <!-- Looping Artikel Blog Otomatis -->
     @foreach ($posts as $post)
         <url>
@@ -41,3 +41,4 @@
         </url>
     @endforeach
 </urlset>
+
