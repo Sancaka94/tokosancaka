@@ -480,10 +480,16 @@
                             </div>
                         </div>
 
-                        <div class="mt-6">
-                            <button type="submit" id="submit-button" class="flex w-full items-center justify-center rounded-md border border-transparent bg-red-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-red-700" disabled>
+                        <div class="mt-6 flex flex-col gap-3">
+                            <!-- Tombol Utama: Bayar -->
+                            <button type="submit" id="submit-button" class="flex w-full items-center justify-center rounded-md border border-transparent bg-red-600 px-6 py-3 text-base font-medium text-white shadow-sm hover:bg-red-700 transition" disabled>
                                 Buat Pesanan & Bayar
                             </button>
+                            
+                            <!-- Tombol Sekunder: Tambah Produk (Lanjut Belanja) -->
+                            <a href="{{ route('etalase.index') }}" class="flex w-full items-center justify-center rounded-md border border-red-600 bg-white px-6 py-3 text-base font-medium text-red-600 shadow-sm hover:bg-red-50 transition">
+                                <i class="fas fa-cart-plus mr-2"></i> Tambah Produk
+                            </a>
                         </div>
                     </div>
                 </div>
