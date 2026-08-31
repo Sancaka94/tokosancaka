@@ -237,10 +237,9 @@
             <div class="w-full md:w-1/2">
                 <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-16 mb-5 object-contain" onerror="this.src='https://placehold.co/200x50/FFFFFF/000000?text=SANCAKA+EXPRESS'">
                 <div class="text-[13px] text-gray-500 leading-relaxed">
-                    <p class="font-bold text-black uppercase tracking-wide">Sancaka Express</p>
-                    <p>Jl. Dr. Wahidin No. 18A, Ketanggi</p>
-                    <p>Kabupaten Ngawi, Jawa Timur 63211</p>
-                    <p class="font-medium text-black mt-1">Telp: 08574580809</p>
+                    <p class="font-bold text-black uppercase tracking-wide">Sancaka Express Powered By CV SANCAKA KARYA HUTAMA</p>
+                    <p>Jl. Dr. Wahidin No. 18A, Ketanggi Kabupaten Ngawi, Jawa Timur 63211</p>
+                    <p class="font-medium text-black mt-1">Helpdesk: 08574580809</p>
                 </div>
             </div>
 
@@ -268,7 +267,7 @@
                                     <div class="w-6 h-6 flex items-center justify-center">
                                         <img id="paymentMethodImg" src="https://tokosancaka.com/public/assets/saldo.png" class="max-w-full max-h-full">
                                     </div>
-                                    <span id="paymentMethodLabel" class="text-sm font-semibold text-black">Pilih Metode...</span>
+                                    <span id="paymentMethodLabel" class="text-sm font-semibold text-black">Pilih Ban...</span>
                                 </div>
                                 <i class="fas fa-chevron-down text-gray-400 group-hover:text-black text-xs"></i>
                             </button>
