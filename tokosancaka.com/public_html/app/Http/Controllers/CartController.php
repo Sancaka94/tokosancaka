@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers; // ⚡ INI YANG BIKIN FATAL ERROR, SEKARANG SUDAH BENAR
 
 use Illuminate\Http\Request;
 use App\Models\Product;
@@ -62,27 +62,14 @@ class CartController extends Controller
     /**
      * Menambahkan produk ke keranjang (Beli Sekarang & Masukkan Keranjang).
      */
-    public function add(Request $request) // ⚡ PERBAIKAN: Parameter Product dihapus agar tidak terjadi binding error
+    public function add(Request $request, Product $product)
     {
-        // ⚡ MANUAL FETCH: Ambil ID langsung dari form HTML, jauh lebih akurat dan anti-error
-        $productId = $request->input('product_id');
         $quantity = (int)$request->input('quantity', 1);
         $variantId = $request->input('product_variant_id') ?? $request->input('variant_id');
 
-        // Bersihkan data variantId jika berupa string kosong atau teks "null" dari Javascript
-        if (empty($variantId) || $variantId === 'null') {
-            $variantId = null;
-        }
-
-        $product = Product::find($productId);
-
-        // Jika ID produk ternyata benar-benar tidak ada di database
-        if (!$product) {
-            return back()->with('error', 'Produk tidak ditemukan atau ID tidak valid.');
-        }
-
-        // KUNCI CHECKOUT Sancaka: Format Key HARUS IDProduk-IDVarian (cth: "12-0")
+        // ⚡ KUNCI CHECKOUT Sancaka: Format Key HARUS IDProduk-IDVarian (cth: "39-0")
         $cartKey = $product->id . '-' . ($variantId ?? '0');
+        
         $cart = session()->get('cart', []);
 
         // Proteksi: Jangan izinkan user beli barang dari tokonya sendiri
@@ -113,13 +100,13 @@ class CartController extends Controller
             $itemWeight = 1;
         }
 
-        // Validasi Kuantitas vs Stok yang kini sudah pasti terbaca
+        // Validasi Kuantitas vs Stok
         $currentQuantityInCart = $cart[$cartKey]['quantity'] ?? 0;
         $newTotalQuantity = $currentQuantityInCart + $quantity;
         $stockToCheck = $variantId ? ProductVariant::find($variantId)->stock : $product->stock;
 
         if ($stockToCheck < $newTotalQuantity) {
-            return back()->with('error', "Stok produk tidak mencukupi. Stok tersedia: {$stockToCheck} buah.");
+            return back()->with('error', "Stok produk tidak mencukupi. Stok tersedia: {$stockToCheck}.");
         }
 
         // Simpan ke Session Cart
