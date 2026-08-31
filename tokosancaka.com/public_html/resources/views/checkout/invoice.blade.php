@@ -166,16 +166,33 @@
                         $noHpPelanggan = $order->user->no_wa ?? ($order->receiver_phone ?? '');
                     @endphp
 
-                    <!-- INFO PENGIRIMAN -->
-                    <div class="mb-10 relative z-10">
-                        <h3 class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">
-                            {{ $isPureDigital ? 'Informasi Penerima' : 'Detail Pengiriman' }}
-                        </h3>
-                        <div class="text-sm">
-                            <p class="font-black text-black uppercase">{{ $maskName($namaPelanggan) }}</p>
-                            <p class="text-[11px] font-bold text-gray-600 mt-1">{{ $maskPhone($noHpPelanggan) }}</p>
-                            <p class="text-[11px] text-gray-500 mt-1 leading-relaxed max-w-sm">{{ $order->shipping_address ?? $order->user->address_detail ?? 'Alamat tidak tersedia' }}</p>
+                    <!-- INFO PENGIRIMAN & CATATAN -->
+                    <div class="mb-10 relative z-10 flex flex-col sm:flex-row gap-6 sm:gap-12">
+                        <!-- Kolom Detail Alamat -->
+                        <div class="flex-1">
+                            <h3 class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">
+                                {{ $isPureDigital ? 'Informasi Penerima' : 'Detail Pengiriman' }}
+                            </h3>
+                            <div class="text-sm">
+                                <p class="font-black text-black uppercase">{{ $maskName($namaPelanggan) }}</p>
+                                <p class="text-[11px] font-bold text-gray-600 mt-1">{{ $maskPhone($noHpPelanggan) }}</p>
+                                <p class="text-[11px] text-gray-500 mt-1 leading-relaxed max-w-sm">{{ $order->shipping_address ?? $order->user->address_detail ?? 'Alamat tidak tersedia' }}</p>
+                            </div>
                         </div>
+
+                        <!-- ⚡ TAMBAHAN: Kolom Catatan Pesanan ⚡ -->
+                        @if(!empty($order->catatan))
+                        <div class="flex-1 border-t sm:border-t-0 sm:border-l border-gray-200 pt-4 sm:pt-0 sm:pl-6">
+                            <h3 class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center">
+                                <i class="far fa-comment-dots mr-1.5"></i> Catatan Pesanan
+                            </h3>
+                            <div class="bg-gray-50 p-3 rounded border border-gray-100">
+                                <p class="text-[11px] text-gray-700 leading-relaxed italic font-medium">
+                                    "{{ $order->catatan }}"
+                                </p>
+                            </div>
+                        </div>
+                        @endif
                     </div>
 
                     <!-- TABEL PESANAN -->
