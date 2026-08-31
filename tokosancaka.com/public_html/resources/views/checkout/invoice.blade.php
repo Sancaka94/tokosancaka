@@ -343,7 +343,7 @@
                                     <span id="payCode" class="text-lg font-mono font-black text-black tracking-widest">{{ $order->pay_code }}</span>
                                 </div>
                             @else
-                                <a href="{{ $url }}" target="_blank" class="block w-full py-2.5 bg-black text-white text-[10px] font-bold uppercase tracking-wider rounded text-center hover:bg-gray-800 transition">
+                                <a href="{{ $url }}" target="_blank" class="block w-full py-2.5 bg-green-500 text-white text-[10px] font-bold uppercase tracking-wider rounded text-center hover:bg-green-600 transition">
                                     <i class="fas fa-wallet mr-2"></i> Bayar Sekarang
                                 </a>
                             @endif
