@@ -214,23 +214,49 @@ if (!function_exists('formatWaNumber')) {
 
                     {{-- === GALERI THUMBNAIL === --}}
                     <div class="grid grid-cols-5 gap-2 mt-2">
-                        @if($product->images && $product->images->count() > 0)
-                            @foreach($product->images->sortBy('sort_order') as $media)
+                        @php
+                            // Decode JSON supporting_images
+                            $supportingImages = [];
+                            if ($product->supporting_images) {
+                                $decoded = json_decode($product->supporting_images, true);
+                                if (is_array($decoded)) {
+                                    $supportingImages = $decoded;
+                                }
+                            }
+                        @endphp
+
+                        {{-- 1. Thumbnail Gambar Utama (Selalu Muncul) --}}
+                        <div class="aspect-square w-full h-full overflow-hidden rounded cursor-pointer">
+                            <img src="{{ $imageUrl }}"
+                                 alt="Thumbnail Utama"
+                                 class="thumbnail-img w-full h-full object-cover border-2 thumbnail-active hover:border-red-500 transition-all duration-200"
+                                 onclick="changeImage(this)">
+                        </div>
+
+                        {{-- 2. Thumbnail Gambar Pendukung --}}
+                        @if(count($supportingImages) > 0)
+                            @foreach($supportingImages as $supportImg)
                                 <div class="aspect-square w-full h-full overflow-hidden rounded cursor-pointer">
-                                    <img src="{{ asset('public/storage/' . $media->path) }}"
-                                         alt="Gambar {{ $loop->iteration }}"
-                                         class="thumbnail-img w-full h-full object-cover border-2 {{ $loop->first ? 'thumbnail-active' : 'border-transparent' }} hover:border-red-500 transition-all duration-200"
+                                    <img src="{{ asset('public/storage/' . $supportImg) }}"
+                                         alt="Gambar Pendukung {{ $loop->iteration }}"
+                                         class="thumbnail-img w-full h-full object-cover border-2 border-transparent hover:border-red-500 transition-all duration-200"
                                          onclick="changeImage(this)"
                                          onerror="this.onerror=null;this.style.display='none';">
                                 </div>
                             @endforeach
-                        @else
-                            <div class="aspect-square w-full h-full overflow-hidden rounded cursor-pointer">
-                                <img src="{{ $imageUrl }}"
-                                     alt="Thumbnail"
-                                     class="thumbnail-img w-full h-full object-cover border-2 thumbnail-active hover:border-red-500"
-                                     onclick="changeImage(this)">
-                            </div>
+                        @endif
+
+                        {{-- 3. (Fallback lama jika masih ada data di tabel terpisah $product->images) --}}
+                        @if($product->images && $product->images->count() > 0)
+                            @foreach($product->images->sortBy('sort_order') as $media)
+                                <div class="aspect-square w-full h-full overflow-hidden rounded cursor-pointer">
+                                    <img src="{{ asset('public/storage/' . $media->path) }}"
+                                         alt="Gambar Detail {{ $loop->iteration }}"
+                                         class="thumbnail-img w-full h-full object-cover border-2 border-transparent hover:border-red-500 transition-all duration-200"
+                                         onclick="changeImage(this)"
+                                         onerror="this.onerror=null;this.style.display='none';">
+                                </div>
+                            @endforeach
                         @endif
                     </div>
                 </div>
