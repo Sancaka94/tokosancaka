@@ -67,6 +67,10 @@ class CartController extends Controller
         $quantity = (int)$request->input('quantity', 1);
         $variantId = $request->input('product_variant_id') ?? $request->input('variant_id');
 
+        Log::info('--- CEK DEBUGGING ADD TO CART ---');
+        Log::info('Semua data dari Form Request: ', $request->all());
+        Log::info('Data Product dari Parameter Method: ', $product->toArray());
+
         // ⚡ KUNCI CHECKOUT Sancaka: Format Key HARUS IDProduk-IDVarian (cth: "39-0")
         $cartKey = $product->id . '-' . ($variantId ?? '0');
         
