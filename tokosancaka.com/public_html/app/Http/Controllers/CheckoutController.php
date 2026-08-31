@@ -99,7 +99,13 @@ class CheckoutController extends Controller
 
    public function index(KiriminAjaService $kiriminAja)
     {
-        $cart = session()->get('cart', []);
+        $scope = auth()->check() ? ['user_id' => auth()->id()] : ['session_id' => session()->getId()];
+        $dbCart = \Illuminate\Support\Facades\DB::table('cartbelanja')->where($scope)->get();
+        $cart = [];
+        foreach ($dbCart as $item) {
+            $key = $item->is_ppob ? 'ppob_' . $item->ref_id : $item->product_id . '-' . ($item->variant_id ?? '0');
+            $cart[$key] = (array) $item;
+        }
         if (empty($cart)) {
             return redirect()->route('cart.index')
                 ->with('info', 'Keranjang Anda kosong. Silakan belanja terlebih dahulu.');
@@ -234,7 +240,12 @@ class CheckoutController extends Controller
         $firstProduct = $productId ? Product::find($productId) : null;
 
         if (!$firstProduct || !$firstProduct->store || !$firstProduct->store->user) {
-            session()->forget('cart');
+            $scope = auth()->check() ? ['user_id' => auth()->id()] : ['session_id' => session()->getId()];
+            \Illuminate\Support\Facades\DB::table('cartbelanja')->where($scope)->delete();
+            try {
+                $redisKey = auth()->check() ? "cart_belanja:user:" . auth()->id() : "cart_belanja:guest:" . session()->getId();
+                \Illuminate\Support\Facades\Redis::del($redisKey);
+            } catch (\Exception $e) {}
             return redirect()->route('cart.index')->with('error', 'Produk atau data toko di keranjang Anda tidak valid. Keranjang telah dikosongkan.');
         }
 
@@ -408,7 +419,13 @@ class CheckoutController extends Controller
             'alamat_lengkap_penerima' => 'nullable|string',
         ]);
 
-        $cart = session()->get('cart', []);
+        $scope = auth()->check() ? ['user_id' => auth()->id()] : ['session_id' => session()->getId()];
+        $dbCart = \Illuminate\Support\Facades\DB::table('cartbelanja')->where($scope)->get();
+        $cart = [];
+        foreach ($dbCart as $item) {
+            $key = $item->is_ppob ? 'ppob_' . $item->ref_id : $item->product_id . '-' . ($item->variant_id ?? '0');
+            $cart[$key] = (array) $item;
+        }
         $user = Auth::user();
 
         if (empty($cart)) {
@@ -1187,7 +1204,12 @@ class CheckoutController extends Controller
             ]);
 
             DB::commit();
-            session()->forget('cart');
+            $scope = auth()->check() ? ['user_id' => auth()->id()] : ['session_id' => session()->getId()];
+            \Illuminate\Support\Facades\DB::table('cartbelanja')->where($scope)->delete();
+            try {
+                $redisKey = auth()->check() ? "cart_belanja:user:" . auth()->id() : "cart_belanja:guest:" . session()->getId();
+                \Illuminate\Support\Facades\Redis::del($redisKey);
+            } catch (\Exception $e) {}
 
             // --- A1. JIKA METODE MIDTRANS, PAYPAL ATAU DOKU (AUTO REDIRECT KE PAYMENT GATEWAY) ---
             if (isset($paymentGateway) && in_array($paymentGateway, ['midtrans', 'paypal', 'doku']) && !empty($order->payment_url)) {
@@ -1410,7 +1432,12 @@ class CheckoutController extends Controller
                     $order->payment_url = substr($redirectUrl, 0, 255);
                     $order->save();
 
-                    session()->forget('cart');
+                    $scope = auth()->check() ? ['user_id' => auth()->id()] : ['session_id' => session()->getId()];
+                    \Illuminate\Support\Facades\DB::table('cartbelanja')->where($scope)->delete();
+                    try {
+                        $redisKey = auth()->check() ? "cart_belanja:user:" . auth()->id() : "cart_belanja:guest:" . session()->getId();
+                        \Illuminate\Support\Facades\Redis::del($redisKey);
+                    } catch (\Exception $e) {}
 
                     // Simpan ke session sebagai cadangan
                     session()->put('last_dana_ref', $order->invoice_number);
@@ -3235,8 +3262,12 @@ TEXT;
                     $order->payment_url = substr($result['webRedirectUrl'], 0, 255);
                     $order->save();
 
-                    session()->forget('cart');
-                    session()->put('last_dana_ref', $order->invoice_number);
+                    $scope = auth()->check() ? ['user_id' => auth()->id()] : ['session_id' => session()->getId()];
+                    \Illuminate\Support\Facades\DB::table('cartbelanja')->where($scope)->delete();
+                    try {
+                        $redisKey = auth()->check() ? "cart_belanja:user:" . auth()->id() : "cart_belanja:guest:" . session()->getId();
+                        \Illuminate\Support\Facades\Redis::del($redisKey);
+                    } catch (\Exception $e) {}
 
                     return redirect()->away($result['webRedirectUrl']);
                 }
