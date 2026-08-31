@@ -41,7 +41,7 @@ class CartController extends Controller
                 // Validasi Produk Utama
                 $product = Product::find($details['product_id']);
 
-                if (!$product || $product->status !== 'active') {
+                if (!$product || strtolower(trim($product->status)) !== 'active') {
                     unset($cart[$key]);
                     $hasChanges = true;
                     continue;
@@ -103,7 +103,7 @@ class CartController extends Controller
         // Validasi Kuantitas vs Stok
         $currentQuantityInCart = $cart[$cartKey]['quantity'] ?? 0;
         $newTotalQuantity = $currentQuantityInCart + $quantity;
-        $stockToCheck = $variantId ? ProductVariant::find($variantId)->stock : $product->stock;
+        $stockToCheck = (int) ($variantId ? ProductVariant::find($variantId)->stock : $product->stock);
 
         if ($stockToCheck < $newTotalQuantity) {
             return back()->with('error', "Stok produk tidak mencukupi. Stok tersedia: {$stockToCheck}.");
