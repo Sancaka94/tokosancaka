@@ -311,7 +311,7 @@ if (!function_exists('formatWaNumber')) {
                         @endif
                     </div>
 
-                    <form id="add-to-cart-form" action="{{ route('cart.add') }}" method="POST">
+                    <form id="add-to-cart-form" action="{{ route('cart.add', $product->id) }}" method="POST">
                         @csrf
                         <input type="hidden" name="product_id" value="{{ $product->id }}">
                         <input type="hidden" id="product_variant_id" name="product_variant_id" value="">
@@ -1030,6 +1030,6 @@ document.addEventListener('DOMContentLoaded', () => {
             closeImageModal();
         }
     });
-    
+
 </script>
 @endpush
