@@ -74,9 +74,11 @@ public function index(Request $request) // Tambahkan Request
         ->orderBy('name')
         ->get();
 
-        // Kirim $categories ke view
-        // Pastikan nama view ini sesuai
-        return view('seller.produk.create', compact('categories'));
+        // ⚡ TAMBAHAN BARU: Ambil data Bidang Jasa
+        $bidangs = DB::table('master_bidang')->where('status_aktif', 1)->orderBy('nama_bidang')->get();
+
+        // Kirim $categories dan $bidangs ke view
+        return view('seller.produk.create', compact('categories', 'bidangs'));
     }
 
     /**
@@ -128,6 +130,7 @@ public function index(Request $request) // Tambahkan Request
             'digital_url' => 'nullable|url',
             'digital_file' => 'nullable|file|mimes:pdf,zip,jpg,png|max:5120',
             'digital_sn_list' => 'nullable|string',
+            'id_master_layanan' => 'nullable|integer',
 
         ], [
             'original_price.gt' => 'Harga Asli (Coret) harus lebih besar dari Harga Jual.'
@@ -199,6 +202,10 @@ public function index(Request $request) // Tambahkan Request
             unset($dataToCreate['variant_types']);
             unset($dataToCreate['product_variants']);
 
+            if ($request->has('id_master_layanan')) {
+                $dataToCreate['id_master_layanan'] = $request->id_master_layanan;
+            }
+
             // 8. Buat Produk
             $product = Product::create($dataToCreate); // <-- Variabel $product dibuat di sini
 
@@ -246,6 +253,9 @@ public function index(Request $request) // Tambahkan Request
         $categories = Category::whereIn('type', ['product', 'marketplace'])
         ->orderBy('name')
         ->get();
+
+        // ⚡ TAMBAHAN BARU: Ambil data Bidang Jasa
+        $bidangs = DB::table('master_bidang')->where('status_aktif', 1)->orderBy('nama_bidang')->get();
 
         // === PERBAIKAN ===
         $produk = Product::where('slug', $slug)
@@ -306,6 +316,7 @@ public function index(Request $request) // Tambahkan Request
         return view('seller.produk.edit', compact(
             'produk',
             'categories',
+            'bidangs',
             'existing_attributes_json',
             'existing_variant_types_json',
             'existing_variants_json' // <-- DITAMBAHKAN
@@ -355,6 +366,7 @@ public function index(Request $request) // Tambahkan Request
             'digital_url' => 'nullable|url',
             'digital_file' => 'nullable|file|mimes:pdf,zip,jpg,png|max:5120',
             'digital_sn_list' => 'nullable|string',
+            'id_master_layanan' => 'nullable|integer',
             
         ], [
             'original_price.gt' => 'Harga Asli (Coret) harus lebih besar dari Harga Jual.'
@@ -421,6 +433,10 @@ public function index(Request $request) // Tambahkan Request
             unset($dataToUpdate['attributes']);
             unset($dataToUpdate['variant_types']);
             unset($dataToUpdate['product_variants']); // <-- DITAMBAHKAN
+
+            if ($request->has('id_master_layanan')) {
+                $dataToUpdate['id_master_layanan'] = $request->id_master_layanan;
+            }
 
             // 6. Update Produk
             $product->update($dataToUpdate);

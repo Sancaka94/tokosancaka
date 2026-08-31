@@ -228,6 +228,39 @@
                         </div>
                     </div>
 
+                    {{-- ⚡ KATEGORI JASA (Tambahan Baru) ⚡ --}}
+                    <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-red-600 hidden" id="jasa-asset-container">
+                        <h2 class="text-lg font-semibold text-gray-800 mb-4">Kategori Layanan Jasa</h2>
+                        <p class="text-xs text-gray-500 mb-4">Silakan atur Detail Bidang Pekerjaan dan Tarif Dasar Anda.</p>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <label for="id_bidang" class="block text-sm font-medium text-gray-700">Divisi Bidang</label>
+                                <select id="id_bidang" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" onchange="loadSubBidang(this.value)">
+                                    <option value="" selected disabled>-- Pilih Divisi Bidang --</option>
+                                    @if(isset($bidangs))
+                                        @foreach($bidangs as $bidang)
+                                            <option value="{{ $bidang->id }}">{{ $bidang->nama_bidang }}</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                            </div>
+                            <div>
+                                <label for="id_sub_bidang" class="block text-sm font-medium text-gray-700">Sub Bidang Kategori</label>
+                                <select id="id_sub_bidang" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" onchange="loadLayanan(this.value)">
+                                    <option value="" selected disabled>-- Pilih Sub Bidang --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="id_master_layanan" class="block text-sm font-medium text-gray-700">Pilih Layanan & Tarif Dasar</label>
+                                <select name="id_master_layanan" id="id_master_layanan" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500">
+                                    <option value="" selected disabled>-- Pilih Layanan --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    {{-- ⚡ END KATEGORI JASA ⚡ --}}
+
                     {{-- Status & Label --}}
                     <div class="bg-white p-6 rounded-lg shadow-md">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">Status & Label</h2>
@@ -405,27 +438,100 @@ document.addEventListener('DOMContentLoaded', () => {
         return wrapper;
     }
 
-    // --- Fungsi Cek Digital ---
+    // --- Elemen Form Baru ---
+    const digitalContainer = document.getElementById('digital-asset-container');
+    const jasaContainer = document.getElementById('jasa-asset-container');
+
+    // --- Fungsi Cek Tipe Produk (Fisik / Digital / Jasa) ---
     function checkDigitalCategory() {
         if (!categorySelect) return;
         const selectedOption = categorySelect.options[categorySelect.selectedIndex];
         
         if (!selectedOption || !selectedOption.value) {
-            digitalContainer.classList.add('hidden');
+            if(digitalContainer) digitalContainer.classList.add('hidden');
+            if(jasaContainer) jasaContainer.classList.add('hidden');
             return;
         }
 
         const kategoriGrup = selectedOption.getAttribute('data-kategori-grup') || '';
         
-        // DI SINI KATA KUNCI 'tiket', 'ticket', 'event' SUDAH DITAMBAHKAN
-        const isDigital = ['produk_digital', 'jasa', 'digital', 'eticket', 'tiket', 'ticket', 'event'].some(keyword => kategoriGrup.includes(keyword));
+        // 1. Cek Apakah Digital
+        const isDigital = ['produk_digital', 'digital', 'eticket', 'tiket', 'ticket', 'event'].some(keyword => kategoriGrup.includes(keyword));
+        
+        // 2. Cek Apakah Jasa (Sancaka Home, Clean, Health)
+        const isJasa = kategoriGrup.includes('jasa');
 
-        if (isDigital) {
+        if (isDigital && digitalContainer) {
             digitalContainer.classList.remove('hidden');
-        } else {
+        } else if (digitalContainer) {
             digitalContainer.classList.add('hidden');
         }
+
+        if (isJasa && jasaContainer) {
+            jasaContainer.classList.remove('hidden');
+        } else if (jasaContainer) {
+            jasaContainer.classList.add('hidden');
+        }
     }
+
+    // --- Event Listener Kategori (Utama) ---
+    if (categorySelect) { 
+        categorySelect.addEventListener('change', () => {
+            fetchAndRenderAttributes(); 
+            checkDigitalCategory();     
+        });
+        
+        if(categorySelect.value) {
+            fetchAndRenderAttributes();
+            checkDigitalCategory();
+        }
+    }
+
+    // --- AJAX LOAD SUB BIDANG & LAYANAN (UNTUK JASA) ---
+    window.loadSubBidang = function(id_bidang) {
+        if (!id_bidang) return;
+        
+        const subBidangSelect = document.getElementById('id_sub_bidang');
+        const layananSelect = document.getElementById('id_master_layanan');
+        
+        subBidangSelect.innerHTML = '<option value="">Memuat...</option>';
+        layananSelect.innerHTML = '<option value="" selected disabled>-- Pilih Layanan --</option>';
+
+        fetch(`/get-sub-bidang/${id_bidang}`)
+            .then(response => response.json())
+            .then(data => {
+                let html = '<option value="" selected disabled>-- Pilih Sub Bidang --</option>';
+                data.forEach(item => {
+                    html += `<option value="${item.id}">${item.nama_sub_bidang}</option>`;
+                });
+                subBidangSelect.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error fetching sub bidang:', error);
+                subBidangSelect.innerHTML = '<option value="">Gagal memuat data</option>';
+            });
+    };
+
+    window.loadLayanan = function(id_sub_bidang) {
+        if (!id_sub_bidang) return;
+
+        const layananSelect = document.getElementById('id_master_layanan');
+        layananSelect.innerHTML = '<option value="">Memuat...</option>';
+
+        fetch(`/get-layanan/${id_sub_bidang}`)
+            .then(response => response.json())
+            .then(data => {
+                let html = '<option value="" selected disabled>-- Pilih Layanan --</option>';
+                data.forEach(item => {
+                    html += `<option value="${item.id}">${item.nama_layanan} (Rp${parseInt(item.tarif_dasar).toLocaleString('id-ID')} ${item.tipe_satuan})</option>`;
+                });
+                layananSelect.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error fetching layanan:', error);
+                layananSelect.innerHTML = '<option value="">Gagal memuat data</option>';
+            });
+    };
 
     // --- Event Listener Kategori (Utama) ---
     if (categorySelect) { 
