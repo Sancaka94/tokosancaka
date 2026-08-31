@@ -33,6 +33,7 @@ class Product extends Model
         'sku',
         'category_id',
         'id_master_layanan',
+        'supporting_images',
         'category', // Nama kategori (string)
         'tags',
         'description',
