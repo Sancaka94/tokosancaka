@@ -176,7 +176,7 @@
     @endphp
 
     <div class="max-w-4xl mx-auto mb-6 flex flex-col sm:flex-row justify-between items-center no-print px-4 md:px-0 gap-3">
-        <a href="javascript:history.back()" class="w-full sm:w-auto text-center bg-white border border-gray-200 text-black px-4 py-2 rounded-md hover:bg-gray-100 text-sm font-medium transition">
+        <a href="javascript:history.back()" class="w-full sm:w-auto text-center bg-white border border-gray-200 text-black px-4 py-2 rounded-md hover:bg-slate-50 text-sm font-medium transition">
             <i class="fas fa-arrow-left mr-2"></i> Kembali
         </a>
         <button onclick="window.print()" class="w-full sm:w-auto text-center bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 text-sm font-medium transition">
@@ -206,13 +206,13 @@
 
             <div class="w-full md:w-[320px] pt-2 md:pt-8 relative z-10 no-print">
                 @if($isCancelled)
-                    <div class="border border-gray-200 bg-gray-100 p-4 rounded-md text-right">
+                    <div class="border border-gray-200 bg-slate-50 p-4 rounded-md text-right">
                         <h4 class="text-sm font-bold text-black uppercase tracking-wider mb-1">Dibatalkan & Refund</h4>
                         <p class="text-xs text-gray-500">Status: {{ $statusText }}</p>
                     </div>
                 @else
                     @if(session('error'))
-                        <div class="border border-gray-300 bg-gray-100 text-black px-3 py-2 rounded-md mb-3 text-xs font-medium">
+                        <div class="border border-gray-300 bg-slate-50 text-black px-3 py-2 rounded-md mb-3 text-xs font-medium">
                             {{ session('error') }}
                         </div>
                     @endif
@@ -239,7 +239,7 @@
                         </form>
 
                     @elseif(!$statusLunas && !empty($pesanan->payment_url))
-                        <div class="border border-gray-200 bg-gray-100 p-4 rounded-md text-center">
+                        <div class="border border-gray-200 bg-slate-50 p-4 rounded-md text-center">
                             @if($pesanan->payment_method == 'BCA_QRIS')
                                 <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Scan QR Code BCA</p>
                                 <div class="bg-white p-2 rounded border border-gray-200 inline-block mb-2">
@@ -254,7 +254,7 @@
                         </div>
 
                     @elseif(!$statusLunas)
-                        <div class="border border-gray-200 bg-gray-100 p-4 rounded-md text-right">
+                        <div class="border border-gray-200 bg-slate-50 p-4 rounded-md text-right">
                             <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Menunggu Verifikasi</p>
                             <p class="text-sm font-semibold text-black">{{ $pesanan->payment_method }}</p>
                         </div>
@@ -272,7 +272,7 @@
                 </div>
             </div>
 
-            <div class="w-full md:w-auto p-4 border border-gray-200 rounded-md text-center bg-gray-100/50 min-w-[200px]">
+            <div class="w-full md:w-auto p-4 border border-gray-200 rounded-md text-center bg-slate-50/50 min-w-[200px]">
                 <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">NO. RESI (AWB)</p>
 
                 @if($isCancelled)
@@ -307,7 +307,7 @@
 
         <div class="mb-10 border border-gray-200 rounded-xl overflow-hidden">
             <table class="w-full text-sm text-left">
-                <thead class="bg-gray-100 border-b border-gray-200">
+                <thead class="bg-slate-50 border-b border-gray-200">
                     <tr>
                         <th class="py-4 px-6 font-bold text-black uppercase text-[11px] tracking-wider w-3/4">Rincian Layanan</th>
                         <th class="py-4 px-6 font-bold text-black uppercase text-[11px] tracking-wider w-1/4 text-right">Biaya</th>
@@ -324,7 +324,7 @@
                                     <h4 class="font-bold text-black text-sm uppercase mb-1">{{ $expeditionName }} - {{ $expeditionService }}</h4>
                                     <p class="text-[11px] text-gray-500 mb-3">Layanan Pengiriman Ekspedisi</p>
 
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-[12px] bg-gray-100 p-4 rounded-lg border border-gray-100">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-[12px] bg-slate-50 p-4 rounded-lg border border-gray-100">
                                         <p><span class="font-semibold text-gray-800 inline-block w-20">Isi Paket:</span> <span class="text-gray-600">{{ $pesanan->item_description }}</span></p>
                                         <p><span class="font-semibold text-gray-800 inline-block w-20">Berat:</span> <span class="text-gray-600">{{ number_format($pesanan->weight, 0, ',', '.') }} Gram</span></p>
                                         <p><span class="font-semibold text-gray-800 inline-block w-20">Dimensi:</span> <span class="text-gray-600">{{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</span></p>
@@ -354,7 +354,7 @@
                 </tbody>
             </table>
 
-            <div class="bg-gray-100 border-t border-gray-200 p-6 flex justify-end">
+            <div class="bg-slate-50 border-t border-gray-200 p-6 flex justify-end">
                 <div class="w-full sm:w-1/2 md:w-1/3">
                     <div class="flex justify-between py-1 text-[13px] text-gray-500 mb-2">
                         <span>Sub Total</span>
@@ -378,7 +378,7 @@
                 <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Riwayat Transaksi</p>
                 <div class="border border-gray-200 rounded-lg overflow-hidden">
                     <table class="w-full text-[13px] text-left">
-                        <thead class="bg-gray-100 border-b border-gray-200 text-gray-500">
+                        <thead class="bg-slate-50 border-b border-gray-200 text-gray-500">
                             <tr>
                                 <th class="py-3 px-4 font-semibold">Tanggal</th>
                                 <th class="py-3 px-4 font-semibold">Metode</th>
@@ -398,7 +398,7 @@
                             </tr>
                             @endif
                         </tbody>
-                        <tfoot class="bg-gray-100 border-t border-gray-200">
+                        <tfoot class="bg-slate-50 border-t border-gray-200">
                             <tr>
                                 <td colspan="2" class="py-3 px-4 text-right font-semibold text-gray-500 text-xs uppercase tracking-wide">Sisa Tagihan</td>
                                 <td class="py-3 px-4 text-right font-black text-sm text-black">
@@ -414,7 +414,7 @@
                 <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2 text-center md:text-left">Status Lacak</p>
 
                 @if($isCancelled)
-                    <div class="border border-gray-200 bg-gray-100 rounded-lg p-4 text-center">
+                    <div class="border border-gray-200 bg-slate-50 rounded-lg p-4 text-center">
                         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status Paket</p>
                         <p class="text-xs font-bold text-black mb-4">{{ $statusText }}</p>
                         <button onclick="syncTracking(this)" class="no-print w-full bg-white border border-gray-300 hover:border-black text-black text-[11px] font-bold py-2 rounded-md transition-colors uppercase tracking-wider shadow-sm">
@@ -422,7 +422,7 @@
                         </button>
                     </div>
                 @elseif($statusLunas && $pesanan->resi)
-                    <div class="border border-gray-200 bg-gray-100 rounded-lg p-4 text-center mb-3">
+                    <div class="border border-gray-200 bg-slate-50 rounded-lg p-4 text-center mb-3">
                         <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status Paket</p>
                         <p class="text-xs font-bold text-black mb-4 truncate" title="{{ $statusText }}">{{ $statusText }}</p>
                         <button onclick="syncTracking(this)" class="no-print w-full bg-white border border-gray-300 hover:border-black text-black text-[11px] font-bold py-2 rounded-md transition-colors uppercase tracking-wider shadow-sm">
@@ -431,7 +431,7 @@
                     </div>
                     <div id="qrcode" class="p-3 bg-white border border-gray-200 rounded-lg flex justify-center shadow-sm"></div>
                 @else
-                    <div class="h-[120px] bg-gray-100 border border-dashed border-gray-300 flex flex-col items-center justify-center rounded-lg">
+                    <div class="h-[120px] bg-slate-50 border border-dashed border-gray-300 flex flex-col items-center justify-center rounded-lg">
                         <i class="fas fa-lock text-gray-300 text-2xl mb-2"></i>
                         <span class="text-[11px] text-gray-400 font-medium tracking-wide">Terkunci</span>
                     </div>
@@ -456,7 +456,7 @@
                 </button>
             </div>
 
-            <div class="p-5 overflow-y-auto custom-scrollbar flex-1 bg-gray-100/50">
+            <div class="p-5 overflow-y-auto custom-scrollbar flex-1 bg-slate-50/50">
                 <ul id="paymentOptionsList" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                     <li class="col-span-full pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">
@@ -502,7 +502,7 @@
                     </li>
 
                     @if($hasDanaBinding)
-                        <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-400 rounded-xl bg-gray-100 hover:border-black hover:shadow-md transition-all group"
+                        <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-400 rounded-xl bg-slate-50 hover:border-black hover:shadow-md transition-all group"
                             data-value="DANA_BINDING" data-label="DANA Auto-Debit" data-img="{{ asset('public/assets/dana.webp') }}">
                             <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
                             <div class="flex flex-col flex-1">
@@ -512,7 +512,7 @@
                             <span class="bg-black text-white text-[10px] font-semibold px-2 py-1 rounded">Tersambung</span>
                         </li>
                     @else
-                        <li class="col-span-1 flex items-center p-3 border border-dashed border-gray-300 rounded-xl bg-gray-100 justify-between">
+                        <li class="col-span-1 flex items-center p-3 border border-dashed border-gray-300 rounded-xl bg-slate-50 justify-between">
                             <div class="flex items-center">
                                 <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain opacity-60" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
                                 <div class="flex flex-col">
