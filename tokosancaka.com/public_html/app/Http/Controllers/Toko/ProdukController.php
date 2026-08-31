@@ -102,11 +102,11 @@ public function index(Request $request) // Tambahkan Request
         // Validasi berdasarkan form
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')->where('store_id', $store->id)],
-            'category_id' => 'required|exists:categories,id',
+            'category_id' => 'required_without:id_master_layanan|nullable|exists:categories,id',
+            'weight' => 'required_without:id_master_layanan|nullable|integer|min:0',
             'description' => 'required|string',
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'weight' => 'required|integer|min:1',
             'product_image' => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
             //'jenis_barang' => 'required|string', // atau integer, sesuaikan
             'status' => 'required|in:active,inactive',
@@ -202,8 +202,10 @@ public function index(Request $request) // Tambahkan Request
             unset($dataToCreate['variant_types']);
             unset($dataToCreate['product_variants']);
 
-            if ($request->has('id_master_layanan')) {
-                $dataToCreate['id_master_layanan'] = $request->id_master_layanan;
+            if ($request->has('id_master_layanan') && $request->id_master_layanan != null) {
+                $data['id_master_layanan'] = $request->id_master_layanan;
+                $data['weight'] = 0; // Set berat jadi 0 agar database tidak error
+                $data['category_id'] = null; // Kosongkan kategori karena ini jasa
             }
 
             // 8. Buat Produk
@@ -340,11 +342,11 @@ public function index(Request $request) // Tambahkan Request
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255', Rule::unique('products', 'name')->where('store_id', $storeId)->ignore($product->id)],
-            'category_id' => 'required|exists:categories,id',
+            'category_id' => 'required_without:id_master_layanan|nullable|exists:categories,id',
+            'weight' => 'required_without:id_master_layanan|nullable|integer|min:0',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'weight' => 'required|integer|min:1',
             'product_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'status' => 'required|in:active,inactive',
             'sku' => ['nullable', 'string', 'max:100', Rule::unique('products', 'sku')->where('store_id', $storeId)->ignore($product->id)],
@@ -434,8 +436,10 @@ public function index(Request $request) // Tambahkan Request
             unset($dataToUpdate['variant_types']);
             unset($dataToUpdate['product_variants']); // <-- DITAMBAHKAN
 
-            if ($request->has('id_master_layanan')) {
-                $dataToUpdate['id_master_layanan'] = $request->id_master_layanan;
+            if ($request->has('id_master_layanan') && $request->id_master_layanan != null) {
+                $data['id_master_layanan'] = $request->id_master_layanan;
+                $data['weight'] = 0; // Set berat jadi 0 agar database tidak error
+                $data['category_id'] = null; // Kosongkan kategori karena ini jasa
             }
 
             // 6. Update Produk
@@ -554,16 +558,15 @@ public function index(Request $request) // Tambahkan Request
         return $slug;
     }
 
-    protected function generateSku(string $productName, int $categoryId): string
+    protected function generateSku(string $productName, ?int $categoryId = null): string
     {
-        $category = Category::find($categoryId);
-        $categoryInitial = $category ? strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $category->name), 0, 3)) : 'GEN';
+        $category = $categoryId ? Category::find($categoryId) : null;
+        $categoryInitial = $category ? strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $category->name), 0, 3)) : 'JAS';
         $productInitial = strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $productName), 0, 3));
         $randomNum = mt_rand(100, 999);
         $sku = "{$categoryInitial}-{$productInitial}-{$randomNum}";
 
         $query = Product::where('sku', $sku);
-        // Asumsi SKU juga unik per toko
         if (Auth::check() && Auth::user()->store) {
              $query->where('store_id', Auth::user()->store->id);
         }
@@ -571,7 +574,6 @@ public function index(Request $request) // Tambahkan Request
         while ($query->exists()) {
             $randomNum = mt_rand(100, 999);
             $sku = "{$categoryInitial}-{$productInitial}-{$randomNum}";
-            // Update query untuk cek SKU baru
             $query = Product::where('sku', $sku);
             if (Auth::check() && Auth::user()->store) {
                  $query->where('store_id', Auth::user()->store->id);
