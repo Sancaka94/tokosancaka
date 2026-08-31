@@ -17,12 +17,13 @@ class CartController extends Controller
     {
         $cart = session()->get('cart', []);
         
+        // Halaman keranjang standar
         return view('cart.index', compact('cart'));
     }
 
     /**
      * Menambahkan produk ke keranjang.
-     * Tidak menggunakan Route Model Binding agar bisa handle variant_id.
+     * Tidak menggunakan Route Model Binding agar bisa handle variant_id secara manual.
      */
     public function add(Request $request)
     {
@@ -42,13 +43,19 @@ class CartController extends Controller
         $itemPrice = 0;
         $itemName = '';
         $itemImageUrl = '';
+        $itemWeight = 1; // Default minimal 1 gram agar API ongkir tidak error
         $cartKey = ''; 
 
         try {
-            $product = Product::find($productId); 
+            $product = Product::with('store')->find($productId); 
 
             if (!$product) {
                  return back()->with('error', 'Produk tidak ditemukan.');
+            }
+
+            // ⚡ VALIDASI MARKETPLACE: Jangan izinkan checkout produk toko sendiri 
+            if (auth()->check() && auth()->user()->store && auth()->user()->store->id == $product->store_id) {
+                return back()->with('error', 'Anda tidak dapat membeli produk/jasa dari toko Anda sendiri. Silakan gunakan akun pembeli lain.');
             }
 
             if ($variantId) {
@@ -63,6 +70,7 @@ class CartController extends Controller
                 $itemPrice = $variant->price;
                 $itemName = $variant->product->name . ' (' . str_replace(';', ', ', $variant->combination_string) . ')';
                 $itemImageUrl = $variant->image_url ?? $variant->product->image_url;
+                $itemWeight = $variant->weight ?? $product->weight ?? 1;
                 $cartKey = 'variant_' . $variantId;
 
             } else {
@@ -75,7 +83,13 @@ class CartController extends Controller
                 $itemPrice = $product->price;
                 $itemName = $product->name;
                 $itemImageUrl = $product->image_url;
+                $itemWeight = $product->weight ?? 1;
                 $cartKey = 'product_' . $productId;
+            }
+
+            // PENGAMANAN: Pastikan berat minimal 1 gram agar lolos Checkout
+            if ($itemWeight <= 0) {
+                $itemWeight = 1;
             }
 
             // --- Validasi Kuantitas vs Stok ---
@@ -84,15 +98,10 @@ class CartController extends Controller
 
             if ($stockToCheck < $newTotalQuantity) {
                 $errorMessage = "Stok produk tidak mencukupi. Stok tersedia: {$stockToCheck}.";
-                if ($currentQuantityInCart > 0) {
-                     $errorMessage .= " Anda sudah memiliki {$currentQuantityInCart} di keranjang.";
-                } else {
-                     $errorMessage .= " Anda mencoba menambahkan {$quantity}.";
-                }
                 return back()->with('error', $errorMessage);
             }
 
-            // --- Logika Penambahan/Update ke Keranjang ---
+            // --- Logika Penambahan ke Keranjang ---
             if (isset($cart[$cartKey])) {
                 $cart[$cartKey]['quantity'] = $newTotalQuantity;
             } else {
@@ -104,22 +113,20 @@ class CartController extends Controller
                     "price"      => $itemPrice,
                     "image_url"  => $itemImageUrl, 
                     "slug"       => $product->slug,
-                    "weight" => $variantId ? ($variant->weight ?? $product->weight ?? 0) : ($product->weight ?? 0), 
+                    "weight"     => $itemWeight, 
+                    "store_id"   => $product->store_id, // ⚡ WAJIB ADA AGAR LOLOS CHECKOUT
+                    "is_ppob"    => false,
                 ];
             }
 
             session()->put('cart', $cart);
 
-            // =========================================================
-            // ⚡ LOGIKA REDIRECT: BELI SEKARANG VS MASUKKAN KERANJANG
-            // =========================================================
+            // ⚡ LOGIKA PINTAR: REDIRECT BELI SEKARANG VS MASUK KERANJANG ⚡
             if ($request->input('action') === 'buy_now') {
-                // Jika klik Beli Sekarang, langsung bawa ke halaman checkout
                 return redirect()->route('customer.checkout.index'); 
             }
 
-            // Jika klik Masukkan Keranjang, tetap di halaman produk dengan pesan sukses
-            return back()->with('success', 'Produk berhasil ditambahkan ke keranjang!');
+            return back()->with('success', 'Produk berhasil ditambahkan ke keranjang!'); 
 
         } catch (\Exception $e) {
             Log::error('Error adding to cart: ' . $e->getMessage() . ' - ' . $e->getFile() . ':' . $e->getLine());
@@ -147,7 +154,6 @@ class CartController extends Controller
 
         $item = $cart[$cartKey];
         $stockToCheck = 0;
-        $itemId = null; 
 
         if (!empty($item['variant_id'])) {
              $variant = ProductVariant::find($item['variant_id']);
@@ -157,7 +163,6 @@ class CartController extends Controller
                  return response()->json(['success' => false, 'message' => 'Varian produk ini sudah tidak tersedia.', 'removed' => true], 404);
              }
              $stockToCheck = $variant->stock;
-             $itemId = $variant->id;
         } elseif (!empty($item['product_id'])) {
             $product = Product::find($item['product_id']);
              if (!$product) {
@@ -171,7 +176,6 @@ class CartController extends Controller
                  return response()->json(['success' => false, 'message' => 'Produk ini memerlukan pemilihan varian.', 'removed' => true], 400);
              }
              $stockToCheck = $product->stock;
-             $itemId = $product->id;
         } else {
              unset($cart[$cartKey]);
              session()->put('cart', $cart);
@@ -234,5 +238,49 @@ class CartController extends Controller
     {
         session()->forget('cart');
         return redirect()->route('cart.index')->with('success', 'Keranjang berhasil dikosongkan.');
+    }
+
+    /**
+     * Tambah produk PPOB.
+     */
+    public function addPpob(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'sku' => 'required',
+                'name' => 'required',
+                'price' => 'required|numeric',
+                'ref_id' => 'required',
+                'customer_no' => 'required',
+            ]);
+    
+            $cart = session()->get('cart', []);
+            $cartKey = 'ppob_' . $data['ref_id'];
+            
+            $logoImage = get_operator_logo($data['sku']);
+    
+            $cart[$cartKey] = [
+                "product_id" => 0, 
+                "variant_id" => null,
+                "name"       => $data['name'],
+                "quantity"   => 1,
+                "price"      => (int) $data['price'],
+                "image_url"  => $logoImage, 
+                "slug"       => $data['sku'],
+                "weight"     => 0,
+                "is_ppob"    => true, 
+                "ref_id"     => $data['ref_id'],
+                "customer_no"=> $data['customer_no'],
+                "store_id"   => 0
+            ];
+    
+            session()->put('cart', $cart);
+    
+            return response()->json(['success' => true]);
+
+        } catch (\Exception $e) {
+            Log::error("Error addPpob: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }
