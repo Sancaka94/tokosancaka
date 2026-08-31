@@ -88,7 +88,7 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d4d4d4; }
     </style>
 </head>
-<body class="bg-slate-100 py-8 text-black">
+<body class="bg-slate-700 py-8 text-black">
 
     @php
         // 1. Pengecekan Ekspedisi & Alamat
