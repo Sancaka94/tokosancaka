@@ -19,7 +19,6 @@
             font-family: 'Inter', sans-serif;
         }
 
-
         /* Desain Pita (Ribbon) UNPAID / LUNAS / REFUND */
         .ribbon-wrapper {
             position: absolute; right: -5px; top: -5px; z-index: 20;
@@ -88,15 +87,13 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d4d4d4; }
     </style>
 </head>
-<body class="bg-slate-700 py-8 text-black">
+<body class="bg-slate-100 py-8 text-black">
 
     @php
         // 1. Pengecekan Ekspedisi & Alamat
         $ship = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->expedition);
         $expeditionName = $ship['courier_name'] ?? 'SANCAKA';
         $expeditionService = $ship['service_name'] ?? 'Regular';
-
-
 
         $courierMap = [
             'jne' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png',
@@ -239,7 +236,7 @@
         <div class="print-header flex flex-col md:flex-row justify-between items-start mb-10 pb-8 border-b border-gray-100 gap-8">
 
             <div class="w-full md:w-1/2">
-                <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10 mb-5 object-contain" onerror="this.src='https://placehold.co/200x50/FFFFFF/000000?text=SANCAKA+EXPRESS'">
+                <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-24 mb-4 object-contain" onerror="this.src='https://placehold.co/200x50/FFFFFF/000000?text=SANCAKA+EXPRESS'">
                 <div class="text-[13px] text-gray-500 leading-relaxed">
                     <p class="font-bold text-black uppercase tracking-wide">Sancaka Express</p>
                     <p>Jl. Dr. Wahidin No. 18A, Ketanggi</p>
@@ -368,12 +365,16 @@
                                     <h4 class="font-bold text-black text-sm uppercase mb-1">{{ $expeditionName }} - {{ $expeditionService }}</h4>
                                     <p class="text-[11px] text-gray-500 mb-3">Layanan Pengiriman Ekspedisi</p>
 
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-[12px] bg-slate-100 p-4 rounded-lg border border-gray-100">
-                                        <p><span class="font-semibold text-gray-800 inline-block w-20">Isi Paket:</span> <span class="text-gray-600">{{ $pesanan->item_description }}</span></p>
-                                        <p><span class="font-semibold text-gray-800 inline-block w-20">Berat:</span> <span class="text-gray-600">{{ number_format($pesanan->weight, 0, ',', '.') }} Gram</span></p>
-                                        <p><span class="font-semibold text-gray-800 inline-block w-20">Dimensi:</span> <span class="text-gray-600">{{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</span></p>
-                                        <p><span class="font-semibold text-gray-800 inline-block w-20">Nilai Brg:</span> <span class="text-gray-600">Rp {{ number_format($pesanan->item_price, 0, ',', '.') }}</span></p>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-6 text-[12px] bg-slate-50 p-4 rounded-lg border border-gray-200">
+                                        <p class="flex items-center"><span class="font-bold text-gray-700 w-24 flex-shrink-0">Isi Paket:</span> <span class="text-gray-600 font-medium">{{ $pesanan->item_description }}</span></p>
+                                        <p class="flex items-center"><span class="font-bold text-gray-700 w-24 flex-shrink-0">Berat:</span> <span class="text-gray-600 font-medium">{{ number_format($pesanan->weight, 0, ',', '.') }} Gram</span></p>
+                                        <p class="flex items-center"><span class="font-bold text-gray-700 w-24 flex-shrink-0">Dimensi:</span> <span class="text-gray-600 font-medium">{{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</span></p>
+                                        <p class="flex items-center"><span class="font-bold text-gray-700 w-24 flex-shrink-0">Nilai Brg:</span> <span class="text-gray-600 font-medium">Rp {{ number_format($pesanan->item_price, 0, ',', '.') }}</span></p>
+
+                                        <p class="flex items-center"><span class="font-bold text-gray-700 w-24 flex-shrink-0">Layanan:</span> <span class="text-gray-600 font-medium uppercase">{{ $pesanan->service_type ?? $expeditionService }}</span></p>
+                                        <p class="flex items-center"><span class="font-bold text-gray-700 w-24 flex-shrink-0">Asuransi:</span> <span class="text-gray-600 font-medium">{{ (strtolower($pesanan->ansuransi ?? '') == 'iya' || $pesanan->insurance_cost > 0) ? 'Ya' : 'Tidak' }}</span></p>
                                     </div>
+
                                 </div>
                             </div>
                         </td>
