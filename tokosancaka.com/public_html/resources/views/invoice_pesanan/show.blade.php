@@ -74,7 +74,7 @@
         $pinRahasia = substr($hpPengirim, -4);
         if (strlen($pinRahasia) < 4) $pinRahasia = str_pad($pinRahasia, 4, '0', STR_PAD_LEFT);
 
-        // RUMUS KISI-KISI NOMOR HP YANG BENAR (Menampilkan 7 angka depan, sisanya bintang)
+        // RUMUS KISI-KISI NOMOR HP (7 Angka Depan + Bintang)
         $panjangHp = strlen($hpPengirim);
         $tampilDepan = substr($hpPengirim, 0, 7);
         $jumlahBintang = $panjangHp > 7 ? $panjangHp - 7 : 4;
@@ -94,9 +94,10 @@
 
         body { font-family: 'Inter', sans-serif; }
 
-        /* WATERMARK DINAMIS (Full Page, Miring 45 Derajat, Sangat Rapat) */
+        /* WATERMARK DINAMIS (Samar, Miring, Tidak Numpuk) */
         .watermark-bg {
-            background-image: url("data:image/svg+xml,%3Csvg width='500' height='500' xmlns='http://www.w3.org/2000/svg'%3E%3Cg transform='rotate(-45 250 250)' fill='rgba(0,0,0,0.06)' font-family='Arial, sans-serif' font-size='12' font-weight='800' text-anchor='middle'%3E%3Ctext x='50%25' y='-20%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='0%25' y='0%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='100%25' y='0%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='50%25' y='20%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='0%25' y='40%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='100%25' y='40%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='50%25' y='60%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='0%25' y='80%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='100%25' y='80%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='50%25' y='100%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='0%25' y='120%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='100%25' y='120%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3C/g%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg width='1200' height='600' xmlns='http://www.w3.org/2000/svg'%3E%3Cg transform='translate(600,300) rotate(-35)' fill='rgba(0,0,0,0.035)' font-family='Arial, sans-serif' font-size='16' font-weight='800' text-anchor='middle' letter-spacing='2'%3E%3Ctext x='0' y='0'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3C/g%3E%3C/svg%3E");
+            background-repeat: repeat;
             z-index: 999;
             pointer-events: none; /* Klik tetap tembus ke tombol di bawahnya */
         }
@@ -162,7 +163,7 @@
 
             <p class="text-sm text-gray-500 mb-6 leading-relaxed">
                 Masukkan <strong class="text-red-600">4 Angka Terakhir</strong> Nomor HP Pengirim untuk membuka invoice ini.<br>
-                <span class="inline-block mt-3 px-4 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-gray-600 font-mono tracking-[0.2em] text-[14px] font-bold shadow-sm">
+                <span class="inline-block mt-3 px-4 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-gray-700 font-mono tracking-widest text-[14px] font-bold shadow-sm">
                     {{ $kisiKisiHp }}
                 </span>
             </p>
