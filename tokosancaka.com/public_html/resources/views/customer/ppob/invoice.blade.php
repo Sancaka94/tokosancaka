@@ -14,7 +14,7 @@
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <!-- TAMBAHAN LIBRARY UNTUK BARCODE -->
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
 
     @php
         // 1. LOGIKA STATUS
@@ -179,8 +179,9 @@
                     <h2 class="text-4xl font-black text-black tracking-tight uppercase mb-1">Invoice</h2>
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">#{{ $transaction->order_id }}</p>
                     <!-- KOTAK BARCODE -->
-                    <div class="bg-white px-2 py-1 rounded">
-                        <svg id="barcodeInvoice"></svg>
+                    <!-- KOTAK BARCODE -->
+                    <div class="bg-white px-2 py-2 rounded">
+                        <div id="barcodeInvoice"></div>
                     </div>
                 </div>
             </div>
@@ -330,16 +331,17 @@
 
     <!-- SCRIPT JS -->
     <script>
-        // RENDER BARCODE SAAT HALAMAN DIMUAT
+       // RENDER BARCODE SAAT HALAMAN DIMUAT
         document.addEventListener('DOMContentLoaded', function() {
             try {
-                JsBarcode("#barcodeInvoice", "{{ $transaction->order_id }}", {
-                    format: "CODE128",
-                    lineColor: "#000000",
-                    width: 1.5,
-                    height: 35,
-                    displayValue: false, // Nilai text disembunyikan karena sudah ada #TRX-PRA diatasnya
-                    margin: 0
+                // Menggunakan QRCode.js (2D Barcode)
+                new QRCode(document.getElementById("barcodeInvoice"), {
+                    text: "{{ $transaction->order_id }}", // Isi datanya
+                    width: 75,  // Lebar QR Code
+                    height: 75, // Tinggi QR Code
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.M
                 });
             } catch (e) {
                 console.error("Gagal memuat barcode:", e);
