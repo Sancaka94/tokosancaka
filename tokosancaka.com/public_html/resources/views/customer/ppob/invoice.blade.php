@@ -13,6 +13,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- TAMBAHAN LIBRARY UNTUK BARCODE -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
     @php
         // 1. LOGIKA STATUS
@@ -159,6 +161,9 @@
             <div class="flex flex-col md:flex-row justify-between items-start mb-10 pb-8 border-b border-gray-100 relative z-10 gap-8">
                 <!-- Kiri: Logo & Info Store -->
                 <div class="w-full md:w-1/2">
+                    <!-- KODE LOGO DITARUH DI SINI -->
+                    <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Logo Sancaka" class="h-14 object-contain mb-3" onerror="this.style.display='none'">
+
                     <h1 class="text-3xl font-black tracking-tighter uppercase mb-2">SANCAKA STORE</h1>
                     <div class="text-[11px] text-gray-500 leading-relaxed font-medium">
                         <p>Pusat Belanja Online No. 1 di Indonesia.</p>
@@ -169,10 +174,14 @@
                     </div>
                 </div>
 
-                <!-- Kanan: Judul Invoice -->
-                <div class="w-full md:w-1/2 text-left md:text-right mt-4 md:mt-0">
+                <!-- Kanan: Judul Invoice & Barcode -->
+                <div class="w-full md:w-1/2 flex flex-col items-start md:items-end mt-4 md:mt-0">
                     <h2 class="text-4xl font-black text-black tracking-tight uppercase mb-1">Invoice</h2>
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest">#{{ $transaction->order_id }}</p>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">#{{ $transaction->order_id }}</p>
+                    <!-- KOTAK BARCODE -->
+                    <div class="bg-white px-2 py-1 rounded">
+                        <svg id="barcodeInvoice"></svg>
+                    </div>
                 </div>
             </div>
 
@@ -319,8 +328,25 @@
         </div>
     </div>
 
-    <!-- SCRIPT (Tidak ada yang dirubah, persis seperti asli) -->
+    <!-- SCRIPT JS -->
     <script>
+        // RENDER BARCODE SAAT HALAMAN DIMUAT
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                JsBarcode("#barcodeInvoice", "{{ $transaction->order_id }}", {
+                    format: "CODE128",
+                    lineColor: "#000000",
+                    width: 1.5,
+                    height: 35,
+                    displayValue: false, // Nilai text disembunyikan karena sudah ada #TRX-PRA diatasnya
+                    margin: 0
+                });
+            } catch (e) {
+                console.error("Gagal memuat barcode:", e);
+            }
+        });
+
+        // FUNGSI PDF
         function downloadPDF() {
             const element = document.getElementById('invoice-area');
             Swal.fire({ title: 'Memproses PDF...', didOpen: () => { Swal.showLoading() } });
@@ -332,6 +358,7 @@
             }).from(element).save().then(() => Swal.close());
         }
 
+        // FUNGSI JPG
         function downloadJPG() {
             const element = document.getElementById('invoice-area');
             Swal.fire({ title: 'Memproses JPG...', didOpen: () => { Swal.showLoading() } });
@@ -344,6 +371,7 @@
             });
         }
 
+        // FUNGSI WA
         function sendWhatsapp() {
             const transactionId = "{{ $transaction->order_id }}";
             const customerPhone = "{{ $transaction->customer_wa ?? $transaction->customer_no }}";
