@@ -1,12 +1,16 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Customer;
 
+use App\Models\OrderMarketplace;
+use App\Models\OrderItemMarketplace; 
+use App\Models\ProductVariant;
+use App\Models\Store;
+use App\Models\User;
+use App\Models\Product; 
 use Illuminate\Http\Request;
-use App\Models\Product;
-use App\Models\ProductVariant; 
-use Illuminate\Support\Facades\Log; 
-use Illuminate\Support\Str; 
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Log;
 
 class CartController extends Controller
 {
@@ -16,232 +20,172 @@ class CartController extends Controller
     public function index()
     {
         $cart = session()->get('cart', []);
-        
-        // Halaman keranjang standar
+        $hasChanges = false; 
+
+        foreach ($cart as $key => $details) {
+            
+            // ⚡ FIX: LEWATI VALIDASI JIKA ITEM ADALAH PPOB ⚡
+            if (isset($details['is_ppob']) && $details['is_ppob'] == true) {
+                continue; 
+            }
+
+            // --- VALIDASI PRODUK FISIK / JASA ---
+            if (!empty($details['variant_id'])) {
+                $variant = ProductVariant::find($details['variant_id']);
+                
+                if (!$variant || $variant->stock <= 0) {
+                    unset($cart[$key]);
+                    $hasChanges = true;
+                    continue;
+                }
+                
+                $cart[$key]['price'] = $variant->price;
+                $cart[$key]['current_stock'] = $variant->stock; 
+
+            } else {
+                $product = Product::find($details['product_id']);
+
+                if (!$product || $product->status !== 'active') {
+                    unset($cart[$key]);
+                    $hasChanges = true;
+                    continue;
+                }
+
+                $cart[$key]['price'] = $product->price;
+                $cart[$key]['current_stock'] = $product->stock;
+            }
+        }
+
+        if ($hasChanges) {
+            session()->put('cart', $cart);
+        }
+
         return view('cart.index', compact('cart'));
     }
 
     /**
-     * Menambahkan produk ke keranjang.
-     * Tidak menggunakan Route Model Binding agar bisa handle variant_id secara manual.
+     * Menambahkan produk ke keranjang (Untuk Masukkan Keranjang & Beli Sekarang).
      */
-    public function add(Request $request)
+    public function add(Request $request, Product $product)
     {
-        $validated = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
-            'product_variant_id' => 'nullable|exists:product_variants,id',
-        ]);
+        $quantity = (int)$request->input('quantity', 1);
+        $variantId = $request->input('product_variant_id') ?? $request->input('variant_id');
 
-        $productId = $validated['product_id'];
-        $quantity = $validated['quantity'];
-        $variantId = $validated['product_variant_id'] ?? null; 
-
+        // ⚡ KUNCI PERBAIKAN: Format Key HARUS IDProduk-IDVarian (cth: "12-0")
+        // Sistem Checkout Sancaka mendeteksi ID dari format ini
+        $cartKey = $product->id . '-' . ($variantId ?? '0');
+        
         $cart = session()->get('cart', []);
 
-        $stockToCheck = 0;
-        $itemPrice = 0;
-        $itemName = '';
-        $itemImageUrl = '';
-        $itemWeight = 1; // Default minimal 1 gram agar API ongkir tidak error
-        $cartKey = ''; 
-
-        try {
-            $product = Product::with('store')->find($productId); 
-
-            if (!$product) {
-                 return back()->with('error', 'Produk tidak ditemukan.');
-            }
-
-            // ⚡ VALIDASI MARKETPLACE: Jangan izinkan checkout produk toko sendiri 
-            if (auth()->check() && auth()->user()->store && auth()->user()->store->id == $product->store_id) {
-                return back()->with('error', 'Anda tidak dapat membeli produk/jasa dari toko Anda sendiri. Silakan gunakan akun pembeli lain.');
-            }
-
-            if ($variantId) {
-                // --- Logika untuk Produk dengan Varian ---
-                $variant = ProductVariant::with('product')->find($variantId);
-
-                if (!$variant || $variant->product_id != $productId) {
-                    return back()->with('error', 'Varian produk tidak valid.');
-                }
-
-                $stockToCheck = $variant->stock;
-                $itemPrice = $variant->price;
-                $itemName = $variant->product->name . ' (' . str_replace(';', ', ', $variant->combination_string) . ')';
-                $itemImageUrl = $variant->image_url ?? $variant->product->image_url;
-                $itemWeight = $variant->weight ?? $product->weight ?? 1;
-                $cartKey = 'variant_' . $variantId;
-
-            } else {
-                // --- Logika untuk Produk tanpa Varian ---
-                 if ($product->productVariantTypes()->exists()) {
-                     return back()->with('error', 'Silakan pilih varian produk yang tersedia.');
-                 }
-
-                $stockToCheck = $product->stock;
-                $itemPrice = $product->price;
-                $itemName = $product->name;
-                $itemImageUrl = $product->image_url;
-                $itemWeight = $product->weight ?? 1;
-                $cartKey = 'product_' . $productId;
-            }
-
-            // PENGAMANAN: Pastikan berat minimal 1 gram agar lolos Checkout
-            if ($itemWeight <= 0) {
-                $itemWeight = 1;
-            }
-
-            // --- Validasi Kuantitas vs Stok ---
-            $currentQuantityInCart = $cart[$cartKey]['quantity'] ?? 0;
-            $newTotalQuantity = $currentQuantityInCart + $quantity;
-
-            if ($stockToCheck < $newTotalQuantity) {
-                $errorMessage = "Stok produk tidak mencukupi. Stok tersedia: {$stockToCheck}.";
-                return back()->with('error', $errorMessage);
-            }
-
-            // --- Logika Penambahan ke Keranjang ---
-            if (isset($cart[$cartKey])) {
-                $cart[$cartKey]['quantity'] = $newTotalQuantity;
-            } else {
-                $cart[$cartKey] = [
-                    "product_id" => $productId, 
-                    "variant_id" => $variantId, 
-                    "name"       => $itemName,
-                    "quantity"   => $quantity,
-                    "price"      => $itemPrice,
-                    "image_url"  => $itemImageUrl, 
-                    "slug"       => $product->slug,
-                    "weight"     => $itemWeight, 
-                    "store_id"   => $product->store_id, // ⚡ WAJIB ADA AGAR LOLOS CHECKOUT
-                    "is_ppob"    => false,
-                ];
-            }
-
-            session()->put('cart', $cart);
-
-            // ⚡ LOGIKA PINTAR: REDIRECT BELI SEKARANG VS MASUK KERANJANG ⚡
-            if ($request->input('action') === 'buy_now') {
-                return redirect()->route('customer.checkout.index'); 
-            }
-
-            return back()->with('success', 'Produk berhasil ditambahkan ke keranjang!'); 
-
-        } catch (\Exception $e) {
-            Log::error('Error adding to cart: ' . $e->getMessage() . ' - ' . $e->getFile() . ':' . $e->getLine());
-            return back()->with('error', 'Terjadi kesalahan sistem saat menambahkan produk.');
+        // Proteksi: Jangan izinkan user beli barang dari tokonya sendiri
+        if (auth()->check() && auth()->user()->store && auth()->user()->store->id == $product->store_id) {
+            return back()->with('error', 'Anda tidak dapat membeli produk/jasa dari toko Anda sendiri.');
         }
+
+        $itemPrice = $product->price;
+        $itemName = $product->name;
+        $itemWeight = $product->weight ?? 1;
+        
+        if ($variantId) {
+            $variant = ProductVariant::find($variantId);
+            if ($variant && $variant->product_id == $product->id) {
+                $itemPrice = $variant->price;
+                $itemWeight = $variant->weight ?? $itemWeight;
+            } else {
+                return back()->with('error', 'Varian produk tidak valid.');
+            }
+        } else {
+            if ($product->productVariantTypes()->exists()) {
+                return back()->with('error', 'Silakan pilih varian produk yang tersedia.');
+            }
+        }
+
+        // PENGAMANAN ONGKIR: Pastikan berat minimal 1 gram
+        if ($itemWeight <= 0) {
+            $itemWeight = 1;
+        }
+
+        // --- Validasi Stok ---
+        $currentQuantityInCart = $cart[$cartKey]['quantity'] ?? 0;
+        $newTotalQuantity = $currentQuantityInCart + $quantity;
+        $stockToCheck = $variantId ? ProductVariant::find($variantId)->stock : $product->stock;
+
+        if ($stockToCheck < $newTotalQuantity) {
+            return back()->with('error', "Stok produk tidak mencukupi. Stok tersedia: {$stockToCheck}.");
+        }
+
+        // --- Simpan ke Session Cart ---
+        if (isset($cart[$cartKey])) {
+            $cart[$cartKey]['quantity'] = $newTotalQuantity;
+        } else {
+            $cart[$cartKey] = [
+                "product_id" => $product->id, 
+                "variant_id" => $variantId,  
+                "name"       => $itemName,
+                "quantity"   => $quantity,
+                "price"      => $itemPrice,
+                "weight"     => $itemWeight, 
+                "store_id"   => $product->store_id, // Wajib ada untuk Checkout
+                "image_url"  => $product->image_url,
+                "slug"       => $product->slug,
+                "is_ppob"    => false,
+            ];
+        }
+
+        session()->put('cart', $cart);
+
+        // ⚡ LOGIKA REDIRECT: BELI SEKARANG VS MASUK KERANJANG ⚡
+        if ($request->input('action') === 'buy_now') {
+            return redirect()->route('customer.checkout.index'); 
+        }
+
+        return back()->with('success', 'Produk berhasil ditambahkan ke keranjang!');
     }
 
     /**
-     * Memperbarui kuantitas produk di keranjang (untuk AJAX).
+     * Memperbarui kuantitas produk di keranjang (AJAX).
      */
     public function update(Request $request)
     {
-        $cartKey = $request->input('id'); 
-        $quantity = $request->input('quantity');
-
-        if (!$cartKey || !$quantity || $quantity < 1) {
-             return response()->json(['success' => false, 'message' => 'Data tidak valid.'], 400);
+        if ($request->id && $request->quantity) {
+            $cart = session()->get('cart');
+            
+            if (isset($cart[$request->id])) {
+                $cart[$request->id]["quantity"] = (int)$request->quantity;
+                session()->put('cart', $cart);
+                return response()->json(['success' => true, 'message' => 'Kuantitas berhasil diperbarui.']);
+            }
         }
-
-        $cart = session()->get('cart', []);
-
-        if (!isset($cart[$cartKey])) {
-            return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan di keranjang.'], 404);
-        }
-
-        $item = $cart[$cartKey];
-        $stockToCheck = 0;
-
-        if (!empty($item['variant_id'])) {
-             $variant = ProductVariant::find($item['variant_id']);
-             if (!$variant) {
-                 unset($cart[$cartKey]);
-                 session()->put('cart', $cart);
-                 return response()->json(['success' => false, 'message' => 'Varian produk ini sudah tidak tersedia.', 'removed' => true], 404);
-             }
-             $stockToCheck = $variant->stock;
-        } elseif (!empty($item['product_id'])) {
-            $product = Product::find($item['product_id']);
-             if (!$product) {
-                 unset($cart[$cartKey]);
-                 session()->put('cart', $cart);
-                 return response()->json(['success' => false, 'message' => 'Produk ini sudah tidak tersedia.', 'removed' => true], 404);
-             }
-             if ($product->productVariantTypes()->exists()) {
-                 unset($cart[$cartKey]);
-                 session()->put('cart', $cart);
-                 return response()->json(['success' => false, 'message' => 'Produk ini memerlukan pemilihan varian.', 'removed' => true], 400);
-             }
-             $stockToCheck = $product->stock;
-        } else {
-             unset($cart[$cartKey]);
-             session()->put('cart', $cart);
-             return response()->json(['success' => false, 'message' => 'Data keranjang tidak valid.', 'removed' => true], 400);
-        }
-
-        if ($stockToCheck < $quantity) {
-             return response()->json(['success' => false, 'message' => "Stok tidak mencukupi (tersisa: {$stockToCheck})."], 422);
-        }
-
-        $cart[$cartKey]['quantity'] = (int)$quantity;
-        session()->put('cart', $cart);
-
-        $subtotal = $item['price'] * $quantity;
-        $total = 0;
-        foreach ($cart as $detail) {
-            $total += $detail['price'] * $detail['quantity'];
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Kuantitas berhasil diperbarui.',
-            'subtotal' => $subtotal, 
-            'total' => $total,       
-            'quantity' => $quantity 
-        ]);
+        return response()->json(['success' => false, 'message' => 'Gagal memperbarui kuantitas.'], 404);
     }
 
     /**
-     * Menghapus produk dari keranjang (untuk AJAX).
+     * Menghapus produk dari keranjang (AJAX).
      */
     public function remove(Request $request)
     {
-        $cartKey = $request->input('id'); 
-
-        if ($cartKey) {
-            $cart = session()->get('cart', []);
-            if (isset($cart[$cartKey])) {
-                unset($cart[$cartKey]);
+        if ($request->id) {
+            $cart = session()->get('cart');
+            if (isset($cart[$request->id])) {
+                unset($cart[$request->id]);
                 session()->put('cart', $cart);
-
-                 $total = 0;
-                 foreach ($cart as $detail) {
-                     $total += $detail['price'] * $detail['quantity'];
-                 }
-
-                return response()->json(['success' => true, 'message' => 'Produk dihapus dari keranjang.', 'total' => $total]);
-            } else {
-                return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan di keranjang.'], 404);
             }
+            return response()->json(['success' => true, 'message' => 'Produk berhasil dihapus.']);
         }
-
-        return response()->json(['success' => false, 'message' => 'ID Produk tidak valid.'], 400);
+        return response()->json(['success' => false, 'message' => 'Gagal menghapus produk.'], 404);
     }
 
-     /**
+    /**
      * Mengosongkan keranjang belanja.
      */
     public function clear()
     {
         session()->forget('cart');
-        return redirect()->route('cart.index')->with('success', 'Keranjang berhasil dikosongkan.');
+        return redirect()->route('customer.cart.index')->with('success', 'Keranjang berhasil dikosongkan.');
     }
 
     /**
-     * Tambah produk PPOB.
+     * Menambahkan item PPOB ke keranjang.
      */
     public function addPpob(Request $request)
     {
@@ -275,7 +219,6 @@ class CartController extends Controller
             ];
     
             session()->put('cart', $cart);
-    
             return response()->json(['success' => true]);
 
         } catch (\Exception $e) {
