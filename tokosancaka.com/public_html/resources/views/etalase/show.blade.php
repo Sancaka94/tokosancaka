@@ -204,12 +204,20 @@ if (!function_exists('formatWaNumber')) {
                     @endphp
 
                     {{-- Gambar Besar (Preview) --}}
-                    <div class="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-md shadow-sm mb-3 border border-gray-200">
+                    <div class="relative aspect-square w-full overflow-hidden rounded-md shadow-sm mb-3 border border-gray-200 group">
                         <img id="main-product-image"
                              src="{{ $imageUrl }}"
                              alt="{{ $product->name }}"
-                             class="w-full h-full object-contain object-center"
+                             class="w-full h-full object-contain object-center cursor-pointer"
+                             onclick="openImageModal()"
                              onerror="this.onerror=null;this.src='https://placehold.co/600x600/EFEFEF/AAAAAA?text=Gambar+Error';">
+                        
+                        {{-- Tombol Ikon Kaca Pembesar (Muncul saat di-hover / ditaruh di pojok) --}}
+                        <button type="button" 
+                                onclick="openImageModal()" 
+                                class="absolute bottom-3 right-3 bg-white/90 hover:bg-white text-gray-700 p-2.5 rounded-full shadow-md transition-all z-10 border border-gray-200 focus:outline-none">
+                            <i class="fas fa-search-plus text-lg"></i>
+                        </button>
                     </div>
 
                     {{-- === GALERI THUMBNAIL === --}}
@@ -387,6 +395,20 @@ if (!function_exists('formatWaNumber')) {
 
                 </div>
             </div>
+
+            {{-- ========================================== --}}
+        {{-- MODAL ZOOM GAMBAR (LIGHTBOX)               --}}
+        {{-- ========================================== --}}
+        <div id="image-modal" class="fixed inset-0 z-[100] hidden bg-black/90 flex items-center justify-center opacity-0 transition-opacity duration-300">
+            {{-- Tombol Close (X) --}}
+            <button type="button" onclick="closeImageModal()" class="absolute top-4 right-4 md:top-6 md:right-6 text-white/70 hover:text-red-500 transition-colors z-[110] focus:outline-none p-2">
+                <i class="fas fa-times text-3xl md:text-4xl"></i>
+            </button>
+            
+            {{-- Gambar yang diperbesar --}}
+            <img id="modal-image" src="" alt="Zoomed Image" class="max-w-[95%] max-h-[90vh] object-contain transition-transform duration-300 transform scale-95 shadow-2xl rounded">
+        </div>
+
         </main>
 
 
@@ -955,5 +977,59 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
+// ==========================================
+    // FITUR MODAL ZOOM GAMBAR
+    // ==========================================
+    const imageModal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    const mainProductImage = document.getElementById('main-product-image');
+
+    // Fungsi Buka Modal
+    window.openImageModal = function() {
+        if (!mainProductImage.src || mainProductImage.src.includes('placehold.co')) return; // Jangan zoom jika gambar tidak ada
+        
+        modalImage.src = mainProductImage.src; // Salin URL gambar utama ke gambar di dalam modal
+        imageModal.classList.remove('hidden');
+        
+        // Sedikit delay agar animasi transisi Tailwind berjalan mulus
+        setTimeout(() => {
+            imageModal.classList.remove('opacity-0');
+            modalImage.classList.remove('scale-95');
+            modalImage.classList.add('scale-100');
+        }, 10);
+        
+        document.body.style.overflow = 'hidden'; // Matikan scroll background
+    }
+
+    // Fungsi Tutup Modal
+    window.closeImageModal = function() {
+        imageModal.classList.add('opacity-0');
+        modalImage.classList.remove('scale-100');
+        modalImage.classList.add('scale-95');
+        
+        // Tunggu animasi selesai baru sembunyikan elemennya
+        setTimeout(() => {
+            imageModal.classList.add('hidden');
+            document.body.style.overflow = 'auto'; // Nyalakan scroll background lagi
+        }, 300);
+    }
+
+    // Ekstra: Tutup modal jika user klik di area hitam (di luar gambar)
+    if (imageModal) {
+        imageModal.addEventListener('click', function(e) {
+            if (e.target === imageModal) {
+                closeImageModal();
+            }
+        });
+    }
+
+    // Ekstra: Tutup modal saat user menekan tombol 'Escape' (Esc) di keyboard
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !imageModal.classList.contains('hidden')) {
+            closeImageModal();
+        }
+    });
+    
 </script>
 @endpush
