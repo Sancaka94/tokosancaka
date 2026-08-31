@@ -237,6 +237,16 @@
                         </div>
                     </div>
 
+                    {{-- ⚡ TAMBAHKAN BLOK CATATAN DI SINI ⚡ --}}
+                    <div class="bg-white rounded-xl shadow-md p-6">
+                        <div class="flex items-center mb-2">
+                            <i class="far fa-comment-dots text-gray-500 text-lg mr-2"></i>
+                            <h2 class="text-lg font-bold text-gray-900">Catatan Pesanan <span class="text-sm font-normal text-gray-400">(Opsional)</span></h2>
+                        </div>
+                        <textarea name="catatan" id="catatan" rows="2" class="mt-2 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-red-500 focus:border-red-500 sm:text-sm transition-colors" placeholder="Ketik pesan untuk penjual / teknisi di sini... (Cth: Tolong dipasang hari Minggu jam 10 pagi)"></textarea>
+                    </div>
+                    {{-- ⚡ AKHIR BLOK CATATAN ⚡ --}}
+
                     <div class="bg-white rounded-xl shadow-md p-6">
                         <h2 class="text-lg font-bold text-gray-900 mb-4">Pilih Metode Pengiriman</h2>
 

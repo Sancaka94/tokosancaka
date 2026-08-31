@@ -831,6 +831,7 @@ class CheckoutController extends Controller
                     'receiver_subdistrict_id' => $userSubdistrictId,
                     'sender_district_id'      => $storeDistrictId,
                     'sender_subdistrict_id'   => $storeSubdistrictId,
+                    'catatan'                 => $request->catatan,
                 ]);
                 $orderFisik->save();
 
@@ -863,6 +864,7 @@ class CheckoutController extends Controller
                     'shipping_address'        => 'Pengiriman Digital / E-Ticket',
                     'receiver_name'           => $request->nama_penerima ?? ($user ? $user->nama_lengkap : 'Guest Customer'),
                     'receiver_phone'          => $request->no_wa_penerima ?? ($user ? $user->no_wa : '081234567890'),
+                    'catatan'                 => $request->catatan,
                 ]);
                 $orderDigital->save();
 
