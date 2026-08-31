@@ -195,7 +195,7 @@
         <div class="print-header flex flex-col md:flex-row justify-between items-start mb-10 pb-8 border-b border-gray-100 gap-8">
 
             <div class="w-full md:w-1/2">
-                <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10 mb-5 object-contain grayscale" onerror="this.src='https://placehold.co/200x50/FFFFFF/000000?text=SANCAKA+EXPRESS'">
+                <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-10 mb-5 object-contain" onerror="this.src='https://placehold.co/200x50/FFFFFF/000000?text=SANCAKA+EXPRESS'">
                 <div class="text-[13px] text-gray-500 leading-relaxed">
                     <p class="font-bold text-black uppercase tracking-wide">Sancaka Express</p>
                     <p>Jl. Dr. Wahidin No. 18A, Ketanggi</p>
@@ -225,7 +225,7 @@
                             @csrf
                             <button type="button" id="paymentMethodButton" class="w-full bg-white border border-gray-200 hover:border-black p-3 rounded-md flex items-center justify-between transition-colors mb-3 group">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-6 h-6 flex items-center justify-center grayscale">
+                                    <div class="w-6 h-6 flex items-center justify-center">
                                         <img id="paymentMethodImg" src="https://tokosancaka.com/public/assets/saldo.png" class="max-w-full max-h-full">
                                     </div>
                                     <span id="paymentMethodLabel" class="text-sm font-semibold text-black">Pilih Metode...</span>
@@ -305,179 +305,183 @@
             </div>
         </div>
 
-        <div class="mb-10 overflow-hidden">
-            <table class="w-full text-sm border-collapse">
-                <thead>
-                    <tr class="border-b border-black text-black">
-                        <th class="py-3 text-left font-semibold uppercase text-[11px] tracking-wider w-3/4">Rincian Layanan</th>
-                        <th class="py-3 text-right font-semibold uppercase text-[11px] tracking-wider w-1/4">Biaya</th>
+        <div class="mb-10 border border-gray-200 rounded-xl overflow-hidden">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="py-4 px-6 font-bold text-black uppercase text-[11px] tracking-wider w-3/4">Rincian Layanan</th>
+                        <th class="py-4 px-6 font-bold text-black uppercase text-[11px] tracking-wider w-1/4 text-right">Biaya</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-100 text-[13px]">
+                <tbody class="divide-y divide-gray-100 bg-white">
                     <tr>
-                        <td class="py-5 pr-4 align-top">
-                            <div class="flex items-center mb-3">
-                                <div class="w-10 h-10 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded bg-white mr-3 p-1 grayscale">
-                                    <img src="{{ $finalLogoUrl }}" class="max-h-full max-w-full object-contain" onerror="this.style.display='none'">
+                        <td class="py-6 px-6 align-top">
+                            <div class="flex items-start gap-4">
+                                <div class="w-12 h-12 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded-md p-1.5 bg-white shadow-sm">
+                                    <img src="{{ $finalLogoUrl }}" class="max-h-full max-w-full object-contain" alt="Ekspedisi" onerror="this.style.display='none'">
                                 </div>
-                                <div>
-                                    <p class="font-bold text-black uppercase">{{ $expeditionName }} - {{ $expeditionService }}</p>
-                                    <p class="text-gray-400 text-[11px]">Layanan Ekspedisi</p>
+                                <div class="w-full">
+                                    <h4 class="font-bold text-black text-sm uppercase mb-1">{{ $expeditionName }} - {{ $expeditionService }}</h4>
+                                    <p class="text-[11px] text-gray-500 mb-3">Layanan Pengiriman Ekspedisi</p>
+
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-[12px] bg-gray-50 p-4 rounded-lg border border-gray-100">
+                                        <p><span class="font-semibold text-gray-800 inline-block w-20">Isi Paket:</span> <span class="text-gray-600">{{ $pesanan->item_description }}</span></p>
+                                        <p><span class="font-semibold text-gray-800 inline-block w-20">Berat:</span> <span class="text-gray-600">{{ number_format($pesanan->weight, 0, ',', '.') }} Gram</span></p>
+                                        <p><span class="font-semibold text-gray-800 inline-block w-20">Dimensi:</span> <span class="text-gray-600">{{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</span></p>
+                                        <p><span class="font-semibold text-gray-800 inline-block w-20">Nilai Brg:</span> <span class="text-gray-600">Rp {{ number_format($pesanan->item_price, 0, ',', '.') }}</span></p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="text-gray-500 space-y-1 mt-3 text-xs border-l-2 border-gray-200 pl-3">
-                                <p><span class="font-medium text-black">Isi Paket:</span> {{ $pesanan->item_description }}</p>
-                                <p><span class="font-medium text-black">Berat:</span> {{ number_format($pesanan->weight, 0, ',', '.') }} Gram</p>
-                                <p><span class="font-medium text-black">Dimensi:</span> {{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</p>
-                                <p><span class="font-medium text-black">Nilai Brg:</span> Rp {{ number_format($pesanan->item_price, 0, ',', '.') }}</p>
                             </div>
                         </td>
-                        <td class="py-5 text-right align-top font-medium text-black">
+                        <td class="py-6 px-6 text-right align-top font-semibold text-black text-[13px]">
                             Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
                         </td>
                     </tr>
 
                     @if($pesanan->insurance_cost > 0)
-                    <tr>
-                        <td class="py-3 text-gray-500">Biaya Asuransi</td>
-                        <td class="py-3 text-right font-medium">Rp {{ number_format($pesanan->insurance_cost, 0, ',', '.') }}</td>
+                    <tr class="bg-white">
+                        <td class="py-4 px-6 text-gray-500 text-[13px] font-medium text-right">Biaya Asuransi</td>
+                        <td class="py-4 px-6 text-right font-semibold text-black text-[13px]">Rp {{ number_format($pesanan->insurance_cost, 0, ',', '.') }}</td>
                     </tr>
                     @endif
 
                     @if($pesanan->cod_fee > 0)
-                    <tr>
-                        <td class="py-3 text-gray-500">Biaya Penanganan (Fee)</td>
-                        <td class="py-3 text-right font-medium">Rp {{ number_format($pesanan->cod_fee, 0, ',', '.') }}</td>
+                    <tr class="bg-white">
+                        <td class="py-4 px-6 text-gray-500 text-[13px] font-medium text-right">Biaya Penanganan (Fee)</td>
+                        <td class="py-4 px-6 text-right font-semibold text-black text-[13px]">Rp {{ number_format($pesanan->cod_fee, 0, ',', '.') }}</td>
                     </tr>
                     @endif
                 </tbody>
-                <tfoot class="border-t border-black">
-                    <tr>
-                        <td class="py-3 text-right text-gray-500 text-[13px]">Sub Total</td>
-                        <td class="py-3 text-right font-semibold text-black">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
-                    </tr>
-                    <tr>
-                        <td class="py-2 text-right text-gray-500 text-[13px]">Credit</td>
-                        <td class="py-2 text-right font-semibold text-black">Rp 0,00</td>
-                    </tr>
-                    <tr>
-                        <td class="py-4 text-right font-black text-sm uppercase tracking-wide text-black">Grand Total</td>
-                        <td class="py-4 text-right font-black text-sm text-black border-t-2 border-black border-dashed">
-                            Rp {{ number_format($pesanan->price, 0, ',', '.') }}
-                        </td>
-                    </tr>
-                </tfoot>
             </table>
+
+            <div class="bg-gray-50 border-t border-gray-200 p-6 flex justify-end">
+                <div class="w-full sm:w-1/2 md:w-1/3">
+                    <div class="flex justify-between py-1 text-[13px] text-gray-500 mb-2">
+                        <span>Sub Total</span>
+                        <span class="font-semibold text-black">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="flex justify-between py-1 text-[13px] text-gray-500 mb-3">
+                        <span>Credit</span>
+                        <span class="font-semibold text-black">Rp 0,00</span>
+                    </div>
+                    <div class="flex justify-between py-3 border-t border-gray-200 text-sm font-black text-black uppercase tracking-wide">
+                        <span>Grand Total</span>
+                        <span>Rp {{ number_format($pesanan->price, 0, ',', '.') }}</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="flex flex-col-reverse md:flex-row gap-8 mb-8 border-t border-gray-200 pt-8">
+        <div class="flex flex-col-reverse md:flex-row gap-8 mb-8">
 
             <div class="w-full md:w-3/4">
-                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4">Riwayat Transaksi</p>
-                <table class="w-full text-[13px] border-collapse text-left">
-                    <thead class="border-b border-gray-200 text-gray-400">
-                        <tr>
-                            <th class="py-2 font-medium">Tanggal</th>
-                            <th class="py-2 font-medium">Metode</th>
-                            <th class="py-2 font-medium text-right">Nominal</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        @if($statusLunas)
-                        <tr>
-                            <td class="py-3">{{ \Carbon\Carbon::parse($pesanan->updated_at)->format('d/m/Y H:i') }}</td>
-                            <td class="py-3 uppercase text-xs font-semibold text-black">{{ str_replace('_', ' ', $pesanan->payment_method) }}</td>
-                            <td class="py-3 text-right font-semibold text-black">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
-                        </tr>
-                        @else
-                        <tr>
-                            <td colspan="3" class="py-4 italic text-gray-400 text-center text-xs">Belum ada transaksi masuk.</td>
-                        </tr>
-                        @endif
-                    </tbody>
-                    <tfoot class="border-t border-gray-200">
-                        <tr>
-                            <td colspan="2" class="py-3 text-right font-medium text-gray-500 text-xs uppercase">Sisa Tagihan</td>
-                            <td class="py-3 text-right font-black text-sm text-black">
-                                Rp {{ $statusLunas ? '0,00' : number_format($pesanan->price, 0, ',', '.') }}
-                            </td>
-                        </tr>
-                    </tfoot>
-                </table>
+                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Riwayat Transaksi</p>
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <table class="w-full text-[13px] text-left">
+                        <thead class="bg-gray-50 border-b border-gray-200 text-gray-500">
+                            <tr>
+                                <th class="py-3 px-4 font-semibold">Tanggal</th>
+                                <th class="py-3 px-4 font-semibold">Metode</th>
+                                <th class="py-3 px-4 font-semibold text-right">Nominal</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 bg-white">
+                            @if($statusLunas)
+                            <tr>
+                                <td class="py-4 px-4">{{ \Carbon\Carbon::parse($pesanan->updated_at)->format('d/m/Y H:i') }}</td>
+                                <td class="py-4 px-4 uppercase text-xs font-semibold text-black">{{ str_replace('_', ' ', $pesanan->payment_method) }}</td>
+                                <td class="py-4 px-4 text-right font-semibold text-black">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
+                            </tr>
+                            @else
+                            <tr>
+                                <td colspan="3" class="py-6 italic text-gray-400 text-center text-xs">Belum ada transaksi masuk.</td>
+                            </tr>
+                            @endif
+                        </tbody>
+                        <tfoot class="bg-gray-50 border-t border-gray-200">
+                            <tr>
+                                <td colspan="2" class="py-3 px-4 text-right font-semibold text-gray-500 text-xs uppercase tracking-wide">Sisa Tagihan</td>
+                                <td class="py-3 px-4 text-right font-black text-sm text-black">
+                                    Rp {{ $statusLunas ? '0,00' : number_format($pesanan->price, 0, ',', '.') }}
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
             </div>
 
             <div class="w-full md:w-1/4">
-                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 text-center">Status Lacak</p>
+                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2 text-center md:text-left">Status Lacak</p>
 
                 @if($isCancelled)
-                    <div class="border border-gray-200 bg-gray-50 rounded-md p-3 text-center">
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Status Paket</p>
-                        <p class="text-[11px] font-bold text-black mb-3">{{ $statusText }}</p>
-                        <button onclick="syncTracking(this)" class="no-print w-full bg-white border border-gray-300 hover:border-black text-black text-[10px] font-bold py-1.5 rounded transition-colors uppercase tracking-wider">
+                    <div class="border border-gray-200 bg-gray-50 rounded-lg p-4 text-center">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status Paket</p>
+                        <p class="text-xs font-bold text-black mb-4">{{ $statusText }}</p>
+                        <button onclick="syncTracking(this)" class="no-print w-full bg-white border border-gray-300 hover:border-black text-black text-[11px] font-bold py-2 rounded-md transition-colors uppercase tracking-wider shadow-sm">
                             Sync API
                         </button>
                     </div>
                 @elseif($statusLunas && $pesanan->resi)
-                    <div class="border border-gray-200 bg-gray-50 rounded-md p-3 text-center mb-3">
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Status Paket</p>
-                        <p class="text-[11px] font-bold text-black mb-3 truncate" title="{{ $statusText }}">{{ $statusText }}</p>
-                        <button onclick="syncTracking(this)" class="no-print w-full bg-white border border-gray-300 hover:border-black text-black text-[10px] font-bold py-1.5 rounded transition-colors uppercase tracking-wider">
+                    <div class="border border-gray-200 bg-gray-50 rounded-lg p-4 text-center mb-3">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status Paket</p>
+                        <p class="text-xs font-bold text-black mb-4 truncate" title="{{ $statusText }}">{{ $statusText }}</p>
+                        <button onclick="syncTracking(this)" class="no-print w-full bg-white border border-gray-300 hover:border-black text-black text-[11px] font-bold py-2 rounded-md transition-colors uppercase tracking-wider shadow-sm">
                             Sync API
                         </button>
                     </div>
-                    <div id="qrcode" class="p-2 bg-white border border-gray-200 rounded flex justify-center grayscale"></div>
+                    <div id="qrcode" class="p-3 bg-white border border-gray-200 rounded-lg flex justify-center shadow-sm"></div>
                 @else
-                    <div class="h-[100px] bg-gray-50 border border-dashed border-gray-200 flex flex-col items-center justify-center rounded-md">
-                        <i class="fas fa-lock text-gray-300 text-xl mb-1"></i>
-                        <span class="text-[10px] text-gray-400 font-medium">Terkunci</span>
+                    <div class="h-[120px] bg-gray-50 border border-dashed border-gray-300 flex flex-col items-center justify-center rounded-lg">
+                        <i class="fas fa-lock text-gray-300 text-2xl mb-2"></i>
+                        <span class="text-[11px] text-gray-400 font-medium tracking-wide">Terkunci</span>
                     </div>
                 @endif
             </div>
 
         </div>
 
-        <div class="text-center text-[10px] text-gray-400 mt-12">
+        <div class="text-center text-[11px] text-gray-400 mt-12 pt-6 border-t border-gray-100">
             Dicetak otomatis dari sistem <strong>tokosancaka.com</strong> pada {{ date('d M Y, H:i') }} WIB.<br>Dokumen sah tanpa tanda tangan fisik.
         </div>
 
     </div>
 
     <div id="paymentModal" class="no-print fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 hidden transition-all duration-300">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl mx-4 sm:mx-auto flex flex-col max-h-[85vh]">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 sm:mx-auto flex flex-col max-h-[85vh]">
 
-            <div class="flex justify-between items-center p-5 border-b border-gray-200">
-                <h3 class="text-base font-bold text-black tracking-wide">Pilih Metode Pembayaran</h3>
-                <button type="button" id="closeModalButton" class="text-gray-400 hover:text-black transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            <div class="flex justify-between items-center p-5 border-b border-gray-100">
+                <h3 class="text-lg font-bold text-black tracking-wide">Pilih Metode Pembayaran</h3>
+                <button type="button" id="closeModalButton" class="text-gray-400 hover:text-black transition-colors p-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
 
-            <div class="p-4 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/50">
-                <ul id="paymentOptionsList" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="p-5 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/50">
+                <ul id="paymentOptionsList" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-                    <li class="col-span-full pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">
+                    <li class="col-span-full pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">
                         Direct Payment
                     </li>
 
-                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-lg bg-white hover:border-black transition-all group grayscale hover:grayscale-0"
+                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group"
                         data-value="BCA_QRIS" data-label="BCA QRIS" data-img="https://tokosancaka.com/assets/bca.png">
-                        <img src="https://tokosancaka.com/assets/bca.png" class="w-10 h-auto mr-3 object-contain" alt="BCA">
+                        <img src="https://tokosancaka.com/assets/bca.png" class="w-12 h-auto mr-4 object-contain" alt="BCA">
                         <div class="flex flex-col">
-                            <span class="text-[13px] font-semibold text-black">BCA QRIS</span>
-                            <span class="text-[10px] text-gray-500">Generate Barcode</span>
+                            <span class="text-[13px] font-bold text-black">BCA QRIS</span>
+                            <span class="text-[11px] text-gray-500">Generate Barcode</span>
                         </div>
                     </li>
 
-                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-lg bg-white hover:border-black transition-all group grayscale hover:grayscale-0"
+                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group"
                         data-value="DOKU_JOKUL" data-label="DOKU Gateway" data-img="https://tokosancaka.com/public/assets/doku.png">
-                        <img src="https://tokosancaka.com/public/assets/doku.png" class="w-10 h-auto mr-3 object-contain" alt="DOKU">
+                        <img src="https://tokosancaka.com/public/assets/doku.png" class="w-12 h-auto mr-4 object-contain" alt="DOKU">
                         <div class="flex flex-col">
-                            <span class="text-[13px] font-semibold text-black">DOKU Gateway</span>
-                            <span class="text-[10px] text-gray-500">VA, E-Wallet, CC Lokal</span>
+                            <span class="text-[13px] font-bold text-black">DOKU Gateway</span>
+                            <span class="text-[11px] text-gray-500">VA, E-Wallet, CC Lokal</span>
                         </div>
                     </li>
 
-                    <li class="col-span-full pt-3 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">
+                    <li class="col-span-full pt-4 pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">
                         DANA Enterprise
                     </li>
 
@@ -488,60 +492,60 @@
                         $hasDanaBinding = !empty($userDanaToken);
                     @endphp
 
-                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-lg bg-white hover:border-black transition-all group grayscale hover:grayscale-0"
+                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group"
                         data-value="DANA" data-label="DANA Checkout" data-img="{{ asset('public/assets/dana.webp') }}">
-                        <img src="{{ asset('public/assets/dana.webp') }}" class="w-10 h-auto mr-3 object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                        <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
                         <div class="flex flex-col">
-                            <span class="text-[13px] font-semibold text-black">DANA Web</span>
-                            <span class="text-[10px] text-gray-500">Arahkan ke App</span>
+                            <span class="text-[13px] font-bold text-black">DANA Web</span>
+                            <span class="text-[11px] text-gray-500">Arahkan ke App</span>
                         </div>
                     </li>
 
                     @if($hasDanaBinding)
-                        <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-400 rounded-lg bg-gray-100 hover:border-black transition-all group grayscale hover:grayscale-0"
+                        <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-400 rounded-xl bg-gray-100 hover:border-black hover:shadow-md transition-all group"
                             data-value="DANA_BINDING" data-label="DANA Auto-Debit" data-img="{{ asset('public/assets/dana.webp') }}">
-                            <img src="{{ asset('public/assets/dana.webp') }}" class="w-10 h-auto mr-3 object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                            <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
                             <div class="flex flex-col flex-1">
-                                <span class="text-[13px] font-semibold text-black">DANA Auto-Debit</span>
-                                <span class="text-[10px] text-gray-600">Saldo: Rp{{ number_format($userDanaBalance, 0, ',', '.') }}</span>
+                                <span class="text-[13px] font-bold text-black">DANA Auto-Debit</span>
+                                <span class="text-[11px] text-gray-600 font-medium">Saldo: Rp{{ number_format($userDanaBalance, 0, ',', '.') }}</span>
                             </div>
-                            <span class="bg-black text-white text-[9px] px-1.5 py-0.5 rounded">Tersambung</span>
+                            <span class="bg-black text-white text-[10px] font-semibold px-2 py-1 rounded">Tersambung</span>
                         </li>
                     @else
-                        <li class="col-span-1 flex items-center p-3 border border-dashed border-gray-300 rounded-lg bg-transparent justify-between grayscale">
+                        <li class="col-span-1 flex items-center p-3 border border-dashed border-gray-300 rounded-xl bg-gray-50 justify-between">
                             <div class="flex items-center">
-                                <img src="{{ asset('public/assets/dana.webp') }}" class="w-10 h-auto mr-3 object-contain opacity-50" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                                <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain opacity-60" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
                                 <div class="flex flex-col">
-                                    <span class="text-[13px] font-semibold text-gray-500">DANA Auto-Debit</span>
+                                    <span class="text-[13px] font-bold text-gray-500">DANA Auto-Debit</span>
                                 </div>
                             </div>
-                            <a href="{{ url('/dana/start-binding') }}" class="bg-white border border-gray-300 text-black hover:border-black text-[10px] px-2 py-1 rounded transition-colors">
+                            <a href="{{ url('/dana/start-binding') }}" class="bg-white border border-gray-300 text-black hover:border-black text-[11px] font-semibold px-3 py-1.5 rounded transition-colors shadow-sm">
                                 Hubungkan
                             </a>
                         </li>
                     @endif
 
-                    <li class="col-span-full pt-3 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">
+                    <li class="col-span-full pt-4 pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">
                         Global & Otomatis
                     </li>
 
-                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-lg bg-white hover:border-black transition-all group grayscale hover:grayscale-0"
+                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group"
                         data-value="PAYPAL" data-label="PayPal" data-img="https://tokosancaka.com/public/assets/paypal.png">
-                        <img src="https://tokosancaka.com/public/assets/paypal.png" class="w-10 h-auto mr-3 object-contain" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=PP'">
+                        <img src="https://tokosancaka.com/public/assets/paypal.png" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=PP'">
                         <div class="flex flex-col">
-                            <span class="text-[13px] font-semibold text-black">PayPal / CC</span>
-                            <span class="text-[10px] text-gray-500">Pembayaran USD</span>
+                            <span class="text-[13px] font-bold text-black">PayPal / CC</span>
+                            <span class="text-[11px] text-gray-500">Pembayaran USD</span>
                         </div>
                     </li>
 
                     @if(isset($tripayChannels) && count($tripayChannels) > 0)
                         @foreach($tripayChannels as $channel)
                             @if($channel['active'])
-                            <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-lg bg-white hover:border-black transition-all group grayscale hover:grayscale-0"
+                            <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group"
                                 data-value="{{ $channel['code'] }}" data-label="{{ $channel['name'] }}" data-img="{{ $channel['icon_url'] }}">
-                                <img src="{{ $channel['icon_url'] }}" class="w-10 h-auto mr-3 object-contain" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=IMG'">
+                                <img src="{{ $channel['icon_url'] }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=IMG'">
                                 <div class="flex flex-col">
-                                    <span class="text-[13px] font-semibold text-black">{{ $channel['name'] }}</span>
+                                    <span class="text-[13px] font-bold text-black">{{ $channel['name'] }}</span>
                                 </div>
                             </li>
                             @endif
@@ -567,7 +571,7 @@
 
         if (!isCancelled && isPaid && resiSancaka) {
             try {
-                // Barcode Hitam Putih
+                // Barcode
                 JsBarcode("#barcodeResi", resiSancaka, {
                     format: "CODE128", lineColor: "#000000", textMargin: 4,
                     fontOptions: "bold", fontSize: 13, height: 40, width: 2, displayValue: true
@@ -575,7 +579,7 @@
             } catch (e) {}
 
             try {
-                // QRCode Hitam Putih
+                // QRCode
                 new QRCode(document.getElementById("qrcode"), {
                     text: "https://tokosancaka.com/tracking/search?resi=" + resiSancaka,
                     width: 75, height: 75, colorDark : "#000000", colorLight : "#ffffff",
@@ -605,12 +609,12 @@
                     paymentMethodInput.value = this.dataset.value;
 
                     paymentOptionsList.querySelectorAll('.payment-option').forEach(li => {
-                        li.classList.remove('border-black', 'bg-gray-50');
-                        li.classList.add('border-gray-200', 'bg-white');
+                        li.classList.remove('border-black', 'ring-1', 'ring-black');
+                        li.classList.add('border-gray-200');
                     });
 
-                    this.classList.remove('border-gray-200', 'bg-white');
-                    this.classList.add('border-black', 'bg-gray-50');
+                    this.classList.remove('border-gray-200');
+                    this.classList.add('border-black', 'ring-1', 'ring-black');
 
                     document.getElementById('paymentMethodLabel').textContent = this.dataset.label;
                     document.getElementById('paymentMethodImg').src = this.dataset.img;
