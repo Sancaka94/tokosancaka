@@ -152,7 +152,7 @@
 
 
         {{-- Cek apakah keranjang ada isinya --}}
-        @php $cart = session('cart', []); @endphp
+        {{-- @php $cart = session('cart', []); @endphp --}}
         <div id="cart-content-area"> {{-- Wrapper untuk konten cart agar bisa diganti saat kosong --}}
             @if(!empty($cart))
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">

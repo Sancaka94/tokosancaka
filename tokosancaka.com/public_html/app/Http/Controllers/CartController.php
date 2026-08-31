@@ -35,7 +35,21 @@ class CartController extends Controller
     }
 
     /**
-     * Menampilkan halaman keranjang belanja (Dilengkapi Redis Caching & Anti N+1).
+     * Helper: Hitung Total Keranjang untuk Balasan AJAX Blade
+     */
+    private function calculateCartTotals($scope)
+    {
+        $dbCart = DB::table('cartbelanja')->where($scope)->get();
+        $grandTotal = 0;
+        
+        foreach ($dbCart as $item) {
+            $grandTotal += ($item->price * $item->quantity);
+        }
+        return $grandTotal;
+    }
+
+    /**
+     * Menampilkan halaman keranjang belanja (Anti N+1 & Redis Caching).
      */
     public function index()
     {
@@ -43,7 +57,7 @@ class CartController extends Controller
         $redisKey = $this->getRedisCartKey();
 
         // =========================================================================
-        // 1. CEK REDIS TERLEBIH DAHULU (Bypass Query Database Jika Ada Cache)
+        // 1. CEK REDIS (Bypass Query Database Jika Ada Cache)
         // =========================================================================
         try {
             $cachedCart = Redis::get($redisKey);
@@ -57,12 +71,11 @@ class CartController extends Controller
         }
 
         // =========================================================================
-        // 2. JIKA REDIS KOSONG, TARIK DARI DATABASE
+        // 2. JIKA REDIS KOSONG, TARIK DARI DATABASE (ANTI N+1)
         // =========================================================================
         $dbCart = DB::table('cartbelanja')->where($scope)->get();
         
-        // 🔥 ANTI N+1 QUERY 🔥
-        // Kumpulkan semua ID Produk & Varian untuk ditarik dalam 1x Query
+        // Tarik semua ID Produk & Varian sekaligus untuk menghindari query berulang (N+1)
         $productIds = $dbCart->where('is_ppob', 0)->pluck('product_id')->filter()->unique()->toArray();
         $variantIds = $dbCart->where('is_ppob', 0)->pluck('variant_id')->filter()->unique()->toArray();
 
@@ -76,13 +89,13 @@ class CartController extends Controller
             $key = $item->is_ppob ? 'ppob_' . $item->ref_id : $item->product_id . '-' . ($item->variant_id ?? '0');
             $details = (array) $item; 
 
-            // Lewati validasi jika ini produk PPOB/Digital
+            // Lewati validasi jika ini produk PPOB
             if ($item->is_ppob == 1) {
                 $cart[$key] = $details;
                 continue; 
             }
 
-            // Validasi Produk Varian (Tanpa query find di dalam loop)
+            // Validasi Varian
             if (!empty($details['variant_id'])) {
                 $variant = $variants[$details['variant_id']] ?? null;
                 
@@ -94,9 +107,8 @@ class CartController extends Controller
                 
                 $details['price'] = $variant->price;
                 $details['current_stock'] = $variant->stock; 
-
             } else {
-                // Validasi Produk Utama (Tanpa query find di dalam loop)
+                // Validasi Produk Utama
                 $product = $products[$details['product_id']] ?? null;
 
                 if (!$product || strtolower(trim($product->status)) !== 'active') {
@@ -113,11 +125,10 @@ class CartController extends Controller
         }
 
         // =========================================================================
-        // 3. SIMPAN KE REDIS SETELAH VALIDASI SELESAI
+        // 3. SIMPAN KE REDIS (TTL: 30 Menit)
         // =========================================================================
         try {
-            // Cache data keranjang selama 2 Jam (7200 detik)
-            Redis::setex($redisKey, 7200, json_encode($cart));
+            Redis::setex($redisKey, 1800, json_encode($cart));
         } catch (\Exception $e) {
             Log::warning("LOG LOG: Gagal menyimpan cache keranjang ke Redis: " . $e->getMessage());
         }
@@ -126,13 +137,11 @@ class CartController extends Controller
     }
 
     /**
-     * Menambahkan produk ke keranjang (Beli Sekarang & Masukkan Keranjang).
+     * Menambahkan produk ke keranjang.
      */
     public function add(Request $request, Product $product)
     {
-        // =========================================================================
-        // 🔥 FITUR IDEMPOTENCY (Pencegah Double Input Saat User Spam Klik) 🔥
-        // =========================================================================
+        // 🔥 FITUR IDEMPOTENCY (Pencegah Double Input) 🔥
         $idempotencyKey = $request->header('Idempotency-Key');
         if ($idempotencyKey && Cache::has('idemp_cart_add_' . $idempotencyKey)) {
             Log::warning("LOG LOG: Idempotency Terdeteksi! Request duplikat Add Cart dicegah untuk key: " . $idempotencyKey);
@@ -146,20 +155,21 @@ class CartController extends Controller
         Log::info('Semua data dari Form Request: ', $request->all());
         Log::info('Data Product dari Parameter Method: ', $product->toArray());
 
+        // Timpa model kosong dengan pencarian manual
         $product = Product::find($request->input('product_id'));
 
         if (!$product) {
             return back()->with('error', 'Produk tidak ditemukan.');
         }
 
-        // Proteksi: Jangan izinkan user beli barang dari tokonya sendiri
+        // Proteksi Toko Sendiri
         if (auth()->check() && auth()->user()->store && auth()->user()->store->id == $product->store_id) {
             return back()->with('error', 'Anda tidak dapat membeli produk/jasa dari toko Anda sendiri.');
         }
 
         $itemPrice = $product->price;
         $itemName = $product->name;
-        $itemWeight = max(1, $product->weight ?? 1); // Langsung validasi minimal 1 gram
+        $itemWeight = max(1, $product->weight ?? 1); 
         
         if ($variantId) {
             $variant = ProductVariant::find($variantId);
@@ -177,12 +187,9 @@ class CartController extends Controller
 
         $scope = $this->getCartScope();
 
-        // =========================================================================
-        // 🔥 DATABASE TRANSACTION & LOCK (Pencegah Race Condition Stok) 🔥
-        // =========================================================================
+        // 🔥 DATABASE TRANSACTION & ROW LOCKING 🔥
         $responseResult = DB::transaction(function () use ($product, $variantId, $quantity, $itemName, $itemPrice, $itemWeight, $request, $scope) {
             
-            // Kunci baris spesifik ini (jika ada) agar tidak bisa diubah proses lain bersamaan
             $existingItem = DB::table('cartbelanja')
                 ->where($scope)
                 ->where('product_id', $product->id)
@@ -221,19 +228,15 @@ class CartController extends Controller
                 ]));
             }
 
-            // 🔥 HAPUS CACHE REDIS KARENA ADA PERUBAHAN DATA 🔥
-            try {
-                Redis::del($this->getRedisCartKey());
-            } catch (\Exception $e) {}
+            // Hapus cache keranjang
+            try { Redis::del($this->getRedisCartKey()); } catch (\Exception $e) {}
 
-            // ⚡ LOGIKA REDIRECT PINTAR ⚡
             if ($request->input('action') === 'buy_now') {
-                return redirect()->route('customer.checkout.index'); 
+                return redirect()->route('checkout.index'); 
             }
             return back()->with('success', 'Produk berhasil ditambahkan ke keranjang!');
         });
 
-        // Simpan Hasil ke Memori Idempotency (Berlaku 5 Menit)
         if ($idempotencyKey && !is_array($responseResult)) {
             Cache::put('idemp_cart_add_' . $idempotencyKey, $responseResult, now()->addMinutes(5));
         }
@@ -258,19 +261,51 @@ class CartController extends Controller
             $variantId = (isset($parts[1]) && $parts[1] !== '0') ? $parts[1] : null;
 
             $result = DB::transaction(function () use ($scope, $productId, $variantId, $request) {
-                $affected = DB::table('cartbelanja')
+                
+                $item = DB::table('cartbelanja')
                     ->where($scope)
                     ->where('product_id', $productId)
                     ->where(function($q) use ($variantId) {
                         if ($variantId) $q->where('variant_id', $variantId);
                         else $q->whereNull('variant_id');
-                    })
-                    ->update(['quantity' => (int)$request->quantity, 'updated_at' => now()]);
+                    })->lockForUpdate()->first();
 
-                if ($affected) {
+                if ($item) {
+                    $requestedQty = (int)$request->quantity;
+                    
+                    // Validasi Stok Asli dari Database
+                    $stockToCheck = (int) ($variantId ? ProductVariant::find($variantId)->stock : Product::find($productId)->stock);
+                    
+                    if ($requestedQty > $stockToCheck) {
+                        return response()->json([
+                            'success' => false, 
+                            'message' => "Stok tidak mencukupi (tersisa: {$stockToCheck}).",
+                            'current_stock' => $stockToCheck
+                        ], 422);
+                    }
+
+                    // Update
+                    DB::table('cartbelanja')->where('id', $item->id)->update([
+                        'quantity' => $requestedQty, 
+                        'updated_at' => now()
+                    ]);
+
                     try { Redis::del($this->getRedisCartKey()); } catch (\Exception $e) {}
-                    return response()->json(['success' => true, 'message' => 'Kuantitas berhasil diperbarui.']);
+
+                    // Persiapkan JSON khusus untuk Blade
+                    $newSubtotal = $item->price * $requestedQty;
+                    $grandTotal = $this->calculateCartTotals($scope);
+
+                    return response()->json([
+                        'success' => true, 
+                        'message' => 'Kuantitas berhasil diperbarui.',
+                        'quantity' => $requestedQty,
+                        'subtotal' => $newSubtotal,
+                        'total' => $grandTotal,
+                        'current_stock' => $stockToCheck
+                    ]);
                 }
+                
                 return response()->json(['success' => false, 'message' => 'Produk tidak ditemukan.'], 404);
             });
 
@@ -299,11 +334,7 @@ class CartController extends Controller
             $result = DB::transaction(function () use ($scope, $request) {
                 if (str_starts_with($request->id, 'ppob_')) {
                     $refId = str_replace('ppob_', '', $request->id);
-                    $affected = DB::table('cartbelanja')
-                        ->where($scope)
-                        ->where('is_ppob', 1)
-                        ->where('ref_id', $refId)
-                        ->delete();
+                    $affected = DB::table('cartbelanja')->where($scope)->where('is_ppob', 1)->where('ref_id', $refId)->delete();
                 } else {
                     $parts = explode('-', $request->id);
                     $productId = $parts[0] ?? null;
@@ -315,13 +346,20 @@ class CartController extends Controller
                         ->where(function($q) use ($variantId) {
                             if ($variantId) $q->where('variant_id', $variantId);
                             else $q->whereNull('variant_id');
-                        })
-                        ->delete();
+                        })->delete();
                 }
 
                 if ($affected) {
                     try { Redis::del($this->getRedisCartKey()); } catch (\Exception $e) {}
-                    return response()->json(['success' => true, 'message' => 'Produk berhasil dihapus.']);
+                    
+                    // Kembalikan JSON khusus untuk Blade
+                    $grandTotal = $this->calculateCartTotals($scope);
+
+                    return response()->json([
+                        'success' => true, 
+                        'message' => 'Produk berhasil dihapus.',
+                        'total' => $grandTotal
+                    ]);
                 }
                 return response()->json(['success' => false, 'message' => 'Gagal menghapus produk.'], 404);
             });
@@ -343,10 +381,9 @@ class CartController extends Controller
         $scope = $this->getCartScope();
         DB::table('cartbelanja')->where($scope)->delete();
         
-        // Hapus Cache Redis
         try { Redis::del($this->getRedisCartKey()); } catch (\Exception $e) {}
 
-        return redirect()->route('customer.cart.index')->with('success', 'Keranjang berhasil dikosongkan.');
+        return redirect()->route('cart.index')->with('success', 'Keranjang berhasil dikosongkan.');
     }
 
     /**
@@ -373,7 +410,6 @@ class CartController extends Controller
             $logoImage = get_operator_logo($data['sku']);
     
             $result = DB::transaction(function () use ($scope, $data, $logoImage) {
-                // Kunci dengan lockForUpdate untuk mencegah double insert pada baris ppob yang sama
                 $existing = DB::table('cartbelanja')
                     ->where($scope)
                     ->where('is_ppob', 1)
@@ -399,7 +435,6 @@ class CartController extends Controller
                         "updated_at"  => now()
                     ]));
                     
-                    // Bersihkan cache jika berhasil insert
                     try { Redis::del($this->getRedisCartKey()); } catch (\Exception $e) {}
                 }
         
