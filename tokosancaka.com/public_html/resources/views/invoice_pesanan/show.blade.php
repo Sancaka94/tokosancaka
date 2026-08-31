@@ -72,7 +72,12 @@
         // Mengambil 4 angka terakhir nomor HP Pengirim untuk PIN
         $hpPengirim = preg_replace('/[^0-9]/', '', $pesanan->sender_phone);
         $pinRahasia = substr($hpPengirim, -4);
-        if (strlen($pinRahasia) < 4) $pinRahasia = str_pad($pinRahasia, 4, '0', STR_PAD_LEFT); // Fallback antisipasi
+        if (strlen($pinRahasia) < 4) $pinRahasia = str_pad($pinRahasia, 4, '0', STR_PAD_LEFT);
+
+        // RUMUS KISI-KISI NOMOR HP
+        $duaDepan = substr($hpPengirim, 0, 2);
+        $empatBelakang = substr($hpPengirim, -4);
+        $kisiKisiHp = $duaDepan . ' *** *** **' . $empatBelakang;
 
         // Format Teks Watermark
         $tglTerbitWmk = \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->format('d M Y H:i');
@@ -88,9 +93,11 @@
 
         body { font-family: 'Inter', sans-serif; }
 
-        /* WATERMARK DINAMIS (Full Page & Miring 45 Derajat) */
+        /* WATERMARK DINAMIS (Full Page, Miring 45 Derajat, Sangat Rapat) */
         .watermark-bg {
-            background-image: url("data:image/svg+xml,%3Csvg width='500' height='300' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='50%25' y='50%25' font-size='10' font-weight='800' fill='rgba(0,0,0,0.045)' font-family='Arial' text-anchor='middle' transform='rotate(-45 250 150)'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg width='500' height='500' xmlns='http://www.w3.org/2000/svg'%3E%3Cg transform='rotate(-45 250 250)' fill='rgba(0,0,0,0.06)' font-family='Arial, sans-serif' font-size='12' font-weight='800' text-anchor='middle'%3E%3Ctext x='50%25' y='-20%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='0%25' y='0%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='100%25' y='0%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='50%25' y='20%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='0%25' y='40%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='100%25' y='40%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='50%25' y='60%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='0%25' y='80%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='100%25' y='80%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='50%25' y='100%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='0%25' y='120%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3Ctext x='100%25' y='120%25'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3C/g%3E%3C/svg%3E");
+            z-index: 999;
+            pointer-events: none; /* Klik tetap tembus ke tombol di bawahnya */
         }
 
         /* Desain Pita (Ribbon) UNPAID / LUNAS / REFUND */
@@ -117,7 +124,7 @@
                 zoom: 0.90;
             }
             .no-print { display: none !important; }
-            .watermark-bg { position: absolute !important; height: 100% !important; } /* Watermark saat Print */
+            .watermark-bg { position: fixed !important; inset: 0 !important; z-index: 9999 !important; }
             .print-container { box-shadow: none !important; max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; }
             .md\:flex-row { flex-direction: row !important; display: flex !important; }
             .flex-col-reverse.md\:flex-row { flex-direction: row !important; }
@@ -143,13 +150,21 @@
 </head>
 <body id="bodyMain" class="bg-slate-100 text-black overflow-hidden relative min-h-screen">
 
-    <div id="pinValidationModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center">
+    <div class="fixed inset-0 pointer-events-none watermark-bg"></div>
+
+    <div id="pinValidationModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[1000] flex items-center justify-center p-4 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center relative z-[1001]">
             <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-slate-200">
                 <i class="fas fa-shield-alt text-2xl text-gray-700"></i>
             </div>
             <h3 class="text-xl font-black text-gray-900 mb-2">Dokumen Terkunci</h3>
-            <p class="text-sm text-gray-500 mb-6 leading-relaxed">Masukkan <strong class="text-red-600">4 Angka Terakhir</strong> Nomor HP Pengirim untuk membuka invoice ini.</p>
+
+            <p class="text-sm text-gray-500 mb-6 leading-relaxed">
+                Masukkan <strong class="text-red-600">4 Angka Terakhir</strong> Nomor HP Pengirim untuk membuka invoice ini.<br>
+                <span class="inline-block mt-3 px-4 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-gray-600 font-mono tracking-widest text-[13px] font-bold shadow-sm">
+                    {{ $kisiKisiHp }}
+                </span>
+            </p>
 
             <input type="password" id="pinInput" maxlength="4" pattern="\d*" inputmode="numeric" class="w-full text-center text-3xl tracking-[0.5em] font-bold border-2 border-gray-200 rounded-xl p-4 mb-2 focus:outline-none focus:border-black focus:ring-4 focus:ring-gray-100 transition-all" placeholder="••••">
             <p id="pinError" class="text-xs text-red-600 mb-4 hidden font-bold animate-pulse"><i class="fas fa-exclamation-circle mr-1"></i> PIN Salah! Silakan coba lagi.</p>
@@ -159,8 +174,6 @@
             </button>
         </div>
     </div>
-
-    <div class="fixed inset-0 pointer-events-none z-30 watermark-bg"></div>
 
     <div id="mainContentWrapper" class="py-8 blur-xl opacity-20 pointer-events-none select-none transition-all duration-700 relative z-40">
 
@@ -342,7 +355,7 @@
                 </div>
             </div>
 
-            <div class="mb-10 border border-gray-200 rounded-xl overflow-hidden">
+            <div class="mb-10 border border-gray-200 rounded-xl overflow-hidden relative z-40">
                 <table class="w-full text-sm text-left">
                     <thead class="bg-slate-100 border-b border-gray-200">
                         <tr>
@@ -412,7 +425,7 @@
                 </div>
             </div>
 
-            <div class="flex flex-col-reverse md:flex-row gap-8 mb-8">
+            <div class="flex flex-col-reverse md:flex-row gap-8 mb-8 relative z-40">
 
                 <div class="w-full md:w-3/4">
                     <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Riwayat Transaksi</p>
@@ -480,12 +493,12 @@
 
             </div>
 
-            <div class="text-center text-[11px] text-gray-400 mt-12 pt-6 border-t border-gray-100">
+            <div class="text-center text-[11px] text-gray-400 mt-12 pt-6 border-t border-gray-100 relative z-40">
                 Dicetak otomatis dari sistem <strong>tokosancaka.com</strong> pada {{ date('d M Y, H:i') }} WIB.<br>Dokumen sah tanpa tanda tangan fisik.
             </div>
 
         </div>
-    </div> <div id="paymentModal" class="no-print fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 hidden transition-all duration-300">
+    </div> <div id="paymentModal" class="no-print fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[1050] hidden transition-all duration-300">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 sm:mx-auto flex flex-col max-h-[85vh]">
             <div class="flex justify-between items-center p-5 border-b border-gray-100">
                 <h3 class="text-lg font-bold text-black tracking-wide">Pilih Metode Pembayaran</h3>
@@ -571,7 +584,7 @@
                 mainContent.classList.remove('blur-xl', 'opacity-20', 'pointer-events-none', 'select-none');
             }, 300);
         } else {
-            // Jika Salah PIN (Efek Error)
+            // Jika Salah PIN (Efek Error Merah)
             pinError.classList.remove('hidden');
             pinInput.value = '';
             pinInput.focus();
