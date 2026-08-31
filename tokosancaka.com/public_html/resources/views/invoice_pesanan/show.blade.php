@@ -243,7 +243,7 @@
                                     <div class="w-6 h-6 flex items-center justify-center">
                                         <img id="paymentMethodImg" src="https://tokosancaka.com/public/assets/saldo.png" class="max-w-full max-h-full">
                                     </div>
-                                    <span id="paymentMethodLabel" class="text-sm font-semibold text-black">Pilih Metode...</span>
+                                    <span id="paymentMethodLabel" class="text-sm font-semibold text-black">Pilih Bank...</span>
                                 </div>
                                 <i class="fas fa-chevron-down text-gray-400 group-hover:text-black text-xs"></i>
                             </button>
