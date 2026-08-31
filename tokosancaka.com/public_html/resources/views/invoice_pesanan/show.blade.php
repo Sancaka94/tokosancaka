@@ -67,6 +67,8 @@
         $expeditionName = $ship['courier_name'] ?? 'SANCAKA';
         $expeditionService = $ship['service_name'] ?? 'Regular';
 
+
+
         $courierMap = [
             'jne' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png',
             'tiki' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png',
@@ -173,6 +175,19 @@
                 // Abaikan error agar halaman tidak mati
             }
         }
+
+        // Rumus Sensor Nama Baru
+        $maskName = function($name) {
+            if (empty($name)) return '';
+            $words = explode(' ', $name);
+            foreach ($words as &$word) {
+                if (strlen($word) > 1) {
+                    $word = substr($word, 0, 1) . str_repeat('*', strlen($word) - 1);
+                }
+            }
+            return implode(' ', $words);
+        };
+
     @endphp
 
     <div class="max-w-4xl mx-auto mb-6 flex flex-col sm:flex-row justify-between items-center no-print px-4 md:px-0 gap-3">
@@ -293,13 +308,13 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
             <div>
                 <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-2">Pengirim (Invoiced To)</p>
-                <p class="font-bold text-base text-black uppercase">{{ substr($pesanan->sender_name, 0, 3) }}*** *** ***</p>
+                <p class="font-bold text-base text-black uppercase">{{ $maskName($pesanan->sender_name) }}</p>
                 <p class="text-gray-500 mt-2 text-[13px] leading-relaxed">{{ $senderAddress }}</p>
                 <p class="mt-2 text-[13px] font-medium text-black">{{ substr($pesanan->sender_phone, 0, 4) }}*** *** ***</p>
             </div>
             <div>
                 <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-2">Penerima (Ship To)</p>
-                <p class="font-bold text-base text-black uppercase">{{ substr($pesanan->receiver_name, 0, 3) }}*** *** ***</p>
+                <p class="font-bold text-base text-black uppercase">{{ $maskName($pesanan->receiver_name) }}</p>
                 <p class="text-gray-500 mt-2 text-[13px] leading-relaxed">{{ $receiverAddress }}</p>
                 <p class="mt-2 text-[13px] font-medium text-black">{{ substr($pesanan->receiver_phone, 0, 4) }}*** *** ***</p>
             </div>
