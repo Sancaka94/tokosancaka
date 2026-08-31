@@ -376,75 +376,113 @@
         </section>
 
         {{-- ============================================================ --}}
-    {{-- ⚡ SECTION LAYANAN JASA (SANCAKA HOME, CLEAN, HEALTH) ⚡ --}}
+    {{-- ⚡ SECTION LAYANAN JASA (KATEGORI ICON -> KOTAK PRODUK) ⚡ --}}
     {{-- ============================================================ --}}
     @if(isset($bidangs) && count($bidangs) > 0)
     <section class="mb-8" data-aos="fade-up">
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="bg-white rounded shadow-sm border border-gray-100 overflow-hidden">
 
             {{-- Header --}}
             <div class="bg-[#d0011b] p-3 flex items-center justify-between">
-                <h2 class="text-lg md:text-xl font-bold text-white tracking-wide flex items-center gap-2 uppercase">
-                    <i class="fas fa-tools text-yellow-300"></i> LAYANAN JASA PROFESIONAL
+                <h2 class="text-lg md:text-xl font-bold text-white tracking-wide uppercase">
+                    <i class="fas fa-tools text-yellow-300 me-2"></i> LAYANAN JASA PROFESIONAL
                 </h2>
             </div>
 
-            {{-- Grid Konten Jasa --}}
-            <div class="p-4 md:p-6 bg-gray-50">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="p-4 bg-gray-50">
 
-                    @foreach($bidangs as $bidang)
-                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:border-[#d0011b] transition-colors">
+                {{-- 1. IKON KATEGORI JASA (TABS) --}}
+                <div class="flex gap-4 overflow-x-auto pb-4 mb-2 scrollbar-hide" id="jasa-tabs-container">
+                    @foreach($bidangs as $index => $bidang)
+                        @php
+                            // Tentukan Ikon berdasarkan nama bidang
+                            $icon = 'fa-briefcase';
+                            if(str_contains(strtolower($bidang->nama_bidang), 'home')) $icon = 'fa-home';
+                            if(str_contains(strtolower($bidang->nama_bidang), 'clean')) $icon = 'fa-broom';
+                            if(str_contains(strtolower($bidang->nama_bidang), 'health')) $icon = 'fa-heartbeat';
+                        @endphp
 
-                        {{-- Judul Bidang --}}
-                        <div class="flex items-center gap-3 mb-4 border-b border-gray-100 pb-3">
-                            <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-[#d0011b] border border-red-100">
-                                @if(str_contains(strtolower($bidang->nama_bidang), 'home'))
-                                    <i class="fas fa-home text-lg"></i>
-                                @elseif(str_contains(strtolower($bidang->nama_bidang), 'clean'))
-                                    <i class="fas fa-broom text-lg"></i>
-                                @elseif(str_contains(strtolower($bidang->nama_bidang), 'health'))
-                                    <i class="fas fa-heartbeat text-lg"></i>
-                                @else
-                                    <i class="fas fa-briefcase text-lg"></i>
-                                @endif
+                        <button type="button" class="jasa-tab flex flex-col items-center gap-2 min-w-[80px] group focus:outline-none"
+                                onclick="filterJasa('bidang-{{ $bidang->id }}', this)">
+
+                            {{-- Kotak Ikon --}}
+                            <div class="tab-icon w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-200 border-2 bg-white text-gray-400 border-gray-200 group-hover:border-[#d0011b] group-hover:text-[#d0011b] shadow-sm">
+                                <i class="fas {{ $icon }} text-xl md:text-2xl"></i>
                             </div>
-                            <h3 class="font-bold text-lg text-gray-800">{{ $bidang->nama_bidang }}</h3>
-                        </div>
 
-                        {{-- List Sub Bidang & Layanan --}}
-                        <div class="space-y-4">
-                            @foreach($bidang->sub_bidang as $sub)
-                            <div>
-                                <h4 class="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                    <i class="fas fa-check-circle text-green-500 text-xs"></i> {{ $sub->nama_sub_bidang }}
-                                </h4>
-
-                                <ul class="space-y-2 pl-5 border-l-2 border-gray-100 ml-1.5">
-                                    @foreach($sub->layanan as $layanan)
-                                    <li class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 text-sm border-b border-gray-50 pb-1 last:border-0">
-                                        <span class="text-gray-600 text-xs md:text-sm flex-1">{{ $layanan->nama_layanan }}</span>
-                                        <div class="font-bold text-[#d0011b] text-xs bg-red-50 px-2 py-1 rounded whitespace-nowrap w-fit">
-                                            Rp{{ number_format($layanan->tarif_dasar, 0, ',', '.') }}
-                                            <span class="text-[9px] text-gray-400 font-normal">/{{ $layanan->tipe_satuan }}</span>
-                                        </div>
-                                    </li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                            @endforeach
-                        </div>
-
-                        {{-- Tombol Pesan (Opsional) --}}
-                        <div class="mt-5 pt-3 border-t border-gray-100">
-                            <a href="#" class="block w-full text-center bg-gray-100 hover:bg-[#d0011b] text-gray-700 hover:text-white text-xs font-bold py-2 rounded transition-colors">
-                                <i class="fab fa-whatsapp me-1"></i> Pesan Layanan Ini
-                            </a>
-                        </div>
-                    </div>
+                            {{-- Teks --}}
+                            <span class="tab-text text-[11px] md:text-xs font-bold text-gray-500 text-center leading-tight transition-colors group-hover:text-[#d0011b]">
+                                {{ $bidang->nama_bidang }}
+                            </span>
+                        </button>
                     @endforeach
-
                 </div>
+
+                {{-- 2. KOTAK KOTAK PRODUK JASA (GRID) --}}
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 md:gap-3" id="jasa-items-container">
+                    @foreach($bidangs as $bidang)
+                        @foreach($bidang->sub_bidang as $sub)
+                            @foreach($sub->layanan as $layanan)
+
+                                {{-- Card Produk Jasa (Disembunyikan secara default, diatur oleh JS) --}}
+                                <div class="jasa-card bidang-{{ $bidang->id }} product-card group flex flex-col hidden">
+
+                                    {{-- Gambar / Ikon Jasa --}}
+                                    <a href="#" class="block relative">
+                                        <div class="product-img-container bg-slate-100 flex items-center justify-center">
+                                            {{-- Karena jasa belum punya foto di DB, kita pakai placeholder warna merah --}}
+                                            <div class="absolute inset-0 flex flex-col items-center justify-center opacity-80">
+                                                <i class="fas fa-tools text-4xl text-slate-300 mb-2"></i>
+                                            </div>
+
+                                            {{-- Badge Tipe Satuan --}}
+                                            <div class="absolute top-0 right-0 bg-yellow-400 text-[#d0011b] text-[9px] font-bold px-2 py-1 rounded-bl-lg z-10 shadow-sm">
+                                                {{ $layanan->tipe_satuan }}
+                                            </div>
+                                        </div>
+                                    </a>
+
+                                    {{-- Info Jasa --}}
+                                    <div class="p-2 flex flex-col flex-grow justify-between bg-white">
+
+                                        <a href="#" class="block">
+                                            <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1 block line-clamp-1">
+                                                <i class="fas fa-tag me-1"></i> {{ $sub->nama_sub_bidang }}
+                                            </span>
+                                            <h3 class="product-title font-medium text-gray-800" title="{{ $layanan->nama_layanan }}">
+                                                {{ $layanan->nama_layanan }}
+                                            </h3>
+                                        </a>
+
+                                        {{-- Area Harga & Info Teknisi --}}
+                                        <div class="mt-1">
+                                            <div class="h-3"></div> {{-- Spasi kosong pengganti harga coret --}}
+
+                                            <div class="flex items-end justify-between mt-1">
+                                                <span class="text-[#d0011b] text-sm font-bold truncate">
+                                                    <span class="text-xs">Rp</span>{{ number_format($layanan->tarif_dasar, 0, ',', '.') }}
+                                                </span>
+                                            </div>
+
+                                            {{-- Info Dummy Teknisi (Bisa dikoneksikan ke DB nanti) --}}
+                                            <div class="flex items-center gap-1 mt-1 text-[9px] text-gray-500">
+                                                <i class="fas fa-user-check text-green-500"></i> Tersedia Mitra Teknisi
+                                            </div>
+                                        </div>
+
+                                        {{-- Tombol Pesan --}}
+                                        <a href="#" class="btn-cart mt-2 bg-[#d0011b] hover:bg-red-800 text-white rounded">
+                                            <i class="fab fa-whatsapp"></i> Pesan Jasa
+                                        </a>
+
+                                    </div>
+                                </div>
+
+                            @endforeach
+                        @endforeach
+                    @endforeach
+                </div>
+
             </div>
         </div>
     </section>
@@ -916,6 +954,48 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Default: Set active tab berdasarkan halaman (Jika halaman pascabayar, buka tab pascabayar)
     @if($isPostpaid) switchTab('postpaid'); @endif
+
+    // --- LOGIKA FILTER LAYANAN JASA ---
+    function filterJasa(targetClass, clickedTab) {
+        // 1. Reset semua warna Tab ke abu-abu
+        document.querySelectorAll('.jasa-tab').forEach(tab => {
+            let iconBox = tab.querySelector('.tab-icon');
+            let textBox = tab.querySelector('.tab-text');
+
+            iconBox.classList.remove('border-[#d0011b]', 'text-[#d0011b]', 'ring-2', 'ring-red-200');
+            iconBox.classList.add('border-gray-200', 'text-gray-400');
+            textBox.classList.remove('text-[#d0011b]');
+            textBox.classList.add('text-gray-500');
+        });
+
+        // 2. Beri warna Merah pada Tab yang diklik
+        let activeIconBox = clickedTab.querySelector('.tab-icon');
+        let activeTextBox = clickedTab.querySelector('.tab-text');
+
+        activeIconBox.classList.remove('border-gray-200', 'text-gray-400');
+        activeIconBox.classList.add('border-[#d0011b]', 'text-[#d0011b]', 'ring-2', 'ring-red-200');
+        activeTextBox.classList.remove('text-gray-500');
+        activeTextBox.classList.add('text-[#d0011b]');
+
+        // 3. Tampilkan Card yang sesuai, Sembunyikan yang lain
+        document.querySelectorAll('.jasa-card').forEach(card => {
+            if (card.classList.contains(targetClass)) {
+                // Gunakan display flex karena class .product-card butuh flex untuk rapi
+                card.style.display = 'flex';
+                card.classList.add('animate-fade'); // efek transisi
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+
+    // 4. Klik otomatis tab pertama saat halaman dimuat
+    document.addEventListener('DOMContentLoaded', function() {
+        const firstTab = document.querySelector('.jasa-tab');
+        if (firstTab) {
+            firstTab.click();
+        }
+    });
 
 </script>
 @endpush
