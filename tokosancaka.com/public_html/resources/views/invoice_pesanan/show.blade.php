@@ -298,8 +298,8 @@
                                     <i class="fas fa-chevron-down text-gray-400 group-hover:text-black text-xs"></i>
                                 </button>
                                 <input type="hidden" name="payment_method" id="payment_method" required>
-                                <button type="submit" id="submit-button" class="w-full bg-black text-white font-medium py-2.5 px-4 rounded-md text-sm hover:bg-gray-800 transition-colors disabled:opacity-50 shadow-sm">
-                                    Bayar Tagihan
+                                <button type="submit" id="submit-button" class="w-full bg-green-500 text-white font-medium py-2.5 px-4 rounded-md text-sm hover:bg-green-600 transition-colors disabled:opacity-50 shadow-sm">
+                                    Bayar Tagihan Sekarang
                                 </button>
                             </form>
 
