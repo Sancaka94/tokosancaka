@@ -427,13 +427,28 @@
                                 {{-- Card Produk Jasa (Disembunyikan secara default, diatur oleh JS) --}}
                                 <div class="jasa-card bidang-{{ $bidang->id }} product-card group flex flex-col hidden">
 
-                                    {{-- Gambar / Ikon Jasa --}}
-                                    <a href="{{ route('etalase.jasa-show', ['id' => $layanan->id, 'slug' => Str::slug($layanan->nama_layanan)]) }}" class="...">
+                                   {{-- Gambar / Ikon Jasa --}}
+                                    <a href="{{ route('etalase.jasa-show', ['id' => $layanan->id, 'slug' => Str::slug($layanan->nama_layanan)]) }}" class="block relative">
+                                        @php
+                                            // Mencari foto dari salah satu teknisi aktif yang menawarkan jasa ini
+                                            $sampleMitra = \App\Models\Product::where('id_master_layanan', $layanan->id)
+                                                                              ->where('status', 'active')
+                                                                              ->whereNotNull('image_url')
+                                                                              ->latest()
+                                                                              ->first();
+                                            $jasaImage = $sampleMitra ? asset('public/storage/' . $sampleMitra->image_url) : null;
+                                        @endphp
+                                        
                                         <div class="product-img-container bg-slate-100 flex items-center justify-center">
-                                            {{-- Karena jasa belum punya foto di DB, kita pakai placeholder warna merah --}}
-                                            <div class="absolute inset-0 flex flex-col items-center justify-center opacity-80">
-                                                <i class="fas fa-tools text-4xl text-slate-300 mb-2"></i>
-                                            </div>
+                                            @if($jasaImage)
+                                                {{-- Jika ada teknisi, tampilkan fotonya --}}
+                                                <img src="{{ $jasaImage }}" alt="{{ $layanan->nama_layanan }}" class="product-img" loading="lazy">
+                                            @else
+                                                {{-- Jika belum ada teknisi, tampilkan ikon default --}}
+                                                <div class="absolute inset-0 flex flex-col items-center justify-center opacity-80">
+                                                    <i class="fas fa-tools text-4xl text-slate-300 mb-2"></i>
+                                                </div>
+                                            @endif
 
                                             {{-- Badge Tipe Satuan --}}
                                             <div class="absolute top-0 right-0 bg-yellow-400 text-[#d0011b] text-[9px] font-bold px-2 py-1 rounded-bl-lg z-10 shadow-sm">
