@@ -46,8 +46,28 @@ class EtalaseController extends Controller
             ->get();
         // --- AKHIR TAMBAHAN PPOB DANA ---
 
-        // Tambahkan $ppobProducts ke dalam compact()
-        return view('etalase.index', compact('products', 'flashSaleProducts', 'banners', 'settings', 'categories', 'ppobProducts'));
+        // --- AWAL TAMBAHAN JASA (BIDANG, SUB BIDANG, LAYANAN) ---
+        $bidangs = DB::table('master_bidang')->where('status_aktif', 1)->get();
+
+        foreach ($bidangs as $bidang) {
+            // Ambil sub bidang untuk setiap bidang
+            $bidang->sub_bidang = DB::table('master_sub_bidang')
+                ->where('id_bidang', $bidang->id)
+                ->where('status_aktif', 1)
+                ->get();
+
+            // Ambil layanan untuk setiap sub bidang
+            foreach ($bidang->sub_bidang as $sub) {
+                $sub->layanan = DB::table('master_layanan')
+                    ->where('id_sub_bidang', $sub->id)
+                    ->where('status_aktif', 1)
+                    ->get();
+            }
+        }
+        // --- AKHIR TAMBAHAN JASA ---
+
+        // Tambahkan $ppobProducts dan $bidangs ke dalam compact()
+        return view('etalase.index', compact('products', 'flashSaleProducts', 'banners', 'settings', 'categories', 'ppobProducts', 'bidangs'));
     }
 
     /**
@@ -101,25 +121,25 @@ class EtalaseController extends Controller
         return view('etalase.show', compact('product', 'relatedProducts', 'categories', 'banners', 'settings'));
     }
 
-/**
- * Menampilkan halaman profil toko.
- */
-public function profileToko($name)
-{
-    // Ambil data 'store' dengan relasi 'user'
-    $store = Store::with('user')
-        ->where('slug', $name)
-        ->orWhere('name', $name)
-        ->firstOrFail();
+    /**
+     * Menampilkan halaman profil toko.
+     */
+    public function profileToko($name)
+    {
+        // Ambil data 'store' dengan relasi 'user'
+        $store = Store::with('user')
+            ->where('slug', $name)
+            ->orWhere('name', $name)
+            ->firstOrFail();
 
-    // Ambil produk berdasarkan store_id
-    $products = Product::where('store_id', $store->id)
-        ->where('status', 'active')
-        ->where('stock', '>', 0)
-        ->paginate(12);
+        // Ambil produk berdasarkan store_id
+        $products = Product::where('store_id', $store->id)
+            ->where('status', 'active')
+            ->where('stock', '>', 0)
+            ->paginate(12);
 
-    // Kirim variabel ke view
-    return view('etalase.toko', compact('products', 'store'));
-}
+        // Kirim variabel ke view
+        return view('etalase.toko', compact('products', 'store'));
+    }
 
 }
