@@ -145,6 +145,38 @@
         {{-- Kolom Kiri --}}
         <div class="lg:col-span-2 space-y-6">
 
+            {{-- ⚡ KATEGORI JASA (Tambahan Baru) ⚡ --}}
+            <div class="bg-white p-6 rounded-lg shadow-md border-t-4 border-[#d0011b]">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Kategori Jasa (Khusus Sancaka Home/Clean/dll)</h2>
+                <p class="text-xs text-gray-500 mb-4">Isi bagian ini HANYA jika produk yang Anda tambahkan berupa layanan jasa.</p>
+                <div class="space-y-4">
+                    <div>
+                        <label for="id_bidang" class="block text-sm font-medium text-gray-700">Divisi Bidang</label>
+                        <select id="id_bidang" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" onchange="loadSubBidang(this.value)">
+                            <option value="" selected disabled>-- Pilih Divisi Bidang --</option>
+                            @if(isset($bidangs))
+                                @foreach($bidangs as $bidang)
+                                    <option value="{{ $bidang->id }}">{{ $bidang->nama_bidang }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+                    <div>
+                        <label for="id_sub_bidang" class="block text-sm font-medium text-gray-700">Sub Bidang Kategori</label>
+                        <select id="id_sub_bidang" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" onchange="loadLayanan(this.value)">
+                            <option value="" selected disabled>-- Pilih Sub Bidang --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="id_master_layanan" class="block text-sm font-medium text-gray-700">Pilih Layanan</label>
+                        <select name="id_master_layanan" id="id_master_layanan" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="" selected disabled>-- Pilih Layanan --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            {{-- ⚡ END KATEGORI JASA ⚡ --}}
+
             {{-- Informasi Produk --}}
             <div class="bg-white p-6 rounded-lg shadow-md">
                 <h2 class="text-lg font-semibold text-gray-800 mb-4">Informasi Produk</h2>
@@ -322,7 +354,7 @@
             <div class="bg-white p-6 rounded-lg shadow-md">
     <h2 class="text-lg font-semibold text-gray-800 mb-4">Status & Label</h2>
     <div class="space-y-4">
-        
+
         {{-- Status Dropdown --}}
         <div>
             <label for="status" class="block text-sm font-medium text-gray-700">Status Produk</label>
@@ -675,6 +707,53 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleMainStock();
 
 });
+
+// --- AJAX LOAD SUB BIDANG & LAYANAN (UNTUK JASA) ---
+    window.loadSubBidang = function(id_bidang) {
+        if (!id_bidang) return;
+
+        const subBidangSelect = document.getElementById('id_sub_bidang');
+        const layananSelect = document.getElementById('id_master_layanan');
+
+        subBidangSelect.innerHTML = '<option value="">Memuat...</option>';
+        layananSelect.innerHTML = '<option value="" selected disabled>-- Pilih Layanan --</option>';
+
+        fetch(`/get-sub-bidang/${id_bidang}`)
+            .then(response => response.json())
+            .then(data => {
+                let html = '<option value="" selected disabled>-- Pilih Sub Bidang --</option>';
+                data.forEach(item => {
+                    html += `<option value="${item.id}">${item.nama_sub_bidang}</option>`;
+                });
+                subBidangSelect.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error fetching sub bidang:', error);
+                subBidangSelect.innerHTML = '<option value="">Gagal memuat data</option>';
+            });
+    };
+
+    window.loadLayanan = function(id_sub_bidang) {
+        if (!id_sub_bidang) return;
+
+        const layananSelect = document.getElementById('id_master_layanan');
+        layananSelect.innerHTML = '<option value="">Memuat...</option>';
+
+        fetch(`/get-layanan/${id_sub_bidang}`)
+            .then(response => response.json())
+            .then(data => {
+                let html = '<option value="" selected disabled>-- Pilih Layanan --</option>';
+                data.forEach(item => {
+                    html += `<option value="${item.id}">${item.nama_layanan} (Rp${parseInt(item.tarif_dasar).toLocaleString('id-ID')} ${item.tipe_satuan})</option>`;
+                });
+                layananSelect.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error fetching layanan:', error);
+                layananSelect.innerHTML = '<option value="">Gagal memuat data</option>';
+            });
+    };
+
 </script>
 @endpush
 
