@@ -94,12 +94,17 @@
 
         body { font-family: 'Inter', sans-serif; }
 
-        /* WATERMARK DINAMIS (Samar, Miring, Tidak Numpuk) */
+        /* WATERMARK DINAMIS (Pola Tiling Seamless Seperti "PREVIEW") */
         .watermark-bg {
-            background-image: url("data:image/svg+xml,%3Csvg width='1200' height='600' xmlns='http://www.w3.org/2000/svg'%3E%3Cg transform='translate(600,300) rotate(-35)' fill='rgba(0,0,0,0.035)' font-family='Arial, sans-serif' font-size='16' font-weight='800' text-anchor='middle' letter-spacing='2'%3E%3Ctext x='0' y='0'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3C/g%3E%3C/svg%3E");
-            background-repeat: repeat;
-            z-index: 999;
+            position: fixed;
+            top: -100%; left: -100%; width: 300%; height: 300%;
+            z-index: 9999;
             pointer-events: none; /* Klik tetap tembus ke tombol di bawahnya */
+            transform: rotate(-35deg);
+            background-image: url("data:image/svg+xml,%3Csvg width='1400' height='120' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='700' y='60' fill='black' font-family='Arial, sans-serif' font-size='22' font-weight='800' text-anchor='middle'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3C/svg%3E");
+            background-repeat: repeat;
+            background-position: center;
+            opacity: 0.04; /* Sangat samar agar tidak mengganggu bacaan (hanya 4%) */
         }
 
         /* Desain Pita (Ribbon) UNPAID / LUNAS / REFUND */
@@ -126,7 +131,14 @@
                 zoom: 0.90;
             }
             .no-print { display: none !important; }
-            .watermark-bg { position: fixed !important; inset: 0 !important; z-index: 9999 !important; }
+
+            /* Memastikan watermark ikut terprint dengan baik */
+            .watermark-bg {
+                position: fixed !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
             .print-container { box-shadow: none !important; max-width: 100% !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; }
             .md\:flex-row { flex-direction: row !important; display: flex !important; }
             .flex-col-reverse.md\:flex-row { flex-direction: row !important; }
@@ -152,10 +164,10 @@
 </head>
 <body id="bodyMain" class="bg-slate-100 text-black overflow-hidden relative min-h-screen">
 
-    <div class="fixed inset-0 pointer-events-none watermark-bg"></div>
+    <div class="watermark-bg"></div>
 
-    <div id="pinValidationModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[1000] flex items-center justify-center p-4 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center relative z-[1001]">
+    <div id="pinValidationModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[10000] flex items-center justify-center p-4 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center relative z-[10001]">
             <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-slate-200">
                 <i class="fas fa-shield-alt text-2xl text-gray-700"></i>
             </div>
@@ -250,8 +262,8 @@
                 <div class="w-full md:w-1/2">
                     <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-24 mb-4 object-contain" onerror="this.src='https://placehold.co/200x50/FFFFFF/000000?text=SANCAKA+EXPRESS'">
                     <div class="text-[13px] text-gray-500 leading-relaxed">
-                        <p class="font-bold text-black uppercase tracking-wide">Sancaka Express Powered By</p>
-                        <p>CV SANCAKA KARYA HUTAMA</p>
+                        <p class="font-bold text-black uppercase tracking-wide">Sancaka Express</p>
+                        <p>Powered By CV SANCAKA KARYA HUTAMA</p>
                         <p>Jl. Dr. Wahidin No. 18A, Ketanggi Kabupaten Ngawi, Jawa Timur 63211</p>
                         <p class="font-medium text-black mt-1">Helpdesk: 085 745 808 809</p>
                     </div>
@@ -501,7 +513,7 @@
             </div>
 
         </div>
-    </div> <div id="paymentModal" class="no-print fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[1050] hidden transition-all duration-300">
+    </div> <div id="paymentModal" class="no-print fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10500] hidden transition-all duration-300">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 sm:mx-auto flex flex-col max-h-[85vh]">
             <div class="flex justify-between items-center p-5 border-b border-gray-100">
                 <h3 class="text-lg font-bold text-black tracking-wide">Pilih Metode Pembayaran</h3>
