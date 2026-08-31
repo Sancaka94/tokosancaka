@@ -22,7 +22,7 @@
             return implode(' ', $words);
         };
 
-        // 3. SENSOR HP (Menyisakan 7 angka depan)
+        // 3. SENSOR HP (085745808809 -> 0857458*****)
         $maskPhone = function($phone) {
             $phone = preg_replace('/[^0-9]/', '', (string) $phone);
             if (strlen($phone) > 7) {
@@ -38,16 +38,36 @@
         $nomorResiInvoice = $invoice->resi ?? $invoice->invoice_no;
         $wmText = "VALID {$statusText} CV SANCAKA KARYA HUTAMA SANCAKA EXPRESS CREATED {$tglTerbitWmk} {$nomorResiInvoice}";
 
-        // 5. FETCH QR CODE BASE64 (Agar DomPDF tidak memblokir URL luar)
-        $qrData = urlencode($invoice->invoice_no);
-        $qrUrl = "https://chart.googleapis.com/chart?chs=80x80&cht=qr&chl={$qrData}";
+        // 5. FETCH QR CODE (SUPER ROBUST)
         $qrBase64 = null;
-        try {
-            $qrContent = @file_get_contents($qrUrl);
-            if ($qrContent) {
+        $qrData = $invoice->invoice_no;
+
+        // Coba pakai library lokal Laravel jika ada (Sangat disarankan & cepat)
+        if (class_exists('\SimpleSoftwareIO\QrCode\Facades\QrCode')) {
+            try {
+                $qrContent = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('png')->margin(1)->size(100)->generate($qrData);
                 $qrBase64 = 'data:image/png;base64,' . base64_encode($qrContent);
+            } catch (\Exception $e) {}
+        }
+
+        // Jika library lokal tidak ada, ambil dari API eksternal pakai cURL (Menembus blokir server)
+        if (!$qrBase64) {
+            $qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=" . urlencode($qrData);
+
+            if (function_exists('curl_init')) {
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $qrUrl);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // Abaikan error SSL
+                curl_setopt($ch, CURLOPT_TIMEOUT, 5); // Timeout 5 detik agar PDF tidak hang
+                $qrContent = curl_exec($ch);
+                curl_close($ch);
+
+                if ($qrContent) {
+                    $qrBase64 = 'data:image/png;base64,' . base64_encode($qrContent);
+                }
             }
-        } catch (\Exception $e) {}
+        }
     @endphp
 
     <style>
@@ -70,12 +90,12 @@
             left: -50%;
             width: 200%;
             height: 200%;
-            z-index: 9999; /* Lapisan Paling Depan */
+            z-index: 9999;
             transform: rotate(-35deg);
             text-align: center;
         }
         .watermark-container p {
-            color: rgba(0, 0, 0, 0.05); /* Teks Hitam dengan Transparansi 5% (Samar) */
+            color: rgba(0, 0, 0, 0.04); /* Samar */
             font-size: 14px;
             font-weight: bold;
             line-height: 4;
@@ -153,7 +173,7 @@
 </head>
 <body>
 
-    <!-- LAYER WATERMARK HTML (Teks diulang menggunakan perulangan PHP) -->
+    <!-- LAYER WATERMARK HTML -->
     <div class="watermark-container">
         @for($i=0; $i<25; $i++)
             <p>{{ $wmText }} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {{ $wmText }} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {{ $wmText }}</p>
@@ -208,7 +228,7 @@
                 <div class="info-text">Ketanggi, Ngawi, Jawa Timur 63211</div>
             </td>
 
-            <!-- Kolom Kanan (QR Code dari Base64) -->
+            <!-- Kolom Kanan (QR Code dari Base64 lewat cURL) -->
             <td style="width: 30%; text-align: right;">
                 <div class="label" style="text-align: right;">DATE DETAILS</div>
                 <div class="info-text" style="margin-bottom: 5px;">Tanggal Terbit:</div>
@@ -218,8 +238,8 @@
                     @if($qrBase64)
                         <img src="{{ $qrBase64 }}" style="width: 70px; height: 70px; border: 1px solid #ccc; padding: 2px; background: white;">
                     @else
-                        <!-- Fallback jika gagal generate QR -->
-                        <div style="width: 70px; height: 70px; border: 1px dashed #ccc; text-align: center; line-height: 70px; font-size: 9px; color: #999; float: right;">NO QR</div>
+                        <!-- Fallback jika gagal (server tetap memblokir koneksi luar) -->
+                        <div style="width: 70px; height: 70px; border: 1px dashed #ccc; text-align: center; line-height: 70px; font-size: 9px; color: #999; float: right;">QR ERROR</div>
                     @endif
                 </div>
             </td>
