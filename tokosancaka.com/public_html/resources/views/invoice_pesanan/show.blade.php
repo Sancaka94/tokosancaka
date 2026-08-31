@@ -36,21 +36,49 @@
         .ribbon.paid { background: #16a34a; } /* Hijau */
         .ribbon.cancelled { background: #ef4444; } /* Merah */
 
-        @media print {
-            @page { size: A4 portrait; margin: 5mm; }
+       @media print {
+            @page { size: A4 portrait; margin: 10mm; }
             body {
                 background: white !important; padding: 0 !important; margin: 0 !important;
-                -webkit-print-color-adjust: exact; print-color-adjust: exact;
+                -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+                zoom: 0.90; /* Memperkecil skala 10% agar pasti muat 1 halaman */
             }
             .no-print { display: none !important; }
+
+            /* Hilangkan border & shadow container utama saat diprint */
             .print-container {
                 box-shadow: none !important; max-width: 100% !important; width: 100% !important;
                 margin: 0 !important; padding: 0 !important; border: none !important;
             }
+
+            /* 1. PAKSA TAMPILAN DESKTOP (Abaikan mode HP) */
+            .md\:flex-row { flex-direction: row !important; display: flex !important; }
+            .flex-col-reverse.md\:flex-row { flex-direction: row !important; }
+            .md\:grid-cols-2 { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+            .md\:w-1\/2 { width: 50% !important; }
+            .md\:w-3\/4 { width: 75% !important; }
+            .md\:w-1\/4 { width: 25% !important; }
+            .md\:w-\[320px\] { width: 280px !important; }
+            .md\:items-center { align-items: center !important; }
+
+            /* 2. RAPATKAN JARAK AGAR MUAT 1 HALAMAN KERTAS */
+            .gap-8 { gap: 1.5rem !important; }
+            .mb-10, .mb-12, .mb-8 { margin-bottom: 15px !important; }
+            .pb-8 { padding-bottom: 15px !important; }
+            .pt-8 { padding-top: 15px !important; }
+            .py-6, .py-8 { padding-top: 10px !important; padding-bottom: 10px !important; }
+            .mt-12 { margin-top: 20px !important; }
+
+            /* 3. SESUAIKAN UKURAN TEKS */
             * { font-size: 11px !important; line-height: 1.4 !important; }
-            .print-header { flex-direction: row !important; }
-            .print-header .w-full { width: 50% !important; }
-            img { max-height: 40px !important; }
+            h2.text-2xl { font-size: 18px !important; margin-bottom: 4px !important; }
+            .text-\[13px\] { font-size: 11px !important; }
+            .text-sm { font-size: 11px !important; }
+            .text-base { font-size: 12px !important; }
+
+            /* 4. CEGAH ELEMEN TERPOTONG / PECAH HALAMAN */
+            table, .grid, .print-header, .ribbon-wrapper { page-break-inside: avoid !important; }
+            .ribbon-wrapper { right: -5px !important; top: -5px !important; }
         }
 
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
