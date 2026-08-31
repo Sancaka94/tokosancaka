@@ -142,4 +142,36 @@ class EtalaseController extends Controller
         return view('etalase.toko', compact('products', 'store'));
     }
 
+    /**
+     * Menampilkan daftar Teknisi/Mitra berdasarkan Master Layanan Jasa yang dipilih.
+     */
+    public function showJasa($id)
+    {
+        // 1. Ambil detail Jasa dari tabel master
+        $layanan = DB::table('master_layanan')
+            ->join('master_sub_bidang', 'master_layanan.id_sub_bidang', '=', 'master_sub_bidang.id')
+            ->join('master_bidang', 'master_sub_bidang.id_bidang', '=', 'master_bidang.id')
+            ->select('master_layanan.*', 'master_sub_bidang.nama_sub_bidang', 'master_bidang.nama_bidang')
+            ->where('master_layanan.id', $id)
+            ->first();
+
+        if (!$layanan) {
+            abort(404);
+        }
+
+        // 2. Ambil produk (Teknisi) yang mendaftar ke ID layanan ini
+        $products = Product::with(['store', 'category'])
+            ->where('id_master_layanan', $id)
+            ->where('status', 'active')
+            ->latest()
+            ->paginate(12);
+
+        $banners = BannerEtalase::latest()->get();
+        $settings = Setting::whereIn('key', ['banner_2','banner_3'])->pluck('value','key');
+        $allCategories = Category::where('type', 'product')->orderBy('name')->get();
+
+        // Kita bisa menggunakan ulang view category-show agar desainnya seragam
+        return view('etalase.jasa-show', compact('layanan', 'products', 'banners', 'settings', 'allCategories'));
+    }
+
 }

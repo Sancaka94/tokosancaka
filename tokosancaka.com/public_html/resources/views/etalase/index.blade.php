@@ -428,7 +428,7 @@
                                 <div class="jasa-card bidang-{{ $bidang->id }} product-card group flex flex-col hidden">
 
                                     {{-- Gambar / Ikon Jasa --}}
-                                    <a href="#" class="block relative">
+                                    <a href="{{ route('etalase.jasa-show', ['id' => $layanan->id, 'slug' => Str::slug($layanan->nama_layanan)]) }}" class="...">
                                         <div class="product-img-container bg-slate-100 flex items-center justify-center">
                                             {{-- Karena jasa belum punya foto di DB, kita pakai placeholder warna merah --}}
                                             <div class="absolute inset-0 flex flex-col items-center justify-center opacity-80">
@@ -980,11 +980,13 @@ document.addEventListener('DOMContentLoaded', function () {
         // 3. Tampilkan Card yang sesuai, Sembunyikan yang lain
         document.querySelectorAll('.jasa-card').forEach(card => {
             if (card.classList.contains(targetClass)) {
-                // Gunakan display flex karena class .product-card butuh flex untuk rapi
-                card.style.display = 'flex';
-                card.classList.add('animate-fade'); // efek transisi
+                card.classList.remove('hidden'); // Hapus class hidden Tailwind
+                card.classList.add('flex', 'animate-fade'); // Tambahkan flex & animasi
+                card.style.display = ''; // Bersihkan inline style display
             } else {
-                card.style.display = 'none';
+                card.classList.add('hidden'); // Tambahkan class hidden Tailwind
+                card.classList.remove('flex', 'animate-fade'); // Hapus flex & animasi
+                card.style.display = ''; // Bersihkan inline style display
             }
         });
     }

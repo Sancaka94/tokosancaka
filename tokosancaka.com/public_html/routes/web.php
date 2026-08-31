@@ -400,6 +400,7 @@ Route::get('/etalase', [EtalaseController::class, 'index'])->name('etalase.index
 Route::get('/etalase/category/{category:slug}', [EtalaseController::class, 'showCategory'])->name('public.categories.show');
 Route::get('/etalase/kategori/{slug}', [EtalaseController::class, 'showCategory'])->name('etalase.category-show');
 Route::get('/products/{product:slug}', [EtalaseController::class, 'show'])->name('products.show');
+Route::get('/jasa/{id}/{slug?}', [\App\Http\Controllers\EtalaseController::class, 'showJasa'])->name('etalase.jasa-show');
 Route::get('/toko/{name}', [EtalaseController::class, 'profileToko'])->name('toko.profile');
 Route::get('/marketplace', [CustomerMarketplaceController::class, 'index'])->name('katalog.index'); // Nama route ini penting
 Route::get('/marketplace/category/{category:slug}', [CategoryController::class, 'show'])->name('marketplace.categories.show');
