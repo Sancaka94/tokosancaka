@@ -33,7 +33,7 @@
 
         // 4. TEKS WATERMARK DINAMIS
         $tglTerbitWmk = date('d M Y', strtotime($order->created_at ?? now()));
-        $wmText = "VALID {$statusText} CV SANCAKA KARYA HUTAMA CREATED {$tglTerbitWmk} NO {$order->invoice_number}";
+        $wmText = "VALID {$statusText} CV SANCAKA KARYA HUTAMA SANCAKA EXPRESS CREATED {$tglTerbitWmk} {$order->invoice_number}";
 
         // 5. PENGATURAN LOGO EKSPEDISI
         $shipMethod = strtolower($order->shipping_method ?? '');
@@ -48,7 +48,6 @@
             $expeditionName = strtoupper($kurirParts[1] ?? 'Kurir');
             $expeditionService = strtoupper($kurirParts[2] ?? 'Reguler');
 
-            // Map logo ekspedisi (sama seperti di invoice PPOB)
             $courierMap = [
                 'jne' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png',
                 'tiki' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png',
@@ -86,21 +85,24 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-        .invoice-body-font { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
 
-        /* KUNCI WATERMARK: Pastikan menempel HANYA ke dalam .invoice-wrapper */
-        /* Dan tambahkan background-image menggunakan SVG agar repeat-nya sempurna tanpa bocor */
+        /* KUNCI WATERMARK: Ditaruh di elemen Paling Atas dan Fixed agar meliputi semua area */
         .watermark-overlay {
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 0; pointer-events: none;
-            background-image: url("data:image/svg+xml,%3Csvg width='400' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='50%25' y='50%25' font-size='10' font-weight='900' fill='black' font-family='Arial, sans-serif' opacity='0.03' text-anchor='middle' transform='rotate(-35, 200, 50)'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3C/svg%3E");
+            inset: -50%; /* Menjamin ukuran layar yang cukup untuk rotasi tanpa terpotong ujungnya */
+            width: 200%; height: 200%;
+            z-index: 50; /* Z-index tinggi agar di atas konten (bukan di bawah) */
+            pointer-events: none; /* Tidak mengganggu klik tombol */
+            transform: rotate(-35deg);
+            background-image: url("data:image/svg+xml,%3Csvg width='800' height='70' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='400' y='45' font-size='12' font-weight='800' fill='black' font-family='Arial, sans-serif' opacity='0.04' text-anchor='middle'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3C/svg%3E");
             background-repeat: repeat;
+            background-position: center;
         }
 
         /* DESAIN PITA */
         .ribbon-wrapper {
-            position: absolute; right: -5px; top: -5px; z-index: 20;
+            position: absolute; right: -5px; top: -5px; z-index: 60; /* Di atas watermark */
             overflow: hidden; width: 140px; height: 140px; text-align: right;
         }
         .ribbon {
@@ -118,17 +120,18 @@
             .no-print { display: none !important; }
             .invoice-wrapper { margin: 0 !important; max-width: 100% !important; box-shadow: none !important; border: none !important; }
             body { background-color: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .watermark-overlay { position: fixed !important; z-index: 9999 !important; -webkit-print-color-adjust: exact !important; }
         }
     </style>
 
-    <!-- WRAPPER UTAMA -->
-    <div class="bg-gray-100 py-10 flex flex-col items-center justify-start min-h-screen invoice-body-font text-black relative">
+    <!-- WRAPPER LUAR: Ini untuk memastikan footer marketplace tidak menyatu dengan background invoice -->
+    <div class="bg-gray-100 py-10 flex flex-col items-center justify-start min-h-screen text-black">
 
-        <!-- KARTU INVOICE -->
-        <!-- relative dan overflow-hidden MENCEGAH watermark bocor keluar kotak invoice -->
-        <div class="bg-white shadow-xl w-full max-w-4xl relative invoice-wrapper overflow-hidden rounded-xl border border-gray-200 z-10" id="invoice-area">
+        <!-- KARTU INVOICE: Area PDF dan JPG (ID "invoice-area") -->
+        <!-- Overflow hidden KUNCI UTAMA agar watermark tidak luber menabrak footer marketplace -->
+        <div class="bg-white shadow-xl w-full max-w-5xl relative overflow-hidden rounded-xl border border-gray-200 invoice-wrapper" id="invoice-area">
 
-            <!-- LAYER WATERMARK MENGGUNAKAN BACKGROUND CSS SVG (LEBIH RAPI & TIDAK BOCOR) -->
+            <!-- LAYER WATERMARK (Paling Depan) -->
             <div class="watermark-overlay"></div>
 
             <!-- PITA STATUS -->
@@ -142,10 +145,10 @@
             <div class="flex flex-col md:flex-row relative z-10">
 
                 {{-- KOLOM KIRI: KONTEN UTAMA INVOICE --}}
-                <div class="w-full md:w-2/3 p-8 md:p-12 pb-6 md:pb-12">
+                <div class="w-full md:w-2/3 p-8 md:p-12 pb-6 md:pb-12 bg-white">
 
                     <!-- HEADER: Logo & Info Perusahaan -->
-                    <div class="flex flex-col sm:flex-row justify-between items-start gap-6 mb-12">
+                    <div class="flex flex-col sm:flex-row justify-between items-start gap-6 mb-12 relative z-10">
                         <div class="flex items-start">
                             <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="CV. Sancaka Karya Hutama" class="h-12 w-auto object-contain mr-4" onerror="this.src='https://tokosancaka.com/storage/uploads/logo.jpeg'">
                             <div>
@@ -164,7 +167,7 @@
                     @endphp
 
                     <!-- INFO PENGIRIMAN -->
-                    <div class="mb-10">
+                    <div class="mb-10 relative z-10">
                         <h3 class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">
                             {{ $isPureDigital ? 'Informasi Penerima' : 'Detail Pengiriman' }}
                         </h3>
@@ -176,8 +179,8 @@
                     </div>
 
                     <!-- TABEL PESANAN -->
-                    <h3 class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">Rincian Pesanan</h3>
-                    <div class="mb-10">
+                    <h3 class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3 relative z-10">Rincian Pesanan</h3>
+                    <div class="mb-10 relative z-10">
                         <table class="w-full text-left text-[11px]">
                             <thead class="border-b border-gray-200">
                                 <tr>
@@ -195,7 +198,7 @@
                                 <tr>
                                     <td class="py-4 align-top pr-4">
                                         <div class="flex items-start">
-                                            <div class="h-10 w-10 flex-shrink-0 border border-gray-200 mr-3 rounded hidden sm:block bg-white p-1">
+                                            <div class="h-10 w-10 flex-shrink-0 border border-gray-200 mr-3 rounded hidden sm:block bg-white p-1 shadow-sm">
                                                 @if($item->product && $item->product->image_url)
                                                     <img src="{{ asset('public/storage/'.$item->product->image_url) }}" alt="Img" class="h-full w-full object-contain">
                                                 @else
@@ -238,7 +241,7 @@
                                 <tr>
                                     <td class="py-4 align-top pr-4">
                                         <div class="flex items-start">
-                                            <div class="h-10 w-10 flex-shrink-0 border border-gray-200 mr-3 rounded hidden sm:block bg-white p-1">
+                                            <div class="h-10 w-10 flex-shrink-0 border border-gray-200 mr-3 rounded hidden sm:block bg-white p-1 shadow-sm">
                                                 <img src="{{ $finalLogoUrl }}" alt="Ekspedisi" class="h-full w-full object-contain" onerror="this.style.display='none'">
                                             </div>
                                             <div>
@@ -287,7 +290,7 @@
                     </div>
 
                     <!-- TOTALS (Clean Format) -->
-                    <div class="w-full max-w-xs ml-auto mb-2">
+                    <div class="w-full max-w-xs ml-auto mb-2 relative z-10">
                         <div class="flex justify-between py-1 text-[10px] text-gray-500 font-bold uppercase">
                             <span>Subtotal</span><span>Rp {{ number_format($order->subtotal, 0, ',', '.') }}</span>
                         </div>
@@ -336,7 +339,7 @@
                                     <h3 class="font-bold text-black text-[11px] uppercase">Bayar Ditempat</h3>
                                 </div>
                             @elseif(!empty($order->pay_code))
-                                <div class="bg-gray-100 py-3 rounded text-center mb-3 cursor-pointer" onclick="copyToClipboard('payCode')">
+                                <div class="bg-gray-100 py-3 rounded text-center mb-3 cursor-pointer hover:bg-gray-200" onclick="copyToClipboard('payCode')">
                                     <span id="payCode" class="text-lg font-mono font-black text-black tracking-widest">{{ $order->pay_code }}</span>
                                 </div>
                             @else
@@ -351,10 +354,9 @@
                                 </a>
                             </div>
                         @else
-                            <!-- Tombol Download / Kembali -->
                             <div class="flex flex-col gap-2">
                                 <a href="{{ url('invoice/' . $order->invoice_number . '/pdf') }}" target="_blank" class="no-print w-full py-2.5 bg-white border border-black text-black text-[10px] font-bold uppercase tracking-wider text-center hover:bg-gray-100 transition">
-                                    <i class="fas fa-download mr-1"></i> PDF
+                                    <i class="fas fa-download mr-1"></i> Unduh PDF
                                 </a>
                                 <a href="{{ route('checkout.index') }}" class="no-print w-full py-2.5 bg-black text-white text-[10px] font-bold uppercase tracking-wider text-center hover:bg-gray-800 transition">
                                     Kembali Belanja
@@ -365,13 +367,12 @@
                 </div>
             </div>
 
-            <!-- FOOTER INVOICE (Tetap menempel di bawah kotak putih) -->
+            <!-- FOOTER INVOICE (Di dalam kotak putih invoice) -->
             <div class="bg-white border-t border-gray-200 p-5 text-center text-[9px] text-gray-400 font-medium relative z-10 w-full">
                 Dicetak dari sistem pada {{ date('d M Y, H:i') }} WIB. Dokumen ini sah tanpa tanda tangan fisik.
             </div>
 
         </div>
-
     </div>
 
     @push('scripts')
@@ -382,8 +383,8 @@
                 if (qrContainer) {
                     new QRCode(qrContainer, {
                         text: "{{ $order->invoice_number }}",
-                        width: 60,
-                        height: 60,
+                        width: 70,
+                        height: 70,
                         colorDark : "#000000",
                         colorLight : "#ffffff",
                         correctLevel : QRCode.CorrectLevel.M
