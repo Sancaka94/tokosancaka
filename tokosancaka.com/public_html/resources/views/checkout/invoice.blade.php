@@ -88,22 +88,14 @@
 
         .invoice-body-font { font-family: 'Inter', sans-serif; }
 
-        /* WATERMARK LAYER (Sangat Samar, Rapat) */
+        /* KUNCI WATERMARK: Pastikan menempel HANYA ke dalam .invoice-wrapper */
+        /* Dan tambahkan background-image menggunakan SVG agar repeat-nya sempurna tanpa bocor */
         .watermark-overlay {
             position: absolute;
-            top: -50%; left: -50%;
-            width: 200%; height: 200%;
+            top: 0; left: 0; right: 0; bottom: 0;
             z-index: 0; pointer-events: none;
-            transform: rotate(-35deg);
-            display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: center;
-            overflow: hidden;
-        }
-        .watermark-overlay p {
-            color: rgba(0, 0, 0, 0.03);
-            font-size: 11px; font-weight: 900;
-            margin: 20px 25px; white-space: nowrap;
-            letter-spacing: 1px;
-            font-family: 'Inter', sans-serif;
+            background-image: url("data:image/svg+xml,%3Csvg width='400' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='50%25' y='50%25' font-size='10' font-weight='900' fill='black' font-family='Arial, sans-serif' opacity='0.03' text-anchor='middle' transform='rotate(-35, 200, 50)'%3E{{ rawurlencode($wmText) }}%3C/text%3E%3C/svg%3E");
+            background-repeat: repeat;
         }
 
         /* DESAIN PITA */
@@ -129,16 +121,15 @@
         }
     </style>
 
-    <div class="bg-gray-100 min-h-screen flex items-start justify-center p-4 sm:p-8 invoice-body-font text-black">
+    <!-- WRAPPER UTAMA -->
+    <div class="bg-gray-100 py-10 flex flex-col items-center justify-start min-h-screen invoice-body-font text-black relative">
 
-        <div class="bg-white shadow-xl w-full max-w-5xl relative invoice-wrapper" id="invoice-area">
+        <!-- KARTU INVOICE -->
+        <!-- relative dan overflow-hidden MENCEGAH watermark bocor keluar kotak invoice -->
+        <div class="bg-white shadow-xl w-full max-w-4xl relative invoice-wrapper overflow-hidden rounded-xl border border-gray-200 z-10" id="invoice-area">
 
-            <!-- LAYER WATERMARK -->
-            <div class="watermark-overlay">
-                @for($i=0; $i<120; $i++)
-                    <p>{{ $wmText }}</p>
-                @endfor
-            </div>
+            <!-- LAYER WATERMARK MENGGUNAKAN BACKGROUND CSS SVG (LEBIH RAPI & TIDAK BOCOR) -->
+            <div class="watermark-overlay"></div>
 
             <!-- PITA STATUS -->
             <div class="ribbon-wrapper">
@@ -147,10 +138,11 @@
                 </div>
             </div>
 
+            <!-- ISI INVOICE -->
             <div class="flex flex-col md:flex-row relative z-10">
 
                 {{-- KOLOM KIRI: KONTEN UTAMA INVOICE --}}
-                <div class="w-full md:w-2/3 p-8 md:p-12">
+                <div class="w-full md:w-2/3 p-8 md:p-12 pb-6 md:pb-12">
 
                     <!-- HEADER: Logo & Info Perusahaan -->
                     <div class="flex flex-col sm:flex-row justify-between items-start gap-6 mb-12">
@@ -173,25 +165,25 @@
 
                     <!-- INFO PENGIRIMAN -->
                     <div class="mb-10">
-                        <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
+                        <h3 class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">
                             {{ $isPureDigital ? 'Informasi Penerima' : 'Detail Pengiriman' }}
                         </h3>
                         <div class="text-sm">
                             <p class="font-black text-black uppercase">{{ $maskName($namaPelanggan) }}</p>
                             <p class="text-[11px] font-bold text-gray-600 mt-1">{{ $maskPhone($noHpPelanggan) }}</p>
-                            <p class="text-[11px] text-gray-500 mt-1 leading-relaxed">{{ $order->shipping_address ?? $order->user->address_detail ?? 'Alamat tidak tersedia' }}</p>
+                            <p class="text-[11px] text-gray-500 mt-1 leading-relaxed max-w-sm">{{ $order->shipping_address ?? $order->user->address_detail ?? 'Alamat tidak tersedia' }}</p>
                         </div>
                     </div>
 
                     <!-- TABEL PESANAN -->
-                    <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Rincian Pesanan</h3>
+                    <h3 class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-3">Rincian Pesanan</h3>
                     <div class="mb-10">
                         <table class="w-full text-left text-[11px]">
                             <thead class="border-b border-gray-200">
                                 <tr>
-                                    <th class="py-2 font-bold text-black uppercase tracking-wider w-[60%]">Description</th>
+                                    <th class="py-2 font-bold text-black uppercase tracking-wider w-[65%]">Description</th>
                                     <th class="py-2 font-bold text-black uppercase tracking-wider w-[10%] text-center">Qty</th>
-                                    <th class="py-2 font-bold text-black uppercase tracking-wider w-[30%] text-right">Total</th>
+                                    <th class="py-2 font-bold text-black uppercase tracking-wider w-[25%] text-right">Total</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100">
@@ -203,7 +195,6 @@
                                 <tr>
                                     <td class="py-4 align-top pr-4">
                                         <div class="flex items-start">
-                                            <!-- LOGO ITEM -->
                                             <div class="h-10 w-10 flex-shrink-0 border border-gray-200 mr-3 rounded hidden sm:block bg-white p-1">
                                                 @if($item->product && $item->product->image_url)
                                                     <img src="{{ asset('public/storage/'.$item->product->image_url) }}" alt="Img" class="h-full w-full object-contain">
@@ -247,7 +238,6 @@
                                 <tr>
                                     <td class="py-4 align-top pr-4">
                                         <div class="flex items-start">
-                                            <!-- LOGO EKSPEDISI -->
                                             <div class="h-10 w-10 flex-shrink-0 border border-gray-200 mr-3 rounded hidden sm:block bg-white p-1">
                                                 <img src="{{ $finalLogoUrl }}" alt="Ekspedisi" class="h-full w-full object-contain" onerror="this.style.display='none'">
                                             </div>
@@ -297,7 +287,7 @@
                     </div>
 
                     <!-- TOTALS (Clean Format) -->
-                    <div class="w-full max-w-sm ml-auto">
+                    <div class="w-full max-w-xs ml-auto mb-2">
                         <div class="flex justify-between py-1 text-[10px] text-gray-500 font-bold uppercase">
                             <span>Subtotal</span><span>Rp {{ number_format($order->subtotal, 0, ',', '.') }}</span>
                         </div>
@@ -311,29 +301,29 @@
                 <div class="w-full md:w-1/3 bg-gray-50 p-8 md:p-12 border-t md:border-t-0 md:border-l border-gray-200 flex flex-col relative">
 
                     <!-- QR Code & Judul (Dipindah ke kanan atas) -->
-                    <div class="flex flex-col items-end mb-12">
+                    <div class="flex flex-col items-end mb-12 relative z-10">
                         <span class="inline-block bg-black text-white text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest mb-2">Invoice</span>
-                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">#{{ $order->invoice_number }}</p>
-                        <div class="bg-white p-1.5 border border-gray-200 rounded-lg shadow-sm">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 text-right break-all">#{{ $order->invoice_number }}</p>
+                        <div class="bg-white p-1 border border-gray-200 rounded-lg shadow-sm">
                             <div id="qrCodeInvoice"></div>
                         </div>
                         <p class="text-[9px] text-gray-400 mt-2 font-bold">Tgl: {{ $order->created_at->format('d/m/Y') }}</p>
                     </div>
 
                     <!-- Status -->
-                    <div class="w-full mb-4">
-                        <h3 class="text-[10px] font-bold text-black uppercase tracking-wider mb-2">Status:</h3>
-                        <div class="inline-block px-3 py-1.5 bg-white border border-gray-300 text-black text-[10px] font-bold uppercase tracking-wider rounded">
+                    <div class="w-full mb-4 relative z-10">
+                        <h3 class="text-[9px] font-bold text-black uppercase tracking-wider mb-2">Status:</h3>
+                        <div class="inline-block w-full text-center py-2 px-3 bg-white border border-gray-300 text-black text-[10px] font-bold uppercase tracking-wider rounded">
                             {{ $statusRaw === 'pending' ? 'Menunggu Pembayaran' : ($isLunas ? 'Berhasil Dibayar' : 'Dibatalkan') }}
                         </div>
                     </div>
 
                     <!-- Kotak Instruksi / Download -->
-                    <div class="w-full bg-white p-6 rounded-xl border border-gray-200 shadow-sm mt-4">
+                    <div class="w-full bg-white p-6 rounded-xl border border-gray-200 shadow-sm mt-4 relative z-10">
 
                         @if($statusRaw === 'pending')
-                            <h2 class="text-xs font-black text-black uppercase tracking-wide mb-3 text-center">Instruksi Pembayaran</h2>
-                            <p class="text-[10px] text-gray-500 font-medium mb-4 text-center">Klik tombol di bawah untuk membuka aplikasi e-Wallet / Virtual Account Anda.</p>
+                            <h2 class="text-[11px] font-black text-black uppercase tracking-wide mb-3 text-center">Instruksi Pembayaran</h2>
+                            <p class="text-[9px] text-gray-500 font-medium mb-4 text-center">Klik tombol di bawah untuk membuka aplikasi e-Wallet / Virtual Account Anda.</p>
 
                             @php
                                 $method = strtoupper($order->payment_method ?? '');
@@ -375,12 +365,13 @@
                 </div>
             </div>
 
-            <!-- FOOTER -->
-            <div class="bg-gray-50 border-t border-gray-200 p-5 text-center text-[9px] text-gray-400 font-medium relative z-10">
+            <!-- FOOTER INVOICE (Tetap menempel di bawah kotak putih) -->
+            <div class="bg-white border-t border-gray-200 p-5 text-center text-[9px] text-gray-400 font-medium relative z-10 w-full">
                 Dicetak dari sistem pada {{ date('d M Y, H:i') }} WIB. Dokumen ini sah tanpa tanda tangan fisik.
             </div>
 
         </div>
+
     </div>
 
     @push('scripts')
@@ -391,8 +382,8 @@
                 if (qrContainer) {
                     new QRCode(qrContainer, {
                         text: "{{ $order->invoice_number }}",
-                        width: 70,
-                        height: 70,
+                        width: 60,
+                        height: 60,
                         colorDark : "#000000",
                         colorLight : "#ffffff",
                         correctLevel : QRCode.CorrectLevel.M
