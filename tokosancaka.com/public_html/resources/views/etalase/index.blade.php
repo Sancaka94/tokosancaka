@@ -445,7 +445,8 @@
                                     {{-- Info Jasa --}}
                                     <div class="p-2 flex flex-col flex-grow justify-between bg-white">
 
-                                        <a href="#" class="block">
+                                        {{-- ⚡ PERBAIKAN: Tautan pada Judul Jasa --}}
+                                        <a href="{{ route('etalase.jasa-show', ['id' => $layanan->id, 'slug' => \Illuminate\Support\Str::slug($layanan->nama_layanan)]) }}" class="block">
                                             <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-1 block line-clamp-1">
                                                 <i class="fas fa-tag me-1"></i> {{ $sub->nama_sub_bidang }}
                                             </span>
@@ -464,15 +465,26 @@
                                                 </span>
                                             </div>
 
-                                            {{-- Info Dummy Teknisi (Bisa dikoneksikan ke DB nanti) --}}
-                                            <div class="flex items-center gap-1 mt-1 text-[9px] text-gray-500">
-                                                <i class="fas fa-user-check text-green-500"></i> Tersedia Mitra Teknisi
+                                            {{-- Info Realtime Teknisi (Dinamis) --}}
+                                            @php
+                                                // Menghitung jumlah penjual/teknisi yang menawarkan jasa ini
+                                                $mitraCount = \App\Models\Product::where('id_master_layanan', $layanan->id)
+                                                                                 ->where('status', 'active')
+                                                                                 ->count();
+                                            @endphp
+
+                                            <div class="flex items-center gap-1 mt-1 text-[9px] {{ $mitraCount > 0 ? 'text-green-600' : 'text-gray-400' }} font-medium">
+                                                @if($mitraCount > 0)
+                                                    <i class="fas fa-user-check"></i> {{ $mitraCount }} Mitra Tersedia
+                                                @else
+                                                    <i class="fas fa-user-times"></i> Belum ada Mitra
+                                                @endif
                                             </div>
                                         </div>
 
-                                        {{-- Tombol Pesan --}}
-                                        <a href="#" class="btn-cart mt-2 bg-[#d0011b] hover:bg-red-800 text-white rounded">
-                                            <i class="fab fa-whatsapp"></i> Pesan Jasa
+                                        {{-- ⚡ PERBAIKAN: Tautan pada Tombol Pesan Jasa --}}
+                                        <a href="{{ route('etalase.jasa-show', ['id' => $layanan->id, 'slug' => \Illuminate\Support\Str::slug($layanan->nama_layanan)]) }}" class="btn-cart mt-2 bg-[#d0011b] hover:bg-red-800 text-white rounded">
+                                            <i class="fas fa-arrow-right"></i> Lihat Teknisi
                                         </a>
 
                                     </div>
