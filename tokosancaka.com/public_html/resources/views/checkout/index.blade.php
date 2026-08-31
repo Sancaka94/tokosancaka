@@ -416,7 +416,7 @@
 
                         <ul role="list" class="divide-y divide-gray-200 my-6">
                             @php $subtotal = 0; @endphp
-                            @foreach(session('cart', []) as $id => $details)
+                            @foreach($cart as $id => $details)
                                 @php $subtotal += $details['price'] * $details['quantity']; @endphp
                                 <li class="flex py-4">
                                     <div class="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md">
