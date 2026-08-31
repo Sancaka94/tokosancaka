@@ -39,7 +39,8 @@ class CartController extends Controller
 
             } else {
                 // Validasi Produk Utama
-                $product = Product::find($details['product_id']);
+                // Validasi Produk Utama (Lebih Aman)
+                $product = Product::find($details['product_id'] ?? null);
 
                 if (!$product || strtolower(trim($product->status)) !== 'active') {
                     unset($cart[$key]);
