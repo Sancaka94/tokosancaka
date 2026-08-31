@@ -250,7 +250,8 @@
                 <div class="w-full md:w-1/2">
                     <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-24 mb-4 object-contain" onerror="this.src='https://placehold.co/200x50/FFFFFF/000000?text=SANCAKA+EXPRESS'">
                     <div class="text-[13px] text-gray-500 leading-relaxed">
-                        <p class="font-bold text-black uppercase tracking-wide">Sancaka Express Powered By CV SANCAKA KARYA HUTAMA</p>
+                        <p class="font-bold text-black uppercase tracking-wide">Sancaka Express Powered By</p>
+                        <p>CV SANCAKA KARYA HUTAMA</p>
                         <p>Jl. Dr. Wahidin No. 18A, Ketanggi Kabupaten Ngawi, Jawa Timur 63211</p>
                         <p class="font-medium text-black mt-1">Helpdesk: 085 745 808 809</p>
                     </div>
