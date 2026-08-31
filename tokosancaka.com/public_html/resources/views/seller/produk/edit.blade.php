@@ -370,11 +370,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Script Atribut & Aset Digital Dinamis ---
+    // --- Script Atribut, Digital & Jasa Dinamis ---
     const categorySelect = document.getElementById('category_id');
     const attributesCard = document.getElementById('attributes-card');
     const attributesContainer = document.getElementById('dynamic-attributes-container');
     const digitalContainer = document.getElementById('digital-asset-container');
+    const jasaContainer = document.getElementById('jasa-asset-container'); 
 
     async function fetchAndRenderAttributes() {
         const selectedOption = categorySelect.options[categorySelect.selectedIndex];
@@ -414,7 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let fieldHtml = '';
         const isRequired = attribute.is_required ? 'required' : '';
         const requiredAsterisk = attribute.is_required ? '<span class="text-red-500">*</span>' : '';
-        const attributeName = attribute.name || 'Atribut';
+        const attributeName = attribute.name || 'Atribut Tanpa Nama';
         const label = `<label for="attr_${attribute.slug}" class="block text-sm font-medium text-gray-700">${attributeName} ${requiredAsterisk}</label>`;
         const inputName = `attributes[${attribute.slug}]`;
         const optionsString = typeof attribute.options === 'string' ? attribute.options : '';
@@ -429,21 +430,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 fieldHtml = `${label}<textarea name="${inputName}" id="attr_${attribute.slug}" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}>${val}</textarea>`;
                 break;
             case 'select':
-                const options = optionsString.split(',')
-                    .map(opt => opt.trim()).filter(opt => opt) 
-                    .map(opt => `<option value="${opt}" ${val == opt ? 'selected' : ''}>${opt}</option>`)
-                    .join('');
+                const options = optionsString.split(',').map(opt => opt.trim()).filter(opt => opt).map(opt => `<option value="${opt}" ${val == opt ? 'selected' : ''}>${opt}</option>`).join('');
                 fieldHtml = `${label}<select name="${inputName}" id="attr_${attribute.slug}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" ${isRequired}><option value="">-- Pilih ${attributeName} --</option>${options}</select>`;
                 break;
             case 'checkbox':
                 const valueArray = Array.isArray(val) ? val : (val ? [val] : []);
-                const checkboxes = optionsString.split(',')
-                    .map(opt => opt.trim()).filter(opt => opt) 
-                    .map((opt, index) => `
-                        <div class="flex items-center">
-                            <input type="checkbox" name="${inputName}[]" id="attr_${attribute.slug}_${index}" value="${opt}" ${valueArray.includes(opt) ? 'checked' : ''} class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
-                            <label for="attr_${attribute.slug}_${index}" class="ml-2 block text-sm text-gray-900">${opt}</label>
-                        </div>`).join('');
+                const checkboxes = optionsString.split(',').map(opt => opt.trim()).filter(opt => opt).map((opt, index) => `
+                    <div class="flex items-center">
+                        <input type="checkbox" name="${inputName}[]" id="attr_${attribute.slug}_${index}" value="${opt}" ${valueArray.includes(opt) ? 'checked' : ''} class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        <label for="attr_${attribute.slug}_${index}" class="ml-2 block text-sm text-gray-900">${opt}</label>
+                    </div>`).join('');
                 fieldHtml = `<label class="block text-sm font-medium text-gray-700">${attributeName} ${requiredAsterisk}</label><div class="mt-2 space-y-2">${checkboxes}</div>`;
                 break;
             default:
@@ -458,21 +454,74 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedOption = categorySelect.options[categorySelect.selectedIndex];
         
         if (!selectedOption || !selectedOption.value) {
-            digitalContainer.classList.add('hidden');
+            if(digitalContainer) digitalContainer.classList.add('hidden');
+            if(jasaContainer) jasaContainer.classList.add('hidden');
             return;
         }
 
         const kategoriGrup = selectedOption.getAttribute('data-kategori-grup') || '';
-        const isDigital = ['produk_digital', 'jasa', 'digital', 'eticket', 'tiket', 'ticket', 'event'].some(keyword => kategoriGrup.includes(keyword));
+        
+        const isDigital = ['produk_digital', 'digital', 'eticket', 'tiket', 'ticket', 'event'].some(keyword => kategoriGrup.includes(keyword));
+        const isJasa = kategoriGrup.includes('jasa');
 
-        if (isDigital) {
+        if (isDigital && digitalContainer) {
             digitalContainer.classList.remove('hidden');
-        } else {
+        } else if (digitalContainer) {
             digitalContainer.classList.add('hidden');
+        }
+
+        if (isJasa && jasaContainer) {
+            jasaContainer.classList.remove('hidden');
+        } else if (jasaContainer) {
+            jasaContainer.classList.add('hidden');
         }
     }
 
-    // --- Script Varian Dinamis ---
+    window.loadSubBidang = function(id_bidang) {
+        if (!id_bidang) return;
+        const subBidangSelect = document.getElementById('id_sub_bidang');
+        const layananSelect = document.getElementById('id_master_layanan');
+        
+        subBidangSelect.innerHTML = '<option value="">Memuat...</option>';
+        layananSelect.innerHTML = '<option value="" selected disabled>-- Pilih Layanan --</option>';
+
+        fetch(`/get-sub-bidang/${id_bidang}`)
+            .then(response => response.json())
+            .then(data => {
+                let html = '<option value="" selected disabled>-- Pilih Sub Bidang --</option>';
+                data.forEach(item => { html += `<option value="${item.id}">${item.nama_sub_bidang}</option>`; });
+                subBidangSelect.innerHTML = html;
+            })
+            .catch(error => { subBidangSelect.innerHTML = '<option value="">Gagal memuat data</option>'; });
+    };
+
+    window.loadLayanan = function(id_sub_bidang) {
+        if (!id_sub_bidang) return;
+        const layananSelect = document.getElementById('id_master_layanan');
+        layananSelect.innerHTML = '<option value="">Memuat...</option>';
+
+        fetch(`/get-layanan/${id_sub_bidang}`)
+            .then(response => response.json())
+            .then(data => {
+                let html = '<option value="" selected disabled>-- Pilih Layanan --</option>';
+                data.forEach(item => { html += `<option value="${item.id}">${item.nama_layanan} (Rp${parseInt(item.tarif_dasar).toLocaleString('id-ID')} ${item.tipe_satuan})</option>`; });
+                layananSelect.innerHTML = html;
+            })
+            .catch(error => { layananSelect.innerHTML = '<option value="">Gagal memuat data</option>'; });
+    };
+
+    if (categorySelect) { 
+        categorySelect.addEventListener('change', () => {
+            fetchAndRenderAttributes(); 
+            checkDigitalCategory();     
+        });
+        
+        if(categorySelect.value) {
+            fetchAndRenderAttributes();
+            checkDigitalCategory();
+        }
+    }
+
     const variantContainer = document.getElementById('variant-groups-container');
     const addVariantBtn = document.getElementById('add-variant-group');
     const mainStockInput = document.getElementById('stock');
@@ -499,11 +548,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div>
                 <label for="variant_${index}_name" class="block text-sm font-medium text-gray-700">Nama Tipe Varian</label>
-                <input type="text" name="variant_types[${index}][name]" id="variant_${index}_name" value="${name}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: Warna, Ukuran" required>
+                <input type="text" name="variant_types[${index}][name]" id="variant_${index}_name" value="${name}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" required>
             </div>
             <div>
                 <label for="variant_${index}_options" class="block text-sm font-medium text-gray-700">Pilihan Varian (pisahkan koma)</label>
-                <input type="text" name="variant_types[${index}][options]" id="variant_${index}_options" value="${options}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Contoh: Merah, Biru, Hijau" required>
+                <input type="text" name="variant_types[${index}][options]" id="variant_${index}_options" value="${options}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500" required>
             </div>
         `;
         groupWrapper.querySelector('.remove-variant-group').addEventListener('click', (e) => {
@@ -537,26 +586,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadExistingVariants() {
         if (existingVariantTypes && existingVariantTypes.length > 0) {
             existingVariantTypes.forEach((variant) => {
-                variantContainer.appendChild(
-                    createVariantGroup(variantIndex, variant.name, variant.options)
-                );
+                variantContainer.appendChild(createVariantGroup(variantIndex, variant.name, variant.options));
                 variantIndex++;
             });
             toggleMainStock(); 
-        }
-    }
-
-    // Panggil event listeners & inisialisasi awal
-    if (categorySelect) { 
-        categorySelect.addEventListener('change', () => {
-            fetchAndRenderAttributes();
-            checkDigitalCategory();
-        });
-        
-        // Eksekusi langsung saat load untuk menangkap kategori yang sudah terpilih (termasuk yang "old")
-        if(categorySelect.value) {
-            fetchAndRenderAttributes();
-            checkDigitalCategory();
         }
     }
 
