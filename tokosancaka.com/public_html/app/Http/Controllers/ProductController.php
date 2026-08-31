@@ -47,7 +47,7 @@ class ProductController extends Controller
         }
 
         $products = $query->paginate(12)->withQueryString();
-        
+
         $categories = Category::whereHas('products', function ($q) {
             $q->where('status', 'active')->where('stock', '>', 0);
         })->orderBy('name')->get();
@@ -108,7 +108,7 @@ class ProductController extends Controller
     public function adminIndex(Request $request)
     {
         if ($request->ajax()) {
-            $data = Product::with('categoryData')->query(); 
+            $data = Product::with('categoryData')->query();
 
             return DataTables::of($data)
                 ->addIndexColumn()
@@ -117,7 +117,7 @@ class ProductController extends Controller
                     return '<img src="' . $url . '" class="rounded" width="80" />';
                 })
                 ->addColumn('category_name', function ($row) {
-                    return $row->categoryData?->name ?? 'N/A'; 
+                    return $row->categoryData?->name ?? 'N/A';
                 })
                 ->editColumn('price', function ($row) {
                     return 'Rp' . number_format($row->price, 0, ',', '.');
@@ -292,7 +292,7 @@ class ProductController extends Controller
         $mainFields[] = '_token';
         $mainFields[] = '_method';
         $mainFields[] = 'product_image';
-        
+
         // Ambil semua input kecuali field utama
         $attributesData = $request->except($mainFields);
 
@@ -302,14 +302,14 @@ class ProductController extends Controller
         // Buat ulang atribut berdasarkan data form
         if (!empty($attributesData)) {
             foreach ($attributesData as $attributeName => $attributeValue) {
-                
+
                 // Ganti nama field dari form (misal: 'jenis_izin') menjadi 'Jenis Izin'
                 $displayName = ucwords(str_replace('_', ' ', $attributeName));
 
                 if (is_array($attributeValue)) {
                     $attributeValue = implode(', ', $attributeValue);
                 }
-                
+
                 if (!is_null($attributeValue) && $attributeValue !== '') {
                     $product->productAttributes()->create([
                         'name' => $displayName, // <-- MENYIMPAN NAMA YANG BENAR
@@ -332,7 +332,7 @@ class ProductController extends Controller
         $product->productAttributes()->delete();
         $product->productVariants()->delete();
         $product->productVariantTypes()->delete();
-        
+
         $product->delete();
         return redirect()->route('admin.products.index')->with('success', 'Produk berhasil dihapus.');
     }
@@ -354,7 +354,7 @@ class ProductController extends Controller
 
     public function getAttributes(Category $category)
     {
-        $category->load('attributes'); 
+        $category->load('attributes');
         return response()->json($category->attributes);
     }
 }

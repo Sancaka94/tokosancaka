@@ -1862,6 +1862,35 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
 });
 
+// Pastikan ini berada di dalam group route Admin Anda
+Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () {
+
+
+    // ==========================================
+    // MANAJEMEN MASTER JASA (HOME, CLEAN, HEALTH)
+    // ==========================================
+    Route::prefix('master-jasa')->name('master_jasa.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\MasterJasaController::class, 'index'])->name('index');
+        Route::post('/bulk-destroy', [\App\Http\Controllers\Admin\MasterJasaController::class, 'bulkDestroy'])->name('bulk_destroy');
+        
+        // CRUD Level 1: Bidang
+        Route::post('/bidang', [\App\Http\Controllers\Admin\MasterJasaController::class, 'storeBidang'])->name('bidang.store');
+        Route::put('/bidang/{id}', [\App\Http\Controllers\Admin\MasterJasaController::class, 'updateBidang'])->name('bidang.update');
+        Route::delete('/bidang/{id}', [\App\Http\Controllers\Admin\MasterJasaController::class, 'destroyBidang'])->name('bidang.destroy');
+        
+        // CRUD Level 2: Sub Bidang
+        Route::post('/sub-bidang', [\App\Http\Controllers\Admin\MasterJasaController::class, 'storeSubBidang'])->name('sub_bidang.store');
+        Route::put('/sub-bidang/{id}', [\App\Http\Controllers\Admin\MasterJasaController::class, 'updateSubBidang'])->name('sub_bidang.update');
+        Route::delete('/sub-bidang/{id}', [\App\Http\Controllers\Admin\MasterJasaController::class, 'destroySubBidang'])->name('sub_bidang.destroy');
+        
+        // CRUD Level 3: Layanan
+        Route::post('/layanan', [\App\Http\Controllers\Admin\MasterJasaController::class, 'storeLayanan'])->name('layanan.store');
+        Route::put('/layanan/{id}', [\App\Http\Controllers\Admin\MasterJasaController::class, 'updateLayanan'])->name('layanan.update');
+        Route::delete('/layanan/{id}', [\App\Http\Controllers\Admin\MasterJasaController::class, 'destroyLayanan'])->name('layanan.destroy');
+    });
+
+});
+
 Route::post('/admin/settings/api/toggle-debug', [ApiSettingsController::class, 'toggleAppDebug'])->name('admin.settings.api.toggleDebug');
 
 // RUTE BARU UNTUK TOMBOL DEBUG BCA SANDBOX
