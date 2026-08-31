@@ -217,23 +217,53 @@
                                 <div class="row g-3 mb-4">
                                     <div class="col-12">
                                         <label class="form-label">Jenis Layanan Standar Mitra <span class="text-danger">*</span></label>
-                                        <select name="jenis_layanan" class="form-select custom-select w-100 @error('jenis_layanan') is-invalid @enderror" required>
+                                        <select name="jenis_layanan" id="jenis_layanan" class="form-select custom-select w-100 @error('jenis_layanan') is-invalid @enderror" required>
                                             <option value="" selected disabled>-- Pilih Jenis Kendaraan Operasional --</option>
                                             <option value="motor" {{ old('jenis_layanan') == 'motor' ? 'selected' : '' }}>Sancaka RIDE (Ojek Motor - Maks. 250cc)</option>
                                             <option value="mobil" {{ old('jenis_layanan') == 'mobil' ? 'selected' : '' }}>Sancaka CAR (Mobil - Min. 1000cc)</option>
+                                            <option value="jasa" {{ old('jenis_layanan') == 'jasa' ? 'selected' : '' }}>Sancaka Jasa (Teknisi, Tukang, Clean & Health)</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Merek & Tipe <span class="text-danger">*</span></label>
-                                        <input type="text" name="merk_kendaraan" class="form-control custom-input w-100" value="{{ old('merk_kendaraan') }}" required placeholder="Honda Vario 150">
+
+                                    <!-- WADAH 1: KHUSUS OJEK (RIDE/CAR) -->
+                                    <div class="row g-3 m-0 p-0" id="kendaraan_container">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Merek & Tipe <span class="text-danger">*</span></label>
+                                            <input type="text" id="merk_kendaraan" name="merk_kendaraan" class="form-control custom-input w-100" value="{{ old('merk_kendaraan') }}" placeholder="Honda Vario 150">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Tahun Pembuatan <span class="text-danger">*</span></label>
+                                            <input type="number" id="tahun_kendaraan" name="tahun_kendaraan" class="form-control custom-input w-100" value="{{ old('tahun_kendaraan') }}" placeholder="2022">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Plat Nomor <span class="text-danger">*</span></label>
+                                            <input type="text" id="plat_nomor" name="plat_nomor" class="form-control custom-input w-100 text-uppercase" value="{{ old('plat_nomor') }}" placeholder="AE 1234 XX">
+                                        </div>
                                     </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Tahun Pembuatan <span class="text-danger">*</span></label>
-                                        <input type="number" name="tahun_kendaraan" class="form-control custom-input w-100" value="{{ old('tahun_kendaraan') }}" required placeholder="2022">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label">Plat Nomor <span class="text-danger">*</span></label>
-                                        <input type="text" name="plat_nomor" class="form-control custom-input w-100 text-uppercase" value="{{ old('plat_nomor') }}" required placeholder="AE 1234 XX">
+
+                                    <!-- WADAH 2: KHUSUS JASA (HOME/CLEAN/HEALTH) -->
+                                    <div class="row g-3 m-0 p-0" id="jasa_container" style="display: none;">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Divisi Bidang <span class="text-danger">*</span></label>
+                                            <select id="id_bidang" class="form-select custom-select w-100" onchange="loadSubBidang(this.value)">
+                                                <option value="" selected disabled>-- Pilih Divisi --</option>
+                                                @foreach($bidangs as $bidang)
+                                                    <option value="{{ $bidang->id }}">{{ $bidang->nama_bidang }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Kategori / Sub Bidang <span class="text-danger">*</span></label>
+                                            <select id="id_sub_bidang" class="form-select custom-select w-100" onchange="loadLayanan(this.value)">
+                                                <option value="" selected disabled>-- Pilih Sub Bidang --</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Keahlian Layanan <span class="text-danger">*</span></label>
+                                            <select name="id_master_layanan" id="id_master_layanan" class="form-select custom-select w-100">
+                                                <option value="" selected disabled>-- Pilih Layanan --</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -739,5 +769,61 @@
 
         if(agreeCheckbox) agreeCheckbox.addEventListener('change', checkSubmitStatus);
     });
+
+    // LOGIKA PERUBAHAN JENIS LAYANAN
+    document.getElementById('jenis_layanan').addEventListener('change', function() {
+        const jenis = this.value;
+        const wadahKendaraan = document.getElementById('kendaraan_container');
+        const wadahJasa = document.getElementById('jasa_container');
+
+        if (jenis === 'jasa') {
+            wadahKendaraan.style.display = 'none';
+            wadahJasa.style.display = 'flex';
+
+            // Hapus required attribute dari form kendaraan agar bisa disubmit
+            document.getElementById('merk_kendaraan').removeAttribute('required');
+            document.getElementById('tahun_kendaraan').removeAttribute('required');
+            document.getElementById('plat_nomor').removeAttribute('required');
+
+            document.getElementById('id_master_layanan').setAttribute('required', 'required');
+        } else {
+            wadahKendaraan.style.display = 'flex';
+            wadahJasa.style.display = 'none';
+
+            document.getElementById('merk_kendaraan').setAttribute('required', 'required');
+            document.getElementById('tahun_kendaraan').setAttribute('required', 'required');
+            document.getElementById('plat_nomor').setAttribute('required', 'required');
+
+            document.getElementById('id_master_layanan').removeAttribute('required');
+        }
+    });
+
+    // FUNGSI AJAX LOAD SUB BIDANG
+    function loadSubBidang(id_bidang) {
+        fetch(`/get-sub-bidang/${id_bidang}`)
+            .then(response => response.json())
+            .then(data => {
+                let html = '<option value="" selected disabled>-- Pilih Sub Bidang --</option>';
+                data.forEach(item => {
+                    html += `<option value="${item.id}">${item.nama_sub_bidang}</option>`;
+                });
+                document.getElementById('id_sub_bidang').innerHTML = html;
+                document.getElementById('id_master_layanan').innerHTML = '<option value="" selected disabled>-- Pilih Layanan --</option>';
+            });
+    }
+
+    // FUNGSI AJAX LOAD LAYANAN
+    function loadLayanan(id_sub_bidang) {
+        fetch(`/get-layanan/${id_sub_bidang}`)
+            .then(response => response.json())
+            .then(data => {
+                let html = '<option value="" selected disabled>-- Pilih Layanan --</option>';
+                data.forEach(item => {
+                    html += `<option value="${item.id}">${item.nama_layanan} (${item.tipe_satuan})</option>`;
+                });
+                document.getElementById('id_master_layanan').innerHTML = html;
+            });
+    }
+
 </script>
 @endsection
