@@ -2,15 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\OrderMarketplace;
-use App\Models\OrderItemMarketplace; 
-use App\Models\ProductVariant;
-use App\Models\Store;
-use App\Models\User;
-use App\Models\Product; 
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Log;
+use App\Models\Product;
+use App\Models\ProductVariant; 
+use Illuminate\Support\Facades\Log; 
 
 class CartController extends Controller
 {
@@ -24,12 +19,12 @@ class CartController extends Controller
 
         foreach ($cart as $key => $details) {
             
-            // ⚡ FIX: LEWATI VALIDASI JIKA ITEM ADALAH PPOB ⚡
+            // Lewati validasi jika ini produk PPOB/Digital
             if (isset($details['is_ppob']) && $details['is_ppob'] == true) {
                 continue; 
             }
 
-            // --- VALIDASI PRODUK FISIK / JASA ---
+            // Validasi Produk Varian
             if (!empty($details['variant_id'])) {
                 $variant = ProductVariant::find($details['variant_id']);
                 
@@ -43,6 +38,7 @@ class CartController extends Controller
                 $cart[$key]['current_stock'] = $variant->stock; 
 
             } else {
+                // Validasi Produk Utama
                 $product = Product::find($details['product_id']);
 
                 if (!$product || $product->status !== 'active') {
@@ -64,17 +60,29 @@ class CartController extends Controller
     }
 
     /**
-     * Menambahkan produk ke keranjang (Untuk Masukkan Keranjang & Beli Sekarang).
+     * Menambahkan produk ke keranjang (Beli Sekarang & Masukkan Keranjang).
      */
-    public function add(Request $request, Product $product)
+    public function add(Request $request) // ⚡ PERBAIKAN: Parameter Product dihapus agar tidak terjadi binding error
     {
+        // ⚡ MANUAL FETCH: Ambil ID langsung dari form HTML, jauh lebih akurat dan anti-error
+        $productId = $request->input('product_id');
         $quantity = (int)$request->input('quantity', 1);
         $variantId = $request->input('product_variant_id') ?? $request->input('variant_id');
 
-        // ⚡ KUNCI PERBAIKAN: Format Key HARUS IDProduk-IDVarian (cth: "12-0")
-        // Sistem Checkout Sancaka mendeteksi ID dari format ini
+        // Bersihkan data variantId jika berupa string kosong atau teks "null" dari Javascript
+        if (empty($variantId) || $variantId === 'null') {
+            $variantId = null;
+        }
+
+        $product = Product::find($productId);
+
+        // Jika ID produk ternyata benar-benar tidak ada di database
+        if (!$product) {
+            return back()->with('error', 'Produk tidak ditemukan atau ID tidak valid.');
+        }
+
+        // KUNCI CHECKOUT Sancaka: Format Key HARUS IDProduk-IDVarian (cth: "12-0")
         $cartKey = $product->id . '-' . ($variantId ?? '0');
-        
         $cart = session()->get('cart', []);
 
         // Proteksi: Jangan izinkan user beli barang dari tokonya sendiri
@@ -100,21 +108,21 @@ class CartController extends Controller
             }
         }
 
-        // PENGAMANAN ONGKIR: Pastikan berat minimal 1 gram
+        // Pastikan berat minimal 1 gram agar API Ongkir Checkout tidak error
         if ($itemWeight <= 0) {
             $itemWeight = 1;
         }
 
-        // --- Validasi Stok ---
+        // Validasi Kuantitas vs Stok yang kini sudah pasti terbaca
         $currentQuantityInCart = $cart[$cartKey]['quantity'] ?? 0;
         $newTotalQuantity = $currentQuantityInCart + $quantity;
         $stockToCheck = $variantId ? ProductVariant::find($variantId)->stock : $product->stock;
 
         if ($stockToCheck < $newTotalQuantity) {
-            return back()->with('error', "Stok produk tidak mencukupi. Stok tersedia: {$stockToCheck}.");
+            return back()->with('error', "Stok produk tidak mencukupi. Stok tersedia: {$stockToCheck} buah.");
         }
 
-        // --- Simpan ke Session Cart ---
+        // Simpan ke Session Cart
         if (isset($cart[$cartKey])) {
             $cart[$cartKey]['quantity'] = $newTotalQuantity;
         } else {
@@ -125,7 +133,7 @@ class CartController extends Controller
                 "quantity"   => $quantity,
                 "price"      => $itemPrice,
                 "weight"     => $itemWeight, 
-                "store_id"   => $product->store_id, // Wajib ada untuk Checkout
+                "store_id"   => $product->store_id, // Wajib ada untuk memisahkan toko di Checkout
                 "image_url"  => $product->image_url,
                 "slug"       => $product->slug,
                 "is_ppob"    => false,
@@ -134,7 +142,7 @@ class CartController extends Controller
 
         session()->put('cart', $cart);
 
-        // ⚡ LOGIKA REDIRECT: BELI SEKARANG VS MASUK KERANJANG ⚡
+        // ⚡ LOGIKA REDIRECT PINTAR ⚡
         if ($request->input('action') === 'buy_now') {
             return redirect()->route('customer.checkout.index'); 
         }
