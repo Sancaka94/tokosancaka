@@ -264,7 +264,7 @@
                     <div class="text-[13px] text-gray-500 leading-relaxed">
                         <p class="font-bold text-black uppercase tracking-wide">Sancaka Express</p>
                         <p>Powered By CV SANCAKA KARYA HUTAMA</p>
-                        <p>Jl. Dr. Wahidin No. 18A, Ketanggi Kabupaten Ngawi, Jawa Timur 63211</p>
+                        <p>Jl. Dr. Wahidin No. 18A, Ketanggi Kab. Ngawi, Jawa Timur 63211</p>
                         <p class="font-medium text-black mt-1">Helpdesk: 085 745 808 809</p>
                     </div>
                 </div>
