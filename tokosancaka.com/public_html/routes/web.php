@@ -1896,6 +1896,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 Route::get('/driver/register', [RegisterDriverOnlineController::class, 'create'])->name('driver.register.create');
 // Route::post('/driver/register', [RegisterDriverOnlineController::class, 'store'])->name('driver.register.store');
 
+// --- [TAMBAHKAN KEDUA ROUTE AJAX DI BAWAH INI] ---
+Route::get('/get-sub-bidang/{id}', [\App\Http\Controllers\RegisterDriverOnlineController::class, 'getSubBidang']);
+Route::get('/get-layanan/{id}', [\App\Http\Controllers\RegisterDriverOnlineController::class, 'getLayanan']);
+
 Route::post('/driver/register', [RegisterDriverOnlineController::class, 'store'])
     ->name('driver.register.store')
     ->middleware(\Spatie\Honeypot\ProtectAgainstSpam::class);

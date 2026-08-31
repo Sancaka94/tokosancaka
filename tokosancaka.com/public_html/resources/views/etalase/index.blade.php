@@ -375,6 +375,81 @@
             </div>
         </section>
 
+        {{-- ============================================================ --}}
+    {{-- ⚡ SECTION LAYANAN JASA (SANCAKA HOME, CLEAN, HEALTH) ⚡ --}}
+    {{-- ============================================================ --}}
+    @if(isset($bidangs) && count($bidangs) > 0)
+    <section class="mb-8" data-aos="fade-up">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+
+            {{-- Header --}}
+            <div class="bg-[#d0011b] p-3 flex items-center justify-between">
+                <h2 class="text-lg md:text-xl font-bold text-white tracking-wide flex items-center gap-2 uppercase">
+                    <i class="fas fa-tools text-yellow-300"></i> LAYANAN JASA PROFESIONAL
+                </h2>
+            </div>
+
+            {{-- Grid Konten Jasa --}}
+            <div class="p-4 md:p-6 bg-gray-50">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                    @foreach($bidangs as $bidang)
+                    <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:border-[#d0011b] transition-colors">
+
+                        {{-- Judul Bidang --}}
+                        <div class="flex items-center gap-3 mb-4 border-b border-gray-100 pb-3">
+                            <div class="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-[#d0011b] border border-red-100">
+                                @if(str_contains(strtolower($bidang->nama_bidang), 'home'))
+                                    <i class="fas fa-home text-lg"></i>
+                                @elseif(str_contains(strtolower($bidang->nama_bidang), 'clean'))
+                                    <i class="fas fa-broom text-lg"></i>
+                                @elseif(str_contains(strtolower($bidang->nama_bidang), 'health'))
+                                    <i class="fas fa-heartbeat text-lg"></i>
+                                @else
+                                    <i class="fas fa-briefcase text-lg"></i>
+                                @endif
+                            </div>
+                            <h3 class="font-bold text-lg text-gray-800">{{ $bidang->nama_bidang }}</h3>
+                        </div>
+
+                        {{-- List Sub Bidang & Layanan --}}
+                        <div class="space-y-4">
+                            @foreach($bidang->sub_bidang as $sub)
+                            <div>
+                                <h4 class="text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                    <i class="fas fa-check-circle text-green-500 text-xs"></i> {{ $sub->nama_sub_bidang }}
+                                </h4>
+
+                                <ul class="space-y-2 pl-5 border-l-2 border-gray-100 ml-1.5">
+                                    @foreach($sub->layanan as $layanan)
+                                    <li class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 text-sm border-b border-gray-50 pb-1 last:border-0">
+                                        <span class="text-gray-600 text-xs md:text-sm flex-1">{{ $layanan->nama_layanan }}</span>
+                                        <div class="font-bold text-[#d0011b] text-xs bg-red-50 px-2 py-1 rounded whitespace-nowrap w-fit">
+                                            Rp{{ number_format($layanan->tarif_dasar, 0, ',', '.') }}
+                                            <span class="text-[9px] text-gray-400 font-normal">/{{ $layanan->tipe_satuan }}</span>
+                                        </div>
+                                    </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                            @endforeach
+                        </div>
+
+                        {{-- Tombol Pesan (Opsional) --}}
+                        <div class="mt-5 pt-3 border-t border-gray-100">
+                            <a href="#" class="block w-full text-center bg-gray-100 hover:bg-[#d0011b] text-gray-700 hover:text-white text-xs font-bold py-2 rounded transition-colors">
+                                <i class="fab fa-whatsapp me-1"></i> Pesan Layanan Ini
+                            </a>
+                        </div>
+                    </div>
+                    @endforeach
+
+                </div>
+            </div>
+        </div>
+    </section>
+    @endif
+
   {{-- === FLASH SALE SECTION (REVISI MOBILE) === --}}
     @if($flashSaleProducts->isNotEmpty())
     <section class="mb-6 bg-white shadow-sm rounded overflow-hidden border border-gray-100">

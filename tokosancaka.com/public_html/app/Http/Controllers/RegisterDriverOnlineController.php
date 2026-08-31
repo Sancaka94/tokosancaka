@@ -17,8 +17,10 @@ class RegisterDriverOnlineController extends Controller
     public function create()
     {
         $turnstileSiteKey = env('TURNSTILE_SITE_KEY');
+        // Ambil data Divisi Bidang
+        $bidangs = DB::table('master_bidang')->where('status_aktif', 1)->get();
 
-        return view('public.register_driver', compact('turnstileSiteKey'));
+        return view('public.register_driver', compact('turnstileSiteKey', 'bidangs'));
     }
 
     public function store(Request $request)
@@ -107,7 +109,7 @@ class RegisterDriverOnlineController extends Controller
             }
 
             RegistrasiDriverSancaka::create(array_merge(
-                $request->only(['nama_lengkap', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'nomor_nik', 'nomor_kk', 'nomor_wa', 'instansi_perusahaan', 'alamat_lengkap', 'jenis_layanan', 'merk_kendaraan', 'tahun_kendaraan', 'plat_nomor', 'latitude', 'longitude']),
+                $request->only(['nama_lengkap', 'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'nomor_nik', 'nomor_kk', 'nomor_wa', 'instansi_perusahaan', 'alamat_lengkap', 'jenis_layanan', 'merk_kendaraan', 'tahun_kendaraan', 'plat_nomor', 'latitude', 'longitude', 'id_master_layanan']),
                 $filePaths,
                 ['status' => 'pending', 'is_active_map' => 0]
             ));
@@ -368,5 +370,17 @@ class RegisterDriverOnlineController extends Controller
             $this->destroy($driver->id);
         }
         return redirect()->back()->with('success', count($ids) . ' data terpilih berhasil dihapus massal.');
+    }
+
+    public function getSubBidang($id)
+    {
+        $subBidang = DB::table('master_sub_bidang')->where('id_bidang', $id)->where('status_aktif', 1)->get();
+        return response()->json($subBidang);
+    }
+
+    public function getLayanan($id)
+    {
+        $layanan = DB::table('master_layanan')->where('id_sub_bidang', $id)->where('status_aktif', 1)->get();
+        return response()->json($layanan);
     }
 }
