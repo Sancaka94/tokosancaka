@@ -71,6 +71,9 @@ class CartController extends Controller
         Log::info('Semua data dari Form Request: ', $request->all());
         Log::info('Data Product dari Parameter Method: ', $product->toArray());
 
+        // ⚡ SISIPKAN 1 BARIS INI UNTUK MENGISI DATA PRODUK YANG KOSONG
+        $product = Product::find($request->input('product_id'));
+
         // ⚡ KUNCI CHECKOUT Sancaka: Format Key HARUS IDProduk-IDVarian (cth: "39-0")
         $cartKey = $product->id . '-' . ($variantId ?? '0');
         
