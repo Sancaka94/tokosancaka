@@ -34,7 +34,7 @@
     @endif
 
     <!-- FORM UTAMA -->
-    <form action="{{ route('admin.pesanan-autokirim.store') }}" method="POST" @submit="validateForm($event)" class="space-y-8">
+    <form x-ref="orderForm" @input="checkFormValidity()" action="{{ route('admin.pesanan-autokirim.store') }}" method="POST" @submit="validateForm($event)" class="space-y-8">
         @csrf
 
         <!-- ========================================== -->
@@ -596,7 +596,7 @@
         <!-- ========================================================================= -->
         <!-- ROW 2: SISI BAWAH (METODE PEMBAYARAN & SUBMIT FULL WIDTH LANDSCAPE) -->
         <!-- ========================================================================= -->
-        <div x-show="selectedOngkir > 0" x-transition.duration.300ms class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm mt-6" x-cloak>
+        <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm mt-6">
             <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-8">
                 
                 <!-- BAGIAN KIRI: PILIHAN PEMBAYARAN -->
@@ -607,14 +607,15 @@
                     
                     <div x-show="tipePesanan !== 'cod'" x-transition x-cloak>
                         <!-- TOMBOL PEMICU MODAL PEMBAYARAN -->
-                        <button type="button" @click="showPaymentModal = true" class="flex items-center justify-between w-full border p-4 rounded-lg cursor-pointer hover:bg-gray-50 focus:outline-none transition-all" :class="selectedPayment ? 'border-black ring-1 ring-black shadow-sm' : 'border-gray-300'">
+                        <button type="button" @click="if(formIsValid) showPaymentModal = true" :disabled="!formIsValid" 
+                            class="flex items-center justify-between w-full border p-4 rounded-lg transition-all" 
+                            :class="!formIsValid ? 'bg-gray-100 border-gray-200 opacity-60 cursor-not-allowed' : (selectedPayment ? 'border-black ring-1 ring-black shadow-sm cursor-pointer hover:bg-gray-50' : 'border-gray-300 cursor-pointer hover:bg-gray-50')">
+                            
                             <div class="flex items-center gap-4">
-                                <div class="w-10 h-10 rounded bg-white flex items-center justify-center shrink-0 p-1 border border-gray-100 shadow-sm">
-                                    <!-- Tampil jika belum ada yang dipilih -->
+                                <div class="w-10 h-10 rounded bg-white flex items-center justify-center shrink-0 p-1 border border-gray-100 shadow-sm" :class="!formIsValid ? 'opacity-50' : ''">
                                     <template x-if="!selectedPaymentIcon">
                                         <i class="fa-solid fa-wallet text-gray-400 text-xl"></i>
                                     </template>
-                                    <!-- Tampil jika sudah memilih -->
                                     <template x-if="selectedPaymentIcon">
                                         <div class="w-full h-full flex items-center justify-center">
                                             <template x-if="selectedPaymentIcon.includes('http')">
@@ -627,8 +628,8 @@
                                     </template>
                                 </div>
                                 <div class="flex flex-col text-left">
-                                    <span class="text-sm font-bold text-gray-900 uppercase" x-text="selectedPaymentName || 'PILIH METODE PEMBAYARAN'"></span>
-                                    <span class="text-[11px] text-gray-500 uppercase mt-0.5" x-text="selectedPaymentName ? 'Klik untuk mengganti metode' : 'Pilih metode untuk melanjutkan'"></span>
+                                    <span class="text-sm font-bold uppercase" :class="!formIsValid ? 'text-gray-400' : 'text-gray-900'" x-text="selectedPaymentName || 'PILIH METODE PEMBAYARAN'"></span>
+                                    <span class="text-[11px] uppercase mt-0.5" :class="!formIsValid ? 'text-gray-400' : 'text-gray-500'" x-text="!formIsValid ? 'Isi form alamat & pilih ongkir terlebih dahulu' : (selectedPaymentName ? 'Klik untuk mengganti metode' : 'Pilih metode untuk melanjutkan')"></span>
                                 </div>
                             </div>
                             <i class="fa-solid fa-chevron-right text-gray-400"></i>
@@ -697,14 +698,17 @@
                 <div class="w-full lg:w-1/3 flex flex-col justify-center border-t lg:border-t-0 lg:border-l border-gray-200 pt-6 lg:pt-0 lg:pl-8 mt-4 lg:mt-0">
                     
                     <button type="submit"
-                        :disabled="isSubmitting || (tipePesanan !== 'cod' && (!selectedPayment || (selectedPayment === 'potong_saldo' && grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_access_token)) || selectedPayment === 'dana_binding' @endif))"
-                        class="w-full py-4 rounded-md font-bold text-white transition-all text-sm tracking-widest flex justify-center items-center gap-3 uppercase"
-                        :class="(tipePesanan === 'cod' || (selectedPayment && !(selectedPayment === 'potong_saldo' && grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_access_token)) && selectedPayment !== 'dana_binding' @endif)) ? 'bg-black hover:bg-gray-800 cursor-pointer shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'">
+                        :disabled="!isFormSubmitReady"
+                        class="w-full py-4 rounded-md font-bold transition-all text-sm tracking-widest flex justify-center items-center gap-3 uppercase"
+                        :class="!isFormSubmitReady ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-lg'">
                         
-                        <span x-text="isSubmitting ? 'MEMPROSES...' : 'KIRIM PAKET'"></span>
+                        <span x-text="isSubmitting ? 'MEMPROSES...' : 'SUBMIT PESANAN'"></span>
                         <i class="fa-solid" :class="isSubmitting ? 'fa-spinner fa-spin' : 'fa-arrow-right'"></i>
                     </button>
-                    <p x-show="tipePesanan !== 'cod' && !selectedPayment" class="text-[10px] text-red-500 font-bold text-center mt-3 uppercase tracking-widest">* Wajib pilih metode pembayaran</p>
+                    
+                    <!-- Peringatan Dinamis -->
+                    <p x-show="!formIsValid" class="text-[10px] text-gray-400 font-bold text-center mt-3 uppercase tracking-widest">* Lengkapi form & pilih ongkir</p>
+                    <p x-show="formIsValid && tipePesanan !== 'cod' && !selectedPayment" class="text-[10px] text-red-500 font-bold text-center mt-3 uppercase tracking-widest">* Wajib pilih metode pembayaran</p>
                 </div>
 
             </div>
@@ -964,6 +968,27 @@ document.addEventListener('alpine:init', () => {
 
         // Tambahkan variabel ini di deklarasi awal
         isGeneratingPickup: false,
+        formIsValid: false,
+
+        checkFormValidity() { 
+            if (this.$refs.orderForm) {
+                // Form harus valid DAN ongkir harus sudah terpilih
+                this.formIsValid = this.$refs.orderForm.checkValidity() && this.selectedOngkir > 0;
+            }
+        },
+
+        get isFormSubmitReady() {
+            if (!this.formIsValid) return false;
+            if (this.isSubmitting) return false;
+            if (this.tipePesanan !== 'cod') {
+                if (!this.selectedPayment) return false;
+                if (this.selectedPayment === 'potong_saldo' && this.grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) return false;
+                @if(empty(auth()->user()->dana_access_token))
+                if (this.selectedPayment === 'dana_binding') return false;
+                @endif
+            }
+            return true;
+        },
 
        // Tambahkan fungsi baru ini di dalam Alpine.js
         async autoGeneratePickup() {
@@ -1241,6 +1266,7 @@ document.addEventListener('alpine:init', () => {
             this.selectedCodRate       = this.tempSelected.fee_cod || 0;
 
             this.showModal           = false; // Tutup Modal
+            setTimeout(() => this.checkFormValidity(), 100);
         },
 
        get biayaAsuransi() {
