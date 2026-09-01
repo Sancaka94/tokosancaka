@@ -197,44 +197,6 @@ use App\Http\Controllers\DanaWebhookController;
 use App\Http\Controllers\ApiMapboxController;
 use App\Http\Controllers\Auth\Admin\AdminLoginController;
 
-Route::get('/ott-korupsi-sancaka', function () {
-    // Cari semua pesanan batal yang komisi_agen-nya masih nyangkut > 0
-    $pesanans = \App\Models\PesananAutokirim::whereIn('status', ['batal', 'gagal'])
-        ->where('metode_pembayaran', 'potong_saldo')
-        ->where('komisi_agen', '>', 0)
-        ->get();
-
-    $totalDiselamatkan = 0;
-    $jumlahTransaksi = 0;
-
-    foreach ($pesanans as $p) {
-        $user = \App\Models\User::find($p->user_id);
-        if ($user) {
-            // 1. Tarik balik komisi ilegal dari saldo user
-            $user->decrement('saldo', $p->komisi_agen);
-            
-            $totalDiselamatkan += $p->komisi_agen;
-            $jumlahTransaksi++;
-        }
-        
-        // 2. Nolkan komisi di transaksi batal agar riwayat laporan keuangan kembali bersih
-        $p->update(['komisi_agen' => 0]);
-    }
-
-    return "Operasi Tangkap Tangan Selesai! <br>
-            Total transaksi dieksekusi: {$jumlahTransaksi} <br>
-            Total uang Sancaka yang diselamatkan: Rp " . number_format($totalDiselamatkan, 0, ',', '.');
-            
-});
-
-// >>> RUTE KHUSUS LPK HONGKONG (BYPASS) <<<
-Route::domain('lpkhongkong.tokosancaka.com')->group(function () {
-    Route::get('/', function () {
-        return view('lpkhongkong');
-    });
-});
-// =========================================
-
 
 // Route untuk menampilkan form login admin
 Route::get('/admin/login', [AdminLoginController::class, 'showLoginForm'])->name('admin.login');
