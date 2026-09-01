@@ -436,7 +436,7 @@ class TopUpController extends Controller
                     $lineItems = [
                         ['name' => 'Top Up Saldo', 'price' => $amount, 'quantity' => 1]
                     ];
-                    $successRedirectUrl = route('customer.topup.show', ['topup' => $invoiceNumber]);
+                    $successRedirectUrl = route('doku.return');
 
                     $additionalInfo = [];
                     $store = \App\Models\Store::where('user_id', $user->id_pengguna)->first();
@@ -4606,6 +4606,45 @@ public function createPaymentDanaBinding(Transaction $transaction, $userAccount)
             Log::error('LOG LOG: [MANDIRI VA] Exception: ' . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan sistem koneksi Bank Mandiri.');
         }
+    }
+
+    /**
+     * =========================================================================
+     * TANGKAP RETURN PAGE DOKU JOKUL (FRONTEND REDIRECT)
+     * =========================================================================
+     */
+    public function dokuReturn(Request $request)
+    {
+        // DOKU umumnya mengembalikan parameter 'invoice_number' di query string
+        $invoiceNumber = $request->query('invoice_number');
+
+        if (!$invoiceNumber) {
+            return redirect()->route('customer.topup.index')
+                             ->with('error', 'Sesi pembayaran tidak valid atau referensi tidak ditemukan.');
+        }
+
+        // Cari transaksi berdasarkan invoice number dan pastikan milik user yang login
+        $transaction = Transaction::where('reference_id', $invoiceNumber)
+                                  ->where('user_id', Auth::user()->id_pengguna)
+                                  ->first();
+
+        if (!$transaction) {
+            return redirect()->route('customer.topup.index')
+                             ->with('error', 'Transaksi tidak ditemukan.');
+        }
+
+        // Evaluasi pesan berdasarkan status transaksi saat ini (bisa saja webhook sudah mendahului masuk)
+        if (strtoupper($transaction->status) === 'SUCCESS' || strtoupper($transaction->status) === 'PAID') {
+            return redirect()->route('customer.topup.show', ['topup' => $invoiceNumber])
+                             ->with('success', 'Pembayaran via DOKU berhasil! Saldo Anda telah diperbarui.');
+        } elseif (strtoupper($transaction->status) === 'FAILED') {
+            return redirect()->route('customer.topup.show', ['topup' => $invoiceNumber])
+                             ->with('error', 'Pembayaran dibatalkan atau kedaluwarsa.');
+        }
+
+        // Jika status masih pending (Webhook belum masuk, tapi user sudah kembali ke web)
+        return redirect()->route('customer.topup.show', ['topup' => $invoiceNumber])
+                         ->with('warning', '⏳ Menunggu konfirmasi pembayaran dari DOKU. Silakan muat ulang halaman ini dalam beberapa saat.');
     }
 
 }

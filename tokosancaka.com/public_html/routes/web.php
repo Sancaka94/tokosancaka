@@ -599,6 +599,8 @@ Route::get('/api/cek-saldo-ajax', [\App\Http\Controllers\Customer\ProfileControl
     Route::get('/payment/finish', [PaymentController::class, 'finishPage'])->name('payment.finish');
     Route::post('/payment/create-example', [DokuPaymentController::class, 'createPayment'])->name('doku.create.example');
 
+    Route::get('/doku/return', [\App\Http\Controllers\Customer\TopUpController::class, 'dokuReturn'])->name('doku.return');
+    
     Route::prefix('dana')->name('dana.')->group(function () {
         Route::get('/create-payment/{order}', [DanaController::class, 'createPayment'])->name('payment.create');
         Route::get('/payment-finish', [DanaController::class, 'handleFinishRedirect'])->name('payment.finish');
