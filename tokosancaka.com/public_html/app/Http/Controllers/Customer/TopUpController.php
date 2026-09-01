@@ -436,7 +436,7 @@ class TopUpController extends Controller
                     $lineItems = [
                         ['name' => 'Top Up Saldo', 'price' => $amount, 'quantity' => 1]
                     ];
-                    $successRedirectUrl = route('doku.return');
+                    $successRedirectUrl = route('doku.return', ['invoice_number' => $invoiceNumber]);
 
                     $additionalInfo = [];
                     $store = \App\Models\Store::where('user_id', $user->id_pengguna)->first();
