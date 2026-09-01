@@ -234,16 +234,16 @@
                 <div class="absolute right-0 top-0 -mt-6 -mr-6 opacity-10 transform rotate-12 pointer-events-none">
                     <i class="fas fa-file-invoice-dollar text-9xl text-white"></i>
                 </div>
-                
+
                 <div class="relative z-10 text-white w-full md:w-2/5">
                     <p class="text-sm font-bold uppercase tracking-wider text-red-200 mb-1">Tagihan Real Ekspedisi</p>
                     <p class="text-4xl lg:text-5xl font-bold mb-3 drop-shadow-md">Rp{{ number_format($totalTagihanReal ?? 0, 0, ',', '.') }}</p>
                     <div class="inline-flex items-center bg-red-700 bg-opacity-50 px-3 py-1.5 rounded-md border border-red-500 text-sm shadow-sm">
-                        <i class="fas fa-check-circle text-green-400 mr-2"></i> 
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
                         <span><strong>{{ number_format($countTagihanReal ?? 0, 0, ',', '.') }}</strong> Paket (Terkirim/Selesai)</span>
                     </div>
                 </div>
-                
+
                 <div class="relative z-10 w-full md:w-3/5 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div class="bg-red-700 bg-opacity-60 rounded-lg p-3 lg:p-4 border border-red-500 shadow-inner flex flex-col justify-center">
                         <div class="flex items-center gap-2 mb-1 opacity-80"><i class="fas fa-truck-fast text-red-200"></i><p class="text-xs font-bold uppercase text-red-100">Ongkir Murni</p></div>
@@ -275,7 +275,7 @@
 
         {{-- 2. WRAPPER CARD LAMA & TABEL INVOICE (DISEMBUNYIKAN BY DEFAULT) --}}
         <div id="hiddenCardsContainer" class="hidden mt-6 fade-in">
-            
+
             {{-- TABEL INVOICE (Dari Sebelumnya) --}}
             <div class="mb-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
@@ -304,7 +304,7 @@
 
             {{-- 8 CARD LAMA (Pendapatan & Jumlah) --}}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                
+
                 {{-- Card 1: Selesai --}}
                 <div class="relative overflow-hidden rounded-lg bg-green-500 p-5 shadow-lg group cursor-help transition-all duration-300">
                     <div class="relative z-10 text-white transition-opacity duration-300 group-hover:opacity-0"><p class="text-3xl font-bold">Rp{{ number_format($incomeSelesai ?? 0, 0, ',', '.') }}</p><p class="text-sm font-bold uppercase opacity-90 mt-1">Pendapatan Selesai</p><p class="text-xs opacity-75 mt-0.5">Total nilai pesanan sukses</p></div>
@@ -580,15 +580,13 @@
                         <td class="hidden md:table-cell px-4 py-4 align-middle whitespace-nowrap text-sm font-medium sticky-col bg-gray-50 md:bg-white border-t md:border-none toggle-target-{{$index}}">
                              <span class="md:hidden block font-bold text-gray-500 text-xs mb-2 text-center uppercase border-b pb-2">⚙️ Aksi</span>
                             <div class="flex items-center justify-center md:justify-center space-x-3 md:space-x-3 w-full py-2 md:py-0">
-                                
+
                                 {{-- ======================================================= --}}
-                                {{-- TOMBOL INVOICE/BAYAR (Khusus Menunggu Pembayaran)       --}}
+                                {{-- TOMBOL INVOICE/BAYAR (Tampil di Semua Status)           --}}
                                 {{-- ======================================================= --}}
-                                @if($order->status_pesanan === 'Menunggu Pembayaran')
-                                    <a href="{{ route('invoice.show', $order->nomor_invoice) }}" target="_blank" class="text-red-600 hover:text-red-800 transform hover:scale-125 transition duration-300" title="Buka Invoice & Bayar">
-                                        <i class="fas fa-file-invoice-dollar fa-lg"></i>
-                                    </a>
-                                @endif
+                                <a href="{{ route('invoice.show', $order->nomor_invoice) }}" target="_blank" class="text-red-600 hover:text-red-800 transform hover:scale-125 transition duration-300" title="Lihat Invoice">
+                                    <i class="fas fa-file-invoice-dollar fa-lg"></i>
+                                </a>
 
                                 {{-- Detail --}}
                                 <a href="{{ route('admin.pesanan.show', ['resi' => $order->resi ?? $order->nomor_invoice]) }}" class="text-gray-500 hover:text-blue-600 transform hover:scale-110 transition" title="Detail">
@@ -634,7 +632,7 @@
                     </tbody>
                 </table>
             </div>
-        
+
 
         {{-- Pagination --}}
         @if ($orders->hasPages())
