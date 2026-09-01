@@ -701,7 +701,7 @@
                         class="w-full py-4 rounded-md font-bold text-white transition-all text-sm tracking-widest flex justify-center items-center gap-3 uppercase"
                         :class="(tipePesanan === 'cod' || (selectedPayment && !(selectedPayment === 'potong_saldo' && grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_access_token)) && selectedPayment !== 'dana_binding' @endif)) ? 'bg-black hover:bg-gray-800 cursor-pointer shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'">
                         
-                        <span x-text="isSubmitting ? 'MEMPROSES...' : 'SUBMIT PESANAN'"></span>
+                        <span x-text="isSubmitting ? 'MEMPROSES...' : 'KIRIM PAKET'"></span>
                         <i class="fa-solid" :class="isSubmitting ? 'fa-spinner fa-spin' : 'fa-arrow-right'"></i>
                     </button>
                     <p x-show="tipePesanan !== 'cod' && !selectedPayment" class="text-[10px] text-red-500 font-bold text-center mt-3 uppercase tracking-widest">* Wajib pilih metode pembayaran</p>
@@ -1170,7 +1170,9 @@ document.addEventListener('alpine:init', () => {
 
                 let result = await response.json();
                 if(result.success) {
-                    this.ongkirList = result.data;
+                    // MENGURUTKAN ONGKIR DARI TERMURAH KE TERMAHAL
+                    this.ongkirList = result.data.sort((a, b) => a.harga - b.harga);
+                    
                     this.showModal = true;
                 } else {
                     alert("Gagal memuat tarif kurir: " + result.message);
