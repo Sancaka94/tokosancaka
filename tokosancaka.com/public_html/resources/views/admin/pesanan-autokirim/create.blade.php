@@ -5,7 +5,7 @@
     <div class="mb-8 border-b border-gray-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <!-- Bagian Kiri: Judul dan Deskripsi -->
         <div>
-            <h1 class="text-3xl font-extrabold text-black tracking-tight">Kirim Paket <span class="text-grey-500 font-medium">Sancaka Express</span><span class="text-red-500 font-medium">(Autokirim)</span></h1>
+            <h1 class="text-3xl font-extrabold text-black tracking-tight">Kirim Paket <span class="text-grey-500 font-medium">Sancaka Express </span><span class="text-red-500 font-medium"> (Autokirim)</span></h1>
             <p class="text-gray-500 mt-2 text-sm">Isi detail pengiriman dengan cepat, akurat, dan dapatkan tarif terbaik dari server logistik.</p>
         </div>
 
