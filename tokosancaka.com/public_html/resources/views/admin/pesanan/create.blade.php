@@ -1,698 +1,1232 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice #{{ $pesanan->nomor_invoice }}</title>
+@extends('layouts.admin')
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+@section('title', 'Tambah Pesanan Baru')
+@section('page-title', 'Buat Pesanan Baru')
 
-    {{-- LIBRARY WAJIB UNTUK BARCODE & QR CODE --}}
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+@push('styles')
+{{-- Font Awesome untuk ikon --}}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+    /* Style untuk hasil pencarian custom, karena butuh absolute positioning */
+    .search-results-container {
+        position: absolute;
+        z-index: 1000;
+        width: 100%;
+        max-height: 250px;
+        overflow-y: auto;
+        background-color: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 0 0 0.5rem 0.5rem; /* rounded bottom */
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        margin-top: -1px; /* Nempel dengan input */
+    }
+    .modal-body-scroll {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    /* Style untuk tombol yang non-aktif */
+    #confirmBtn:disabled {
+        background-color: #bebebeff; /* gray-400 */
+        cursor: not-allowed;
+    }
+</style>
+@endpush
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+{{-- 🔥 TAMBAHAN KODE PENGAMAN (IDEMPOTENCY) 🔥 --}}
+@php
+    // Membuat kunci unik (UUID) untuk mencegah dobel input saat admin submit form
+    if (!isset($idempotencyKey)) {
+        $idempotencyKey = (string) \Illuminate\Support\Str::uuid();
+    }
+@endphp
 
-        body {
-            font-family: 'Inter', sans-serif;
-        }
+@section('content')
 
-        /* Desain Pita (Ribbon) UNPAID / LUNAS / REFUND */
-        .ribbon-wrapper {
-            position: absolute; right: -5px; top: -5px; z-index: 20;
-            overflow: hidden; width: 150px; height: 150px; text-align: right;
-        }
-        .ribbon {
-            font-size: 0.9rem; font-weight: 800; color: #FFF;
-            text-transform: uppercase; text-align: center; line-height: 36px;
-            transform: rotate(45deg); -webkit-transform: rotate(45deg);
-            width: 200px; display: block; background: #dc2626; /* Merah */
-            position: absolute; top: 25px; right: -45px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            letter-spacing: 1px;
-        }
-        .ribbon.paid { background: #16a34a; } /* Hijau */
-        .ribbon.cancelled { background: #ef4444; } /* Merah */
+@include('layouts.partials.notifications')
 
-        @media print {
-            @page { size: A4 portrait; margin: 10mm; }
-            body {
-                background: white !important; padding: 0 !important; margin: 0 !important;
-                -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
-                zoom: 0.90; /* Memperkecil skala 10% agar pasti muat 1 halaman */
-            }
-            .no-print { display: none !important; }
+<div class="max-w-7xl mx-auto">
+    <form id="orderForm" action="{{ route('admin.pesanan.store') }}" method="POST">
+        @csrf
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            /* Hilangkan border & shadow container utama saat diprint */
-            .print-container {
-                box-shadow: none !important; max-width: 100% !important; width: 100% !important;
-                margin: 0 !important; padding: 0 !important; border: none !important;
-            }
+            <!-- Kolom Kiri: Pengirim & Penerima -->
+            <div class="lg:col-span-2 space-y-8">
 
-            /* 1. PAKSA TAMPILAN DESKTOP (Abaikan mode HP) */
-            .md\:flex-row { flex-direction: row !important; display: flex !important; }
-            .flex-col-reverse.md\:flex-row { flex-direction: row !important; }
-            .md\:grid-cols-2 { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-            .md\:w-1\/2 { width: 50% !important; }
-            .md\:w-3\/4 { width: 75% !important; }
-            .md\:w-1\/4 { width: 25% !important; }
-            .md\:w-\[320px\] { width: 280px !important; }
-            .md\:items-center { align-items: center !important; }
-
-            /* 2. RAPATKAN JARAK AGAR MUAT 1 HALAMAN KERTAS */
-            .gap-8 { gap: 1.5rem !important; }
-            .mb-10, .mb-12, .mb-8 { margin-bottom: 15px !important; }
-            .pb-8 { padding-bottom: 15px !important; }
-            .pt-8 { padding-top: 15px !important; }
-            .py-6, .py-8 { padding-top: 10px !important; padding-bottom: 10px !important; }
-            .mt-12 { margin-top: 20px !important; }
-
-            /* 3. SESUAIKAN UKURAN TEKS */
-            * { font-size: 11px !important; line-height: 1.4 !important; }
-            h2.text-2xl { font-size: 18px !important; margin-bottom: 4px !important; }
-            .text-\[13px\] { font-size: 11px !important; }
-            .text-sm { font-size: 11px !important; }
-            .text-base { font-size: 12px !important; }
-
-            /* 4. CEGAH ELEMEN TERPOTONG / PECAH HALAMAN */
-            table, .grid, .print-header, .ribbon-wrapper { page-break-inside: avoid !important; }
-            .ribbon-wrapper { right: -5px !important; top: -5px !important; }
-        }
-
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #fafafa; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #d4d4d4; }
-    </style>
-</head>
-<body class="bg-slate-700 py-8 text-black">
-
-    @php
-        // Rumus Sensor Nama Baru (Ambil huruf depan)
-        $maskName = function($name) {
-            if (empty($name)) return '';
-            $words = explode(' ', $name);
-            foreach ($words as &$word) {
-                if (strlen($word) > 1) {
-                    $word = substr($word, 0, 1) . str_repeat('*', strlen($word) - 1);
-                }
-            }
-            return implode(' ', $words);
-        };
-
-        // 1. Pengecekan Ekspedisi & Alamat
-        $ship = \App\Helpers\ShippingHelper::parseShippingMethod($pesanan->expedition);
-        $expeditionName = $ship['courier_name'] ?? 'SANCAKA';
-        $expeditionService = $ship['service_name'] ?? 'Regular';
-
-        $courierMap = [
-            'jne' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jne.png',
-            'tiki' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/tiki.png',
-            'pos' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png',
-            'posindonesia' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/posindonesia.png',
-            'sicepat' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sicepat.png',
-            'sap' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/sap.png',
-            'jnt' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png',
-            'j&t' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jnt.png',
-            'jtcargo' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/jtcargo.png',
-            'lion' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/lion.png',
-            'spx' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/spx.png',
-            'ninja' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/ninja.png',
-            'anteraja' => 'https://tokosancaka.com/public/storage/logo-ekspedisi/anteraja.png',
-        ];
-
-        $normalizedName = strtolower(str_replace(' ', '', $expeditionName));
-        $finalLogoUrl = $ship['logo_url'] ?? asset('public/storage/logo-ekspedisi/' . $normalizedName . '.png');
-
-        if (str_contains($normalizedName, 'cargo') && (str_contains($normalizedName, 'j&t') || str_contains($normalizedName, 'jt'))) {
-            $finalLogoUrl = $courierMap['jtcargo'];
-        } else {
-            foreach ($courierMap as $key => $url) {
-                if (str_contains($normalizedName, $key)) { $finalLogoUrl = $url; break; }
-            }
-        }
-
-        $senderAddress = implode(', ', array_filter([$pesanan->sender_address, $pesanan->sender_village, $pesanan->sender_district, $pesanan->sender_regency, $pesanan->sender_province, $pesanan->sender_postal_code]));
-        $receiverAddress = implode(', ', array_filter([$pesanan->receiver_address, $pesanan->receiver_village, $pesanan->receiver_district, $pesanan->receiver_regency, $pesanan->receiver_province, $pesanan->receiver_postal_code]));
-
-        // 2. CEK STATUS DASAR (Database pesanan)
-        $statusPesanan = strtolower($pesanan->status ?? '');
-        $isCancelled = in_array($statusPesanan, ['batal', 'cancel', 'gagal', 'dibatalkan', 'cancelled']);
-
-        // 3. OVERRIDE DENGAN STATUS REALTIME TRACKING API / DATABASE HISTORI
-        $statusText = $pesanan->status ?? 'Diproses / Menunggu Manifest';
-
-        if (!empty($pesanan->resi) || !empty($pesanan->nomor_invoice)) {
-            try {
-                $resi = $pesanan->resi;
-                $nomorInvoice = $pesanan->nomor_invoice ?? $resi;
-                $expeditionRaw = strtolower($pesanan->expedition ?? $pesanan->jasa_ekspedisi_aktual ?? $pesanan->service_type ?? '');
-
-                $apiStatusDitemukan = false;
-
-                // --- PRIORITAS 1: TEMBAK API LANGSUNG (KIRIMINAJA DLL) ---
-                if (!str_contains($expeditionRaw, 'deliveree') &&
-                    !str_contains($expeditionRaw, 'lalamove') &&
-                    !str_contains($expeditionRaw, 'ipaymu') &&
-                    !str_contains($expeditionRaw, 'komship') &&
-                    !isset($pesanan->is_autokirim)) {
-
-                    if (class_exists(\App\Services\KiriminAjaService::class)) {
-                        $kiriminAja = new \App\Services\KiriminAjaService();
-                        $serviceType = $pesanan->service_type ?? 'regular';
-                        if (str_contains($serviceType, '-')) {
-                            $serviceType = explode('-', $serviceType)[0];
-                        }
-
-                        $trackingData = $kiriminAja->track($serviceType, $nomorInvoice);
-
-                        if (!$trackingData || !isset($trackingData['status']) || $trackingData['status'] !== true) {
-                            if($resi) {
-                                $trackingData = $kiriminAja->track($serviceType, $resi);
-                            }
-                        }
-
-                        if ($trackingData && isset($trackingData['status']) && $trackingData['status'] === true) {
-                            if (isset($trackingData['text']) && !empty($trackingData['text'])) {
-                                $statusText = $trackingData['text'];
-                                $apiStatusDitemukan = true;
-                            } elseif (isset($trackingData['histories']) && is_array($trackingData['histories']) && count($trackingData['histories']) > 0) {
-                                $statusText = $trackingData['histories'][0]['status'];
-                                $apiStatusDitemukan = true;
-                            }
-                        }
-                    }
-                }
-
-                // --- PRIORITAS 2: JIKA API GAGAL, BARU CEK DB LOKAL ---
-                if (!$apiStatusDitemukan && $resi) {
-                    $cekDb = \Illuminate\Support\Facades\DB::table('tracking_histories')
-                                ->where('resi', $resi)
-                                ->orderBy('created_at', 'desc')
-                                ->first();
-
-                    if ($cekDb && isset($cekDb->status)) {
-                        $statusText = $cekDb->status;
-                    } elseif (class_exists(\App\Models\ScannedPackage::class)) {
-                        $scanned = \App\Models\ScannedPackage::where('resi_number', $resi)->orderBy('created_at', 'desc')->first();
-                        if ($scanned) {
-                            $statusText = $scanned->status;
-                        }
-                    }
-                }
-
-                // --- PENENTUAN STATUS BATAL (REFUND MERAH) ---
-                $rtStatusLower = strtolower($statusText);
-                if (str_contains($rtStatusLower, 'cancel') || str_contains($rtStatusLower, 'batal') || str_contains($rtStatusLower, 'retur') || str_contains($rtStatusLower, 'gagal')) {
-                    $isCancelled = true;
-                }
-
-            } catch(\Exception $e) {
-                // Abaikan error agar halaman tidak mati
-            }
-        }
-    @endphp
-
-    <div class="max-w-4xl mx-auto mb-6 flex flex-col sm:flex-row justify-between items-center no-print px-4 md:px-0 gap-3">
-        <a href="javascript:history.back()" class="w-full sm:w-auto text-center bg-white border border-gray-200 text-black px-4 py-2 rounded-md hover:bg-gray-50 text-sm font-medium transition">
-            <i class="fas fa-arrow-left mr-2"></i> Kembali
-        </a>
-        <button onclick="window.print()" class="w-full sm:w-auto text-center bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 text-sm font-medium transition">
-            <i class="fas fa-print mr-2"></i> Print Invoice
-        </button>
-    </div>
-
-    <div class="max-w-4xl mx-auto bg-white p-8 md:p-12 print-container relative border border-gray-200">
-
-        <div class="ribbon-wrapper no-print">
-            <div class="ribbon {{ $isCancelled ? 'cancelled' : ($statusLunas ? 'paid' : '') }}">
-                {{ $isCancelled ? 'REFUND' : ($statusLunas ? 'LUNAS' : 'UNPAID') }}
-            </div>
-        </div>
-
-        <div class="print-header flex flex-col md:flex-row justify-between items-start mb-10 pb-8 border-b border-gray-100 gap-8">
-
-            <div class="w-full md:w-1/2">
-                <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka Express" class="h-16 mb-5 object-contain" onerror="this.src='https://placehold.co/200x50/FFFFFF/000000?text=SANCAKA+EXPRESS'">
-                <div class="text-[13px] text-gray-500 leading-relaxed">
-                    <p class="font-bold text-black uppercase tracking-wide">Sancaka Express Powered By CV SANCAKA KARYA HUTAMA</p>
-                    <p>Jl. Dr. Wahidin No. 18A, Ketanggi Kabupaten Ngawi, Jawa Timur 63211</p>
-                    <p class="font-medium text-black mt-1">Helpdesk: 08574580809</p>
-                </div>
-            </div>
-
-            <div class="w-full md:w-[320px] pt-2 md:pt-8 relative z-10 no-print">
-                @if($isCancelled)
-                    <div class="border border-gray-200 bg-gray-50 p-4 rounded-md text-right">
-                        <h4 class="text-sm font-bold text-black uppercase tracking-wider mb-1">Dibatalkan & Refund</h4>
-                        <p class="text-xs text-gray-500">Status: {{ $statusText }}</p>
+                <!-- Informasi Pengirim -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center border-b pb-4 mb-6">
+                        <h3 class="text-xl font-semibold text-gray-800">
+                            <i class="fas fa-arrow-up-from-bracket text-red-500 mr-2"></i>Informasi Pengirim
+                        </h3>
                     </div>
-                @else
-                    @if(session('error'))
-                        <div class="border border-gray-300 bg-gray-50 text-black px-3 py-2 rounded-md mb-3 text-xs font-medium">
-                            {{ session('error') }}
-                        </div>
-                    @endif
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                    @if(!$statusLunas && empty($pesanan->payment_url) && !in_array($pesanan->payment_method, ['COD', 'CODBARANG', 'Cash', 'Potong Saldo']))
-                        <div class="text-right mb-2">
-                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Selesaikan Pembayaran</p>
+                     <div class="relative">
+                        <label for="sender_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Pengirim </label>
+                        <div class="relative">
+                            <input type="text" id="sender_name" name="sender_name"
+                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
+                            <i class="fas fa-user text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
                         </div>
-                        <form id="invoice-payment-form" action="{{ route('invoice.proses_bayar', $pesanan->nomor_invoice) }}" method="POST">
-                            @csrf
-                            <button type="button" id="paymentMethodButton" class="w-full bg-white border border-gray-200 hover:border-black p-3 rounded-md flex items-center justify-between transition-colors mb-3 group">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-6 h-6 flex items-center justify-center">
-                                        <img id="paymentMethodImg" src="https://tokosancaka.com/public/assets/saldo.png" class="max-w-full max-h-full">
-                                    </div>
-                                    <span id="paymentMethodLabel" class="text-sm font-semibold text-black">Pilih Ban...</span>
+                        <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Hanya boleh huruf dan spasi. Angka & simbol otomatis dihapus.</p>
+                        <div id="sender_contact_results" class="search-results-container hidden"></div>
+                    </div>
+
+                    <div class="relative">
+                        <label for="sender_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
+                        <div class="relative">
+                            <input type="tel" id="sender_phone" name="sender_phone"
+                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
+                            <i class="fas fa-phone-alt text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                        </div>
+                    </div>
+
+                    <div class="md:col-span-2 relative">
+                        <label for="sender_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
+                        <div class="relative">
+                            <input type="text" id="sender_address_search"
+                            class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md" required autocomplete="off">
+                            <i class="fas fa-search text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            <i id="sender_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
+                        </div>
+                        <div id="sender_address_results" class="search-results-container hidden"></div>
+                    </div>
+
+                    <div class="md:col-span-2 relative">
+                        <label for="sender_address" class="block mb-2 text-sm font-medium text-gray-700">Detail Alamat Lengkap Pengirim</label>
+                        <div class="relative">
+                            <textarea id="sender_address" name="sender_address" rows="3" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required
+                                class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 pl-10 text-sm text-gray-900 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md transition duration-150 ease-in-out"></textarea>
+                            <i class="fas fa-map-marker-alt text-gray-400 absolute top-3.5 left-3"></i>
+                        </div>
+                        <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.</p>
+                    </div>
+
+                    <div class="md:col-span-2 relative">
+                        <label for="customer_email" class="block mb-2 text-sm font-medium text-gray-700">Email Notifikasi Pelanggan (Opsional)</label>
+                        <div class="relative">
+                            <input type="email" id="customer_email" name="customer_email" value="tokosancaka@gmail.com"
+                                class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-300 focus:shadow-md"
+                                placeholder="contoh@gmail.com" autocomplete="off">
+                            <i class="fas fa-envelope text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Jika diisi, resi & rincian pesanan akan otomatis dikirim ke email ini.</p>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_sender" value="1" checked class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data pengirim ini</label>
+                    </div>
+                    </div>
+                </div>
+
+                <!-- Informasi Penerima -->
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center border-b pb-4 mb-6">
+                        <h3 class="text-xl font-semibold text-gray-800">
+                            <i class="fas fa-map-marker-alt text-green-500 mr-2"></i>Informasi Penerima
+                        </h3>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div class="relative">
+                            <label for="receiver_name" class="block mb-2 text-sm font-medium text-gray-700">Nama Penerima</label>
+                            <div class="relative">
+                                <input type="text" id="receiver_name" name="receiver_name"
+                                class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md" required autocomplete="off">
+                                <i class="fas fa-user text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
+                            <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-info-circle mr-1"></i>Hanya boleh huruf dan spasi. Angka & simbol otomatis dihapus.</p>
+                            <div id="receiver_contact_results" class="search-results-container hidden"></div>
+                        </div>
+
+                        <div class="relative">
+                            <label for="receiver_phone" class="block mb-2 text-sm font-medium text-gray-700">Nomor HP</label>
+                            <div class="relative">
+                                <input type="tel" id="receiver_phone" name="receiver_phone"
+                                class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md" required autocomplete="off">
+                                <i class="fas fa-phone-alt text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
+                        </div>
+
+                        <div class="md:col-span-2 relative">
+                            <label for="receiver_address_search" class="block mb-2 text-sm font-medium text-gray-700">Cari Alamat Ongkir (Kec/Kel/Kodepos)</label>
+                            <div class="relative">
+                                <input type="text" id="receiver_address_search"
+                                class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md" required autocomplete="off">
+                                <i class="fas fa-search text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                                <i id="receiver_address_check" class="fas fa-check-circle text-green-500 absolute top-1/2 right-3 transform -translate-y-1/2 hidden"></i>
+                            </div>
+                            <div id="receiver_address_results" class="search-results-container hidden"></div>
+                        </div>
+
+                        <div class="md:col-span-2 relative">
+                            <label for="receiver_address" class="block mb-2 text-sm font-medium text-gray-700">Alamat Penerima Lengkap</label>
+                            <div class="relative">
+                                <textarea id="receiver_address" name="receiver_address" rows="3"
+                                class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 pl-10 text-sm text-gray-900 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-300 focus:shadow-md transition duration-150 ease-in-out" placeholder="Contoh: Jl. Pahlawan No. 12, RT 01/RW 05, (Patokan: Sebelah Kantor Pos)" required></textarea>
+                                <i class="fas fa-map-marker-alt text-gray-400 absolute top-3.5 left-3"></i>
+                            </div>
+                            <p class="text-xs text-red-500 mt-1 italic"><i class="fas fa-exclamation-circle mr-1"></i>Alamat wajib kapital & minimal 10 karakter.</p>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="flex items-center text-sm text-gray-600"><input type="checkbox" name="save_receiver" value="1" checked class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500 mr-2"> Simpan data penerima ini</label>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Kolom Kanan: Detail Paket & Pembayaran -->
+            <div class="lg:col-span-1 space-y-8">
+                <div class="bg-white p-6 rounded-lg shadow-md sticky top-8">
+                    <h3 class="text-xl font-semibold text-gray-800 border-b pb-4 mb-6">
+                        <i class="fas fa-box-open text-yellow-500 mr-2"></i>Detail Paket
+                    </h3>
+                    <div class="space-y-4">
+
+                       <div>
+                            <label for="item_description" class="block mb-2 text-sm font-medium text-gray-700">Deskripsi Barang</label>
+                            <div class="relative">
+                                <input type="text" id="item_description" name="item_description" value="Barang Umum"
+                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required>
+                                <i class="fas fa-box text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="item_price" class="block mb-2 text-sm font-medium text-gray-700">Harga Barang (Rp)</label>
+                            <div class="relative">
+                                <input type="number" name="item_price" id="item_price" value="1000"
+                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required min="1">
+                                <i class="fas fa-tag text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="weight" class="block mb-2 text-sm font-medium text-gray-700">Berat (gram)</label>
+                            <div class="relative">
+                                <input type="number" id="weight" name="weight" value="1000"
+                                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required min="1">
+                                <i class="fas fa-weight-hanging text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label for="length" class="block mb-2 text-sm font-medium text-gray-700">P (cm)</label>
+                                <div class="relative">
+                                    <input type="number" id="length" name="length" value="10"
+                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-8">
+                                    <i class="fas fa-arrows-alt-h text-gray-400 absolute top-1/2 left-2.5 transform -translate-y-1/2 text-xs"></i>
                                 </div>
-                                <i class="fas fa-chevron-down text-gray-400 group-hover:text-black text-xs"></i>
+                            </div>
+                            <div>
+                                <label for="width" class="block mb-2 text-sm font-medium text-gray-700">L (cm)</label>
+                                <div class="relative">
+                                    <input type="number" id="width" name="width" value="10"
+                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-8">
+                                    <i class="fas fa-arrows-alt-h text-gray-400 absolute top-1/2 left-2.5 transform -translate-y-1/2 text-xs" style="transform: translateY(-50%) rotate(45deg);"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="height" class="block mb-2 text-sm font-medium text-gray-700">T (cm)</label>
+                                <div class="relative">
+                                    <input type="number" id="height" name="height" value="10"
+                                        class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-8">
+                                    <i class="fas fa-arrows-alt-v text-gray-400 absolute top-1/2 left-2.5 transform -translate-y-1/2 text-xs"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="item_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Barang</label>
+                            <div class="relative">
+                                <select name="item_type" id="item_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required>
+                                    <option value="" disabled>Pilih...</option>
+                                    <option value="1">Peralatan Elektronik & Gadget</option>
+                                    <option value="2">Pakaian / Baju / Kain</option>
+                                    <option value="3">Pecah Belah</option>
+                                    <option value="4">Dokumen / Berkas / Buku</option>
+                                    <option value="5">Peralatan Rumah Tangga</option>
+                                    <option value="6">Aksesoris</option>
+                                    <option value="7" selected>Lain-Lain</option>
+                                    <option value="8">Dokumen Berharga</option>
+                                    <option value="9">Peralatan Kesehatan / Kecantikan / Kosmetik</option>
+                                    <option value="10">Peralatan Olahraga & Hiburan</option>
+                                    <option value="11">Perlengkapan Mobil & Motor</option>
+                                </select>
+                                <i class="fas fa-list-ul text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="service_type" class="block mb-2 text-sm font-medium text-gray-700">Jenis Layanan</label>
+                            <div class="relative">
+                                <select name="service_type" id="service_type" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required>
+                                    <option value="" disabled>Pilih...</option>
+                                    <option value="regular" selected>Regular</option>
+                                    <option value="express">Express</option>
+                                    <option value="sameday">Sameday</option>
+                                    <option value="instant">Instant</option>
+                                    <option value="cargo">Cargo</option>
+                                </select>
+                                <i class="fas fa-truck text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="ansuransi" class="block mb-2 text-sm font-medium text-gray-700">Asuransi</label>
+                            <div class="relative">
+                                <select name="ansuransi" id="ansuransi" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10" required>
+                                    <option value="tidak" selected>Tidak</option>
+                                    <option value="iya">Iya</option>
+                                </select>
+                                <i class="fas fa-shield-alt text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2"></i>
+                            </div>
+                        </div>
+                        <hr/>
+                        <div>
+                            <label for="selected_expedition_display" class="block mb-2 text-sm font-medium text-gray-700">Pilih Ekspedisi</label>
+                            <input type="text" id="selected_expedition_display" class="cursor-pointer bg-red-50 border border-red-300 text-red-600 text-sm rounded-lg block w-full p-2.5 text-center font-semibold" placeholder="Lengkapi data & klik di sini" readonly required>
+                        </div>
+                        {{--<div>
+                            <label for="paymentMethodButton" class="block mb-2 text-sm font-medium text-gray-700">Metode Pembayaran</label>
+                            <div id="paymentMethodButton" class="cursor-pointer bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg w-full p-2.5 flex justify-between items-center">
+                                <div class="flex items-center"><img id="selectedPaymentLogo" src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" alt="Logo" class="w-6 h-6 mr-2"><span id="selectedPaymentName">Pilih...</span></div><i class="fas fa-chevron-down text-gray-400"></i>
+                            </div>
+                        </div>
+                        --}}
+
+                        <div>
+                            <label for="payment_method" class="block mb-2 text-sm font-medium text-gray-700">Metode Pembayaran</label>
+                            <div class="relative">
+                                <select name="payment_method" id="payment_method" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 pl-10 pr-8 appearance-none cursor-pointer focus:ring-red-500 focus:border-red-500" required>
+                                    <option value="" disabled selected>Pilih Metode...</option>
+                                    <option value="Online">📱 Payment Gateway</option>
+                                    <option value="Potong Saldo">💳 Potong Saldo Customer</option>
+                                    <option value="Cash">💵 Cash (Tanpa Saldo)</option>
+                                    <option value="COD">🚚 COD Ongkir Saja</option>
+                                    <option value="CODBARANG">📦 COD Barang + Ongkir</option>
+                                </select>
+                                
+                                <!-- Icon Dompet di Kiri -->
+                                <i class="fas fa-wallet text-gray-400 absolute top-1/2 left-3 transform -translate-y-1/2 pointer-events-none"></i>
+                                
+                                <!-- Icon Panah Custom di Kanan -->
+                                <i class="fas fa-chevron-down text-gray-400 absolute top-1/2 right-3 transform -translate-y-1/2 pointer-events-none text-xs"></i>
+                            </div>
+                        </div>
+
+                        {{--   <div id="customer_container" class="md:col-span-2 hidden">
+                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">Pelanggan (Wajib untuk Potong Saldo)</label>
+                            <select id="customer_id" name="customer_id" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5">
+                                <option value="">-- Pilih Pelanggan --</option>
+                                @foreach($customers as $customer)
+                                    <option value="{{ $customer->id_pengguna }}">
+                                        {{ $customer->nama_lengkap }} (Saldo: Rp {{ number_format($customer->saldo ?? 0) }})
+                                    </option>
+
+                                @endforeach
+                            </select>
+                        </div> --}} 
+
+                        <!-- WADAH PENCARIAN CUSTOMER (AJAX SELECT2) -->
+                        <div id="customer_container" class="md:col-span-2 hidden mt-2">
+                            <label for="customer_id" class="block mb-2 text-sm font-medium text-gray-700">
+                                <i class="fas fa-users text-red-600 mr-1"></i> Pilih Pelanggan (Pemilik Saldo)
+                            </label>
+                            <select id="customer_id" name="customer_id" class="w-full bg-white border border-gray-300 text-gray-900 text-sm rounded-lg"></select>
+                            <p class="text-xs text-gray-500 mt-2"><i class="fas fa-info-circle mr-1"></i>Ketik nama, nama toko, atau No. WA untuk memfilter data.</p>
+                        </div>
+
+                        <div class="pt-4">
+                            <button type="button" id="confirmBtn" class="w-full text-white bg-red-600 hover:bg-red-700 font-medium rounded-lg text-sm px-5 py-3 text-center" disabled>
+                                Buat Pesanan
                             </button>
-                            <input type="hidden" name="payment_method" id="payment_method" required>
-                            <button type="submit" id="submit-button" class="w-full bg-black text-white font-medium py-2.5 px-4 rounded-md text-sm hover:bg-gray-800 transition-colors disabled:opacity-50">
-                                Bayar Tagihan
-                            </button>
-                        </form>
-
-                    @elseif(!$statusLunas && !empty($pesanan->payment_url))
-                        <div class="border border-gray-200 bg-gray-50 p-4 rounded-md text-center">
-                            @if($pesanan->payment_method == 'BCA_QRIS')
-                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Scan QR Code BCA</p>
-                                <div class="bg-white p-2 rounded border border-gray-200 inline-block mb-2">
-                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ urlencode($pesanan->payment_url) }}" alt="QRIS" class="w-24 h-24">
-                                </div>
-                            @else
-                                <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Pembayaran via {{ str_replace('_', ' ', $pesanan->payment_method) }}</p>
-                                <a href="{{ $pesanan->payment_url }}" class="block bg-black text-white font-medium py-2.5 px-4 rounded-md text-sm hover:bg-gray-800 transition-colors mt-2">
-                                    Lanjut Bayar &rarr;
-                                </a>
-                            @endif
                         </div>
-
-                    @elseif(!$statusLunas)
-                        <div class="border border-gray-200 bg-gray-50 p-4 rounded-md text-right">
-                            <p class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">Menunggu Verifikasi</p>
-                            <p class="text-sm font-semibold text-black">{{ $pesanan->payment_method }}</p>
-                        </div>
-                    @endif
-                @endif
-            </div>
-        </div>
-
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
-            <div>
-                <h2 class="text-2xl font-black text-black tracking-tight mb-2">INVOICE #{{ $pesanan->nomor_invoice }}</h2>
-                <div class="text-[13px] text-gray-500 flex flex-col gap-1">
-                    <p><span class="w-24 inline-block font-medium text-black">Tgl Order</span>: {{ \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->format('d M Y, H:i') }}</p>
-                    <p><span class="w-24 inline-block font-medium text-black">Batas Bayar</span>: {{ \Carbon\Carbon::parse($pesanan->tanggal_pesanan)->addDays(1)->format('d M Y, H:i') }}</p>
-                </div>
-            </div>
-
-            <div class="w-full md:w-auto p-4 border border-gray-200 rounded-md text-center bg-gray-50/50 min-w-[200px]">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">NO. RESI (AWB)</p>
-
-                @if($isCancelled)
-                    <p class="text-sm font-bold text-black uppercase">REFUND / BATAL</p>
-                @elseif($statusLunas && $pesanan->resi)
-                    <div class="bg-white rounded border border-gray-200 p-2 mb-2">
-                        <svg id="barcodeResi" class="w-full max-w-[180px] mx-auto h-10"></svg>
-                    </div>
-                    <a href="https://tokosancaka.com/tracking/search?resi={{ $pesanan->resi }}" target="_blank" class="text-[11px] font-bold text-black hover:underline uppercase tracking-wide">
-                        Lacak Pengiriman &rarr;
-                    </a>
-                @else
-                    <p class="text-xs font-medium text-gray-500 italic">Diterbitkan setelah lunas</p>
-                @endif
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-            <div>
-                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-2">Pengirim (Invoiced To)</p>
-                <p class="font-bold text-base text-black uppercase">{{ $maskName($pesanan->sender_name) }}</p>
-                <p class="text-gray-500 mt-2 text-[13px] leading-relaxed">{{ $senderAddress }}</p>
-                <p class="mt-2 text-[13px] font-medium text-black">{{ substr($pesanan->sender_phone, 0, 4) }}*** *** ***</p>
-            </div>
-            <div>
-                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-100 pb-2">Penerima (Ship To)</p>
-                <p class="font-bold text-base text-black uppercase">{{ $maskName($pesanan->receiver_name) }}</p>
-                <p class="text-gray-500 mt-2 text-[13px] leading-relaxed">{{ $receiverAddress }}</p>
-                <p class="mt-2 text-[13px] font-medium text-black">{{ substr($pesanan->receiver_phone, 0, 4) }}*** *** ***</p>
-            </div>
-        </div>
-
-        <div class="mb-10 border border-gray-200 rounded-xl overflow-hidden">
-            <table class="w-full text-sm text-left">
-                <thead class="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                        <th class="py-4 px-6 font-bold text-black uppercase text-[11px] tracking-wider w-3/4">Rincian Layanan</th>
-                        <th class="py-4 px-6 font-bold text-black uppercase text-[11px] tracking-wider w-1/4 text-right">Biaya</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100 bg-white">
-                    <tr>
-                        <td class="py-6 px-6 align-top">
-                            <div class="flex items-start gap-4 mb-4">
-                                <div class="w-16 h-16 flex-shrink-0 flex items-center justify-center border border-gray-200 rounded-lg p-2 bg-white shadow-sm">
-                                    <img src="{{ $finalLogoUrl }}" class="max-h-full max-w-full object-contain" alt="Ekspedisi" onerror="this.style.display='none'">
-                                </div>
-                                <div class="w-full pt-1">
-                                    <h4 class="font-bold text-black text-sm uppercase mb-1">{{ $expeditionName }} - {{ $expeditionService }}</h4>
-                                    <p class="text-[11px] text-gray-500">Layanan Pengiriman Ekspedisi</p>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-8 text-[12px] bg-[#f8fafc] p-4 rounded-xl border border-gray-100">
-                                <div class="flex">
-                                    <span class="font-bold text-gray-800 w-24 flex-shrink-0">Isi Paket:</span>
-                                    <span class="text-gray-600">{{ $pesanan->item_description }}</span>
-                                </div>
-                                <div class="flex">
-                                    <span class="font-bold text-gray-800 w-24 flex-shrink-0">Berat:</span>
-                                    <span class="text-gray-600">{{ number_format($pesanan->weight, 0, ',', '.') }} Gram</span>
-                                </div>
-                                <div class="flex">
-                                    <span class="font-bold text-gray-800 w-24 flex-shrink-0">Dimensi:</span>
-                                    <span class="text-gray-600">{{ $pesanan->length ?? 0 }}x{{ $pesanan->width ?? 0 }}x{{ $pesanan->height ?? 0 }} cm</span>
-                                </div>
-                                <div class="flex">
-                                    <span class="font-bold text-gray-800 w-24 flex-shrink-0">Nilai Brg:</span>
-                                    <span class="text-gray-600">Rp {{ number_format($pesanan->item_price, 0, ',', '.') }}</span>
-                                </div>
-                                <div class="flex">
-                                    <span class="font-bold text-gray-800 w-24 flex-shrink-0">Layanan:</span>
-                                    <span class="text-gray-600 uppercase">{{ $pesanan->service_type ?? $expeditionService }}</span>
-                                </div>
-                                <div class="flex">
-                                    <span class="font-bold text-gray-800 w-24 flex-shrink-0">Asuransi:</span>
-                                    <span class="text-gray-600">{{ $pesanan->insurance_cost > 0 ? 'Ya' : 'Tidak' }}</span>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="py-6 px-6 text-right align-top font-semibold text-black text-[13px]">
-                            Rp {{ number_format($pesanan->shipping_cost, 0, ',', '.') }}
-                        </td>
-                    </tr>
-
-                    @if($pesanan->insurance_cost > 0)
-                    <tr class="bg-white">
-                        <td class="py-4 px-6 text-gray-500 text-[13px] font-medium text-right">Biaya Asuransi</td>
-                        <td class="py-4 px-6 text-right font-semibold text-black text-[13px]">Rp {{ number_format($pesanan->insurance_cost, 0, ',', '.') }}</td>
-                    </tr>
-                    @endif
-
-                    @if($pesanan->cod_fee > 0)
-                    <tr class="bg-white">
-                        <td class="py-4 px-6 text-gray-500 text-[13px] font-medium text-right">Biaya Penanganan (Fee)</td>
-                        <td class="py-4 px-6 text-right font-semibold text-black text-[13px]">Rp {{ number_format($pesanan->cod_fee, 0, ',', '.') }}</td>
-                    </tr>
-                    @endif
-                </tbody>
-            </table>
-
-            <div class="bg-gray-50 border-t border-gray-200 p-6 flex justify-end">
-                <div class="w-full sm:w-1/2 md:w-1/3">
-                    <div class="flex justify-between py-1 text-[13px] text-gray-500 mb-2">
-                        <span>Sub Total</span>
-                        <span class="font-semibold text-black">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="flex justify-between py-1 text-[13px] text-gray-500 mb-3">
-                        <span>Credit</span>
-                        <span class="font-semibold text-black">Rp 0,00</span>
-                    </div>
-                    <div class="flex justify-between py-3 border-t border-gray-200 text-sm font-black text-black uppercase tracking-wide">
-                        <span>Grand Total</span>
-                        <span>Rp {{ number_format($pesanan->price, 0, ',', '.') }}</span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="flex flex-col-reverse md:flex-row gap-8 mb-8">
+        {{-- Hidden fields untuk data API --}}
+        <input type="hidden" name="pengirim_id" id="sender_id">
+        <input type="hidden" name="sender_lat" id="sender_lat"><input type="hidden" name="sender_lng" id="sender_lng">
+        <input type="hidden" name="sender_province" id="sender_province" ><input type="hidden" name="sender_regency" id="sender_regency" >
+        <input type="hidden" name="sender_district" id="sender_district" ><input type="hidden" name="sender_village" id="sender_village" >
+        <input type="hidden" name="sender_postal_code" id="sender_postal_code" >
+        <input type="hidden" name="sender_district_id" id="sender_district_id" required>
+        <input type="hidden" name="sender_subdistrict_id" id="sender_subdistrict_id" required>
+        <input type="hidden" name="penerima_id" id="receiver_id">
+        <input type="hidden" name="receiver_lat" id="receiver_lat"><input type="hidden" name="receiver_lng" id="receiver_lng">
+        <input type="hidden" name="receiver_province" id="receiver_province" ><input type="hidden" name="receiver_regency" id="receiver_regency" >
+        <input type="hidden" name="receiver_district" id="receiver_district" ><input type="hidden" name="receiver_village" id="receiver_village" >
+        <input type="hidden" name="receiver_postal_code" id="receiver_postal_code" >
+        <input type="hidden" name="receiver_district_id" id="receiver_district_id" required>
+        <input type="hidden" name="receiver_subdistrict_id" id="receiver_subdistrict_id" required>
+        <input type="hidden" name="expedition" id="expedition" required>
+        <!-- <input type="hidden" name="payment_method" id="payment_method" required> -->
+        <!-- <input type="hidden" name="payment_method" id="payment_method"> -->
+        {{-- 👇 KODE PENGAMAN DITAMBAHKAN DI SINI 👇 --}}
+        <input type="hidden" name="idempotency_key" value="{{ $idempotencyKey }}">
+    </form>
+</div>
 
-            <div class="w-full md:w-3/4">
-                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Riwayat Transaksi</p>
-                <div class="border border-gray-200 rounded-lg overflow-hidden">
-                    <table class="w-full text-[13px] text-left">
-                        <thead class="bg-gray-50 border-b border-gray-200 text-gray-500">
-                            <tr>
-                                <th class="py-3 px-4 font-semibold">Tanggal</th>
-                                <th class="py-3 px-4 font-semibold">Metode</th>
-                                <th class="py-3 px-4 font-semibold text-right">Nominal</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100 bg-white">
-                            @if($statusLunas)
-                            <tr>
-                                <td class="py-4 px-4">{{ \Carbon\Carbon::parse($pesanan->updated_at)->format('d/m/Y H:i') }}</td>
-                                <td class="py-4 px-4 uppercase text-xs font-semibold text-black">{{ str_replace('_', ' ', $pesanan->payment_method) }}</td>
-                                <td class="py-4 px-4 text-right font-semibold text-black">Rp {{ number_format($pesanan->price, 0, ',', '.') }}</td>
-                            </tr>
-                            @else
-                            <tr>
-                                <td colspan="3" class="py-6 italic text-gray-400 text-center text-xs">Belum ada transaksi masuk.</td>
-                            </tr>
-                            @endif
-                        </tbody>
-                        <tfoot class="bg-gray-50 border-t border-gray-200">
-                            <tr>
-                                <td colspan="2" class="py-3 px-4 text-right font-semibold text-gray-500 text-xs uppercase tracking-wide">Sisa Tagihan</td>
-                                <td class="py-3 px-4 text-right font-black text-sm text-black">
-                                    Rp {{ $statusLunas ? '0,00' : number_format($pesanan->price, 0, ',', '.') }}
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
-
-            <div class="w-full md:w-1/4">
-                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2 text-center md:text-left">Status Lacak</p>
-
-                @if($isCancelled)
-                    <div class="border border-gray-200 bg-gray-50 rounded-lg p-4 text-center">
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status Paket</p>
-                        <p class="text-xs font-bold text-black mb-4">{{ $statusText }}</p>
-                        <button onclick="syncTracking(this)" class="no-print w-full bg-white border border-gray-300 hover:border-black text-black text-[11px] font-bold py-2 rounded-md transition-colors uppercase tracking-wider shadow-sm">
-                            Sync API
-                        </button>
-                    </div>
-                @elseif($statusLunas && $pesanan->resi)
-                    <div class="border border-gray-200 bg-gray-50 rounded-lg p-4 text-center mb-3">
-                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status Paket</p>
-                        <p class="text-xs font-bold text-black mb-4 truncate" title="{{ $statusText }}">{{ $statusText }}</p>
-                        <button onclick="syncTracking(this)" class="no-print w-full bg-white border border-gray-300 hover:border-black text-black text-[11px] font-bold py-2 rounded-md transition-colors uppercase tracking-wider shadow-sm">
-                            Sync API
-                        </button>
-                    </div>
-                    <div id="qrcode" class="p-3 bg-white border border-gray-200 rounded-lg flex justify-center shadow-sm"></div>
-                @else
-                    <div class="h-[120px] bg-gray-50 border border-dashed border-gray-300 flex flex-col items-center justify-center rounded-lg">
-                        <i class="fas fa-lock text-gray-300 text-2xl mb-2"></i>
-                        <span class="text-[11px] text-gray-400 font-medium tracking-wide">Terkunci</span>
-                    </div>
-                @endif
-            </div>
-
+<!-- Modal Pilihan Ekspedisi -->
+<div id="ongkirModal" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
+        <div class="p-4 border-b flex justify-between items-center">
+            <h5 class="text-lg font-semibold"><i class="fas fa-shipping-fast mr-2 text-red-600"></i>Pilihan Ekspedisi</h5>
+            <button type="button" class="close-modal-btn text-gray-500 hover:text-gray-800">&times;</button>
         </div>
-
-        <div class="text-center text-[11px] text-gray-400 mt-12 pt-6 border-t border-gray-100">
-            Dicetak otomatis dari sistem <strong>tokosancaka.com</strong> pada {{ date('d M Y, H:i') }} WIB.<br>Dokumen sah tanpa tanda tangan fisik.
-        </div>
-
-    </div>
-
-    <div id="paymentModal" class="no-print fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 hidden transition-all duration-300">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 sm:mx-auto flex flex-col max-h-[85vh]">
-
-            <div class="flex justify-between items-center p-5 border-b border-gray-100">
-                <h3 class="text-lg font-bold text-black tracking-wide">Pilih Metode Pembayaran</h3>
-                <button type="button" id="closeModalButton" class="text-gray-400 hover:text-black transition-colors p-1">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
-            </div>
-
-            <div class="p-5 overflow-y-auto custom-scrollbar flex-1 bg-gray-50/50">
-                <ul id="paymentOptionsList" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-                    <li class="col-span-full pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">
-                        Direct Payment
-                    </li>
-
-                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group"
-                        data-value="BCA_QRIS" data-label="BCA QRIS" data-img="https://tokosancaka.com/assets/bca.png">
-                        <img src="https://tokosancaka.com/assets/bca.png" class="w-12 h-auto mr-4 object-contain" alt="BCA">
-                        <div class="flex flex-col">
-                            <span class="text-[13px] font-bold text-black">BCA QRIS</span>
-                            <span class="text-[11px] text-gray-500">Generate Barcode</span>
-                        </div>
-                    </li>
-
-                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group"
-                        data-value="DOKU_JOKUL" data-label="DOKU Gateway" data-img="https://tokosancaka.com/public/assets/doku.png">
-                        <img src="https://tokosancaka.com/public/assets/doku.png" class="w-12 h-auto mr-4 object-contain" alt="DOKU">
-                        <div class="flex flex-col">
-                            <span class="text-[13px] font-bold text-black">DOKU Gateway</span>
-                            <span class="text-[11px] text-gray-500">VA, E-Wallet, CC Lokal</span>
-                        </div>
-                    </li>
-
-                    <li class="col-span-full pt-4 pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">
-                        DANA Enterprise
-                    </li>
-
-                    @php
-                        $user = Auth::user();
-                        $userDanaToken = $user ? $user->dana_access_token : null;
-                        $userDanaBalance = $user ? ($user->dana_user_balance ?? 0) : 0;
-                        $hasDanaBinding = !empty($userDanaToken);
-                    @endphp
-
-                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group"
-                        data-value="DANA" data-label="DANA Checkout" data-img="{{ asset('public/assets/dana.webp') }}">
-                        <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
-                        <div class="flex flex-col">
-                            <span class="text-[13px] font-bold text-black">DANA Web</span>
-                            <span class="text-[11px] text-gray-500">Arahkan ke App</span>
-                        </div>
-                    </li>
-
-                    @if($hasDanaBinding)
-                        <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-400 rounded-xl bg-gray-100 hover:border-black hover:shadow-md transition-all group"
-                            data-value="DANA_BINDING" data-label="DANA Auto-Debit" data-img="{{ asset('public/assets/dana.webp') }}">
-                            <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
-                            <div class="flex flex-col flex-1">
-                                <span class="text-[13px] font-bold text-black">DANA Auto-Debit</span>
-                                <span class="text-[11px] text-gray-600 font-medium">Saldo: Rp{{ number_format($userDanaBalance, 0, ',', '.') }}</span>
-                            </div>
-                            <span class="bg-black text-white text-[10px] font-semibold px-2 py-1 rounded">Tersambung</span>
-                        </li>
-                    @else
-                        <li class="col-span-1 flex items-center p-3 border border-dashed border-gray-300 rounded-xl bg-gray-50 justify-between">
-                            <div class="flex items-center">
-                                <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain opacity-60" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
-                                <div class="flex flex-col">
-                                    <span class="text-[13px] font-bold text-gray-500">DANA Auto-Debit</span>
-                                </div>
-                            </div>
-                            <a href="{{ url('/dana/start-binding') }}" class="bg-white border border-gray-300 text-black hover:border-black text-[11px] font-semibold px-3 py-1.5 rounded transition-colors shadow-sm">
-                                Hubungkan
-                            </a>
-                        </li>
-                    @endif
-
-                    <li class="col-span-full pt-4 pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">
-                        Global & Otomatis
-                    </li>
-
-                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group"
-                        data-value="PAYPAL" data-label="PayPal" data-img="https://tokosancaka.com/public/assets/paypal.png">
-                        <img src="https://tokosancaka.com/public/assets/paypal.png" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=PP'">
-                        <div class="flex flex-col">
-                            <span class="text-[13px] font-bold text-black">PayPal / CC</span>
-                            <span class="text-[11px] text-gray-500">Pembayaran USD</span>
-                        </div>
-                    </li>
-
-                    @if(isset($tripayChannels) && count($tripayChannels) > 0)
-                        @foreach($tripayChannels as $channel)
-                            @if($channel['active'])
-                            <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group"
-                                data-value="{{ $channel['code'] }}" data-label="{{ $channel['name'] }}" data-img="{{ $channel['icon_url'] }}">
-                                <img src="{{ $channel['icon_url'] }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=IMG'">
-                                <div class="flex flex-col">
-                                    <span class="text-[13px] font-bold text-black">{{ $channel['name'] }}</span>
-                                </div>
-                            </li>
-                            @endif
-                        @endforeach
-                    @endif
-
-                </ul>
-            </div>
+        <div id="ongkirModalBody" class="p-6 modal-body-scroll"></div>
+        <div class="p-4 border-t text-right">
+            <button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
         </div>
     </div>
+</div>
 
-    <script>
-    function syncTracking(btn) {
-        btn.innerHTML = 'Syncing...';
-        btn.disabled = true;
-        setTimeout(() => { window.location.reload(); }, 500);
+<!-- Modal Metode Pembayaran -->
+<div id="paymentMethodModal" class="fixed inset-0 bg-gray-800 bg-opacity-60 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+        <div class="p-4 border-b flex justify-between items-center">
+            <h5 class="text-lg font-semibold"><i class="fas fa-credit-card mr-2 text-red-600"></i>Pilih Metode Pembayaran</h5>
+            <button type="button" class="close-modal-btn text-gray-500 hover:text-gray-800">&times;</button>
+        </div>
+        <div class="modal-body-scroll">
+           <ul id="paymentOptionsList" class="divide-y">
+                {{-- Opsi Potong Saldo khusus Admin --}}
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Potong Saldo" data-label="Potong Saldo"><img src="https://tokosancaka.com/public/assets/saldo.png" class="w-8 h-8 mr-4">Potong Saldo</li>
+
+                {{-- Opsi Cash khusus Admin --}}
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="Cash" data-label="Cash (Tanpa Saldo)"><img src="https://tokosancaka.com/public/assets/saldo.png" class="w-8 h-8 mr-4">Cash (Tanpa Saldo)</li>
+
+            {{-- Pembatas Antara Saldo dan E-Wallet --}}
+                <li class="bg-blue-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Direct Payment (Bebas Biaya Tripay)</li>
+
+                {{-- OPSI BCA QRIS (TAMBAHKAN INI) --}}
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="BCA_QRIS" data-label="BCA QRIS (Otomatis)">
+                    <img src="https://tokosancaka.com/assets/bca.png" class="w-8 h-8 mr-4 object-contain">
+                    BCA QRIS (Generate Barcode)
+                </li>
+
+                {{-- OPSI DOKU JOKUL (TAMBAHKAN JIKA PERLU) --}}
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50" data-value="DOKU_JOKUL" data-label="DOKU Payment Gateway">
+                    <img src="https://tokosancaka.com/public/assets/doku.png" class="w-8 h-8 mr-4 object-contain">
+                    DOKU Payment Gateway
+                </li>
+
+                {{-- Pembatas Antara Saldo dan COD --}}
+                <li class="bg-red-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Bayar Ditempat</li>
+
+                {{-- Opsi dari KiriminAja --}}
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="COD" data-label="COD Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Ongkir</li>
+                <li class="payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 cod-payment-option" data-value="CODBARANG" data-label="COD Barang + Ongkir"><img src="{{ asset('public/assets/cod.png') }}" class="w-8 h-8 mr-4">COD Barang + Ongkir</li>
+
+                {{-- 2. BAGIAN OTOMATIS TRIPAY (GANTI LIST MANUAL DENGAN INI) --}}
+            <li class="bg-blue-100 p-2 text-xs font-bold text-gray-500 uppercase tracking-wider">Transfer Bank & Minimarket (Otomatis)</li>
+
+            {{-- WADAH INI AKAN DIISI OTOMATIS OLEH JAVASCRIPT --}}
+            <div id="tripayChannelsContainer">
+                <div class="p-4 text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>Memuat saluran pembayaran...
+                </div>
+            </div>
+
+            </ul>
+        </div>
+         <div class="p-4 border-t text-right">
+            <button type="button" class="close-modal-btn px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Tutup</button>
+        </div>
+    </div>
+</div>
+
+@endsection
+
+@push('scripts')
+{{-- SweetAlert2 untuk notifikasi --}}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const ongkirModalEl = document.getElementById('ongkirModal');
+    const paymentModalEl = document.getElementById('paymentMethodModal');
+    let runValidityChecks = () => {}; // Placeholder function
+
+    // --- HELPER FUNCTIONS (accessible by all) ---
+    function formatRupiah(angka) {
+        return 'Rp ' + (parseInt(angka, 10) || 0).toLocaleString('id-ID');
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        const isPaid = {{ $statusLunas ? 'true' : 'false' }};
-        const isCancelled = {{ $isCancelled ? 'true' : 'false' }};
-        const resiSancaka = "{!! $pesanan->resi !!}";
+    const debounce = (func, wait) => {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    };
 
-        if (!isCancelled && isPaid && resiSancaka) {
+    // --- FUNGSI PENCARIAN & PEMILIHAN ---
+    function setupContactSearch(prefix) {
+        const nameInput = document.getElementById(`${prefix}_name`);
+        const phoneInput = document.getElementById(`${prefix}_phone`);
+        const resultsContainer = document.getElementById(`${prefix}_contact_results`);
+
+
+        const performSearch = async (query) => {
+            if (query.length < 3) { resultsContainer.classList.add('hidden'); return; }
             try {
-                // Barcode
-                JsBarcode("#barcodeResi", resiSancaka, {
-                    format: "CODE128", lineColor: "#000000", textMargin: 4,
-                    fontOptions: "bold", fontSize: 13, height: 40, width: 2, displayValue: true
-                });
-            } catch (e) {}
+                const url = `{{ route('api.contacts.search') }}?search=${encodeURIComponent(query)}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+                const contacts = await response.json();
+                resultsContainer.innerHTML = '';
+                resultsContainer.classList.remove('hidden');
 
-            try {
-                // QRCode
-                new QRCode(document.getElementById("qrcode"), {
-                    text: "https://tokosancaka.com/tracking/search?resi=" + resiSancaka,
-                    width: 75, height: 75, colorDark : "#000000", colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.M
-                });
-            } catch (e) {}
-        }
+                if (contacts && contacts.length > 0) {
+                    contacts.forEach(contact => {
+                        const resultDiv = document.createElement('div');
+                        resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
+                        resultDiv.innerHTML = `
+                            <div class="font-semibold">${contact.nama}</div>
+                            <div class="text-xs text-gray-500">${contact.no_hp}</div>
+                            <div class="text-xs text-gray-400 truncate">${contact.alamat || '-'}</div>`;
 
-        const paymentModal = document.getElementById('paymentModal');
-        const paymentMethodButton = document.getElementById('paymentMethodButton');
-        const closeModalButton = document.getElementById('closeModalButton');
-        const paymentOptionsList = document.getElementById('paymentOptionsList');
-        const paymentMethodInput = document.getElementById('payment_method');
-        const invoiceForm = document.getElementById('invoice-payment-form');
-        const submitButton = document.getElementById('submit-button');
-
-        function openPaymentModal() { paymentModal.classList.remove('hidden'); document.body.style.overflow = 'hidden'; }
-        function closePaymentModal() { paymentModal.classList.add('hidden'); document.body.style.overflow = 'auto'; }
-
-        if(paymentMethodButton) {
-            paymentMethodButton.addEventListener('click', openPaymentModal);
-            closeModalButton.addEventListener('click', closePaymentModal);
-            paymentModal.addEventListener('click', e => { if (e.target === paymentModal) closePaymentModal(); });
-
-            paymentOptionsList.querySelectorAll('.payment-option').forEach(item => {
-                item.addEventListener('click', function () {
-                    paymentMethodInput.value = this.dataset.value;
-
-                    paymentOptionsList.querySelectorAll('.payment-option').forEach(li => {
-                        li.classList.remove('border-black', 'ring-1', 'ring-black');
-                        li.classList.add('border-gray-200');
+                        resultDiv.addEventListener('click', () => {
+                            document.getElementById(`${prefix}_id`).value = contact.id || '';
+                            document.getElementById(`${prefix}_name`).value = contact.nama || '';
+                            document.getElementById(`${prefix}_phone`).value = contact.no_hp || '';
+                            document.getElementById(`${prefix}_address`).value = contact.alamat || '';
+                            document.getElementById(`${prefix}_province`).value = contact.province || '';
+                            document.getElementById(`${prefix}_regency`).value = contact.regency || '';
+                            document.getElementById(`${prefix}_district`).value = contact.district || '';
+                            document.getElementById(`${prefix}_village`).value = contact.village || '';
+                            document.getElementById(`${prefix}_postal_code`).value = contact.postal_code || '';
+                            const kiriminAjaSearchString = [contact.village, contact.district, contact.regency, contact.postal_code].filter(Boolean).join(', ');
+                            document.getElementById(`${prefix}_address_search`).value = kiriminAjaSearchString;
+                            resultsContainer.classList.add('hidden');
+                            if (kiriminAjaSearchString) performAddressSearch(prefix, kiriminAjaSearchString, contact);
+                            runValidityChecks();
+                        });
+                        resultsContainer.appendChild(resultDiv);
                     });
-
-                    this.classList.remove('border-gray-200');
-                    this.classList.add('border-black', 'ring-1', 'ring-black');
-
-                    document.getElementById('paymentMethodLabel').textContent = this.dataset.label;
-                    document.getElementById('paymentMethodImg').src = this.dataset.img;
-
-                    closePaymentModal();
-                });
-            });
-
-            invoiceForm.addEventListener('submit', function(e) {
-                if (paymentMethodInput.value === "") {
-                    e.preventDefault();
-                    alert('Silakan pilih metode pembayaran terlebih dahulu.');
-                    return;
+                } else {
+                    resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Kontak tidak ditemukan.</div>';
                 }
-                submitButton.disabled = true;
-                submitButton.innerHTML = 'Memproses...';
+            } catch (error) {
+                console.error(`[${prefix}] Gagal melakukan pencarian kontak:`, error);
+                resultsContainer.classList.remove('hidden');
+                resultsContainer.innerHTML = `<div class="p-3 text-red-500">Gagal memuat data.</div>`;
+            }
+        };
+        const debouncedSearch = debounce(performSearch, 400);
+        nameInput.addEventListener('input', () => debouncedSearch(nameInput.value));
+        phoneInput.addEventListener('input', () => debouncedSearch(phoneInput.value));
+    }
+
+    function selectAddress(prefix, item) {
+        document.getElementById(`${prefix}_address_search`).value = item.full_address;
+        const parts = item.full_address.split(',').map(s => s.trim());
+        document.getElementById(`${prefix}_village`).value = parts[0] || '';
+        document.getElementById(`${prefix}_district`).value = parts[1] || '';
+        document.getElementById(`${prefix}_regency`).value = parts[2] || '';
+        document.getElementById(`${prefix}_province`).value = parts[3] || '';
+        document.getElementById(`${prefix}_postal_code`).value = parts[4] || '';
+        document.getElementById(`${prefix}_district_id`).value = item.district_id;
+        document.getElementById(`${prefix}_subdistrict_id`).value = item.subdistrict_id;
+        document.getElementById(`${prefix}_address_results`).classList.add('hidden');
+        document.getElementById(`${prefix}_address_check`).classList.remove('hidden');
+        runValidityChecks();
+    }
+
+    async function performAddressSearch(prefix, query, contactToMatch = null) {
+        const resultsContainer = document.getElementById(`${prefix}_address_results`);
+        if (query.length < 3) { resultsContainer.classList.add('hidden'); return; }
+        try {
+            const response = await fetch(`{{ route('api.address.search') }}?search=${encodeURIComponent(query)}`);
+            if (!response.ok) throw new Error('Network response error');
+            const data = await response.json();
+            resultsContainer.innerHTML = '';
+            resultsContainer.classList.remove('hidden');
+            if (data && data.length > 0) {
+                if (contactToMatch) {
+                    const exactMatch = data.find(item => {
+                        const normalizedApiAddress = item.full_address.toLowerCase();
+                        const village = (contactToMatch.village || '').toLowerCase();
+                        const district = (contactToMatch.district || '').toLowerCase();
+                        const regency = (contactToMatch.regency || '').toLowerCase().replace(/kabupaten |kota /g, '');
+                        const postalCode = (contactToMatch.postal_code || '');
+                        return village && district && regency && postalCode &&
+                               normalizedApiAddress.includes(village) &&
+                               normalizedApiAddress.includes(district) &&
+                               normalizedApiAddress.includes(regency) &&
+                               normalizedApiAddress.includes(postalCode);
+                    });
+                    if (exactMatch) { selectAddress(prefix, exactMatch); return; }
+                }
+                if (data.length === 1) { selectAddress(prefix, data[0]); return; }
+                data.forEach(item => {
+                    const resultDiv = document.createElement('div');
+                    resultDiv.className = 'p-3 border-b hover:bg-gray-100 cursor-pointer text-sm';
+                    resultDiv.innerHTML = `<div class="font-semibold">${item.full_address}</div>`;
+                    resultDiv.addEventListener('click', () => selectAddress(prefix, item));
+                    resultsContainer.appendChild(resultDiv);
+                });
+            } else {
+                resultsContainer.innerHTML = '<div class="p-3 text-gray-500">Alamat tidak ditemukan.</div>';
+            }
+        } catch (error) {
+            console.error('Address search failed:', error);
+            resultsContainer.innerHTML = '<div class="p-3 text-red-500">Gagal memuat data alamat.</div>';
+        }
+    }
+
+    function setupAddressSearch(prefix) {
+        const searchInput = document.getElementById(`${prefix}_address_search`);
+        const debouncedSearch = debounce(() => {
+            document.getElementById(`${prefix}_address_check`).classList.add('hidden');
+            performAddressSearch(prefix, searchInput.value, null);
+        }, 400);
+        searchInput.addEventListener('input', debouncedSearch);
+    }
+
+    async function runCekOngkir() {
+        const requiredFields = { '#sender_subdistrict_id': 'Alamat Pengirim', '#receiver_subdistrict_id': 'Alamat Penerima', '#item_price': 'Harga Barang', '#weight': 'Berat', '#service_type': 'Jenis Layanan', '#ansuransi': 'Asuransi' };
+        let missing = Object.keys(requiredFields).filter(s => !document.querySelector(s).value);
+        if (missing.length > 0) {
+            Swal.fire('Data Belum Lengkap', 'Harap lengkapi: ' + missing.map(s => requiredFields[s]).join(', '), 'warning');
+            return;
+        }
+        const ongkirModalBody = document.getElementById('ongkirModalBody');
+        ongkirModalBody.innerHTML = `<div class="text-center p-5"><i class="fas fa-spinner fa-spin text-3xl text-red-600"></i><p class="mt-2 text-gray-500">Memuat tarif...</p></div>`;
+        ongkirModalEl.classList.remove('hidden');
+        try {
+            const formData = new FormData(document.getElementById('orderForm'));
+            const params = new URLSearchParams(formData).toString();
+            // const response = await fetch(`{{ route('kirimaja.cekongkir') }}?${params}`);
+
+            const response = await fetch(`{{ route('kirimaja.cekongkir') }}?${params}`, {
+                method: 'GET', // Pastikan route ini memang menggunakan metode GET
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
             });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Gagal mengambil data ongkir');
+            }
+            const res = await response.json();
+            ongkirModalBody.innerHTML = '';
+            let results = (res.results || []).concat((res.result || []).flatMap(v => v.costs.map(c => ({...c, service: v.name, service_name: `${v.name.toUpperCase()} - ${c.service_type}`, cost: c.price.total_price, etd: c.estimation || '-', setting: c.setting || {}, insurance: c.price.insurance_fee || 0, cod: c.cod }))));
+            if (results.length === 0) {
+                ongkirModalBody.innerHTML = '<div class="bg-yellow-100 text-yellow-800 p-4 rounded-md text-center">Layanan pengiriman tidak ditemukan.</div>';
+                return;
+            }
+            results.sort((a, b) => a.cost - b.cost).forEach(item => {
+                const isCod = item.cod;
+
+                // 1. Ambil Angka Murni dari API KiriminAja
+                const shippingCost = parseInt(item.cost) || 0;
+                const insuranceFee = parseInt(item.insurance) || 0;
+
+                // 🔥 Ambil Biaya COD persis dari jawaban server KiriminAja
+                const codFeeApi = parseInt(item.add_cost) || parseInt(item.setting?.cod_fee_amount) || 0;
+
+                // 2. Gabungkan ke dalam satu string untuk dikirim ke Backend
+                const value = `${document.getElementById('service_type').value}-${item.service}-${item.service_type}-${shippingCost}-${insuranceFee}-${codFeeApi}-${codFeeApi}`;
+
+                let details = `<small class="text-gray-500 block">Estimasi: ${item.etd}</small>`;
+                if (document.getElementById('ansuransi').value == 'iya' && insuranceFee > 0) details += `<small class="text-gray-500 block">Asuransi: ${formatRupiah(insuranceFee)}</small>`;
+
+                if (isCod) {
+                    details += `<small class="text-gray-600 font-medium block mt-1">Biaya COD (API): <span class="text-red-600">${formatRupiah(codFeeApi)}</span></small>`;
+                    details += `<small class="text-green-600 font-bold block mt-1">COD Tersedia</small>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = 'border rounded-lg mb-3 shadow-sm hover:border-red-500 transition-colors';
+                card.innerHTML = `
+                    <div class="p-4 flex justify-between items-center">
+                        <div class="flex items-center">
+                            <img src="{{ asset('/public/storage/logo-ekspedisi/') }}/${item.service.toLowerCase().replace(/\s+/g, '')}.png" class="w-16 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/100x40?text=${item.service}'">
+                            <div><h6 class="font-bold text-gray-800">${item.service_name}</h6>${details}</div>
+                        </div>
+                        <div class="text-right">
+                            <small class="text-gray-500">Ongkir</small>
+                            <strong class="block text-lg text-red-600">${formatRupiah(shippingCost)}</strong>
+                            <button type="button" class="select-ongkir-btn mt-1 bg-red-600 text-white px-4 py-1.5 rounded-md hover:bg-red-700 text-sm font-semibold" data-value="${value}" data-display="${item.service_name}" data-cod-supported="${isCod}">Pilih</button>
+                        </div>
+                    </div>`;
+                ongkirModalBody.appendChild(card);
+            });
+        } catch (error) {
+            console.error('Cek Ongkir failed:', error);
+            ongkirModalBody.innerHTML = `<div class="bg-red-100 text-red-800 p-4 rounded-md text-center">${error.message}</div>`;
+        }
+    }
+
+    // --- INISIALISASI & EVENT LISTENERS ---
+    setupContactSearch('sender');
+    setupContactSearch('receiver');
+    setupAddressSearch('sender');
+    setupAddressSearch('receiver');
+
+    // --- FUNGSI FORMAT NOMOR HP OTOMATIS ---
+    function setupPhoneFormatting(inputId) {
+        const phoneInput = document.getElementById(inputId);
+        if (!phoneInput) return;
+
+        phoneInput.addEventListener('input', function (e) {
+            let val = this.value;
+
+            // 1. Hapus semua karakter yang bukan angka (seperti +, -, spasi, huruf)
+            val = val.replace(/\D/g, '');
+
+            // 2. Jika diawali angka '62', potong dan ganti depannya dengan '0'
+            if (val.startsWith('62')) {
+                val = '0' + val.substring(2);
+            }
+            // 3. Jika sudah diketik tapi tidak diawali '0', paksa tambah '0'
+            else if (val.length > 0 && !val.startsWith('0')) {
+                val = '0' + val;
+            }
+
+            // 4. Masukkan kembali teks yang sudah bersih ke dalam kolom input
+            this.value = val;
+        });
+    }
+
+    // Terapkan ke kolom HP Pengirim dan Penerima
+    setupPhoneFormatting('sender_phone');
+    setupPhoneFormatting('receiver_phone');
+
+    // --- FUNGSI FORMAT NAMA OTOMATIS (HANYA HURUF BESAR & SPASI) ---
+    function setupNameFormatting(inputId) {
+        const nameInput = document.getElementById(inputId);
+        if (!nameInput) return;
+
+        nameInput.addEventListener('input', function (e) {
+            // Hapus semua karakter selain huruf (A-Z, a-z) dan spasi
+            let val = this.value.replace(/[^a-zA-Z\s]/g, '');
+
+            // Paksa menjadi huruf besar semua (Kapital)
+            this.value = val.toUpperCase();
+        });
+    }
+
+    // Terapkan ke kolom Nama Pengirim dan Nama Penerima
+    setupNameFormatting('sender_name');
+    setupNameFormatting('receiver_name');
+
+    // --- FUNGSI FORMAT ALAMAT (OTOMATIS KAPITAL SEMUA) ---
+    function setupAddressFormatting(inputId) {
+        const addressInput = document.getElementById(inputId);
+        if (!addressInput) return;
+
+        addressInput.addEventListener('input', function () {
+            // Hanya mengubah menjadi huruf besar (kapital), karakter bebas tetap diperbolehkan
+            this.value = this.value.toUpperCase();
+        });
+    }
+
+    // Terapkan ke kolom Alamat Pengirim dan Alamat Penerima
+    setupAddressFormatting('sender_address');
+    setupAddressFormatting('receiver_address');
+
+    document.getElementById('selected_expedition_display').addEventListener('click', runCekOngkir);
+
+    ongkirModalEl.addEventListener('click', function(e) {
+        if (e.target.classList.contains('select-ongkir-btn')) {
+            document.getElementById('expedition').value = e.target.dataset.value;
+            document.getElementById('selected_expedition_display').value = e.target.dataset.display;
+
+            // --- BAGIAN INI DIHAPUS/DIKOMENTARI AGAR COD TETAP MUNCUL ---
+            /* const codOptions = document.querySelectorAll('.cod-payment-option');
+            if (e.target.dataset.codSupported === 'true') {
+                codOptions.forEach(opt => opt.style.display = 'flex');
+            } else {
+                if (['COD', 'CODBARANG'].includes(document.getElementById('payment_method').value)) {
+                    document.getElementById('payment_method').value = '';
+                    document.getElementById('selectedPaymentName').textContent = 'Pilih...';
+                    document.getElementById('selectedPaymentLogo').src = 'https://cdn-icons-png.flaticon.com/512/2331/2331941.png';
+                }
+                codOptions.forEach(opt => opt.style.display = 'none');
+            }
+            */
+            // -----------------------------------------------------------
+
+            ongkirModalEl.classList.add('hidden');
+            runValidityChecks();
         }
     });
-    </script>
-</body>
-</html>
+
+    /* document.getElementById('paymentMethodButton').addEventListener('click', () => paymentModalEl.classList.remove('hidden'));
+
+    document.querySelectorAll('.payment-option').forEach(item => {
+        item.addEventListener('click', function() {
+            const paymentValue = this.dataset.value;
+            const customerContainer = document.getElementById('customer_container');
+            const customerSelect = document.getElementById('customer_id');
+            document.getElementById('payment_method').value = paymentValue;
+            document.getElementById('selectedPaymentName').textContent = this.dataset.label;
+            document.getElementById('selectedPaymentLogo').src = this.querySelector('img').src;
+            document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('bg-red-50'));
+            this.classList.add('bg-red-50');
+
+            if (paymentValue === 'Potong Saldo') {
+                customerContainer.classList.remove('hidden');
+                customerSelect.setAttribute('required', 'required');
+            } else {
+                customerContainer.classList.add('hidden');
+                customerSelect.removeAttribute('required');
+                customerSelect.value = '';
+            }
+            paymentModalEl.classList.add('hidden');
+            runValidityChecks();
+        });
+    });
+
+    document.querySelectorAll('.close-modal-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            ongkirModalEl.classList.add('hidden');
+            paymentModalEl.classList.add('hidden');
+        });
+    }); */
+
+    document.querySelectorAll('.close-modal-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            ongkirModalEl.classList.add('hidden');
+        });
+    });
+
+    // document.querySelectorAll('.cod-payment-option').forEach(opt => opt.style.display = 'none');
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('#sender_address_search, #sender_address_results')) {
+            document.getElementById('sender_address_results').classList.add('hidden');
+        }
+        if (!event.target.closest('#receiver_address_search, #receiver_address_results')) {
+            document.getElementById('receiver_address_results').classList.add('hidden');
+        }
+        if (!event.target.closest('#sender_name, #sender_contact_results, #sender_phone')) {
+            document.getElementById('sender_contact_results').classList.add('hidden');
+        }
+        if (!event.target.closest('#receiver_name, #receiver_contact_results, #receiver_phone')) {
+            document.getElementById('receiver_contact_results').classList.add('hidden');
+        }
+    });
+
+   // --- LOGIKA OTOMATISASI, WARNA & PROTEKSI ASURANSI ---
+const itemTypeSelect = document.getElementById('item_type');
+const asuransiSelect = document.getElementById('ansuransi');
+const wajibAsuransiIds = ['1', '3', '4', '8'];
+
+function applyStrictInsurance(isInitial = false) {
+    if (!itemTypeSelect || !asuransiSelect) return;
+
+    const selectedType = itemTypeSelect.value;
+    const itemTypeName = itemTypeSelect.options[itemTypeSelect.selectedIndex].text;
+
+    if (wajibAsuransiIds.includes(selectedType)) {
+        // --- KONDISI WAJIB (MERAH) ---
+        asuransiSelect.value = 'iya';
+        asuransiSelect.classList.remove('bg-green-50', 'border-green-300', 'text-green-600');
+        asuransiSelect.classList.add('bg-red-50', 'border-red-300', 'text-red-600', 'font-semibold');
+
+        // Kunci elemen
+        asuransiSelect.classList.add('cursor-not-allowed');
+        asuransiSelect.style.pointerEvents = 'none';
+
+        if (!isInitial) {
+            Swal.fire({
+                icon: 'info',
+                title: 'Asuransi Wajib',
+                text: `Kategori "${itemTypeName}" wajib asuransi. Pilihan dikunci ke "Iya".`,
+                confirmButtonColor: '#ef4444'
+            });
+        }
+    } else {
+        // --- KONDISI OPSIONAL (HIJAU) ---
+        asuransiSelect.classList.remove('bg-red-50', 'border-red-300', 'text-red-600');
+        asuransiSelect.classList.add('bg-green-50', 'border-green-300', 'text-green-600', 'font-semibold');
+
+        asuransiSelect.classList.remove('cursor-not-allowed');
+        asuransiSelect.style.pointerEvents = 'auto';
+
+        if (!isInitial) asuransiSelect.value = 'tidak';
+    }
+
+    // Reset Ekspedisi jika berubah
+    if (!isInitial) {
+        const expeditionDisplay = document.getElementById('selected_expedition_display');
+        const expeditionValue = document.getElementById('expedition');
+        if (expeditionDisplay && expeditionValue) {
+            expeditionValue.value = '';
+            expeditionDisplay.value = '';
+            expeditionDisplay.placeholder = 'Data berubah, klik untuk cek ulang';
+        }
+    }
+
+    if (typeof runValidityChecks === "function") runValidityChecks();
+}
+
+// Event ganti barang
+itemTypeSelect.addEventListener('change', () => applyStrictInsurance(false));
+
+// Update warna jika user ganti manual di kategori opsional
+asuransiSelect.addEventListener('change', function() {
+    if (this.value === 'iya') {
+        this.classList.replace('bg-green-50', 'bg-red-50');
+        this.classList.replace('border-green-300', 'border-red-300');
+        this.classList.replace('text-green-600', 'text-red-600');
+    } else {
+        this.classList.replace('bg-red-50', 'bg-green-50');
+        this.classList.replace('border-red-300', 'border-green-300');
+        this.classList.replace('text-red-600', 'text-green-600');
+    }
+});
+
+// Jalankan awal
+applyStrictInsurance(true);
+
+    // --- START: Validity + Potong Saldo check logic ---
+    (function() {
+        const form = document.getElementById('orderForm');
+        const confirmBtn = document.getElementById('confirmBtn');
+        const expeditionInput = document.getElementById('expedition');
+        const paymentMethodInput = document.getElementById('payment_method');
+        const customerSelect = document.getElementById('customer_id');
+
+        function debugLog(line, msg) {
+            // console.log(`create:${line} - ${msg}`);
+        }
+
+        // Assign the function to the outer-scoped variable so other parts of the script can call it
+        runValidityChecks = function() {
+            debugLog(1082, 'Memeriksa Validitas Form');
+
+            const html5Valid = form.checkValidity();
+            debugLog(1091, `Validitas Bawaan HTML5 (form.checkValidity()): ${html5Valid}`);
+
+            const expeditionChosen = expeditionInput && expeditionInput.value && expeditionInput.value.trim() !== '';
+            debugLog(1098, `Kondisi Ekspedisi: ${expeditionChosen ? 'Lolos' : 'Gagal'}`);
+
+            const paymentChosen = paymentMethodInput && paymentMethodInput.value && paymentMethodInput.value.trim() !== '';
+            debugLog(1106, `Kondisi Metode Pembayaran: ${paymentChosen ? 'Lolos' : 'Gagal'}`);
+
+            let potongSaldoFailsCustomer = false;
+            if (paymentChosen && paymentMethodInput.value === 'Potong Saldo') {
+                const customerChosen = customerSelect && customerSelect.value && customerSelect.value.trim() !== '';
+                if (!customerChosen) {
+                    debugLog(1111, "Kondisi Gagal: 'Potong Saldo' dipilih tapi Pelanggan kosong.");
+                    potongSaldoFailsCustomer = true;
+                } else {
+                    debugLog(1111, "Kondisi Lolos: 'Potong Saldo' dan Pelanggan terpilih.");
+                }
+            }
+
+            const allOk = html5Valid && expeditionChosen && paymentChosen && !potongSaldoFailsCustomer;
+            if (!allOk) {
+                confirmBtn.disabled = true;
+                confirmBtn.classList.add('opacity-60', 'cursor-not-allowed');
+                confirmBtn.setAttribute('title', potongSaldoFailsCustomer ? 'Pilih pelanggan saat menggunakan Potong Saldo' : 'Lengkapi form terlebih dahulu');
+                debugLog(1118, 'Hasil Akhir: Tombol akan DINONAKTIFKAN');
+            } else {
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+                confirmBtn.removeAttribute('title');
+                debugLog(1118, 'Hasil Akhir: Tombol AKTIF');
+            }
+        };
+
+        runValidityChecks();
+
+        const watchEls = Array.from(document.querySelectorAll('input, select, textarea'));
+        watchEls.forEach(el => {
+            if (el.type === 'hidden') return;
+            const debouncedCheck = debounce(runValidityChecks, 200);
+            el.addEventListener('input', debouncedCheck);
+            el.addEventListener('change', runValidityChecks);
+            el.addEventListener('blur', runValidityChecks);
+        });
+
+        confirmBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            runValidityChecks();
+
+            if (confirmBtn.disabled) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Data Belum Lengkap',
+                    text: (paymentMethodInput.value === 'Potong Saldo' && (!customerSelect.value || customerSelect.value === ''))
+                            ? 'Anda harus memilih pelanggan jika menggunakan metode Potong Saldo.'
+                            : 'Harap lengkapi semua field yang wajib diisi, termasuk memilih ekspedisi dan metode pembayaran.'
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: 'Konfirmasi Pesanan',
+                text: "Apakah semua data sudah benar?",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#ff0000ff',
+                cancelButtonColor: '#0be628ff',
+                confirmButtonText: 'Ya, Buat Pesanan',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    confirmBtn.disabled = true;
+                    confirmBtn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>Memproses...`;
+                    form.submit();
+                }
+            });
+        });
+    })();
+
+    // --- 1. LOGIKA LOAD TRIPAY ---
+    let tripayLoaded = false;
+
+    async function loadTripayChannels() {
+        // Cek jika sudah pernah load, jangan load lagi (biar hemat kuota)
+        if (tripayLoaded) return;
+
+        const container = document.getElementById('tripayChannelsContainer');
+
+        try {
+            // Panggil API yang sudah kita buat di Controller
+            const response = await fetch("{{ route('admin.pesanan.get_channels') }}");
+            const res = await response.json();
+
+            if (res.success && res.data.length > 0) {
+                container.innerHTML = ''; // Hapus loading spinner
+
+                res.data.forEach(channel => {
+                    // Hanya tampilkan channel yang AKTIF
+                    if (channel.active) {
+                        const li = document.createElement('li');
+                        li.className = 'payment-option p-4 flex items-center cursor-pointer hover:bg-gray-50 border-b';
+
+                        // Simpan data di atribut element
+                        li.dataset.value = channel.code;
+                        li.dataset.label = channel.name;
+                        li.dataset.img   = channel.icon_url;
+
+                        li.innerHTML = `
+                            <img src="${channel.icon_url}" class="w-10 h-10 mr-4 object-contain p-1 border rounded bg-white" onerror="this.src='https://placehold.co/50'">
+                            <div>
+                                <div class="font-semibold text-gray-800">${channel.name}</div>
+                                <div class="text-xs text-gray-500">${channel.group_name || channel.group || ''}</div>
+                            </div>
+                        `;
+
+                        // Tambahkan fungsi klik
+                        li.addEventListener('click', () => selectPayment(li));
+
+                        container.appendChild(li);
+                    }
+                });
+                tripayLoaded = true;
+            } else {
+                container.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Gagal memuat saluran pembayaran.</div>';
+            }
+        } catch (error) {
+            console.error(error);
+            container.innerHTML = '<div class="p-4 text-center text-red-500 text-sm">Terjadi kesalahan koneksi API.</div>';
+        }
+    }
+
+    // --- 2. FUNGSI KLIK PEMBAYARAN (GABUNGAN MANUAL & OTOMATIS) ---
+    function selectPayment(element) {
+        const val = element.dataset.value;
+        const label = element.dataset.label;
+        // Ambil gambar dari dataset (otomatis) atau tag img (manual)
+        const img = element.dataset.img || element.querySelector('img').src;
+
+        // Set ke Input Hidden
+        document.getElementById('payment_method').value = val;
+
+        // Update Tampilan Tombol Utama
+        document.getElementById('selectedPaymentName').textContent = label;
+        document.getElementById('selectedPaymentLogo').src = img;
+
+        // Atur Logika "Potong Saldo" (Wajib pilih customer)
+        const custContainer = document.getElementById('customer_container');
+        const custSelect = document.getElementById('customer_id');
+
+        if (val === 'Potong Saldo') {
+            custContainer.classList.remove('hidden');
+            custSelect.setAttribute('required', 'required');
+        } else {
+            custContainer.classList.add('hidden');
+            custSelect.removeAttribute('required');
+            custSelect.value = '';
+        }
+
+        // Tutup Modal
+        document.getElementById('paymentMethodModal').classList.add('hidden');
+
+        // Jalankan Validasi Tombol Submit
+        if (typeof runValidityChecks === "function") runValidityChecks();
+    }
+
+    // --- 3. PASANG EVENT LISTENER ---
+
+    // Saat tombol "Pilih Metode Pembayaran" diklik -> Buka Modal & Load API
+    document.getElementById('paymentMethodButton').addEventListener('click', () => {
+        document.getElementById('paymentMethodModal').classList.remove('hidden');
+        loadTripayChannels(); // <--- INI PENTING
+    });
+
+    // Pasang listener untuk metode MANUAL yang sudah ada di HTML (Saldo, COD, Doku)
+    // Gunakan selector khusus 'payment-option' yang ada di dalam list statis
+    const manualOptions = document.querySelectorAll('#paymentOptionsList > li.payment-option');
+    manualOptions.forEach(li => {
+        li.addEventListener('click', () => selectPayment(li));
+    });
+
+    // --- 4. AUTO FILL ALAMAT PENGIRIM SAAT HALAMAN DIBUKA ---
+    setTimeout(() => {
+        const defaultSearchInput = document.getElementById('sender_address_search');
+        const defaultAddressInput = document.getElementById('sender_address');
+
+        if (defaultSearchInput && defaultAddressInput) {
+            // 1. Isi Alamat Lengkap
+            defaultAddressInput.value = 'JL.DR.WAHIDIN NO.18A RT.22 RW.05';
+
+            // 2. Isi Pencarian (Kodepos)
+            defaultSearchInput.value = '63211';
+
+            // 3. Trigger event 'input' agar sistem otomatis melakukan pencarian API
+            defaultSearchInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+            // Opsional: Jalankan validasi tombol
+            if (typeof runValidityChecks === "function") runValidityChecks();
+        }
+    }, 500); // Delay 500ms agar memastikan semua event listener pencarian sudah siap
+
+});
+</script>
+
+@if(session('tripay_error_modal'))
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        Swal.fire({
+            icon: 'error',
+            title: 'Pembayaran Gagal!',
+            html: `
+                <div class="text-left">
+                    <p class="mb-2">Tripay menolak permintaan ini dengan alasan:</p>
+                    <div class="p-3 bg-red-50 border border-red-200 rounded text-red-700 font-mono text-sm">
+                        {{ session('tripay_error_modal') }}
+                    </div>
+                    <p class="mt-2 text-xs text-gray-500">Silakan periksa nominal ongkir atau item tambahan.</p>
+                </div>
+            `,
+            confirmButtonText: 'Perbaiki Pesanan',
+            confirmButtonColor: '#d33'
+        });
+    });
+
+</script>
+@endif
+
+{{-- LIBRARY SELECT2 UNTUK PENCARIAN AJAX --}}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<style>
+    /* Styling agar Select2 menyatu dengan desain Tailwind */
+    .select2-container .select2-selection--single {
+        height: 42px !important;
+        border: 1px solid #d1d5db !important;
+        border-radius: 0.5rem !important;
+        display: flex;
+        align-items: center;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 40px !important;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 1. Logika Muncul/Hilang Kolom Pelanggan saat pilih "Potong Saldo"
+    const paymentSelect = document.getElementById('payment_method');
+    if (paymentSelect) {
+        paymentSelect.addEventListener('change', function() {
+            const val = this.value;
+            const container = document.getElementById('customer_container');
+            const select = $('#customer_id');
+
+            if (val === 'Potong Saldo') {
+                container.classList.remove('hidden');
+                select.prop('required', true);
+            } else {
+                container.classList.add('hidden');
+                select.prop('required', false);
+                select.val(null).trigger('change'); // Kosongkan jika batal potong saldo
+            }
+            
+            if (typeof runValidityChecks === "function") runValidityChecks();
+        });
+    }
+
+   // 2. Inisialisasi Select2 AJAX API
+    $('#customer_id').select2({
+        width: '100%',
+        placeholder: 'Ketik nama / toko / no WA...',
+        allowClear: true,
+        ajax: {
+            url: "{{ route('admin.pesanan.search_customer') }}", 
+            dataType: 'json',
+            delay: 300,
+            data: function (params) {
+                return {
+                    q: params.term, // Kata yang diketik admin
+                    page: params.page || 1 // Halaman pagination
+                };
+            },
+            // INI YANG MEMBUAT PAGINATION & ICON LOADING MUNCUL
+            processResults: function (data, params) {
+                params.page = params.page || 1;
+                return {
+                    results: data.results,
+                    pagination: {
+                        more: data.pagination.more
+                    }
+                };
+            },
+            cache: true
+        },
+        // Desain daftar yang muncul ke bawah saat diketik
+        templateResult: function(repo) {
+            if (repo.loading) return "Mencari data...";
+            
+            let toko = repo.store_name ? `<span class="text-xs text-gray-500 block mt-0.5"><i class="fas fa-store text-gray-400 mr-1"></i> ${repo.store_name}</span>` : '';
+            let saldoFormat = new Intl.NumberFormat('id-ID').format(repo.saldo || 0);
+            
+            return $(`
+                <div class="p-2 border-b border-gray-100">
+                    <div class="font-bold text-gray-800">${repo.nama_lengkap}</div>
+                    ${toko}
+                    <div class="text-xs text-red-600 font-bold mt-1 bg-red-50 inline-block px-2 py-0.5 rounded border border-red-100">
+                        <i class="fas fa-wallet mr-1"></i> Saldo: Rp ${saldoFormat}
+                    </div>
+                </div>
+            `);
+        },
+        // Desain teks saat data sudah diklik/dipilih
+        templateSelection: function(repo) {
+            if (!repo.id) return repo.text || "Pilih Pelanggan...";
+            let saldoFormat = new Intl.NumberFormat('id-ID').format(repo.saldo || 0);
+            return repo.nama_lengkap + ' (Saldo: Rp ' + saldoFormat + ')';
+        }
+    });
+});
+</script>
+
+@endpush
+
