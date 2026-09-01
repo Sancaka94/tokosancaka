@@ -501,7 +501,7 @@
                             Ekspedisi Terpilih
                         </span>
                         <button type="button" @click="showModal = true" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded shadow-sm transition-colors flex items-center gap-1.5">
-                            <i class="fa-solid fa-arrows-rotate"></i> Ganti Ekspedisi
+                            <i class="fa-solid fa-arrows-rotate"></i> GANTI EKSPEDISI
                         </button>
                     </div>
 
