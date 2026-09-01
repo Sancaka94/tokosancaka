@@ -500,7 +500,9 @@
                         <span class="text-[10px] font-bold text-black bg-gray-100 px-2 py-1 rounded-sm uppercase tracking-widest flex items-center">
                             Ekspedisi Terpilih
                         </span>
-                        <button type="button" @click="showModal = true" class="text-xs font-medium text-gray-500 hover:text-black underline">Ganti Kurir</button>
+                        <button type="button" @click="showModal = true" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3 py-1.5 rounded shadow-sm transition-colors flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrows-rotate"></i> Ganti Ekspedisi
+                        </button>
                     </div>
 
                     <!-- Input Hidden yang Wajib Dikirim ke Backend -->
