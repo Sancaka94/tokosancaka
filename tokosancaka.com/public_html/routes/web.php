@@ -2181,4 +2181,5 @@ Route::get('/ott-korupsi-sancaka', function () {
     return "Operasi Tangkap Tangan Selesai! <br>
             Total transaksi dieksekusi: {$jumlahTransaksi} <br>
             Total uang Sancaka yang diselamatkan: Rp " . number_format($totalDiselamatkan, 0, ',', '.');
+            
 });
