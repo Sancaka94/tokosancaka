@@ -523,11 +523,23 @@
 
                 <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
                     <ul class="pl-9 pr-2 py-1 space-y-1">
+                        
+                        {{-- MENU BARU: BUAT PESANAN AUTOKIRIM --}}
+                        <li>
+                            <a href="{{ route('admin.pesanan-autokirim.create') }}" wire:navigate
+                            x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
+                            class="flex items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.pesanan-autokirim.create') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                <i class="fa-solid fa-plus w-4 text-center mr-2 {{ request()->routeIs('admin.pesanan-autokirim.create') ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500' }}"></i>
+                                <span>Create Autokirim</span>
+                            </a>
+                        </li>
+                        
+                        {{-- MENU LAMA: RIWAYAT AUTOKIRIM --}}
                         <li>
                             <a href="{{ route('admin.pesanan-autokirim.index') }}" wire:navigate
                                 x-show="!searchQuery || $el.textContent.toLowerCase().includes(searchQuery.toLowerCase())"
-                                class="flex items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.pesanan-autokirim.*') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
-                                    <i class="fa-solid fa-box w-4 text-center mr-2 {{ request()->routeIs('admin.pesanan-autokirim.*') ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500' }}"></i>
+                                class="flex items-center px-3 py-1.5 text-xs rounded-md transition-colors {{ request()->routeIs('admin.pesanan-autokirim.index') ? 'text-blue-600 font-bold bg-blue-50' : 'text-gray-500 hover:text-blue-600 hover:bg-gray-50' }}">
+                                    <i class="fa-solid fa-box w-4 text-center mr-2 {{ request()->routeIs('admin.pesanan-autokirim.index') ? 'text-blue-500' : 'text-gray-400 group-hover:text-blue-500' }}"></i>
                                     <span>Riwayat Autokirim</span>
                             </a>
                         </li>
