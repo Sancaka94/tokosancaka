@@ -32,7 +32,17 @@ class PesananAutokirimController extends Controller
         $this->token = Api::getValue('AUTOKIRIM_TOKEN', $mode, '');
     }
 
-    public function createCustomer()
+   public function createCustomer()
+    {
+        return $this->_renderCreateForm('customer');
+    }
+
+    public function createAdmin()
+    {
+        return $this->_renderCreateForm('admin');
+    }
+
+    private function _renderCreateForm($roleType)
     {
         $kategoriBarang = [
             'Pakaian / Fashion', 'Elektronik & Gadget', 'Dokumen / Surat',
@@ -71,8 +81,6 @@ class PesananAutokirimController extends Controller
         $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
         $cacheKey = 'tripay_channels_list_' . $currentMode;
 
-        // \Illuminate\Support\Facades\Cache::forget($cacheKey);
-
         $tripayChannels = json_decode(Redis::get($cacheKey), true);
 
         if (!$tripayChannels) {
@@ -84,38 +92,34 @@ class PesananAutokirimController extends Controller
                 $apiKey  = \App\Models\Api::getValue('TRIPAY_API_KEY', 'sandbox');
             }
 
-            \Illuminate\Support\Facades\Log::info("LOG LOG: [TRIPAY CHANNELS] Request list metode pembayaran ke API Tripay (Mode: {$currentMode})");
-
             try {
                 $response = \Illuminate\Support\Facades\Http::withToken($apiKey)->timeout(10)->get($baseUrl . '/merchant/payment-channel');
 
                 if ($response->successful()) {
-                    \Illuminate\Support\Facades\Log::info("LOG LOG: [TRIPAY CHANNELS] Sukses mendapatkan data metode pembayaran.");
                     $tripayChannels = $response->json()['data'] ?? [];
-                    // Simpan ke Redis selama 24 jam (86400 detik)
                     Redis::setex($cacheKey, 86400, json_encode($tripayChannels));
                 } else {
-                    \Illuminate\Support\Facades\Log::error("LOG LOG: [TRIPAY CHANNELS] Gagal mendapatkan data dari Tripay. Status: " . $response->status(), $response->json() ?? []);
                     $tripayChannels = [];
                 }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("LOG LOG: [TRIPAY CHANNELS] Exception Error: " . $e->getMessage());
                 $tripayChannels = [];
             }
-
         }
 
         // 3. Gabungkan Data Tripay ke List Metode Pembayaran
         foreach ($tripayChannels as $channel) {
-            // Hanya tampilkan metode yang sedang aktif di Tripay
             if ($channel['active']) {
                 $metodePembayaran[] = [
-                    'id'        => 'tripay_' . $channel['code'], // Contoh: tripay_QRISC, tripay_MYBVA
+                    'id'        => 'tripay_' . $channel['code'],
                     'nama'      => $channel['name'],
-                    'icon'      => $channel['icon_url'], // Menggunakan Logo Asli Bank/E-Wallet dari Tripay
+                    'icon'      => $channel['icon_url'],
                     'deskripsi' => 'Biaya Admin Tripay: Rp ' . number_format($channel['total_fee']['flat'] ?? 0, 0, ',', '.')
                 ];
             }
+        }
+
+        if ($roleType === 'admin') {
+            return view('admin.pesanan-autokirim.create', compact('kategoriBarang', 'metodePembayaran'));
         }
 
         return view('customer.pesanan_autokirim.create', compact('kategoriBarang', 'metodePembayaran'));
@@ -631,6 +635,13 @@ class PesananAutokirimController extends Controller
     {
         $appMode = app()->environment('production') ? 'PRODUCTION' : 'DEV';
 
+        $userRole = strtolower(auth()->user()->role ?? 'pelanggan');
+        $redirectRoute = ($userRole === 'admin') ? 'admin.pesanan-autokirim.create' : 'customer.pesanan-autokirim.create';
+        $redirectUrl   = route($redirectRoute);
+        
+        $indexRoute    = ($userRole === 'admin') ? 'admin.pesanan-autokirim.index' : 'customer.pesanan-autokirim.index';
+        $indexUrl      = route($indexRoute);
+
         // 1. TAMBAHKAN LOG INI UNTUK PAYLOAD INPUT USER
         \Illuminate\Support\Facades\Log::info("LOG LOG: [CREATE ORDER - USER INPUT PAYLOAD] ($appMode)", [
             'user_id' => auth()->id() ?? 'guest',
@@ -815,7 +826,7 @@ class PesananAutokirimController extends Controller
                         $user->decrement('saldo', $totalTagihan);
                         Log::info("LOG: [POTONG SALDO SUKSES] ($appMode) User ID {$user->id} dipotong Rp {$totalTagihan} untuk Order ID {$localOrderId}");
                     } elseif ($paymentMethod === 'dana_binding') {
-                        $this->_processDanaBindingCharge($pesanan, $totalTagihan);
+                        $this->_processDanaBindingCharge($pesanan, $totalTagihan, $redirectUrl); // <-- Tambahkan $redirectUrl
                     }
 
                     $awbResult = $this->_executeAutokirimApi($pesanan, $origin, $destination, $request);
@@ -907,7 +918,8 @@ class PesananAutokirimController extends Controller
 
                     $this->notifyAdminOrderBaru($localOrderId, $request->pengirim_nama, $request->kurir_terpilih, $request->layanan_terpilih);
 
-                    return redirect()->route('customer.pesanan-autokirim.create')->with('success', "Pesanan Berhasil! Nomor Resi: {$awbResult['awb']} (Metode: {$metodeTampil})");
+                    // PENGGUNAAN DINAMIS REDIRECT
+                    return redirect()->route($redirectRoute)->with('success', "Pesanan Berhasil! Nomor Resi: {$awbResult['awb']} (Metode: {$metodeTampil})");
 
                 } else {
                     if ($paymentMethod === 'doku_jokul') {
@@ -919,7 +931,7 @@ class PesananAutokirimController extends Controller
                         }
                     } elseif ($paymentMethod === 'dana_pg') {
                         Log::info("LOG: [DANA PG] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
-                        $paymentUrl = $this->_createDanaPgTransaction($pesanan, $totalTagihan);
+                        $paymentUrl = $this->_createDanaPgTransaction($pesanan, $totalTagihan, $redirectUrl); // <-- Tambahkan $redirectUrl
                         if (empty($paymentUrl)) {
                             throw new Exception('Gagal membuat transaksi di sistem DANA Payment Gateway.');
                         }
@@ -965,7 +977,7 @@ class PesananAutokirimController extends Controller
     }
 
 
-    private function _createDanaPgTransaction($pesanan, $total)
+    private function _createDanaPgTransaction($pesanan, $total, $redirectUrl = null)
     {
         // 1. Ambil config dinamis persis seperti di CheckoutController
         $danaMode = \App\Models\Api::getValue('dana_production_mode', 'global', '0');
@@ -1021,7 +1033,7 @@ class PesananAutokirimController extends Controller
             ],
             "urlParams"          => [
                 [
-                    "url"        => route('customer.pesanan-autokirim.create'), // URL Return Autokirim
+                    "url"        => $redirectUrl ?? route('customer.pesanan-autokirim.create'), // URL Return Autokirim
                     "type"       => "PAY_RETURN",
                     "isDeeplink" => "N"
                 ],
@@ -1102,7 +1114,7 @@ class PesananAutokirimController extends Controller
         }
     }
 
-    private function _processDanaBindingCharge($pesanan, $total)
+    private function _processDanaBindingCharge($pesanan, $total, $redirectUrl = null)
     {
         $user = \App\Models\User::find(auth()->id());
 
@@ -1168,7 +1180,7 @@ class PesananAutokirimController extends Controller
             ],
             "urlParams"          => [
                 [
-                    "url"        => route('customer.pesanan-autokirim.create'),
+                    "url"        => $redirectUrl ?? route('customer.pesanan-autokirim.create'),
                     "type"       => "PAY_RETURN",
                     "isDeeplink" => "N"
                 ],
