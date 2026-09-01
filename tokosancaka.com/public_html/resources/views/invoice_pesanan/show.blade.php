@@ -444,11 +444,12 @@
             <div class="flex flex-col-reverse md:flex-row gap-8 mb-4 relative z-40">
 
                 <!-- KIRI: Riwayat Transaksi -->
-                <div class="w-full md:w-3/4">
+                <div class="w-full md:w-3/4 flex flex-col">
                     <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Riwayat Transaksi</p>
-                    <div class="border border-gray-200 rounded-lg overflow-hidden">
-                        
-                        <table class="w-full text-[13px] text-left">
+                    
+                    <!-- Tambahkan flex-1 agar kotak tabel merentang maksimal -->
+                    <div class="border border-gray-200 rounded-lg overflow-hidden flex-1 flex flex-col">
+                        <table class="w-full text-[13px] text-left h-full flex-1">
                             <thead class="bg-slate-100 border-b border-gray-200 text-gray-500">
                                 <tr>
                                     <th class="py-3 px-4 font-semibold">Tanggal</th>
@@ -469,7 +470,7 @@
                                 </tr>
                                 @endif
                             </tbody>
-                            <tfoot class="bg-slate-100 border-t border-gray-200">
+                            <tfoot class="bg-slate-100 border-t border-gray-200 mt-auto">
                                 <tr>
                                     <td colspan="2" class="py-3 px-4 text-right font-semibold text-gray-500 text-xs uppercase tracking-wide">Sisa Tagihan</td>
                                     <td class="py-3 px-4 text-right font-black text-sm text-black">
@@ -478,18 +479,22 @@
                                 </tr>
                             </tfoot>
                         </table>
-
                     </div>
                 </div>
 
                 <!-- KANAN: QR Code 2D -->
-                <div class="w-full md:w-1/4">
+                <div class="w-full md:w-1/4 flex flex-col">
                     <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2 text-center md:text-left">Scan Lacak</p>
 
                     @if($statusLunas && $pesanan->resi)
-                        <div id="qrcode" class="p-3 bg-white border border-gray-200 rounded-lg flex justify-center shadow-sm"></div>
+                        <!-- Tambahkan flex-1 agar tinggi menyamai tabel di kiri, flex-col & items-center untuk menengahkan -->
+                        <div class="flex-1 p-3 bg-white border border-gray-200 rounded-lg flex flex-col items-center justify-center shadow-sm">
+                            <span class="text-[10px] font-black text-gray-500 tracking-widest mb-3 uppercase">Scan Me</span>
+                            <div id="qrcode" class="flex justify-center"></div>
+                        </div>
                     @elseif(!$isCancelled && !$statusLunas)
-                        <div class="h-[120px] bg-slate-100 border border-dashed border-gray-300 flex flex-col items-center justify-center rounded-lg">
+                        <!-- Tambahkan flex-1 -->
+                        <div class="flex-1 bg-slate-100 border border-dashed border-gray-300 flex flex-col items-center justify-center rounded-lg min-h-[120px]">
                             <i class="fas fa-lock text-gray-300 text-2xl mb-2"></i>
                             <span class="text-[11px] text-gray-400 font-medium tracking-wide">Terkunci</span>
                         </div>

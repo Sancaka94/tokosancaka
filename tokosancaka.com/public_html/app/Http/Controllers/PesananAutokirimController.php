@@ -1293,19 +1293,75 @@ class PesananAutokirimController extends Controller
 
     /**
      * =========================================================================
-     * CETAK INVOICE AUTOKIRIM
+     * CETAK INVOICE AUTOKIRIM (REUSABLE VIEW)
      * =========================================================================
      */
     public function cetakInvoice($id)
     {
-        $pesanan = PesananAutokirim::findOrFail($id);
-
-        // Tentukan status lunas untuk merubah watermark/tampilan di invoice
+        // 1. Ambil data asli Autokirim
+        $autokirim = PesananAutokirim::findOrFail($id);
+        
+        // 2. Tentukan status lunas
         $kumpulanStatusLunas = ['terkirim', 'selesai', 'sukses', 'delivered', 'success', 'completed', 'booking_created'];
-        $statusLunas = in_array(strtolower($pesanan->status), $kumpulanStatusLunas);
+        $statusLunas = in_array(strtolower($autokirim->status), $kumpulanStatusLunas);
 
-        // Arahkan ke file blade invoice (Pastikan kamu sudah buat file blade-nya)
-        return view('admin.pesanan_autokirim.invoice', compact('pesanan', 'statusLunas'));
+        // 3. MAPPING DATA: Ubah format data Autokirim agar menyerupai data Pesanan Reguler
+        $pesanan = (object)[
+            'id'                    => $autokirim->id,
+            'is_autokirim'          => true, // Penanda khusus untuk View
+            'nomor_invoice'         => $autokirim->order_id,
+            'resi'                  => $autokirim->awb_number ?? $autokirim->order_id,
+            'resi_aktual'           => $autokirim->awb_number,
+            'status'                => $autokirim->status,
+            'tanggal_pesanan'       => $autokirim->created_at,
+            'updated_at'            => $autokirim->updated_at,
+            
+            // Data Pengirim
+            'sender_name'           => $autokirim->pengirim_nama,
+            'sender_phone'          => $autokirim->pengirim_hp,
+            'sender_address'        => $autokirim->pengirim_alamat,
+            'sender_village'        => '',
+            'sender_district'       => '',
+            'sender_regency'        => '',
+            'sender_province'       => '',
+            'sender_postal_code'    => $autokirim->pengirim_kodepos,
+            
+            // Data Penerima
+            'receiver_name'         => $autokirim->penerima_nama,
+            'receiver_phone'        => $autokirim->penerima_hp,
+            'receiver_address'      => $autokirim->penerima_alamat,
+            'receiver_village'      => '',
+            'receiver_district'     => '',
+            'receiver_regency'      => '',
+            'receiver_province'     => '',
+            'receiver_postal_code'  => $autokirim->penerima_kodepos,
+            
+            // Rincian Logistik
+            'expedition'            => $autokirim->kurir,
+            'jasa_ekspedisi_aktual' => $autokirim->kurir,
+            'service_type'          => $autokirim->layanan,
+            'item_description'      => $autokirim->deskripsi_barang ?? $autokirim->kategori_barang,
+            'weight'                => $autokirim->berat_gram,
+            'length'                => $autokirim->panjang_cm ?? 0,
+            'width'                 => $autokirim->lebar_cm ?? 0,
+            'height'                => $autokirim->tinggi_cm ?? 0,
+            
+            // Rincian Biaya
+            'item_price'            => $autokirim->nilai_barang,
+            'shipping_cost'         => $autokirim->ongkir,
+            'insurance_cost'        => $autokirim->asuransi ? round($autokirim->nilai_barang * 0.002) : 0, // Estimasi 0.2% jika tidak ada kolom khusus
+            'cod_fee'               => 0, // Di sistem autokirim sementara cod_fee gabung atau 0
+            'price'                 => $autokirim->grand_total, // Ini adalah Grand Total akhir
+            'payment_method'        => str_replace('_', ' ', strtoupper($autokirim->metode_pembayaran)),
+            'payment_url'           => $autokirim->payment_url ?? null,
+            'ansuransi'             => $autokirim->asuransi ? 'Iya' : 'Tidak',
+        ];
+
+        $tripayChannels = []; // Dikosongkan saja untuk data Autokirim
+
+        // 4. Lempar ke File Blade Invoice Utama
+        // (Pastikan nama folder/file sesuai dengan tempat Anda menyimpan file invoice regulernya)
+        return view('invoice_pesanan.show', compact('pesanan', 'statusLunas', 'tripayChannels'));
     }
 
  public function cancelOrder($id)
