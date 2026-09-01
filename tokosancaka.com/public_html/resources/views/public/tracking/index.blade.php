@@ -111,6 +111,25 @@
         box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
         border-radius: 0.75rem;
     }
+
+    /* CSS UNTUK EFEK BLUR DAN MODAL PIN */
+    .content-blurred {
+        filter: blur(10px);
+        opacity: 0.3;
+        pointer-events: none;
+        user-select: none;
+        transition: all 0.5s ease;
+    }
+
+    .pin-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(15, 23, 42, 0.85);
+        backdrop-filter: blur(5px);
+        z-index: 1050;
+        display: flex; align-items: center; justify-content: center;
+        transition: opacity 0.3s ease;
+    }
+
 </style>
 @endpush
 
@@ -119,7 +138,7 @@ if (!function_exists('getTrackingStatusIcon')) {
     function getTrackingStatusIcon($status) {
         $status = strtolower($status ?? '');
         if (str_contains($status, 'dibuat') || str_contains($status, 'booking')) return 'fas fa-box';
-        if (str_contains($status, 'apotek') || str_contains($status, 'racik') || str_contains($status, 'ramu')) return 'fas fa-mortar-pestle'; // Ikon Apotek
+        if (str_contains($status, 'apotek') || str_contains($status, 'racik') || str_contains($status, 'ramu')) return 'fas fa-mortar-pestle';
         if (str_contains($status, 'pickup') || str_contains($status, 'jemput')) return 'fas fa-truck-pickup';
         if (str_contains($status, 'tiba') || str_contains($status, 'hub') || str_contains($status, 'origin') || str_contains($status, 'manifest')) return 'fas fa-warehouse';
         if (str_contains($status, 'perjalanan') || str_contains($status, 'kirim') || str_contains($status, 'transit') || str_contains($status, 'shipment')) return 'fas fa-truck-moving';
@@ -177,193 +196,250 @@ if (!function_exists('maskText')) {
                 </div>
             </div>
 
-
             {{-- HASIL PELACAKAN --}}
             @if (isset($result))
 
                 {{-- ========================================== --}}
-                {{-- BLOK 1: TAMPILAN DATA DARI API (KIRIMINAJA) --}}
+                {{-- LOGIKA PIN KEAMANAN DITAMBAHKAN DI SINI    --}}
                 {{-- ========================================== --}}
-                @if (isset($result['summary'], $result['detail']))
-                {{-- KODE VIEW INI SAMA DENGAN MILIK ANDA SEBELUMNYA --}}
-                <div class="card tracking-card">
-                    <div class="card-header tracking-card-header p-3">
-                        <div class="row align-items-center gy-2">
-                            <div class="col-12 col-md-auto me-auto">
-                                <div class="d-flex align-items-center flex-wrap gap-2">
-                                    <span class="fw-bold text-nowrap">Hasil untuk Resi:</span>
-                                    <span class="badge bg-primary fs-6 d-inline-flex align-items-center gap-2 pe-2">
-                                        {{ $result['summary']['awb'] ?? request('resi') }}
-                                        <span onclick="copyResi('{{ $result['summary']['awb'] ?? request('resi') }}', this)"
-                                            style="cursor: pointer; padding-left: 5px; border-left: 1px solid rgba(255,255,255,0.3);"
-                                            title="Salin Resi">
-                                            <i class="far fa-copy fa-fw"></i>
-                                        </span>
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-auto">
-                                @if ($result['is_pesanan'] ?? false)
-                                    <a href="{{ route('cetak_thermal', $result['summary']['awb'] ?? $result['resi']) }}" target="_blank" class="btn btn-sm btn-outline-secondary text-nowrap bg-green-50">
-                                        <i class="fas fa-print me-1"></i> Cetak Resi
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
+                @php
+                    $requirePin = false;
+                    $pinRahasia = '';
+                    $kisiKisiHp = '';
 
-                    <div class="card-body p-4 p-md-5">
-                        <div class="row mb-4">
-                            <div class="col-md-6 mb-3">
-                                <h6 class="fw-bold text-muted mb-2">PENGIRIM</h6>
-                                <p class="mb-1 fs-5 fw-medium">{{ maskText($result['detail']['shipper'] ?? '-') }}</p>
-                                <p class="text-muted small mt-1">{{ $result['detail']['origin'] ?? '-' }}</p>
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="fw-bold text-muted mb-2">PENERIMA</h6>
-                                <p class="mb-1 fs-5 fw-medium">{{ maskText($result['detail']['receiver'] ?? '-') }}</p>
-                                <p class="text-muted small mt-1">{{ $result['detail']['destination'] ?? '-' }}</p>
+                    // Coba ambil nomor HP pengirim dari respon API atau Database internal
+                    $hpPengirim = $result['no_pengirim'] ?? ($result['detail']['shipper_phone'] ?? null);
+
+                    if (!empty($hpPengirim) && $hpPengirim !== '-') {
+                        $requirePin = true;
+                        $hpPengirim = preg_replace('/[^0-9]/', '', $hpPengirim);
+
+                        // Ambil 4 angka terakhir
+                        $pinRahasia = substr($hpPengirim, -4);
+                        if (strlen($pinRahasia) < 4) $pinRahasia = str_pad($pinRahasia, 4, '0', STR_PAD_LEFT);
+
+                        // Buat Kisi-kisi (Bintang)
+                        $panjangHp = strlen($hpPengirim);
+                        $tampilDepan = substr($hpPengirim, 0, 7);
+                        $jumlahBintang = $panjangHp > 7 ? $panjangHp - 7 : 4;
+                        $kisiKisiHp = $tampilDepan . str_repeat('*', $jumlahBintang);
+                    }
+                @endphp
+
+                @if($requirePin)
+                <!-- MODAL PIN SECURITY -->
+                <div id="pinValidationModal" class="pin-overlay">
+                    <div class="card p-4 p-md-5 text-center shadow-lg" style="max-width: 400px; width: 90%; border-radius: 1.5rem; border: none;">
+                        <div class="mb-3">
+                            <div class="mx-auto d-flex align-items-center justify-content-center bg-primary bg-opacity-10 rounded-circle" style="width: 70px; height: 70px;">
+                                <i class="fas fa-lock text-primary fa-2x"></i>
                             </div>
                         </div>
-                        <hr>
-
-                        <div class="alert alert-info text-center my-4 shadow-sm border-0">
-                            <h5 class="mb-1 fw-bold">Status Terakhir:</h5>
-                            <p class="mb-0 fs-5"><strong>{{ $result['status'] ?? 'Dalam Proses' }}</strong></p>
-                            @if(isset($result['summary']['date']))
-                                <small class="text-muted">{{ \Carbon\Carbon::parse($result['summary']['date'])->setTimezone('Asia/Jakarta')->translatedFormat('d M Y, H:i') }} WIB</small>
-                            @endif
-                        </div>
-                        <hr class="my-4">
-
-                        <div class="mb-4">
-                            <span class="badge bg-info text-dark p-2 fs-6 text-wrap text-start" style="line-height: 1.5;">
-                                <i class="fas fa-truck me-2"></i>Layanan: {{ $result['summary']['service'] ?? '-' }} ({{ $result['summary']['courier'] ?? 'Sancaka' }})
-                            </span>
-                        </div>
-
-                        <h5 class="fw-bold mb-4">Riwayat Perjalanan Paket</h5>
-                        <ul class="timeline" id="tracking-timeline-kiriminaja">
-                            @if (!empty($result['histories']))
-                                @foreach ($result['histories'] as $history)
-                                <li class="timeline-item">
-                                    <div class="timeline-icon">
-                                        <i class="{{ getTrackingStatusIcon($history->status ?? '') }}"></i>
-                                    </div>
-                                    <p class="fw-bold mb-0">{{ $history->status ?? '-' }}</p>
-                                    @if(!empty($history->lokasi))
-                                        <p class="mb-1 small text-muted">{{ $history->lokasi }}</p>
-                                    @endif
-                                    <small class="text-muted">
-                                        {{ is_a($history->created_at, 'Carbon\Carbon') ? $history->created_at->format('d M Y, H:i') . ' WIB' : $history->created_at }}
-                                    </small>
-                                </li>
-                                @endforeach
-                            @else
-                                <li class="timeline-item">
-                                    <div class="timeline-icon"><i class="fas fa-times"></i></div>
-                                    <p class="fw-bold mb-0">Belum ada riwayat</p>
-                                </li>
-                            @endif
-                        </ul>
-                    </div>
-                </div>
-
-                {{-- ========================================== --}}
-                {{-- BLOK 2: TAMPILAN DATA INTERNAL (MANUAL & RSUD) --}}
-                {{-- ========================================== --}}
-                @elseif (isset($result['resi']))
-                <div class="card tracking-card">
-                    <div class="card-header tracking-card-header p-3">
-                        <div class="row align-items-center gy-2">
-                            <div class="col-12 col-md-auto me-auto">
-                                <div class="d-flex align-items-center flex-wrap gap-2">
-                                    <span class="fw-bold text-nowrap">Hasil untuk Resi:</span>
-                                    <span class="badge bg-primary fs-6 d-inline-flex align-items-center gap-2 pe-2">
-                                        {{ $result['resi'] }}
-                                        <span onclick="copyResi('{{ $result['resi'] }}', this)"
-                                            style="cursor: pointer; padding-left: 5px; border-left: 1px solid rgba(255,255,255,0.3);"
-                                            title="Salin Resi">
-                                            <i class="far fa-copy fa-fw"></i>
-                                        </span>
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-auto">
-                                @if ($result['is_pesanan'] ?? false)
-                                    <a href="{{ route('cetak_thermal', $result['resi']) }}" target="_blank" class="btn btn-sm btn-outline-secondary text-nowrap">
-                                        <i class="fas fa-print me-1"></i> Cetak Resi
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card-body p-4 p-md-5">
-                        <div class="row mb-4">
-                            <div class="col-md-6 mb-3">
-                                <h6 class="fw-bold text-muted mb-2">PENGIRIM</h6>
-                                <p class="mb-1 fs-5 fw-medium">{{ maskText($result['pengirim'] ?? '-') }}</p>
-                                @if(!empty($result['no_pengirim'])) <p class="text-muted small mb-1">{{ maskText($result['no_pengirim']) }}</p> @endif
-                                @if(!empty($result['alamat_pengirim'])) <p class="text-muted small mb-0">{{ $result['alamat_pengirim'] }}</p> @endif
-                            </div>
-                            <div class="col-md-6">
-                                <h6 class="fw-bold text-muted mb-2">PENERIMA</h6>
-                                <p class="mb-1 fs-5 fw-medium">{{ maskText($result['penerima'] ?? '-') }}</p>
-                                @if(!empty($result['no_penerima'])) <p class="text-muted small mb-1">{{ maskText($result['no_penerima']) }}</p> @endif
-                                @if(!empty($result['alamat_penerima'])) <p class="text-muted small mb-0">{{ $result['alamat_penerima'] }}</p> @endif
-                            </div>
-                        </div>
-                        <hr>
-
-                        <div class="alert alert-info text-center my-4 shadow-sm border-0">
-                            <h5 class="mb-1 fw-bold">Status Terakhir:</h5>
-                            <p class="mb-0 fs-5"><strong>{{ $result['status'] ?? 'Data Diterima' }}</strong></p>
-                        </div>
-                        <hr class="my-4">
-
-                        @if(!empty($result['jasa_ekspedisi_aktual']))
-                        <div class="mb-4 d-flex align-items-center">
-                            {{-- TAMBAHAN: Tampilkan logo ekspedisi jika ada --}}
-                            @if(!empty($result['logo_ekspedisi']))
-                                <img src="{{ $result['logo_ekspedisi'] }}" alt="{{ $result['jasa_ekspedisi_aktual'] }}" class="img-fluid rounded me-3 shadow-sm border" style="max-height: 40px; background-color: white;">
-                            @endif
-
-                            <span class="badge bg-info text-dark p-2 fs-6 text-wrap text-start" style="line-height: 1.5;">
-                                <i class="fas fa-truck me-2"></i>Layanan: {{ $result['jasa_ekspedisi_aktual'] }}
-                            </span>
-                        </div>
-                        @endif
-
-                        <h5 class="fw-bold mb-4">Riwayat Perjalanan Paket</h5>
-                        <ul class="timeline" id="tracking-timeline-sancaka">
-                            @if (!empty($result['histories']))
-                                @foreach ($result['histories'] as $history)
-                                <li class="timeline-item">
-                                    <div class="timeline-icon">
-                                        <i class="{{ getTrackingStatusIcon($history->status ?? '') }}"></i>
-                                    </div>
-                                    <p class="fw-bold mb-0">{{ $history->status ?? '-' }}</p>
-                                    <p class="mb-1 small text-muted">
-                                        {{ $history->lokasi ?? '' }}
-                                        {!! isset($history->keterangan) ? '- ' . $history->keterangan : '' !!}
-                                    </p>
-                                    <small class="text-muted">
-                                        {{ is_a($history->created_at, 'Carbon\Carbon') ? $history->created_at->format('d M Y, H:i') . ' WIB' : $history->created_at }}
-                                    </small>
-                                </li>
-                                @endforeach
-                            @else
-                                <li class="timeline-item">
-                                    <div class="timeline-icon"><i class="fas fa-hourglass-start"></i></div>
-                                    <p class="fw-bold mb-0">Belum Ada Pemindaian</p>
-                                </li>
-                            @endif
-                        </ul>
+                        <h4 class="fw-bold text-dark mb-2">Privasi Paket</h4>
+                        <p class="text-muted small mb-4">Masukkan <strong>4 Angka Terakhir</strong> Nomor HP Pengirim untuk melihat detail resi ini.<br>
+                            <span class="badge border text-dark mt-2 px-3 py-2 fs-6 bg-light" style="letter-spacing: 2px;">{{ $kisiKisiHp }}</span>
+                        </p>
+                        <input type="password" id="pinInput" maxlength="4" pattern="\d*" inputmode="numeric" class="form-control form-control-lg text-center fw-bold mb-2" style="letter-spacing: 0.5em; font-size: 1.5rem;" placeholder="••••" autofocus>
+                        <p id="pinError" class="text-danger small fw-bold mb-3 d-none"><i class="fas fa-exclamation-circle me-1"></i> PIN Salah! Silakan coba lagi.</p>
+                        <button onclick="verifyPin()" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill mt-2 shadow-sm">Buka Data Pelacakan</button>
                     </div>
                 </div>
                 @endif
 
+                <!-- PEMBUNGKUS UTAMA EFEK BLUR -->
+                <div id="mainTrackingContent" class="{{ $requirePin ? 'content-blurred' : '' }}">
+
+                    {{-- ========================================== --}}
+                    {{-- BLOK 1: TAMPILAN DATA DARI API (KIRIMINAJA) --}}
+                    {{-- ========================================== --}}
+                    @if (isset($result['summary'], $result['detail']))
+                    <div class="card tracking-card">
+                        <div class="card-header tracking-card-header p-3">
+                            <div class="row align-items-center gy-2">
+                                <div class="col-12 col-md-auto me-auto">
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
+                                        <span class="fw-bold text-nowrap">Hasil untuk Resi:</span>
+                                        <span class="badge bg-primary fs-6 d-inline-flex align-items-center gap-2 pe-2">
+                                            {{ $result['summary']['awb'] ?? request('resi') }}
+                                            <span onclick="copyResi('{{ $result['summary']['awb'] ?? request('resi') }}', this)"
+                                                style="cursor: pointer; padding-left: 5px; border-left: 1px solid rgba(255,255,255,0.3);"
+                                                title="Salin Resi">
+                                                <i class="far fa-copy fa-fw"></i>
+                                            </span>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-auto">
+                                    @if ($result['is_pesanan'] ?? false)
+                                        <div class="d-flex gap-2">
+                                            <a href="{{ route('cetak_thermal', $result['summary']['awb'] ?? $result['resi']) }}" target="_blank" class="btn btn-sm btn-outline-secondary text-nowrap bg-green-50">
+                                                <i class="fas fa-print me-1"></i> Cetak Resi
+                                            </a>
+                                            <a href="{{ url('invoice/' . ($result['summary']['awb'] ?? $result['resi'])) }}" target="_blank" class="btn btn-sm btn-primary text-nowrap">
+                                                <i class="fas fa-file-invoice me-1"></i> Invoice
+                                            </a>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-body p-4 p-md-5">
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-3">
+                                    <h6 class="fw-bold text-muted mb-2">PENGIRIM</h6>
+                                    <p class="mb-1 fs-5 fw-medium">{{ maskText($result['detail']['shipper'] ?? '-') }}</p>
+                                    <p class="text-muted small mt-1">{{ $result['detail']['origin'] ?? '-' }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="fw-bold text-muted mb-2">PENERIMA</h6>
+                                    <p class="mb-1 fs-5 fw-medium">{{ maskText($result['detail']['receiver'] ?? '-') }}</p>
+                                    <p class="text-muted small mt-1">{{ $result['detail']['destination'] ?? '-' }}</p>
+                                </div>
+                            </div>
+                            <hr>
+
+                            <div class="alert alert-info text-center my-4 shadow-sm border-0">
+                                <h5 class="mb-1 fw-bold">Status Terakhir:</h5>
+                                <p class="mb-0 fs-5"><strong>{{ $result['status'] ?? 'Dalam Proses' }}</strong></p>
+                                @if(isset($result['summary']['date']))
+                                    <small class="text-muted">{{ \Carbon\Carbon::parse($result['summary']['date'])->setTimezone('Asia/Jakarta')->translatedFormat('d M Y, H:i') }} WIB</small>
+                                @endif
+                            </div>
+                            <hr class="my-4">
+
+                            <div class="mb-4">
+                                <span class="badge bg-info text-dark p-2 fs-6 text-wrap text-start" style="line-height: 1.5;">
+                                    <i class="fas fa-truck me-2"></i>Layanan: {{ $result['summary']['service'] ?? '-' }} ({{ $result['summary']['courier'] ?? 'Sancaka' }})
+                                </span>
+                            </div>
+
+                            <h5 class="fw-bold mb-4">Riwayat Perjalanan Paket</h5>
+                            <ul class="timeline" id="tracking-timeline-kiriminaja">
+                                @if (!empty($result['histories']))
+                                    @foreach ($result['histories'] as $history)
+                                    <li class="timeline-item">
+                                        <div class="timeline-icon">
+                                            <i class="{{ getTrackingStatusIcon($history->status ?? '') }}"></i>
+                                        </div>
+                                        <p class="fw-bold mb-0">{{ $history->status ?? '-' }}</p>
+                                        @if(!empty($history->lokasi))
+                                            <p class="mb-1 small text-muted">{{ $history->lokasi }}</p>
+                                        @endif
+                                        <small class="text-muted">
+                                            {{ is_a($history->created_at, 'Carbon\Carbon') ? $history->created_at->format('d M Y, H:i') . ' WIB' : $history->created_at }}
+                                        </small>
+                                    </li>
+                                    @endforeach
+                                @else
+                                    <li class="timeline-item">
+                                        <div class="timeline-icon"><i class="fas fa-times"></i></div>
+                                        <p class="fw-bold mb-0">Belum ada riwayat</p>
+                                    </li>
+                                @endif
+                            </ul>
+                        </div>
+                    </div>
+
+                    {{-- ========================================== --}}
+                    {{-- BLOK 2: TAMPILAN DATA INTERNAL (MANUAL)    --}}
+                    {{-- ========================================== --}}
+                    @elseif (isset($result['resi']))
+                    <div class="card tracking-card">
+                        <div class="card-header tracking-card-header p-3">
+                            <div class="row align-items-center gy-2">
+                                <div class="col-12 col-md-auto me-auto">
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
+                                        <span class="fw-bold text-nowrap">Hasil untuk Resi:</span>
+                                        <span class="badge bg-primary fs-6 d-inline-flex align-items-center gap-2 pe-2">
+                                            {{ $result['resi'] }}
+                                            <span onclick="copyResi('{{ $result['resi'] }}', this)"
+                                                style="cursor: pointer; padding-left: 5px; border-left: 1px solid rgba(255,255,255,0.3);"
+                                                title="Salin Resi">
+                                                <i class="far fa-copy fa-fw"></i>
+                                            </span>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-auto">
+                                    @if ($result['is_pesanan'] ?? false)
+                                        <div class="d-flex gap-2">
+                                            <a href="{{ route('cetak_thermal', $result['resi']) }}" target="_blank" class="btn btn-sm btn-outline-secondary text-nowrap">
+                                                <i class="fas fa-print me-1"></i> Cetak Resi
+                                            </a>
+                                            <a href="{{ url('invoice/' . $result['resi']) }}" target="_blank" class="btn btn-sm btn-primary text-nowrap">
+                                                <i class="fas fa-file-invoice me-1"></i> Invoice
+                                            </a>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card-body p-4 p-md-5">
+                            <div class="row mb-4">
+                                <div class="col-md-6 mb-3">
+                                    <h6 class="fw-bold text-muted mb-2">PENGIRIM</h6>
+                                    <p class="mb-1 fs-5 fw-medium">{{ maskText($result['pengirim'] ?? '-') }}</p>
+                                    @if(!empty($result['no_pengirim'])) <p class="text-muted small mb-1">{{ maskText($result['no_pengirim']) }}</p> @endif
+                                    @if(!empty($result['alamat_pengirim'])) <p class="text-muted small mb-0">{{ $result['alamat_pengirim'] }}</p> @endif
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="fw-bold text-muted mb-2">PENERIMA</h6>
+                                    <p class="mb-1 fs-5 fw-medium">{{ maskText($result['penerima'] ?? '-') }}</p>
+                                    @if(!empty($result['no_penerima'])) <p class="text-muted small mb-1">{{ maskText($result['no_penerima']) }}</p> @endif
+                                    @if(!empty($result['alamat_penerima'])) <p class="text-muted small mb-0">{{ $result['alamat_penerima'] }}</p> @endif
+                                </div>
+                            </div>
+                            <hr>
+
+                            <div class="alert alert-info text-center my-4 shadow-sm border-0">
+                                <h5 class="mb-1 fw-bold">Status Terakhir:</h5>
+                                <p class="mb-0 fs-5"><strong>{{ $result['status'] ?? 'Data Diterima' }}</strong></p>
+                            </div>
+                            <hr class="my-4">
+
+                            @if(!empty($result['jasa_ekspedisi_aktual']))
+                            <div class="mb-4 d-flex align-items-center">
+                                @if(!empty($result['logo_ekspedisi']))
+                                    <img src="{{ $result['logo_ekspedisi'] }}" alt="{{ $result['jasa_ekspedisi_aktual'] }}" class="img-fluid rounded me-3 shadow-sm border" style="max-height: 40px; background-color: white;">
+                                @endif
+
+                                <span class="badge bg-info text-dark p-2 fs-6 text-wrap text-start" style="line-height: 1.5;">
+                                    <i class="fas fa-truck me-2"></i>Layanan: {{ $result['jasa_ekspedisi_aktual'] }}
+                                </span>
+                            </div>
+                            @endif
+
+                            <h5 class="fw-bold mb-4">Riwayat Perjalanan Paket</h5>
+                            <ul class="timeline" id="tracking-timeline-sancaka">
+                                @if (!empty($result['histories']))
+                                    @foreach ($result['histories'] as $history)
+                                    <li class="timeline-item">
+                                        <div class="timeline-icon">
+                                            <i class="{{ getTrackingStatusIcon($history->status ?? '') }}"></i>
+                                        </div>
+                                        <p class="fw-bold mb-0">{{ $history->status ?? '-' }}</p>
+                                        <p class="mb-1 small text-muted">
+                                            {{ $history->lokasi ?? '' }}
+                                            {!! isset($history->keterangan) ? '- ' . $history->keterangan : '' !!}
+                                        </p>
+                                        <small class="text-muted">
+                                            {{ is_a($history->created_at, 'Carbon\Carbon') ? $history->created_at->format('d M Y, H:i') . ' WIB' : $history->created_at }}
+                                        </small>
+                                    </li>
+                                    @endforeach
+                                @else
+                                    <li class="timeline-item">
+                                        <div class="timeline-icon"><i class="fas fa-hourglass-start"></i></div>
+                                        <p class="fw-bold mb-0">Belum Ada Pemindaian</p>
+                                    </li>
+                                @endif
+                            </ul>
+                        </div>
+                    </div>
+                    @endif
+                </div> <!-- PENUTUP DIV mainTrackingContent -->
             @endif
         </div>
     </div>
@@ -394,6 +470,47 @@ if (!function_exists('maskText')) {
 
 @push('scripts')
 <script>
+    // FUNGSI UNTUK VERIFIKASI PIN
+    @if(isset($requirePin) && $requirePin)
+    const correctPin = "{{ $pinRahasia }}";
+
+    function verifyPin() {
+        const pinInput = document.getElementById('pinInput');
+        const pinError = document.getElementById('pinError');
+        const modal = document.getElementById('pinValidationModal');
+        const mainContent = document.getElementById('mainTrackingContent');
+
+        if (pinInput.value === correctPin) {
+            // Animasi hilangnya modal dan menghapus efek blur
+            modal.style.opacity = '0';
+            setTimeout(() => {
+                modal.remove(); // Hapus modal HTML secara permanen
+                mainContent.classList.remove('content-blurred'); // Hapus blur
+            }, 300);
+        } else {
+            pinError.classList.remove('d-none');
+            pinInput.value = '';
+            pinInput.focus();
+        }
+    }
+
+    // Auto-cek jika pengguna mengetik 4 angka, atau menekan Enter
+    document.addEventListener('DOMContentLoaded', function() {
+        const pinInput = document.getElementById('pinInput');
+        if(pinInput) {
+            pinInput.focus();
+            pinInput.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') verifyPin();
+            });
+            pinInput.addEventListener('input', function() {
+                this.value = this.value.replace(/[^0-9]/g, ''); // Hanya angka yang diizinkan
+                if(this.value.length === 4) verifyPin();
+            });
+        }
+    });
+    @endif
+
+    // LAIN-LAIN
     document.addEventListener('DOMContentLoaded', function() {
         const items = document.querySelectorAll('.timeline-item');
         items.forEach((item, index) => { item.style.animationDelay = `${index * 0.1}s`; });
