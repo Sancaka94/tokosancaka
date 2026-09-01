@@ -2040,7 +2040,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 // --- GRUP CUSTOMER ---
 Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(function () {
     // Form Create & Store
-    Route::get('/pesanan-autokirim/create', [PesananAutokirimController::class, 'createCustomer'])->name('pesanan-autokirim.create');
+    Route::get('/pesanan-autokirim/create', [PesananAutokirimController::class, 'createAdmin'])->name('pesanan-autokirim.create');
     Route::post('/pesanan-autokirim', [PesananAutokirimController::class, 'store'])->name('pesanan-autokirim.store');
 
     // Halaman Riwayat & Aksi Khusus Customer
