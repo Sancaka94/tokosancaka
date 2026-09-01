@@ -5,7 +5,7 @@
     <div class="mb-8 border-b border-gray-200 pb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <!-- Bagian Kiri: Judul dan Deskripsi -->
         <div>
-            <h1 class="text-3xl font-extrabold text-black tracking-tight">Kirim Paket <span class="text-gray-500 font-medium">Sancaka Express</span></h1>
+            <h1 class="text-3xl font-extrabold text-black tracking-tight">Kirim Paket <span class="text-grey-500 font-medium">Sancaka Express</span><span class="text-red-500 font-medium">(Autokirim)</span></h1>
             <p class="text-gray-500 mt-2 text-sm">Isi detail pengiriman dengan cepat, akurat, dan dapatkan tarif terbaik dari server logistik.</p>
         </div>
 
@@ -793,7 +793,7 @@
                                  @click="tempSelected = ongkir"
                                  class="p-4 border rounded-md cursor-pointer transition-all duration-200 flex flex-col justify-between gap-3 bg-white"
                                  :class="tempSelected && tempSelected.kode_layanan === ongkir.kode_layanan ? 'border-black ring-1 ring-black shadow-sm' : 'border-gray-200 hover:border-gray-300'">
-                                 
+
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-4">
                                         <input type="radio" name="temp_kurir_radio" class="w-4 h-4 text-black focus:ring-black border-gray-300 pointer-events-none"
