@@ -438,7 +438,7 @@
                                                                               ->first();
                                             $jasaImage = $sampleMitra ? asset('public/storage/' . $sampleMitra->image_url) : null;
                                         @endphp
-                                        
+
                                         <div class="product-img-container bg-slate-100 flex items-center justify-center">
                                             @if($jasaImage)
                                                 {{-- Jika ada teknisi, tampilkan fotonya --}}
@@ -474,20 +474,32 @@
                                         <div class="mt-1">
                                             <div class="h-3"></div> {{-- Spasi kosong pengganti harga coret --}}
 
+                                            {{-- Ambil Data Mitra Aktif & Harga Terendah --}}
+                                            @php
+                                                $mitraAktif = \App\Models\Product::where('id_master_layanan', $layanan->id)
+                                                                ->where('status', 'active');
+
+                                                $mitraCount = $mitraAktif->count();
+                                                $minMitraPrice = $mitraAktif->min('price'); // Asumsi kolom harga mitra adalah 'price'
+                                            @endphp
+
                                             <div class="flex items-end justify-between mt-1">
                                                 <span class="text-[#d0011b] text-sm font-bold truncate">
-                                                    <span class="text-xs">Rp</span>{{ number_format($layanan->tarif_dasar, 0, ',', '.') }}
+                                                    <span class="text-xs">Rp</span>
+                                                    @if($mitraCount > 0 && $minMitraPrice && $minMitraPrice != $layanan->tarif_dasar)
+                                                        @php
+                                                            // Otomatis mengurutkan mana yang lebih murah untuk ditaruh di depan
+                                                            $hargaBawah = min($minMitraPrice, $layanan->tarif_dasar);
+                                                            $hargaAtas = max($minMitraPrice, $layanan->tarif_dasar);
+                                                        @endphp
+                                                        {{ number_format($hargaBawah, 0, ',', '.') }} - {{ number_format($hargaAtas, 0, ',', '.') }}
+                                                    @else
+                                                        {{ number_format($layanan->tarif_dasar, 0, ',', '.') }}
+                                                    @endif
                                                 </span>
                                             </div>
 
                                             {{-- Info Realtime Teknisi (Dinamis) --}}
-                                            @php
-                                                // Menghitung jumlah penjual/teknisi yang menawarkan jasa ini
-                                                $mitraCount = \App\Models\Product::where('id_master_layanan', $layanan->id)
-                                                                                 ->where('status', 'active')
-                                                                                 ->count();
-                                            @endphp
-
                                             <div class="flex items-center gap-1 mt-1 text-[9px] {{ $mitraCount > 0 ? 'text-green-600' : 'text-gray-400' }} font-medium">
                                                 @if($mitraCount > 0)
                                                     <i class="fas fa-user-check"></i> {{ $mitraCount }} Mitra Tersedia
