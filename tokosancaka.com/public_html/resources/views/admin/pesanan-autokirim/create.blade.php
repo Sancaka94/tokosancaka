@@ -751,10 +751,30 @@
                         </button>
                     </div>
 
+                    <!-- TAMBAHAN: Tombol Filter -->
+                    <div class="bg-white px-6 py-3 border-b border-gray-200 flex items-center gap-2 overflow-x-auto custom-scrollbar">
+                        <button type="button" @click="filterEkspedisi = 'Semua'" 
+                            :class="filterEkspedisi === 'Semua' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                            class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border border-transparent">
+                            Semua
+                        </button>
+                        <button type="button" @click="filterEkspedisi = 'Reguler'" 
+                            :class="filterEkspedisi === 'Reguler' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                            class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border border-transparent">
+                            Reguler / Nextday
+                        </button>
+                        <button type="button" @click="filterEkspedisi = 'Cargo'" 
+                            :class="filterEkspedisi === 'Cargo' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                            class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border border-transparent">
+                            Cargo
+                        </button>
+                    </div>
+
                     <!-- Modal Body (List Ekspedisi) -->
                     <div class="p-6 max-h-[60vh] overflow-y-auto space-y-3 custom-scrollbar bg-gray-50">
                         <template x-for="(ongkir, index) in ongkirList" :key="index">
-                            <div @click="tempSelected = ongkir"
+                            <div x-show="filterEkspedisi === 'Semua' || (filterEkspedisi === 'Cargo' && ongkir.layanan.toUpperCase().includes('CARGO')) || (filterEkspedisi === 'Reguler' && !ongkir.layanan.toUpperCase().includes('CARGO'))"
+                                 @click="tempSelected = ongkir"
                                  class="p-4 border rounded-md cursor-pointer transition-all duration-200 flex flex-col justify-between gap-3 bg-white"
                                  :class="tempSelected && tempSelected.kode_layanan === ongkir.kode_layanan ? 'border-black ring-1 ring-black shadow-sm' : 'border-gray-200 hover:border-gray-300'">
 
@@ -935,11 +955,12 @@ document.addEventListener('alpine:init', () => {
         showReceiverDropdown: false,
         isSearchingReceiver: false,
 
-        // Modal & Selection State
         showModal: false,
         isLoading: false,
         ongkirList: [],
+        filterEkspedisi: 'Semua', // <-- TAMBAHKAN INI
         tempSelected: null,       // Pilihan sementara di dalam modal
+
 
         // Data Terpilih Fix (Untuk UI & Backend)
         selectedKurir: '',
@@ -1199,7 +1220,7 @@ document.addEventListener('alpine:init', () => {
                 if(result.success) {
                     // MENGURUTKAN ONGKIR DARI TERMURAH KE TERMAHAL
                     this.ongkirList = result.data.sort((a, b) => a.harga - b.harga);
-                    
+                    this.filterEkspedisi = 'Semua';
                     this.showModal = true;
                 } else {
                     alert("Gagal memuat tarif kurir: " + result.message);
