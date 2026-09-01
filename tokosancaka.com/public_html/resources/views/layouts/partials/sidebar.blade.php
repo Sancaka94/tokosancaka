@@ -523,7 +523,7 @@
 
                 <div x-show="open && (isExpanded || isHovered || isMobile)" x-cloak class="mt-1">
                     <ul class="pl-9 pr-2 py-1 space-y-1">
-                        
+
                         {{-- MENU BARU: BUAT PESANAN AUTOKIRIM --}}
                         <li>
                             <a href="{{ route('admin.pesanan-autokirim.create') }}" wire:navigate
@@ -533,7 +533,7 @@
                                 <span>Create Autokirim</span>
                             </a>
                         </li>
-                        
+
                         {{-- MENU LAMA: RIWAYAT AUTOKIRIM --}}
                         <li>
                             <a href="{{ route('admin.pesanan-autokirim.index') }}" wire:navigate
