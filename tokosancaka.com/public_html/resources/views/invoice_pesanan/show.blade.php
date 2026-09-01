@@ -440,11 +440,14 @@
                 </div>
             </div>
 
-            <div class="flex flex-col-reverse md:flex-row gap-8 mb-8 relative z-40">
+            <!-- ================= ROW 1: TRANSAKSI & QR CODE ================= -->
+            <div class="flex flex-col-reverse md:flex-row gap-8 mb-4 relative z-40">
 
+                <!-- KIRI: Riwayat Transaksi -->
                 <div class="w-full md:w-3/4">
                     <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Riwayat Transaksi</p>
                     <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        
                         <table class="w-full text-[13px] text-left">
                             <thead class="bg-slate-100 border-b border-gray-200 text-gray-500">
                                 <tr>
@@ -475,30 +478,17 @@
                                 </tr>
                             </tfoot>
                         </table>
+
                     </div>
                 </div>
 
+                <!-- KANAN: QR Code 2D -->
                 <div class="w-full md:w-1/4">
-                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2 text-center md:text-left">Status Lacak</p>
+                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2 text-center md:text-left">Scan Lacak</p>
 
-                    @if($isCancelled)
-                        <div class="border border-gray-200 bg-slate-100 rounded-lg p-4 text-center">
-                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status Paket</p>
-                            <p class="text-xs font-bold text-black mb-4">{{ $statusText }}</p>
-                            <button onclick="syncTracking(this)" class="no-print w-full bg-white border border-gray-300 hover:border-black text-black text-[11px] font-bold py-2 rounded-md transition-colors uppercase tracking-wider shadow-sm">
-                                Sync API
-                            </button>
-                        </div>
-                    @elseif($statusLunas && $pesanan->resi)
-                        <div class="border border-gray-200 bg-slate-100 rounded-lg p-4 text-center mb-3">
-                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status Paket</p>
-                            <p class="text-xs font-bold text-black mb-4 truncate" title="{{ $statusText }}">{{ $statusText }}</p>
-                            <button onclick="syncTracking(this)" class="no-print w-full bg-white border border-gray-300 hover:border-black text-black text-[11px] font-bold py-2 rounded-md transition-colors uppercase tracking-wider shadow-sm">
-                                Sync API
-                            </button>
-                        </div>
+                    @if($statusLunas && $pesanan->resi)
                         <div id="qrcode" class="p-3 bg-white border border-gray-200 rounded-lg flex justify-center shadow-sm"></div>
-                    @else
+                    @elseif(!$isCancelled && !$statusLunas)
                         <div class="h-[120px] bg-slate-100 border border-dashed border-gray-300 flex flex-col items-center justify-center rounded-lg">
                             <i class="fas fa-lock text-gray-300 text-2xl mb-2"></i>
                             <span class="text-[11px] text-gray-400 font-medium tracking-wide">Terkunci</span>
@@ -506,6 +496,24 @@
                     @endif
                 </div>
 
+            </div>
+
+            <!-- ================= ROW 2: STATUS LACAK & SYNC API ================= -->
+            <div class="mb-8 relative z-40">
+                @if($isCancelled || ($statusLunas && $pesanan->resi))
+                    <div class="border border-gray-200 bg-slate-100 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div class="w-full sm:w-3/4">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status Paket Terkini</p>
+                            <!-- Class truncate dihapus, diganti leading-relaxed agar teks panjang tidak terpotong -->
+                            <p class="text-sm font-bold text-black leading-relaxed">{{ $statusText }}</p>
+                        </div>
+                        <div class="w-full sm:w-1/4 flex sm:justify-end no-print">
+                            <button onclick="syncTracking(this)" class="w-full sm:w-auto px-6 bg-white border border-gray-300 hover:border-black text-black text-[11px] font-bold py-2.5 rounded-md transition-colors uppercase tracking-wider shadow-sm flex justify-center items-center gap-2">
+                                <i class="fas fa-sync-alt text-gray-500"></i> Sync API
+                            </button>
+                        </div>
+                    </div>
+                @endif
             </div>
 
             <div class="text-center text-[11px] text-gray-400 mt-12 pt-6 border-t border-gray-100 relative z-40">

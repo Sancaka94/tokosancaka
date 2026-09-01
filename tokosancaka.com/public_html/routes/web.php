@@ -2053,29 +2053,29 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
 
     });
 
-// --- GRUP ADMIN ---
-// --- GRUP ADMIN ---
-Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/pesanan-autokirim', [PesananAutokirimController::class, 'indexAdmin'])->name('pesanan-autokirim.index');
-    
-    // --- MASUKKAN 3 BARIS INI ---
-    Route::get('/pesanan-autokirim/create', [PesananAutokirimController::class, 'createAdmin'])->name('pesanan-autokirim.create');
-    Route::post('/pesanan-autokirim', [PesananAutokirimController::class, 'store'])->name('pesanan-autokirim.store');
-    Route::post('/pesanan-autokirim/ajax-pickup', [PesananAutokirimController::class, 'generatePickupPointAjax'])->name('pesanan-autokirim.ajax-pickup');
-    // ----------------------------
+    // --- GRUP ADMIN ---
+    Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/pesanan-autokirim', [PesananAutokirimController::class, 'indexAdmin'])->name('pesanan-autokirim.index');
+        
+        // --- MASUKKAN 3 BARIS INI ---
+        Route::get('/pesanan-autokirim/create', [PesananAutokirimController::class, 'createAdmin'])->name('pesanan-autokirim.create');
+        Route::post('/pesanan-autokirim', [PesananAutokirimController::class, 'store'])->name('pesanan-autokirim.store');
+        Route::post('/pesanan-autokirim/ajax-pickup', [PesananAutokirimController::class, 'generatePickupPointAjax'])->name('pesanan-autokirim.ajax-pickup');
+        // ----------------------------
 
-    // TAMBAHAN ROUTE AKSI BARU (Ini bawaan kode asli kamu)
-    Route::get('/pesanan-autokirim/{id}/cetak', [PesananAutokirimController::class, 'cetakResi'])->name('pesanan-autokirim.cetak');
-    Route::post('/pesanan-autokirim/{id}/cancel', [PesananAutokirimController::class, 'cancelOrder'])->name('pesanan-autokirim.cancel');
-    Route::delete('/pesanan-autokirim/{id}', [PesananAutokirimController::class, 'destroy'])->name('pesanan-autokirim.destroy');
-    Route::post('/pesanan-autokirim/bulk-delete', [PesananAutokirimController::class, 'bulkDestroy'])->name('pesanan-autokirim.bulk_destroy');
-});
+        // TAMBAHAN ROUTE AKSI BARU (Ini bawaan kode asli kamu)
+        Route::get('/pesanan-autokirim/{id}/cetak', [PesananAutokirimController::class, 'cetakResi'])->name('pesanan-autokirim.cetak');
+        Route::get('/pesanan-autokirim/{id}/invoice', [PesananAutokirimController::class, 'cetakInvoice'])->name('pesanan-autokirim.invoice');
+        Route::post('/pesanan-autokirim/{id}/cancel', [PesananAutokirimController::class, 'cancelOrder'])->name('pesanan-autokirim.cancel');
+        Route::delete('/pesanan-autokirim/{id}', [PesananAutokirimController::class, 'destroy'])->name('pesanan-autokirim.destroy');
+        Route::post('/pesanan-autokirim/bulk-delete', [PesananAutokirimController::class, 'bulkDestroy'])->name('pesanan-autokirim.bulk_destroy');
+    });
 
-// --- GRUP AJAX/API INTERNAL ---
-Route::prefix('api/autokirim')->name('api.autokirim.')->group(function () {
-    Route::get('/search-address', [PesananAutokirimController::class, 'searchAddressAjax'])->name('search_address');
-    Route::post('/cek-ongkir', [PesananAutokirimController::class, 'cekOngkirAjax'])->name('cek_ongkir');
-});
+    // --- GRUP AJAX/API INTERNAL ---
+    Route::prefix('api/autokirim')->name('api.autokirim.')->group(function () {
+        Route::get('/search-address', [PesananAutokirimController::class, 'searchAddressAjax'])->name('search_address');
+        Route::post('/cek-ongkir', [PesananAutokirimController::class, 'cekOngkirAjax'])->name('cek_ongkir');
+    });
 
 
 Route::prefix('admin')->middleware(['auth'])->name('admin.')->group(function () {

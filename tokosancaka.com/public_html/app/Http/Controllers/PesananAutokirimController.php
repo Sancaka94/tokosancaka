@@ -649,7 +649,7 @@ class PesananAutokirimController extends Controller
         $userRole = strtolower(auth()->user()->role ?? 'pelanggan');
         $redirectRoute = ($userRole === 'admin') ? 'admin.pesanan-autokirim.create' : 'customer.pesanan-autokirim.create';
         $redirectUrl   = route($redirectRoute);
-        
+
         $indexRoute    = ($userRole === 'admin') ? 'admin.pesanan-autokirim.index' : 'customer.pesanan-autokirim.index';
         $indexUrl      = route($indexRoute);
 
@@ -1289,6 +1289,23 @@ class PesananAutokirimController extends Controller
     {
         $pesanan = PesananAutokirim::findOrFail($id);
         return view('admin.pesanan_autokirim.cetak_resi', compact('pesanan'));
+    }
+
+    /**
+     * =========================================================================
+     * CETAK INVOICE AUTOKIRIM
+     * =========================================================================
+     */
+    public function cetakInvoice($id)
+    {
+        $pesanan = PesananAutokirim::findOrFail($id);
+
+        // Tentukan status lunas untuk merubah watermark/tampilan di invoice
+        $kumpulanStatusLunas = ['terkirim', 'selesai', 'sukses', 'delivered', 'success', 'completed', 'booking_created'];
+        $statusLunas = in_array(strtolower($pesanan->status), $kumpulanStatusLunas);
+
+        // Arahkan ke file blade invoice (Pastikan kamu sudah buat file blade-nya)
+        return view('admin.pesanan_autokirim.invoice', compact('pesanan', 'statusLunas'));
     }
 
  public function cancelOrder($id)
