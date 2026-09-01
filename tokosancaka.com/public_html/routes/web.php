@@ -2046,6 +2046,7 @@ Route::middleware(['auth'])->prefix('customer')->name('customer.')->group(functi
     // Halaman Riwayat & Aksi Khusus Customer
     Route::get('/pesanan-autokirim', [PesananAutokirimController::class, 'indexCustomer'])->name('pesanan-autokirim.index');
     Route::get('/pesanan-autokirim/{id}/cetak', [PesananAutokirimController::class, 'cetakResi'])->name('pesanan-autokirim.cetak');
+    Route::get('/pesanan-autokirim/{id}/invoice', [PesananAutokirimController::class, 'cetakInvoice'])->name('pesanan-autokirim.invoice');
     Route::post('/pesanan-autokirim/{id}/cancel', [PesananAutokirimController::class, 'cancelOrder'])->name('pesanan-autokirim.cancel');
 
     Route::get('/riwayat-pencairan', [\App\Http\Controllers\KomisiAgentController::class, 'riwayatPencairanCustomer'])->name('riwayat-pencairan');

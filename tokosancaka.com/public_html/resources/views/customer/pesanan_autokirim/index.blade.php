@@ -256,6 +256,11 @@
                                     <i class="fa-solid fa-print"></i>
                                 </a>
 
+                                <!-- TOMBOL CETAK INVOICE -->
+                                <a href="{{ route('customer.pesanan-autokirim.invoice', $item->id) }}" target="_blank" class="bg-white border border-gray-200 hover:bg-purple-50 hover:border-purple-200 hover:text-purple-600 text-gray-500 w-8 h-8 rounded-lg flex items-center justify-center shadow-sm transition" title="Cetak / Lihat Invoice">
+                                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                                </a>
+
                                 @if(in_array($item->status, ['booking_created', 'menunggu_pembayaran']))
                                     <button type="button" onclick="confirmCancel('{{ route('customer.pesanan-autokirim.cancel', $item->id) }}')" class="bg-white border border-gray-200 hover:bg-red-50 hover:border-red-200 hover:text-red-600 text-gray-500 w-8 h-8 rounded-lg flex items-center justify-center shadow-sm transition" title="Batalkan Pesanan">
                                         <i class="fa-solid fa-ban"></i>
