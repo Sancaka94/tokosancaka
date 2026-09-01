@@ -522,7 +522,7 @@
             </div>
 
             <div class="text-center text-[11px] text-gray-400 mt-12 pt-6 border-t border-gray-100 relative z-40">
-                Dicetak otomatis dari sistem <strong>tokosancaka.com</strong> pada {{ date('d M Y, H:i') }} WIB.<br>Dokumen sah tanpa tanda tangan fisik.
+                Dicetak otomatis dari sistem <strong>tokosancaka.com</strong> pada {{ date('d M Y, H:i') }} WIB.<br>Powered By CV SANCAKA KARYA HUTAMA<br>Dokumen sah tanpa tanda tangan fisik.
             </div>
 
         </div>
