@@ -1555,7 +1555,7 @@ public function cetakThermal($resi)
         return response()->json(['success' => true, 'data' => $channels]);
     }
 
-    /**
+   /**
      * Menampilkan halaman Riwayat Belanja.
      */
     public function riwayat()
@@ -1565,15 +1565,15 @@ public function cetakThermal($resi)
         // Ambil ID User (Prioritas id_pengguna, fallback ke id)
         $customerId = $user->id_pengguna ?? $user->id;
 
-        // Ambil data pesanan milik user ini
-        // Menggunakan logic yang sama amannya dengan DashboardController kemarin
-        $pesanans = \App\Models\Pesanan::where('id_pengguna_pembeli', $customerId)
-                            ->latest() // Urutkan dari yang terbaru
-                            ->paginate(10); // Batasi 10 per halaman
+        // =========================================================
+        // PERBAIKAN DI SINI:
+        // Ganti Model Pesanan menjadi Order dan ambil relasinya
+        // =========================================================
+        $pesanans = \App\Models\Order::where('user_id', $customerId)
+                            ->with(['store.user', 'items.product.images', 'items.variant'])
+                            ->latest()
+                            ->paginate(10);
 
-        // Cek apakah view khusus riwayat sudah ada?
-        // Jika file 'resources/views/customer/pesanan/riwayat.blade.php' belum Anda buat,
-        // kita arahkan sementara ke view index (tabel pesanan biasa) agar tidak error.
         if (view()->exists('customer.pesanan.riwayat')) {
             return view('customer.pesanan.riwayat', compact('pesanans'));
         }
