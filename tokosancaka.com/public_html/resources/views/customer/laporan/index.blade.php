@@ -111,6 +111,7 @@
                     <thead class="bg-blue-50">
                         <tr>
                             <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Tanggal</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">No. Referensi</th>
                             <th scope="col" class="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Deskripsi</th>
                             <th scope="col" class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-600">Jumlah</th>
                             <th scope="col" class="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-600">Sisa Saldo</th>
@@ -123,11 +124,27 @@
                                     <div class="font-medium text-gray-900">{{ $tx->created_at->format('d M Y') }}</div>
                                     <div class="text-xs text-gray-400">{{ $tx->created_at->format('H:i') }} WIB</div>
                                 </td>
+                                
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    @php
+                                        $link = '#';
+                                        if($tx->source_type === 'topup') {
+                                            $link = route('customer.topup.show', ['topup' => $tx->reference]);
+                                        } elseif(in_array($tx->source_type, ['marketplace', 'manual'])) {
+                                            $link = route('checkout.invoice', ['invoice' => $tx->reference]);
+                                        } elseif($tx->source_type === 'autokirim') {
+                                            $link = route('customer.pesanan-autokirim.index', ['search' => $tx->reference]);
+                                        }
+                                    @endphp
+                                    <a href="{{ $link }}" class="text-sm font-bold text-indigo-600 hover:text-indigo-800 hover:underline transition">
+                                        {{ $tx->reference }}
+                                    </a>
+                                </td>
+
                                 <td class="px-6 py-4">
                                     <div class="text-sm font-semibold text-gray-800">{{ $tx->description }}</div>
                                 </td>
                                 <td class="whitespace-nowrap px-6 py-4 text-right text-sm">
-                                    {{-- PERBAIKAN: Mengakomodasi tipe 'refund' sebagai pemasukan (hijau) --}}
                                     @if(in_array($tx->type, ['topup', 'revenue', 'refund']))
                                         <span class="inline-flex items-center font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-md">
                                             + Rp {{ number_format($tx->amount, 0, ',', '.') }}
@@ -144,7 +161,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="px-6 py-12 text-center">
+                                <td colspan="5" class="px-6 py-12 text-center">
                                     <div class="mx-auto max-w-md">
                                         <i class="fas fa-folder-open fa-3x text-gray-300"></i>
                                         <h3 class="mt-4 text-sm font-medium text-gray-900">Tidak ada riwayat transaksi</h3>
@@ -155,11 +172,10 @@
                         @endforelse
                     </tbody>
                     
-                    {{-- Tampilkan Saldo Awal HANYA jika ada filter tanggal --}}
                     @if($startDate && $endDate)
                     <tfoot class="bg-gray-50 border-t-2 border-gray-300">
                         <tr>
-                            <td colspan="3" class="px-6 py-4 text-right text-sm font-semibold text-gray-600">
+                            <td colspan="4" class="px-6 py-4 text-right text-sm font-semibold text-gray-600">
                                 Saldo Awal Periode (sebelum {{ \Carbon\Carbon::parse($startDate)->format('d M Y') }})
                             </td>
                             <td class="px-6 py-4 text-right text-sm font-bold text-gray-800">
