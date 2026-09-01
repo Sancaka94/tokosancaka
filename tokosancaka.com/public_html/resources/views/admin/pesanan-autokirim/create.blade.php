@@ -33,675 +33,686 @@
         </div>
     @endif
 
-    <form action="{{ route('admin.pesanan-autokirim.store') }}" method="POST" @submit="validateForm($event)" class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <!-- FORM UTAMA -->
+    <form action="{{ route('admin.pesanan-autokirim.store') }}" method="POST" @submit="validateForm($event)" class="space-y-8">
         @csrf
 
         <!-- ========================================== -->
-        <!-- SISI KIRI: DATA PENGIRIM & PENERIMA -->
+        <!-- ROW 1: GRID KIRI (DATA) DAN KANAN (DETAIL) -->
         <!-- ========================================== -->
-        <div class="lg:col-span-7 space-y-6">
-
-            <!-- Card Data Pengirim -->
-            <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-               <div class="flex items-center justify-between mb-5">
-                    <h2 class="text-base font-bold text-black flex items-center"><i class="fa-solid fa-user-check text-gray-800 mr-2.5"></i> Data Pengirim</h2>
-
-                    <!-- Wrapper Tombol & Badge -->
-                    <div class="flex items-center gap-3">
-                        <!-- Badge Kode Pickup Point -->
-                        <div class="bg-gray-100 border border-gray-200 text-[10px] font-bold px-2 py-1.5 rounded flex items-center gap-1.5 uppercase tracking-wider">
-                            <template x-if="isGeneratingPickup">
-                                <i class="fa-solid fa-spinner fa-spin text-blue-600"></i>
-                            </template>
-                            <template x-if="!isGeneratingPickup">
-                                <i class="fa-solid fa-store" :class="pickupPointCode ? 'text-green-600' : 'text-red-500'"></i>
-                            </template>
-
-                            <span x-show="isGeneratingPickup" class="text-blue-600">MEMPROSES KODE...</span>
-                            <span x-show="!isGeneratingPickup" x-text="pickupPointCode ? 'PICKUP: ' + pickupPointCode : 'BELUM ADA PICKUP POINT'" :class="pickupPointCode ? 'text-gray-800' : 'text-red-500'"></span>
-                        </div>
-
-                        <!-- Tombol Centang Simpan Pengirim -->
-                        <button type="button" @click="simpanPengirim = !simpanPengirim"
-                                class="text-xs font-medium border px-3 py-1.5 rounded transition duration-200 flex items-center gap-1.5"
-                                :class="simpanPengirim ? 'bg-black text-white border-black shadow-inner' : 'bg-white text-black border-gray-300 hover:bg-gray-50'">
-                            <i class="fa-solid" :class="simpanPengirim ? 'fa-circle-check' : 'fa-bookmark'"></i>
-                            <span x-text="simpanPengirim ? 'Akan Disimpan' : 'Simpan Kontak'"></span>
-                        </button>
-                        <!-- Hidden Input untuk Backend -->
-                        <input type="hidden" name="simpan_pengirim" :value="simpanPengirim ? 1 : 0">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="col-span-2 sm:col-span-1 relative" @click.away="showContactSender = false">
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">NAMA LENGKAP</label>
-                        <div class="relative">
-                            <input type="text" id="pengirim_nama" name="pengirim_nama"
-                                x-model="pengirimNama"
-                                @input.debounce.400ms="searchContact('sender')"
-                                @focus="if(pengirimNama.length >= 2) showContactSender = true"
-                                required placeholder="Ketik nama atau no hp..."
-                                class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400" autocomplete="off">
-
-                            <!-- Loading Spinner -->
-                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                <i class="fa-solid fa-spinner fa-spin text-black" x-show="isSearchingContactSender" x-cloak></i>
-                            </div>
-                        </div>
-
-                        <!-- Dropdown Hasil Pencarian Kontak Pengirim -->
-                        <div x-show="showContactSender" x-transition class="absolute z-[120] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
-                            <template x-if="contactResultsSender.length > 0">
-                                <div>
-                                    <template x-for="kontak in contactResultsSender">
-                                        <div @click="selectContact('sender', kontak)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
-                                            <p class="font-bold text-black uppercase" x-text="kontak.nama"></p>
-                                            <p class="text-xs text-gray-500 mt-0.5" x-text="kontak.no_hp"></p>
-                                        </div>
-                                    </template>
-                                </div>
-                            </template>
-                            <template x-if="contactResultsSender.length === 0 && !isSearchingContactSender && pengirimNama.length >= 2">
-                                <div class="px-4 py-3 text-sm text-gray-500 italic text-center">Kontak tidak ditemukan.</div>
-                            </template>
-                        </div>
-                    </div>
-                    <div class="col-span-2 sm:col-span-1">
-                        <div class="col-span-2 sm:col-span-1">
-                            <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
-                            <input type="text" id="pengirim_hp" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required @input.debounce.1000ms="autoGeneratePickup()" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
-                        </div>
-                    </div>
-
-                    <div class="col-span-2">
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">EMAIL PENGIRIM (OPSIONAL)</label>
-                        <input type="email" id="pengirim_email" name="pengirim_email" value="{{ old('pengirim_email') }}" class="w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400" placeholder="contoh@email.com">
-                    </div>
-
-                    <!-- Autocomplete Alamat Pengirim -->
-                    <div class="col-span-2 relative" @click.away="showSenderDropdown = false">
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">KECAMATAN / KABUPATEN PENGIRIM</label>
-                        <div class="relative">
-                            <input type="text" x-model="senderQuery" @input.debounce.400ms="searchAddress('sender')" @focus="showSenderDropdown = true" placeholder="Ketik minimal 3 karakter wilayah pengirim..." class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black pl-4 pr-10 py-2.5 bg-white transition duration-200 placeholder-gray-400" autocomplete="off">
-                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 text-xs">
-                                <i class="fa-solid fa-magnifying-glass" x-show="!isSearchingSender"></i>
-                                <i class="fa-solid fa-spinner fa-spin text-black" x-show="isSearchingSender" x-cloak></i>
-                            </div>
-                        </div>
-                        <input type="hidden" name="pengirim_district_id" x-model="senderDistrictId">
-                        <input type="hidden" name="pengirim_kodepos" x-model="senderPostalCode">
-
-                        <div x-show="showSenderDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
-                            <template x-if="senderResults.length > 0">
-                                <div>
-                                    <template x-for="res in senderResults">
-                                        <!-- Wrapper utama dibuat Flexbox justify-between agar konten kiri dan kanan terpisah -->
-                                        <div @click="selectAddress('sender', res)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 flex items-center justify-between gap-3 transition duration-150">
-
-                                            <!-- Bagian Kiri: Icon PIN & Teks Alamat -->
-                                            <div class="flex items-start gap-3 flex-1 min-w-0">
-                                                <!-- Icon PIN Merah -->
-                                                <div class="mt-0.5 shrink-0">
-                                                    <i class="fa-solid fa-location-dot text-red-600 text-base"></i>
-                                                </div>
-
-                                                <!-- Teks -->
-                                                <div class="flex-1 min-w-0">
-                                                    <p class="font-medium text-black text-[11px] leading-relaxed" x-text="res.full_address_display"></p>
-                                                    <p class="text-[10px] font-bold text-red-600 mt-1" x-text="'KODEPOS: ' + res.postal_code"></p>
-                                                </div>
-                                            </div>
-
-                                            <!-- Bagian Kanan: Tombol Pilih (Visual Saja) -->
-                                            <div class="shrink-0">
-                                                <button type="button" class="bg-black hover:bg-gray-800 text-white text-[10px] font-bold px-3 py-1.5 rounded pointer-events-none transition-colors">
-                                                    Pilih
-                                                </button>
-                                            </div>
-
-                                        </div>
-                                    </template>
-                                </div>
-                            </template>
-                            <template x-if="senderResults.length === 0 && !isSearchingSender && senderQuery.length >= 3">
-                                <div class="px-4 py-3 text-sm text-red-600 italic text-center font-medium bg-red-50">
-                                    <i class="fa-solid fa-circle-exclamation mr-1"></i> Wilayah tidak ditemukan di database.
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-
-                    <div class="col-span-2">
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">
-                            ALAMAT JALAN PENGIRIM <span class="text-red-500">*</span>
-                        </label>
-
-                        <textarea id="pengirim_alamat" name="pengirim_alamat" rows="2" required minlength="15" @input.debounce.1000ms="autoGeneratePickup()" placeholder="Contoh: JL SANCAKA EXPRESS NO 15 RT 01 RW 02 DEPAN RSUD" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">{{ old('pengirim_alamat') }}</textarea>
-
-                        <div class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700">
-                            <p class="text-[11px] font-bold flex items-start gap-1.5 leading-tight">
-                                <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-                                <span>PENTING: Tulis alamat lengkap tanpa (kelurahan/desa, kecamatan, kota/kabupaten, provinsi dan kodepos)</span>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Card Data Penerima -->
-            <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                <div class="flex items-center justify-between mb-5">
-                    <h2 class="text-base font-bold text-black flex items-center"><i class="fa-solid fa-location-dot text-gray-800 mr-2.5"></i> Data Penerima</h2>
-
-                    <!-- Tombol Centang Simpan Penerima -->
-                    <button type="button" @click="simpanPenerima = !simpanPenerima"
-                            class="text-xs font-medium border px-3 py-1.5 rounded transition duration-200 flex items-center gap-1.5"
-                            :class="simpanPenerima ? 'bg-black text-white border-black shadow-inner' : 'bg-white text-black border-gray-300 hover:bg-gray-50'">
-                        <i class="fa-solid" :class="simpanPenerima ? 'fa-circle-check' : 'fa-bookmark'"></i>
-                        <span x-text="simpanPenerima ? 'Akan Disimpan' : 'Simpan Kontak'"></span>
-                    </button>
-                    <!-- Hidden Input untuk Backend -->
-                    <input type="hidden" name="simpan_penerima" :value="simpanPenerima ? 1 : 0">
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="col-span-2 sm:col-span-1 relative" @click.away="showContactReceiver = false">
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">NAMA LENGKAP</label>
-                        <div class="relative">
-                            <input type="text" id="penerima_nama" name="penerima_nama"
-                                x-model="penerimaNama"
-                                @input.debounce.400ms="searchContact('receiver')"
-                                @focus="if(penerimaNama.length >= 2) showContactReceiver = true"
-                                required placeholder="Ketik nama atau no hp..."
-                                class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400" autocomplete="off">
-
-                            <!-- Loading Spinner -->
-                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                <i class="fa-solid fa-spinner fa-spin text-black" x-show="isSearchingContactReceiver" x-cloak></i>
-                            </div>
-                        </div>
-
-                        <!-- Dropdown Hasil Pencarian Kontak Penerima -->
-                        <div x-show="showContactReceiver" x-transition class="absolute z-[120] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
-                            <template x-if="contactResultsReceiver.length > 0">
-                                <div>
-                                    <template x-for="kontak in contactResultsReceiver">
-                                        <div @click="selectContact('receiver', kontak)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
-                                            <p class="font-bold text-black uppercase" x-text="kontak.nama"></p>
-                                            <p class="text-xs text-gray-500 mt-0.5" x-text="kontak.no_hp"></p>
-                                        </div>
-                                    </template>
-                                </div>
-                            </template>
-                            <template x-if="contactResultsReceiver.length === 0 && !isSearchingContactReceiver && penerimaNama.length >= 2">
-                                <div class="px-4 py-3 text-sm text-gray-500 italic text-center">Kontak tidak ditemukan.</div>
-                            </template>
-                        </div>
-                    </div>
-                    <div class="col-span-2 sm:col-span-1">
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
-                        <input type="text" id="penerima_hp" name="penerima_hp" value="{{ old('penerima_hp') }}" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
-                    </div>
-
-                    <!-- ... input Nama & No HP Penerima ... -->
-                    <div class="col-span-2">
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">EMAIL PENERIMA (OPSIONAL)</label>
-                        <input type="email" id="penerima_email" name="penerima_email" value="{{ old('penerima_email') }}" class="w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400" placeholder="contoh@email.com">
-                    </div>
-
-                    <!-- Autocomplete Alamat Penerima -->
-                    <div class="col-span-2 relative" @click.away="showReceiverDropdown = false">
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">KECAMATAN / KABUPATEN PENERIMA</label>
-                        <div class="relative">
-                            <input type="text" x-model="receiverQuery" @input.debounce.400ms="searchAddress('receiver')" @focus="showReceiverDropdown = true" placeholder="Ketik minimal 3 karakter wilayah penerima..." class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black pl-4 pr-10 py-2.5 bg-white transition duration-200 placeholder-gray-400" autocomplete="off">
-                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 text-xs">
-                                <i class="fa-solid fa-magnifying-glass" x-show="!isSearchingReceiver"></i>
-                                <i class="fa-solid fa-spinner fa-spin text-black" x-show="isSearchingReceiver" x-cloak></i>
-                            </div>
-                        </div>
-                        <input type="hidden" name="penerima_district_id" x-model="receiverDistrictId">
-                        <input type="hidden" name="penerima_kodepos" x-model="receiverPostalCode">
-
-                        <div x-show="showReceiverDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
-                            <template x-if="receiverResults.length > 0">
-                                <div>
-                                    <template x-for="res in receiverResults">
-                                        <!-- Wrapper utama dibuat Flexbox justify-between agar konten kiri dan kanan terpisah -->
-                                        <div @click="selectAddress('receiver', res)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 flex items-center justify-between gap-3 transition duration-150">
-
-                                            <!-- Bagian Kiri: Icon PIN & Teks Alamat -->
-                                            <div class="flex items-start gap-3 flex-1 min-w-0">
-                                                <!-- Icon PIN Biru -->
-                                                <div class="mt-0.5 shrink-0">
-                                                    <i class="fa-solid fa-location-dot text-blue-600 text-base"></i>
-                                                </div>
-
-                                                <!-- Teks -->
-                                                <div class="flex-1 min-w-0">
-                                                    <p class="font-medium text-black text-[11px] leading-relaxed" x-text="res.full_address_display"></p>
-                                                    <p class="text-[10px] font-bold text-blue-600 mt-1" x-text="'KODEPOS: ' + res.postal_code"></p>
-                                                </div>
-                                            </div>
-
-                                            <!-- Bagian Kanan: Tombol Pilih (Visual Saja) -->
-                                            <div class="shrink-0">
-                                                <button type="button" class="bg-black hover:bg-gray-800 text-white text-[10px] font-bold px-3 py-1.5 rounded pointer-events-none transition-colors">
-                                                    Pilih
-                                                </button>
-                                            </div>
-
-                                        </div>
-                                    </template>
-                                </div>
-                            </template>
-                            <template x-if="receiverResults.length === 0 && !isSearchingReceiver && receiverQuery.length >= 3">
-                                <div class="px-4 py-3 text-sm text-red-600 italic text-center font-medium bg-red-50">
-                                    <i class="fa-solid fa-circle-exclamation mr-1"></i> Wilayah tidak ditemukan di database.
-                                </div>
-                            </template>
-                        </div>
-                    </div>
-
-                    <div class="col-span-2">
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">
-                            ALAMAT JALAN PENERIMA <span class="text-red-500">*</span>
-                        </label>
-                        <textarea id="penerima_alamat" name="penerima_alamat" rows="2" required minlength="15" placeholder="Contoh: PERUM SANCAKA EXPRESS 2 BLOK A NO 3 RT 04 RW 05" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">{{ old('penerima_alamat') }}</textarea>
-
-                        <div class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700">
-                            <p class="text-[11px] font-bold flex items-start gap-1.5 leading-tight">
-                                <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-                                <span>PENTING: Tulis alamat lengkap tanpa (kelurahan/desa, kecamatan, kota/kabupaten, provinsi dan kodepos)</span>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ========================================== -->
-        <!-- SISI KANAN: DETAIL BARANG & ACTION -->
-        <!-- ========================================== -->
-        <div class="lg:col-span-5 space-y-6">
-            <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-                <h2 class="text-base font-bold text-black mb-5 flex items-center"><i class="fa-solid fa-box-open text-gray-800 mr-2.5"></i> Detail Paket</h2>
-
-                <div class="space-y-5">
-
-                    <!-- DINAMIS: Tipe Pesanan -->
-                    <div class="p-4 border border-gray-200 rounded-md">
-                        <label class="block text-xs font-medium text-gray-700 mb-2.5">TIPE PESANAN</label>
-                        <div class="grid grid-cols-3 gap-2">
-                            <label class="flex flex-col items-center justify-center p-2.5 border rounded cursor-pointer transition-all duration-200"
-                                   :class="tipePesanan === 'reguler' ? 'border-black bg-black text-white font-medium shadow-sm' : 'border-gray-300 hover:border-gray-400 text-gray-600 bg-white'">
-                                <input type="radio" name="tipe_pesanan" value="reguler" x-model="tipePesanan" class="hidden">
-                                <span class="text-xs tracking-wide">REGULER</span>
-                            </label>
-                            <label class="flex flex-col items-center justify-center p-2.5 border rounded cursor-pointer transition-all duration-200"
-                                   :class="tipePesanan === 'cod' ? 'border-black bg-black text-white font-medium shadow-sm' : 'border-gray-300 hover:border-gray-400 text-gray-600 bg-white'">
-                                <input type="radio" name="tipe_pesanan" value="cod" x-model="tipePesanan" class="hidden">
-                                <span class="text-xs tracking-wide">COD</span>
-                            </label>
-                            <label class="flex flex-col items-center justify-center p-2.5 border rounded cursor-pointer transition-all duration-200"
-                                   :class="tipePesanan === 'cashless' ? 'border-black bg-black text-white font-medium shadow-sm' : 'border-gray-300 hover:border-gray-400 text-gray-600 bg-white'">
-                                <input type="radio" name="tipe_pesanan" value="cashless" x-model="tipePesanan" class="hidden">
-                                <span class="text-xs tracking-wide">CASHLESS</span>
-                            </label>
-                        </div>
-
-                        <!-- Input Ekstra untuk Cashless -->
-                        <div x-show="tipePesanan === 'cashless'" x-transition class="mt-4" x-cloak>
-                            <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR RESI MARKETPLACE (AWB) <span class="text-red-500">*</span></label>
-                            <input type="text" name="resi_cashless" x-model="resiCashless" placeholder="CONTOH: JP1234567890" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white">
-                        </div>
-
-                        <!-- Info & Pilihan Ekstra untuk COD -->
-                        <div x-show="tipePesanan === 'cod'" x-transition class="mt-4 pt-4 border-t border-gray-200" x-cloak>
-                            <label class="block text-xs font-medium text-gray-700 mb-2.5">PILIH JENIS COD <span class="text-red-500">*</span></label>
-                            <div class="flex flex-col gap-3">
-                                <label class="flex items-center gap-2.5 cursor-pointer">
-                                    <input type="radio" name="jenis_cod_radio" value="cod_barang" x-model="jenisCod" class="text-black focus:ring-black border-gray-300 w-4 h-4">
-                                    <span class="text-xs font-medium text-gray-800">COD Barang + Ongkir (Tagihan gabungan)</span>
-                                </label>
-                                <label class="flex items-center gap-2.5 cursor-pointer">
-                                    <input type="radio" name="jenis_cod_radio" value="cod_ongkir" x-model="jenisCod" class="text-black focus:ring-black border-gray-300 w-4 h-4">
-                                    <span class="text-xs font-medium text-gray-800">COD Ongkir Saja (Tagihan hanya biaya kurir)</span>
-                                </label>
-                            </div>
-                            <p class="text-[11px] text-gray-500 font-medium leading-tight mt-3 flex items-start gap-1.5">
-                                <i class="fa-solid fa-circle-info mt-0.5"></i>
-                                <span x-show="jenisCod === 'cod_barang'">Masukkan Total Tagihan di kolom "Nilai Harga Barang" di bawah.</span>
-                                <span x-show="jenisCod === 'cod_ongkir'">Hanya nominal Ongkir yang ditagihkan. Nilai barang di bawah hanya dipakai sebagai acuan klaim asuransi.</span>
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Kategori Barang -->
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">KATEGORI BARANG</label>
-                        <select name="kategori_barang" x-model="kategoriBarang" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white">
-                            <option value="" disabled selected>PILIH...</option>
-                            <option value="ELK001">PERALATAN ELEKTRONIK & GADGET</option>
-                            <option value="PAK001">PAKAIAN / BAJU / KAIN</option>
-                            <option value="PCH001">PECAH BELAH</option>
-                            <option value="DOC001">DOKUMEN / BERKAS / BUKU</option>
-                            <option value="RTG001">PERALATAN RUMAH TANGGA</option>
-                            <option value="AKS001">AKSESORIS</option>
-                            <option value="OTH001">LAIN-LAIN</option>
-                            <option value="DHS001">DOKUMEN BERHARGA</option>
-                            <option value="KSM001">PERALATAN KESEHATAN / KECANTIKAN / KOSMETIK</option>
-                            <option value="OLH001">PERALATAN OLAHRAGA & HIBURAN</option>
-                            <option value="OTM001">PERLENGKAPAN MOBIL & MOTOR</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">DESKRIPSI ISI PAKET / KETERANGAN</label>
-                        <input type="text" name="deskripsi_barang" value="{{ old('deskripsi_barang') }}" placeholder="CONTOH: SEPATU SNEAKERS HITAM UKURAN 42" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white placeholder-gray-400">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1.5">BERAT TOTAL (GRAM)</label>
-
-                            <!-- Input ini yang dikirim ke Server (Angka Murni) -->
-                            <input type="hidden" name="berat_gram" :value="berat">
-
-                            <!-- Input ini hanya untuk tampilan (UI) -->
-                            <input type="text" inputmode="numeric"
-                                x-model="displayBerat"
-                                @input="let clean = $event.target.value.replace(/\D/g, ''); berat = clean; displayBerat = clean ? new Intl.NumberFormat('id-ID').format(clean) : '';"
-                                @focus="displayBerat = berat ? new Intl.NumberFormat('id-ID').format(berat) : ''"
-                                @blur="displayBerat = berat ? new Intl.NumberFormat('id-ID').format(berat) + ' gram' : ''"
-                                required placeholder="1.000 gram"
-                                class="w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white font-medium text-gray-800">
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1.5">JUMLAH KOLI / PCS</label>
-                            <input type="number" name="qty" x-model="qty" min="1" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white text-center">
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 items-center">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1.5">ASURANSI PENGIRIMAN?</label>
-                            <div class="flex items-center h-[42px] px-4 border border-gray-300 rounded-md bg-white">
-                                <input type="checkbox" name="asuransi" x-model="asuransi" class="w-4 h-4 text-black border-gray-300 rounded focus:ring-black cursor-pointer">
-                                <span class="ml-2.5 text-xs text-gray-700 font-medium cursor-pointer select-none" @click="asuransi = !asuransi">Ya, Amankan</span>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-medium text-gray-700 mb-1.5">METODE SERAH TERIMA</label>
-                            <select name="is_sender_pp" x-model="isSenderPp" class="uppercase w-full h-[42px] border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-3 bg-white text-gray-800">
-                                <option value="1">KURIR JEMPUT (PICKUP)</option>
-                                <option value="0">ANTAR KE CABANG (DROPOFF)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div x-show="asuransi || tipePesanan === 'cod'" x-transition.duration.300ms class="p-4 rounded-md border border-gray-200 bg-gray-50" x-cloak>
-                        <label class="block text-xs font-medium text-black mb-1.5">NILAI HARGA BARANG / TAGIHAN COD (RP) <span class="text-red-500">*</span></label>
-
-                        <!-- Input ini yang dikirim ke Server (Angka Murni) -->
-                        <input type="hidden" name="nilai_barang" :value="nilaiBarang">
-
-                        <!-- Input ini hanya untuk tampilan (UI) -->
-                        <input type="text" inputmode="numeric"
-                            x-model="displayNilaiBarang"
-                            @input="let clean = $event.target.value.replace(/\D/g, ''); nilaiBarang = clean; displayNilaiBarang = clean ? new Intl.NumberFormat('id-ID').format(clean) : '';"
-                            @focus="displayNilaiBarang = nilaiBarang ? new Intl.NumberFormat('id-ID').format(nilaiBarang) : ''"
-                            @blur="displayNilaiBarang = nilaiBarang ? 'Rp ' + new Intl.NumberFormat('id-ID').format(nilaiBarang) : ''"
-                            placeholder="Rp 0"
-                            class="w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white font-bold text-gray-900"
-                            :required="asuransi || tipePesanan === 'cod'">
-
-                        <p class="text-[10px] mt-2 text-gray-500" x-text="tipePesanan === 'cod' ? '* Nominal ini adalah total Rupiah yang akan ditagihkan kurir kepada penerima paket.' : '* Nominal ini digunakan kurir sebagai acuan klaim asuransi jika barang hilang.'"></p>
-
-                        <!-- VALIDASI COD REAL-TIME -->
-                        <div x-show="tipePesanan === 'cod' && nilaiBarang !== '' && (parseInt(nilaiBarang) < 10000 || parseInt(nilaiBarang) > 5000000)"
-                            class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700 text-[11px] font-bold flex items-start gap-1.5 leading-tight" x-cloak>
-                            <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-                            <span>Harga paket untuk COD minimal Rp 10.000 dan maksimal Rp 5.000.000</span>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-medium text-gray-700 mb-1.5">DIMENSI / VOLUME PAKET (CM - OPSIONAL)</label>
-                        <div class="flex gap-2 items-center">
-                            <input type="text" inputmode="numeric" name="panjang_cm" x-model="panjang" @input="panjang = $event.target.value.replace(/\D/g, '')" placeholder="P" class="w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black font-medium">
-                            <span class="text-gray-400 font-medium">×</span>
-                            <input type="text" inputmode="numeric" name="lebar_cm" x-model="lebar" @input="lebar = $event.target.value.replace(/\D/g, '')" placeholder="L" class="w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black font-medium">
-                            <span class="text-gray-400 font-medium">×</span>
-                            <input type="text" inputmode="numeric" name="tinggi_cm" x-model="tinggi" @input="tinggi = $event.target.value.replace(/\D/g, '')" placeholder="T" class="w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black font-medium">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mt-8">
-                    <button type="button" @click="cekOngkir()" :disabled="isLoading" class="w-full py-3.5 rounded-md font-medium text-white bg-black hover:bg-gray-800 transition duration-200 flex justify-center items-center text-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                        <i class="fa-solid fa-calculator mr-2" x-show="!isLoading"></i>
-                        <i class="fa-solid fa-spinner fa-spin mr-2" x-show="isLoading" x-cloak></i>
-                        <span x-text="isLoading ? 'MENGHITUNG ONGKIR...' : (selectedOngkir > 0 ? 'GANTI / HITUNG ULANG EKSPEDISI' : 'HITUNG & PILIH EKSPEDISI')" class="tracking-wide"></span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- ======================================================= -->
-            <!-- RINGKASAN EKSPEDISI TERPILIH -->
-            <!-- ======================================================= -->
-            <div x-show="selectedOngkir > 0" x-transition.duration.300ms class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm relative" x-cloak>
-                <div class="flex items-center justify-between mb-4 border-b border-gray-100 pb-3">
-                    <span class="text-[10px] font-bold text-black bg-gray-100 px-2 py-1 rounded-sm uppercase tracking-widest flex items-center">
-                        Ekspedisi Terpilih
-                    </span>
-                    <button type="button" @click="showModal = true" class="text-xs font-medium text-gray-500 hover:text-black underline">Ganti Kurir</button>
-                </div>
-
-                <!-- Input Hidden yang Wajib Dikirim ke Backend -->
-                <input type="hidden" name="kurir_terpilih" x-model="selectedKurir">
-                <input type="hidden" name="layanan_terpilih" x-model="selectedLayanan">
-                <input type="hidden" name="ongkir_terpilih" x-model="selectedOngkir">
-                <input type="hidden" name="service_code_terpilih" x-model="selectedServiceCode">
-                <input type="hidden" name="metode_pembayaran" x-bind:value="tipePesanan === 'cod' ? jenisCod : selectedPayment">
-
-                <!-- Tampilan Card Ringkasan -->
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 bg-white rounded border border-gray-200 flex items-center justify-center p-1.5 shrink-0">
-                            <!-- HAPUS GRAYSCALE DARI SINI -->
-                            <template x-if="selectedLogoUrl">
-                                <img :src="selectedLogoUrl" :alt="selectedKurir" class="max-w-full max-h-full object-contain">
-                            </template>
-                            <template x-if="!selectedLogoUrl">
-                                <i class="fa-solid fa-truck-fast text-gray-400 text-lg"></i>
-                            </template>
-                        </div>
-                        <div>
-                            <p class="font-bold text-black text-sm uppercase tracking-wide" x-text="selectedKurir"></p>
-                            <p class="text-xs text-gray-500 uppercase mt-0.5" x-text="selectedLayanan"></p>
-                            <p class="text-[11px] text-gray-600 mt-1"><i class="fa-regular fa-calendar-check mr-1.5"></i> Tiba: <span x-text="selectedEtd"></span></p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-[10px] text-gray-400 uppercase tracking-widest block mb-0.5">Total Ongkir</span>
-                        <p class="font-bold text-black text-lg">Rp <span x-text="selectedOngkir.toLocaleString('id-ID')"></span></p>
-                    </div>
-                </div>
-
-                <!-- ======================================================= -->
-                <!-- MONITOR KALKULATOR BIAYA (CALCULATOR DIV) -->
-                <!-- ======================================================= -->
-                <div class="mt-5 p-5 bg-gray-50 border border-gray-200 rounded-lg">
-                    <h3 class="text-xs font-bold text-gray-800 uppercase tracking-widest mb-4 border-b border-gray-200 pb-2 flex items-center">
-                        <i class="fa-solid fa-file-invoice-dollar mr-2"></i> Rincian Biaya
-                    </h3>
-
-                    <div class="space-y-2.5 text-sm">
-                        <!-- Berat Paket Saja -->
-                        <div class="flex justify-between items-center text-gray-600 mb-3">
-                            <span>Berat Paket</span>
-                            <span class="font-medium text-black" x-text="(parseInt(berat) || 0).toLocaleString('id-ID') + ' gr'"></span>
-                        </div>
-
-                        <!-- Info Nilai Barang (Hanya tampil jika diisi) -->
-                        <div x-show="nilaiBarang > 0" class="flex justify-between items-center text-gray-600" x-cloak>
-                            <span x-text="asuransi ? 'Harga Barang (Diasuransikan)' : 'Harga Barang'"></span>
-                            <span class="font-medium text-black">Rp <span x-text="parseInt(nilaiBarang).toLocaleString('id-ID')"></span></span>
-                        </div>
-
-                        <!-- Ongkos Kirim Dasar -->
-                        <div class="flex justify-between items-center text-gray-600">
-                            <span>Ongkos Kirim Dasar</span>
-                            <span class="font-medium text-black">Rp <span x-text="parseInt(selectedOngkir).toLocaleString('id-ID')"></span></span>
-                        </div>
-
-                        <!-- Biaya Asuransi (Jika Aktif) -->
-                        <div x-show="asuransi" class="flex justify-between items-center text-gray-600" x-cloak>
-                            <span>Biaya Asuransi (<span x-text="(selectedInsuranceRate * 100) + '%'"></span>)</span>
-                            <span class="font-medium text-black">Rp <span x-text="biayaAsuransi.toLocaleString('id-ID')"></span></span>
-                        </div>
-
-                        <!-- Biaya Admin COD (Jika Tipe COD) -->
-                        <div x-show="tipePesanan === 'cod'" class="flex justify-between items-center text-gray-600" x-cloak>
-                            <span>Admin COD (<span x-text="(selectedCodRate * 100) + '%'"></span>)</span>
-                            <span class="font-medium text-black">Rp <span x-text="biayaCod.toLocaleString('id-ID')"></span></span>
-                        </div>
-                    </div>
-
-                    <!-- Grand Total Potong Saldo (NON COD) -->
-                    <div x-show="tipePesanan !== 'cod'" class="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex justify-between items-center" x-cloak>
-                        <span class="font-bold text-black uppercase">Total Potong Saldo</span>
-                        <span class="font-extrabold text-red-600 text-lg">Rp <span x-text="grandTotalPotongan.toLocaleString('id-ID')"></span></span>
-                    </div>
-
-                    <!-- Grand Total Tagihan Kurir (COD) -->
-                    <div x-show="tipePesanan === 'cod'" class="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex justify-between items-center" x-cloak>
-                        <div class="flex flex-col">
-                            <span class="font-bold text-black uppercase">Total Tagihan Kurir (COD)</span>
-                            <span class="text-[10px] text-gray-500 font-medium mt-0.5" x-text="jenisCod === 'cod_barang' ? '* Akan ditagih ke penerima (Barang + Ongkir + Fee)' : '* Akan ditagih ke penerima (Ongkir + Fee Saja)'"></span>
-                        </div>
-                        <span class="font-extrabold text-blue-600 text-lg">Rp <span x-text="grandTotalCod.toLocaleString('id-ID')"></span></span>
-                    </div>
-                </div>
-
-                <!-- HIDDEN INPUTS UNTUK DIKIRIM KE BACKEND -->
-                <input type="hidden" name="hitung_asuransi" :value="biayaAsuransi">
-                <input type="hidden" name="hitung_cod_fee" :value="biayaCod">
-                <input type="hidden" name="grand_total" :value="tipePesanan === 'cod' ? grandTotalCod : grandTotalPotongan">
-
-                <!-- TAMBAHKAN DUA BARIS INI UNTUK BACKEND YANG BARU -->
-                <input type="hidden" name="rate_asuransi" :value="selectedInsuranceRate">
-                <input type="hidden" name="rate_cod" :value="selectedCodRate">
-
-                <!-- ========================================================================================= -->
-                <!-- PILIHAN METODE PEMBAYARAN -->
-                <!-- ========================================================================================= -->
-                <div x-show="tipePesanan !== 'cod'" x-transition class="mt-6 pt-5 border-t border-gray-200" x-cloak>
-                    <h3 class="text-xs font-medium text-black uppercase tracking-widest mb-4">
-                        Pilih Metode Pembayaran
-                    </h3>
-
-                    <!-- TOMBOL PEMICU MODAL PEMBAYARAN -->
-                    <button type="button" @click="showPaymentModal = true" class="flex items-center justify-between w-full border p-4 rounded-lg cursor-pointer hover:bg-gray-50 focus:outline-none transition-all" :class="selectedPayment ? 'border-black ring-1 ring-black shadow-sm' : 'border-gray-300'">
-                        <div class="flex items-center gap-4">
-                            <div class="w-10 h-10 rounded bg-white flex items-center justify-center shrink-0 p-1 border border-gray-100 shadow-sm">
-                                <!-- Tampil jika belum ada yang dipilih -->
-                                <template x-if="!selectedPaymentIcon">
-                                    <i class="fa-solid fa-wallet text-gray-400 text-xl"></i>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- SISI KIRI: DATA PENGIRIM & PENERIMA -->
+            <div class="lg:col-span-7 space-y-6">
+
+                <!-- Card Data Pengirim -->
+                <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                   <div class="flex items-center justify-between mb-5">
+                        <h2 class="text-base font-bold text-black flex items-center"><i class="fa-solid fa-user-check text-gray-800 mr-2.5"></i> Data Pengirim</h2>
+
+                        <!-- Wrapper Tombol & Badge -->
+                        <div class="flex items-center gap-3">
+                            <!-- Badge Kode Pickup Point -->
+                            <div class="bg-gray-100 border border-gray-200 text-[10px] font-bold px-2 py-1.5 rounded flex items-center gap-1.5 uppercase tracking-wider">
+                                <template x-if="isGeneratingPickup">
+                                    <i class="fa-solid fa-spinner fa-spin text-blue-600"></i>
                                 </template>
-                                <!-- Tampil jika sudah memilih -->
-                                <template x-if="selectedPaymentIcon">
-                                    <div class="w-full h-full flex items-center justify-center">
-                                        <template x-if="selectedPaymentIcon.includes('http')">
-                                            <img :src="selectedPaymentIcon" class="max-w-full max-h-full object-contain">
-                                        </template>
-                                        <template x-if="!selectedPaymentIcon.includes('http')">
-                                            <i :class="selectedPaymentIcon + ' text-xl'"></i>
+                                <template x-if="!isGeneratingPickup">
+                                    <i class="fa-solid fa-store" :class="pickupPointCode ? 'text-green-600' : 'text-red-500'"></i>
+                                </template>
+
+                                <span x-show="isGeneratingPickup" class="text-blue-600">MEMPROSES KODE...</span>
+                                <span x-show="!isGeneratingPickup" x-text="pickupPointCode ? 'PICKUP: ' + pickupPointCode : 'BELUM ADA PICKUP POINT'" :class="pickupPointCode ? 'text-gray-800' : 'text-red-500'"></span>
+                            </div>
+
+                            <!-- Tombol Centang Simpan Pengirim -->
+                            <button type="button" @click="simpanPengirim = !simpanPengirim"
+                                    class="text-xs font-medium border px-3 py-1.5 rounded transition duration-200 flex items-center gap-1.5"
+                                    :class="simpanPengirim ? 'bg-black text-white border-black shadow-inner' : 'bg-white text-black border-gray-300 hover:bg-gray-50'">
+                                <i class="fa-solid" :class="simpanPengirim ? 'fa-circle-check' : 'fa-bookmark'"></i>
+                                <span x-text="simpanPengirim ? 'Akan Disimpan' : 'Simpan Kontak'"></span>
+                            </button>
+                            <!-- Hidden Input untuk Backend -->
+                            <input type="hidden" name="simpan_pengirim" :value="simpanPengirim ? 1 : 0">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2 sm:col-span-1 relative" @click.away="showContactSender = false">
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">NAMA LENGKAP</label>
+                            <div class="relative">
+                                <input type="text" id="pengirim_nama" name="pengirim_nama"
+                                    x-model="pengirimNama"
+                                    @input.debounce.400ms="searchContact('sender')"
+                                    @focus="if(pengirimNama.length >= 2) showContactSender = true"
+                                    required placeholder="Ketik nama atau no hp..."
+                                    class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400" autocomplete="off">
+
+                                <!-- Loading Spinner -->
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <i class="fa-solid fa-spinner fa-spin text-black" x-show="isSearchingContactSender" x-cloak></i>
+                                </div>
+                            </div>
+
+                            <!-- Dropdown Hasil Pencarian Kontak Pengirim -->
+                            <div x-show="showContactSender" x-transition class="absolute z-[120] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
+                                <template x-if="contactResultsSender.length > 0">
+                                    <div>
+                                        <template x-for="kontak in contactResultsSender">
+                                            <div @click="selectContact('sender', kontak)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
+                                                <p class="font-bold text-black uppercase" x-text="kontak.nama"></p>
+                                                <p class="text-xs text-gray-500 mt-0.5" x-text="kontak.no_hp"></p>
+                                            </div>
                                         </template>
                                     </div>
                                 </template>
-                            </div>
-                            <div class="flex flex-col text-left">
-                                <span class="text-sm font-bold text-gray-900 uppercase" x-text="selectedPaymentName || 'PILIH METODE PEMBAYARAN'"></span>
-                                <span class="text-[11px] text-gray-500 uppercase mt-0.5" x-text="selectedPaymentName ? 'Klik untuk mengganti metode' : 'Pilih metode untuk melanjutkan'"></span>
+                                <template x-if="contactResultsSender.length === 0 && !isSearchingContactSender && pengirimNama.length >= 2">
+                                    <div class="px-4 py-3 text-sm text-gray-500 italic text-center">Kontak tidak ditemukan.</div>
+                                </template>
                             </div>
                         </div>
-                        <i class="fa-solid fa-chevron-right text-gray-400"></i>
-                    </button>
-                    <!-- Selesai Tombol Pemicu -->
+                        <div class="col-span-2 sm:col-span-1">
+                            <div class="col-span-2 sm:col-span-1">
+                                <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
+                                <input type="text" id="pengirim_hp" name="pengirim_hp" value="{{ old('pengirim_hp') }}" required @input.debounce.1000ms="autoGeneratePickup()" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
+                            </div>
+                        </div>
 
-                    <!-- KOTAK INFORMASI -->
-                    
-                    {{-- Info Khusus Pembayaran Cash (Hanya Admin) --}}
-                    <div x-show="selectedPayment === 'cash'" x-transition class="mt-4 p-4 border border-emerald-200 rounded-md text-xs text-black bg-emerald-50" x-cloak>
-                        <div class="flex items-start gap-3 text-emerald-800">
-                            <i class="fa-solid fa-money-bill-wave text-emerald-600 text-lg mt-0.5"></i>
-                            <div>
-                                <span class="font-bold block mb-1 uppercase text-sm">Pembayaran Tunai (Cash)</span>
-                                <span class="leading-relaxed">Anda menerima uang tunai dari pelanggan. Sistem akan langsung mencetak resi (AWB) ke server logistik <b class="font-bold text-emerald-700">tanpa memotong saldo dompet digital</b> Anda.</span>
-                            </div>
+                        <div class="col-span-2">
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">EMAIL PENGIRIM (OPSIONAL)</label>
+                            <input type="email" id="pengirim_email" name="pengirim_email" value="{{ old('pengirim_email') }}" class="w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400" placeholder="contoh@email.com">
                         </div>
-                    </div>
-                    
-                    <div x-show="selectedPayment === 'potong_saldo'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs text-black bg-gray-50" x-cloak>
-                        <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
-                            <span class="font-medium text-gray-600">SALDO WALLET SAAT INI:</span>
-                            <span class="font-bold text-black text-sm">Rp {{ number_format(auth()->user()->saldo ?? 0, 0, ',', '.') }}</span>
-                        </div>
-                        <template x-if="selectedOngkir > {{ auth()->user()->saldo ?? 0 }}">
-                            <div class="mt-2 text-red-600 font-medium flex items-start gap-2">
-                                <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-                                <span>Saldo tidak mencukupi untuk bayar ongkir ini! Silahkan isi ulang atau pilih metode lain.</span>
-                            </div>
-                        </template>
-                        <template x-if="selectedOngkir <= {{ auth()->user()->saldo ?? 0 }}">
-                            <p class="text-gray-600 mt-1">Saldo mencukupi. Saldo akan dipotong otomatis setelah menekan submit.</p>
-                        </template>
-                    </div>
 
-                    <div x-show="selectedPayment === 'dana_binding'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs bg-gray-50" x-cloak>
-                        @if(!empty(auth()->user()->dana_access_token))
-                            <div class="flex items-start gap-2 text-black">
-                                <i class="fa-solid fa-circle-check text-gray-800 text-sm mt-0.5"></i>
-                                <span>Akun DANA terhubung. Pembayaran ongkir akan dipotong instan.</span>
-                            </div>
-                        @else
-                            <div class="text-red-600 font-medium flex items-start gap-2">
-                                <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-                                <div>
-                                    <p>AKUN DANA BELUM DIIKAT (BIND)!</p>
-                                    <span class="text-[11px] font-normal text-red-500 block mt-1">Silahkan hubungkan akun di pengaturan profil, atau pilih metode "DANA Payment Gateway".</span>
+                        <!-- Autocomplete Alamat Pengirim -->
+                        <div class="col-span-2 relative" @click.away="showSenderDropdown = false">
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">KECAMATAN / KABUPATEN PENGIRIM</label>
+                            <div class="relative">
+                                <input type="text" x-model="senderQuery" @input.debounce.400ms="searchAddress('sender')" @focus="showSenderDropdown = true" placeholder="Ketik minimal 3 karakter wilayah pengirim..." class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black pl-4 pr-10 py-2.5 bg-white transition duration-200 placeholder-gray-400" autocomplete="off">
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 text-xs">
+                                    <i class="fa-solid fa-magnifying-glass" x-show="!isSearchingSender"></i>
+                                    <i class="fa-solid fa-spinner fa-spin text-black" x-show="isSearchingSender" x-cloak></i>
                                 </div>
                             </div>
-                        @endif
-                    </div>
+                            <input type="hidden" name="pengirim_district_id" x-model="senderDistrictId">
+                            <input type="hidden" name="pengirim_kodepos" x-model="senderPostalCode">
 
-                    <div x-show="selectedPayment && selectedPayment !== 'potong_saldo' && selectedPayment !== 'dana_binding'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs bg-gray-50 flex items-start gap-3" x-cloak>
-                        <i class="fa-solid fa-shield-halved text-gray-500 text-base mt-0.5"></i>
-                        <div>
-                            <span class="font-bold block text-black mb-1">PEMBAYARAN AMAN</span>
-                            <span class="text-gray-500 leading-relaxed">Anda akan diarahkan ke halaman pembayaran resmi. Resi AWB logistik akan terbit otomatis setelah pembayaran lunas 24/7.</span>
+                            <div x-show="showSenderDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
+                                <template x-if="senderResults.length > 0">
+                                    <div>
+                                        <template x-for="res in senderResults">
+                                            <!-- Wrapper utama dibuat Flexbox justify-between agar konten kiri dan kanan terpisah -->
+                                            <div @click="selectAddress('sender', res)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 flex items-center justify-between gap-3 transition duration-150">
+
+                                                <!-- Bagian Kiri: Icon PIN & Teks Alamat -->
+                                                <div class="flex items-start gap-3 flex-1 min-w-0">
+                                                    <!-- Icon PIN Merah -->
+                                                    <div class="mt-0.5 shrink-0">
+                                                        <i class="fa-solid fa-location-dot text-red-600 text-base"></i>
+                                                    </div>
+
+                                                    <!-- Teks -->
+                                                    <div class="flex-1 min-w-0">
+                                                        <p class="font-medium text-black text-[11px] leading-relaxed" x-text="res.full_address_display"></p>
+                                                        <p class="text-[10px] font-bold text-red-600 mt-1" x-text="'KODEPOS: ' + res.postal_code"></p>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Bagian Kanan: Tombol Pilih (Visual Saja) -->
+                                                <div class="shrink-0">
+                                                    <button type="button" class="bg-black hover:bg-gray-800 text-white text-[10px] font-bold px-3 py-1.5 rounded pointer-events-none transition-colors">
+                                                        Pilih
+                                                    </button>
+                                                </div>
+
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="senderResults.length === 0 && !isSearchingSender && senderQuery.length >= 3">
+                                    <div class="px-4 py-3 text-sm text-red-600 italic text-center font-medium bg-red-50">
+                                        <i class="fa-solid fa-circle-exclamation mr-1"></i> Wilayah tidak ditemukan di database.
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="col-span-2">
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">
+                                ALAMAT JALAN PENGIRIM <span class="text-red-500">*</span>
+                            </label>
+
+                            <textarea id="pengirim_alamat" name="pengirim_alamat" rows="2" required minlength="15" @input.debounce.1000ms="autoGeneratePickup()" placeholder="Contoh: JL SANCAKA EXPRESS NO 15 RT 01 RW 02 DEPAN RSUD" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">{{ old('pengirim_alamat') }}</textarea>
+
+                            <div class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700">
+                                <p class="text-[11px] font-bold flex items-start gap-1.5 leading-tight">
+                                    <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                                    <span>PENTING: Tulis alamat lengkap tanpa (kelurahan/desa, kecamatan, kota/kabupaten, provinsi dan kodepos)</span>
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- TOMBOL SUBMIT PESANAN -->
-                <div class="mt-6 pt-5 border-t border-gray-200">
-                    <button type="submit"
-                    :disabled="isSubmitting || (tipePesanan !== 'cod' && (!selectedPayment || (selectedPayment === 'potong_saldo' && grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_access_token)) || selectedPayment === 'dana_binding' @endif))"
-                    class="w-full py-4 rounded-md font-bold text-white transition-all text-sm tracking-widest flex justify-center items-center gap-3 uppercase"
-                    :class="(tipePesanan === 'cod' || (selectedPayment && !(selectedPayment === 'potong_saldo' && grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_access_token)) && selectedPayment !== 'dana_binding' @endif)) ? 'bg-black hover:bg-gray-800 cursor-pointer shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'">
+                <!-- Card Data Penerima -->
+                <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                    <div class="flex items-center justify-between mb-5">
+                        <h2 class="text-base font-bold text-black flex items-center"><i class="fa-solid fa-location-dot text-gray-800 mr-2.5"></i> Data Penerima</h2>
 
-                    <!-- Teks tombol berubah saat loading -->
-                    <span x-text="isSubmitting ? 'MEMPROSES PESANAN...' : 'SUBMIT KIRIM SEKARANG'"></span>
-                    <i class="fa-solid" :class="isSubmitting ? 'fa-spinner fa-spin' : 'fa-arrow-right'"></i>
-                </button>
-                    <p x-show="tipePesanan !== 'cod' && !selectedPayment" class="text-[10px] text-gray-500 font-medium text-center mt-3 uppercase tracking-widest">* Mohon pilih metode pembayaran</p>
+                        <!-- Tombol Centang Simpan Penerima -->
+                        <button type="button" @click="simpanPenerima = !simpanPenerima"
+                                class="text-xs font-medium border px-3 py-1.5 rounded transition duration-200 flex items-center gap-1.5"
+                                :class="simpanPenerima ? 'bg-black text-white border-black shadow-inner' : 'bg-white text-black border-gray-300 hover:bg-gray-50'">
+                            <i class="fa-solid" :class="simpanPenerima ? 'fa-circle-check' : 'fa-bookmark'"></i>
+                            <span x-text="simpanPenerima ? 'Akan Disimpan' : 'Simpan Kontak'"></span>
+                        </button>
+                        <!-- Hidden Input untuk Backend -->
+                        <input type="hidden" name="simpan_penerima" :value="simpanPenerima ? 1 : 0">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2 sm:col-span-1 relative" @click.away="showContactReceiver = false">
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">NAMA LENGKAP</label>
+                            <div class="relative">
+                                <input type="text" id="penerima_nama" name="penerima_nama"
+                                    x-model="penerimaNama"
+                                    @input.debounce.400ms="searchContact('receiver')"
+                                    @focus="if(penerimaNama.length >= 2) showContactReceiver = true"
+                                    required placeholder="Ketik nama atau no hp..."
+                                    class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400" autocomplete="off">
+
+                                <!-- Loading Spinner -->
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <i class="fa-solid fa-spinner fa-spin text-black" x-show="isSearchingContactReceiver" x-cloak></i>
+                                </div>
+                            </div>
+
+                            <!-- Dropdown Hasil Pencarian Kontak Penerima -->
+                            <div x-show="showContactReceiver" x-transition class="absolute z-[120] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
+                                <template x-if="contactResultsReceiver.length > 0">
+                                    <div>
+                                        <template x-for="kontak in contactResultsReceiver">
+                                            <div @click="selectContact('receiver', kontak)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 text-sm transition duration-150">
+                                                <p class="font-bold text-black uppercase" x-text="kontak.nama"></p>
+                                                <p class="text-xs text-gray-500 mt-0.5" x-text="kontak.no_hp"></p>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="contactResultsReceiver.length === 0 && !isSearchingContactReceiver && penerimaNama.length >= 2">
+                                    <div class="px-4 py-3 text-sm text-gray-500 italic text-center">Kontak tidak ditemukan.</div>
+                                </template>
+                            </div>
+                        </div>
+                        <div class="col-span-2 sm:col-span-1">
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR HP / WA</label>
+                            <input type="text" id="penerima_hp" name="penerima_hp" value="{{ old('penerima_hp') }}" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">
+                        </div>
+
+                        <!-- ... input Nama & No HP Penerima ... -->
+                        <div class="col-span-2">
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">EMAIL PENERIMA (OPSIONAL)</label>
+                            <input type="email" id="penerima_email" name="penerima_email" value="{{ old('penerima_email') }}" class="w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400" placeholder="contoh@email.com">
+                        </div>
+
+                        <!-- Autocomplete Alamat Penerima -->
+                        <div class="col-span-2 relative" @click.away="showReceiverDropdown = false">
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">KECAMATAN / KABUPATEN PENERIMA</label>
+                            <div class="relative">
+                                <input type="text" x-model="receiverQuery" @input.debounce.400ms="searchAddress('receiver')" @focus="showReceiverDropdown = true" placeholder="Ketik minimal 3 karakter wilayah penerima..." class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black pl-4 pr-10 py-2.5 bg-white transition duration-200 placeholder-gray-400" autocomplete="off">
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400 text-xs">
+                                    <i class="fa-solid fa-magnifying-glass" x-show="!isSearchingReceiver"></i>
+                                    <i class="fa-solid fa-spinner fa-spin text-black" x-show="isSearchingReceiver" x-cloak></i>
+                                </div>
+                            </div>
+                            <input type="hidden" name="penerima_district_id" x-model="receiverDistrictId">
+                            <input type="hidden" name="penerima_kodepos" x-model="receiverPostalCode">
+
+                            <div x-show="showReceiverDropdown" x-transition class="absolute z-[110] w-full mt-1 bg-white rounded-md shadow-lg border border-gray-200 max-h-48 overflow-y-auto" x-cloak>
+                                <template x-if="receiverResults.length > 0">
+                                    <div>
+                                        <template x-for="res in receiverResults">
+                                            <!-- Wrapper utama dibuat Flexbox justify-between agar konten kiri dan kanan terpisah -->
+                                            <div @click="selectAddress('receiver', res)" class="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 flex items-center justify-between gap-3 transition duration-150">
+
+                                                <!-- Bagian Kiri: Icon PIN & Teks Alamat -->
+                                                <div class="flex items-start gap-3 flex-1 min-w-0">
+                                                    <!-- Icon PIN Biru -->
+                                                    <div class="mt-0.5 shrink-0">
+                                                        <i class="fa-solid fa-location-dot text-blue-600 text-base"></i>
+                                                    </div>
+
+                                                    <!-- Teks -->
+                                                    <div class="flex-1 min-w-0">
+                                                        <p class="font-medium text-black text-[11px] leading-relaxed" x-text="res.full_address_display"></p>
+                                                        <p class="text-[10px] font-bold text-blue-600 mt-1" x-text="'KODEPOS: ' + res.postal_code"></p>
+                                                    </div>
+                                                </div>
+
+                                                <!-- Bagian Kanan: Tombol Pilih (Visual Saja) -->
+                                                <div class="shrink-0">
+                                                    <button type="button" class="bg-black hover:bg-gray-800 text-white text-[10px] font-bold px-3 py-1.5 rounded pointer-events-none transition-colors">
+                                                        Pilih
+                                                    </button>
+                                                </div>
+
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="receiverResults.length === 0 && !isSearchingReceiver && receiverQuery.length >= 3">
+                                    <div class="px-4 py-3 text-sm text-red-600 italic text-center font-medium bg-red-50">
+                                        <i class="fa-solid fa-circle-exclamation mr-1"></i> Wilayah tidak ditemukan di database.
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="col-span-2">
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">
+                                ALAMAT JALAN PENERIMA <span class="text-red-500">*</span>
+                            </label>
+                            <textarea id="penerima_alamat" name="penerima_alamat" rows="2" required minlength="15" placeholder="Contoh: PERUM SANCAKA EXPRESS 2 BLOK A NO 3 RT 04 RW 05" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white transition duration-200 placeholder-gray-400">{{ old('penerima_alamat') }}</textarea>
+
+                            <div class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700">
+                                <p class="text-[11px] font-bold flex items-start gap-1.5 leading-tight">
+                                    <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                                    <span>PENTING: Tulis alamat lengkap tanpa (kelurahan/desa, kecamatan, kota/kabupaten, provinsi dan kodepos)</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </div> <!-- END SISI KIRI -->
 
+            <!-- ========================================== -->
+            <!-- SISI KANAN: DETAIL BARANG & ACTION -->
+            <!-- ========================================== -->
+            <div class="lg:col-span-5 space-y-6">
+                <!-- Card Detail Paket -->
+                <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+                    <h2 class="text-base font-bold text-black mb-5 flex items-center"><i class="fa-solid fa-box-open text-gray-800 mr-2.5"></i> Detail Paket</h2>
+
+                    <div class="space-y-5">
+
+                        <!-- DINAMIS: Tipe Pesanan -->
+                        <div class="p-4 border border-gray-200 rounded-md">
+                            <label class="block text-xs font-medium text-gray-700 mb-2.5">TIPE PESANAN</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <label class="flex flex-col items-center justify-center p-2.5 border rounded cursor-pointer transition-all duration-200"
+                                       :class="tipePesanan === 'reguler' ? 'border-black bg-black text-white font-medium shadow-sm' : 'border-gray-300 hover:border-gray-400 text-gray-600 bg-white'">
+                                    <input type="radio" name="tipe_pesanan" value="reguler" x-model="tipePesanan" class="hidden">
+                                    <span class="text-xs tracking-wide">REGULER</span>
+                                </label>
+                                <label class="flex flex-col items-center justify-center p-2.5 border rounded cursor-pointer transition-all duration-200"
+                                       :class="tipePesanan === 'cod' ? 'border-black bg-black text-white font-medium shadow-sm' : 'border-gray-300 hover:border-gray-400 text-gray-600 bg-white'">
+                                    <input type="radio" name="tipe_pesanan" value="cod" x-model="tipePesanan" class="hidden">
+                                    <span class="text-xs tracking-wide">COD</span>
+                                </label>
+                                <label class="flex flex-col items-center justify-center p-2.5 border rounded cursor-pointer transition-all duration-200"
+                                       :class="tipePesanan === 'cashless' ? 'border-black bg-black text-white font-medium shadow-sm' : 'border-gray-300 hover:border-gray-400 text-gray-600 bg-white'">
+                                    <input type="radio" name="tipe_pesanan" value="cashless" x-model="tipePesanan" class="hidden">
+                                    <span class="text-xs tracking-wide">CASHLESS</span>
+                                </label>
+                            </div>
+
+                            <!-- Input Ekstra untuk Cashless -->
+                            <div x-show="tipePesanan === 'cashless'" x-transition class="mt-4" x-cloak>
+                                <label class="block text-xs font-medium text-gray-700 mb-1.5">NOMOR RESI MARKETPLACE (AWB) <span class="text-red-500">*</span></label>
+                                <input type="text" name="resi_cashless" x-model="resiCashless" placeholder="CONTOH: JP1234567890" class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white">
+                            </div>
+
+                            <!-- Info & Pilihan Ekstra untuk COD -->
+                            <div x-show="tipePesanan === 'cod'" x-transition class="mt-4 pt-4 border-t border-gray-200" x-cloak>
+                                <label class="block text-xs font-medium text-gray-700 mb-2.5">PILIH JENIS COD <span class="text-red-500">*</span></label>
+                                <div class="flex flex-col gap-3">
+                                    <label class="flex items-center gap-2.5 cursor-pointer">
+                                        <input type="radio" name="jenis_cod_radio" value="cod_barang" x-model="jenisCod" class="text-black focus:ring-black border-gray-300 w-4 h-4">
+                                        <span class="text-xs font-medium text-gray-800">COD Barang + Ongkir (Tagihan gabungan)</span>
+                                    </label>
+                                    <label class="flex items-center gap-2.5 cursor-pointer">
+                                        <input type="radio" name="jenis_cod_radio" value="cod_ongkir" x-model="jenisCod" class="text-black focus:ring-black border-gray-300 w-4 h-4">
+                                        <span class="text-xs font-medium text-gray-800">COD Ongkir Saja (Tagihan hanya biaya kurir)</span>
+                                    </label>
+                                </div>
+                                <p class="text-[11px] text-gray-500 font-medium leading-tight mt-3 flex items-start gap-1.5">
+                                    <i class="fa-solid fa-circle-info mt-0.5"></i>
+                                    <span x-show="jenisCod === 'cod_barang'">Masukkan Total Tagihan di kolom "Nilai Harga Barang" di bawah.</span>
+                                    <span x-show="jenisCod === 'cod_ongkir'">Hanya nominal Ongkir yang ditagihkan. Nilai barang di bawah hanya dipakai sebagai acuan klaim asuransi.</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Kategori Barang -->
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">KATEGORI BARANG</label>
+                            <select name="kategori_barang" x-model="kategoriBarang" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white">
+                                <option value="" disabled selected>PILIH...</option>
+                                <option value="ELK001">PERALATAN ELEKTRONIK & GADGET</option>
+                                <option value="PAK001">PAKAIAN / BAJU / KAIN</option>
+                                <option value="PCH001">PECAH BELAH</option>
+                                <option value="DOC001">DOKUMEN / BERKAS / BUKU</option>
+                                <option value="RTG001">PERALATAN RUMAH TANGGA</option>
+                                <option value="AKS001">AKSESORIS</option>
+                                <option value="OTH001">LAIN-LAIN</option>
+                                <option value="DHS001">DOKUMEN BERHARGA</option>
+                                <option value="KSM001">PERALATAN KESEHATAN / KECANTIKAN / KOSMETIK</option>
+                                <option value="OLH001">PERALATAN OLAHRAGA & HIBURAN</option>
+                                <option value="OTM001">PERLENGKAPAN MOBIL & MOTOR</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">DESKRIPSI ISI PAKET / KETERANGAN</label>
+                            <input type="text" name="deskripsi_barang" value="{{ old('deskripsi_barang') }}" placeholder="CONTOH: SEPATU SNEAKERS HITAM UKURAN 42" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white placeholder-gray-400">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1.5">BERAT TOTAL (GRAM)</label>
+
+                                <!-- Input ini yang dikirim ke Server (Angka Murni) -->
+                                <input type="hidden" name="berat_gram" :value="berat">
+
+                                <!-- Input ini hanya untuk tampilan (UI) -->
+                                <input type="text" inputmode="numeric"
+                                    x-model="displayBerat"
+                                    @input="let clean = $event.target.value.replace(/\D/g, ''); berat = clean; displayBerat = clean ? new Intl.NumberFormat('id-ID').format(clean) : '';"
+                                    @focus="displayBerat = berat ? new Intl.NumberFormat('id-ID').format(berat) : ''"
+                                    @blur="displayBerat = berat ? new Intl.NumberFormat('id-ID').format(berat) + ' gram' : ''"
+                                    required placeholder="1.000 gram"
+                                    class="w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white font-medium text-gray-800">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1.5">JUMLAH KOLI / PCS</label>
+                                <input type="number" name="qty" x-model="qty" min="1" required class="uppercase w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white text-center">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 items-center">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1.5">ASURANSI PENGIRIMAN?</label>
+                                <div class="flex items-center h-[42px] px-4 border border-gray-300 rounded-md bg-white">
+                                    <input type="checkbox" name="asuransi" x-model="asuransi" class="w-4 h-4 text-black border-gray-300 rounded focus:ring-black cursor-pointer">
+                                    <span class="ml-2.5 text-xs text-gray-700 font-medium cursor-pointer select-none" @click="asuransi = !asuransi">Ya, Amankan</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-gray-700 mb-1.5">METODE SERAH TERIMA</label>
+                                <select name="is_sender_pp" x-model="isSenderPp" class="uppercase w-full h-[42px] border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-3 bg-white text-gray-800">
+                                    <option value="1">KURIR JEMPUT (PICKUP)</option>
+                                    <option value="0">ANTAR KE CABANG (DROPOFF)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div x-show="asuransi || tipePesanan === 'cod'" x-transition.duration.300ms class="p-4 rounded-md border border-gray-200 bg-gray-50" x-cloak>
+                            <label class="block text-xs font-medium text-black mb-1.5">NILAI HARGA BARANG / TAGIHAN COD (RP) <span class="text-red-500">*</span></label>
+
+                            <!-- Input ini yang dikirim ke Server (Angka Murni) -->
+                            <input type="hidden" name="nilai_barang" :value="nilaiBarang">
+
+                            <!-- Input ini hanya untuk tampilan (UI) -->
+                            <input type="text" inputmode="numeric"
+                                x-model="displayNilaiBarang"
+                                @input="let clean = $event.target.value.replace(/\D/g, ''); nilaiBarang = clean; displayNilaiBarang = clean ? new Intl.NumberFormat('id-ID').format(clean) : '';"
+                                @focus="displayNilaiBarang = nilaiBarang ? new Intl.NumberFormat('id-ID').format(nilaiBarang) : ''"
+                                @blur="displayNilaiBarang = nilaiBarang ? 'Rp ' + new Intl.NumberFormat('id-ID').format(nilaiBarang) : ''"
+                                placeholder="Rp 0"
+                                class="w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-black focus:border-black px-4 py-2.5 bg-white font-bold text-gray-900"
+                                :required="asuransi || tipePesanan === 'cod'">
+
+                            <p class="text-[10px] mt-2 text-gray-500" x-text="tipePesanan === 'cod' ? '* Nominal ini adalah total Rupiah yang akan ditagihkan kurir kepada penerima paket.' : '* Nominal ini digunakan kurir sebagai acuan klaim asuransi jika barang hilang.'"></p>
+
+                            <!-- VALIDASI COD REAL-TIME -->
+                            <div x-show="tipePesanan === 'cod' && nilaiBarang !== '' && (parseInt(nilaiBarang) < 10000 || parseInt(nilaiBarang) > 5000000)"
+                                class="mt-2 p-2.5 bg-red-50 border border-red-200 rounded text-red-700 text-[11px] font-bold flex items-start gap-1.5 leading-tight" x-cloak>
+                                <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                                <span>Harga paket untuk COD minimal Rp 10.000 dan maksimal Rp 5.000.000</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">DIMENSI / VOLUME PAKET (CM - OPSIONAL)</label>
+                            <div class="flex gap-2 items-center">
+                                <input type="text" inputmode="numeric" name="panjang_cm" x-model="panjang" @input="panjang = $event.target.value.replace(/\D/g, '')" placeholder="P" class="w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black font-medium">
+                                <span class="text-gray-400 font-medium">×</span>
+                                <input type="text" inputmode="numeric" name="lebar_cm" x-model="lebar" @input="lebar = $event.target.value.replace(/\D/g, '')" placeholder="L" class="w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black font-medium">
+                                <span class="text-gray-400 font-medium">×</span>
+                                <input type="text" inputmode="numeric" name="tinggi_cm" x-model="tinggi" @input="tinggi = $event.target.value.replace(/\D/g, '')" placeholder="T" class="w-1/3 border border-gray-300 rounded-md text-sm text-center bg-white py-2.5 focus:outline-none focus:ring-1 focus:ring-black focus:border-black font-medium">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8">
+                        <button type="button" @click="cekOngkir()" :disabled="isLoading" class="w-full py-3.5 rounded-md font-medium text-white bg-black hover:bg-gray-800 transition duration-200 flex justify-center items-center text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i class="fa-solid fa-calculator mr-2" x-show="!isLoading"></i>
+                            <i class="fa-solid fa-spinner fa-spin mr-2" x-show="isLoading" x-cloak></i>
+                            <span x-text="isLoading ? 'MENGHITUNG ONGKIR...' : (selectedOngkir > 0 ? 'GANTI / HITUNG ULANG EKSPEDISI' : 'HITUNG & PILIH EKSPEDISI')" class="tracking-wide"></span>
+                        </button>
+                    </div>
+                </div> <!-- End Detail Paket -->
+
+                <!-- ======================================================= -->
+                <!-- RINGKASAN EKSPEDISI TERPILIH (Bagian Atas) -->
+                <!-- ======================================================= -->
+                <div x-show="selectedOngkir > 0" x-transition.duration.300ms class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm relative" x-cloak>
+                    <div class="flex items-center justify-between mb-4 border-b border-gray-100 pb-3">
+                        <span class="text-[10px] font-bold text-black bg-gray-100 px-2 py-1 rounded-sm uppercase tracking-widest flex items-center">
+                            Ekspedisi Terpilih
+                        </span>
+                        <button type="button" @click="showModal = true" class="text-xs font-medium text-gray-500 hover:text-black underline">Ganti Kurir</button>
+                    </div>
+
+                    <!-- Input Hidden yang Wajib Dikirim ke Backend -->
+                    <input type="hidden" name="kurir_terpilih" x-model="selectedKurir">
+                    <input type="hidden" name="layanan_terpilih" x-model="selectedLayanan">
+                    <input type="hidden" name="ongkir_terpilih" x-model="selectedOngkir">
+                    <input type="hidden" name="service_code_terpilih" x-model="selectedServiceCode">
+                    <input type="hidden" name="metode_pembayaran" x-bind:value="tipePesanan === 'cod' ? jenisCod : selectedPayment">
+                    
+                    <!-- HIDDEN INPUTS UNTUK BACKEND -->
+                    <input type="hidden" name="hitung_asuransi" :value="biayaAsuransi">
+                    <input type="hidden" name="hitung_cod_fee" :value="biayaCod">
+                    <input type="hidden" name="grand_total" :value="tipePesanan === 'cod' ? grandTotalCod : grandTotalPotongan">
+                    <input type="hidden" name="rate_asuransi" :value="selectedInsuranceRate">
+                    <input type="hidden" name="rate_cod" :value="selectedCodRate">
+
+                    <!-- Tampilan Card Ringkasan -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-white rounded border border-gray-200 flex items-center justify-center p-1.5 shrink-0">
+                                <template x-if="selectedLogoUrl">
+                                    <img :src="selectedLogoUrl" :alt="selectedKurir" class="max-w-full max-h-full object-contain">
+                                </template>
+                                <template x-if="!selectedLogoUrl">
+                                    <i class="fa-solid fa-truck-fast text-gray-400 text-lg"></i>
+                                </template>
+                            </div>
+                            <div>
+                                <p class="font-bold text-black text-sm uppercase tracking-wide" x-text="selectedKurir"></p>
+                                <p class="text-xs text-gray-500 uppercase mt-0.5" x-text="selectedLayanan"></p>
+                                <p class="text-[11px] text-gray-600 mt-1"><i class="fa-regular fa-calendar-check mr-1.5"></i> Tiba: <span x-text="selectedEtd"></span></p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-gray-400 uppercase tracking-widest block mb-0.5">Total Ongkir</span>
+                            <p class="font-bold text-black text-lg">Rp <span x-text="selectedOngkir.toLocaleString('id-ID')"></span></p>
+                        </div>
+                    </div>
+
+                    <!-- MONITOR KALKULATOR BIAYA -->
+                    <div class="mt-5 p-5 bg-gray-50 border border-gray-200 rounded-lg">
+                        <h3 class="text-xs font-bold text-gray-800 uppercase tracking-widest mb-4 border-b border-gray-200 pb-2 flex items-center">
+                            <i class="fa-solid fa-file-invoice-dollar mr-2"></i> Rincian Biaya
+                        </h3>
+
+                        <div class="space-y-2.5 text-sm">
+                            <div class="flex justify-between items-center text-gray-600 mb-3">
+                                <span>Berat Paket</span>
+                                <span class="font-medium text-black" x-text="(parseInt(berat) || 0).toLocaleString('id-ID') + ' gr'"></span>
+                            </div>
+
+                            <div x-show="nilaiBarang > 0" class="flex justify-between items-center text-gray-600" x-cloak>
+                                <span x-text="asuransi ? 'Harga Barang (Diasuransikan)' : 'Harga Barang'"></span>
+                                <span class="font-medium text-black">Rp <span x-text="parseInt(nilaiBarang).toLocaleString('id-ID')"></span></span>
+                            </div>
+
+                            <div class="flex justify-between items-center text-gray-600">
+                                <span>Ongkos Kirim Dasar</span>
+                                <span class="font-medium text-black">Rp <span x-text="parseInt(selectedOngkir).toLocaleString('id-ID')"></span></span>
+                            </div>
+
+                            <div x-show="asuransi" class="flex justify-between items-center text-gray-600" x-cloak>
+                                <span>Biaya Asuransi (<span x-text="(selectedInsuranceRate * 100) + '%'"></span>)</span>
+                                <span class="font-medium text-black">Rp <span x-text="biayaAsuransi.toLocaleString('id-ID')"></span></span>
+                            </div>
+
+                            <div x-show="tipePesanan === 'cod'" class="flex justify-between items-center text-gray-600" x-cloak>
+                                <span>Admin COD (<span x-text="(selectedCodRate * 100) + '%'"></span>)</span>
+                                <span class="font-medium text-black">Rp <span x-text="biayaCod.toLocaleString('id-ID')"></span></span>
+                            </div>
+                        </div>
+
+                        <!-- Grand Total Potong Saldo (NON COD) -->
+                        <div x-show="tipePesanan !== 'cod'" class="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex justify-between items-center" x-cloak>
+                            <span class="font-bold text-black uppercase">Total Potong Saldo</span>
+                            <span class="font-extrabold text-red-600 text-lg">Rp <span x-text="grandTotalPotongan.toLocaleString('id-ID')"></span></span>
+                        </div>
+
+                        <!-- Grand Total Tagihan Kurir (COD) -->
+                        <div x-show="tipePesanan === 'cod'" class="mt-4 pt-3 border-t-2 border-dashed border-gray-300 flex justify-between items-center" x-cloak>
+                            <div class="flex flex-col">
+                                <span class="font-bold text-black uppercase">Total Tagihan Kurir (COD)</span>
+                                <span class="text-[10px] text-gray-500 font-medium mt-0.5" x-text="jenisCod === 'cod_barang' ? '* Akan ditagih ke penerima (Barang + Ongkir + Fee)' : '* Akan ditagih ke penerima (Ongkir + Fee Saja)'"></span>
+                            </div>
+                            <span class="font-extrabold text-blue-600 text-lg">Rp <span x-text="grandTotalCod.toLocaleString('id-ID')"></span></span>
+                        </div>
+                    </div>
+                </div> <!-- End Ringkasan Ekspedisi Terpilih -->
+
+            </div> <!-- END SISI KANAN -->
+        </div> <!-- END ROW 1 (GRID) -->
+
+        <!-- ========================================================================= -->
+        <!-- ROW 2: SISI BAWAH (METODE PEMBAYARAN & SUBMIT FULL WIDTH LANDSCAPE) -->
+        <!-- ========================================================================= -->
+        <div x-show="selectedOngkir > 0" x-transition.duration.300ms class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm mt-6" x-cloak>
+            <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-8">
+                
+                <!-- BAGIAN KIRI: PILIHAN PEMBAYARAN -->
+                <div class="w-full lg:w-2/3">
+                    <h3 class="text-sm font-bold text-black uppercase tracking-widest mb-4 flex items-center">
+                        <i class="fa-solid fa-wallet mr-2"></i> Pilih Metode Pembayaran
+                    </h3>
+                    
+                    <div x-show="tipePesanan !== 'cod'" x-transition x-cloak>
+                        <!-- TOMBOL PEMICU MODAL PEMBAYARAN -->
+                        <button type="button" @click="showPaymentModal = true" class="flex items-center justify-between w-full border p-4 rounded-lg cursor-pointer hover:bg-gray-50 focus:outline-none transition-all" :class="selectedPayment ? 'border-black ring-1 ring-black shadow-sm' : 'border-gray-300'">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded bg-white flex items-center justify-center shrink-0 p-1 border border-gray-100 shadow-sm">
+                                    <!-- Tampil jika belum ada yang dipilih -->
+                                    <template x-if="!selectedPaymentIcon">
+                                        <i class="fa-solid fa-wallet text-gray-400 text-xl"></i>
+                                    </template>
+                                    <!-- Tampil jika sudah memilih -->
+                                    <template x-if="selectedPaymentIcon">
+                                        <div class="w-full h-full flex items-center justify-center">
+                                            <template x-if="selectedPaymentIcon.includes('http')">
+                                                <img :src="selectedPaymentIcon" class="max-w-full max-h-full object-contain">
+                                            </template>
+                                            <template x-if="!selectedPaymentIcon.includes('http')">
+                                                <i :class="selectedPaymentIcon + ' text-xl'"></i>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
+                                <div class="flex flex-col text-left">
+                                    <span class="text-sm font-bold text-gray-900 uppercase" x-text="selectedPaymentName || 'PILIH METODE PEMBAYARAN'"></span>
+                                    <span class="text-[11px] text-gray-500 uppercase mt-0.5" x-text="selectedPaymentName ? 'Klik untuk mengganti metode' : 'Pilih metode untuk melanjutkan'"></span>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-gray-400"></i>
+                        </button>
+
+                        <!-- KOTAK INFORMASI DESKRIPSI PEMBAYARAN -->
+                        {{-- Info Khusus Pembayaran Cash (Hanya Admin) --}}
+                        <div x-show="selectedPayment === 'cash'" x-transition class="mt-4 p-4 border border-emerald-200 rounded-md text-xs text-black bg-emerald-50" x-cloak>
+                            <div class="flex items-start gap-3 text-emerald-800">
+                                <i class="fa-solid fa-money-bill-wave text-emerald-600 text-lg mt-0.5"></i>
+                                <div>
+                                    <span class="font-bold block mb-1 uppercase text-sm">Pembayaran Tunai (Cash)</span>
+                                    <span class="leading-relaxed">Anda menerima uang tunai dari pelanggan. Sistem akan langsung mencetak resi (AWB) ke server logistik <b class="font-bold text-emerald-700">tanpa memotong saldo dompet digital</b> Anda.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div x-show="selectedPayment === 'potong_saldo'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs text-black bg-gray-50" x-cloak>
+                            <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
+                                <span class="font-medium text-gray-600">SALDO WALLET SAAT INI:</span>
+                                <span class="font-bold text-black text-sm">Rp {{ number_format(auth()->user()->saldo ?? 0, 0, ',', '.') }}</span>
+                            </div>
+                            <template x-if="selectedOngkir > {{ auth()->user()->saldo ?? 0 }}">
+                                <div class="mt-2 text-red-600 font-medium flex items-start gap-2">
+                                    <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                                    <span>Saldo tidak mencukupi untuk bayar ongkir ini! Silahkan isi ulang atau pilih metode lain.</span>
+                                </div>
+                            </template>
+                            <template x-if="selectedOngkir <= {{ auth()->user()->saldo ?? 0 }}">
+                                <p class="text-gray-600 mt-1">Saldo mencukupi. Saldo akan dipotong otomatis setelah menekan submit.</p>
+                            </template>
+                        </div>
+
+                        <div x-show="selectedPayment === 'dana_binding'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs bg-gray-50" x-cloak>
+                            @if(!empty(auth()->user()->dana_access_token))
+                                <div class="flex items-start gap-2 text-black">
+                                    <i class="fa-solid fa-circle-check text-gray-800 text-sm mt-0.5"></i>
+                                    <span>Akun DANA terhubung. Pembayaran ongkir akan dipotong instan.</span>
+                                </div>
+                            @else
+                                <div class="text-red-600 font-medium flex items-start gap-2">
+                                    <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+                                    <div>
+                                        <p>AKUN DANA BELUM DIIKAT (BIND)!</p>
+                                        <span class="text-[11px] font-normal text-red-500 block mt-1">Silahkan hubungkan akun di pengaturan profil, atau pilih metode "DANA Payment Gateway".</span>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div x-show="selectedPayment && selectedPayment !== 'potong_saldo' && selectedPayment !== 'dana_binding' && selectedPayment !== 'cash'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs bg-gray-50 flex items-start gap-3" x-cloak>
+                            <i class="fa-solid fa-shield-halved text-gray-500 text-base mt-0.5"></i>
+                            <div>
+                                <span class="font-bold block text-black mb-1">PEMBAYARAN AMAN</span>
+                                <span class="text-gray-500 leading-relaxed">Anda akan diarahkan ke halaman pembayaran resmi. Resi AWB logistik akan terbit otomatis setelah pembayaran lunas 24/7.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div x-show="tipePesanan === 'cod'" x-transition class="p-4 border border-blue-200 rounded-md bg-blue-50 text-blue-800 text-xs mt-2" x-cloak>
+                        <i class="fa-solid fa-info-circle mr-1"></i> Pesanan COD tidak memerlukan metode pembayaran di awal. Tagihan ongkir akan ditagihkan ke pihak penerima oleh kurir.
+                    </div>
+                </div>
+
+                <!-- BAGIAN KANAN: TOMBOL SUBMIT -->
+                <div class="w-full lg:w-1/3 flex flex-col justify-center border-t lg:border-t-0 lg:border-l border-gray-200 pt-6 lg:pt-0 lg:pl-8 mt-4 lg:mt-0">
+                    
+                    <button type="submit"
+                        :disabled="isSubmitting || (tipePesanan !== 'cod' && (!selectedPayment || (selectedPayment === 'potong_saldo' && grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_access_token)) || selectedPayment === 'dana_binding' @endif))"
+                        class="w-full py-4 rounded-md font-bold text-white transition-all text-sm tracking-widest flex justify-center items-center gap-3 uppercase"
+                        :class="(tipePesanan === 'cod' || (selectedPayment && !(selectedPayment === 'potong_saldo' && grandTotalPotongan > {{ auth()->user()->saldo ?? 0 }}) @if(empty(auth()->user()->dana_access_token)) && selectedPayment !== 'dana_binding' @endif)) ? 'bg-black hover:bg-gray-800 cursor-pointer shadow-md' : 'bg-gray-200 text-gray-400 cursor-not-allowed'">
+                        
+                        <span x-text="isSubmitting ? 'MEMPROSES...' : 'SUBMIT PESANAN'"></span>
+                        <i class="fa-solid" :class="isSubmitting ? 'fa-spinner fa-spin' : 'fa-arrow-right'"></i>
+                    </button>
+                    <p x-show="tipePesanan !== 'cod' && !selectedPayment" class="text-[10px] text-red-500 font-bold text-center mt-3 uppercase tracking-widest">* Wajib pilih metode pembayaran</p>
+                </div>
+
+            </div>
         </div>
+        <!-- END ROW 2 -->
+
+    </form>
+
 
         <!-- ========================================================================= -->
         <!-- MODAL POP-UP PILIH EKSPEDISI -->
@@ -798,9 +809,6 @@
                 </div>
             </div>
         </div>
-
-    </form>
-
 
         <!-- ========================================================================= -->
         <!-- MODAL POP-UP PILIH PEMBAYARAN -->
