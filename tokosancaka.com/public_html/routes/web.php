@@ -600,7 +600,7 @@ Route::get('/api/cek-saldo-ajax', [\App\Http\Controllers\Customer\ProfileControl
     Route::post('/payment/create-example', [DokuPaymentController::class, 'createPayment'])->name('doku.create.example');
 
     Route::get('/doku/return', [\App\Http\Controllers\Customer\TopUpController::class, 'dokuReturn'])->name('doku.return');
-    
+
     Route::prefix('dana')->name('dana.')->group(function () {
         Route::get('/create-payment/{order}', [DanaController::class, 'createPayment'])->name('payment.create');
         Route::get('/payment-finish', [DanaController::class, 'handleFinishRedirect'])->name('payment.finish');
@@ -2154,3 +2154,31 @@ Route::post('/shorten', [ShortUrlController::class, 'store']);
 Route::get('/{short_code}', [ShortUrlController::class, 'redirect']);
 
 
+Route::get('/ott-korupsi-sancaka', function () {
+    // Cari semua pesanan batal yang komisi_agen-nya masih nyangkut > 0
+    $pesanans = \App\Models\PesananAutokirim::whereIn('status', ['batal', 'gagal'])
+        ->where('metode_pembayaran', 'potong_saldo')
+        ->where('komisi_agen', '>', 0)
+        ->get();
+
+    $totalDiselamatkan = 0;
+    $jumlahTransaksi = 0;
+
+    foreach ($pesanans as $p) {
+        $user = \App\Models\User::find($p->user_id);
+        if ($user) {
+            // 1. Tarik balik komisi ilegal dari saldo user
+            $user->decrement('saldo', $p->komisi_agen);
+            
+            $totalDiselamatkan += $p->komisi_agen;
+            $jumlahTransaksi++;
+        }
+        
+        // 2. Nolkan komisi di transaksi batal agar riwayat laporan keuangan kembali bersih
+        $p->update(['komisi_agen' => 0]);
+    }
+
+    return "Operasi Tangkap Tangan Selesai! <br>
+            Total transaksi dieksekusi: {$jumlahTransaksi} <br>
+            Total uang Sancaka yang diselamatkan: Rp " . number_format($totalDiselamatkan, 0, ',', '.');
+});
