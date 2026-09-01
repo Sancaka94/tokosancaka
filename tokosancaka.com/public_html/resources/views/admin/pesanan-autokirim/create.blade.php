@@ -632,6 +632,18 @@
                     <!-- Selesai Tombol Pemicu -->
 
                     <!-- KOTAK INFORMASI -->
+                    
+                    {{-- Info Khusus Pembayaran Cash (Hanya Admin) --}}
+                    <div x-show="selectedPayment === 'cash'" x-transition class="mt-4 p-4 border border-emerald-200 rounded-md text-xs text-black bg-emerald-50" x-cloak>
+                        <div class="flex items-start gap-3 text-emerald-800">
+                            <i class="fa-solid fa-money-bill-wave text-emerald-600 text-lg mt-0.5"></i>
+                            <div>
+                                <span class="font-bold block mb-1 uppercase text-sm">Pembayaran Tunai (Cash)</span>
+                                <span class="leading-relaxed">Anda menerima uang tunai dari pelanggan. Sistem akan langsung mencetak resi (AWB) ke server logistik <b class="font-bold text-emerald-700">tanpa memotong saldo dompet digital</b> Anda.</span>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div x-show="selectedPayment === 'potong_saldo'" x-transition class="mt-4 p-4 border border-gray-200 rounded-md text-xs text-black bg-gray-50" x-cloak>
                         <div class="flex items-center justify-between mb-2 pb-2 border-b border-gray-200">
                             <span class="font-medium text-gray-600">SALDO WALLET SAAT INI:</span>

@@ -77,6 +77,17 @@ class PesananAutokirimController extends Controller
             ]
         ];
 
+        // --- TAMBAHAN KODE: METODE CASH KHUSUS ADMIN ---
+        if ($roleType === 'admin') {
+            array_unshift($metodePembayaran, [
+                'id'          => 'cash',
+                'nama'        => 'Cash / Tunai',
+                'icon'        => 'fa-solid fa-money-bill-wave text-emerald-600',
+                'deskripsi'   => 'Terima tunai dari pelanggan. Resi (AWB) langsung terbit tanpa potong saldo.'
+            ]);
+        }
+        // ------------------------------------------------
+
         // 2. MENGAMBIL METODE TRIPAY SECARA DINAMIS DARI API
         $currentMode = \App\Models\Api::getValue('TRIPAY_MODE', 'global', 'sandbox');
         $cacheKey = 'tripay_channels_list_' . $currentMode;
@@ -811,7 +822,7 @@ class PesananAutokirimController extends Controller
 
                 $paymentUrl = null;
 
-                if (in_array($paymentMethod, ['potong_saldo', 'dana_binding', 'cod_barang', 'cod_ongkir'])) {
+                if (in_array($paymentMethod, ['potong_saldo', 'dana_binding', 'cod_barang', 'cod_ongkir', 'cash'])) {
 
                     if ($paymentMethod === 'potong_saldo') {
                         // [FITUR IDEMPOTENCY]: Pessimistic Lock untuk mengunci baris user
@@ -827,6 +838,12 @@ class PesananAutokirimController extends Controller
                         Log::info("LOG: [POTONG SALDO SUKSES] ($appMode) User ID {$user->id} dipotong Rp {$totalTagihan} untuk Order ID {$localOrderId}");
                     } elseif ($paymentMethod === 'dana_binding') {
                         $this->_processDanaBindingCharge($pesanan, $totalTagihan, $redirectUrl); // <-- Tambahkan $redirectUrl
+                    } elseif ($paymentMethod === 'cash') {
+                        // Proteksi ganda: Pastikan yang eksekusi benar-benar admin
+                        if ($userRole !== 'admin') {
+                            throw new Exception('Akses Ditolak: Metode Cash hanya tersedia untuk Admin Sancaka.');
+                        }
+                        Log::info("LOG LOG: [PEMBAYARAN CASH] ($appMode) Order ID {$localOrderId} dibayar tunai oleh Admin. Lanjut eksekusi logistik.");
                     }
 
                     $awbResult = $this->_executeAutokirimApi($pesanan, $origin, $destination, $request);
