@@ -754,30 +754,46 @@
                     <!-- TAMBAHAN: Tombol Filter -->
                     <div class="bg-white px-6 py-3 border-b border-gray-200 flex items-center gap-2 overflow-x-auto custom-scrollbar">
                         <button type="button" @click="filterEkspedisi = 'Semua'" 
-                            :class="filterEkspedisi === 'Semua' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                            :class="filterEkspedisi === 'Semua' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                             class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border border-transparent">
                             Semua
                         </button>
                         <button type="button" @click="filterEkspedisi = 'Reguler'" 
-                            :class="filterEkspedisi === 'Reguler' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                            :class="filterEkspedisi === 'Reguler' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                             class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border border-transparent">
-                            Reguler / Nextday
+                            Reguler
                         </button>
                         <button type="button" @click="filterEkspedisi = 'Cargo'" 
-                            :class="filterEkspedisi === 'Cargo' ? 'bg-black text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                            :class="filterEkspedisi === 'Cargo' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
                             class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border border-transparent">
                             Cargo
+                        </button>
+                        <button type="button" @click="filterEkspedisi = 'Oneday'" 
+                            :class="filterEkspedisi === 'Oneday' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                            class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border border-transparent">
+                            One Day / Next Day
+                        </button>
+                        <button type="button" @click="filterEkspedisi = 'Sameday'" 
+                            :class="filterEkspedisi === 'Sameday' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                            class="px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border border-transparent">
+                            Same Day
                         </button>
                     </div>
 
                     <!-- Modal Body (List Ekspedisi) -->
                     <div class="p-6 max-h-[60vh] overflow-y-auto space-y-3 custom-scrollbar bg-gray-50">
                         <template x-for="(ongkir, index) in ongkirList" :key="index">
-                            <div x-show="filterEkspedisi === 'Semua' || (filterEkspedisi === 'Cargo' && ongkir.layanan.toUpperCase().includes('CARGO')) || (filterEkspedisi === 'Reguler' && !ongkir.layanan.toUpperCase().includes('CARGO'))"
+                           <div x-show="
+                                    filterEkspedisi === 'Semua' || 
+                                    (filterEkspedisi === 'Cargo' && /CARGO|JTR|GOKIL|TRUCK/i.test(ongkir.layanan)) ||
+                                    (filterEkspedisi === 'Sameday' && /SAMEDAY|SAME DAY|SDS/i.test(ongkir.layanan)) ||
+                                    (filterEkspedisi === 'Oneday' && /ONEDAY|ONE DAY|NEXTDAY|NEXT DAY|YES|BEST|ONS/i.test(ongkir.layanan)) ||
+                                    (filterEkspedisi === 'Reguler' && !/CARGO|JTR|GOKIL|TRUCK|SAMEDAY|SAME DAY|SDS|ONEDAY|ONE DAY|NEXTDAY|NEXT DAY|YES|BEST|ONS/i.test(ongkir.layanan))
+                                 "
                                  @click="tempSelected = ongkir"
                                  class="p-4 border rounded-md cursor-pointer transition-all duration-200 flex flex-col justify-between gap-3 bg-white"
                                  :class="tempSelected && tempSelected.kode_layanan === ongkir.kode_layanan ? 'border-black ring-1 ring-black shadow-sm' : 'border-gray-200 hover:border-gray-300'">
-
+                                 
                                 <div class="flex items-center justify-between">
                                     <div class="flex items-center gap-4">
                                         <input type="radio" name="temp_kurir_radio" class="w-4 h-4 text-black focus:ring-black border-gray-300 pointer-events-none"
