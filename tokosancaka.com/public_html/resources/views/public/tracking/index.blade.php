@@ -275,7 +275,7 @@ if (!function_exists('maskText')) {
                                             <a href="{{ route('cetak_thermal', $result['summary']['awb'] ?? $result['resi']) }}" target="_blank" class="btn btn-sm btn-outline-secondary text-nowrap bg-green-50">
                                                 <i class="fas fa-print me-1"></i> Cetak Resi
                                             </a>
-                                            <a href="{{ url('invoice/' . ($result['summary']['awb'] ?? $result['resi'])) }}" target="_blank" class="btn btn-sm btn-primary text-nowrap">
+                                            <a href="{{ route('invoice.show', $result['summary']['awb'] ?? $result['resi']) }}" target="_blank" class="btn btn-sm btn-primary text-nowrap">
                                                 <i class="fas fa-file-invoice me-1"></i> Invoice
                                             </a>
                                         </div>
@@ -367,7 +367,7 @@ if (!function_exists('maskText')) {
                                             <a href="{{ route('cetak_thermal', $result['resi']) }}" target="_blank" class="btn btn-sm btn-outline-secondary text-nowrap">
                                                 <i class="fas fa-print me-1"></i> Cetak Resi
                                             </a>
-                                            <a href="{{ url('invoice/' . $result['resi']) }}" target="_blank" class="btn btn-sm btn-primary text-nowrap">
+                                            <a href="{{ route('invoice.show', $result['resi']) }}" target="_blank" class="btn btn-sm btn-primary text-nowrap">
                                                 <i class="fas fa-file-invoice me-1"></i> Invoice
                                             </a>
                                         </div>
