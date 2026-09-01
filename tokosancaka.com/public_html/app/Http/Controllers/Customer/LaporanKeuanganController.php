@@ -80,8 +80,9 @@ class LaporanKeuanganController extends Controller
         $refundAutokirim = DB::table('pesanan_autokirim')
             ->where('user_id', $userId)->where('metode_pembayaran', 'potong_saldo')
             ->whereIn('status', ['batal', 'gagal'])
-            ->select(DB::raw("COALESCE(updated_at, created_at) as created_at"), DB::raw("'Refund Saldo (Autokirim)' as description"), DB::raw("'refund' as type"), 'grand_total as amount', 'order_id as reference', DB::raw("'autokirim' as source_type"));
-
+            // PERBAIKAN: Tarik nilai grand_total + komisi_agen agar mencerminkan uang asli yang ter-refund di masa lalu
+            ->select(DB::raw("COALESCE(updated_at, created_at) as created_at"), DB::raw("'Refund Saldo (Autokirim)' as description"), DB::raw("'refund' as type"), DB::raw('grand_total + komisi_agen as amount'), 'order_id as reference', DB::raw("'autokirim' as source_type"));
+            
         // ==========================================================
         // GABUNGKAN DATA KESELURUHAN & FILTER TANGGAL
         // ==========================================================

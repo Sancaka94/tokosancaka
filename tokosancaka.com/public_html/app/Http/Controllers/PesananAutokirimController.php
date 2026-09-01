@@ -1402,13 +1402,13 @@ class PesananAutokirimController extends Controller
                     // 1. Ubah status jadi batal
                     $pesanan->update(['status' => 'batal']);
 
-                    // 2. Kembalikan modal/ongkir (Grand Total + Komisi Agen)
+                    // 2. Kembalikan modal/ongkir SAJA (Tanpa Komisi)
                     if ($pesanan->metode_pembayaran === 'potong_saldo') {
                         $userToRefund = User::find($pesanan->user_id);
                         if ($userToRefund) {
-                            $totalRefund = $pesanan->grand_total + $pesanan->komisi_agen;
+                            $totalRefund = $pesanan->grand_total; // Hapus penambahan komisi_agen
                             $userToRefund->increment('saldo', $totalRefund);
-                            Log::info("LOG: [REFUND SALDO] Berhasil mengembalikan Rp {$totalRefund} (Modal + Komisi) ke User ID {$pesanan->user_id}");
+                            Log::info("LOG: [REFUND SALDO] Berhasil mengembalikan Rp {$totalRefund} (Modal) ke User ID {$pesanan->user_id}");
                         }
                     }
 
