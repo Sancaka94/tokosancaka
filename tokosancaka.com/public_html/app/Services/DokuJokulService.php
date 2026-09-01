@@ -98,7 +98,10 @@ class DokuJokulService
 
         // Tambahkan Redirect URL jika ada
         if ($redirectUrl) {
-            $requestBody['payment']['redirect_url'] = $redirectUrl;
+            // Sesuai dokumentasi DOKU, parameter ini ada di dalam objek 'order'
+            $requestBody['order']['callback_url'] = $redirectUrl;
+            // auto_redirect = true agar langsung pindah otomatis tanpa tekan tombol
+            $requestBody['order']['auto_redirect'] = true;
         }
 
         if (!empty($lineItems)) {
