@@ -9,18 +9,18 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Store;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log; // <-- Pastikan Log di-import
 
 class LaporanKeuanganController extends Controller
 {
     /**
      * Menampilkan halaman laporan keuangan yang disempurnakan.
-     * Menggabungkan 4 SUMBER DATA:
+     * Menggabungkan 6 SUMBER DATA:
      * 1. transactions (Top Up)
      * 2. orders (Pendapatan Marketplace)
      * 3. Pesanan (Pengeluaran Manual)
-     * 4. order_marketplace (Pengeluaran Marketplace) <-- INI YANG BARU
+     * 4. order_marketplace (Pengeluaran Marketplace)
+     * 5. pesanan_autokirims (Pengeluaran Bayar Ongkir via Saldo) <-- BARU
+     * 6. pesanan_autokirims (Pemasukan Pencairan Komisi Agen) <-- BARU
      */
     public function index(Request $request)
     {
@@ -48,18 +48,17 @@ class LaporanKeuanganController extends Controller
             );
 
         // --- 2. Query Pemasukan (Pendapatan Marketplace) ---
-        // (Anda menggunakan tabel 'orders' untuk ini, bukan 'order_marketplace')
         $revenueTransactions = DB::table('orders')
             ->where('store_id', $storeId)
             ->where('status', 'completed')
             ->select(
                 'created_at',
-                DB::raw("CONCAT('Pendapatan dari Marketplace (Etalase) Dengan Order Id: ', invoice_number) as description"), // Diganti ke nomor_invoice
+                DB::raw("CONCAT('Pendapatan dari Marketplace #', invoice_number) as description"),
                 DB::raw("'revenue' as type"),
-                'subtotal as amount' // Ganti nama kolom jadi 'amount'
+                'subtotal as amount'
             );
 
-        // --- 3. Query Pengeluaran (Pesanan Manual) ---
+        // --- 3. Query Pengeluaran (Pesanan Kirim Manual) ---
         $orderPayments = DB::table('Pesanan')
             ->where('id_pengguna_pembeli', $userId)
             ->where('payment_method', 'Potong Saldo')
@@ -67,46 +66,69 @@ class LaporanKeuanganController extends Controller
             ->where('price', '>', 0)
             ->select(
                 'tanggal_pesanan as created_at',
-                DB::raw("CONCAT('Pembayaran Pesanan Manual #', nomor_invoice) as description"),
+                DB::raw("CONCAT('Pembayaran Kirim Paket Manual #', nomor_invoice) as description"),
                 DB::raw("'payment' as type"),
-                'price as amount' // Ganti nama kolom jadi 'amount'
+                'price as amount'
             );
 
-        // ==========================================================
-        // PERBAIKAN: INI YANG HILANG
         // --- 4. Query Pengeluaran (Checkout Marketplace) ---
-        // ==========================================================
-        $marketplacePayments = DB::table('order_marketplace') // <-- Membaca tabel baru
-            ->where('user_id', $userId) // Pembelinya adalah user ini
-            ->where('payment_method', 'saldo') // Yang bayar pakai saldo
-            ->where('status', '!=', 'pending') // Yang tidak pending (processing, paid, dll)
-            ->where('status', '!=', 'failed')
-            ->where('status', '!=', 'expired')
-            ->where('status', '!=', 'canceled')
+        $marketplacePayments = DB::table('order_marketplace')
+            ->where('user_id', $userId)
+            ->where('payment_method', 'saldo')
+            ->whereNotIn('status', ['pending', 'failed', 'expired', 'canceled'])
             ->select(
                 'created_at',
-                DB::raw("CONCAT('Pembelian Marketplace (Agen) Dengan Order Id: ', invoice_number) as description"),
-                DB::raw("'payment' as type"), // Tipe sama dengan pengeluaran lain
-                'total_amount as amount' // Ambil total akhir sebagai pengeluaran
+                DB::raw("CONCAT('Belanja Marketplace #', invoice_number) as description"),
+                DB::raw("'payment' as type"),
+                'total_amount as amount'
             );
-        // ==========================================================
-        // AKHIR PERBAIKAN
-        // ==========================================================
 
+        // ==========================================================
+        // TAMBAHAN DATABASE AUTOKIRIM (PENGELUARAN & PEMASUKAN)
+        // ==========================================================
+        
+        // --- 5. Query Pengeluaran (Pembayaran Autokirim via Saldo) ---
+        $autokirimPayments = DB::table('pesanan_autokirims')
+            ->where('user_id', $userId)
+            ->where('metode_pembayaran', 'potong_saldo')
+            ->whereNotIn('status', ['batal', 'gagal', 'waiting_payment'])
+            ->select(
+                'created_at',
+                DB::raw("CONCAT('Pembayaran Resi Autokirim #', COALESCE(awb_number, order_id)) as description"),
+                DB::raw("'payment' as type"),
+                'grand_total as amount'
+            );
+
+        // --- 6. Query Pemasukan (Pencairan Komisi Agen Autokirim) ---
+        $autokirimKomisi = DB::table('pesanan_autokirims')
+            ->where('user_id', $userId)
+            ->where('komisi_agen', '>', 0)
+            // Komisi cair pada saat status pesanan sukses
+            ->whereIn('status', ['terkirim', 'selesai', 'sukses', 'delivered', 'success', 'completed'])
+            ->select(
+                'updated_at as created_at', // Menggunakan waktu update karena komisi cair saat status berubah
+                DB::raw("CONCAT('Pencairan Komisi Agen Autokirim #', COALESCE(awb_number, order_id)) as description"),
+                DB::raw("'revenue' as type"),
+                'komisi_agen as amount'
+            );
 
         // Terapkan filter tanggal jika ada
         if ($startDate && $endDate) {
             $topUpTransactions->whereBetween('created_at', [$startDate, $endDate]);
             $revenueTransactions->whereBetween('created_at', [$startDate, $endDate]);
             $orderPayments->whereBetween('tanggal_pesanan', [$startDate, $endDate]);
-            $marketplacePayments->whereBetween('created_at', [$startDate, $endDate]); // <-- Tambahkan filter
+            $marketplacePayments->whereBetween('created_at', [$startDate, $endDate]);
+            $autokirimPayments->whereBetween('created_at', [$startDate, $endDate]);
+            $autokirimKomisi->whereBetween('updated_at', [$startDate, $endDate]);
         }
 
-        // Gabungkan SEMUA transaksi (4 sumber)
+        // Gabungkan SEMUA transaksi (6 sumber)
         $results = $topUpTransactions
             ->unionAll($revenueTransactions)
             ->unionAll($orderPayments)
-            ->unionAll($marketplacePayments) // <-- Tambahkan query baru
+            ->unionAll($marketplacePayments)
+            ->unionAll($autokirimPayments)
+            ->unionAll($autokirimKomisi)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -115,51 +137,57 @@ class LaporanKeuanganController extends Controller
             return $item;
         });
         
-        // --- PERBAIKAN LOGIKA SISA SALDO (Dihitung Mundur) ---
-        $runningBalance = $saldoSaatIni;
-        
-        // Hitung total untuk kartu (berdasarkan hasil query)
-        $totalPemasukan = $results->where('type', 'revenue')->sum('amount');
+        // --- Hitung Total Berdasarkan Kategori ---
+        $totalPemasukan = $results->where('type', 'revenue')->sum('amount'); // Gabungan Jualan Marketplace + Komisi Autokirim
         $totalTopUp = $results->where('type', 'topup')->sum('amount');
-        $totalPengeluaran = $results->where('type', 'payment')->sum('amount'); // Otomatis menggabungkan manual + marketplace
+        $totalPengeluaran = $results->where('type', 'payment')->sum('amount'); // Gabungan Belanja, Kirim Manual, & Autokirim
 
-        // --- Hitung Saldo Awal Periode (Jika ada filter) ---
+        $runningBalance = $saldoSaatIni;
         $saldoAwal = 0; 
+        
+        // --- PERBAIKAN FATAL BUG PADA PERHITUNGAN SALDO AWAL ---
         if ($startDate && $endDate) {
             
+            // Pemasukan Masa Lalu
             $saldoAwalTopUp = DB::table('transactions')
                 ->where('user_id', $userId)->where('status', 'success')->where('type', 'topup')
-                ->where('created_at', '<', $startDate)
-                ->sum('amount');
+                ->where('created_at', '<', $startDate)->sum('amount');
 
             $saldoAwalRevenue = DB::table('orders')
                 ->where('store_id', $storeId)->where('status', 'completed')
-                ->where('created_at', '<', $startDate)
-                ->sum('subtotal');
+                ->where('created_at', '<', $startDate)->sum('subtotal');
 
+            $saldoAwalKomisiAutokirim = DB::table('pesanan_autokirims')
+                ->where('user_id', $userId)->where('komisi_agen', '>', 0)
+                ->whereIn('status', ['terkirim', 'selesai', 'sukses', 'delivered', 'success', 'completed'])
+                ->where('updated_at', '<', $startDate)->sum('komisi_agen');
+
+            // Pengeluaran Masa Lalu
             $saldoAwalSpendingManual = DB::table('Pesanan')
                 ->where('id_pengguna_pembeli', $userId)->where('payment_method', 'Potong Saldo')
-                ->where('tanggal_pesanan', '<', $startDate)
-                ->sum('price');
+                ->where('tanggal_pesanan', '<', $startDate)->sum('price');
             
-            // Tambahkan perhitungan saldo awal pengeluaran marketplace
-            $revenueTransactions = DB::table('order_marketplace') // <-- DIGANTI ke tabel baru
-            ->where('store_id', $storeId) // Ini adalah toko milik SI PENJUAL
-            ->where('status', 'completed') // Asumsi status selesai
-            ->select(
-                'created_at',
-                DB::raw("CONCAT('Pendapatan dari Marketplace (Etalase) Dengan Order Id: ', invoice_number) as description"), // <-- DIPERBAIKI
-                DB::raw("'revenue' as type"),
-                'subtotal as amount' // Anda bisa ganti ke 'total_amount' jika itu pendapatan bersih Anda
-            );
+            $saldoAwalSpendingMarketplace = DB::table('order_marketplace')
+                ->where('user_id', $userId)->where('payment_method', 'saldo')
+                ->whereNotIn('status', ['pending', 'failed', 'expired', 'canceled'])
+                ->where('created_at', '<', $startDate)->sum('total_amount');
 
-            $saldoAwal = ($saldoAwalTopUp + $saldoAwalRevenue) - ($saldoAwalSpendingManual + $saldoAwalSpendingMarketplace);
+            $saldoAwalSpendingAutokirim = DB::table('pesanan_autokirims')
+                ->where('user_id', $userId)->where('metode_pembayaran', 'potong_saldo')
+                ->whereNotIn('status', ['batal', 'gagal', 'waiting_payment'])
+                ->where('created_at', '<', $startDate)->sum('grand_total');
+
+            // Kalkulasi Matematika Saldo Awal Murni
+            $totalPemasukanMasaLalu = $saldoAwalTopUp + $saldoAwalRevenue + $saldoAwalKomisiAutokirim;
+            $totalPengeluaranMasaLalu = $saldoAwalSpendingManual + $saldoAwalSpendingMarketplace + $saldoAwalSpendingAutokirim;
+            
+            $saldoAwal = $totalPemasukanMasaLalu - $totalPengeluaranMasaLalu;
             
             // Saldo berjalan dimulai dari saldo akhir periode yang difilter
             $runningBalance = $saldoAwal + $totalTopUp + $totalPemasukan - $totalPengeluaran;
         }
 
-        // Hitung Sisa Saldo secara mundur
+        // Hitung Sisa Saldo secara mundur ke bawah pada tabel
         $results->transform(function ($item) use (&$runningBalance) {
             $item->running_balance = $runningBalance;
             // Hitung saldo SEBELUM transaksi ini terjadi
@@ -181,9 +209,9 @@ class LaporanKeuanganController extends Controller
 
         return view('customer.laporan.index', [
             'saldo'               => $saldoSaatIni,
-            'totalPemasukan'      => $totalPemasukan, // (Pendapatan Marketplace)
-            'totalTopUp'          => $totalTopUp, // (Top Up Saldo)
-            'totalPengeluaran'    => $totalPengeluaran, // (Gabungan Manual + Marketplace)
+            'totalPemasukan'      => $totalPemasukan,
+            'totalTopUp'          => $totalTopUp,
+            'totalPengeluaran'    => $totalPengeluaran,
             'transactions'        => $transactions,
             'saldoAwal'           => $saldoAwal,
             'startDate'           => $request->input('start_date'),
