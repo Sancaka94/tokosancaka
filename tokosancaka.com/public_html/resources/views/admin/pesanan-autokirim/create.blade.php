@@ -599,7 +599,7 @@
         <!-- ROW 2: SISI BAWAH (METODE PEMBAYARAN & SUBMIT FULL WIDTH LANDSCAPE) -->
         <!-- ========================================================================= -->
         <div class="bg-white p-6 rounded-lg border border-gray-200 shadow-sm mt-6">
-            <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-8">
+            <div class="flex flex-col lg:flex-row lg:items-stretch justify-between gap-8">
                 
                 <!-- BAGIAN KIRI: PILIHAN PEMBAYARAN -->
                 <div class="w-full lg:w-2/3">
@@ -704,7 +704,7 @@
                         class="w-full py-4 rounded-md font-bold transition-all text-sm tracking-widest flex justify-center items-center gap-3 uppercase"
                         :class="!isFormSubmitReady ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-lg'">
                         
-                        <span x-text="isSubmitting ? 'MEMPROSES...' : 'SUBMIT PESANAN'"></span>
+                        <span x-text="isSubmitting ? 'MEMPROSES...' : 'KIRIM PAKET'"></span>
                         <i class="fa-solid" :class="isSubmitting ? 'fa-spinner fa-spin' : 'fa-arrow-right'"></i>
                     </button>
                     
