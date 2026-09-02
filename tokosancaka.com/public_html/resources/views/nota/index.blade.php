@@ -78,7 +78,7 @@
                                 </button>
 
                                 <!-- 4. Download PDF -->
-                                <a href="{{ route('nota.download', $nota->id) }}" class="text-blue-600 hover:bg-blue-50 border border-blue-200 w-8 h-8 rounded flex items-center justify-center transition shadow-sm" title="Download PDF">
+                                <a href="{{ route('nota.pay', $nota->no_nota) }}?auto_pdf=true" target="_blank" class="text-blue-600 hover:bg-blue-50 border border-blue-200 w-8 h-8 rounded flex items-center justify-center transition shadow-sm" title="Download PDF Halaman Modern">
                                     <i class="fa-solid fa-download"></i>
                                 </a>
 
@@ -269,6 +269,22 @@
             btn.classList.remove('opacity-70');
         });
     });
+
+    // Cek apakah ada perintah auto_pdf dari URL (kiriman dari dashboard Admin)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('auto_pdf') === 'true') {
+        // Beri sedikit jeda agar font dan gambar (terutama logo) selesai diload browser
+        setTimeout(() => {
+            // Bypass PIN sementara khusus untuk print otomatis jika diperlukan,
+            // atau pastikan halaman Admin sudah me-load elemen yang tersembunyi.
+            const mainContent = document.getElementById('mainContentWrapper');
+            mainContent.classList.remove('blur-xl', 'opacity-20', 'pointer-events-none');
+
+            // Panggil fungsi download PDF yang sudah dibuat sebelumnya
+            downloadPDF();
+        }, 1000);
+    }
+
 </script>
 
 @endsection
