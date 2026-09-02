@@ -1710,11 +1710,16 @@ class CheckoutController extends Controller
                 CustomerOrderController::processCallback($merchantRef, $status, $data);
 
             // ====================================================================
-            // 🔥 TAMBAHKAN INI: ROUTING UNTUK PESANAN AUTOKIRIM 🔥
+            // 🔥 ROUTING UNTUK PESANAN AUTOKIRIM (TRIPAY) 🔥
             // ====================================================================
-            } elseif (\App\Models\PesananAutokirim::where('order_id', $merchantRef)->exists()) {
-                Log::info('Routing callback to PesananAutokirimController', ['ref' => $merchantRef]);
-                app(\App\Http\Controllers\PesananAutokirimController::class)->processPaymentCallback($merchantRef, $status, $data);
+            } elseif (is_numeric($merchantRef) && strlen($merchantRef) >= 14) {
+                Log::info('Routing Tripay callback to PesananAutokirimController', ['ref' => $merchantRef]);
+
+                // Normalisasi status Tripay agar seragam menjadi 'PAID'
+                $normalizedStatus = in_array(strtoupper($status), ['PAID', 'SUCCESS', '00']) ? 'PAID' : strtoupper($status);
+
+                app(\App\Http\Controllers\PesananAutokirimController::class)
+                    ->processPaymentCallback($merchantRef, $normalizedStatus, $data);
             // ====================================================================
 
             } else {
