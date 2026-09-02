@@ -100,7 +100,8 @@
             </button>
         </div>
 
-        <div class="flex flex-col sm:flex-row justify-between items-center border-b border-gray-100 pb-6 mb-6">
+        <!-- Tambahkan pt-12 (padding-top) agar header turun menjauh dari pita LUNAS -->
+        <div class="flex flex-col sm:flex-row justify-between items-center border-b border-gray-100 pb-6 mb-6 pt-12">
             <div class="flex items-center gap-4 mb-4 sm:mb-0">
                 <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka" class="h-14 object-contain">
                 <div>
