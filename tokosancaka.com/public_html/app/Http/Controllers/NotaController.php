@@ -392,29 +392,27 @@ class NotaController extends Controller
         return back()->with('error', 'Gagal mengarahkan ke halaman pembayaran.');
     }
 
-    /**
+   /**
      * FUNGSI BARU: Memproses Callback dari Webhook (DANA, DOKU, Tripay, dll)
      */
-    public function processCallback($no_nota, $status)
+    public static function processCallback($no_nota, $status)
     {
         try {
-            // Cari data nota berdasarkan nomor nota
-            $nota = \App\Models\Nota::where('no_nota', $no_nota)->first();
+            if (in_array(strtoupper($status), ['PAID', 'SUCCESS'])) {
 
-            if ($nota) {
-                if (in_array(strtoupper($status), ['PAID', 'SUCCESS'])) {
-                    // Update status menjadi PAID
-                    $nota->status = 'PAID';
+                // Gunakan Query Builder langsung agar kebal terhadap batasan $fillable model
+                $affected = \Illuminate\Support\Facades\DB::table('notas')
+                    ->where('no_nota', $no_nota)
+                    ->update([
+                        'status' => 'PAID',
+                        'updated_at' => now()
+                    ]);
 
-                    // (Opsional) Kosongkan URL agar tidak bisa dibayar ulang
-                    $nota->payment_url = null;
-
-                    $nota->save();
-
-                    \Illuminate\Support\Facades\Log::info("✅ [NOTA] Webhook Sukses: Status $no_nota berhasil diupdate menjadi PAID.");
+                if ($affected) {
+                    \Illuminate\Support\Facades\Log::info("✅ [NOTA] DB UPDATE SUKSES: $no_nota menjadi PAID.");
+                } else {
+                    \Illuminate\Support\Facades\Log::warning("⚠️ [NOTA] Webhook memicu fungsi, tapi Nota $no_nota tidak ditemukan di tabel.");
                 }
-            } else {
-                \Illuminate\Support\Facades\Log::warning("⚠️ [NOTA] Webhook masuk tapi Nota $no_nota tidak ditemukan di database.");
             }
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("❌ [NOTA] Gagal memproses callback: " . $e->getMessage());

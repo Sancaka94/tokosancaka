@@ -51,12 +51,12 @@ class DokuPaymentController extends Controller
     {
         try {
             // 1. Ambil semua konfigurasi dari config/doku.php
-            $config = config('doku'); 
-            
+            $config = config('doku');
+
             // 2. Validasi konfigurasi dasar
-            if (empty($config['client_id']) || empty($config['secret_key']) || 
+            if (empty($config['client_id']) || empty($config['secret_key']) ||
                 empty($config['merchant_private_key']) || empty($config['merchant_public_key'])) { // <-- Validasi diperbarui
-                
+
                 Log::critical('DOKU Config Missing: Pastikan CLIENT_ID, SECRET_KEY, MERCHANT_PRIVATE_KEY, dan MERCHANT_PUBLIC_KEY sudah diisi.');
                 // Lemparkan exception agar error-nya jelas saat testing
                 throw new Exception('Konfigurasi DOKU tidak lengkap. Cek file .env dan config/doku.php');
@@ -65,7 +65,7 @@ class DokuPaymentController extends Controller
             // ===================================================================
             // INI ADALAH BLOK YANG DIPERBAIKI (MENGHILANGKAN ERROR ARGUMENT #2)
             // ===================================================================
-            
+
             // 3. Inisialisasi DOKU Snap SDK
             $this->snap = new Snap(
                 $config['merchant_private_key'],          // Argument #1 ($privateKey)
@@ -90,7 +90,7 @@ class DokuPaymentController extends Controller
             // Tangkap error konstruksi (misal file config tidak ada)
             Log::error('Gagal menginisialisasi DokuPaymentController: ' . $e->getMessage());
             // Kita set $this->snap jadi null agar method lain gagal dengan aman
-            $this->snap = null; 
+            $this->snap = null;
         }
     }
 
@@ -127,7 +127,7 @@ class DokuPaymentController extends Controller
             $paymentRequest = new PaymentRequest();
             $paymentRequest->setCustomer($customer);
             $paymentRequest->setOrder($order);
-            
+
             // TIDAK ADA $paymentRequest->setAdditionalInfo()
             // Ini berarti uang akan masuk ke rekening utama Anda.
 
@@ -142,7 +142,7 @@ class DokuPaymentController extends Controller
             return null; // Kembalikan null jika gagal
         }
     }
-    
+
     /**
      * Method #2: GENERATE URL (Marketplace / Sub-Account)
      *
@@ -160,13 +160,13 @@ class DokuPaymentController extends Controller
             Log::error('DOKU generatePaymentUrl Gagal: Snap SDK tidak terinisialisasi.');
             return null; // Gagal jika constructor error
         }
-        
+
         try {
             // 1. Siapkan Model Customer DOKU
             $customer = new DokuCustomer();
             $customer->setName($customerData->name);
             $customer->setEmail($customerData->email);
-            
+
             // 2. Siapkan Model Order DOKU
             $order = new DokuOrder();
             $order->setInvoiceNumber($orderData->invoice_number);
@@ -208,7 +208,7 @@ class DokuPaymentController extends Controller
     {
         // Selalu catat log untuk setiap notifikasi yang masuk
         Log::info('DOKU Snap Webhook Received: ', $request->all());
-        
+
         if (!$this->snap) {
              Log::critical('DOKU Webhook Gagal: DokuPaymentController tidak terinisialisasi.');
              return response()->json(['status' => 'error', 'message' => 'Controller not initialized'], 500);
@@ -236,11 +236,11 @@ class DokuPaymentController extends Controller
                 ]);
                 return response()->json(['status' => 'error', 'message' => 'Invalid Signature'], 403);
             }
-            
+
             // --- SIGNATURE VALID ---
-            
+
             $data = $request->all();
-            
+
             if (!isset($data['order']['invoice_number']) || !isset($data['transaction']['status'])) {
                  Log::warning('DOKU Webhook: Malformed Data', $data);
                  return response()->json(['status' => 'error', 'message' => 'Malformed data'], 400);
@@ -257,28 +257,39 @@ class DokuPaymentController extends Controller
 
             // 2. LOGIKA DISPATCHER (Penerus Perintah)
             // Hanya untuk status 'SUCCESS'
-            
+
             if (Str::startsWith($orderId, 'TOPUP-')) {
                 // Handle pembayaran TopUp
                 Log::info("DOKU Dispatcher: Mengirim $orderId ke TopUpController...");
                 return (new TopUpController())->handleDokuCallback($data);
-            
+
             } else if (Str::startsWith($orderId, 'INV-')) {
                 // Handle pembayaran Marketplace
                 Log::info("DOKU Dispatcher: Mengirim $orderId ke CustomerOrderController...");
                 return (new CustomerOrderController())->handleDokuCallback($data);
-            
+
             } else if (Str::startsWith($orderId, 'CVSANCAK-')) {
                 // Handle pembayaran Form Publik
                 Log::info("DOKU Dispatcher: Mengirim $orderId ke AdminPesananController...");
-                return (new AdminPesananController())->handleDokuCallback($data); 
+                return (new AdminPesananController())->handleDokuCallback($data);
+
+            // =========================================================
+            // 🔥 TAMBAHAN BARU: ROUTING UNTUK NOTA
+            // =========================================================
+            } else if (Str::startsWith($orderId, 'NOTA-')) {
+                Log::info("DOKU Dispatcher: Mengirim $orderId ke NotaController...");
+
+                // Panggil fungsi statis di NotaController yang sudah Anda buat sebelumnya
+                \App\Http\Controllers\NotaController::processCallback($orderId, $status);
+
+                return response()->json(['status' => 'success', 'message' => 'Webhook Nota received and acknowledged'], 200);
 
             } else {
                 // Tidak ada handler
                 Log::error("DOKU Webhook: Tidak ada handler untuk prefix $orderId.");
                 return response()->json(['status' => 'error', 'message' => 'No handler for this order prefix'], 200);
             }
-            
+
         } catch (\Exception $e) {
             // Tangkap semua error lainnya
             Log::error('DOKU Snap Webhook Error: ' . $e->getMessage(), [
