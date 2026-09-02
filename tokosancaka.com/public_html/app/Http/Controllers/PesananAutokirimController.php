@@ -940,13 +940,19 @@ class PesananAutokirimController extends Controller
 
                 } else {
                     if ($paymentMethod === 'doku_jokul') {
-                        Log::info("LOG: [DOKU JOKUL] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
-                        $dokuService = new DokuJokulService();
-                        $paymentUrl = $dokuService->createPayment($localOrderId, $totalTagihan);
-                        if (empty($paymentUrl)) {
-                            throw new Exception('Gagal membuat transaksi pembayaran di sistem DOKU Jokul.');
-                        }
-                    } elseif ($paymentMethod === 'dana_pg') {
+                            Log::info("LOG: [DOKU JOKUL] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
+                            $dokuService = new DokuJokulService();
+
+                            // Setup URL riwayat order + parameter order_id
+                            $returnUrl = $indexUrl . '?order_id=' . $localOrderId;
+
+                            // Tambahkan $returnUrl sebagai parameter ke-3
+                            $paymentUrl = $dokuService->createPayment($localOrderId, $totalTagihan, $returnUrl);
+
+                            if (empty($paymentUrl)) {
+                                throw new Exception('Gagal membuat transaksi pembayaran di sistem DOKU Jokul.');
+                            }
+                        } elseif ($paymentMethod === 'dana_pg') {
                         Log::info("LOG: [DANA PG] Memulai pembuatan transaksi untuk Order ID {$localOrderId}");
                         $paymentUrl = $this->_createDanaPgTransaction($pesanan, $totalTagihan, $redirectUrl); // <-- Tambahkan $redirectUrl
                         if (empty($paymentUrl)) {
@@ -1300,7 +1306,7 @@ class PesananAutokirimController extends Controller
     {
         // 1. Ambil data asli Autokirim
         $autokirim = PesananAutokirim::findOrFail($id);
-        
+
         // 2. Tentukan status lunas
         $kumpulanStatusLunas = ['terkirim', 'selesai', 'sukses', 'delivered', 'success', 'completed', 'booking_created'];
         $statusLunas = in_array(strtolower($autokirim->status), $kumpulanStatusLunas);
@@ -1315,7 +1321,7 @@ class PesananAutokirimController extends Controller
             'status'                => $autokirim->status,
             'tanggal_pesanan'       => $autokirim->created_at,
             'updated_at'            => $autokirim->updated_at,
-            
+
             // Data Pengirim
             'sender_name'           => $autokirim->pengirim_nama,
             'sender_phone'          => $autokirim->pengirim_hp,
@@ -1325,7 +1331,7 @@ class PesananAutokirimController extends Controller
             'sender_regency'        => '',
             'sender_province'       => '',
             'sender_postal_code'    => $autokirim->pengirim_kodepos,
-            
+
             // Data Penerima
             'receiver_name'         => $autokirim->penerima_nama,
             'receiver_phone'        => $autokirim->penerima_hp,
@@ -1335,7 +1341,7 @@ class PesananAutokirimController extends Controller
             'receiver_regency'      => '',
             'receiver_province'     => '',
             'receiver_postal_code'  => $autokirim->penerima_kodepos,
-            
+
             // Rincian Logistik
             'expedition'            => $autokirim->kurir,
             'jasa_ekspedisi_aktual' => $autokirim->kurir,
@@ -1345,7 +1351,7 @@ class PesananAutokirimController extends Controller
             'length'                => $autokirim->panjang_cm ?? 0,
             'width'                 => $autokirim->lebar_cm ?? 0,
             'height'                => $autokirim->tinggi_cm ?? 0,
-            
+
             // Rincian Biaya
             'item_price'            => $autokirim->nilai_barang,
             'shipping_cost'         => $autokirim->ongkir,

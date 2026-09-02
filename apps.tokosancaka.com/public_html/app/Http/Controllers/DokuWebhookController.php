@@ -17,6 +17,7 @@ use App\Http\Controllers\Customer\PesananController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Toko\DokuRegistrationController;
 use App\Http\Controllers\RegisterTenantController; // Tambahkan Controller Register
+use App\Http\Controllers\PesananAutokirimController;
 
 class DokuWebhookController extends Controller
 {
@@ -109,6 +110,18 @@ class DokuWebhookController extends Controller
                 } else if (Str::startsWith($orderId, 'SCK-') || Str::startsWith($orderId, 'CVSANCAK-') || Str::startsWith($orderId, 'ORD-')) {
                     Log::info("DOKU Dispatcher: Mengirim $orderId ke CheckoutController (Handler Utama)...");
                     return App::make(CheckoutController::class)->handleDokuCallback($data);
+
+                    // ======== SISIPKAN KODE AUTOKIRIM DI SINI ========
+                } else if (is_numeric($orderId) && strlen($orderId) >= 14) {
+                    Log::info("DOKU Dispatcher: Mengirim $orderId ke PesananAutokirimController...");
+
+                    // Teruskan ke method processPaymentCallback milik Autokirim.
+                    // Parameter ke-2 kita isi 'PAID' karena webhook DOKU blok ini hanya untuk status 'SUCCESS'
+                    App::make(PesananAutokirimController::class)->processPaymentCallback($orderId, 'PAID', $data);
+
+                    // Kembalikan response 200 OK ke DOKU
+                    return response()->json(['message' => 'Webhook Autokirim received and acknowledged']);
+                // =================================================
 
                 } else {
                     Log::error("DOKU Webhook: Tidak ada handler untuk prefix $orderId.");

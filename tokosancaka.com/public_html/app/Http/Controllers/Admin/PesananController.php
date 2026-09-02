@@ -481,12 +481,12 @@ class PesananController extends Controller
                  // Logika COD & Cash Admin, biarkan kosong. Ditangani di Langkah 6 (KiriminAja)
             }
             elseif ($validatedData['payment_method'] === 'Online') {
-                // JANGAN GENERATE DOKU/TRIPAY DI SINI. 
+                // JANGAN GENERATE DOKU/TRIPAY DI SINI.
                 // Biarkan pelanggan yang memilih gateway-nya nanti di halaman Invoice.
                 $pesanan->payment_method = 'Menunggu Pilihan Customer';
                 $pesanan->save();
-                
-                $paymentUrl = null; 
+
+                $paymentUrl = null;
             }
             // --- SELESAI ---
 
@@ -1054,6 +1054,25 @@ class PesananController extends Controller
     public static function processPesananCallback($merchantRef, $status, $callbackData)
     {
         Log::info('Processing Pesanan Callback (SCK-)...', ['ref' => $merchantRef, 'status' => $status]);
+
+        // =================================================================
+        // 🔥 TAMBAHAN: DISPATCHER UNTUK PESANAN AUTOKIRIM (TRIPAY) 🔥
+        // =================================================================
+        // Jika format nomor invoice berupa angka murni >= 14 digit (Format Autokirim)
+        if (is_numeric($merchantRef) && strlen($merchantRef) >= 14) {
+            Log::info("Tripay Dispatcher: Deteksi Order Autokirim. Mengirim $merchantRef ke PesananAutokirimController...");
+
+            // Normalisasi status Tripay ke 'PAID' karena fungsi Autokirim mendeteksi 'PAID'
+            $normalizedStatus = in_array(strtoupper($status), ['PAID', 'SUCCESS', '00']) ? 'PAID' : strtoupper($status);
+
+            // Panggil Controller Autokirim
+            \Illuminate\Support\Facades\App::make(\App\Http\Controllers\PesananAutokirimController::class)
+                ->processPaymentCallback($merchantRef, $normalizedStatus, $callbackData);
+
+            return; // Hentikan eksekusi di sini agar tidak memproses logika KiriminAja di bawahnya
+        }
+        // =================================================================
+
         // Gunakan KiriminAjaService dari service container
         $kirimaja = app(KiriminAjaService::class);
 
@@ -2626,7 +2645,7 @@ public function cetakThermal($resi)
 
         $resi = $pesanan->resi ? $pesanan->resi : 'Menunggu Resi';
         $harga = 'Rp ' . number_format($pesanan->price, 0, ',', '.');
-        
+
         // Buat link yang mengarah ke halaman publik Invoice
         $linkInvoice = route('invoice.show', $pesanan->nomor_invoice);
 
