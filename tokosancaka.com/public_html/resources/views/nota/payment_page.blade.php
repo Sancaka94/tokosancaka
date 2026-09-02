@@ -317,50 +317,53 @@
         }
 
         async function downloadPDF() {
-            const btnPdf = document.getElementById('btnDownloadPdf');
-            const originalText = btnPdf.innerHTML;
+    const btnPdf = document.getElementById('btnDownloadPdf');
+    const originalText = btnPdf.innerHTML;
 
-            btnPdf.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
-            btnPdf.disabled = true;
+    btnPdf.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+    btnPdf.disabled = true;
 
-            const noPrintElements = document.querySelectorAll('.no-print');
-            noPrintElements.forEach(el => el.style.display = 'none');
+    const noPrintElements = document.querySelectorAll('.no-print');
+    noPrintElements.forEach(el => el.style.display = 'none');
 
-            // ✅ FIX MUTLAK: Dorong header ke bawah via JS khusus untuk mesin PDF
-            const headerInvoice = document.getElementById('headerInvoice');
-            headerInvoice.classList.add('pt-20');
+    // 1. Dorong header ke bawah (menggunakan pt-28 agar jarak ekstra aman)
+    const headerInvoice = document.getElementById('headerInvoice');
+    headerInvoice.classList.add('pt-28');
 
-            const element = document.getElementById('mainContentWrapper');
+    // 2. KUNCI UTAMA: Beri jeda 200ms agar browser selesai me-render padding baru sebelum di-screenshot
+    await new Promise(resolve => setTimeout(resolve, 200));
 
-            try {
-                const canvas = await html2canvas(element, {
-                    scale: 2,
-                    useCORS: true,
-                    backgroundColor: '#ffffff'
-                });
+    const element = document.getElementById('mainContentWrapper');
 
-                const imgData = canvas.toDataURL('image/jpeg', 1.0);
-                const { jsPDF } = window.jspdf;
+    try {
+        const canvas = await html2canvas(element, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff'
+        });
 
-                const pdf = new jsPDF('p', 'mm', 'a4');
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        const imgData = canvas.toDataURL('image/jpeg', 1.0);
+        const { jsPDF } = window.jspdf;
 
-                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-                pdf.save(`Nota_{{ $nota->no_nota }}.pdf`);
-            } catch (error) {
-                console.error("Error generating PDF", error);
-                alert("Gagal membuat PDF. Pastikan koneksi internet stabil.");
-            } finally {
-                noPrintElements.forEach(el => el.style.display = '');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
-                // ✅ KEMBALIKAN: Tarik lagi headernya ke atas setelah PDF selesai
-                headerInvoice.classList.remove('pt-20');
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Nota_{{ $nota->no_nota }}.pdf`);
+    } catch (error) {
+        console.error("Error generating PDF", error);
+        alert("Gagal membuat PDF. Pastikan koneksi internet stabil.");
+    } finally {
+        noPrintElements.forEach(el => el.style.display = '');
 
-                btnPdf.innerHTML = originalText;
-                btnPdf.disabled = false;
-            }
-        }
+        // 3. Tarik lagi headernya ke atas setelah PDF selesai dibuat
+        headerInvoice.classList.remove('pt-28');
+
+        btnPdf.innerHTML = originalText;
+        btnPdf.disabled = false;
+    }
+}
 
         document.addEventListener('DOMContentLoaded', function () {
             // Setup PIN logic
