@@ -24,10 +24,14 @@
             font-size: 0.9rem; font-weight: 800; color: #FFF;
             text-transform: uppercase; text-align: center; line-height: 36px;
             transform: rotate(45deg); -webkit-transform: rotate(45deg);
-            width: 200px; display: block; background: #16a34a;
+            width: 200px; display: block;
             position: absolute; top: 25px; right: -45px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); letter-spacing: 1px;
         }
+        /* Tambahkan warna untuk tiap status */
+        .ribbon.paid { background: #16a34a; } /* Hijau */
+        .ribbon.unpaid { background: #ef4444; } /* Merah */
+
     </style>
 </head>
 <body id="bodyMain" class="bg-slate-100 text-black overflow-hidden relative min-h-screen flex items-center justify-center p-4">
@@ -60,21 +64,24 @@
         </div>
     </div>
 
-    <!-- Konten Utama (Dibuka setelah PIN benar) -->
-    <div id="mainContentWrapper" class="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-8 blur-xl opacity-20 pointer-events-none select-none transition-all duration-700 relative z-40">
+    <!-- Tambahkan 'overflow-hidden' di class paling belakang -->
+    <div id="mainContentWrapper" class="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-8 blur-xl opacity-20 pointer-events-none select-none transition-all duration-700 relative z-40 overflow-hidden">
 
-        @if($isPaid)
+        <!-- PITA STATUS DITAMPILKAN SELALU -->
         <div class="ribbon-wrapper">
-            <div class="ribbon">LUNAS</div>
+            <div class="ribbon {{ $isPaid ? 'paid' : 'unpaid' }}">
+                {{ $isPaid ? 'LUNAS' : 'UNPAID' }}
+            </div>
         </div>
-        @endif
 
         <div class="flex flex-col sm:flex-row justify-between items-center border-b border-gray-100 pb-6 mb-6">
             <div class="flex items-center gap-4 mb-4 sm:mb-0">
                 <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka" class="h-14 object-contain">
                 <div>
-                    <h1 class="text-lg font-black uppercase">Tagihan Resmi</h1>
-                    <p class="text-xs text-gray-500">CV Sancaka Karya Hutama</p>
+                    <h1 class="text-lg font-black uppercase">SANCAKA EXPRESS</h1>
+                    <p class="text-xs text-gray-500">Powered By CV Sancaka Karya Hutama</p>
+                    <p class="text-xs text-gray-500">Jl.Dr.Wahidin No.18A Ketanggi Ngawi Jawa Timur 63211</p>
+
                 </div>
             </div>
             <div class="text-right">
