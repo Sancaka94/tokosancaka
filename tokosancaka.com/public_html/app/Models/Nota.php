@@ -21,6 +21,7 @@ class Nota extends Model
         'kepada',
         'tanggal',
         'nama_pembeli',
+        'email_pembeli',
         'no_hp_pembeli',   // <-- TAMBAHAN BARU
         'nama_penjual',
         'ttd_pembeli',
