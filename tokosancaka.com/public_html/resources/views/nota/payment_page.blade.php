@@ -110,8 +110,9 @@
                 </div>
             </div>
            <div class="text-right pr-12 sm:pr-16 relative z-50">
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">NO. NOTA</p>
-                <p class="text-md font-bold text-black">{{ $nota->no_nota }}</p>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">NOMOR NOTA</p>
+                <!-- Tambahkan whitespace-nowrap di sini -->
+                <p class="text-md font-bold text-black whitespace-nowrap">{{ $nota->no_nota }}</p>
             </div>
         </div>
 
