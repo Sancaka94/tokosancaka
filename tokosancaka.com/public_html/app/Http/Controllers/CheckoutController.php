@@ -2934,6 +2934,22 @@ TEXT;
                 return response()->json(['message' => 'Webhook DANA parent invoice processed successfully.'], 200);
             }
 
+            // ====================================================================
+            // 🔥 TAMBAHAN BARU: ROUTING UNTUK PESANAN AUTOKIRIM (DANA) 🔥
+            // ====================================================================
+            // Pengecekan invoice Autokirim yang berupa angka murni >= 14 digit
+            if (is_numeric($merchantRef) && strlen($merchantRef) >= 14) {
+                Log::info("LOG LOG: Meneruskan Webhook DANA $merchantRef ke PesananAutokirimController");
+
+                // Teruskan ke PesananAutokirimController
+                app(\App\Http\Controllers\PesananAutokirimController::class)
+                    ->processPaymentCallback($merchantRef, $internalStatus, $data);
+
+                DB::commit();
+                return response()->json(['message' => 'Webhook DANA Autokirim processed successfully.'], 200);
+            }
+            // ====================================================================
+
             // === LOGIKA ROUTING UNTUK INVOICE TUNGGAL ===
             Log::info("LOG LOG: Meneruskan Webhook DANA $merchantRef ke processOrderCallback (Single)");
             $this->processOrderCallback($merchantRef, $internalStatus, $data);
