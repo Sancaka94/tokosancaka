@@ -1710,6 +1710,18 @@ class CheckoutController extends Controller
                 CustomerOrderController::processCallback($merchantRef, $status, $data);
 
             // ====================================================================
+            // 🔥 ROUTING UNTUK PEMBAYARAN NOTA (TRIPAY) 🔥
+            // ====================================================================
+            } elseif (\Illuminate\Support\Str::startsWith($merchantRef, 'NOTA-')) {
+                Log::info('Routing Tripay callback to NotaController', ['ref' => $merchantRef]);
+
+                // Normalisasi status Tripay agar seragam menjadi 'PAID'
+                $normalizedStatus = in_array(strtoupper($status), ['PAID', 'SUCCESS', '00']) ? 'PAID' : strtoupper($status);
+
+                \App\Http\Controllers\NotaController::processCallback($merchantRef, $normalizedStatus);
+            // ====================================================================
+
+            // ====================================================================
             // 🔥 ROUTING UNTUK PESANAN AUTOKIRIM (TRIPAY) 🔥
             // ====================================================================
             } elseif (is_numeric($merchantRef) && strlen($merchantRef) >= 14) {

@@ -123,6 +123,19 @@ class DokuWebhookController extends Controller
                     return response()->json(['message' => 'Webhook Autokirim received and acknowledged']);
                 // =================================================
 
+                // =================================================
+                // 🔥 TAMBAHKAN DISPATCHER NOTA DI SINI 🔥
+                // =================================================
+                } else if (\Illuminate\Support\Str::startsWith($orderId, 'NOTA-')) {
+                    Log::info("DOKU Dispatcher: Mengirim $orderId ke NotaController...");
+
+                    // Teruskan ke fungsi processCallback yang sudah kita buat di NotaController
+                    \Illuminate\Support\Facades\App::make(\App\Http\Controllers\NotaController::class)->processCallback($orderId, 'PAID');
+
+                    return response()->json(['message' => 'Webhook Nota received and acknowledged']);
+                // =================================================
+
+
                 } else {
                     Log::error("DOKU Webhook: Tidak ada handler untuk prefix $orderId.");
                 }
