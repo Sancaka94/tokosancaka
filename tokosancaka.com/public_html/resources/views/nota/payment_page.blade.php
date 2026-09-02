@@ -36,7 +36,6 @@
         .ribbon.paid { background: #16a34a; } /* Hijau */
         .ribbon.unpaid { background: #ef4444; } /* Merah */
 
-        /* ✅ TAMBAHAN: CSS Khusus Print Agar Rapi */
         @media print {
             body { background: white !important; }
             #mainContentWrapper {
@@ -47,6 +46,9 @@
             }
             .no-print { display: none !important; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+            /* FIX MUTLAK: Paksa header turun sejauh 5rem khusus saat Cetak Native browser */
+            .header-print-fix { padding-top: 5rem !important; }
         }
     </style>
 </head>
@@ -100,8 +102,8 @@
             </button>
         </div>
 
-        <!-- Tambahan print:pt-24 agar turun ke bawah khusus saat dicetak -->
-        <div class="flex flex-col sm:flex-row justify-between items-center border-b border-gray-100 pb-6 mb-6 pt-4 print:pt-24">
+        <!-- 👇 UBAH BAGIAN HEADER INI 👇 -->
+        <div id="headerInvoice" class="header-print-fix flex flex-col sm:flex-row justify-between items-center border-b border-gray-100 pb-6 mb-6">
             <div class="flex items-center gap-4 mb-4 sm:mb-0">
                 <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka" class="h-14 object-contain">
                 <div>
@@ -111,12 +113,13 @@
                 </div>
             </div>
 
-            <!-- Tambahan print:pr-10 agar teks agak geser ke kiri menjauhi ekor pita khusus saat dicetak -->
-            <div class="text-right relative z-50 print:pr-10">
+            <!-- Posisi mepet mentok kanan sesuai request sebelumnya -->
+            <div class="text-right relative z-50">
                 <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">NOMOR NOTA</p>
                 <p class="text-md font-bold text-black whitespace-nowrap">{{ $nota->no_nota }}</p>
             </div>
         </div>
+        <!-- 👆 SAMPAI SINI 👆 -->
 
         <div class="grid grid-cols-2 gap-4 mb-8">
             <div class="bg-slate-50 p-4 rounded-xl border border-gray-100">
@@ -313,36 +316,34 @@
             }
         }
 
-        // ✅ TAMBAHAN: Fungsi Konversi HTML ke PDF murni bawaan tampilan
         async function downloadPDF() {
             const btnPdf = document.getElementById('btnDownloadPdf');
             const originalText = btnPdf.innerHTML;
 
-            // Ubah teks tombol jadi loading
             btnPdf.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
             btnPdf.disabled = true;
 
-            // Sembunyikan elemen dengan class 'no-print' agar tidak ikut di-screenshot
             const noPrintElements = document.querySelectorAll('.no-print');
             noPrintElements.forEach(el => el.style.display = 'none');
+
+            // ✅ FIX MUTLAK: Dorong header ke bawah via JS khusus untuk mesin PDF
+            const headerInvoice = document.getElementById('headerInvoice');
+            headerInvoice.classList.add('pt-20');
 
             const element = document.getElementById('mainContentWrapper');
 
             try {
-                // Potret tampilan div menggunakan html2canvas
                 const canvas = await html2canvas(element, {
-                    scale: 2, // Resolusi tinggi 2x lipat
-                    useCORS: true, // Izinkan ambil gambar eksternal (logo/QR)
+                    scale: 2,
+                    useCORS: true,
                     backgroundColor: '#ffffff'
                 });
 
                 const imgData = canvas.toDataURL('image/jpeg', 1.0);
                 const { jsPDF } = window.jspdf;
 
-                // Set ukuran kertas jadi A4
                 const pdf = new jsPDF('p', 'mm', 'a4');
                 const pdfWidth = pdf.internal.pageSize.getWidth();
-                // Hitung proporsi tinggi agar tidak gepeng
                 const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
                 pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
@@ -351,8 +352,11 @@
                 console.error("Error generating PDF", error);
                 alert("Gagal membuat PDF. Pastikan koneksi internet stabil.");
             } finally {
-                // Kembalikan lagi elemen yang disembunyikan
                 noPrintElements.forEach(el => el.style.display = '');
+
+                // ✅ KEMBALIKAN: Tarik lagi headernya ke atas setelah PDF selesai
+                headerInvoice.classList.remove('pt-20');
+
                 btnPdf.innerHTML = originalText;
                 btnPdf.disabled = false;
             }
