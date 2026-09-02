@@ -101,11 +101,18 @@
                             <img id="imgPembeli" src="#" alt="TTD Pembeli" style="max-height: 100px; max-width: 100%; display: none; position: relative; z-index: 1;">
                         </div>
                         <div class="mt-3 mx-auto" style="width: 80%;">
-                            <input type="text" name="nama_pembeli" class="form-control text-center border-0 border-bottom bg-transparent fw-bold" value="{{ old('nama_pembeli', 'Customer') }}" placeholder="Ketik Nama Pembeli..." required>
+                            <input type="text" name="nama_pembeli" class="form-control text-center border-0 border-bottom bg-transparent fw-bold mb-2" value="{{ old('nama_pembeli', 'Customer') }}" placeholder="Ketik Nama Pembeli..." required>
 
                             <!-- INPUT NOMOR HP (UNTUK PIN PEMBAYARAN) -->
                             <small class="text-muted d-block mt-2" style="font-size: 11px;">Nomor WA Pembeli (Untuk PIN Tagihan)</small>
                             <input type="text" name="no_hp_pembeli" class="form-control text-center border-0 border-bottom bg-transparent" value="{{ old('no_hp_pembeli') }}" placeholder="Contoh: 08123456789" required>
+
+                            <!-- ============================================== -->
+                            <!-- INPUT EMAIL PEMBELI (BARU DITAMBAHKAN)         -->
+                            <!-- ============================================== -->
+                            <small class="text-muted d-block mt-3" style="font-size: 11px;">Email Pembeli (Opsional)</small>
+                            <input type="email" name="email_pembeli" class="form-control text-center border-0 border-bottom bg-transparent" value="{{ old('email_pembeli') }}" placeholder="customer@email.com">
+                            <!-- ============================================== -->
                         </div>
                     </div>
 
