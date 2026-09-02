@@ -8,6 +8,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <!-- Load QRCode.js untuk BCA QRIS -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+
+    <!-- ✅ TAMBAHAN: Library untuk Cetak PDF Persis Tampilan Blade -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -28,10 +33,21 @@
             position: absolute; top: 25px; right: -45px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); letter-spacing: 1px;
         }
-        /* Tambahkan warna untuk tiap status */
         .ribbon.paid { background: #16a34a; } /* Hijau */
         .ribbon.unpaid { background: #ef4444; } /* Merah */
 
+        /* ✅ TAMBAHAN: CSS Khusus Print Agar Rapi */
+        @media print {
+            body { background: white !important; }
+            #mainContentWrapper {
+                box-shadow: none !important;
+                margin: 0 !important;
+                padding: 10px !important;
+                max-width: 100% !important;
+            }
+            .no-print { display: none !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
     </style>
 </head>
 <body id="bodyMain" class="bg-slate-100 text-black overflow-hidden relative min-h-screen flex items-center justify-center p-4">
@@ -64,7 +80,7 @@
         </div>
     </div>
 
-    <!-- Tambahkan 'overflow-hidden' di class paling belakang -->
+    <!-- Wrapper Konten Utama -->
     <div id="mainContentWrapper" class="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-8 blur-xl opacity-20 pointer-events-none select-none transition-all duration-700 relative z-40 overflow-hidden">
 
         <!-- PITA STATUS DITAMPILKAN SELALU -->
@@ -74,6 +90,16 @@
             </div>
         </div>
 
+        <!-- ✅ TAMBAHAN: Tombol Aksi Print & PDF (Akan otomatis disembunyikan saat di-print) -->
+        <div class="flex flex-wrap gap-2 justify-end mb-6 no-print border-b border-gray-100 pb-4">
+            <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold rounded-lg transition-colors border border-gray-200 shadow-sm">
+                <i class="fas fa-print"></i> Cetak Print
+            </button>
+            <button onclick="downloadPDF()" id="btnDownloadPdf" class="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 text-sm font-bold rounded-lg transition-colors border border-red-200 shadow-sm">
+                <i class="fas fa-file-pdf"></i> Unduh PDF
+            </button>
+        </div>
+
         <div class="flex flex-col sm:flex-row justify-between items-center border-b border-gray-100 pb-6 mb-6">
             <div class="flex items-center gap-4 mb-4 sm:mb-0">
                 <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka" class="h-14 object-contain">
@@ -81,7 +107,6 @@
                     <h1 class="text-lg font-black uppercase">SANCAKA EXPRESS</h1>
                     <p class="text-xs text-gray-500">Powered By CV Sancaka Karya Hutama</p>
                     <p class="text-xs text-gray-500">Jl.Dr.Wahidin No.18A Ketanggi Ngawi Jawa Timur 63211</p>
-
                 </div>
             </div>
            <div class="text-right pr-12 sm:pr-16 relative z-50">
@@ -132,7 +157,7 @@
         <!-- AREA PEMBAYARAN DINAMIS -->
         <div class="mt-6 border-t border-gray-200 pt-6">
             @if (session('error'))
-                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 text-sm" role="alert">
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 text-sm no-print" role="alert">
                     <strong class="font-bold">Error!</strong>
                     <span class="block sm:inline">{{ session('error') }}</span>
                 </div>
@@ -158,41 +183,43 @@
                         </div>
                     @else
                         <p class="text-sm font-semibold text-black mb-4">Lanjutkan Pembayaran via {{ str_replace('_', ' ', $nota->payment_method) }}</p>
-                        <a href="{{ $nota->payment_url }}" class="inline-block w-full sm:w-auto bg-black text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:bg-gray-800 transition-colors">
+                        <a href="{{ $nota->payment_url }}" class="inline-block w-full sm:w-auto bg-black text-white font-bold py-3 px-8 rounded-lg shadow-lg hover:bg-gray-800 transition-colors no-print">
                             <i class="fas fa-external-link-alt mr-2"></i> Lanjutkan Pembayaran
                         </a>
                     @endif
                     <p class="text-xs text-gray-400 mt-4"><i class="fas fa-info-circle mr-1"></i> Harap segera selesaikan pembayaran agar pesanan dapat diproses.</p>
                 </div>
             @else
-                <!-- Form Pilih Metode Pembayaran (Jika belum pilih) -->
-                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Selesaikan Pembayaran</p>
-                <form id="invoice-payment-form" action="{{ route('nota.proses_bayar', $nota->no_nota) }}" method="POST">
-                    @csrf
-                    <button type="button" id="paymentMethodButton" class="w-full bg-white border border-gray-300 hover:border-black p-4 rounded-xl flex items-center justify-between transition-colors mb-4 shadow-sm group">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 flex items-center justify-center">
-                                <img id="paymentMethodImg" src="https://tokosancaka.com/public/assets/saldo.png" class="max-w-full max-h-full">
+                <!-- Form Pilih Metode Pembayaran ditambahkan class no-print agar dropdown tidak tercetak di kertas fisik -->
+                <div class="no-print">
+                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Selesaikan Pembayaran</p>
+                    <form id="invoice-payment-form" action="{{ route('nota.proses_bayar', $nota->no_nota) }}" method="POST">
+                        @csrf
+                        <button type="button" id="paymentMethodButton" class="w-full bg-white border border-gray-300 hover:border-black p-4 rounded-xl flex items-center justify-between transition-colors mb-4 shadow-sm group">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 flex items-center justify-center">
+                                    <img id="paymentMethodImg" src="https://tokosancaka.com/public/assets/saldo.png" class="max-w-full max-h-full">
+                                </div>
+                                <span id="paymentMethodLabel" class="text-sm font-bold text-black">Pilih Metode Pembayaran...</span>
                             </div>
-                            <span id="paymentMethodLabel" class="text-sm font-bold text-black">Pilih Metode Pembayaran...</span>
-                        </div>
-                        <i class="fas fa-chevron-down text-gray-400 group-hover:text-black"></i>
-                    </button>
+                            <i class="fas fa-chevron-down text-gray-400 group-hover:text-black"></i>
+                        </button>
 
-                    <input type="hidden" name="payment_method" id="payment_method" required>
+                        <input type="hidden" name="payment_method" id="payment_method" required>
 
-                    <button type="submit" id="submit-button" class="w-full bg-green-500 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-green-600 transition-all disabled:opacity-50">
-                        <i class="fas fa-wallet mr-2"></i> Bayar Tagihan Sekarang
-                    </button>
-                </form>
-                <p class="text-xs text-center text-gray-400 mt-4"><i class="fas fa-lock mr-1"></i> Pembayaran dienkripsi dan dijamin aman.</p>
+                        <button type="submit" id="submit-button" class="w-full bg-green-500 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-green-600 transition-all disabled:opacity-50">
+                            <i class="fas fa-wallet mr-2"></i> Bayar Tagihan Sekarang
+                        </button>
+                    </form>
+                    <p class="text-xs text-center text-gray-400 mt-4"><i class="fas fa-lock mr-1"></i> Pembayaran dienkripsi dan dijamin aman.</p>
+                </div>
             @endif
         </div>
 
     </div>
 
     <!-- MODAL PEMBAYARAN -->
-    <div id="paymentModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10500] hidden transition-all duration-300 p-4">
+    <div id="paymentModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[10500] hidden transition-all duration-300 p-4 no-print">
         <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[85vh]">
             <div class="flex justify-between items-center p-5 border-b border-gray-100">
                 <h3 class="text-lg font-bold text-black tracking-wide">Pilih Metode Pembayaran</h3>
@@ -215,7 +242,6 @@
 
                     <li class="col-span-full pt-4 pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">DANA Enterprise</li>
 
-                    <!-- DANA WEB CHECKOUT (Bisa untuk Guest/Publik) -->
                     <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group" data-value="DANA" data-label="DANA Checkout" data-img="{{ asset('public/assets/dana.webp') }}">
                         <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
                         <div class="flex flex-col">
@@ -281,6 +307,51 @@
                 pinInput.focus();
                 pinInput.classList.add('translate-x-[-10px]', 'border-red-500');
                 setTimeout(() => pinInput.classList.remove('translate-x-[-10px]', 'border-red-500'), 150);
+            }
+        }
+
+        // ✅ TAMBAHAN: Fungsi Konversi HTML ke PDF murni bawaan tampilan
+        async function downloadPDF() {
+            const btnPdf = document.getElementById('btnDownloadPdf');
+            const originalText = btnPdf.innerHTML;
+
+            // Ubah teks tombol jadi loading
+            btnPdf.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+            btnPdf.disabled = true;
+
+            // Sembunyikan elemen dengan class 'no-print' agar tidak ikut di-screenshot
+            const noPrintElements = document.querySelectorAll('.no-print');
+            noPrintElements.forEach(el => el.style.display = 'none');
+
+            const element = document.getElementById('mainContentWrapper');
+
+            try {
+                // Potret tampilan div menggunakan html2canvas
+                const canvas = await html2canvas(element, {
+                    scale: 2, // Resolusi tinggi 2x lipat
+                    useCORS: true, // Izinkan ambil gambar eksternal (logo/QR)
+                    backgroundColor: '#ffffff'
+                });
+
+                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                const { jsPDF } = window.jspdf;
+
+                // Set ukuran kertas jadi A4
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                // Hitung proporsi tinggi agar tidak gepeng
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save(`Nota_{{ $nota->no_nota }}.pdf`);
+            } catch (error) {
+                console.error("Error generating PDF", error);
+                alert("Gagal membuat PDF. Pastikan koneksi internet stabil.");
+            } finally {
+                // Kembalikan lagi elemen yang disembunyikan
+                noPrintElements.forEach(el => el.style.display = '');
+                btnPdf.innerHTML = originalText;
+                btnPdf.disabled = false;
             }
         }
 
