@@ -257,8 +257,6 @@ class EmailController extends Controller
                     }
                     // B. Jika File Dokumen Fisik (PDF, Excel, dll) -> Simpan ke Storage & Buat Thumbnail PDF
                     else {
-                        $fileContent = $attachment->getContent();
-
                         // 1. BERSihkan Nama File dari Spasi dan Tanda Kurung
                         $extension = pathinfo($name, PATHINFO_EXTENSION);
                         $filenameWithoutExt = pathinfo($name, PATHINFO_FILENAME);
@@ -271,54 +269,64 @@ class EmailController extends Controller
                             \Illuminate\Support\Facades\Storage::makeDirectory($folderPath, 0755, true);
                         }
 
-                        // Path PDF asli (gunakan $cleanName)
+                        // Deklarasikan Path & Nama File
                         $path = $folderPath . '/' . $cleanName;
-                        \Illuminate\Support\Facades\Storage::put($path, $fileContent);
+                        $thumbName = md5($cleanName) . '_thumb.jpg';
+                        $thumbRelPath = $folderPath . '/' . $thumbName;
 
-                        // URL file asli (karena sudah bersih, tidak butuh rawurlencode)
+                        // ========================================================
+                        // 🔥 LOGIKA PENCEGAH DOBEL: CEK APAKAH FILE SUDAH ADA 🔥
+                        // ========================================================
+                        if (!\Illuminate\Support\Facades\Storage::exists($path)) {
+
+                            // Jika belum ada, BARU KITA DOWNLOAD isinya dari server IMAP
+                            $fileContent = $attachment->getContent();
+                            \Illuminate\Support\Facades\Storage::put($path, $fileContent);
+
+                            // --- LOGIKA PEMBUATAN THUMBNAIL PDF (NATIVE IMAGICK) ---
+                            if (strtolower($extension) === 'pdf') {
+                                try {
+                                    $pdfAbsPath = storage_path('app/' . $path);
+                                    $thumbAbsPath = storage_path('app/' . $thumbRelPath);
+
+                                    // Gunakan Native Imagick
+                                    $imagick = new \Imagick();
+
+                                    // Render dengan resolusi super tajam (300 DPI) SEBELUM membaca file
+                                    $imagick->setResolution(300, 300);
+                                    $imagick->readImage($pdfAbsPath . '[0]');
+
+                                    // Beri background putih padat & gabungkan layar (Flatten)
+                                    $imagick->setImageBackgroundColor('white');
+                                    $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
+                                    $imagick = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
+
+                                    // Resize ke ukuran ideal web
+                                    $imagick->thumbnailImage(600, 0);
+
+                                    $imagick->setImageFormat('jpg');
+                                    $imagick->setImageCompressionQuality(85);
+
+                                    // Simpan menggunakan Laravel Storage
+                                    $imageBlob = $imagick->getImageBlob();
+                                    \Illuminate\Support\Facades\Storage::put($thumbRelPath, $imageBlob);
+
+                                    $imagick->clear();
+                                    $imagick->destroy();
+
+                                } catch (\Throwable $e) {
+                                    Log::warning("Gagal membuat thumbnail PDF Imagick untuk {$cleanName}: " . $e->getMessage());
+                                }
+                            }
+                        }
+
+                        // Set URL untuk dikembalikan ke Response JSON
                         $fileUrl = asset('storage/email_attachments/' . $id . '/' . $cleanName);
                         $thumbUrl = null;
 
-                        // --- LOGIKA PEMBUATAN THUMBNAIL PDF (NATIVE IMAGICK) ---
-                        if (strtolower(pathinfo($cleanName, PATHINFO_EXTENSION)) === 'pdf') {
-                            try {
-                                $pdfAbsPath = storage_path('app/' . $path);
-
-                                // Gunakan $cleanName untuk MD5
-                                $thumbName = md5($cleanName) . '_thumb.jpg';
-                                $thumbRelPath = 'public/email_attachments/' . $id . '/' . $thumbName;
-                                $thumbAbsPath = storage_path('app/' . $thumbRelPath);
-
-                                // Gunakan Native Imagick
-                                $imagick = new \Imagick();
-
-                                // Render dengan resolusi super tajam (300 DPI) SEBELUM membaca file
-                                $imagick->setResolution(300, 300);
-                                $imagick->readImage($pdfAbsPath . '[0]');
-
-                                // Beri background putih padat & gabungkan layar (Flatten)
-                                $imagick->setImageBackgroundColor('white');
-                                $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
-                                $imagick = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
-
-                                // Resize ke ukuran ideal web
-                                $imagick->thumbnailImage(600, 0);
-
-                                $imagick->setImageFormat('jpg');
-                                $imagick->setImageCompressionQuality(85);
-
-                                // Simpan menggunakan Laravel Storage
-                                $imageBlob = $imagick->getImageBlob();
-                                \Illuminate\Support\Facades\Storage::put($thumbRelPath, $imageBlob);
-
-                                $imagick->clear();
-                                $imagick->destroy();
-
-                                $thumbUrl = asset('storage/email_attachments/' . $id . '/' . $thumbName);
-
-                            } catch (\Throwable $e) {
-                                Log::warning("Gagal membuat thumbnail PDF Imagick untuk {$cleanName}: " . $e->getMessage());
-                            }
+                        // Jika ekstensinya PDF dan file thumbnailnya beneran ada, set URL thumbnailnya
+                        if (strtolower($extension) === 'pdf' && \Illuminate\Support\Facades\Storage::exists($thumbRelPath)) {
+                            $thumbUrl = asset('storage/email_attachments/' . $id . '/' . $thumbName);
                         }
 
                         $attachmentsArr[] = [
