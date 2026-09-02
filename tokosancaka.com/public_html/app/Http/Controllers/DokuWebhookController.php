@@ -613,8 +613,20 @@ class DokuWebhookController extends Controller
                     }
                     else if (Str::startsWith($orderId, 'DANATOPUP-')) {
                         Log::info("➡️ Order $orderId (Top Up DANA) didelegasikan ke TopupDanaController.");
-                        // Melempar array $data dari DOKU ke TopupDanaController
                         return App::make(\App\Http\Controllers\Customer\TopupDanaController::class)->handleDokuCallback($data);
+                    }
+                    // =========================================================
+                    // 🔥 TAMBAHAN BARU: ROUTING UNTUK NOTA & AUTOKIRIM
+                    // =========================================================
+                    else if (Str::startsWith($orderId, 'NOTA-')) {
+                        Log::info("➡️ Order $orderId didelegasikan ke NotaController.");
+                        \App\Http\Controllers\NotaController::processCallback($orderId, 'PAID');
+                        return response()->json(['message' => 'Nota processed'], 200);
+                    }
+                    else if (is_numeric($orderId) && strlen($orderId) >= 14) {
+                        Log::info("➡️ Order $orderId didelegasikan ke PesananAutokirimController.");
+                        app(\App\Http\Controllers\PesananAutokirimController::class)->processPaymentCallback($orderId, 'PAID', $data);
+                        return response()->json(['message' => 'Autokirim processed'], 200);
                     }
                 }
             } else {
