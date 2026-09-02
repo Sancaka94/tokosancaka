@@ -501,7 +501,7 @@ class NotaController extends Controller
 
         try {
             $nota = Nota::where('no_nota', $request->no_nota)->firstOrFail();
-            
+
             // Perbarui email pelanggan di tabel Nota sekalian
             $nota->email_pembeli = $request->email;
             $nota->save();
@@ -523,7 +523,7 @@ class NotaController extends Controller
                 <div style='padding: 30px;'>
                     <p style='color: #374151; font-size: 16px;'>Halo <strong>{$nota->nama_pembeli}</strong>,</p>
                     <p style='color: #4b5563; line-height: 1.5;'>Berikut adalah link akses untuk melihat dan memproses tagihan Anda dengan nomor nota <strong>{$nota->no_nota}</strong>.</p>
-                    
+
                     <div style='background-color: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 25px 0;'>
                         <p style='margin: 0; color: #6b7280; font-size: 14px;'>Total Tagihan</p>
                         <p style='margin: 5px 0 0 0; color: #dc2626; font-size: 24px; font-weight: bold;'>Rp " . number_format($nota->total_harga, 0, ',', '.') . "</p>
@@ -570,5 +570,5 @@ class NotaController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
     }
-    
+
 }
