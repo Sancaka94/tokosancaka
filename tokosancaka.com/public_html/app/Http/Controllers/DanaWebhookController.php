@@ -707,6 +707,19 @@ class DanaWebhookController extends Controller
                 // =================================================================
                 Log::info("DANA Webhook: Status Transaksi bukan SUCCESS ($statusDana). Memproses pembatalan...");
 
+                // =========================================================
+                // 🔥 TAMBAHAN FAILED UNTUK NOTA & AUTOKIRIM 🔥
+                // =========================================================
+                if (Str::startsWith($orderId, 'NOTA-')) {
+                    Log::info("❌ Webhook DANA (GAGAL): Meneruskan $orderId ke NotaController");
+                    \App\Http\Controllers\NotaController::processCallback($orderId, $internalStatus);
+                }
+                elseif (is_numeric($orderId) && strlen($orderId) >= 14) {
+                    Log::info("❌ Webhook DANA (GAGAL): Meneruskan $orderId ke PesananAutokirimController");
+                    app(\App\Http\Controllers\PesananAutokirimController::class)->processPaymentCallback($orderId, $internalStatus, $payloadData);
+                }
+                // ---------------------------------------------------------
+
                 if (Str::startsWith($orderId, 'SCK-')) {
                     $pesananEkspedisi = \App\Models\Pesanan::where('nomor_invoice', $orderId)->first();
                     if ($pesananEkspedisi) {

@@ -213,6 +213,17 @@
                         <div class="flex flex-col"><span class="text-[13px] font-bold text-black">DOKU Gateway</span><span class="text-[11px] text-gray-500">VA, E-Wallet, CC Lokal</span></div>
                     </li>
 
+                    <li class="col-span-full pt-4 pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">DANA Enterprise</li>
+
+                    <!-- DANA WEB CHECKOUT (Bisa untuk Guest/Publik) -->
+                    <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group" data-value="DANA" data-label="DANA Checkout" data-img="{{ asset('public/assets/dana.webp') }}">
+                        <img src="{{ asset('public/assets/dana.webp') }}" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/7/72/Logo_dana_blue.svg'">
+                        <div class="flex flex-col">
+                            <span class="text-[13px] font-bold text-black">DANA Web / App</span>
+                            <span class="text-[11px] text-gray-500">Arahkan ke aplikasi DANA</span>
+                        </div>
+                    </li>
+
                     <li class="col-span-full pt-4 pb-1 text-[11px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-200">Global & Otomatis</li>
                     <li class="payment-option cursor-pointer flex items-center p-3 border border-gray-200 rounded-xl bg-white hover:border-black hover:shadow-md transition-all group" data-value="PAYPAL" data-label="PayPal" data-img="https://tokosancaka.com/public/assets/paypal.png">
                         <img src="https://tokosancaka.com/public/assets/paypal.png" class="w-12 h-auto mr-4 object-contain" onerror="this.src='https://placehold.co/40x40/EFEFEF/AAAAAA?text=PP'">
