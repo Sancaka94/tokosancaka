@@ -73,6 +73,10 @@
                                     <i class="fa-solid fa-wallet"></i>
                                 </a>
 
+                                <button onclick="openEmailModal('{{ $nota->no_nota }}', '{{ $nota->nama_pembeli }}', '{{ $nota->email_pembeli }}')" class="text-amber-600 hover:bg-amber-50 border border-amber-200 w-8 h-8 rounded flex items-center justify-center transition shadow-sm" title="Kirim Tagihan ke Email">
+                                    <i class="fa-solid fa-envelope"></i>
+                                </button>
+
                                 <!-- 4. Download PDF -->
                                 <a href="{{ route('nota.download', $nota->id) }}" class="text-blue-600 hover:bg-blue-50 border border-blue-200 w-8 h-8 rounded flex items-center justify-center transition shadow-sm" title="Download PDF">
                                     <i class="fa-solid fa-download"></i>
