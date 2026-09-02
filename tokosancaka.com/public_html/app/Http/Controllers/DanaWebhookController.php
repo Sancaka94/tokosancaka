@@ -267,6 +267,23 @@ class DanaWebhookController extends Controller
                     }
                 }
 
+                // =========================================================
+                // 🔥 TAMBAHAN BARU: ROUTING UNTUK PEMBAYARAN NOTA (DANA) 🔥
+                // =========================================================
+                } else if (Str::startsWith($orderId, 'NOTA-')) {
+                    Log::info("🚀 LOG NOTA: Webhook DANA Masuk untuk Nota: $orderId");
+                    \App\Http\Controllers\NotaController::processCallback($orderId, $internalStatus);
+                }
+
+                // =========================================================
+                // 🔥 TAMBAHAN BARU: ROUTING UNTUK PESANAN AUTOKIRIM (DANA) 🔥
+                // =========================================================
+                // Pengecekan invoice Autokirim yang berupa angka murni >= 14 digit
+                 else if (is_numeric($orderId) && strlen($orderId) >= 14) {
+                    Log::info("🚀 LOG AUTOKIRIM: Meneruskan Webhook DANA $orderId ke PesananAutokirimController");
+                    app(\App\Http\Controllers\PesananAutokirimController::class)->processPaymentCallback($orderId, $internalStatus, $payloadData);
+                }
+
                 // -------------------------------------------------------------
                 // A.3 LOGIKA UNTUK PESANAN UMUM (SCK-) -> TOKO UTAMA, EKSPEDISI & MARKETPLACE
                 // -------------------------------------------------------------
