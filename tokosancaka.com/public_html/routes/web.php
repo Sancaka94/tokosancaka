@@ -1518,6 +1518,16 @@ Route::get('nota/export-pdf', [NotaController::class, 'exportPdf'])->name('nota.
 Route::get('nota/export-excel', [NotaController::class, 'exportExcel'])->name('nota.export-excel');
 Route::get('nota/{id}/download', [App\Http\Controllers\NotaController::class, 'downloadNota'])->name('nota.download');
 
+// =========================================================================
+// 🔥 ROUTE BARU UNTUK PAYMENT PAGE NOTA 🔥
+// =========================================================================
+// 1. Rute untuk membuka halaman pembayaran Nota (yang dikunci PIN)
+Route::get('/nota/pay/{no_nota}', [\App\Http\Controllers\NotaController::class, 'paymentPage'])->name('nota.pay');
+
+// 2. Rute untuk memproses tombol bayar (Redirect ke DOKU, Tripay, BCA, dll)
+Route::post('/nota/proses-bayar/{no_nota}', [\App\Http\Controllers\NotaController::class, 'prosesBayar'])->name('nota.proses_bayar');
+// =========================================================================
+
 Route::resource('nota', NotaController::class);
 
 
