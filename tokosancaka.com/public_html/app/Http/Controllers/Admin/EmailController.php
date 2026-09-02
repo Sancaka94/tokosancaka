@@ -259,61 +259,70 @@ class EmailController extends Controller
                     else {
                         $fileContent = $attachment->getContent();
 
-                        // Path PDF asli
-                        $path = 'public/email_attachments/' . $id . '/' . $name;
+                        // 1. BERSihkan Nama File dari Spasi dan Tanda Kurung
+                        $extension = pathinfo($name, PATHINFO_EXTENSION);
+                        $filenameWithoutExt = pathinfo($name, PATHINFO_FILENAME);
+                        // Mengubah "File (1) (2).pdf" menjadi "file_1_2.pdf"
+                        $cleanName = \Illuminate\Support\Str::slug($filenameWithoutExt, '_') . '.' . strtolower($extension);
+
+                        // 2. Buat folder dengan permission 0755 secara eksplisit
+                        $folderPath = 'public/email_attachments/' . $id;
+                        if (!\Illuminate\Support\Facades\Storage::exists($folderPath)) {
+                            \Illuminate\Support\Facades\Storage::makeDirectory($folderPath, 0755, true);
+                        }
+
+                        // Path PDF asli (gunakan $cleanName)
+                        $path = $folderPath . '/' . $cleanName;
                         \Illuminate\Support\Facades\Storage::put($path, $fileContent);
 
-                        // URL file asli (di-encode agar aman jika ada spasi saat didownload)
-                        $fileUrl = asset('storage/email_attachments/' . $id . '/' . rawurlencode($name));
+                        // URL file asli (karena sudah bersih, tidak butuh rawurlencode)
+                        $fileUrl = asset('storage/email_attachments/' . $id . '/' . $cleanName);
                         $thumbUrl = null;
 
                         // --- LOGIKA PEMBUATAN THUMBNAIL PDF (NATIVE IMAGICK) ---
-                        if (strtolower(pathinfo($name, PATHINFO_EXTENSION)) === 'pdf') {
+                        if (strtolower(pathinfo($cleanName, PATHINFO_EXTENSION)) === 'pdf') {
                             try {
                                 $pdfAbsPath = storage_path('app/' . $path);
 
-                                // PERBAIKAN UTAMA: Gunakan MD5 agar nama file bersih dari spasi & tanda kurung
-                                $thumbName = md5($name) . '_thumb.jpg';
+                                // Gunakan $cleanName untuk MD5
+                                $thumbName = md5($cleanName) . '_thumb.jpg';
                                 $thumbRelPath = 'public/email_attachments/' . $id . '/' . $thumbName;
                                 $thumbAbsPath = storage_path('app/' . $thumbRelPath);
 
                                 // Gunakan Native Imagick
                                 $imagick = new \Imagick();
 
-                                // 1. PERBAIKAN: Render dengan resolusi super tajam (300 DPI) SEBELUM membaca file
+                                // Render dengan resolusi super tajam (300 DPI) SEBELUM membaca file
                                 $imagick->setResolution(300, 300);
                                 $imagick->readImage($pdfAbsPath . '[0]');
 
-                                // 2. PERBAIKAN: Beri background putih padat & gabungkan layar (Flatten)
-                                // Ini membuang efek pinggiran teks yang bergerigi (anti-aliasing)
+                                // Beri background putih padat & gabungkan layar (Flatten)
                                 $imagick->setImageBackgroundColor('white');
                                 $imagick->setImageAlphaChannel(\Imagick::ALPHACHANNEL_REMOVE);
                                 $imagick = $imagick->mergeImageLayers(\Imagick::LAYERMETHOD_FLATTEN);
 
-                                // 3. PERBAIKAN: Resize ke ukuran ideal web (Lebar 600px, Tinggi otomatis)
-                                // Hasil render 300 DPI itu sangat raksasa, jadi harus dikecilkan agar web tidak lemot
+                                // Resize ke ukuran ideal web
                                 $imagick->thumbnailImage(600, 0);
 
                                 $imagick->setImageFormat('jpg');
-                                $imagick->setImageCompressionQuality(85); // Kualitas JPG 85% sudah sangat tajam
+                                $imagick->setImageCompressionQuality(85);
 
-                                // Simpan menggunakan Laravel Storage agar izinnya publik (Aman dari Error 403)
+                                // Simpan menggunakan Laravel Storage
                                 $imageBlob = $imagick->getImageBlob();
                                 \Illuminate\Support\Facades\Storage::put($thumbRelPath, $imageBlob);
 
                                 $imagick->clear();
                                 $imagick->destroy();
 
-                                // URL Thumbnail sekarang dijamin bersih dari spasi (misal: 1a2b3c4d_thumb.jpg)
                                 $thumbUrl = asset('storage/email_attachments/' . $id . '/' . $thumbName);
 
                             } catch (\Throwable $e) {
-                                Log::warning("Gagal membuat thumbnail PDF Imagick untuk {$name}: " . $e->getMessage());
+                                Log::warning("Gagal membuat thumbnail PDF Imagick untuk {$cleanName}: " . $e->getMessage());
                             }
                         }
 
                         $attachmentsArr[] = [
-                            'name'      => $name,
+                            'name'      => $cleanName, // Tampilkan nama yang sudah bersih
                             'url'       => $fileUrl,
                             'thumbnail' => $thumbUrl
                         ];
