@@ -91,7 +91,7 @@
         </div>
 
         <!-- ✅ TAMBAHAN: Tombol Aksi Print & PDF (Akan otomatis disembunyikan saat di-print) -->
-        <div class="flex flex-wrap gap-2 justify-end mb-6 no-print border-b border-gray-100 pb-4">
+        <div class="flex flex-wrap gap-2 justify-end mb-6 no-print border-b border-gray-100 pb-4 pr-24 sm:pr-28 relative z-50">
             <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold rounded-lg transition-colors border border-gray-200 shadow-sm">
                 <i class="fas fa-print"></i> Cetak Print
             </button>
