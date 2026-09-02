@@ -142,4 +142,133 @@
         });
     }
 </script>
+
+<!-- Toast Notification (Pop-up modern untuk notif Copy) -->
+<div id="toast-success" class="fixed bottom-5 right-5 bg-gray-900 text-white px-5 py-3 rounded-lg shadow-2xl transform transition-all duration-300 translate-y-20 opacity-0 z-50 flex items-center gap-3">
+    <i class="fa-solid fa-circle-check text-green-400 text-lg"></i>
+    <span id="toast-message" class="text-sm font-medium tracking-wide">Link pembayaran berhasil disalin!</span>
+</div>
+
+<!-- ======================================================== -->
+<!-- MODAL KIRIM EMAIL TAGIHAN                                -->
+<!-- ======================================================== -->
+<div id="emailInvoiceModal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-[1000] hidden transition-opacity">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md transform scale-95 transition-transform overflow-hidden relative">
+        <div class="bg-slate-50 border-b border-gray-100 px-6 py-4 flex justify-between items-center">
+            <h3 class="font-bold text-gray-800"><i class="fa-solid fa-paper-plane mr-2 text-blue-600"></i> Kirim Tagihan ke Email</h3>
+            <button onclick="closeEmailModal()" class="text-gray-400 hover:text-red-500 transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <form id="formKirimEmail" class="p-6">
+            @csrf
+            <input type="hidden" id="email_no_nota" name="no_nota">
+
+            <div class="mb-4 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-100 flex items-start gap-3">
+                <i class="fa-solid fa-circle-info text-blue-500 mt-0.5"></i>
+                <p>Link <span class="font-bold text-blue-700">Payment Page (beserta info PIN)</span> akan dikirimkan ke email pelanggan di bawah ini.</p>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Kirim Ke (Pelanggan)</label>
+                <input type="text" id="email_nama_pembeli" class="w-full bg-gray-100 border border-gray-200 rounded-lg px-4 py-2 text-gray-600 cursor-not-allowed" readonly>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Alamat Email Tujuan <span class="text-red-500">*</span></label>
+                <input type="email" id="email_tujuan" name="email_tujuan" class="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition" placeholder="contoh: customer@email.com" required>
+            </div>
+
+            <button type="submit" id="btnSubmitEmail" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md transition flex items-center justify-center">
+                <i class="fa-regular fa-envelope mr-2"></i> Kirim Email Sekarang
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function copyPaymentLink(url) {
+        navigator.clipboard.writeText(url).then(() => {
+            const toast = document.getElementById('toast-success');
+            document.getElementById('toast-message').innerText = "Link pembayaran berhasil disalin!";
+            toast.classList.replace('text-amber-400', 'text-green-400');
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }).catch(err => {
+            alert('Browser Anda tidak mendukung fitur copy otomatis. URL: ' + url);
+        });
+    }
+
+    // ==========================================
+    // LOGIKA MODAL KIRIM EMAIL INVOICE
+    // ==========================================
+    const emailModal = document.getElementById('emailInvoiceModal');
+    const modalContent = emailModal.querySelector('div');
+
+    function openEmailModal(noNota, namaPembeli, emailPembeli) {
+        document.getElementById('email_no_nota').value = noNota;
+        document.getElementById('email_nama_pembeli').value = namaPembeli;
+        document.getElementById('email_tujuan').value = emailPembeli || ''; // Isi otomatis jika sudah ada
+
+        emailModal.classList.remove('hidden');
+        setTimeout(() => modalContent.classList.remove('scale-95'), 10);
+    }
+
+    function closeEmailModal() {
+        modalContent.classList.add('scale-95');
+        setTimeout(() => emailModal.classList.add('hidden'), 200);
+    }
+
+    // Ajax Kirim Email
+    document.getElementById('formKirimEmail').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        let btn = document.getElementById('btnSubmitEmail');
+        let originalText = btn.innerHTML;
+
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Mengirim...';
+        btn.disabled = true;
+        btn.classList.add('opacity-70');
+
+        let noNota = document.getElementById('email_no_nota').value;
+        let emailTujuan = document.getElementById('email_tujuan').value;
+
+        fetch('{{ route("nota.send-email") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                no_nota: noNota,
+                email: emailTujuan
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.success) {
+                closeEmailModal();
+
+                // Panggil Toast Sukses (Re-use toast copy link)
+                const toast = document.getElementById('toast-success');
+                document.getElementById('toast-message').innerText = data.message;
+                toast.classList.remove('translate-y-20', 'opacity-0');
+
+                setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 4000);
+            } else {
+                alert('Gagal mengirim email: ' + data.message);
+            }
+        })
+        .catch(err => {
+            alert('Terjadi kesalahan jaringan.');
+        })
+        .finally(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            btn.classList.remove('opacity-70');
+        });
+    });
+</script>
+
 @endsection

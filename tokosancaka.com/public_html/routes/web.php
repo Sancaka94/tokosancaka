@@ -1527,6 +1527,7 @@ Route::get('/nota/pay/{no_nota}', [\App\Http\Controllers\NotaController::class, 
 // 2. Rute untuk memproses tombol bayar (Redirect ke DOKU, Tripay, BCA, dll)
 Route::post('/nota/proses-bayar/{no_nota}', [\App\Http\Controllers\NotaController::class, 'prosesBayar'])->name('nota.proses_bayar');
 // =========================================================================
+Route::post('/nota/send-email', [\App\Http\Controllers\NotaController::class, 'sendEmailInvoiceAjax'])->name('nota.send-email');
 
 Route::resource('nota', NotaController::class);
 
