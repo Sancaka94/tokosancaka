@@ -391,4 +391,33 @@ class NotaController extends Controller
 
         return back()->with('error', 'Gagal mengarahkan ke halaman pembayaran.');
     }
+
+    /**
+     * FUNGSI BARU: Memproses Callback dari Webhook (DANA, DOKU, Tripay, dll)
+     */
+    public function processCallback($no_nota, $status)
+    {
+        try {
+            // Cari data nota berdasarkan nomor nota
+            $nota = \App\Models\Nota::where('no_nota', $no_nota)->first();
+
+            if ($nota) {
+                if (in_array(strtoupper($status), ['PAID', 'SUCCESS'])) {
+                    // Update status menjadi PAID
+                    $nota->status = 'PAID';
+
+                    // (Opsional) Kosongkan URL agar tidak bisa dibayar ulang
+                    $nota->payment_url = null;
+
+                    $nota->save();
+
+                    \Illuminate\Support\Facades\Log::info("✅ [NOTA] Webhook Sukses: Status $no_nota berhasil diupdate menjadi PAID.");
+                }
+            } else {
+                \Illuminate\Support\Facades\Log::warning("⚠️ [NOTA] Webhook masuk tapi Nota $no_nota tidak ditemukan di database.");
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("❌ [NOTA] Gagal memproses callback: " . $e->getMessage());
+        }
+    }
 }
