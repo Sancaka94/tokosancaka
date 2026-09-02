@@ -18,12 +18,14 @@
         .text-right { text-align: right; }
         .font-bold { font-weight: bold; }
         .text-success { color: #059669; }
+        .text-danger { color: #dc2626; } /* Tambahan class warna untuk status UNPAID */
         .footer { margin-top: 30px; font-size: 10px; color: #777; text-align: right; font-style: italic; }
     </style>
 </head>
 <body>
 
     @php
+        // Konversi Image ke Base64 agar DomPDF tidak error saat render gambar
         $logoPath = public_path('storage/uploads/sancaka.png');
         $logoBase64 = '';
         if (file_exists($logoPath)) {
@@ -53,38 +55,67 @@
         <thead>
             <tr>
                 <th width="5%">No</th>
-                <th width="15%">Tanggal</th>
-                <th width="25%">No. Nota</th>
-                <th width="25%">Kepada / Pembeli</th>
+                <th width="12%">Tanggal</th>
+                <th width="20%">No. Nota</th>
+                <th width="23%">Kepada / Pembeli</th>
                 <th width="10%">Total Item</th>
-                <th width="20%">Grand Total</th>
+                <th width="12%">Status</th> <!-- Tambahan Kolom Status -->
+                <th width="18%">Grand Total</th>
             </tr>
         </thead>
         <tbody>
-            @php $grandTotalSemua = 0; @endphp
-            
+            @php
+                $grandTotalSemua = 0;
+                $totalLunas = 0; // Tambahan variabel untuk menghitung khusus yang sudah bayar
+            @endphp
+
             @forelse($notas as $index => $nota)
-                @php $grandTotalSemua += $nota->total_harga; @endphp
+                @php
+                    $grandTotalSemua += $nota->total_harga;
+
+                    // Cek status dari backend
+                    $isPaid = strtoupper($nota->status ?? 'UNPAID') === 'PAID';
+
+                    if($isPaid) {
+                        $totalLunas += $nota->total_harga;
+                    }
+                @endphp
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td class="text-center">{{ \Carbon\Carbon::parse($nota->tanggal)->format('d/m/Y') }}</td>
                     <td class="font-bold">{{ $nota->no_nota }}</td>
-                    <td>{{ $nota->kepada }}</td>
+                    <td>
+                        {{ $nota->kepada }}<br>
+                        <small style="color:#777; font-weight: normal;">{{ $nota->nama_pembeli }}</small>
+                    </td>
                     <td class="text-center">{{ $nota->items->count() }} Brg</td>
-                    <td class="text-right font-bold text-success">
+                    <td class="text-center font-bold">
+                        @if($isPaid)
+                            <span class="text-success">PAID</span>
+                        @else
+                            <span class="text-danger">UNPAID</span>
+                        @endif
+                    </td>
+                    <td class="text-right font-bold {{ $isPaid ? 'text-success' : '' }}">
                         Rp {{ number_format($nota->total_harga, 0, ',', '.') }}
                     </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="text-center">Tidak ada data nota untuk diekspor.</td>
+                    <!-- Colspan diubah dari 6 menjadi 7 menyesuaikan kolom yang ada -->
+                    <td colspan="7" class="text-center">Tidak ada data nota untuk diekspor.</td>
                 </tr>
             @endforelse
         </tbody>
+
         @if(count($notas) > 0)
         <tfoot>
             <tr>
-                <th colspan="5" class="text-right">TOTAL KESELURUHAN PENDAPATAN :</th>
+                <th colspan="6" class="text-right">TOTAL PENDAPATAN (LUNAS) :</th>
+                <th class="text-right text-success">Rp {{ number_format($totalLunas, 0, ',', '.') }}</th>
+            </tr>
+            <tr>
+                <th colspan="6" class="text-right">TOTAL KESELURUHAN (TERMASUK UNPAID) :</th>
                 <th class="text-right">Rp {{ number_format($grandTotalSemua, 0, ',', '.') }}</th>
             </tr>
         </tfoot>
