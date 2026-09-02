@@ -100,8 +100,8 @@
             </button>
         </div>
 
-        <!-- Tambahkan pt-12 (padding-top) agar header turun menjauh dari pita LUNAS -->
-        <div class="flex flex-col sm:flex-row justify-between items-center border-b border-gray-100 pb-6 mb-6 pt-12">
+        <!-- Tambahan print:pt-24 agar turun ke bawah khusus saat dicetak -->
+        <div class="flex flex-col sm:flex-row justify-between items-center border-b border-gray-100 pb-6 mb-6 pt-4 print:pt-24">
             <div class="flex items-center gap-4 mb-4 sm:mb-0">
                 <img src="https://tokosancaka.com/storage/uploads/sancaka.png" alt="Sancaka" class="h-14 object-contain">
                 <div>
@@ -110,7 +110,9 @@
                     <p class="text-xs text-gray-500">Jl.Dr.Wahidin No.18A Ketanggi Ngawi Jawa Timur 63211</p>
                 </div>
             </div>
-           <div class="text-right relative z-50">
+
+            <!-- Tambahan print:pr-10 agar teks agak geser ke kiri menjauhi ekor pita khusus saat dicetak -->
+            <div class="text-right relative z-50 print:pr-10">
                 <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">NOMOR NOTA</p>
                 <p class="text-md font-bold text-black whitespace-nowrap">{{ $nota->no_nota }}</p>
             </div>
